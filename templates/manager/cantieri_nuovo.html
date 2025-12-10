@@ -1,0 +1,45 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Nuovo Cantiere – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">➕ Nuovo cantiere</h1>
+    <p class="page-subtitle">
+        Inserisci i dati principali del nuovo cantiere.
+    </p>
+</div>
+
+<div class="form-card">
+    <form method="post" action="#">
+        <div class="form-row">
+            <label for="nome">🏗️ Nome cantiere</label>
+            <input id="nome" name="nome" type="text" placeholder="Es. Cantiere Lyon" required />
+        </div>
+
+        <div class="form-row">
+            <label for="codice">🔢 Codice</label>
+            <input id="codice" name="codice" type="text" placeholder="Es. LY-001" />
+        </div>
+
+        <div class="form-row">
+            <label for="localita">📍 Località</label>
+            <input id="localita" name="localita" type="text" placeholder="Es. Lyon, Francia" />
+        </div>
+
+        <div class="form-row">
+            <label for="stato">📊 Stato</label>
+            <select id="stato" name="stato">
+                <option value="attivo">Attivo</option>
+                <option value="in_avvio">In avvio</option>
+                <option value="chiuso">Chiuso</option>
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">💾 Salva (mock)</button>
+            <a href="/manager/cantieri" class="btn btn-secondary">⬅️ Torna alla lista cantieri</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
