@@ -14,7 +14,7 @@ SECRET_KEY = "CAMBIA_QUESTA_STRINGA_SUPER_SEGRETA"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -39,7 +39,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == request.email).first()
     if not user or not verify_password(request.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenziali non valide")
-
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenziali non valide",
+        )
     token = create_access_token({"sub": user.email, "role": user.role.value})
     return TokenResponse(access_token=token)
