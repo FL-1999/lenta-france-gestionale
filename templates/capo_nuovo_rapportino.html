@@ -6,45 +6,52 @@
 <div class="page-header">
     <h1 class="page-title">📝 Nuovo rapportino giornaliero</h1>
     <p class="page-subtitle">
-        Compila il rapportino per il cantiere selezionato. In futuro collegheremo questa form alle API.
+        Compila il rapportino per il cantiere a te assegnato. (Più avanti collegheremo il salvataggio al backend.)
     </p>
 </div>
 
-<section class="form-card">
-    <form class="form-grid" method="post" action="#">
-        <div class="form-row">
+<div class="form-card">
+    <form method="post" action="#">
+
+        <div class="form-group">
             <label for="data">📅 Data</label>
             <input type="date" id="data" name="data" required />
         </div>
 
-        <div class="form-row">
+        <div class="form-group">
             <label for="cantiere">🏗️ Cantiere</label>
             <select id="cantiere" name="cantiere" required>
                 <option value="">Seleziona un cantiere…</option>
-                <option>Cantiere 1 (esempio)</option>
-                <option>Cantiere 2 (esempio)</option>
+                <option value="1">Cantiere esempio 1</option>
+                <option value="2">Cantiere esempio 2</option>
             </select>
         </div>
 
-        <div class="form-row">
-            <label for="personale">👥 Personale presente</label>
+        <div class="form-group">
+            <label for="personale">👷‍♂️ Personale presente</label>
             <input type="number" id="personale" name="personale" min="0" placeholder="Numero lavoratori" />
         </div>
 
-        <div class="form-row">
+        <div class="form-group">
             <label for="ore">⏱️ Ore lavorate</label>
             <input type="number" id="ore" name="ore" min="0" step="0.5" placeholder="Es. 8" />
         </div>
 
-        <div class="form-row">
+        <div class="form-group">
             <label for="attivita">📌 Attività svolte</label>
             <textarea id="attivita" name="attivita" rows="4" placeholder="Descrivi le attività svolte..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="note">🗒️ Note (opzionale)</label>
+            <textarea id="note" name="note" rows="3" placeholder="Eventuali note aggiuntive..."></textarea>
         </div>
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">💾 Salva (mock)</button>
             <a href="/capo/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
         </div>
+
     </form>
-</section>
+</div>
 {% endblock %}
