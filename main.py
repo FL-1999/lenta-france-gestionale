@@ -14,7 +14,6 @@ from routers import users, sites, machines, reports, fiches
 # CREAZIONE TABELLE + ADMIN INIZIALE
 # -------------------------------------------------
 
-# crea tutte le tabelle definite in models.py
 Base.metadata.create_all(bind=engine)
 
 
@@ -93,12 +92,11 @@ def homepage(request: Request):
     Usa il template 'home.html' e passa la lingua letta dal cookie.
     """
     lang = get_lang_from_request(request)
-
     return templates.TemplateResponse(
         "home.html",
         {
             "request": request,
-            "lang": lang,  # se un giorno vuoi usarla dentro il template
+            "lang": lang,
         },
     )
 
@@ -106,9 +104,7 @@ def homepage(request: Request):
 @app.get("/set-lang")
 def set_lang(lang: str = "it"):
     """
-    Imposta la lingua (it / fr) nel cookie e reindirizza alla homepage.
-    Anche se l'interfaccia usa localStorage, tenere il cookie non fa male
-    e può tornare utile in futuro.
+    Imposta la lingua (it / fr) nel cookie e torna alla homepage.
     """
     if lang not in ("it", "fr"):
         lang = "it"
@@ -118,14 +114,41 @@ def set_lang(lang: str = "it"):
 
 
 # -------------------------------------------------
-# PAGINE SPECIFICHE FRONTEND (CAPOSQUADRA, ECC.)
+# PAGINE FRONTEND — MANAGER & CAPOSQUADRA
 # -------------------------------------------------
+
+@app.get("/manager/dashboard", response_class=HTMLResponse)
+def manager_dashboard(request: Request):
+    """
+    Dashboard manager con accesso a cantieri, fiches, rapportini e macchinari.
+    """
+    return templates.TemplateResponse(
+        "manager/home_manager.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
+
+@app.get("/capo/dashboard", response_class=HTMLResponse)
+def capo_dashboard(request: Request):
+    """
+    Dashboard caposquadra con funzioni limitate ai cantieri assegnati.
+    """
+    return templates.TemplateResponse(
+        "capo/home_capo.html",
+        {
+            "request": request,
+            "user_role": "capo",
+        },
+    )
+
 
 @app.get("/capo/rapportini/nuovo", response_class=HTMLResponse)
 def pagina_nuovo_rapportino_capo(request: Request):
     """
-    Pagina per il caposquadra per creare un nuovo rapportino giornaliero.
-    Usa il template 'capo_nuovo_rapportino.html'.
+    Pagina per creare un nuovo rapportino giornaliero (caposquadra).
     """
     return templates.TemplateResponse(
         "capo_nuovo_rapportino.html",
@@ -133,9 +156,6 @@ def pagina_nuovo_rapportino_capo(request: Request):
             "request": request,
         },
     )
-
-# (Qui in futuro puoi aggiungere altre pagine HTML, ad esempio:
-#  /manager/cantieri, /capo/fiches, ecc. con altri template.)
 
 
 # -------------------------------------------------
