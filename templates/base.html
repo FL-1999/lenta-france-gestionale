@@ -2,36 +2,33 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8" />
-    <title>{{ title or "Lenta France – Gestionale Cantieri" }}</title>
+    <title>{{ title if title else "Lenta France Gestionale" }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Foglio di stile -->
     <link rel="stylesheet" href="/static/css/style.css" />
 </head>
+
 <body>
-<header class="top-header">
-    <div class="logo-area">
-        <!-- Se hai un logo, metti il file in static/img/logo.png -->
-        <img src="/static/img/logo.png" alt="Lenta France" class="logo-img" />
-        <div class="logo-text">
-            <span class="logo-company">Lenta France</span>
-            <span class="logo-subtitle">Gestionale Cantieri</span>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <img src="/static/logo.png" class="logo" alt="Logo Lenta France" />
+            <span class="brand">Lenta France Gestionale</span>
         </div>
-    </div>
 
-    <nav class="top-nav">
-        <a href="/" class="nav-link">🏠 Home</a>
-        <a href="/manager/dashboard" class="nav-link">👔 Manager</a>
-        <a href="/caposquadra/dashboard" class="nav-link">👷 Caposquadra</a>
-        <a href="/docs" class="nav-link">📚 API Docs</a>
+        <div class="nav-right">
+            <a href="/" class="nav-link">🏠 Home</a>
+            <a href="/docs" class="nav-link">📘 API Docs</a>
+        </div>
     </nav>
-</header>
 
-<main class="page-main">
-    {% block content %}
-    {% endblock %}
-</main>
+    <!-- CONTENUTO -->
+    <main class="container">
+        {% block content %}
+        {% endblock %}
+    </main>
 
-<footer class="page-footer">
-    <span>© {{ year or 2025 }} Lenta France – Gestionale cantieri</span>
-</footer>
 </body>
 </html>
