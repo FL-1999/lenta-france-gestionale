@@ -4,6 +4,6 @@ SQLAlchemy
 pydantic
 email-validator
 python-jose[cryptography]
-passlib[bcrypt]
+passlib
 jinja2
 python-multipart
