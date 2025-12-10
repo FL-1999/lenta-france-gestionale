@@ -1,0 +1,45 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Cantieri – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">🏗️ Cantieri</h1>
+    <p class="page-subtitle">
+        Elenco dei cantieri gestiti da Lenta France.
+    </p>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Codice</th>
+                <th>Località</th>
+                <th>Stato</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Dati di esempio -->
+            <tr>
+                <td>Cantiere Lyon</td>
+                <td>LY-001</td>
+                <td>Lyon</td>
+                <td>Attivo</td>
+            </tr>
+            <tr>
+                <td>Cantiere Marseille</td>
+                <td>MA-002</td>
+                <td>Marseille</td>
+                <td>In avvio</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="form-actions">
+    <a href="/manager/cantieri/nuovo" class="btn btn-primary">➕ Nuovo cantiere</a>
+    <a href="/manager/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
+</div>
+{% endblock %}
