@@ -25,7 +25,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 ora
 # PASSWORD HASHING (bcrypt)
 # =====================================
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
@@ -202,3 +202,4 @@ async def read_users_me(
         "role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
         "language": getattr(current_user, "language", None),
     }
+
