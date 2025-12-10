@@ -2,53 +2,49 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8" />
+    <title>{% block title %}Lenta France – Gestionale{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ title if title else "Lenta France Gestionale" }}</title>
-
-    <!-- CSS -->
     <link rel="stylesheet" href="/static/css/style.css" />
-
 </head>
 <body>
+    {% set role = user_role if user_role is defined else None %}
 
-    <!-- NAVBAR -->
-    <header class="navbar">
-        <div class="logo">
-            <!-- Qui potrai mettere il logo vero -->
-            <span class="logo-icon">🏗️</span>
-            <span class="logo-text">Lenta France</span>
+    <header class="topbar">
+        <div class="topbar-left">
+            <div class="logo-circle">LF</div>
+            <div class="logo-text">
+                <span class="logo-title">Lenta France</span>
+                <span class="logo-subtitle">Gestionale Cantieri</span>
+            </div>
         </div>
 
-        <nav class="nav-links">
-            {% if user_role == "manager" %}
-                <a href="/manager/dashboard">👔 Dashboard Manager</a>
-                <a href="/manager/fiches">📄 Fiches</a>
-                <a href="/manager/rapportini">📝 Rapportini</a>
-                <a href="/manager/cantieri">🏗️ Cantieri</a>
-                <a href="/logout">🚪 Logout</a>
-
-            {% elif user_role == "capo" %}
-                <a href="/capo/dashboard">👷 Dashboard Caposquadra</a>
-                <a href="/capo/fiches/nuovo">📄 Nuova Fiche</a>
-                <a href="/capo/rapportini/nuovo">📝 Nuovo Rapportino</a>
-                <a href="/logout">🚪 Logout</a>
-
-            {% else %}
-                <a href="/">🏠 Home</a>
-                <a href="/login">🔐 Login</a>
-            {% endif %}
+        <nav class="topbar-nav">
+            <a href="/" class="nav-link">🏠 Home</a>
+            <a href="/manager/dashboard"
+               class="nav-link {% if role == 'manager' %}nav-link-active{% endif %}">
+                👔 Manager
+            </a>
+            <a href="/capo/dashboard"
+               class="nav-link {% if role == 'capo' %}nav-link-active{% endif %}">
+                👷 Caposquadra
+            </a>
+            <a href="/docs" class="nav-link">📚 API Docs</a>
         </nav>
+
+        <div class="topbar-right">
+            <div class="lang-switch">
+                <a href="/set-lang?lang=it" class="chip">🇮🇹 IT</a>
+                <a href="/set-lang?lang=fr" class="chip chip-ghost">🇫🇷 FR</a>
+            </div>
+        </div>
     </header>
 
-    <!-- CONTENUTO DELLE PAGINE -->
-    <main class="page-content">
-        {% block content %}
-        {% endblock %}
+    <main class="page-container">
+        {% block content %}{% endblock %}
     </main>
 
     <footer class="footer">
-        <p>© 2025 Lenta France – Gestionale Cantieri</p>
+        <span>© {{ 2025 }} Lenta France · Gestionale cantieri 🏗️</span>
     </footer>
-
 </body>
 </html>
