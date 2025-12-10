@@ -1,47 +1,204 @@
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from jose import jwt, JWTError
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
 from passlib.context import CryptContext
+from pydantic import BaseModel
+
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User, RoleEnum
-from schemas import LoginRequest, TokenResponse
 
-SECRET_KEY = "CAMBIA_QUESTA_STRINGA_SUPER_SEGRETA"
+# =====================================
+# CONFIGURAZIONE JWT
+# =====================================
+
+# 👉 Puoi cambiarla con una stringa più lunga e segreta
+SECRET_KEY = "cambia-questa-chiave-super-segreta-lenta-france-2025"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 ora
 
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+# =====================================
+# PASSWORD HASHING (bcrypt)
+# =====================================
 
-router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
+    """
+    Restituisce la versione hashata della password.
+    Usata in main.py per creare l'admin iniziale.
+    """
     return pwd_context.hash(password)
 
 
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Confronta password in chiaro con l'hash salvato nel DB.
+    """
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+# =====================================
+# SCHEMA TOKEN
+# =====================================
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+
+# =====================================
+# FUNZIONI DI AUTENTICAZIONE
+# =====================================
+
+def get_user_by_email(db: Session, email: str) -> Optional[User]:
+    return db.query(User).filter(User.email == email).first()
+
+
+def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
+    """
+    Controlla che l'utente esista e che la password sia corretta.
+    """
+    user = get_user_by_email(db, email=email)
+    if not user:
+        return None
+    if not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """
+    Crea un JWT con i dati forniti (di solito {"sub": email}).
+    """
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS))
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-@router.post("/login", response_model=TokenResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == request.email).first()
-    if not user or not verify_password(request.password, user.hashed_password):
+# =====================================
+# DIPENDENZE PER OTTENERE L'UTENTE CORRENTE
+# =====================================
+
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    """
+    Legge il token, decodifica la mail, carica l'utente dal DB.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenziali non valide o token mancante",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+
+    user = get_user_by_email(db, email=token_data.email)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_active_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """
+    Qui puoi controllare se l'utente è attivo o meno.
+    Per ora assumiamo che tutti gli utenti siano attivi.
+    """
+    # Se in models.User hai un campo "is_active", puoi fare:
+    # if not current_user.is_active:
+    #     raise HTTPException(status_code=400, detail="Utente disabilitato")
+    return current_user
+
+
+# Se in futuro vuoi un controllo solo per ADMIN / MANAGER:
+async def get_current_manager_user(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+) -> User:
+    """
+    Esempio di dipendenza che accetta solo admin/manager.
+    """
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti per questa operazione",
+        )
+    return current_user
+
+
+# =====================================
+# ROUTER FASTAPI
+# =====================================
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/token", response_model=Token)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    Endpoint di login:
+    - riceve username e password (username = email)
+    - se ok, restituisce un JWT
+    """
+    user = authenticate_user(db, email=form_data.username, password=form_data.password)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenziali non valide",
+            detail="Email o password non corretti",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    token = create_access_token({"sub": user.email, "role": user.role.value})
-    return TokenResponse(access_token=token)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+    return Token(access_token=access_token, token_type="bearer")
+
+
+@router.get("/me")
+async def read_users_me(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    """
+    Restituisce le info dell'utente loggato.
+    Utile per testare che il token funzioni.
+    """
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": getattr(current_user, "full_name", None),
+        "role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+        "language": getattr(current_user, "language", None),
+    }
