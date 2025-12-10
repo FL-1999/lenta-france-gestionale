@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title if title else "Lenta France Gestionale" }}</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/style.css" />
+
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <header class="navbar">
+        <div class="logo">
+            <!-- Qui potrai mettere il logo vero -->
+            <span class="logo-icon">🏗️</span>
+            <span class="logo-text">Lenta France</span>
+        </div>
+
+        <nav class="nav-links">
+            {% if user_role == "manager" %}
+                <a href="/manager/dashboard">👔 Dashboard Manager</a>
+                <a href="/manager/fiches">📄 Fiches</a>
+                <a href="/manager/rapportini">📝 Rapportini</a>
+                <a href="/manager/cantieri">🏗️ Cantieri</a>
+                <a href="/logout">🚪 Logout</a>
+
+            {% elif user_role == "capo" %}
+                <a href="/capo/dashboard">👷 Dashboard Caposquadra</a>
+                <a href="/capo/fiches/nuovo">📄 Nuova Fiche</a>
+                <a href="/capo/rapportini/nuovo">📝 Nuovo Rapportino</a>
+                <a href="/logout">🚪 Logout</a>
+
+            {% else %}
+                <a href="/">🏠 Home</a>
+                <a href="/login">🔐 Login</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <!-- CONTENUTO DELLE PAGINE -->
+    <main class="page-content">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>© 2025 Lenta France – Gestionale Cantieri</p>
+    </footer>
+
+</body>
+</html>
