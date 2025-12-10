@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="page-title">👔 Dashboard Manager</h1>
+<p class="page-subtitle">
+    Qui puoi gestire cantieri, macchinari, fiches, rapportini e capisquadra.
+</p>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>🏗️ Cantieri</h3>
+        <p>Gestisci tutti i cantieri attivi, clienti e indirizzi.</p>
+        <a href="/manager/cantieri" class="btn">📋 Lista Cantieri</a>
+    </div>
+
+    <div class="card">
+        <h3>🚜 Macchinari</h3>
+        <p>Monitora i macchinari assegnati ai cantieri.</p>
+        <a href="/manager/macchinari" class="btn">📋 Lista Macchinari</a>
+    </div>
+
+    <div class="card">
+        <h3>📄 Fiches</h3>
+        <p>Controlla le fiches inserite dai capisquadra.</p>
+        <a href="/manager/fiches" class="btn">📋 Lista Fiches</a>
+    </div>
+
+    <div class="card">
+        <h3>📝 Rapportini</h3>
+        <p>Verifica i rapportini giornalieri dei cantieri.</p>
+        <a href="/manager/rapportini" class="btn">📋 Lista Rapportini</a>
+    </div>
+
+    <div class="card">
+        <h3>👷 Dipendenti / Capisquadra</h3>
+        <p>Gestisci gli utenti e i loro ruoli.</p>
+        <a href="/manager/dipendenti" class="btn">📋 Lista Dipendenti</a>
+    </div>
+</div>
+
+{% endblock %}
