@@ -9,6 +9,7 @@
 <body>
     {% set role = user_role if user_role is defined else None %}
 
+    <!-- TOP BAR -->
     <header class="topbar">
         <div class="topbar-left">
             <div class="logo-circle">LF</div>
@@ -39,12 +40,13 @@
         </div>
     </header>
 
+    <!-- CONTENUTO PAGINA -->
     <main class="page-container">
         {% block content %}{% endblock %}
     </main>
 
     <footer class="footer">
-        <span>© {{ 2025 }} Lenta France · Gestionale cantieri 🏗️</span>
+        <span>© 2025 Lenta France · Gestionale cantieri 🏗️</span>
     </footer>
 </body>
 </html>
