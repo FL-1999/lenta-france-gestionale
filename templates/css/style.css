@@ -1,0 +1,214 @@
+:root {
+    --blu-scuro: #1e3a8a;
+    --blu-chiaro: #3b82f6;
+    --rosso: #b91c1c;
+    --sfondo: #f4f4f8;
+    --card-bg: #ffffff;
+    --testo: #111827;
+    --testo-secondario: #6b7280;
+    --bordo-morbido: 12px;
+    --ombra-card: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+    background: var(--sfondo);
+    color: var(--testo);
+}
+
+/* HEADER */
+
+.top-header {
+    background: linear-gradient(90deg, var(--blu-scuro), var(--rosso));
+    color: #ffffff;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.logo-company {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.logo-subtitle {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+/* NAVBAR */
+
+.top-nav {
+    display: flex;
+    gap: 16px;
+}
+
+.nav-link {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+/* LAYOUT PRINCIPALE */
+
+.page-main {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 0 16px 40px;
+}
+
+.page-footer {
+    text-align: center;
+    font-size: 13px;
+    color: var(--testo-secondario);
+    padding: 20px 0 30px;
+}
+
+/* CARD GENERICHE */
+
+.card {
+    background: var(--card-bg);
+    border-radius: var(--bordo-morbido);
+    padding: 18px 20px;
+    margin-bottom: 18px;
+    box-shadow: var(--ombra-card);
+}
+
+.card h2, .card h3 {
+    margin-bottom: 8px;
+}
+
+.card p {
+    color: var(--testo-secondario);
+    margin-bottom: 8px;
+}
+
+/* GRIGLIA CARD */
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+/* BOTTONI */
+
+.btn {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    background: var(--blu-scuro);
+    color: #ffffff;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn:hover {
+    background: var(--blu-chiaro);
+    transform: translateY(-1px);
+}
+
+.btn-red {
+    background: var(--rosso);
+}
+
+.btn-red:hover {
+    background: #dc2626;
+}
+
+/* TABELLE LISTE */
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+.table th,
+.table td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 8px 6px;
+    text-align: left;
+}
+
+.table th {
+    background-color: #e5e7eb;
+}
+
+/* FORM */
+
+form label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+form input[type="text"],
+form input[type="date"],
+form input[type="number"],
+form input[type="email"],
+form input[type="password"],
+form textarea,
+form select {
+    width: 100%;
+    padding: 7px 9px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+form textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+/* SEZIONE TITOLI PAGINA */
+
+.page-title {
+    font-size: 22px;
+    margin-bottom: 14px;
+}
+
+.page-subtitle {
+    font-size: 14px;
+    color: var(--testo-secondario);
+    margin-bottom: 20px;
+}
