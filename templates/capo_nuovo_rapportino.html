@@ -1,13 +1,26 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8" />
-    <title>Nuovo rapportino – Caposquadra</title>
-</head>
-<body>
-    <h1>👷‍♂️ Nuovo rapportino giornaliero</h1>
-    <p>Qui metteremo il form per creare il rapportino del cantiere.</p>
+{% extends "base.html" %}
+{% block content %}
 
-    <p><a href="/">⬅ Torna alla homepage</a></p>
-</body>
-</html>
+<h1 class="page-title">📝 Nuovo Rapportino Giornaliero</h1>
+<p class="page-subtitle">Compila il rapportino per il cantiere assegnato.</p>
+
+<div class="card">
+    <form method="post" action="/caposquadra/rapportino/crea">
+
+        <label>Data</label>
+        <input type="date" name="data" required />
+
+        <label>Ore lavorate totali</label>
+        <input type="number" name="ore_lavorate" min="0" step="0.5" required />
+
+        <label>Descrizione attività svolte</label>
+        <textarea name="descrizione" required></textarea>
+
+        <label>Note (opzionale)</label>
+        <textarea name="note"></textarea>
+
+        <button type="submit" class="btn">📨 Invia Rapportino</button>
+    </form>
+</div>
+
+{% endblock %}
