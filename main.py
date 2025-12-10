@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 from database import Base, engine, SessionLocal
 from auth import router as auth_router, hash_password
@@ -8,12 +10,23 @@ from models import User, RoleEnum
 from routers import users, sites, machines, reports, fiches
 
 
-# ----- crea tabelle -----
+# -------------------------------------------------
+# CREAZIONE TABELLE + ADMIN INIZIALE
+# -------------------------------------------------
+
+# crea tutte le tabelle definite in models.py
 Base.metadata.create_all(bind=engine)
 
 
-# ----- crea admin iniziale se non esiste -----
 def create_initial_admin():
+    """
+    Crea l'utente admin iniziale se non esiste.
+    Admin:
+        email:  lenta.federico@gmail.com
+        pass:   Fulvio72
+        ruolo:  admin
+        lingua: it
+    """
     db = SessionLocal()
     try:
         admin = db.query(User).filter(User.role == RoleEnum.admin).first()
@@ -37,6 +50,10 @@ def create_initial_admin():
 create_initial_admin()
 
 
+# -------------------------------------------------
+# APP FASTAPI
+# -------------------------------------------------
+
 app = FastAPI(
     title="Lenta France Gestionale",
     description="Gestionale cantieri, macchinari, fiches e rapportini.",
@@ -51,8 +68,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static (CSS, immagini, JS)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ----- multilingua homepage -----
+# Templates HTML (Jinja2)
+templates = Jinja2Templates(directory="templates")
+
+
+# -------------------------------------------------
+# MULTILINGUA (COOKIE) + HOMEPAGE TEMPLATE
+# -------------------------------------------------
 
 def get_lang_from_request(request: Request) -> str:
     lang = request.cookies.get("lang")
@@ -63,90 +88,28 @@ def get_lang_from_request(request: Request) -> str:
 
 @app.get("/", response_class=HTMLResponse)
 def homepage(request: Request):
+    """
+    Homepage con selezione lingua, login e dashboard (manager/caposquadra).
+    Usa il template 'home.html' e passa la lingua letta dal cookie.
+    """
     lang = get_lang_from_request(request)
 
-    if lang == "fr":
-        title = "Lenta France – Gestion de chantiers"
-        description = "Plateforme de gestion pour chantiers, machines, fiches et rapports journaliers."
-        btn_it = "Italien"
-        btn_fr = "Français (actif)"
-    else:
-        title = "Lenta France – Gestionale Cantieri"
-        description = "Piattaforma gestionale per cantieri, macchinari, fiches e rapportini giornalieri."
-        btn_it = "Italiano (attivo)"
-        btn_fr = "Francese"
-
-    html = f"""
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>{title}</title>
-        <style>
-          body {{
-            font-family: Arial, sans-serif;
-            background: #0f172a;
-            color: #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-          }}
-          .card {{
-            background: #111827;
-            padding: 24px 32px;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            max-width: 480px;
-          }}
-          h1 {{ margin-bottom: 0.25rem; }}
-          p {{ margin-top: 0.25rem; margin-bottom: 1.5rem; color: #9ca3af; }}
-          .lang-buttons a {{
-            margin-right: 8px;
-            padding: 8px 14px;
-            border-radius: 999px;
-            text-decoration: none;
-            border: 1px solid #4b5563;
-            font-size: 0.9rem;
-          }}
-          .primary {{
-            background: #2563eb;
-            border-color: #2563eb;
-            color: white;
-          }}
-          .secondary {{
-            color: #e5e7eb;
-          }}
-          .links {{
-            margin-top: 1.5rem;
-            font-size: 0.9rem;
-          }}
-          .links a {{
-            color: #93c5fd;
-            text-decoration: none;
-            margin-right: 12px;
-          }}
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <h1>{title}</h1>
-          <p>{description}</p>
-          <div class="lang-buttons">
-            <a class="{'primary' if lang == 'it' else 'secondary'}" href="/set-lang?lang=it">{btn_it}</a>
-            <a class="{'primary' if lang == 'fr' else 'secondary'}" href="/set-lang?lang=fr">{btn_fr}</a>
-          </div>
-          <div class="links">
-            <div>API docs: <a href="/docs">/docs</a></div>
-          </div>
-        </div>
-      </body>
-    </html>
-    """
-    return HTMLResponse(content=html)
+    return templates.TemplateResponse(
+        "home.html",
+        {
+            "request": request,
+            "lang": lang,  # se un giorno vuoi usarla dentro il template
+        },
+    )
 
 
 @app.get("/set-lang")
 def set_lang(lang: str = "it"):
+    """
+    Imposta la lingua (it / fr) nel cookie e reindirizza alla homepage.
+    Anche se l'interfaccia usa localStorage, tenere il cookie non fa male
+    e può tornare utile in futuro.
+    """
     if lang not in ("it", "fr"):
         lang = "it"
     response = RedirectResponse(url="/")
@@ -154,7 +117,30 @@ def set_lang(lang: str = "it"):
     return response
 
 
-# ----- include routers -----
+# -------------------------------------------------
+# PAGINE SPECIFICHE FRONTEND (CAPOSQUADRA, ECC.)
+# -------------------------------------------------
+
+@app.get("/capo/rapportini/nuovo", response_class=HTMLResponse)
+def pagina_nuovo_rapportino_capo(request: Request):
+    """
+    Pagina per il caposquadra per creare un nuovo rapportino giornaliero.
+    Usa il template 'capo_nuovo_rapportino.html'.
+    """
+    return templates.TemplateResponse(
+        "capo_nuovo_rapportino.html",
+        {
+            "request": request,
+        },
+    )
+
+# (Qui in futuro puoi aggiungere altre pagine HTML, ad esempio:
+#  /manager/cantieri, /capo/fiches, ecc. con altri template.)
+
+
+# -------------------------------------------------
+# INCLUDE DEI ROUTER API
+# -------------------------------------------------
 
 app.include_router(auth_router)
 app.include_router(users.router)
