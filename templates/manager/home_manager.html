@@ -1,21 +1,21 @@
 {% extends "shared/base.html" %}
 
+{% block title %}Area Manager – Lenta France{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">👔 Area Manager</h1>
     <p class="page-subtitle">
-        Qui puoi gestire cantieri, macchinari, fiches e rapportini giornalieri.
+        Gestisci cantieri, macchinari, fiches e rapportini giornalieri dell’azienda.
     </p>
 </div>
 
 <div class="dashboard-grid">
 
-    <!-- Card Cantieri -->
+    <!-- Cantieri -->
     <section class="card">
         <div class="card-header">
-            <div class="card-title">
-                🏗️ Cantieri
-            </div>
+            <div class="card-title">🏗️ Cantieri</div>
             <span class="card-badge">Gestione</span>
         </div>
         <div class="card-body">
@@ -27,16 +27,14 @@
         </div>
     </section>
 
-    <!-- Card Fiches -->
+    <!-- Fiches -->
     <section class="card">
         <div class="card-header">
-            <div class="card-title">
-                📄 Fiches di cantiere
-            </div>
+            <div class="card-title">📄 Fiches di cantiere</div>
             <span class="card-badge">Documenti</span>
         </div>
         <div class="card-body">
-            <p>Crea e consulta le fiches dei cantieri per il controllo delle attività.</p>
+            <p>Crea e consulta le fiches dettagliate per ogni cantiere.</p>
             <div class="button-row">
                 <a href="/manager/fiches" class="btn btn-secondary">📁 Tutte le fiches</a>
                 <a href="/manager/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
@@ -44,16 +42,14 @@
         </div>
     </section>
 
-    <!-- Card Rapportini -->
+    <!-- Rapportini -->
     <section class="card">
         <div class="card-header">
-            <div class="card-title">
-                📝 Rapportini giornalieri
-            </div>
+            <div class="card-title">📝 Rapportini giornalieri</div>
             <span class="card-badge">Monitoraggio</span>
         </div>
         <div class="card-body">
-            <p>Controlla i rapportini compilati dai capisquadra per ogni cantiere.</p>
+            <p>Controlla i rapportini compilati dai capisquadra.</p>
             <div class="button-row">
                 <a href="/manager/rapportini" class="btn btn-secondary">📊 Elenco rapportini</a>
                 <a href="/manager/rapportini/esporta" class="btn btn-primary">📤 Esporta report</a>
@@ -61,12 +57,10 @@
         </div>
     </section>
 
-    <!-- Card Macchinari -->
+    <!-- Macchinari -->
     <section class="card">
         <div class="card-header">
-            <div class="card-title">
-                🚜 Macchinari
-            </div>
+            <div class="card-title">🚜 Macchinari</div>
             <span class="card-badge">Risorse</span>
         </div>
         <div class="card-body">
