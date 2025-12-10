@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="page-title">📄 Nuova Fiche</h1>
+<p class="page-subtitle">Compila una nuova fiche per il macchinario o attività.</p>
+
+<div class="card">
+    <form method="post" action="/caposquadra/fiche/crea">
+
+        <label>Data</label>
+        <input type="date" name="data" required />
+
+        <label>Macchinario</label>
+        <input type="text" name="macchinario" required />
+
+        <label>Ore utilizzo</label>
+        <input type="number" name="ore_utilizzo" min="0" step="0.5" required />
+
+        <label>Descrizione</label>
+        <textarea name="descrizione" required></textarea>
+
+        <button type="submit" class="btn">📨 Salva Fiche</button>
+    </form>
+</div>
+
+{% endblock %}
