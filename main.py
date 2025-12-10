@@ -117,9 +117,109 @@ def manager_dashboard(request: Request):
         },
     )
 
-# (In futuro potremo aggiungere qui
-#  /manager/cantieri, /manager/fiches, ecc. con template dedicati)
+@app.get("/manager/cantieri", response_class=HTMLResponse)
+def manager_cantieri_lista(request: Request):
+    """
+    Lista cantieri (vista manager).
+    """
+    return templates.TemplateResponse(
+        "manager/cantieri_lista.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
 
+@app.get("/manager/cantieri/nuovo", response_class=HTMLResponse)
+def manager_cantieri_nuovo(request: Request):
+    """
+    Creazione nuovo cantiere (manager).
+    """
+    return templates.TemplateResponse(
+        "manager/cantieri_nuovo.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
+@app.get("/manager/fiches", response_class=HTMLResponse)
+def manager_fiches_lista(request: Request):
+    """
+    Lista fiches (manager).
+    """
+    return templates.TemplateResponse(
+        "manager/fiches_lista.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
+@app.get("/manager/fiches/nuova", response_class=HTMLResponse)
+def manager_fiches_nuova(request: Request):
+    """
+    Nuova fiche (manager).
+    """
+    return templates.TemplateResponse(
+        "manager/fiches_nuova.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
+@app.get("/manager/rapportini", response_class=HTMLResponse)
+def manager_rapportini_lista(request: Request):
+    """
+    Lista rapportini (manager).
+    """
+    return templates.TemplateResponse(
+        "manager/rapportini_lista.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
+@app.get("/manager/rapportini/esporta", response_class=HTMLResponse)
+def manager_rapportini_esporta(request: Request):
+    """
+    Pagina mock per esportazione rapportini (in futuro: PDF/Excel).
+    """
+    return templates.TemplateResponse(
+        "manager/rapportini_esporta.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
+@app.get("/manager/macchinari", response_class=HTMLResponse)
+def manager_macchinari_lista(request: Request):
+    """
+    Lista macchinari (manager).
+    """
+    return templates.TemplateResponse(
+        "manager/macchinari_lista.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
+@app.get("/manager/macchinari/assegna", response_class=HTMLResponse)
+def manager_macchinari_assegna(request: Request):
+    """
+    Assegnazione macchinari ai cantieri (manager).
+    """
+    return templates.TemplateResponse(
+        "manager/macchinari_assegna.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
 
 # -------------------------------------------------
 # PAGINE FRONTEND — CAPOSQUADRA
