@@ -101,7 +101,7 @@ def set_lang(lang: str = "it"):
     return response
 
 # -------------------------------------------------
-# PAGINE FRONTEND — MANAGER & CAPOSQUADRA
+# PAGINE FRONTEND — MANAGER
 # -------------------------------------------------
 
 @app.get("/manager/dashboard", response_class=HTMLResponse)
@@ -117,6 +117,13 @@ def manager_dashboard(request: Request):
         },
     )
 
+# (In futuro potremo aggiungere qui
+#  /manager/cantieri, /manager/fiches, ecc. con template dedicati)
+
+
+# -------------------------------------------------
+# PAGINE FRONTEND — CAPOSQUADRA
+# -------------------------------------------------
 
 @app.get("/capo/dashboard", response_class=HTMLResponse)
 def capo_dashboard(request: Request):
@@ -141,6 +148,49 @@ def pagina_nuovo_rapportino_capo(request: Request):
         "capo_nuovo_rapportino.html",
         {
             "request": request,
+            "user_role": "capo",
+        },
+    )
+
+
+@app.get("/capo/rapportini", response_class=HTMLResponse)
+def capo_lista_rapportini(request: Request):
+    """
+    Lista dei rapportini del caposquadra.
+    """
+    return templates.TemplateResponse(
+        "capo_lista_rapportini.html",
+        {
+            "request": request,
+            "user_role": "capo",
+        },
+    )
+
+
+@app.get("/capo/fiches/nuova", response_class=HTMLResponse)
+def capo_nuova_fiche(request: Request):
+    """
+    Creazione di una nuova fiche di cantiere.
+    """
+    return templates.TemplateResponse(
+        "capo_nuova_fiche.html",
+        {
+            "request": request,
+            "user_role": "capo",
+        },
+    )
+
+
+@app.get("/capo/fiches", response_class=HTMLResponse)
+def capo_lista_fiches(request: Request):
+    """
+    Lista delle fiches del caposquadra.
+    """
+    return templates.TemplateResponse(
+        "capo_lista_fiches.html",
+        {
+            "request": request,
+            "user_role": "capo",
         },
     )
 
