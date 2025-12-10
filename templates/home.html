@@ -1,20 +1,41 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8" />
-    <title>Lenta France – Gestionale Cantieri</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-</head>
-<body>
-    <h1>🏗️ Lenta France – Gestionale Cantieri</h1>
-    <p>Homepage base funzionante. Da qui aggiungeremo il design moderno.</p>
+{% extends "shared/base.html" %}
 
-    <h2>Accesso rapido</h2>
-    <ul>
-        <li>👔 Manager – in futuro login completo</li>
-        <li>👷‍♂️ Caposquadra – <a href="/capo/rapportini/nuovo">nuovo rapportino</a></li>
-    </ul>
+{% block title %}Lenta France – Portale Gestionale{% endblock %}
 
-    <p>API docs: <a href="/docs">/docs</a></p>
-</body>
-</html>
+{% block content %}
+<section class="hero">
+    <div class="hero-text">
+        <h1>🏗️ Benvenuto nel gestionale <span class="accent">Lenta France</span></h1>
+        <p class="hero-subtitle">
+            Piattaforma moderna per gestire cantieri, macchinari, fiches e rapportini giornalieri.
+        </p>
+
+        <div class="hero-actions">
+            <a href="/manager/dashboard" class="btn btn-primary">
+                👔 Area Manager
+            </a>
+            <a href="/capo/dashboard" class="btn btn-secondary">
+                👷 Area Caposquadra
+            </a>
+        </div>
+
+        <p class="hero-note">
+            I manager hanno accesso completo alla gestione di tutti i cantieri. <br />
+            I capisquadra vedono solo i cantieri a loro assegnati e possono creare fiches e rapportini.
+        </p>
+    </div>
+
+    <div class="hero-panel">
+        <h2 class="panel-title">🔐 Accesso rapido</h2>
+        <ul class="panel-list">
+            <li>✔️ Controllo centralizzato dei cantieri</li>
+            <li>✔️ Rapportini giornalieri strutturati</li>
+            <li>✔️ Fiches di cantiere complete</li>
+            <li>✔️ Gestione macchinari 🚜</li>
+        </ul>
+        <div class="panel-footer">
+            <span class="badge-soft">Versione 1.0 • Beta</span>
+        </div>
+    </div>
+</section>
+{% endblock %}
