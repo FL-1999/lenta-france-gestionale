@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="page-title">👷 Dashboard Caposquadra</h1>
+<p class="page-subtitle">
+    Qui vedi solo il cantiere a cui sei assegnato e puoi creare fiches e rapportini giornalieri.
+</p>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>🏗️ Il tuo cantiere</h3>
+        <p>{{ cantiere_nome or "Cantiere assegnato" }}</p>
+        <p class="page-subtitle">Gestisci la documentazione del tuo cantiere.</p>
+    </div>
+
+    <div class="card">
+        <h3>📝 Rapportini Giornalieri</h3>
+        <p>Registra le attività fatte in giornata.</p>
+        <a href="/caposquadra/rapportino/nuovo" class="btn">➕ Nuovo Rapportino</a>
+        <a href="/caposquadra/rapportini" class="btn btn-red">📋 Lista Rapportini</a>
+    </div>
+
+    <div class="card">
+        <h3>📄 Fiches</h3>
+        <p>Compila fiches per macchinari, ore, ecc.</p>
+        <a href="/caposquadra/fiche/nuova" class="btn">➕ Nuova Fiche</a>
+        <a href="/caposquadra/fiches" class="btn btn-red">📋 Lista Fiches</a>
+    </div>
+</div>
+
+{% endblock %}
