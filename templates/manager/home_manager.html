@@ -1,0 +1,82 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">👔 Area Manager</h1>
+    <p class="page-subtitle">
+        Qui puoi gestire cantieri, macchinari, fiches e rapportini giornalieri.
+    </p>
+</div>
+
+<div class="dashboard-grid">
+
+    <!-- Card Cantieri -->
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">
+                🏗️ Cantieri
+            </div>
+            <span class="card-badge">Gestione</span>
+        </div>
+        <div class="card-body">
+            <p>Visualizza, crea e modifica i cantieri attivi e archiviati.</p>
+            <div class="button-row">
+                <a href="/manager/cantieri" class="btn btn-secondary">📋 Elenco cantieri</a>
+                <a href="/manager/cantieri/nuovo" class="btn btn-primary">➕ Nuovo cantiere</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Card Fiches -->
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">
+                📄 Fiches di cantiere
+            </div>
+            <span class="card-badge">Documenti</span>
+        </div>
+        <div class="card-body">
+            <p>Crea e consulta le fiches dei cantieri per il controllo delle attività.</p>
+            <div class="button-row">
+                <a href="/manager/fiches" class="btn btn-secondary">📁 Tutte le fiches</a>
+                <a href="/manager/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Card Rapportini -->
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">
+                📝 Rapportini giornalieri
+            </div>
+            <span class="card-badge">Monitoraggio</span>
+        </div>
+        <div class="card-body">
+            <p>Controlla i rapportini compilati dai capisquadra per ogni cantiere.</p>
+            <div class="button-row">
+                <a href="/manager/rapportini" class="btn btn-secondary">📊 Elenco rapportini</a>
+                <a href="/manager/rapportini/esporta" class="btn btn-primary">📤 Esporta report</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Card Macchinari -->
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">
+                🚜 Macchinari
+            </div>
+            <span class="card-badge">Risorse</span>
+        </div>
+        <div class="card-body">
+            <p>Gestisci l’assegnazione dei macchinari ai cantieri e lo stato di utilizzo.</p>
+            <div class="button-row">
+                <a href="/manager/macchinari" class="btn btn-secondary">🔧 Elenco macchinari</a>
+                <a href="/manager/macchinari/assegna" class="btn btn-primary">📌 Assegna a cantiere</a>
+            </div>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
