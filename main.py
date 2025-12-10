@@ -9,22 +9,15 @@ from auth import router as auth_router, hash_password
 from models import User, RoleEnum
 from routers import users, sites, machines, reports, fiches
 
-
 # -------------------------------------------------
 # CREAZIONE TABELLE + ADMIN INIZIALE
 # -------------------------------------------------
 
 Base.metadata.create_all(bind=engine)
 
-
 def create_initial_admin():
     """
-    Crea l'utente admin iniziale se non esiste.
-    Admin:
-        email:  lenta.federico@gmail.com
-        pass:   Fulvio72
-        ruolo:  admin
-        lingua: it
+    Crea l’utente admin iniziale se non esiste.
     """
     db = SessionLocal()
     try:
@@ -45,12 +38,10 @@ def create_initial_admin():
     finally:
         db.close()
 
-
 create_initial_admin()
 
-
 # -------------------------------------------------
-# APP FASTAPI
+# CONFIGURAZIONE FASTAPI
 # -------------------------------------------------
 
 app = FastAPI(
@@ -59,6 +50,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -67,15 +59,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static (CSS, immagini, JS)
+# Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Templates HTML (Jinja2)
+# Templates
 templates = Jinja2Templates(directory="templates")
 
-
 # -------------------------------------------------
-# MULTILINGUA (COOKIE) + HOMEPAGE TEMPLATE
+# LINGUA (COOKIE)
 # -------------------------------------------------
 
 def get_lang_from_request(request: Request) -> str:
@@ -84,14 +75,14 @@ def get_lang_from_request(request: Request) -> str:
         return lang
     return "it"
 
+# -------------------------------------------------
+# HOMEPAGE (usa home.html)
+# -------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
 def homepage(request: Request):
-    """
-    Homepage con selezione lingua, login e dashboard (manager/caposquadra).
-    Usa il template 'home.html' e passa la lingua letta dal cookie.
-    """
     lang = get_lang_from_request(request)
+
     return templates.TemplateResponse(
         "home.html",
         {
@@ -100,18 +91,14 @@ def homepage(request: Request):
         },
     )
 
-
 @app.get("/set-lang")
 def set_lang(lang: str = "it"):
-    """
-    Imposta la lingua (it / fr) nel cookie e torna alla homepage.
-    """
     if lang not in ("it", "fr"):
         lang = "it"
+
     response = RedirectResponse(url="/")
     response.set_cookie(key="lang", value=lang, max_age=60 * 60 * 24 * 365)
     return response
-
 
 # -------------------------------------------------
 # PAGINE FRONTEND — MANAGER & CAPOSQUADRA
@@ -120,7 +107,7 @@ def set_lang(lang: str = "it"):
 @app.get("/manager/dashboard", response_class=HTMLResponse)
 def manager_dashboard(request: Request):
     """
-    Dashboard manager con accesso a cantieri, fiches, rapportini e macchinari.
+    Dashboard manager: accesso completo.
     """
     return templates.TemplateResponse(
         "manager/home_manager.html",
@@ -134,7 +121,7 @@ def manager_dashboard(request: Request):
 @app.get("/capo/dashboard", response_class=HTMLResponse)
 def capo_dashboard(request: Request):
     """
-    Dashboard caposquadra con funzioni limitate ai cantieri assegnati.
+    Dashboard caposquadra: funzioni limitate ai cantieri assegnati.
     """
     return templates.TemplateResponse(
         "capo/home_capo.html",
@@ -148,7 +135,7 @@ def capo_dashboard(request: Request):
 @app.get("/capo/rapportini/nuovo", response_class=HTMLResponse)
 def pagina_nuovo_rapportino_capo(request: Request):
     """
-    Pagina per creare un nuovo rapportino giornaliero (caposquadra).
+    Pagina per creare un nuovo rapportino giornaliero.
     """
     return templates.TemplateResponse(
         "capo_nuovo_rapportino.html",
@@ -157,9 +144,8 @@ def pagina_nuovo_rapportino_capo(request: Request):
         },
     )
 
-
 # -------------------------------------------------
-# INCLUDE DEI ROUTER API
+# ROUTER API
 # -------------------------------------------------
 
 app.include_router(auth_router)
