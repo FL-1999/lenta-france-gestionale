@@ -1,26 +1,45 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "shared/base.html" %}
 
-<h1 class="page-title">📋 Le tue Fiches</h1>
-<p class="page-subtitle">Elenco delle fiches inserite per il tuo cantiere.</p>
+{% block title %}Le mie fiches – Caposquadra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📋 Le mie fiches</h1>
+    <p class="page-subtitle">
+        Elenco delle fiches inserite per i cantieri a cui sei assegnato.
+    </p>
+</div>
 
 <div class="card">
     <table class="table">
         <thead>
             <tr>
                 <th>Data</th>
+                <th>Cantiere</th>
                 <th>Macchinario</th>
                 <th>Ore</th>
             </tr>
         </thead>
         <tbody>
+            <!-- Esempio statico -->
             <tr>
                 <td>2025-01-01</td>
-                <td>Escavatore</td>
+                <td>Cantiere esempio 1</td>
+                <td>Escavatore 30t</td>
                 <td>4</td>
+            </tr>
+            <tr>
+                <td>2025-01-03</td>
+                <td>Cantiere esempio 2</td>
+                <td>Pala gommata</td>
+                <td>3.5</td>
             </tr>
         </tbody>
     </table>
 </div>
 
+<div class="form-actions">
+    <a href="/capo/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
+    <a href="/capo/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
+</div>
 {% endblock %}
