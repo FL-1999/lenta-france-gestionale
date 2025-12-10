@@ -1,26 +1,45 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "shared/base.html" %}
 
-<h1 class="page-title">📋 I tuoi Rapportini</h1>
-<p class="page-subtitle">Elenco dei rapportini che hai inserito per il tuo cantiere.</p>
+{% block title %}I miei rapportini – Caposquadra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📋 I miei rapportini</h1>
+    <p class="page-subtitle">
+        Elenco dei rapportini giornalieri che hai compilato per i cantieri assegnati.
+    </p>
+</div>
 
 <div class="card">
     <table class="table">
         <thead>
             <tr>
                 <th>Data</th>
+                <th>Cantiere</th>
                 <th>Ore</th>
-                <th>Descrizione</th>
+                <th>Attività</th>
             </tr>
         </thead>
         <tbody>
+            <!-- Dati di esempio, poi li sostituiremo con i dati reali dal backend -->
             <tr>
                 <td>2025-01-01</td>
+                <td>Cantiere esempio 1</td>
                 <td>8</td>
                 <td>Lavori di scavo</td>
+            </tr>
+            <tr>
+                <td>2025-01-02</td>
+                <td>Cantiere esempio 2</td>
+                <td>7.5</td>
+                <td>Getto cemento</td>
             </tr>
         </tbody>
     </table>
 </div>
 
+<div class="form-actions">
+    <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
+    <a href="/capo/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
+</div>
 {% endblock %}
