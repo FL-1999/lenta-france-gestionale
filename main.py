@@ -249,6 +249,123 @@ def manager_dashboard(
     )
 
 
+@app.get("/manager/utenti", response_class=HTMLResponse)
+def manager_users(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        users_list = db.query(User).order_by(User.role, User.email).all()
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/users.html",
+        {
+            "request": request,
+            "user": current_user,
+            "user_role": "manager",
+            "users": users_list,
+        },
+    )
+
+
+@app.get("/manager/utenti/nuovo", response_class=HTMLResponse)
+async def manager_new_user_get(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    return templates.TemplateResponse(
+        "manager/user_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "mode": "create",
+            "user_obj": None,
+            "role_choices": list(RoleEnum),
+            "language_choices": ["it", "fr"],
+        },
+    )
+
+
+@app.post("/manager/utenti/nuovo", response_class=HTMLResponse)
+async def manager_new_user_post(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    form_data = await request.form()
+    email = (form_data.get("email") or "").strip()
+    full_name = (form_data.get("full_name") or "").strip() or None
+    password = (form_data.get("password") or "").strip()
+    role_value = (form_data.get("role") or "").strip()
+    language = (form_data.get("language") or "").strip() or None
+
+    error_message = None
+
+    if not email:
+        error_message = "Email obbligatoria"
+    elif not password:
+        error_message = "Password obbligatoria"
+    else:
+        try:
+            role_enum = RoleEnum(role_value)
+        except Exception:
+            error_message = "Ruolo non valido"
+
+    db = SessionLocal()
+    try:
+        if error_message is None:
+            existing_user = db.query(User).filter(User.email == email).first()
+            if existing_user:
+                error_message = "Esiste già un utente con questa email"
+
+        if error_message:
+            user_obj = {
+                "email": email,
+                "full_name": full_name,
+                "role": role_value,
+                "language": language,
+            }
+            return templates.TemplateResponse(
+                "manager/user_form.html",
+                {
+                    "request": request,
+                    "user": current_user,
+                    "mode": "create",
+                    "user_obj": user_obj,
+                    "role_choices": list(RoleEnum),
+                    "language_choices": ["it", "fr"],
+                    "error_message": error_message,
+                },
+                status_code=400,
+            )
+
+        new_user = User(
+            email=email,
+            full_name=full_name,
+            hashed_password=hash_password(password),
+            role=role_enum,
+            language=language,
+            is_active=True,
+        )
+        db.add(new_user)
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/manager/utenti", status_code=303)
+
+
 @app.get("/manager/cantieri", response_class=HTMLResponse)
 def manager_cantieri(
     request: Request,
