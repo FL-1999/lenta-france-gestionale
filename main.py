@@ -1,7 +1,7 @@
 import os
 from datetime import date, datetime
 
-from fastapi import FastAPI, Request, Depends, Form, HTTPException
+from fastapi import FastAPI, Request, Depends, Form, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
@@ -255,7 +255,10 @@ def manager_users(
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
-        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
 
     db = SessionLocal()
     try:
@@ -280,7 +283,10 @@ async def manager_new_user_get(
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
-        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
 
     return templates.TemplateResponse(
         "manager/user_form.html",
@@ -292,6 +298,10 @@ async def manager_new_user_get(
             "role_choices": list(RoleEnum),
             "language_choices": ["it", "fr"],
             "error_message": None,
+            "form_email": "",
+            "form_full_name": "",
+            "form_role": "",
+            "form_language": "",
         },
     )
 
@@ -302,78 +312,20 @@ async def manager_new_user_post(
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
-        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
 
     form = await request.form()
     email = (form.get("email") or "").strip()
     full_name = (form.get("full_name") or "").strip()
     password = (form.get("password") or "").strip()
     role_str = (form.get("role") or "").strip()
-    language = (form.get("language") or "").strip() or None
+    language = (form.get("language") or "").strip()
+    language = language or None
 
-    error_message = None
-
-    if not email:
-        error_message = "Email obbligatoria."
-    elif not password:
-        error_message = "Password obbligatoria."
-    elif not role_str:
-        error_message = "Ruolo obbligatorio."
-
-    role_enum = None
-    if error_message is None:
-        try:
-            role_enum = RoleEnum(role_str)
-        except Exception:
-            try:
-                role_enum = RoleEnum[role_str]
-            except Exception:
-                error_message = "Ruolo non valido."
-
-    db = SessionLocal()
-    try:
-        if error_message is None:
-            existing = db.query(User).filter(User.email == email).first()
-            if existing:
-                error_message = "Esiste già un utente con questa email."
-
-        if error_message is None:
-            hashed_password = hash_password(password)
-
-            new_user = User(
-                email=email,
-                full_name=full_name or None,
-                hashed_password=hashed_password,
-                role=role_enum,
-                language=language,
-            )
-
-            if hasattr(User, "is_active"):
-                new_user.is_active = True
-
-            db.add(new_user)
-            db.commit()
-        else:
-            return templates.TemplateResponse(
-                "manager/user_form.html",
-                {
-                    "request": request,
-                    "user": current_user,
-                    "mode": "create",
-                    "user_obj": None,
-                    "role_choices": list(RoleEnum),
-                    "language_choices": ["it", "fr"],
-                    "error_message": error_message,
-                    "form_email": email,
-                    "form_full_name": full_name,
-                    "form_role": role_str,
-                    "form_language": language,
-                },
-                status_code=400,
-            )
-    except Exception:
-        db.rollback()
-        error_message = "Errore durante la creazione dell'utente. Riprova."
+    def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
             "manager/user_form.html",
             {
@@ -387,10 +339,50 @@ async def manager_new_user_post(
                 "form_email": email,
                 "form_full_name": full_name,
                 "form_role": role_str,
-                "form_language": language,
+                "form_language": language or "",
             },
-            status_code=400,
+            status_code=status_code,
         )
+
+    if not email:
+        return render_form("Email obbligatoria.")
+    if not password:
+        return render_form("Password obbligatoria.")
+    if not role_str:
+        return render_form("Ruolo obbligatorio.")
+
+    role_enum = None
+    try:
+        role_enum = RoleEnum(role_str)
+    except Exception:
+        try:
+            cleaned_role = role_str.split(".")[-1]
+            role_enum = RoleEnum[cleaned_role]
+        except Exception:
+            return render_form("Ruolo non valido.")
+
+    db = SessionLocal()
+    try:
+        existing = db.query(User).filter(User.email == email).first()
+        if existing:
+            return render_form("Esiste già un utente con questa email.", status_code=400)
+
+        hashed_password = hash_password(password)
+        new_user = User(
+            email=email,
+            full_name=full_name or None,
+            hashed_password=hashed_password,
+            role=role_enum,
+            language=language,
+        )
+        if hasattr(User, "is_active"):
+            new_user.is_active = True
+
+        db.add(new_user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        return render_form("Errore durante la creazione dell'utente. Riprova.")
     finally:
         db.close()
 
