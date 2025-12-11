@@ -1,12 +1,12 @@
-from datetime import date
-from typing import List
+from datetime import date as dt_date
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import User, RoleEnum
+from models import User, RoleEnum, Report
 from auth import get_current_active_user
 
 router = APIRouter(
@@ -14,37 +14,43 @@ router = APIRouter(
     tags=["reports"],
 )
 
-
 # ===========================
 # SCHEMI Pydantic
 # ===========================
 
 class ReportCreate(BaseModel):
-    date: date = Field(..., description="Data del rapportino")
+    # Pydantic v2: config
+    model_config = ConfigDict(from_attributes=True)
+
+    # NOTA: il campo si chiama report_date per evitare il conflitto "date: date"
+    # ma l'alias JSON resta "date", quindi il frontend può continuare a mandare { "date": "2025-12-11", ... }
+    report_date: dt_date = Field(..., alias="date", description="Data del rapportino")
     site_name_or_code: str = Field(..., description="Nome o codice cantiere")
     total_hours: float = Field(..., ge=0, description="Ore totali lavorate")
     workers_count: int = Field(..., ge=0, description="Numero operai")
-    machines_used: str | None = Field(
+    machines_used: Optional[str] = Field(
         default=None, description="Macchinari utilizzati (testo libero)"
     )
-    activities: str | None = Field(
+    activities: Optional[str] = Field(
         default=None, description="Descrizione attività svolte"
     )
-    notes: str | None = Field(
+    notes: Optional[str] = Field(
         default=None, description="Note aggiuntive"
     )
 
 
 class ReportOut(ReportCreate):
-    id: int | None = None
-    created_by_email: str | None = None
-    created_by_role: str | None = None
+    # Pydantic v2: stessa config
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_by_email: Optional[str] = None
+    created_by_role: Optional[str] = None
 
 
 # ===========================
 # ENDPOINTS
 # ===========================
-
 
 @router.post("/", response_model=ReportOut, status_code=status.HTTP_201_CREATED)
 def create_report(
@@ -53,65 +59,89 @@ def create_report(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Crea un nuovo rapportino.
+    Crea un nuovo rapportino e lo salva nel database.
 
-    👉 Per ora NON salviamo nel DB, ma:
-       - validiamo i dati
-       - controlliamo che l'utente sia autenticato
-       - ritorniamo i dati ricevuti + info sull'utente
-
-    In un secondo momento potremo:
-       - creare un modello SQLAlchemy Report nel file models.py
-       - salvare davvero questi dati nel database
+    Ruoli ammessi:
+    - admin
+    - manager
+    - caposquadra
     """
 
-    # Esempio di controllo sui ruoli (puoi modificarlo):
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Non hai i permessi per creare un rapportino.",
         )
 
-    # Qui in futuro potrai creare un oggetto Report del tuo modello SQLAlchemy
-    # e salvarlo nel DB. Adesso costruiamo solo un oggetto di risposta.
-    report_out = ReportOut(
-        id=None,  # quando avrai il DB potrai mettere l'id reale
-        date=report_in.date,
+    db_report = Report(
+        date=report_in.report_date,  # <-- qui usiamo report_date
         site_name_or_code=report_in.site_name_or_code,
         total_hours=report_in.total_hours,
         workers_count=report_in.workers_count,
         machines_used=report_in.machines_used,
         activities=report_in.activities,
         notes=report_in.notes,
-        created_by_email=current_user.email,
-        created_by_role=current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+        created_by_id=current_user.id,
     )
 
-    return report_out
+    db.add(db_report)
+    db.commit()
+    db.refresh(db_report)
+
+    return ReportOut(
+        id=db_report.id,
+        report_date=db_report.date,  # mappiamo sulla property report_date
+        site_name_or_code=db_report.site_name_or_code,
+        total_hours=db_report.total_hours,
+        workers_count=db_report.workers_count,
+        machines_used=db_report.machines_used,
+        activities=db_report.activities,
+        notes=db_report.notes,
+        created_by_email=current_user.email,
+        created_by_role=(
+            current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+        ),
+    )
 
 
-@router.get("/demo", response_model=List[ReportOut])
-def list_reports_demo(
+@router.get("/", response_model=List[ReportOut])
+def list_reports_for_manager(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Endpoint di demo: restituisce una lista finta di rapportini.
+    Lista rapportini.
 
-    Serve solo per testare rapidamente il frontend o l'autenticazione.
-    NON legge dal database.
+    - Se sei admin/manager → vedi tutti i rapportini
+    - Se sei caposquadra → vedi solo i tuoi
     """
-    demo = [
-        ReportOut(
-            id=1,
-            date=date.today(),
-            site_name_or_code="CANTIERE-001",
-            total_hours=8.0,
-            workers_count=3,
-            machines_used="Escavatore, Furgone",
-            activities="Scavo trincea, trasporto materiale",
-            notes="Nessun problema",
-            created_by_email=current_user.email,
-            created_by_role=current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+
+    query = db.query(Report)
+
+    if current_user.role == RoleEnum.caposquadra:
+        query = query.filter(Report.created_by_id == current_user.id)
+
+    reports = query.order_by(Report.date.desc(), Report.id.desc()).all()
+
+    result: List[ReportOut] = []
+    for r in reports:
+        result.append(
+            ReportOut(
+                id=r.id,
+                report_date=r.date,
+                site_name_or_code=r.site_name_or_code,
+                total_hours=r.total_hours,
+                workers_count=r.workers_count,
+                machines_used=r.machines_used,
+                activities=r.activities,
+                notes=r.notes,
+                created_by_email=r.created_by.email if r.created_by else None,
+                created_by_role=(
+                    r.created_by.role.value
+                    if r.created_by and hasattr(r.created_by.role, "value")
+                    else None
+                ),
+            )
         )
-    ]
-    return demo
+
+    return result
