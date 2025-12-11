@@ -1,0 +1,136 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Nuovo Utente – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">➕ Nuovo utente</h1>
+    <p class="page-subtitle">
+        Crea un nuovo utente del gestionale. Solo l’admin dovrebbe usare questa pagina.
+    </p>
+</div>
+
+<div class="form-card">
+    <form id="new-user-form">
+        <div class="form-row">
+            <label for="email">📧 Email</label>
+            <input id="email" name="email" type="email" required placeholder="es. nome.cognome@azienda.com" />
+        </div>
+
+        <div class="form-row">
+            <label for="full_name">👤 Nome completo</label>
+            <input id="full_name" name="full_name" type="text" required placeholder="Nome Cognome" />
+        </div>
+
+        <div class="form-row">
+            <label for="password">🔑 Password iniziale</label>
+            <input id="password" name="password" type="password" required placeholder="Password iniziale" />
+        </div>
+
+        <div class="form-row">
+            <label for="role">🎭 Ruolo</label>
+            <select id="role" name="role" required>
+                <option value="manager">Manager</option>
+                <option value="caposquadra">Caposquadra</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <label for="language">🌍 Lingua</label>
+            <select id="language" name="language">
+                <option value="it">Italiano</option>
+                <option value="fr">Francese</option>
+            </select>
+        </div>
+
+        <div id="user-error" class="error-text" style="display:none;"></div>
+        <div id="user-success" class="success-text" style="display:none;"></div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">💾 Crea utente</button>
+            <a href="/manager/utenti" class="btn btn-secondary">⬅️ Torna alla lista utenti</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.getElementById("new-user-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const email = (document.getElementById("email").value || "").trim();
+    const full_name = (document.getElementById("full_name").value || "").trim();
+    const password = (document.getElementById("password").value || "").trim();
+    const role = document.getElementById("role").value;
+    const language = document.getElementById("language").value;
+
+    const errorBox = document.getElementById("user-error");
+    const successBox = document.getElementById("user-success");
+
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+    successBox.style.display = "none";
+    successBox.textContent = "";
+
+    if (!email || !full_name || !password) {
+        errorBox.textContent = "Compila tutti i campi obbligatori.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    let token = null;
+    try {
+        token = localStorage.getItem("lf_token");
+    } catch (e) {
+        console.error("Impossibile leggere lf_token:", e);
+    }
+
+    if (!token) {
+        errorBox.textContent = "Nessun token trovato. Effettua di nuovo il login.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    try {
+        const resp = await fetch("/users", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token,
+            },
+            body: JSON.stringify({
+                email,
+                full_name,
+                password,
+                role,
+                language,
+            }),
+        });
+
+        if (!resp.ok) {
+            if (resp.status === 401 || resp.status === 403) {
+                errorBox.textContent = "Non hai i permessi per creare utenti (solo admin).";
+            } else if (resp.status === 400) {
+                errorBox.textContent = "Dati non validi o utente già esistente.";
+            } else {
+                errorBox.textContent = "Errore nella creazione utente. Codice: " + resp.status;
+            }
+            errorBox.style.display = "block";
+            return;
+        }
+
+        successBox.textContent = "Utente creato con successo! Verrai reindirizzato alla lista.";
+        successBox.style.display = "block";
+
+        setTimeout(function() {
+            window.location.href = "/manager/utenti";
+        }, 1200);
+
+    } catch (err) {
+        console.error(err);
+        errorBox.textContent = "Errore di connessione al server durante la creazione utente.";
+        errorBox.style.display = "block";
+    }
+});
+</script>
+{% endblock %}
