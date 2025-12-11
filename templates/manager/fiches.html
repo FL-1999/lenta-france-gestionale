@@ -42,8 +42,8 @@
       {% endfor %}
     </select>
   </label>
-  <button type="submit" class="btn btn-primary btn--fiches">Filtra</button>
-  <a href="/manager/fiches" class="btn btn-secondary btn--fiches">Reset</a>
+  <button type="submit" class="btn btn-primary">Filtra</button>
+  <a href="/manager/fiches" class="btn btn-secondary">Reset</a>
 </form>
 
 {% if fiches %}
@@ -69,7 +69,7 @@
       <td>{{ "%.1f"|format(f.hours) }}</td>
       <td>{{ f.created_by.full_name or f.created_by.email }}</td>
       <td>
-        <a href="/manager/fiches/{{ f.id }}" class="btn btn-sm btn-primary btn--fiches">Apri</a>
+        <a href="/manager/fiches/{{ f.id }}" class="btn btn-sm btn-secondary">Apri</a>
       </td>
     </tr>
     {% endfor %}
