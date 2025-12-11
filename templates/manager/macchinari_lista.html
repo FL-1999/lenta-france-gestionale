@@ -1,0 +1,44 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Macchinari – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">🚜 Macchinari</h1>
+    <p class="page-subtitle">
+        Elenco dei macchinari disponibili e assegnati ai cantieri.
+    </p>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Macchinario</th>
+                <th>Codice</th>
+                <th>Cantiere assegnato</th>
+                <th>Stato</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Escavatore 30t</td>
+                <td>M-001</td>
+                <td>Cantiere Lyon</td>
+                <td>In uso</td>
+            </tr>
+            <tr>
+                <td>Pala gommata</td>
+                <td>M-002</td>
+                <td>—</td>
+                <td>Disponibile</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="form-actions">
+    <a href="/manager/macchinari/assegna" class="btn btn-primary">📌 Assegna a cantiere</a>
+    <a href="/manager/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
+</div>
+{% endblock %}
