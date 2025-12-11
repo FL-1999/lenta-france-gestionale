@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Cantieri – Manager{% endblock %}
+
+{% block content %}
+<h1>Gestione cantieri</h1>
+<div class="actions">
+  <a href="/manager/cantieri/nuovo" class="button">➕ Nuovo cantiere</a>
+</div>
+
+{% if sites %}
+<table>
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Codice</th>
+      <th>Città</th>
+      <th>Stato</th>
+      <th>Attivo</th>
+      <th>Azioni</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in sites %}
+    <tr>
+      <td>{{ s.name }}</td>
+      <td>{{ s.code }}</td>
+      <td>{{ s.city or "-" }}</td>
+      <td>{{ s.status.value if hasattr(s.status, "value") else s.status }}</td>
+      <td>{{ "Sì" if s.is_active else "No" }}</td>
+      <td>
+        <a href="/manager/cantieri/{{ s.id }}/modifica">Modifica</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Nessun cantiere presente.</p>
+{% endif %}
+{% endblock %}
