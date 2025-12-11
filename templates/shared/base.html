@@ -54,10 +54,10 @@
          ======================================================= -->
     <script>
     (function() {
-        // Questo valore viene passato dal backend:
+        // Valore passato dal backend:
         // - "manager" sulle pagine manager
         // - "capo" sulle pagine caposquadra
-        // - vuoto sulle pagine pubbliche (home, login, ecc.)
+        // - "" sulle pagine pubbliche (home, login, ecc.)
         const requiredRole = "{{ user_role if user_role is defined else '' }}";
 
         // Se la pagina non è protetta, non facciamo nulla
@@ -115,7 +115,7 @@
             // - Pagina capo: accettiamo solo "caposquadra"
             if (requiredRole === "manager") {
                 if (roleFromToken !== "manager" && roleFromToken !== "admin") {
-                    // Ruolo sbagliato: se è caposquadra, mandiamo alla sua dashboard
+                    // Se è caposquadra → mandalo alla sua area
                     if (roleFromToken === "caposquadra") {
                         window.location.href = "/capo/dashboard";
                     } else {
@@ -125,7 +125,7 @@
                 }
             } else if (requiredRole === "capo") {
                 if (roleFromToken !== "caposquadra") {
-                    // Se è manager/admin, mandiamo alla dashboard manager
+                    // Se è manager/admin → mandalo all’area manager
                     if (roleFromToken === "manager" || roleFromToken === "admin") {
                         window.location.href = "/manager/dashboard";
                     } else {
