@@ -1,0 +1,37 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Assegna Macchinario – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📌 Assegna macchinario a cantiere</h1>
+    <p class="page-subtitle">
+        Seleziona un macchinario e il cantiere a cui vuoi assegnarlo.
+    </p>
+</div>
+
+<div class="form-card">
+    <form method="post" action="#">
+        <div class="form-row">
+            <label for="macchinario">🚜 Macchinario</label>
+            <select id="macchinario" name="macchinario">
+                <option>Escavatore 30t (M-001)</option>
+                <option>Pala gommata (M-002)</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <label for="cantiere">🏗️ Cantiere</label>
+            <select id="cantiere" name="cantiere">
+                <option>Cantiere Lyon</option>
+                <option>Cantiere Marseille</option>
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">✅ Conferma assegnazione (mock)</button>
+            <a href="/manager/macchinari" class="btn btn-secondary">⬅️ Torna alla lista macchinari</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
