@@ -291,6 +291,7 @@ async def manager_new_user_get(
             "user_obj": None,
             "role_choices": list(RoleEnum),
             "language_choices": ["it", "fr"],
+            "error_message": None,
         },
     )
 
@@ -303,61 +304,71 @@ async def manager_new_user_post(
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    form_data = await request.form()
-    email = (form_data.get("email") or "").strip()
-    full_name = (form_data.get("full_name") or "").strip() or None
-    password = (form_data.get("password") or "").strip()
-    role_value = (form_data.get("role") or "").strip()
-    language = (form_data.get("language") or "").strip() or None
+    form = await request.form()
+    email = (form.get("email") or "").strip()
+    full_name = (form.get("full_name") or "").strip()
+    password = (form.get("password") or "").strip()
+    role_str = (form.get("role") or "").strip()
+    language = (form.get("language") or "").strip() or None
 
     error_message = None
 
     if not email:
-        error_message = "Email obbligatoria"
+        error_message = "Email obbligatoria."
     elif not password:
-        error_message = "Password obbligatoria"
-    else:
+        error_message = "Password obbligatoria."
+    elif not role_str:
+        error_message = "Ruolo obbligatorio."
+
+    role_enum = None
+    if error_message is None:
         try:
-            role_enum = RoleEnum(role_value)
+            role_enum = RoleEnum(role_str)
         except Exception:
-            error_message = "Ruolo non valido"
+            try:
+                role_enum = RoleEnum[role_str]
+            except Exception:
+                error_message = "Ruolo non valido."
 
     db = SessionLocal()
     try:
         if error_message is None:
-            existing_user = db.query(User).filter(User.email == email).first()
-            if existing_user:
-                error_message = "Esiste già un utente con questa email"
+            existing = db.query(User).filter(User.email == email).first()
+            if existing:
+                error_message = "Esiste già un utente con questa email."
 
-        if error_message:
-            user_obj = {
-                "email": email,
-                "full_name": full_name,
-                "role": role_value,
-                "language": language,
-            }
+        if error_message is not None:
             return templates.TemplateResponse(
                 "manager/user_form.html",
                 {
                     "request": request,
                     "user": current_user,
                     "mode": "create",
-                    "user_obj": user_obj,
+                    "user_obj": None,
                     "role_choices": list(RoleEnum),
                     "language_choices": ["it", "fr"],
                     "error_message": error_message,
+                    "form_email": email,
+                    "form_full_name": full_name,
+                    "form_role": role_str,
+                    "form_language": language,
                 },
                 status_code=400,
             )
 
+        hashed_password = hash_password(password)
+
         new_user = User(
             email=email,
-            full_name=full_name,
-            hashed_password=hash_password(password),
+            full_name=full_name or None,
+            hashed_password=hashed_password,
             role=role_enum,
             language=language,
-            is_active=True,
         )
+
+        if hasattr(User, "is_active"):
+            new_user.is_active = True
+
         db.add(new_user)
         db.commit()
     finally:
