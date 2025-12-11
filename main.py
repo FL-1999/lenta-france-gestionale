@@ -337,7 +337,23 @@ async def manager_new_user_post(
             if existing:
                 error_message = "Esiste già un utente con questa email."
 
-        if error_message is not None:
+        if error_message is None:
+            hashed_password = hash_password(password)
+
+            new_user = User(
+                email=email,
+                full_name=full_name or None,
+                hashed_password=hashed_password,
+                role=role_enum,
+                language=language,
+            )
+
+            if hasattr(User, "is_active"):
+                new_user.is_active = True
+
+            db.add(new_user)
+            db.commit()
+        else:
             return templates.TemplateResponse(
                 "manager/user_form.html",
                 {
@@ -355,22 +371,26 @@ async def manager_new_user_post(
                 },
                 status_code=400,
             )
-
-        hashed_password = hash_password(password)
-
-        new_user = User(
-            email=email,
-            full_name=full_name or None,
-            hashed_password=hashed_password,
-            role=role_enum,
-            language=language,
+    except Exception:
+        db.rollback()
+        error_message = "Errore durante la creazione dell'utente. Riprova."
+        return templates.TemplateResponse(
+            "manager/user_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "mode": "create",
+                "user_obj": None,
+                "role_choices": list(RoleEnum),
+                "language_choices": ["it", "fr"],
+                "error_message": error_message,
+                "form_email": email,
+                "form_full_name": full_name,
+                "form_role": role_str,
+                "form_language": language,
+            },
+            status_code=400,
         )
-
-        if hasattr(User, "is_active"):
-            new_user.is_active = True
-
-        db.add(new_user)
-        db.commit()
     finally:
         db.close()
 
