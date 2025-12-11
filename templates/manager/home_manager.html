@@ -12,8 +12,8 @@
         </div>
         <div class="header-actions">
             <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
-            <a href="/manager/rapportini" class="btn btn-secondary">📋 Elenco rapportini</a>
-            <a href="/manager/fiches" class="btn btn-secondary">📚 Vedi fiches</a>
+            <a href="/manager/rapportini" class="btn btn-secondary">Elenco rapportini</a>
+            <a href="/manager/fiches" class="btn btn-secondary">Vedi fiches</a>
         </div>
     </div>
 
@@ -25,9 +25,10 @@
     <div class="dashboard-kpi-grid">
         <div class="kpi-card kpi-accent-1">
             <div class="kpi-top">
-                <div class="kpi-icon" aria-hidden="true">
+                <div class="card-icon card-icon--reports" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4 5h16M4 12h16M4 19h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" stroke="currentColor"/>
+                        <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke="currentColor" stroke-linecap="round"/>
                     </svg>
                 </div>
                 <span class="kpi-label">Rapportini totali</span>
@@ -38,10 +39,10 @@
 
         <div class="kpi-card kpi-accent-2">
             <div class="kpi-top">
-                <div class="kpi-icon" aria-hidden="true">
+                <div class="card-icon card-icon--sites" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4 10l8-6 8 6v8H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                        <path d="M10 18v-4h4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 11.5L12 5l8 6.5V20H4z" stroke="currentColor" stroke-linejoin="round"/>
+                        <path d="M10 20v-5h4v5" stroke="currentColor" stroke-linecap="round"/>
                     </svg>
                 </div>
                 <span class="kpi-label">Cantieri attivi</span>
@@ -52,10 +53,11 @@
 
         <div class="kpi-card kpi-accent-3">
             <div class="kpi-top">
-                <div class="kpi-icon" aria-hidden="true">
+                <div class="card-icon card-icon--machines" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="3" y="8" width="18" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-                        <path d="M7 8V6a2 2 0 012-2h6a2 2 0 012 2v2" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="7" stroke="currentColor"/>
+                        <path d="M12 8.5v-2M12 17.5v-2M15.5 12h2M6.5 12h2M14.95 9.05l1.35-1.35M7.7 16.3l1.35-1.35M9.05 9.05 7.7 7.7M16.3 16.3l-1.35-1.35" stroke="currentColor" stroke-linecap="round"/>
+                        <circle cx="12" cy="12" r="2.3" stroke="currentColor"/>
                     </svg>
                 </div>
                 <span class="kpi-label">Macchinari disponibili</span>
@@ -66,11 +68,12 @@
 
         <div class="kpi-card kpi-accent-4">
             <div class="kpi-top">
-                <div class="kpi-icon" aria-hidden="true">
+                <div class="card-icon card-icon--users" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="2"/>
-                        <circle cx="16" cy="8" r="3" stroke="currentColor" stroke-width="2"/>
-                        <path d="M4 19c0-2.761 2.239-5 5-5h6c2.761 0 5 2.239 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <circle cx="9" cy="9" r="3" stroke="currentColor"/>
+                        <circle cx="16" cy="10" r="2.5" stroke="currentColor"/>
+                        <path d="M4.5 19.5c0-2.5 2.3-4.5 5.1-4.5h1.8c2.8 0 5.1 2 5.1 4.5" stroke="currentColor" stroke-linecap="round"/>
+                        <path d="M15.4 12.8c2.2 0 4.1 1.6 4.1 3.7" stroke="currentColor" stroke-linecap="round"/>
                     </svg>
                 </div>
                 <span class="kpi-label">Utenti registrati</span>
@@ -86,69 +89,124 @@
     <div class="dashboard-modules-grid">
         <div class="card module-card">
             <div class="card-header">
-                <div class="card-title"><span class="icon">🏗️</span> Cantieri</div>
+                <div class="card-title">
+                    <div class="card-icon card-icon--sites" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 11.5L12 5l8 6.5V20H4z" stroke="currentColor" stroke-linejoin="round"/>
+                            <path d="M10 20v-5h4v5" stroke="currentColor" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <span>Cantieri</span>
+                </div>
             </div>
             <div class="card-body">
                 <p>Monitora l'avanzamento dei cantieri, gestisci dettagli e assegnazioni delle squadre.</p>
-                <div class="card-actions">
-                    <a href="/manager/cantieri" class="btn btn-secondary">📋 Lista cantieri</a>
-                    <a href="/manager/cantieri/nuovo" class="btn btn-primary btn-sm">➕ Nuovo cantiere</a>
-                </div>
+            <div class="card-actions">
+                <a href="/manager/cantieri" class="btn btn-secondary">Lista cantieri</a>
+                <a href="/manager/cantieri/nuovo" class="btn btn-primary btn-sm">➕ Nuovo cantiere</a>
+            </div>
             </div>
         </div>
 
         <div class="card module-card">
             <div class="card-header">
-                <div class="card-title"><span class="icon">🚜</span> Macchinari</div>
+                <div class="card-title">
+                    <div class="card-icon card-icon--machines" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="7" stroke="currentColor"/>
+                            <path d="M12 8.5v-2M12 17.5v-2M15.5 12h2M6.5 12h2M14.95 9.05l1.35-1.35M7.7 16.3l1.35-1.35M9.05 9.05 7.7 7.7M16.3 16.3l-1.35-1.35" stroke="currentColor" stroke-linecap="round"/>
+                            <circle cx="12" cy="12" r="2.3" stroke="currentColor"/>
+                        </svg>
+                    </div>
+                    <span>Macchinari</span>
+                </div>
             </div>
             <div class="card-body">
                 <p>Gestisci il parco macchinari, lo stato e le assegnazioni ai cantieri in corso.</p>
-                <div class="card-actions">
-                    <a href="/manager/macchinari" class="btn btn-primary">📋 Lista macchinari</a>
-                </div>
+            <div class="card-actions">
+                <a href="/manager/macchinari" class="btn btn-primary">Lista macchinari</a>
+            </div>
             </div>
         </div>
 
         <div class="card module-card">
             <div class="card-header">
-                <div class="card-title"><span class="icon">📚</span> Fiches</div>
+                <div class="card-title">
+                    <div class="card-icon card-icon--fiches" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7.5 4h7L17.5 7.5V20h-10V4z" stroke="currentColor" stroke-linejoin="round"/>
+                            <path d="M14.5 4v4h4" stroke="currentColor" stroke-linejoin="round"/>
+                            <path d="M9.5 11h5" stroke="currentColor" stroke-linecap="round"/>
+                            <path d="M9.5 14h5" stroke="currentColor" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <span>Fiches</span>
+                </div>
             </div>
             <div class="card-body">
                 <p>Consulta e filtra le fiches inserite dai capisquadra per avere una vista rapida delle attività.</p>
-                <div class="card-actions">
-                    <a href="/manager/fiches" class="btn btn-primary">📚 Vedi fiches</a>
-                </div>
+            <div class="card-actions">
+                <a href="/manager/fiches" class="btn btn-primary">Vedi fiches</a>
+            </div>
             </div>
         </div>
 
         <div class="card module-card">
             <div class="card-header">
-                <div class="card-title"><span class="icon">📝</span> Rapportini</div>
+                <div class="card-title">
+                    <div class="card-icon card-icon--reports" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" stroke="currentColor"/>
+                            <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke="currentColor" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <span>Rapportini</span>
+                </div>
             </div>
             <div class="card-body">
                 <p>Consulta, filtra e approfondisci tutti i rapportini inviati dai capisquadra.</p>
-                <div class="card-actions">
-                    <a href="/manager/rapportini" class="btn btn-primary">Vai all'elenco rapportini</a>
-                </div>
+            <div class="card-actions">
+                <a href="/manager/rapportini" class="btn btn-primary">Vai all'elenco rapportini</a>
+            </div>
             </div>
         </div>
 
         <div class="card module-card">
             <div class="card-header">
-                <div class="card-title"><span class="icon">👥</span> Utenti</div>
+                <div class="card-title">
+                    <div class="card-icon card-icon--users" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="9" cy="9" r="3" stroke="currentColor"/>
+                            <circle cx="16" cy="10" r="2.5" stroke="currentColor"/>
+                            <path d="M4.5 19.5c0-2.5 2.3-4.5 5.1-4.5h1.8c2.8 0 5.1 2 5.1 4.5" stroke="currentColor" stroke-linecap="round"/>
+                            <path d="M15.4 12.8c2.2 0 4.1 1.6 4.1 3.7" stroke="currentColor" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <span>Utenti</span>
+                </div>
             </div>
             <div class="card-body">
                 <p>Gestisci gli utenti, crea nuovi capisquadra e modifica i ruoli in base alle necessità operative.</p>
-                <div class="card-actions">
-                    <a href="/manager/utenti" class="btn btn-secondary">📋 Lista utenti</a>
-                    <a href="/manager/utenti/nuovo" class="btn btn-primary btn-sm">➕ Nuovo utente</a>
-                </div>
+            <div class="card-actions">
+                <a href="/manager/utenti" class="btn btn-secondary">Lista utenti</a>
+                <a href="/manager/utenti/nuovo" class="btn btn-primary btn-sm">➕ Nuovo utente</a>
+            </div>
             </div>
         </div>
 
         <div class="card module-card">
             <div class="card-header">
-                <div class="card-title"><span class="icon">📈</span> Attività recente</div>
+                <div class="card-title">
+                    <div class="card-icon card-icon--dashboard" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="5" y="4" width="6" height="6" rx="1.2" stroke="currentColor"/>
+                            <rect x="13" y="4" width="6" height="6" rx="1.2" stroke="currentColor"/>
+                            <rect x="5" y="12" width="6" height="8" rx="1.2" stroke="currentColor"/>
+                            <rect x="13" y="12" width="6" height="8" rx="1.2" stroke="currentColor"/>
+                        </svg>
+                    </div>
+                    <span>Attività recente</span>
+                </div>
             </div>
             <div class="card-body">
                 <p>Andamento settimanale degli invii dei rapportini.</p>
