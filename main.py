@@ -91,6 +91,7 @@ def homepage(request: Request):
         },
     )
 
+
 @app.get("/set-lang")
 def set_lang(lang: str = "it"):
     if lang not in ("it", "fr"):
@@ -99,6 +100,23 @@ def set_lang(lang: str = "it"):
     response = RedirectResponse(url="/")
     response.set_cookie(key="lang", value=lang, max_age=60 * 60 * 24 * 365)
     return response
+
+# -------------------------------------------------
+# PAGINA LOGIN (FRONTEND)
+# -------------------------------------------------
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    """
+    Pagina di login: inserisci email e password,
+    la pagina farà una chiamata a /auth/login.
+    """
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+        },
+    )
 
 # -------------------------------------------------
 # PAGINE FRONTEND — MANAGER
@@ -117,6 +135,7 @@ def manager_dashboard(request: Request):
         },
     )
 
+
 @app.get("/manager/cantieri", response_class=HTMLResponse)
 def manager_cantieri_lista(request: Request):
     """
@@ -129,6 +148,7 @@ def manager_cantieri_lista(request: Request):
             "user_role": "manager",
         },
     )
+
 
 @app.get("/manager/cantieri/nuovo", response_class=HTMLResponse)
 def manager_cantieri_nuovo(request: Request):
@@ -143,6 +163,7 @@ def manager_cantieri_nuovo(request: Request):
         },
     )
 
+
 @app.get("/manager/fiches", response_class=HTMLResponse)
 def manager_fiches_lista(request: Request):
     """
@@ -155,6 +176,7 @@ def manager_fiches_lista(request: Request):
             "user_role": "manager",
         },
     )
+
 
 @app.get("/manager/fiches/nuova", response_class=HTMLResponse)
 def manager_fiches_nuova(request: Request):
@@ -169,6 +191,7 @@ def manager_fiches_nuova(request: Request):
         },
     )
 
+
 @app.get("/manager/rapportini", response_class=HTMLResponse)
 def manager_rapportini_lista(request: Request):
     """
@@ -181,6 +204,7 @@ def manager_rapportini_lista(request: Request):
             "user_role": "manager",
         },
     )
+
 
 @app.get("/manager/rapportini/esporta", response_class=HTMLResponse)
 def manager_rapportini_esporta(request: Request):
@@ -195,6 +219,7 @@ def manager_rapportini_esporta(request: Request):
         },
     )
 
+
 @app.get("/manager/macchinari", response_class=HTMLResponse)
 def manager_macchinari_lista(request: Request):
     """
@@ -207,6 +232,7 @@ def manager_macchinari_lista(request: Request):
             "user_role": "manager",
         },
     )
+
 
 @app.get("/manager/macchinari/assegna", response_class=HTMLResponse)
 def manager_macchinari_assegna(request: Request):
