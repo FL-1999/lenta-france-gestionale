@@ -247,6 +247,35 @@ def manager_macchinari_assegna(request: Request):
         },
     )
 
+
+@app.get("/manager/utenti", response_class=HTMLResponse)
+def manager_utenti_lista(request: Request):
+    """
+    Gestione utenti (lista) – visibile solo a chi ha ruolo admin/manager.
+    (La protezione reale è gestita dal token e dal backend.)
+    """
+    return templates.TemplateResponse(
+        "manager/utenti_lista.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
+
+@app.get("/manager/utenti/nuovo", response_class=HTMLResponse)
+def manager_utenti_nuovo(request: Request):
+    """
+    Pagina per creare un nuovo utente (admin).
+    """
+    return templates.TemplateResponse(
+        "manager/utenti_nuovo.html",
+        {
+            "request": request,
+            "user_role": "manager",
+        },
+    )
+
 # -------------------------------------------------
 # PAGINE FRONTEND — CAPOSQUADRA
 # -------------------------------------------------
