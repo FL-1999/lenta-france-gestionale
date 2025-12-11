@@ -14,7 +14,7 @@
     Gestione cantieri
   </h1>
   <div class="actions">
-    <a href="/manager/cantieri/nuovo" class="btn btn-lg btn-primary btn--cantieri">➕ Nuovo cantiere</a>
+    <a href="/manager/cantieri/nuovo" class="btn btn-lg btn-primary">➕ Nuovo cantiere</a>
   </div>
 </div>
 
@@ -39,7 +39,7 @@
       <td>{{ s.status.value if s.status else "-" }}</td>
       <td>{{ "Sì" if s.is_active else "No" }}</td>
       <td>
-        <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-sm btn-secondary btn--cantieri">Modifica</a>
+        <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-sm btn-primary">Modifica</a>
       </td>
     </tr>
     {% endfor %}
