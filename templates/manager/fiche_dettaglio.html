@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Dettaglio fiche – Manager{% endblock %}
+
+{% block content %}
+<h1>Dettaglio fiche</h1>
+
+<div class="card">
+  <p><strong>Data:</strong> {{ fiche.date.strftime("%d/%m/%Y") }}</p>
+  <p><strong>Cantiere:</strong> {{ fiche.site.name }} ({{ fiche.site.code }})</p>
+  <p><strong>Macchina:</strong>
+    {% if fiche.machine %}
+      {{ fiche.machine.name }}{% if fiche.machine.machine_type %} – {{ fiche.machine.machine_type.value }}{% endif %}
+      {% if fiche.machine.plate %} ({{ fiche.machine.plate }}){% endif %}
+    {% else %}
+      -
+    {% endif %}
+  </p>
+  <p><strong>Tipo fiche:</strong> {{ fiche.fiche_type.value }}</p>
+  <p><strong>Ore:</strong> {{ "%.1f"|format(fiche.hours) }}</p>
+  <p><strong>Descrizione:</strong> {{ fiche.description }}</p>
+  <p><strong>Note:</strong> {{ fiche.notes or "-" }}</p>
+  <p><strong>Creato da:</strong> {{ fiche.created_by.full_name or fiche.created_by.email }} ({{ fiche.created_by.role.value }})</p>
+  <p><strong>Creato il:</strong> {{ fiche.created_at.strftime("%d/%m/%Y %H:%M") if fiche.created_at else "-" }}</p>
+</div>
+
+<p><a href="/manager/fiches">Torna all’elenco</a></p>
+{% endblock %}

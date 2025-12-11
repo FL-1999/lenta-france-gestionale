@@ -1,64 +1,130 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from datetime import date
+from typing import Optional
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, joinedload
+
+from auth import get_current_active_user
 from database import get_db
-from models import Fiche, StratigraphyLayer, Site, Machine
-from schemas import FicheCreate, FicheRead
-from deps import require_caposquadra_or_above
+from models import Fiche, FicheTypeEnum, Site, Machine, User
+from schemas import FicheCreate, FicheRead, FicheListItem
 
 router = APIRouter(prefix="/fiches", tags=["fiches"])
+
+
+@router.get("/", response_model=list[FicheListItem])
+def list_fiches(
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    site_id: Optional[int] = None,
+    fiche_type: Optional[FicheTypeEnum] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    query = db.query(Fiche).join(Site).outerjoin(Machine).join(User)
+
+    if from_date:
+        query = query.filter(Fiche.date >= from_date)
+    if to_date:
+        query = query.filter(Fiche.date <= to_date)
+    if site_id:
+        query = query.filter(Fiche.site_id == site_id)
+    if fiche_type:
+        query = query.filter(Fiche.fiche_type == fiche_type)
+
+    fiches = query.order_by(Fiche.date.desc(), Fiche.id.desc()).all()
+
+    return [
+        FicheListItem(
+            id=fiche.id,
+            date=fiche.date,
+            site_name=fiche.site.name if fiche.site else "",
+            machine_name=fiche.machine.name if fiche.machine else None,
+            fiche_type=fiche.fiche_type,
+            hours=fiche.hours,
+            created_by_name=fiche.created_by.full_name or fiche.created_by.email,
+        )
+        for fiche in fiches
+    ]
+
+
+@router.get("/{fiche_id}", response_model=FicheRead)
+def get_fiche_detail(
+    fiche_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    fiche = (
+        db.query(Fiche)
+        .options(
+            joinedload(Fiche.site),
+            joinedload(Fiche.machine),
+            joinedload(Fiche.created_by),
+        )
+        .filter(Fiche.id == fiche_id)
+        .first()
+    )
+
+    if not fiche:
+        raise HTTPException(status_code=404, detail="Fiche non trovata")
+
+    return FicheRead(
+        id=fiche.id,
+        date=fiche.date,
+        site_id=fiche.site_id,
+        machine_id=fiche.machine_id,
+        fiche_type=fiche.fiche_type,
+        description=fiche.description,
+        hours=fiche.hours,
+        notes=fiche.notes,
+        site_name=fiche.site.name if fiche.site else "",
+        machine_name=fiche.machine.name if fiche.machine else None,
+        created_by_name=fiche.created_by.full_name or fiche.created_by.email,
+        created_by_role=fiche.created_by.role.value,
+    )
 
 
 @router.post("/", response_model=FicheRead)
 def create_fiche(
     fiche_in: FicheCreate,
     db: Session = Depends(get_db),
-    user=Depends(require_caposquadra_or_above),
+    current_user: User = Depends(get_current_active_user),
 ):
     site = db.query(Site).filter(Site.id == fiche_in.site_id).first()
     if not site:
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
+    machine = None
     if fiche_in.machine_id is not None:
         machine = db.query(Machine).filter(Machine.id == fiche_in.machine_id).first()
         if not machine:
             raise HTTPException(status_code=404, detail="Macchinario non trovato")
 
     fiche = Fiche(
+        date=fiche_in.date,
         site_id=fiche_in.site_id,
-        machine_id=fiche_in.machine_id if fiche_in.machine_id else None,
-        type=fiche_in.type,
-        panel_number=fiche_in.panel_number,
-        diameter_mm=fiche_in.diameter_mm,
-        total_depth_m=fiche_in.total_depth_m,
-        paratia_depth_m=fiche_in.paratia_depth_m,
-        paratia_width_m=fiche_in.paratia_width_m,
-        dig_date=fiche_in.dig_date,
-        cast_date=fiche_in.cast_date,
+        machine_id=fiche_in.machine_id,
+        fiche_type=fiche_in.fiche_type,
+        description=fiche_in.description,
+        hours=fiche_in.hours,
+        notes=fiche_in.notes,
+        created_by_id=current_user.id,
     )
     db.add(fiche)
     db.commit()
     db.refresh(fiche)
 
-    for layer_in in fiche_in.layers:
-        layer = StratigraphyLayer(
-            fiche_id=fiche.id,
-            from_m=layer_in.from_m,
-            to_m=layer_in.to_m,
-            description=layer_in.description,
-        )
-        db.add(layer)
-
-    db.commit()
-    db.refresh(fiche)
-    return fiche
-
-
-@router.get("/site/{site_id}", response_model=list[FicheRead])
-def list_fiches_for_site(
-    site_id: int,
-    db: Session = Depends(get_db),
-    user=Depends(require_caposquadra_or_above),
-):
-    fiches = db.query(Fiche).filter(Fiche.site_id == site_id).all()
-    return fiches
+    return FicheRead(
+        id=fiche.id,
+        date=fiche.date,
+        site_id=fiche.site_id,
+        machine_id=fiche.machine_id,
+        fiche_type=fiche.fiche_type,
+        description=fiche.description,
+        hours=fiche.hours,
+        notes=fiche.notes,
+        site_name=site.name,
+        machine_name=machine.name if machine else None,
+        created_by_name=current_user.full_name or current_user.email,
+        created_by_role=current_user.role.value,
+    )

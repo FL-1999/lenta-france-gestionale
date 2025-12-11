@@ -45,9 +45,9 @@ class MachineTypeEnum(PyEnum):
 
 
 class FicheTypeEnum(PyEnum):
-    sicurezza = "sicurezza"
     produzione = "produzione"
-    qualita = "qualita"
+    fermo_macchina = "fermo_macchina"
+    controllo = "controllo"
     altro = "altro"
 
 
@@ -147,6 +147,8 @@ class Machine(Base, TimestampMixin):
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
     site = relationship("Site", back_populates="machines")
 
+    fiches = relationship("Fiche", back_populates="machine")
+
     is_active = Column(Boolean, default=True, nullable=False)
 
     def __repr__(self) -> str:
@@ -197,49 +199,41 @@ class Fiche(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
 
     date = Column(Date, nullable=False)
-
-    title = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-
-    fiche_type = Column(Enum(FicheTypeEnum), nullable=True)
-
-    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=False)
     site = relationship("Site", back_populates="fiches")
+
+    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=True)
+    machine = relationship("Machine", back_populates="fiches")
 
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_by = relationship("User", back_populates="fiches")
 
-    # 🔹 Relazione con gli strati (StratigraphyLayer)
+    fiche_type = Column(Enum(FicheTypeEnum), nullable=False)
+    description = Column(Text, nullable=False)
+    hours = Column(Float, nullable=False)
+    notes = Column(Text, nullable=True)
+
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
-        return f"<Fiche id={self.id} date={self.date} title={self.title}>"
+        return f"<Fiche id={self.id} date={self.date} type={self.fiche_type}>"
 
 
 # ============================================================
 # MODELLO STRATO (STRATIGRAPHY LAYER)
 # ============================================================
 
-class StratigraphyLayer(Base, TimestampMixin):
-    """
-    Strato di stratigrafia collegato a una Fiche.
-    Lo definisco in modo generico, così il router fiches può usarlo
-    anche solo parzialmente (nome, profondità, note, ecc.).
-    """
+class StratigraphyLayer(Base):
     __tablename__ = "stratigraphy_layers"
 
     id = Column(Integer, primary_key=True, index=True)
-
     fiche_id = Column(Integer, ForeignKey("fiches.id"), nullable=False)
     fiche = relationship("Fiche", back_populates="layers")
 
-    name = Column(String(255), nullable=True)            # es. "Strato sabbioso"
-    description = Column(Text, nullable=True)            # descrizione libera
-
-    depth_from = Column(Float, nullable=True)            # profondità da (m)
-    depth_to = Column(Float, nullable=True)              # profondità a (m)
-
+    layer_index = Column(Integer, nullable=False)
+    material = Column(String(255), nullable=False)
+    thickness_m = Column(Float, nullable=False)
     notes = Column(Text, nullable=True)
 
     def __repr__(self) -> str:
-        return f"<StratigraphyLayer id={self.id} fiche_id={self.fiche_id} name={self.name}>"
+        return f"<StratigraphyLayer id={self.id} fiche_id={self.fiche_id} layer_index={self.layer_index}>"
