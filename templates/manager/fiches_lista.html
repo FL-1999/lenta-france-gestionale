@@ -1,0 +1,44 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Fiches – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📄 Fiches di cantiere</h1>
+    <p class="page-subtitle">
+        Elenco delle fiches registrate per i vari cantieri.
+    </p>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Cantiere</th>
+                <th>Macchinario</th>
+                <th>Ore utilizzo</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>2025-01-01</td>
+                <td>Cantiere Lyon</td>
+                <td>Escavatore 30t</td>
+                <td>4</td>
+            </tr>
+            <tr>
+                <td>2025-01-02</td>
+                <td>Cantiere Marseille</td>
+                <td>Pala gommata</td>
+                <td>3.5</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="form-actions">
+    <a href="/manager/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
+    <a href="/manager/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
+</div>
+{% endblock %}
