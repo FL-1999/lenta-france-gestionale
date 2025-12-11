@@ -70,6 +70,51 @@ body {
     text-decoration: none;
     color: white;
     font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-sm {
+    padding: 6px 10px;
+    margin: 4px 6px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+}
+
+.btn-primary {
+    background: #5e60ce;
+}
+
+.btn-primary:hover {
+    background: #4c4fb3;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.btn-secondary:hover {
+    background: #d1d5db;
+}
+
+.btn-success {
+    background: #16a34a;
+    color: #f9fafb;
+}
+
+.btn-success:hover {
+    background: #15803d;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: #f9fafb;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
 }
 
 .manager {
@@ -91,6 +136,24 @@ body {
 
 .lang-btn:hover {
     background: #778da9;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #16a34a;
+    color: #f9fafb;
+}
+
+.badge-danger {
+    background: #dc2626;
+    color: #f9fafb;
 }
 .table {
     width: 100%;
