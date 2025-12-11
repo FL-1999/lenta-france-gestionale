@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if mode == "create" %}Nuovo cantiere{% else %}Modifica cantiere{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1>{% if mode == "create" %}Nuovo cantiere{% else %}Modifica cantiere{% endif %}</h1>
+
+<form method="post">
+  <label>Nome*
+    <input type="text" name="name" value="{{ site.name if site else '' }}" required>
+  </label>
+  <label>Codice*
+    <input type="text" name="code" value="{{ site.code if site else '' }}" required>
+  </label>
+  <label>Indirizzo
+    <input type="text" name="address" value="{{ site.address if site else '' }}">
+  </label>
+  <label>Città
+    <input type="text" name="city" value="{{ site.city if site else '' }}">
+  </label>
+  <label>Nazione
+    <input type="text" name="country" value="{{ site.country if site else '' }}">
+  </label>
+  <label>Data inizio
+    <input type="date" name="start_date"
+           value="{{ site.start_date.isoformat() if site and site.start_date else '' }}">
+  </label>
+  <label>Data fine
+    <input type="date" name="end_date"
+           value="{{ site.end_date.isoformat() if site and site.end_date else '' }}">
+  </label>
+  <label>Stato
+    <select name="status" required>
+      {% for status in site_status_values %}
+        <option value="{{ status }}" {% if site and (site.status.name == status or site.status.value == status) %}selected{% endif %}>
+          {{ status }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>
+    <input type="checkbox" name="is_active" {% if not site or site.is_active %}checked{% endif %}>
+    Cantiere attivo
+  </label>
+
+  <div class="form-actions">
+    <button type="submit">Salva</button>
+    <a href="/manager/cantieri">Annulla</a>
+  </div>
+</form>
+{% endblock %}

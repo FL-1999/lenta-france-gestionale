@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -16,7 +16,7 @@ from auth import (
     get_current_active_user,
     get_current_active_user_html,
 )
-from models import User, RoleEnum, Report
+from models import User, RoleEnum, Report, Site, SiteStatusEnum
 from routers import users, sites, machines, reports, fiches
 
 
@@ -237,6 +237,205 @@ def manager_dashboard(
             "reports": reports_list,
         },
     )
+
+
+@app.get("/manager/cantieri", response_class=HTMLResponse)
+def manager_cantieri(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        sites_list = (
+            db.query(Site)
+            .order_by(
+                Site.is_active.desc(),
+                Site.start_date.desc(),
+                Site.name,
+            )
+            .all()
+        )
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/cantieri.html",
+        {
+            "request": request,
+            "sites": sites_list,
+            "user": current_user,
+        },
+    )
+
+
+@app.get("/manager/cantieri/nuovo", response_class=HTMLResponse)
+def manager_cantiere_nuovo_get(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    site_status_values = [status.name for status in SiteStatusEnum]
+
+    return templates.TemplateResponse(
+        "manager/cantiere_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "mode": "create",
+            "site": None,
+            "site_status_values": site_status_values,
+        },
+    )
+
+
+@app.post("/manager/cantieri/nuovo")
+def manager_cantiere_nuovo_post(
+    request: Request,
+    name: str = Form(...),
+    code: str = Form(...),
+    address: str | None = Form(None),
+    city: str | None = Form(None),
+    country: str | None = Form(None),
+    start_date: str | None = Form(None),
+    end_date: str | None = Form(None),
+    status: str = Form(...),
+    is_active: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    if not name or not code:
+        raise HTTPException(status_code=400, detail="Nome e codice sono obbligatori")
+
+    def parse_date(value: str | None) -> date | None:
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    start_date_parsed = parse_date(start_date)
+    end_date_parsed = parse_date(end_date)
+
+    if status not in SiteStatusEnum.__members__:
+        raise HTTPException(status_code=400, detail="Stato non valido")
+    status_value = SiteStatusEnum[status]
+
+    db = SessionLocal()
+    try:
+        new_site = Site(
+            name=name,
+            code=code,
+            address=address,
+            city=city,
+            country=country,
+            start_date=start_date_parsed,
+            end_date=end_date_parsed,
+            status=status_value,
+            is_active=is_active is not None,
+        )
+        db.add(new_site)
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/manager/cantieri", status_code=303)
+
+
+@app.get("/manager/cantieri/{site_id}/modifica", response_class=HTMLResponse)
+def manager_cantiere_modifica_get(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        site_status_values = [status.name for status in SiteStatusEnum]
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/cantiere_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "mode": "edit",
+            "site": site,
+            "site_status_values": site_status_values,
+        },
+    )
+
+
+@app.post("/manager/cantieri/{site_id}/modifica")
+def manager_cantiere_modifica_post(
+    request: Request,
+    site_id: int,
+    name: str = Form(...),
+    code: str = Form(...),
+    address: str | None = Form(None),
+    city: str | None = Form(None),
+    country: str | None = Form(None),
+    start_date: str | None = Form(None),
+    end_date: str | None = Form(None),
+    status: str = Form(...),
+    is_active: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    if not name or not code:
+        raise HTTPException(status_code=400, detail="Nome e codice sono obbligatori")
+
+    def parse_date(value: str | None) -> date | None:
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    start_date_parsed = parse_date(start_date)
+    end_date_parsed = parse_date(end_date)
+
+    if status not in SiteStatusEnum.__members__:
+        raise HTTPException(status_code=400, detail="Stato non valido")
+    status_value = SiteStatusEnum[status]
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        site.name = name
+        site.code = code
+        site.address = address
+        site.city = city
+        site.country = country
+        site.start_date = start_date_parsed
+        site.end_date = end_date_parsed
+        site.status = status_value
+        site.is_active = is_active is not None
+
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/manager/cantieri", status_code=303)
 
 
 @app.get("/capo/dashboard", response_class=HTMLResponse)
