@@ -55,45 +55,11 @@
 
 <div class="card">
     <div class="card-header">
-        <h2>Rapportini recenti</h2>
+        <h2>Rapportini</h2>
     </div>
     <div class="card-body">
-        {% if reports and reports|length > 0 %}
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Cantiere</th>
-                        <th>Ore totali</th>
-                        <th>N. operai</th>
-                        <th>Creato da</th>
-                        <th>Note</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in reports %}
-                    <tr>
-                        <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
-                        <td>{{ r.site_name_or_code }}</td>
-                        <td>{{ "%.1f"|format(r.total_hours) }}</td>
-                        <td>{{ r.workers_count }}</td>
-                        <td>
-                            {% if r.created_by %}
-                                {{ r.created_by.full_name or r.created_by.email }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td>{{ r.notes or r.activities or "-" }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p>Nessun rapportino salvato per il momento.</p>
-        {% endif %}
+        <p>Consulta, filtra e approfondisci tutti i rapportini inviati dai capisquadra.</p>
+        <a href="/manager/rapportini" class="btn btn-primary">Vai all'elenco rapportini</a>
     </div>
 </div>
 {% endblock %}

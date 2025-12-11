@@ -888,66 +888,6 @@ def pagina_nuovo_rapportino_capo(
     )
 
 
-@app.get("/manager/rapportini", response_class=HTMLResponse)
-def manager_rapportini(
-    request: Request,
-    from_date: str | None = None,
-    to_date: str | None = None,
-    site: str | None = None,
-    current_user: User = Depends(get_current_active_user_html),
-):
-    """
-    Pagina manager: lista dei rapportini salvati nel database.
-    """
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
-        raise HTTPException(status_code=403, detail="Non autorizzato")
-
-    db = SessionLocal()
-
-    parsed_from_date = None
-    parsed_to_date = None
-
-    try:
-        if from_date:
-            try:
-                parsed_from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
-            except ValueError:
-                parsed_from_date = None
-
-        if to_date:
-            try:
-                parsed_to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            except ValueError:
-                parsed_to_date = None
-
-        query = db.query(Report)
-
-        if parsed_from_date:
-            query = query.filter(Report.date >= parsed_from_date)
-
-        if parsed_to_date:
-            query = query.filter(Report.date <= parsed_to_date)
-
-        if site:
-            query = query.filter(Report.site_name_or_code.ilike(f"%{site}%"))
-
-        reports_list = query.order_by(Report.date.desc(), Report.id.desc()).all()
-    finally:
-        db.close()
-
-    return templates.TemplateResponse(
-        "manager/rapportini.html",
-        {
-            "request": request,
-            "user": current_user,
-            "reports": reports_list,
-            "filter_from_date": from_date,
-            "filter_to_date": to_date,
-            "filter_site": site,
-        },
-    )
-
-
 @app.get("/capo/fiches/nuova", response_class=HTMLResponse)
 def capo_fiche_nuova_get(
     request: Request,
@@ -1059,37 +999,6 @@ async def capo_fiche_nuova_post(
         db.close()
 
     return RedirectResponse(url="/capo/dashboard", status_code=303)
-
-
-@app.get("/manager/rapportini/{report_id}", response_class=HTMLResponse)
-def manager_rapportino_dettaglio(
-    request: Request,
-    report_id: int,
-    current_user: User = Depends(get_current_active_user_html),
-):
-    """
-    Pagina manager: dettaglio di un singolo rapportino.
-    """
-
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
-        raise HTTPException(status_code=403, detail="Non autorizzato")
-
-    db = SessionLocal()
-    try:
-        report = db.query(Report).filter(Report.id == report_id).first()
-        if not report:
-            raise HTTPException(status_code=404, detail="Rapportino non trovato")
-    finally:
-        db.close()
-
-    return templates.TemplateResponse(
-        "manager/rapportino_dettaglio.html",
-        {
-            "request": request,
-            "user": current_user,
-            "report": report,
-        },
-    )
 
 
 @app.get("/manager/fiches", response_class=HTMLResponse)
