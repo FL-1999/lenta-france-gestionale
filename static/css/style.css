@@ -205,14 +205,9 @@ body {
     stroke: #facc15;
 }
 
-.card-icon--dashboard svg,
-.page-icon--dashboard svg {
-    stroke: #cbd5e1;
-}
-
 .card-icon--activity svg,
 .page-icon--activity svg {
-    stroke: #f973c9;
+    stroke: #f472b6;
 }
 .table {
     width: 100%;
