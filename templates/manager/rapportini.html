@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Rapportini – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📄 Rapportini giornalieri</h1>
+    <p class="subtitle">
+        Elenco dei rapportini salvati nel gestionale.
+    </p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Elenco rapportini</h2>
+        <a href="/capo/rapportini/nuovo" class="btn btn-primary">
+            + Nuovo rapportino
+        </a>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Cantiere</th>
+                    <th>Ore totali</th>
+                    <th>N. operai</th>
+                    <th>Creato da</th>
+                    <th>Macchinari</th>
+                    <th>Attività</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if reports and reports|length > 0 %}
+                    {% for r in reports %}
+                        <tr>
+                            <td>
+                                {% if r.date %}
+                                    {{ r.date.strftime("%d/%m/%Y") }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ r.site_name_or_code }}</td>
+                            <td>{{ "%.1f"|format(r.total_hours) }}</td>
+                            <td>{{ r.workers_count }}</td>
+                            <td>
+                                {% if r.created_by %}
+                                    {{ r.created_by.full_name or r.created_by.email }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ r.machines_used or "-" }}</td>
+                            <td>{{ r.activities or "-" }}</td>
+                            <td>{{ r.notes or "-" }}</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="no-data">
+                            Nessun rapportino salvato per il momento.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
