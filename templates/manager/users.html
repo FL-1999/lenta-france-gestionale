@@ -22,6 +22,7 @@
                         <th>Ruolo</th>
                         <th>Lingua</th>
                         <th>Attivo</th>
+                        <th>Azioni</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -31,8 +32,15 @@
                         <td>{{ u.full_name or "-" }}</td>
                         <td>{{ u.role.value if u.role else "-" }}</td>
                         <td>{{ u.language or "-" }}</td>
+                        <td>{{ "Sì" if u.is_active else "No" }}</td>
                         <td>
-                            {{ "Sì" if u.is_active else "No" }}
+                            <div class="action-buttons">
+                                <a class="btn btn-link" href="/manager/utenti/{{ u.id }}/modifica">Modifica</a>
+                                <a class="btn btn-link" href="/manager/utenti/{{ u.id }}/reset-password">Reset password</a>
+                                <form method="post" action="/manager/utenti/{{ u.id }}/toggle-attivo" style="display:inline;">
+                                    <button type="submit" class="btn btn-link">{{ 'Disattiva' if u.is_active else 'Attiva' }}</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
