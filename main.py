@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import joinedload
 
 from database import Base, engine, SessionLocal, get_db
 from auth import (
@@ -16,7 +17,16 @@ from auth import (
     get_current_active_user,
     get_current_active_user_html,
 )
-from models import User, RoleEnum, Report, Site, SiteStatusEnum
+from models import (
+    User,
+    RoleEnum,
+    Report,
+    Site,
+    SiteStatusEnum,
+    Machine,
+    FicheTypeEnum,
+    Fiche,
+)
 from routers import users, sites, machines, reports, fiches
 
 
@@ -534,6 +544,114 @@ def manager_rapportini(
     )
 
 
+@app.get("/capo/fiches/nuova", response_class=HTMLResponse)
+def capo_fiche_nuova_get(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        sites = (
+            db.query(Site)
+            .filter(Site.is_active.is_(True))
+            .order_by(Site.name)
+            .all()
+        )
+        machines = (
+            db.query(Machine)
+            .filter(Machine.is_active.is_(True))
+            .order_by(Machine.name)
+            .all()
+        )
+    finally:
+        db.close()
+
+    fiche_types = [ft for ft in FicheTypeEnum]
+
+    return templates.TemplateResponse(
+        "capo/fiche_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "sites": sites,
+            "machines": machines,
+            "fiche_types": fiche_types,
+        },
+    )
+
+
+@app.post("/capo/fiches/nuova")
+def capo_fiche_nuova_post(
+    request: Request,
+    date_str: str = Form(...),
+    site_id: int = Form(...),
+    machine_id: str | None = Form(None),
+    fiche_type: str = Form(...),
+    description: str = Form(...),
+    hours: str = Form(...),
+    notes: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    try:
+        fiche_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Data non valida")
+
+    try:
+        hours_value = float(hours)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Ore non valide")
+
+    machine_id_value: int | None = None
+    if machine_id:
+        try:
+            machine_id_value = int(machine_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Macchinario non valido")
+
+    if fiche_type not in FicheTypeEnum.__members__:
+        try:
+            fiche_type_value = FicheTypeEnum(fiche_type)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Tipo fiche non valido")
+    else:
+        fiche_type_value = FicheTypeEnum[fiche_type]
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=400, detail="Cantiere non trovato")
+
+        if machine_id_value is not None:
+            machine = db.query(Machine).filter(Machine.id == machine_id_value).first()
+            if not machine:
+                raise HTTPException(status_code=400, detail="Macchinario non trovato")
+
+        fiche = Fiche(
+            date=fiche_date,
+            site_id=site_id,
+            machine_id=machine_id_value,
+            fiche_type=fiche_type_value,
+            description=description,
+            hours=hours_value,
+            notes=notes,
+            created_by_id=current_user.id,
+        )
+        db.add(fiche)
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/capo/dashboard", status_code=303)
+
+
 @app.get("/manager/rapportini/{report_id}", response_class=HTMLResponse)
 def manager_rapportino_dettaglio(
     request: Request,
@@ -561,6 +679,130 @@ def manager_rapportino_dettaglio(
             "request": request,
             "user": current_user,
             "report": report,
+        },
+    )
+
+
+@app.get("/manager/fiches", response_class=HTMLResponse)
+def manager_fiches(
+    request: Request,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    site_id: str | None = None,
+    fiche_type: str | None = None,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+
+    parsed_from_date: date | None = None
+    parsed_to_date: date | None = None
+    parsed_site_id: int | None = None
+    parsed_fiche_type: FicheTypeEnum | None = None
+
+    try:
+        if from_date:
+            try:
+                parsed_from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            except ValueError:
+                parsed_from_date = None
+
+        if to_date:
+            try:
+                parsed_to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+            except ValueError:
+                parsed_to_date = None
+
+        if site_id:
+            try:
+                parsed_site_id = int(site_id)
+            except ValueError:
+                parsed_site_id = None
+
+        if fiche_type:
+            try:
+                parsed_fiche_type = FicheTypeEnum(fiche_type)
+            except ValueError:
+                parsed_fiche_type = None
+
+        query = db.query(Fiche).join(Site).outerjoin(Machine).join(User)
+
+        if parsed_from_date:
+            query = query.filter(Fiche.date >= parsed_from_date)
+        if parsed_to_date:
+            query = query.filter(Fiche.date <= parsed_to_date)
+        if parsed_site_id:
+            query = query.filter(Fiche.site_id == parsed_site_id)
+        if parsed_fiche_type:
+            query = query.filter(Fiche.fiche_type == parsed_fiche_type)
+
+        fiches_list = query.order_by(Fiche.date.desc(), Fiche.id.desc()).all()
+        sites_list = db.query(Site).order_by(Site.name).all()
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/fiches.html",
+        {
+            "request": request,
+            "user": current_user,
+            "fiches": [
+                {
+                    "id": fiche.id,
+                    "date": fiche.date,
+                    "site_name": fiche.site.name if fiche.site else "",
+                    "machine_name": fiche.machine.name if fiche.machine else None,
+                    "fiche_type": fiche.fiche_type,
+                    "hours": fiche.hours,
+                    "created_by_name": fiche.created_by.full_name
+                    or fiche.created_by.email,
+                }
+                for fiche in fiches_list
+            ],
+            "sites": sites_list,
+            "fiche_types": [ft for ft in FicheTypeEnum],
+            "filter_from_date": from_date,
+            "filter_to_date": to_date,
+            "filter_site_id": parsed_site_id,
+            "filter_fiche_type": parsed_fiche_type.value if parsed_fiche_type else None,
+        },
+    )
+
+
+@app.get("/manager/fiches/{fiche_id}", response_class=HTMLResponse)
+def manager_fiche_dettaglio(
+    request: Request,
+    fiche_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        fiche = (
+            db.query(Fiche)
+            .options(
+                joinedload(Fiche.site),
+                joinedload(Fiche.machine),
+                joinedload(Fiche.created_by),
+            )
+            .filter(Fiche.id == fiche_id)
+            .first()
+        )
+        if not fiche:
+            raise HTTPException(status_code=404, detail="Fiche non trovata")
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/fiche_dettaglio.html",
+        {
+            "request": request,
+            "user": current_user,
+            "fiche": fiche,
         },
     )
 

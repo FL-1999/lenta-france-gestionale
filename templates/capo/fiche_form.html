@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Nuova fiche di cantiere{% endblock %}
+
+{% block content %}
+<h1>Nuova fiche di cantiere</h1>
+<form method="post" class="form">
+  <label>Data:
+    <input type="date" name="date_str" required>
+  </label>
+
+  <label>Cantiere:
+    <select name="site_id" required>
+      {% for s in sites %}
+        <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>Macchina:
+    <select name="machine_id">
+      <option value="">Nessuna</option>
+      {% for m in machines %}
+        <option value="{{ m.id }}">{{ m.name }}{% if m.code %} ({{ m.code }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>Tipo fiche:
+    <select name="fiche_type" required>
+      {% for ft in fiche_types %}
+        <option value="{{ ft.value }}">{{ ft.value }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>Ore:
+    <input type="number" name="hours" step="0.1" required>
+  </label>
+
+  <label>Descrizione:
+    <textarea name="description" rows="4" required></textarea>
+  </label>
+
+  <label>Note:
+    <textarea name="notes" rows="3"></textarea>
+  </label>
+
+  <div class="form-actions">
+    <button type="submit">Salva fiche</button>
+    <a class="btn" href="/capo/dashboard">Annulla</a>
+  </div>
+</form>
+{% endblock %}

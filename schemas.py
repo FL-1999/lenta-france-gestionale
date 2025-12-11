@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from datetime import date
 from typing import Optional, List
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from models import RoleEnum, SiteStatusEnum, MachineTypeEnum, FicheTypeEnum
 
@@ -112,48 +113,42 @@ class DailyReportRead(DailyReportBase):
 
 # ---------- FICHES + STRATIGRAFIA ----------
 
-class StratigraphyLayerBase(BaseModel):
-    from_m: float
-    to_m: float
-    description: Optional[str] = None
-
-
-class StratigraphyLayerCreate(StratigraphyLayerBase):
-    pass
-
-
-class StratigraphyLayerRead(StratigraphyLayerBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-
-class FicheBase(BaseModel):
+class FicheCreate(BaseModel):
+    date: date
     site_id: int
     machine_id: Optional[int] = None
-    type: FicheTypeEnum
-    panel_number: Optional[str] = None
+    fiche_type: FicheTypeEnum
+    description: str
+    hours: float
+    notes: Optional[str] = None
 
-    # pali
-    diameter_mm: Optional[int] = None
-    total_depth_m: Optional[float] = None
-
-    # paratie
-    paratia_depth_m: Optional[float] = None
-    paratia_width_m: Optional[float] = None
-
-    dig_date: Optional[date] = None
-    cast_date: Optional[date] = None
+    model_config = {"from_attributes": True}
 
 
-class FicheCreate(FicheBase):
-    layers: List[StratigraphyLayerCreate] = []
-
-
-class FicheRead(FicheBase):
+class FicheRead(BaseModel):
     id: int
-    layers: List[StratigraphyLayerRead] = []
+    date: date
+    site_id: int
+    machine_id: Optional[int]
+    fiche_type: FicheTypeEnum
+    description: str
+    hours: float
+    notes: Optional[str]
+    site_name: str
+    machine_name: Optional[str]
+    created_by_name: str
+    created_by_role: str
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
+
+
+class FicheListItem(BaseModel):
+    id: int
+    date: date
+    site_name: str
+    machine_name: Optional[str]
+    fiche_type: FicheTypeEnum
+    hours: float
+    created_by_name: str
+
+    model_config = {"from_attributes": True}

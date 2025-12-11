@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Fiches – Manager{% endblock %}
+
+{% block content %}
+<h1>Fiches – Manager</h1>
+
+<form method="get" class="filters">
+  <label>Da data:
+    <input type="date" name="from_date" value="{{ filter_from_date or '' }}">
+  </label>
+  <label>A data:
+    <input type="date" name="to_date" value="{{ filter_to_date or '' }}">
+  </label>
+  <label>Cantiere:
+    <select name="site_id">
+      <option value="">Tutti</option>
+      {% for s in sites %}
+        <option value="{{ s.id }}" {% if filter_site_id and filter_site_id == s.id %}selected{% endif %}>
+          {{ s.name }} ({{ s.code }})
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Tipo fiche:
+    <select name="fiche_type">
+      <option value="">Tutti</option>
+      {% for ft in fiche_types %}
+        <option value="{{ ft.value if hasattr(ft, 'value') else ft }}" {% if filter_fiche_type == (ft.value if hasattr(ft, 'value') else ft) %}selected{% endif %}>{{ ft.value if hasattr(ft, 'value') else ft }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit">Filtra</button>
+  <a href="/manager/fiches">Reset</a>
+</form>
+
+{% if fiches %}
+<table class="table">
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Cantiere</th>
+      <th>Macchina</th>
+      <th>Tipo</th>
+      <th>Ore</th>
+      <th>Creato da</th>
+      <th>Dettaglio</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for f in fiches %}
+    <tr>
+      <td>{{ f.date.strftime("%d/%m/%Y") }}</td>
+      <td>{{ f.site_name }}</td>
+      <td>{{ f.machine_name or "-" }}</td>
+      <td>{{ f.fiche_type.value if hasattr(f.fiche_type, "value") else f.fiche_type }}</td>
+      <td>{{ "%.1f"|format(f.hours) }}</td>
+      <td>{{ f.created_by_name }}</td>
+      <td>
+        <a href="/manager/fiches/{{ f.id }}">Apri</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Nessuna fiche trovata.</p>
+{% endif %}
+{% endblock %}
