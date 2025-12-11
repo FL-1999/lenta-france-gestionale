@@ -6,8 +6,8 @@
 <div class="page-header">
     <h1 class="page-title">📝 Nuovo rapportino giornaliero</h1>
     <p class="page-subtitle">
-        Compila il rapportino della giornata per il cantiere selezionato. In seguito invieremo
-        questi dati al backend per il salvataggio definitivo.
+        Compila il rapportino della giornata per il cantiere selezionato. I dati verranno inviati
+        al backend tramite l'API <code>POST /reports</code>.
     </p>
 </div>
 
@@ -87,9 +87,20 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
         return;
     }
 
-    // In futuro questi dati verranno inviati al backend (es. POST /reports).
-    // Per ora prepariamo il payload e facciamo solo un log, così la pagina funziona
-    // senza dipendere dall'API.
+    // Recupera il token dal localStorage
+    let token = null;
+    try {
+        token = localStorage.getItem("lf_token");
+    } catch (e) {
+        console.error("Impossibile leggere lf_token:", e);
+    }
+
+    if (!token) {
+        errorBox.textContent = "Nessun token trovato. Effettua di nuovo il login.";
+        errorBox.style.display = "block";
+        return;
+    }
+
     const payload = {
         date: data,
         site_name_or_code: cantiere,
@@ -100,27 +111,41 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
         notes: note,
     };
 
-    console.log("Rapportino pronto da inviare al backend:", payload);
+    try {
+        const resp = await fetch("/reports", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token,
+            },
+            body: JSON.stringify(payload),
+        });
 
-    // TODO: quando agganciamo il backend, faremo qualcosa tipo:
-    //
-    // const token = localStorage.getItem("lf_token");
-    // const resp = await fetch("/reports", {
-    //     method: "POST",
-    //     headers: {
-    //         "Content-Type": "application/json",
-    //         "Authorization": "Bearer " + token,
-    //     },
-    //     body: JSON.stringify(payload),
-    // });
-    //
-    // e gestiremo le risposte (201, 400, 401, ecc.)
+        if (!resp.ok) {
+            if (resp.status === 401 || resp.status === 403) {
+                errorBox.textContent = "Non sei autorizzato a creare rapportini. Effettua di nuovo il login.";
+            } else if (resp.status === 422) {
+                errorBox.textContent = "Dati non validi (errore di validazione). Controlla i campi e riprova.";
+            } else {
+                errorBox.textContent = "Errore nel salvataggio del rapportino. Codice: " + resp.status;
+            }
+            errorBox.style.display = "block";
+            return;
+        }
 
-    successBox.textContent = "Rapportino compilato correttamente (per ora solo preparato, non ancora salvato nel DB).";
-    successBox.style.display = "block";
+        const dataResp = await resp.json();
+        console.log("Rapportino salvato:", dataResp);
 
-    // Se vuoi, puoi pulire il form dopo:
-    // document.getElementById("rapportino-form").reset();
+        successBox.textContent = "Rapportino salvato con successo!";
+        successBox.style.display = "block";
+
+        // Se vuoi, svuota il form dopo il salvataggio
+        document.getElementById("rapportino-form").reset();
+    } catch (err) {
+        console.error(err);
+        errorBox.textContent = "Errore di connessione al server durante il salvataggio del rapportino.";
+        errorBox.style.display = "block";
+    }
 });
 </script>
 {% endblock %}
