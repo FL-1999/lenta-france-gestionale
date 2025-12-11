@@ -1,27 +1,38 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
+
+{% block title %}Home – Lenta France{% endblock %}
 
 {% block content %}
-<div class="home-card">
-
-    <h1>🏗️ Lenta France – Gestionale Cantieri</h1>
-    <p class="subtitle">
-        Gestione moderna di cantieri, macchinari, fiches e rapportini giornalieri.
+<div class="page-header">
+    <h1 class="page-title">🏗️ Lenta France – Gestionale Cantieri</h1>
+    <p class="page-subtitle">
+        Gestionale per cantieri, macchinari, fiches e rapportini giornalieri,
+        con accesso dedicato per Manager e Capisquadra.
     </p>
+</div>
 
-    <div class="lang-section">
-        <p>Lingua:</p>
-        <a href="/set-lang?lang=it" class="lang-btn">🇮🇹 Italiano</a>
-        <a href="/set-lang?lang=fr" class="lang-btn">🇫🇷 Francese</a>
+<div class="card">
+    <h2>🌍 Lingua interfaccia</h2>
+    <p>Seleziona la lingua preferita. (Il contenuto tecnico rimane in italiano.)</p>
+    <div class="button-row">
+        <a href="/set-lang?lang=it" class="btn btn-secondary">🇮🇹 Italiano</a>
+        <a href="/set-lang?lang=fr" class="btn btn-secondary">🇫🇷 Francese</a>
     </div>
+</div>
 
-    <hr />
+<div class="card">
+    <h2>🔐 Accesso al gestionale</h2>
+    <p>
+        Per usare tutte le funzionalità devi effettuare il login.
+        In base al tuo ruolo verrai reindirizzato automaticamente:
+    </p>
+    <ul>
+        <li>👔 <strong>Manager/Admin</strong> → Dashboard manager</li>
+        <li>👷 <strong>Caposquadra</strong> → Dashboard caposquadra</li>
+    </ul>
 
-    <h2>Accesso Utenti</h2>
-
-    <div class="role-buttons">
-        <a class="btn manager">👔 Manager</a>
-        <a href="/capo/rapportini/nuovo" class="btn capo">👷‍♂️ Caposquadra</a>
+    <div class="button-row">
+        <a href="/login" class="btn btn-primary">🔐 Login</a>
     </div>
-
 </div>
 {% endblock %}
