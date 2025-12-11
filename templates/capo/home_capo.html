@@ -1,42 +1,30 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Area Caposquadra – Lenta France{% endblock %}
+{% block title %}Dashboard Caposquadra – Lenta France{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">👷 Area Caposquadra</h1>
+    <h1 class="page-title">👷 Dashboard Caposquadra</h1>
     <p class="page-subtitle">
-        Compila fiches e rapportini giornalieri solo per i cantieri a te assegnati.
+        Qui puoi compilare i rapportini giornalieri, le fiches di cantiere
+        e vedere lo stato dei tuoi cantieri.
     </p>
 </div>
 
 <div class="dashboard-grid">
-
-    <!-- Cantieri assegnati -->
+    <!-- Rapportino giornaliero -->
     <section class="card">
         <div class="card-header">
-            <div class="card-title">🏗️ I miei cantieri</div>
-            <span class="card-badge">Assegnati</span>
+            <div class="card-title">📝 Nuovo rapportino</div>
+            <span class="card-badge">Giornaliero</span>
         </div>
         <div class="card-body">
-            <p>Visualizza la lista dei cantieri dove sei responsabile.</p>
+            <p>
+                Compila il rapportino giornaliero con ore, personale, macchinari e attività svolte.
+            </p>
             <div class="button-row">
-                <a href="/capo/cantieri" class="btn btn-secondary">📋 Elenco cantieri</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Rapportini -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">📝 Rapportini giornalieri</div>
-            <span class="card-badge">Compilazione</span>
-        </div>
-        <div class="card-body">
-            <p>Registra attività, personale e ore lavorate per il cantiere selezionato.</p>
-            <div class="button-row">
-                <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
-                <a href="/capo/rapportini" class="btn btn-secondary">📊 I miei rapportini</a>
+                <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Compila rapportino</a>
+                <a href="/capo/rapportini" class="btn btn-secondary">📋 Rapportini inviati</a>
             </div>
         </div>
     </section>
@@ -45,16 +33,33 @@
     <section class="card">
         <div class="card-header">
             <div class="card-title">📄 Fiches di cantiere</div>
-            <span class="card-badge">Dettagli</span>
+            <span class="card-badge">Documenti</span>
         </div>
         <div class="card-body">
-            <p>Inserisci o aggiorna le informazioni di un cantiere a te assegnato.</p>
+            <p>
+                Compila fiches operative legate ai lavori in corso nei cantieri assegnati.
+            </p>
             <div class="button-row">
                 <a href="/capo/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
-                <a href="/capo/fiches" class="btn btn-secondary">📁 Le mie fiches</a>
+                <a href="/capo/fiches" class="btn btn-secondary">📚 Fiches compilate</a>
             </div>
         </div>
     </section>
 
+    <!-- Cantieri assegnati (placeholder) -->
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">🏗️ Cantieri assegnati</div>
+            <span class="card-badge">Coming soon</span>
+        </div>
+        <div class="card-body">
+            <p>
+                In futuro qui vedrai la lista dei cantieri a te assegnati, con stato e informazioni principali.
+            </p>
+            <div class="button-row">
+                <a href="/" class="btn btn-secondary">⬅️ Torna alla home</a>
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}
