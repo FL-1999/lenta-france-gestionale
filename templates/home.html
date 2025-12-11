@@ -5,34 +5,67 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">🏗️ Lenta France – Gestionale Cantieri</h1>
-    <p class="page-subtitle">
-        Gestionale per cantieri, macchinari, fiches e rapportini giornalieri,
-        con accesso dedicato per Manager e Capisquadra.
-    </p>
+
+    {% if lang == "fr" %}
+        <p class="page-subtitle">
+            Plateforme de gestion des chantiers, machines, fiches et rapports journaliers.
+        </p>
+    {% else %}
+        <p class="page-subtitle">
+            Gestionale per cantieri, macchinari, fiches e rapportini giornalieri di Lenta France.
+        </p>
+    {% endif %}
 </div>
 
-<div class="card">
-    <h2>🌍 Lingua interfaccia</h2>
-    <p>Seleziona la lingua preferita. (Il contenuto tecnico rimane in italiano.)</p>
-    <div class="button-row">
-        <a href="/set-lang?lang=it" class="btn btn-secondary">🇮🇹 Italiano</a>
-        <a href="/set-lang?lang=fr" class="btn btn-secondary">🇫🇷 Francese</a>
+<div class="home-card">
+    <h2>Seleziona la tua area 👇</h2>
+    <p class="subtitle">
+        Accedi con il tuo utente (manager o caposquadra) e usa le funzioni dedicate.
+    </p>
+
+    <div class="dashboard-grid">
+
+        <!-- Area Manager -->
+        <section class="card">
+            <div class="card-header">
+                <div class="card-title">👔 Area Manager</div>
+                <span class="card-badge">Amministrazione</span>
+            </div>
+            <div class="card-body">
+                <p>
+                    Gestione completa di cantieri, macchinari, fiches e rapportini.
+                </p>
+                <div class="button-row">
+                    <a href="/login" class="btn btn-primary">🔐 Login Manager</a>
+                    <a href="/manager/dashboard" class="btn btn-secondary">📊 Vai alla dashboard</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Area Caposquadra -->
+        <section class="card">
+            <div class="card-header">
+                <div class="card-title">👷 Area Caposquadra</div>
+                <span class="card-badge">Operativo</span>
+            </div>
+            <div class="card-body">
+                <p>
+                    Compilazione di fiches e rapportini solo per i cantieri assegnati.
+                </p>
+                <div class="button-row">
+                    <a href="/login" class="btn btn-primary">🔐 Login Caposquadra</a>
+                    <a href="/capo/dashboard" class="btn btn-secondary">📋 Vai all’area capo</a>
+                </div>
+            </div>
+        </section>
+
     </div>
-</div>
 
-<div class="card">
-    <h2>🔐 Accesso al gestionale</h2>
-    <p>
-        Per usare tutte le funzionalità devi effettuare il login.
-        In base al tuo ruolo verrai reindirizzato automaticamente:
-    </p>
-    <ul>
-        <li>👔 <strong>Manager/Admin</strong> → Dashboard manager</li>
-        <li>👷 <strong>Caposquadra</strong> → Dashboard caposquadra</li>
-    </ul>
-
-    <div class="button-row">
-        <a href="/login" class="btn btn-primary">🔐 Login</a>
+    <div class="home-actions">
+        <p>
+            Oppure entra direttamente nella pagina di autenticazione:
+        </p>
+        <a href="/login" class="btn btn-primary">🔐 Vai al login</a>
     </div>
 </div>
 {% endblock %}
