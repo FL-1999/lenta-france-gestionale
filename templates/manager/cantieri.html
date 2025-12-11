@@ -3,21 +3,23 @@
 {% block title %}Cantieri – Manager{% endblock %}
 
 {% block content %}
-<h1 class="page-title">
-  <span class="page-icon page-icon--sites" aria-hidden="true">
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M4 11.5L12 5l8 6.5V20H4z" stroke="currentColor" stroke-linejoin="round"/>
-      <path d="M10 20v-5h4v5" stroke="currentColor" stroke-linecap="round"/>
-    </svg>
-  </span>
-  Gestione cantieri
-</h1>
-<div class="actions">
-  <a href="/manager/cantieri/nuovo" class="btn btn-primary btn--cantieri">➕ Nuovo cantiere</a>
+<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+  <h1 class="page-title">
+    <span class="page-icon page-icon--sites" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 11.5L12 5l8 6.5V20H4z" stroke="currentColor" stroke-linejoin="round"/>
+        <path d="M10 20v-5h4v5" stroke="currentColor" stroke-linecap="round"/>
+      </svg>
+    </span>
+    Gestione cantieri
+  </h1>
+  <div class="actions">
+    <a href="/manager/cantieri/nuovo" class="btn btn-lg btn-primary btn--cantieri">➕ Nuovo cantiere</a>
+  </div>
 </div>
 
 {% if sites %}
-<table>
+<table class="table">
   <thead>
     <tr>
       <th>Nome</th>
@@ -37,7 +39,7 @@
       <td>{{ s.status.value if s.status else "-" }}</td>
       <td>{{ "Sì" if s.is_active else "No" }}</td>
       <td>
-        <a href="/manager/cantieri/{{ s.id }}/modifica">Modifica</a>
+        <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-sm btn-secondary btn--cantieri">Modifica</a>
       </td>
     </tr>
     {% endfor %}

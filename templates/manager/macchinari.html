@@ -16,7 +16,7 @@
 <p class="page-subtitle">Elenco di tutti i macchinari registrati.</p>
 
 <div class="actions">
-  <a href="/manager/macchinari/nuovo" class="btn btn-primary btn--macchinari">➕ Nuovo macchinario</a>
+  <a href="/manager/macchinari/nuovo" class="btn btn-lg btn-primary btn--macchinari">➕ Nuovo macchinario</a>
 </div>
 
 {% if machines and machines|length > 0 %}
@@ -47,10 +47,10 @@
         </td>
         <td>{{ "Sì" if m.is_active else "No" }}</td>
         <td>
-          <div class="table-actions">
-            <a href="/manager/macchinari/{{ m.id }}" class="btn btn-link">Dettaglio</a>
-            <a href="/manager/macchinari/modifica/{{ m.id }}" class="btn btn-link">Modifica</a>
-            <a href="/manager/macchinari/assegna/{{ m.id }}" class="btn btn-link">Assegna a cantiere</a>
+          <div class="table-actions d-flex flex-wrap gap-2">
+            <a href="/manager/macchinari/{{ m.id }}" class="btn btn-sm btn-secondary btn--macchinari">Dettaglio</a>
+            <a href="/manager/macchinari/modifica/{{ m.id }}" class="btn btn-sm btn-secondary btn--macchinari">Modifica</a>
+            <a href="/manager/macchinari/assegna/{{ m.id }}" class="btn btn-sm btn-secondary btn--macchinari">Assegna a cantiere</a>
           </div>
         </td>
       </tr>
