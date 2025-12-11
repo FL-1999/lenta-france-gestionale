@@ -1,5 +1,5 @@
 from enum import Enum as PyEnum
-from datetime import datetime
+from datetime import datetime, date
 
 from sqlalchemy import (
     Column,
@@ -19,7 +19,7 @@ from database import Base
 
 
 # ============================================================
-# ENUM RUOLI UTENTE
+# ENUM
 # ============================================================
 
 class RoleEnum(PyEnum):
@@ -28,8 +28,29 @@ class RoleEnum(PyEnum):
     caposquadra = "caposquadra"
 
 
+# Questi tre servono perché vengono importati in schemas.py
+class SiteStatusEnum(PyEnum):
+    active = "active"
+    closed = "closed"
+    planned = "planned"
+
+
+class MachineTypeEnum(PyEnum):
+    escavatore = "escavatore"
+    autocarro = "autocarro"
+    furgone = "furgone"
+    altro = "altro"
+
+
+class FicheTypeEnum(PyEnum):
+    sicurezza = "sicurezza"
+    produzione = "produzione"
+    qualita = "qualita"
+    altro = "altro"
+
+
 # ============================================================
-# MIXIN PER TIMESTAMP (CREATED_AT / UPDATED_AT)
+# MIXIN PER TIMESTAMP
 # ============================================================
 
 class TimestampMixin:
@@ -90,6 +111,8 @@ class Site(Base, TimestampMixin):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
 
+    status = Column(Enum(SiteStatusEnum), nullable=False, default=SiteStatusEnum.active)
+
     is_active = Column(Boolean, default=True, nullable=False)
 
     # Relazioni
@@ -113,8 +136,8 @@ class Machine(Base, TimestampMixin):
     name = Column(String(255), nullable=False)
     code = Column(String(50), unique=True, index=True, nullable=True)
 
-    machine_type = Column(String(100), nullable=True)  # es. "Escavatore", "Furgone"
-    plate = Column(String(50), nullable=True)          # targa, se presente
+    machine_type = Column(Enum(MachineTypeEnum), nullable=True)
+    plate = Column(String(50), nullable=True)  # targa, se presente
 
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
     site = relationship("Site", back_populates="machines")
@@ -137,7 +160,7 @@ class Report(Base, TimestampMixin):
     # Data del rapportino
     date = Column(Date, nullable=False)
 
-    # Cantiere: o referenza al Site o almeno nome/codice
+    # Cantiere: opzionale FK al Site + nome/codice libero
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
     site = relationship("Site", back_populates="reports")
 
@@ -172,6 +195,8 @@ class Fiche(Base, TimestampMixin):
 
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
+
+    fiche_type = Column(Enum(FicheTypeEnum), nullable=True)
 
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
     site = relationship("Site", back_populates="fiches")
