@@ -31,8 +31,7 @@
         <label for="role">Ruolo*</label>
         <select id="role" name="role" required>
             {% for r in role_choices %}
-                {% set option_value = r.value if hasattr(r, "value") else (r.name if hasattr(r, "name") else r) %}
-                <option value="{{ option_value }}" {% if form_role == option_value %}selected{% endif %}>{{ option_value }}</option>
+                <option value="{{ r.value }}" {% if form_role == r.value %}selected{% endif %}>{{ r.value }}</option>
             {% endfor %}
         </select>
     </div>
