@@ -13,6 +13,7 @@ from auth import (
     authenticate_user,
     create_access_token,
     get_current_active_user,
+    get_current_active_user_html,
 )
 from models import User, RoleEnum, Report
 from routers import users, sites, machines, reports, fiches
@@ -211,7 +212,7 @@ def login_api(
 @app.get("/manager/dashboard", response_class=HTMLResponse)
 def manager_dashboard(
     request: Request,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_html),
 ):
     """
     Dashboard manager con accesso a cantieri, fiches, rapportini e macchinari.
@@ -229,7 +230,7 @@ def manager_dashboard(
 @app.get("/capo/dashboard", response_class=HTMLResponse)
 def capo_dashboard(
     request: Request,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_html),
 ):
     """
     Dashboard caposquadra con funzioni limitate ai cantieri assegnati.
@@ -247,7 +248,7 @@ def capo_dashboard(
 @app.get("/capo/rapportini/nuovo", response_class=HTMLResponse)
 def pagina_nuovo_rapportino_capo(
     request: Request,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_html),
 ):
     """
     Pagina per creare un nuovo rapportino giornaliero (caposquadra).
@@ -265,7 +266,7 @@ def pagina_nuovo_rapportino_capo(
 @app.get("/manager/rapportini", response_class=HTMLResponse)
 def manager_rapportini(
     request: Request,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_html),
 ):
     """
     Pagina manager: lista dei rapportini salvati nel database.
