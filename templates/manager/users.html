@@ -38,7 +38,13 @@
                                 <a class="btn btn-link" href="/manager/utenti/{{ u.id }}/modifica">Modifica</a>
                                 <a class="btn btn-link" href="/manager/utenti/{{ u.id }}/reset-password">Reset password</a>
                                 <form method="post" action="/manager/utenti/{{ u.id }}/toggle-attivo" style="display:inline;">
-                                    <button type="submit" class="btn btn-link">{{ 'Disattiva' if u.is_active else 'Attiva' }}</button>
+                                    <button type="submit" class="btn btn-link">
+                                        {% if u.is_active %}
+                                            Disattiva
+                                        {% else %}
+                                            Attiva
+                                        {% endif %}
+                                    </button>
                                 </form>
                             </div>
                         </td>
