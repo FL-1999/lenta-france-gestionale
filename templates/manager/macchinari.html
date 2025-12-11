@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Macchinari – Manager{% endblock %}
+
+{% block content %}
+<h1>Gestione macchinari</h1>
+<div class="actions">
+  <a href="/manager/macchinari/nuovo" class="button">➕ Nuovo macchinario</a>
+</div>
+
+<form method="get" class="filters">
+  <label>Tipo
+    <select name="tipo">
+      <option value="">Tutti</option>
+      {% for t in machine_types %}
+      <option value="{{ t.value }}" {% if filter_type == t.value %}selected{% endif %}>{{ t.value }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Stato
+    <select name="stato">
+      <option value="">Tutti</option>
+      {% for s in status_choices %}
+      <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Cantiere
+    <select name="cantiere">
+      <option value="">Tutti</option>
+      {% for s in sites %}
+      <option value="{{ s.id }}" {% if filter_site and filter_site == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Nome
+    <input type="text" name="nome" value="{{ filter_name or '' }}" placeholder="Cerca per nome">
+  </label>
+  <button type="submit">Filtra</button>
+</form>
+
+{% if machines %}
+<table>
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Tipo</th>
+      <th>Stato</th>
+      <th>Cantiere assegnato</th>
+      <th>Note</th>
+      <th>Azioni</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in machines %}
+    <tr>
+      <td>{{ m.name }}</td>
+      <td>{{ m.machine_type.value if m.machine_type else '-' }}</td>
+      <td>{{ m.status }}</td>
+      <td>
+        {% if m.site %}
+          {{ m.site.name }} ({{ m.site.code }})
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>{{ m.notes or '—' }}</td>
+      <td>
+        <a href="/manager/macchinari/{{ m.id }}">Dettaglio</a> |
+        <a href="/manager/macchinari/assegna/{{ m.id }}">Assegna a cantiere</a> |
+        <a href="/manager/macchinari/modifica/{{ m.id }}">Modifica</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Nessun macchinario trovato.</p>
+{% endif %}
+{% endblock %}

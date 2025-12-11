@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Assegna macchinario{% endblock %}
+
+{% block content %}
+<h1>Assegna macchinario a cantiere</h1>
+
+<p>Macchinario: <strong>{{ machine.name }}</strong></p>
+
+<form method="post">
+  <label>Seleziona cantiere
+    <select name="site_id">
+      <option value="">Nessun cantiere</option>
+      {% for s in sites %}
+      <option value="{{ s.id }}" {% if machine.site_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <div class="form-actions">
+    <button type="submit">Conferma assegnazione</button>
+    <a href="/manager/macchinari/{{ machine.id }}">Annulla</a>
+  </div>
+</form>
+{% endblock %}
