@@ -193,19 +193,12 @@ def login_api(
             "login.html",
             {
                 "request": request,
-                "login_error": "Email o password non corretti oppure utente disattivato",
+                "login_error": "Email o password non corretti",
             },
             status_code=400,
         )
     if hasattr(user, "is_active") and not user.is_active:
-        return templates.TemplateResponse(
-            "login.html",
-            {
-                "request": request,
-                "login_error": "Utente disattivato",
-            },
-            status_code=400,
-        )
+        raise HTTPException(status_code=400, detail="Utente disattivato")
 
     # Crea il token JWT (usa la stessa funzione di /auth/token)
     access_token = create_access_token(data={"sub": user.email})
@@ -555,6 +548,12 @@ async def manager_toggle_user_active(
     except HTTPException:
         db.rollback()
         raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errore durante l'aggiornamento dello stato utente",
+        )
     finally:
         db.close()
 

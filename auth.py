@@ -55,8 +55,6 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
         return None
     if not verify_password(password, user.hashed_password):
         return None
-    if hasattr(user, "is_active") and user.is_active is False:
-        return None
     return user
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -174,6 +172,8 @@ async def login_for_access_token_form(
             detail="Email o password non corretti oppure utente disattivato",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if hasattr(user, "is_active") and not user.is_active:
+        raise HTTPException(status_code=400, detail="Utente disattivato")
     return _generate_token_for_user(user)
 
 @router.post("/login", response_model=Token)
@@ -188,6 +188,8 @@ async def login_json(
             detail="Email o password non corretti oppure utente disattivato",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if hasattr(user, "is_active") and not user.is_active:
+        raise HTTPException(status_code=400, detail="Utente disattivato")
     return _generate_token_for_user(user)
 
 @router.get("/me")
