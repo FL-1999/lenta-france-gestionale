@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Dettaglio rapportino – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap">
+    <div>
+        <h1>📝 Rapportino del {{ report.date.strftime("%d/%m/%Y") }}</h1>
+        <p class="subtitle">Dettaglio completo del rapportino selezionato.</p>
+    </div>
+    <div class="actions">
+        <a href="/manager/rapportini" class="btn btn-secondary">← Torna ai rapportini</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <h4 class="mb-1">Cantiere</h4>
+                <p class="mb-3">
+                    {% if report.site %}
+                        {{ report.site.name }}{% if report.site.code %} ({{ report.site.code }}){% endif %}
+                    {% else %}
+                        {{ report.site_name_or_code }}
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-3">
+                <h4 class="mb-1">Ore totali</h4>
+                <p class="mb-3">{{ "%.1f"|format(report.total_hours) }}</p>
+            </div>
+            <div class="col-md-3">
+                <h4 class="mb-1">Operai</h4>
+                <p class="mb-3">{{ report.workers_count }}</p>
+            </div>
+            <div class="col-md-6">
+                <h4 class="mb-1">Caposquadra</h4>
+                <p class="mb-3">
+                    {% if report.created_by %}
+                        {{ report.created_by.full_name or report.created_by.email }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h4 class="mb-1">Macchinari</h4>
+                <p class="mb-3">{{ report.machines_used or '-' }}</p>
+            </div>
+            <div class="col-12">
+                <h4 class="mb-1">Attività</h4>
+                <p class="mb-3">{{ report.activities or '-' }}</p>
+            </div>
+            <div class="col-12">
+                <h4 class="mb-1">Note</h4>
+                <p class="mb-0">{{ report.notes or '-' }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

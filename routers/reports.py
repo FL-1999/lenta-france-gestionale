@@ -1,18 +1,22 @@
 from datetime import date as dt_date
+from math import ceil
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
+from auth import get_current_active_user, get_current_active_user_html
 from database import get_db
-from models import User, RoleEnum, Report
-from auth import get_current_active_user
+from models import RoleEnum, Report, Site, User
 
 router = APIRouter(
-    prefix="/reports",
+    prefix="",
     tags=["reports"],
 )
+
+templates = Jinja2Templates(directory="templates")
 
 
 # ===========================
@@ -53,7 +57,9 @@ class ReportOut(ReportBase):
 # ENDPOINTS
 # ===========================
 
-@router.post("/", response_model=ReportOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/reports", response_model=ReportOut, status_code=status.HTTP_201_CREATED
+)
 def create_report(
     report_in: ReportCreate,
     db: Session = Depends(get_db),
@@ -107,7 +113,7 @@ def create_report(
     )
 
 
-@router.get("/", response_model=List[ReportOut])
+@router.get("/reports", response_model=List[ReportOut])
 def list_reports_for_manager(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -148,3 +154,114 @@ def list_reports_for_manager(
         )
 
     return result
+
+
+@router.get("/manager/rapportini", include_in_schema=False)
+def manager_reports_list(
+    request: Request,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    site_id: int | None = None,
+    created_by: int | None = None,
+    page: int = 1,
+    per_page: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato")
+
+    query = db.query(Report)
+
+    if start_date:
+        try:
+            parsed_start = dt_date.fromisoformat(start_date)
+            query = query.filter(Report.date >= parsed_start)
+        except ValueError:
+            start_date = None
+
+    if end_date:
+        try:
+            parsed_end = dt_date.fromisoformat(end_date)
+            query = query.filter(Report.date <= parsed_end)
+        except ValueError:
+            end_date = None
+
+    if site_id:
+        query = query.filter(Report.site_id == site_id)
+
+    if created_by:
+        query = query.filter(Report.created_by_id == created_by)
+
+    page = max(1, page)
+    per_page = max(1, per_page)
+
+    total_reports = query.count()
+    total_pages = max(1, ceil(total_reports / per_page))
+    offset_value = (page - 1) * per_page
+
+    reports_page = (
+        query.order_by(Report.date.desc(), Report.id.desc())
+        .offset(offset_value)
+        .limit(per_page)
+        .all()
+    )
+
+    sites = db.query(Site).order_by(Site.name).all()
+    capisquadra = (
+        db.query(User)
+        .filter(User.role == RoleEnum.caposquadra)
+        .order_by(User.full_name)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "manager/rapportini_list.html",
+        {
+            "request": request,
+            "user": current_user,
+            "user_role": "manager",
+            "reports": reports_page,
+            "page": page,
+            "total_pages": total_pages,
+            "filters": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "site_id": site_id,
+                "created_by": created_by,
+            },
+            "sites": sites,
+            "capisquadra": capisquadra,
+        },
+    )
+
+
+@router.get("/manager/rapportini/{report_id}", include_in_schema=False)
+def manager_report_detail(
+    report_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato")
+
+    report = (
+        db.query(Report)
+        .options(joinedload(Report.created_by), joinedload(Report.site))
+        .filter(Report.id == report_id)
+        .first()
+    )
+
+    if not report:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rapportino non trovato")
+
+    return templates.TemplateResponse(
+        "manager/rapportino_detail.html",
+        {
+            "request": request,
+            "user": current_user,
+            "user_role": "manager",
+            "report": report,
+        },
+    )

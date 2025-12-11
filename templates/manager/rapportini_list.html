@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Rapportini – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap">
+    <div>
+        <h1>📋 Rapportini</h1>
+        <p class="subtitle">Filtra e consulta i rapportini giornalieri inviati dai capisquadra.</p>
+    </div>
+    <div class="actions">
+        <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">Data inizio</label>
+                <input type="date" id="start_date" name="start_date" class="form-control" value="{{ filters.start_date or '' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">Data fine</label>
+                <input type="date" id="end_date" name="end_date" class="form-control" value="{{ filters.end_date or '' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="site_id" class="form-label">Cantiere</label>
+                <select id="site_id" name="site_id" class="form-select">
+                    <option value="">Tutti</option>
+                    {% for s in sites %}
+                        <option value="{{ s.id }}" {% if filters.site_id and filters.site_id == s.id %}selected{% endif %}>
+                            {{ s.name }}{% if s.code %} ({{ s.code }}){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="created_by" class="form-label">Caposquadra</label>
+                <select id="created_by" name="created_by" class="form-select">
+                    <option value="">Tutti</option>
+                    {% for c in capisquadra %}
+                        <option value="{{ c.id }}" {% if filters.created_by and filters.created_by == c.id %}selected{% endif %}>
+                            {{ c.full_name or c.email }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 d-flex gap-2 mt-2">
+                <button type="submit" class="btn btn-primary">Filtra</button>
+                <a href="/manager/rapportini" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if reports and reports|length > 0 %}
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Cantiere</th>
+                        <th>Ore totali</th>
+                        <th>Operai</th>
+                        <th>Caposquadra</th>
+                        <th>Note/attività</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reports %}
+                    <tr>
+                        <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
+                        <td>
+                            {% if r.site %}
+                                {{ r.site.name }}{% if r.site.code %} ({{ r.site.code }}){% endif %}
+                            {% else %}
+                                {{ r.site_name_or_code }}
+                            {% endif %}
+                        </td>
+                        <td>{{ "%.1f"|format(r.total_hours) }}</td>
+                        <td>{{ r.workers_count }}</td>
+                        <td>
+                            {% if r.created_by %}
+                                {{ r.created_by.full_name or r.created_by.email }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set preview = r.notes or r.activities or "-" %}
+                            {% if preview|length > 40 %}
+                                {{ preview[:40] }}…
+                            {% else %}
+                                {{ preview }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="/manager/rapportini/{{ r.id }}" class="btn btn-sm btn-primary">Vedi</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>Pagina {{ page }} di {{ total_pages }}</div>
+            <div class="d-flex gap-2">
+                {% if page > 1 %}
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ request.url.include_query_params(page=page-1) }}">&laquo; Precedente</a>
+                {% endif %}
+                {% if page < total_pages %}
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ request.url.include_query_params(page=page+1) }}">Successiva &raquo;</a>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <p class="mb-0">Nessun rapportino trovato con i filtri selezionati.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
