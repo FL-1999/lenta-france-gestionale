@@ -55,6 +55,8 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
         return None
     if not verify_password(password, user.hashed_password):
         return None
+    if hasattr(user, "is_active") and user.is_active is False:
+        return None
     return user
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -90,6 +92,11 @@ async def get_current_user(
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
+    if hasattr(current_user, "is_active") and current_user.is_active is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Utente disattivato",
+        )
     return current_user
 
 async def get_current_user_html(
@@ -125,6 +132,11 @@ async def get_current_user_html(
 async def get_current_active_user_html(
     current_user: Annotated[User, Depends(get_current_user_html)],
 ) -> User:
+    if hasattr(current_user, "is_active") and current_user.is_active is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Utente disattivato",
+        )
     return current_user
 
 async def get_current_manager_user(
@@ -159,7 +171,7 @@ async def login_for_access_token_form(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o password non corretti",
+            detail="Email o password non corretti oppure utente disattivato",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return _generate_token_for_user(user)
@@ -173,7 +185,7 @@ async def login_json(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o password non corretti",
+            detail="Email o password non corretti oppure utente disattivato",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return _generate_token_for_user(user)

@@ -193,7 +193,16 @@ def login_api(
             "login.html",
             {
                 "request": request,
-                "login_error": "Email o password non corretti",
+                "login_error": "Email o password non corretti oppure utente disattivato",
+            },
+            status_code=400,
+        )
+    if hasattr(user, "is_active") and not user.is_active:
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "login_error": "Utente disattivato",
             },
             status_code=400,
         )
@@ -295,6 +304,7 @@ async def manager_new_user_get(
             "user": current_user,
             "mode": "create",
             "user_obj": None,
+            "user_id": None,
             "role_choices": list(RoleEnum),
             "language_choices": ["it", "fr"],
             "error_message": None,
@@ -333,6 +343,7 @@ async def manager_new_user_post(
                 "user": current_user,
                 "mode": "create",
                 "user_obj": None,
+                "user_id": None,
                 "role_choices": list(RoleEnum),
                 "language_choices": ["it", "fr"],
                 "error_message": error_message,
@@ -383,6 +394,260 @@ async def manager_new_user_post(
     except Exception:
         db.rollback()
         return render_form("Errore durante la creazione dell'utente. Riprova.")
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/manager/utenti", status_code=303)
+
+
+@app.get("/manager/utenti/{user_id}/modifica", response_class=HTMLResponse)
+async def manager_edit_user_get(
+    request: Request,
+    user_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
+
+    db = SessionLocal()
+    try:
+        user_to_edit = db.query(User).filter(User.id == user_id).first()
+        if not user_to_edit:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/user_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "mode": "edit",
+            "user_obj": user_to_edit,
+            "user_id": user_to_edit.id,
+            "role_choices": list(RoleEnum),
+            "language_choices": ["it", "fr"],
+            "error_message": None,
+            "form_email": user_to_edit.email,
+            "form_full_name": user_to_edit.full_name or "",
+            "form_role": user_to_edit.role.value if user_to_edit.role else "",
+            "form_language": user_to_edit.language or "",
+        },
+    )
+
+
+@app.post("/manager/utenti/{user_id}/modifica", response_class=HTMLResponse)
+async def manager_edit_user_post(
+    request: Request,
+    user_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
+
+    form = await request.form()
+    email = (form.get("email") or "").strip()
+    full_name = (form.get("full_name") or "").strip()
+    role_str = (form.get("role") or "").strip()
+    language = (form.get("language") or "").strip() or None
+    user_obj = None
+
+    def render_form(error_message: str, status_code: int = 400):
+        return templates.TemplateResponse(
+            "manager/user_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "mode": "edit",
+                "user_obj": user_obj,
+                "user_id": user_id,
+                "role_choices": list(RoleEnum),
+                "language_choices": ["it", "fr"],
+                "error_message": error_message,
+                "form_email": email,
+                "form_full_name": full_name,
+                "form_role": role_str,
+                "form_language": language or "",
+            },
+            status_code=status_code,
+        )
+
+    if not email:
+        return render_form("Email obbligatoria.")
+    if not role_str:
+        return render_form("Ruolo obbligatorio.")
+
+    role_enum = None
+    try:
+        role_enum = RoleEnum(role_str)
+    except Exception:
+        try:
+            cleaned_role = role_str.split(".")[-1]
+            role_enum = RoleEnum[cleaned_role]
+        except Exception:
+            return render_form("Ruolo non valido.")
+
+    db = SessionLocal()
+    try:
+        user_to_edit = db.query(User).filter(User.id == user_id).first()
+        if not user_to_edit:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+        user_obj = user_to_edit
+
+        existing = (
+            db.query(User)
+            .filter(User.email == email, User.id != user_to_edit.id)
+            .first()
+        )
+        if existing:
+            return render_form("Esiste già un utente con questa email.", status_code=400)
+
+        user_to_edit.email = email
+        user_to_edit.full_name = full_name or None
+        user_to_edit.role = role_enum
+        user_to_edit.language = language
+
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        return render_form("Errore durante l'aggiornamento dell'utente. Riprova.")
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/manager/utenti", status_code=303)
+
+
+@app.post("/manager/utenti/{user_id}/toggle-attivo", response_class=HTMLResponse)
+async def manager_toggle_user_active(
+    request: Request,
+    user_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
+
+    db = SessionLocal()
+    try:
+        user_to_toggle = db.query(User).filter(User.id == user_id).first()
+        if not user_to_toggle:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+
+        if user_to_toggle.id == current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Non puoi modificare il tuo stato attivo",
+            )
+
+        user_to_toggle.is_active = not bool(user_to_toggle.is_active)
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/manager/utenti", status_code=303)
+
+
+@app.get("/manager/utenti/{user_id}/reset-password", response_class=HTMLResponse)
+async def manager_reset_password_get(
+    request: Request,
+    user_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
+
+    db = SessionLocal()
+    try:
+        user_to_update = db.query(User).filter(User.id == user_id).first()
+        if not user_to_update:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/user_reset_password.html",
+        {
+            "request": request,
+            "user": current_user,
+            "target_user": user_to_update,
+            "error_message": None,
+        },
+    )
+
+
+@app.post("/manager/utenti/{user_id}/reset-password", response_class=HTMLResponse)
+async def manager_reset_password_post(
+    request: Request,
+    user_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
+
+    form = await request.form()
+    password = (form.get("password") or "").strip()
+    password_confirm = (form.get("password_confirm") or "").strip()
+    target_user = None
+
+    def render_form(error_message: str, status_code: int = 400):
+        return templates.TemplateResponse(
+            "manager/user_reset_password.html",
+            {
+                "request": request,
+                "user": current_user,
+                "target_user": target_user,
+                "error_message": error_message,
+            },
+            status_code=status_code,
+        )
+
+    if not password:
+        db = SessionLocal()
+        try:
+            target_user = db.query(User).filter(User.id == user_id).first()
+            if not target_user:
+                raise HTTPException(status_code=404, detail="Utente non trovato")
+        finally:
+            db.close()
+        return render_form("Password obbligatoria.")
+
+    db = SessionLocal()
+    try:
+        target_user = db.query(User).filter(User.id == user_id).first()
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+
+        if password_confirm and password != password_confirm:
+            return render_form("Le password non coincidono.")
+
+        target_user.hashed_password = hash_password(password)
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        return render_form("Errore durante il reset della password. Riprova.")
     finally:
         db.close()
 
