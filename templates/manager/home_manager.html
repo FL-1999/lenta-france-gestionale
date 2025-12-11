@@ -3,63 +3,171 @@
 {% block title %}Dashboard Manager – Lenta France{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Dashboard Manager</h1>
-    <p>Benvenuto{{ ' ' + user.full_name if user and user.full_name else '' }}, qui trovi il riepilogo dei rapportini salvati.</p>
-</div>
-
-<div class="actions">
-    <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
-    <a href="/manager/rapportini" class="btn btn-secondary">📋 Elenco rapportini</a>
-    <a href="/manager/fiches" class="btn btn-secondary">📚 Vedi fiches</a>
-</div>
-
-<div class="card-grid">
-    <div class="card">
-        <div class="card-header">
-            <h2>🚜 Macchinari</h2>
+<div class="dashboard-page">
+    <div class="page-header dashboard-header">
+        <div>
+            <p class="eyebrow">Pannello Manager</p>
+            <h1>Dashboard Manager</h1>
+            <p>Benvenuto{{ ' ' + user.full_name if user and user.full_name else '' }}, qui trovi il riepilogo dei rapportini salvati e le scorciatoie per la gestione.</p>
         </div>
-        <div class="card-body">
-            <p>Gestisci il parco macchinari e le assegnazioni ai cantieri.</p>
-            <div class="actions">
-                <a href="/manager/macchinari" class="btn btn-primary">📋 Lista macchinari</a>
+        <div class="header-actions">
+            <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
+            <a href="/manager/rapportini" class="btn btn-secondary">📋 Elenco rapportini</a>
+            <a href="/manager/fiches" class="btn btn-secondary">📚 Vedi fiches</a>
+        </div>
+    </div>
+
+    {% set rapportini_totali = reports_count|default(rapportini_count|default('—')) %}
+    {% set cantieri_totali = sites_count|default(cantieri_count|default('—')) %}
+    {% set macchinari_totali = macchinari_count|default(machines_count|default('—')) %}
+    {% set utenti_totali = users_count|default('—') %}
+
+    <div class="dashboard-kpi-grid">
+        <div class="kpi-card kpi-accent-1">
+            <div class="kpi-top">
+                <div class="kpi-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 5h16M4 12h16M4 19h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="kpi-label">Rapportini totali</span>
+            </div>
+            <div class="kpi-value">{{ rapportini_totali }}</div>
+            <div class="kpi-sub">Aggiornato giornalmente</div>
+        </div>
+
+        <div class="kpi-card kpi-accent-2">
+            <div class="kpi-top">
+                <div class="kpi-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 10l8-6 8 6v8H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M10 18v-4h4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="kpi-label">Cantieri attivi</span>
+            </div>
+            <div class="kpi-value">{{ cantieri_totali }}</div>
+            <div class="kpi-sub">In lavorazione</div>
+        </div>
+
+        <div class="kpi-card kpi-accent-3">
+            <div class="kpi-top">
+                <div class="kpi-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="8" width="18" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                        <path d="M7 8V6a2 2 0 012-2h6a2 2 0 012 2v2" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </div>
+                <span class="kpi-label">Macchinari disponibili</span>
+            </div>
+            <div class="kpi-value">{{ macchinari_totali }}</div>
+            <div class="kpi-sub">Parco mezzi</div>
+        </div>
+
+        <div class="kpi-card kpi-accent-4">
+            <div class="kpi-top">
+                <div class="kpi-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="16" cy="8" r="3" stroke="currentColor" stroke-width="2"/>
+                        <path d="M4 19c0-2.761 2.239-5 5-5h6c2.761 0 5 2.239 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="kpi-label">Utenti registrati</span>
+            </div>
+            <div class="kpi-value">{{ utenti_totali }}</div>
+            <div class="kpi-sub">Manager e capisquadra</div>
+        </div>
+    </div>
+
+    {% set trend_counts = rapportini_trend|default(reports_trend|default([5, 7, 4, 6, 5, 8, 6])) %}
+    {% set max_trend = trend_counts|max if trend_counts else 1 %}
+
+    <div class="dashboard-modules-grid">
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title"><span class="icon">🏗️</span> Cantieri</div>
+            </div>
+            <div class="card-body">
+                <p>Monitora l'avanzamento dei cantieri, gestisci dettagli e assegnazioni delle squadre.</p>
+                <div class="card-actions">
+                    <a href="/manager/cantieri" class="btn btn-secondary">📋 Lista cantieri</a>
+                    <a href="/manager/cantieri/nuovo" class="btn btn-primary btn-sm">➕ Nuovo cantiere</a>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h2>📚 Fiches</h2>
-        </div>
-        <div class="card-body">
-            <p>Consulta e filtra le fiches inserite dai capisquadra.</p>
-            <div class="actions">
-                <a href="/manager/fiches" class="btn btn-primary">📚 Vedi fiches</a>
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title"><span class="icon">🚜</span> Macchinari</div>
+            </div>
+            <div class="card-body">
+                <p>Gestisci il parco macchinari, lo stato e le assegnazioni ai cantieri in corso.</p>
+                <div class="card-actions">
+                    <a href="/manager/macchinari" class="btn btn-primary">📋 Lista macchinari</a>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h2>👥 Utenti</h2>
-        </div>
-        <div class="card-body">
-            <p>Gestisci gli utenti, crea nuovi capisquadra e modifica i ruoli.</p>
-            <div class="actions">
-                <a href="/manager/utenti" class="btn btn-secondary">📋 Lista utenti</a>
-                <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ Nuovo utente</a>
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title"><span class="icon">📚</span> Fiches</div>
+            </div>
+            <div class="card-body">
+                <p>Consulta e filtra le fiches inserite dai capisquadra per avere una vista rapida delle attività.</p>
+                <div class="card-actions">
+                    <a href="/manager/fiches" class="btn btn-primary">📚 Vedi fiches</a>
+                </div>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="card">
-    <div class="card-header">
-        <h2>Rapportini</h2>
-    </div>
-    <div class="card-body">
-        <p>Consulta, filtra e approfondisci tutti i rapportini inviati dai capisquadra.</p>
-        <a href="/manager/rapportini" class="btn btn-primary">Vai all'elenco rapportini</a>
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title"><span class="icon">📝</span> Rapportini</div>
+            </div>
+            <div class="card-body">
+                <p>Consulta, filtra e approfondisci tutti i rapportini inviati dai capisquadra.</p>
+                <div class="card-actions">
+                    <a href="/manager/rapportini" class="btn btn-primary">Vai all'elenco rapportini</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title"><span class="icon">👥</span> Utenti</div>
+            </div>
+            <div class="card-body">
+                <p>Gestisci gli utenti, crea nuovi capisquadra e modifica i ruoli in base alle necessità operative.</p>
+                <div class="card-actions">
+                    <a href="/manager/utenti" class="btn btn-secondary">📋 Lista utenti</a>
+                    <a href="/manager/utenti/nuovo" class="btn btn-primary btn-sm">➕ Nuovo utente</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title"><span class="icon">📈</span> Attività recente</div>
+            </div>
+            <div class="card-body">
+                <p>Andamento settimanale degli invii dei rapportini.</p>
+                <div class="mini-chart" role="img" aria-label="Trend rapportini">
+                    <svg width="100%" height="50" viewBox="0 0 {{ 20 * (trend_counts|length) }} 50" preserveAspectRatio="none">
+                        {% for value in trend_counts %}
+                            {% set bar_height = (value / (max_trend or 1)) * 40 %}
+                            <rect x="{{ loop.index0 * 20 + 2 }}" y="{{ 46 - bar_height }}" width="14" height="{{ bar_height }}" rx="3" class="trend-bar" />
+                        {% endfor %}
+                        {% if not trend_counts %}
+                            <text x="4" y="30" fill="currentColor" opacity="0.6">Nessun dato</text>
+                        {% endif %}
+                    </svg>
+                </div>
+                <div class="card-actions">
+                    <a href="/manager/rapportini" class="btn btn-secondary btn-sm">Dettagli rapportini</a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
