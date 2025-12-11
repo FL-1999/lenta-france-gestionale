@@ -1,145 +1,183 @@
+from enum import Enum as PyEnum
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
     Integer,
     String,
-    Boolean,
-    DateTime,
-    Enum,
-    ForeignKey,
+    Date,
     Float,
     Text,
-    Date,
+    Boolean,
+    ForeignKey,
+    Enum,
+    DateTime,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime
-import enum
 
 from database import Base
 
 
-class RoleEnum(str, enum.Enum):
+# ============================================================
+# ENUM RUOLI UTENTE
+# ============================================================
+
+class RoleEnum(PyEnum):
     admin = "admin"
     manager = "manager"
     caposquadra = "caposquadra"
 
 
-class User(Base):
+# ============================================================
+# MIXIN PER TIMESTAMP (CREATED_AT / UPDATED_AT)
+# ============================================================
+
+class TimestampMixin:
+    created_at = Column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+# ============================================================
+# MODELLO UTENTE
+# ============================================================
+
+class User(Base, TimestampMixin):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    full_name = Column(String, nullable=True)
+
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    full_name = Column(String(255), nullable=True)
+
+    hashed_password = Column(String(255), nullable=False)
+
     role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.caposquadra)
-    language = Column(String, default="it")  # "it" o "fr"
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    language = Column(String(10), nullable=True, default="it")
 
-    reports = relationship("DailyReport", back_populates="author")
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    # Relazioni
+    reports = relationship("Report", back_populates="created_by", cascade="all, delete-orphan")
+    fiches = relationship("Fiche", back_populates="created_by", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<User id={self.id} email={self.email} role={self.role}>"
 
 
-class SiteStatusEnum(str, enum.Enum):
-    aperto = "aperto"
-    in_corso = "in_corso"
-    chiuso = "chiuso"
+# ============================================================
+# MODELLO CANTIERE (SITE)
+# ============================================================
 
-
-class Site(Base):
+class Site(Base, TimestampMixin):
     __tablename__ = "sites"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    location = Column(String, nullable=True)
-    status = Column(Enum(SiteStatusEnum), default=SiteStatusEnum.aperto)
-    progress = Column(Integer, default=0)  # 0–100
-    description = Column(Text, nullable=True)
 
-    machines = relationship("Machine", back_populates="current_site")
-    reports = relationship("DailyReport", back_populates="site")
-    fiches = relationship("Fiche", back_populates="site")
+    name = Column(String(255), nullable=False)
+    code = Column(String(50), unique=True, index=True, nullable=True)
+
+    address = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True, default="France")
+
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    # Relazioni
+    reports = relationship("Report", back_populates="site", cascade="all, delete-orphan")
+    fiches = relationship("Fiche", back_populates="site", cascade="all, delete-orphan")
+    machines = relationship("Machine", back_populates="site", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<Site id={self.id} code={self.code} name={self.name}>"
 
 
-class MachineTypeEnum(str, enum.Enum):
-    escavatore = "escavatore"
-    pala_gommata = "pala_gommata"
-    macchina_pali = "macchina_pali"
-    macchina_paratie = "macchina_paratie"
-    altro = "altro"
+# ============================================================
+# MODELLO MACCHINARIO
+# ============================================================
 
-
-class Machine(Base):
+class Machine(Base, TimestampMixin):
     __tablename__ = "machines"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    model = Column(String, nullable=True)
-    type = Column(Enum(MachineTypeEnum), nullable=False)
-    current_site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
 
-    notes = Column(Text, nullable=True)        # note generali
-    issue_notes = Column(Text, nullable=True)  # problemi segnalati
-    has_issue = Column(Boolean, default=False)
+    name = Column(String(255), nullable=False)
+    code = Column(String(50), unique=True, index=True, nullable=True)
 
-    current_site = relationship("Site", back_populates="machines")
-    fiches = relationship("Fiche", back_populates="machine")
+    machine_type = Column(String(100), nullable=True)  # es. "Escavatore", "Furgone"
+    plate = Column(String(50), nullable=True)          # targa, se presente
+
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    site = relationship("Site", back_populates="machines")
+
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<Machine id={self.id} code={self.code} name={self.name}>"
 
 
-class DailyReport(Base):
-    __tablename__ = "daily_reports"
+# ============================================================
+# MODELLO REPORT (RAPPORTINO GIORNALIERO)
+# ============================================================
+
+class Report(Base, TimestampMixin):
+    __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
-    site_id = Column(Integer, ForeignKey("sites.id"), nullable=False)
-    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    date = Column(Date, default=datetime.utcnow)
-    weather = Column(String, nullable=True)
-    num_workers = Column(Integer, default=0)
-    hours_worked = Column(Float, default=0.0)
+    # Data del rapportino
+    date = Column(Date, nullable=False)
+
+    # Cantiere: o referenza al Site o almeno nome/codice
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    site = relationship("Site", back_populates="reports")
+
+    site_name_or_code = Column(String(255), nullable=False)
+
+    # Dati lavorativi
+    total_hours = Column(Float, nullable=False, default=0.0)
+    workers_count = Column(Integer, nullable=False, default=0)
+
+    machines_used = Column(Text, nullable=True)
+    activities = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
 
-    site = relationship("Site", back_populates="reports")
-    author = relationship("User", back_populates="reports")
+    # Chi ha creato il rapportino
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by = relationship("User", back_populates="reports")
+
+    def __repr__(self) -> str:
+        return f"<Report id={self.id} date={self.date} site={self.site_name_or_code}>"
 
 
-class FicheTypeEnum(str, enum.Enum):
-    palo = "palo"
-    paratia = "paratia"
+# ============================================================
+# MODELLO FICHE DI CANTIERE
+# ============================================================
 
-
-class Fiche(Base):
+class Fiche(Base, TimestampMixin):
     __tablename__ = "fiches"
 
     id = Column(Integer, primary_key=True, index=True)
-    site_id = Column(Integer, ForeignKey("sites.id"), nullable=False)
-    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=True)
 
-    type = Column(Enum(FicheTypeEnum), nullable=False)  # palo / paratia
-    panel_number = Column(String, nullable=True)
+    date = Column(Date, nullable=False)
 
-    # Per pali
-    diameter_mm = Column(Integer, nullable=True)
-    total_depth_m = Column(Float, nullable=True)
-
-    # Per paratie
-    paratia_depth_m = Column(Float, nullable=True)
-    paratia_width_m = Column(Float, nullable=True)
-
-    dig_date = Column(Date, nullable=True)
-    cast_date = Column(Date, nullable=True)
-
-    site = relationship("Site", back_populates="fiches")
-    machine = relationship("Machine", back_populates="fiches")
-    layers = relationship("StratigraphyLayer", back_populates="fiche")
-
-
-class StratigraphyLayer(Base):
-    __tablename__ = "stratigraphy_layers"
-
-    id = Column(Integer, primary_key=True, index=True)
-    fiche_id = Column(Integer, ForeignKey("fiches.id"), nullable=False)
-
-    from_m = Column(Float, nullable=False)
-    to_m = Column(Float, nullable=False)
+    title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
-    fiche = relationship("Fiche", back_populates="layers")
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    site = relationship("Site", back_populates="fiches")
+
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by = relationship("User", back_populates="fiches")
+
+    def __repr__(self) -> str:
+        return f"<Fiche id={self.id} date={self.date} title={self.title}>"
