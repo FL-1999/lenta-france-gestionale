@@ -206,5 +206,37 @@ class Fiche(Base, TimestampMixin):
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_by = relationship("User", back_populates="fiches")
 
+    # 🔹 Relazione con gli strati (StratigraphyLayer)
+    layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
+
     def __repr__(self) -> str:
         return f"<Fiche id={self.id} date={self.date} title={self.title}>"
+
+
+# ============================================================
+# MODELLO STRATO (STRATIGRAPHY LAYER)
+# ============================================================
+
+class StratigraphyLayer(Base, TimestampMixin):
+    """
+    Strato di stratigrafia collegato a una Fiche.
+    Lo definisco in modo generico, così il router fiches può usarlo
+    anche solo parzialmente (nome, profondità, note, ecc.).
+    """
+    __tablename__ = "stratigraphy_layers"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    fiche_id = Column(Integer, ForeignKey("fiches.id"), nullable=False)
+    fiche = relationship("Fiche", back_populates="layers")
+
+    name = Column(String(255), nullable=True)            # es. "Strato sabbioso"
+    description = Column(Text, nullable=True)            # descrizione libera
+
+    depth_from = Column(Float, nullable=True)            # profondità da (m)
+    depth_to = Column(Float, nullable=True)              # profondità a (m)
+
+    notes = Column(Text, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<StratigraphyLayer id={self.id} fiche_id={self.fiche_id} name={self.name}>"
