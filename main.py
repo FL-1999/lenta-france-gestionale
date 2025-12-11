@@ -17,24 +17,39 @@ Base.metadata.create_all(bind=engine)
 
 def create_initial_admin():
     """
-    Crea l’utente admin iniziale se non esiste.
+    Crea o aggiorna l'utente admin iniziale.
+    Forza sempre questa combinazione:
+        email:  lenta.federico@gmail.com
+        pass:   Fulvio72
+        ruolo:  admin
+        lingua: it
     """
     db = SessionLocal()
     try:
-        admin = db.query(User).filter(User.role == RoleEnum.admin).first()
+        # Cerchiamo per email, non solo per ruolo
+        admin = db.query(User).filter(User.email == "lenta.federico@gmail.com").first()
+
         if not admin:
-            user = User(
+            # Se non esiste, lo creiamo da zero
+            admin = User(
                 email="lenta.federico@gmail.com",
                 full_name="Federico Lenta",
                 role=RoleEnum.admin,
                 language="it",
                 hashed_password=hash_password("Fulvio72"),
             )
-            db.add(user)
-            db.commit()
-            print("Admin iniziale creato.")
+            db.add(admin)
+            msg = "Admin iniziale creato."
         else:
-            print("Admin già presente, nessuna creazione.")
+            # Se esiste già, lo aggiornamo e resettiamo la password
+            admin.full_name = "Federico Lenta"
+            admin.role = RoleEnum.admin
+            admin.language = "it"
+            admin.hashed_password = hash_password("Fulvio72")
+            msg = "Admin iniziale aggiornato (password resettata)."
+
+        db.commit()
+        print(msg)
     finally:
         db.close()
 
