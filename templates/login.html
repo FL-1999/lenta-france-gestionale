@@ -1,19 +1,101 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
+
+{% block title %}Login – Lenta France{% endblock %}
+
 {% block content %}
-
-<h1 class="page-title">🔐 Login</h1>
-<p class="page-subtitle">Accedi con il tuo account aziendale.</p>
-
-<div class="card">
-    <form method="post" action="/auth/web-login">
-        <label>Email</label>
-        <input type="email" name="username" required />
-
-        <label>Password</label>
-        <input type="password" name="password" required />
-
-        <button type="submit" class="btn">➡️ Entra</button>
-    </form>
+<div class="page-header">
+    <h1 class="page-title">🔐 Login</h1>
+    <p class="page-subtitle">
+        Accedi al gestionale con le tue credenziali. In base al ruolo vedrai l’area Manager o Caposquadra.
+    </p>
 </div>
 
+<section class="form-card">
+    <form id="login-form">
+        <div class="form-row">
+            <label for="email">📧 Email</label>
+            <input type="email" id="email" name="email" required placeholder="es. lenta.federico@gmail.com" />
+        </div>
+
+        <div class="form-row">
+            <label for="password">🔑 Password</label>
+            <input type="password" id="password" name="password" required placeholder="••••••••" />
+        </div>
+
+        <div id="login-error" class="error-text" style="display: none;"></div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">➡️ Entra</button>
+            <a href="/" class="btn btn-secondary">⬅️ Torna alla home</a>
+        </div>
+    </form>
+</section>
+
+<script>
+document.getElementById("login-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const email = (document.getElementById("email").value || "").trim();
+    const password = (document.getElementById("password").value || "").trim();
+    const errorBox = document.getElementById("login-error");
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+
+    if (!email || !password) {
+        errorBox.textContent = "Inserisci email e password.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    try {
+        const resp = await fetch("/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, password }),
+        });
+
+        if (!resp.ok) {
+            errorBox.textContent = "Credenziali non valide.";
+            errorBox.style.display = "block";
+            return;
+        }
+
+        const data = await resp.json();
+        const token = data.access_token;
+
+        // Salvo il token per usi futuri (chiamate API autenticata)
+        if (token) {
+            localStorage.setItem("lf_token", token);
+
+            try {
+                // Decodifica veloce del JWT (parte payload)
+                const payloadPart = token.split(".")[1];
+                const decoded = JSON.parse(atob(payloadPart.replace(/-/g, "+").replace(/_/g, "/")));
+                const role = decoded.role || decoded["role"];
+
+                if (role === "admin" || role === "manager") {
+                    window.location.href = "/manager/dashboard";
+                } else if (role === "caposquadra") {
+                    window.location.href = "/capo/dashboard";
+                } else {
+                    // Ruolo sconosciuto: porto almeno alla home
+                    window.location.href = "/";
+                }
+            } catch (e) {
+                console.error("Errore decodifica token:", e);
+                window.location.href = "/";
+            }
+        } else {
+            errorBox.textContent = "Login riuscito, ma token non ricevuto.";
+            errorBox.style.display = "block";
+        }
+    } catch (err) {
+        console.error(err);
+        errorBox.textContent = "Errore di connessione al server.";
+        errorBox.style.display = "block";
+    }
+});
+</script>
 {% endblock %}
