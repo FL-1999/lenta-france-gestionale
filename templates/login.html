@@ -6,7 +6,8 @@
 <div class="page-header">
     <h1 class="page-title">🔐 Login</h1>
     <p class="page-subtitle">
-        Accedi al gestionale con le tue credenziali. In base al ruolo vedrai l’area Manager o Caposquadra.
+        Accedi al gestionale con le tue credenziali. In base al ruolo verrai
+        reindirizzato automaticamente all’area corretta.
     </p>
 </div>
 
@@ -14,12 +15,14 @@
     <form id="login-form">
         <div class="form-row">
             <label for="email">📧 Email</label>
-            <input type="email" id="email" name="email" required placeholder="es. lenta.federico@gmail.com" />
+            <input type="email" id="email" name="email" required
+                   placeholder="es. lenta.federico@gmail.com" />
         </div>
 
         <div class="form-row">
             <label for="password">🔑 Password</label>
-            <input type="password" id="password" name="password" required placeholder="••••••••" />
+            <input type="password" id="password" name="password" required
+                   placeholder="••••••••" />
         </div>
 
         <div id="login-error" class="error-text" style="display: none;"></div>
@@ -65,14 +68,16 @@ document.getElementById("login-form").addEventListener("submit", async function 
         const data = await resp.json();
         const token = data.access_token;
 
-        // Salvo il token per usi futuri (chiamate API autenticata)
         if (token) {
+            // Salva il token per tutte le chiamate future
             localStorage.setItem("lf_token", token);
 
             try {
-                // Decodifica veloce del JWT (parte payload)
+                // Decodifica payload JWT per leggere il ruolo
                 const payloadPart = token.split(".")[1];
-                const decoded = JSON.parse(atob(payloadPart.replace(/-/g, "+").replace(/_/g, "/")));
+                const decoded = JSON.parse(
+                    atob(payloadPart.replace(/-/g, "+").replace(/_/g, "/"))
+                );
                 const role = decoded.role || decoded["role"];
 
                 if (role === "admin" || role === "manager") {
@@ -80,7 +85,7 @@ document.getElementById("login-form").addEventListener("submit", async function 
                 } else if (role === "caposquadra") {
                     window.location.href = "/capo/dashboard";
                 } else {
-                    // Ruolo sconosciuto: porto almeno alla home
+                    // Ruolo sconosciuto → almeno torno alla home
                     window.location.href = "/";
                 }
             } catch (e) {
@@ -88,7 +93,7 @@ document.getElementById("login-form").addEventListener("submit", async function 
                 window.location.href = "/";
             }
         } else {
-            errorBox.textContent = "Login riuscito, ma token non ricevuto.";
+            errorBox.textContent = "Login riuscito, ma il token non è stato ricevuto.";
             errorBox.style.display = "block";
         }
     } catch (err) {
