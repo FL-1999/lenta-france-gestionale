@@ -3,78 +3,59 @@
 {% block title %}Macchinari – Manager{% endblock %}
 
 {% block content %}
-<h1>Gestione macchinari</h1>
+<h1 class="page-title">🚜 Macchinari</h1>
+<p class="page-subtitle">Elenco di tutti i macchinari registrati.</p>
+
 <div class="actions">
-  <a href="/manager/macchinari/nuovo" class="button">➕ Nuovo macchinario</a>
+  <a href="/manager/macchinari/nuovo" class="btn btn-primary">➕ Nuovo macchinario</a>
 </div>
 
-<form method="get" class="filters">
-  <label>Tipo
-    <select name="tipo">
-      <option value="">Tutti</option>
-      {% for t in machine_types %}
-      <option value="{{ t.value }}" {% if filter_type == t.value %}selected{% endif %}>{{ t.value }}</option>
+{% if machines and machines|length > 0 %}
+<div class="table-responsive">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Codice</th>
+        <th>Tipo</th>
+        <th>Cantiere associato</th>
+        <th>Attivo</th>
+        <th>Azioni</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in machines %}
+      <tr>
+        <td>{{ m.name }}</td>
+        <td>{{ m.code if hasattr(m, "code") else "" }}</td>
+        <td>
+          {% if hasattr(m, "machine_type") %}
+            {{ m.machine_type.value if hasattr(m.machine_type, "value") else m.machine_type }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>
+          {% if m.site %}
+            {{ m.site.name }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>{{ "Sì" if m.is_active else "No" }}</td>
+        <td>
+          <div class="table-actions">
+            <a href="/manager/macchinari/{{ m.id }}" class="btn btn-link">Dettaglio</a>
+            <a href="/manager/macchinari/modifica/{{ m.id }}" class="btn btn-link">Modifica</a>
+            <a href="/manager/macchinari/assegna/{{ m.id }}" class="btn btn-link">Assegna a cantiere</a>
+          </div>
+        </td>
+      </tr>
       {% endfor %}
-    </select>
-  </label>
-  <label>Stato
-    <select name="stato">
-      <option value="">Tutti</option>
-      {% for s in status_choices %}
-      <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label>Cantiere
-    <select name="cantiere">
-      <option value="">Tutti</option>
-      {% for s in sites %}
-      <option value="{{ s.id }}" {% if filter_site and filter_site == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label>Nome
-    <input type="text" name="nome" value="{{ filter_name or '' }}" placeholder="Cerca per nome">
-  </label>
-  <button type="submit">Filtra</button>
-</form>
-
-{% if machines %}
-<table>
-  <thead>
-    <tr>
-      <th>Nome</th>
-      <th>Tipo</th>
-      <th>Stato</th>
-      <th>Cantiere assegnato</th>
-      <th>Note</th>
-      <th>Azioni</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for m in machines %}
-    <tr>
-      <td>{{ m.name }}</td>
-      <td>{{ m.machine_type.value if m.machine_type else '-' }}</td>
-      <td>{{ m.status }}</td>
-      <td>
-        {% if m.site %}
-          {{ m.site.name }} ({{ m.site.code }})
-        {% else %}
-          —
-        {% endif %}
-      </td>
-      <td>{{ m.notes or '—' }}</td>
-      <td>
-        <a href="/manager/macchinari/{{ m.id }}">Dettaglio</a> |
-        <a href="/manager/macchinari/assegna/{{ m.id }}">Assegna a cantiere</a> |
-        <a href="/manager/macchinari/modifica/{{ m.id }}">Modifica</a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    </tbody>
+  </table>
+</div>
 {% else %}
-<p>Nessun macchinario trovato.</p>
+<p>Nessun macchinario presente.</p>
 {% endif %}
 {% endblock %}

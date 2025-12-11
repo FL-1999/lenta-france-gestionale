@@ -78,51 +78,25 @@ def list_machines_api(
 @router.get("/manager/macchinari", response_class=HTMLResponse)
 def manager_machines_page(
     request: Request,
-    tipo: str | None = None,
-    stato: str | None = None,
-    cantiere: str | None = None,
-    nome: str | None = None,
     current_user=Depends(get_current_active_user_html),
     db: Session = Depends(get_db),
 ):
     _require_manager_or_admin(current_user)
 
-    query = db.query(Machine).outerjoin(Site)
-
-    if tipo:
-        try:
-            tipo_enum = MachineTypeEnum(tipo)
-            query = query.filter(Machine.machine_type == tipo_enum)
-        except ValueError:
-            pass
-
-    if stato:
-        query = query.filter(Machine.status == stato)
-
-    parsed_cantiere = _parse_site_id(cantiere)
-
-    if parsed_cantiere is not None:
-        query = query.filter(Machine.site_id == parsed_cantiere)
-
-    if nome:
-        query = query.filter(Machine.name.ilike(f"%{nome}%"))
-
-    machines = query.order_by(Machine.name.asc()).all()
-    sites = db.query(Site).order_by(Site.name.asc()).all()
+    machines = (
+        db.query(Machine)
+        .outerjoin(Site)
+        .order_by(Machine.name.asc(), Machine.id.asc())
+        .all()
+    )
 
     return templates.TemplateResponse(
         "manager/macchinari.html",
         {
             "request": request,
+            "user": current_user,
+            "user_role": "manager",
             "machines": machines,
-            "sites": sites,
-            "current_user": current_user,
-            "filter_type": tipo,
-            "filter_status": stato,
-            "filter_site": parsed_cantiere,
-            "filter_name": nome,
-            "status_choices": MACHINE_STATUS_CHOICES,
-            "machine_types": list(MachineTypeEnum),
         },
     )
 
