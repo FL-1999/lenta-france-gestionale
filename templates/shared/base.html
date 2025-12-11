@@ -48,5 +48,98 @@
     <footer class="footer">
         <span>© 2025 Lenta France · Gestionale cantieri 🏗️</span>
     </footer>
+
+    <!-- =======================================================
+         CONTROLLO TOKEN JWT PER PAGINE PROTETTE (MANAGER / CAPO)
+         ======================================================= -->
+    <script>
+    (function() {
+        // Questo valore viene passato dal backend:
+        // - "manager" sulle pagine manager
+        // - "capo" sulle pagine caposquadra
+        // - vuoto sulle pagine pubbliche (home, login, ecc.)
+        const requiredRole = "{{ user_role if user_role is defined else '' }}";
+
+        // Se la pagina non è protetta, non facciamo nulla
+        if (!requiredRole) {
+            return;
+        }
+
+        const loginUrl = "/login";
+
+        function redirectToLogin() {
+            try {
+                localStorage.removeItem("lf_token");
+            } catch (e) {
+                console.error("Errore rimozione token:", e);
+            }
+            window.location.href = loginUrl;
+        }
+
+        let token = null;
+        try {
+            token = localStorage.getItem("lf_token");
+        } catch (e) {
+            console.error("Impossibile leggere il token da localStorage:", e);
+        }
+
+        // Se non c'è token → vai al login
+        if (!token) {
+            redirectToLogin();
+            return;
+        }
+
+        try {
+            const parts = token.split(".");
+            if (parts.length !== 3) {
+                console.error("Formato token JWT non valido");
+                redirectToLogin();
+                return;
+            }
+
+            // Decodifica payload (parte centrale del JWT)
+            const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+            const payloadJson = atob(base64);
+            const payload = JSON.parse(payloadJson);
+
+            const roleFromToken = payload.role || payload["role"];
+
+            if (!roleFromToken) {
+                console.error("Token senza ruolo");
+                redirectToLogin();
+                return;
+            }
+
+            // Regole di accesso:
+            // - Pagina manager: accettiamo "manager" e "admin"
+            // - Pagina capo: accettiamo solo "caposquadra"
+            if (requiredRole === "manager") {
+                if (roleFromToken !== "manager" && roleFromToken !== "admin") {
+                    // Ruolo sbagliato: se è caposquadra, mandiamo alla sua dashboard
+                    if (roleFromToken === "caposquadra") {
+                        window.location.href = "/capo/dashboard";
+                    } else {
+                        redirectToLogin();
+                    }
+                    return;
+                }
+            } else if (requiredRole === "capo") {
+                if (roleFromToken !== "caposquadra") {
+                    // Se è manager/admin, mandiamo alla dashboard manager
+                    if (roleFromToken === "manager" || roleFromToken === "admin") {
+                        window.location.href = "/manager/dashboard";
+                    } else {
+                        redirectToLogin();
+                    }
+                    return;
+                }
+            }
+            // Se arriviamo qui, il ruolo è compatibile con la pagina
+        } catch (e) {
+            console.error("Errore durante il controllo del token:", e);
+            redirectToLogin();
+        }
+    })();
+    </script>
 </body>
 </html>
