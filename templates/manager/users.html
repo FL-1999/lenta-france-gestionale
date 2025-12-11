@@ -16,7 +16,7 @@
         Gestione utenti
     </h1>
     <div class="actions">
-        <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ Nuovo utente</a>
+        <a href="/manager/utenti/nuovo" class="btn btn-primary btn--utenti">➕ Nuovo utente</a>
     </div>
 </div>
 
@@ -51,8 +51,8 @@
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <a class="btn btn-sm btn-secondary" href="/manager/utenti/{{ u.id }}/modifica">Modifica</a>
-                                <a class="btn btn-sm btn-secondary" href="/manager/utenti/{{ u.id }}/reset-password">Reset password</a>
+                                <a class="btn btn-sm btn-secondary btn--utenti" href="/manager/utenti/{{ u.id }}/modifica">Modifica</a>
+                                <a class="btn btn-sm btn-secondary btn--utenti" href="/manager/utenti/{{ u.id }}/reset-password">Reset password</a>
                                 <form method="post" action="/manager/utenti/{{ u.id }}/toggle-attivo" style="display:inline;">
                                     {% if u.is_active %}
                                     <button type="submit" class="btn btn-sm btn-danger">
