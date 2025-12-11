@@ -217,12 +217,23 @@ def manager_dashboard(
     """
     Dashboard manager con accesso a cantieri, fiches, rapportini e macchinari.
     """
+    db = SessionLocal()
+    try:
+        reports_list = (
+            db.query(Report)
+            .order_by(Report.date.desc(), Report.id.desc())
+            .all()
+        )
+    finally:
+        db.close()
+
     return templates.TemplateResponse(
         "manager/home_manager.html",
         {
             "request": request,
             "user": current_user,
             "user_role": "manager",
+            "reports": reports_list,
         },
     )
 

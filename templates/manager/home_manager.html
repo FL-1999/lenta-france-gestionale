@@ -1,100 +1,59 @@
-{% extends "shared/base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Dashboard Manager – Lenta France{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">👔 Dashboard Manager</h1>
-    <p class="page-subtitle">
-        Panoramica dei cantieri, macchinari, fiches e rapportini. Da qui puoi accedere
-        a tutte le funzioni amministrative del gestionale.
-    </p>
+    <h1>Dashboard Manager</h1>
+    <p>Benvenuto{{ ' ' + user.full_name if user and user.full_name else '' }}, qui trovi il riepilogo dei rapportini salvati.</p>
 </div>
 
-<div class="dashboard-grid">
-    <!-- Box cantieri -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">🏗️ Cantieri</div>
-            <span class="card-badge">Gestione</span>
-        </div>
-        <div class="card-body">
-            <p>
-                Crea nuovi cantieri, aggiorna quelli esistenti e assegna i caposquadra.
-            </p>
-            <div class="button-row">
-                <a href="/manager/cantieri" class="btn btn-secondary">📋 Lista cantieri</a>
-                <a href="/manager/cantieri/nuovo" class="btn btn-primary">➕ Nuovo cantiere</a>
-            </div>
-        </div>
-    </section>
+<div class="actions">
+    <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
+    <a href="/manager/rapportini" class="btn btn-secondary">📋 Elenco rapportini</a>
+</div>
 
-    <!-- Box macchinari -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">🚜 Macchinari</div>
-            <span class="card-badge">Parco mezzi</span>
+<div class="card">
+    <div class="card-header">
+        <h2>Rapportini recenti</h2>
+    </div>
+    <div class="card-body">
+        {% if reports and reports|length > 0 %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Cantiere</th>
+                        <th>Ore totali</th>
+                        <th>N. operai</th>
+                        <th>Creato da</th>
+                        <th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reports %}
+                    <tr>
+                        <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
+                        <td>{{ r.site_name_or_code }}</td>
+                        <td>{{ "%.1f"|format(r.total_hours) }}</td>
+                        <td>{{ r.workers_count }}</td>
+                        <td>
+                            {% if r.created_by %}
+                                {{ r.created_by.full_name or r.created_by.email }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ r.notes or r.activities or "-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <div class="card-body">
-            <p>
-                Visualizza il parco macchine e assegna i mezzi ai cantieri attivi.
-            </p>
-            <div class="button-row">
-                <a href="/manager/macchinari" class="btn btn-secondary">📋 Lista macchinari</a>
-                <a href="/manager/macchinari/assegna" class="btn btn-primary">🔗 Assegna a cantiere</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Box fiches -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">📄 Fiches</div>
-            <span class="card-badge">Documenti</span>
-        </div>
-        <div class="card-body">
-            <p>
-                Consulta le fiches compilate dai capisquadra e controlla le attività di cantiere.
-            </p>
-            <div class="button-row">
-                <a href="/manager/fiches" class="btn btn-secondary">📚 Vedi fiches</a>
-                <a href="/manager/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Box rapportini -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">📝 Rapportini</div>
-            <span class="card-badge">Giornate lavoro</span>
-        </div>
-        <div class="card-body">
-            <p>
-                Controlla i rapportini giornalieri, monitora ore lavorate e produzione.
-            </p>
-            <div class="button-row">
-                <a href="/manager/rapportini" class="btn btn-secondary">📋 Lista rapportini</a>
-                <a href="/manager/rapportini/esporta" class="btn btn-primary">📦 Esporta dati</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Box utenti -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">👥 Utenti</div>
-            <span class="card-badge">Solo admin</span>
-        </div>
-        <div class="card-body">
-            <p>
-                Crea e gestisci gli utenti del gestionale (manager e capisquadra).
-            </p>
-            <div class="button-row">
-                <a href="/manager/utenti" class="btn btn-secondary">📋 Lista utenti</a>
-                <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ Nuovo utente</a>
-            </div>
-        </div>
-    </section>
+        {% else %}
+        <p>Nessun rapportino salvato per il momento.</p>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}
