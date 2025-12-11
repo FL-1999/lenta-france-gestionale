@@ -29,10 +29,12 @@ class RoleEnum(PyEnum):
 
 
 # Questi tre servono perché vengono importati in schemas.py
+
 class SiteStatusEnum(PyEnum):
-    active = "active"
-    closed = "closed"
-    planned = "planned"
+    # Stati in ITALIANO, compatibili con schemas.py (che usa .aperto)
+    aperto = "aperto"
+    chiuso = "chiuso"
+    pianificato = "pianificato"
 
 
 class MachineTypeEnum(PyEnum):
@@ -111,7 +113,7 @@ class Site(Base, TimestampMixin):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
 
-    status = Column(Enum(SiteStatusEnum), nullable=False, default=SiteStatusEnum.active)
+    status = Column(Enum(SiteStatusEnum), nullable=False, default=SiteStatusEnum.aperto)
 
     is_active = Column(Boolean, default=True, nullable=False)
 
