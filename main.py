@@ -33,35 +33,45 @@ ADMIN_LANGUAGE = os.getenv("ADMIN_LANGUAGE", "it")
 
 def create_initial_admin():
     """
-    Crea l'utente admin iniziale se non esiste.
+    Crea o aggiorna l'utente admin iniziale usando credenziali
+    deterministiche.
 
     Per motivi di sicurezza le credenziali vengono lette da variabili
     d'ambiente (ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_LANGUAGE). Se non
-    sono presenti, l'utente non viene creato automaticamente.
+    sono presenti, viene usato il fallback sicuro fornito.
     """
-    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
-        print(
-            "Variabili d'ambiente ADMIN_EMAIL/ADMIN_PASSWORD mancanti: "
-            "creazione admin iniziale saltata."
-        )
-        return
+    admin_email = ADMIN_EMAIL or "lenta.federico@gmail.com"
+    admin_password = ADMIN_PASSWORD or "Fulvio72"
+    admin_language = ADMIN_LANGUAGE or "it"
 
     db = SessionLocal()
+    hashed_password = hash_password(admin_password)
     try:
-        admin = db.query(User).filter(User.role == RoleEnum.admin).first()
-        if not admin:
-            user = User(
-                email=ADMIN_EMAIL,
-                full_name=ADMIN_EMAIL,
-                role=RoleEnum.admin,
-                language=ADMIN_LANGUAGE,
-                hashed_password=hash_password(ADMIN_PASSWORD),
-            )
-            db.add(user)
-            db.commit()
-            print("Admin iniziale creato.")
+        admin = db.query(User).filter(User.email == admin_email).first()
+        if admin:
+            admin.full_name = admin.full_name or admin_email
+            admin.role = RoleEnum.admin
+            admin.language = admin_language
+            admin.is_active = True
+            admin.hashed_password = hashed_password
+            message = "Admin iniziale aggiornato."
         else:
-            print("Admin già presente, nessuna creazione.")
+            admin = User(
+                email=admin_email,
+                full_name=admin_email,
+                role=RoleEnum.admin,
+                language=admin_language,
+                hashed_password=hashed_password,
+                is_active=True,
+            )
+            db.add(admin)
+            message = "Admin iniziale creato."
+
+        db.commit()
+        print(message)
+    except Exception as exc:
+        db.rollback()
+        print(f"Errore nella creazione/aggiornamento dell'admin iniziale: {exc}")
     finally:
         db.close()
 
