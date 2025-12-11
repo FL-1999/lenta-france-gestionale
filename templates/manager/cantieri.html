@@ -26,7 +26,7 @@
       <td>{{ s.name }}</td>
       <td>{{ s.code }}</td>
       <td>{{ s.city or "-" }}</td>
-      <td>{{ s.status.value if hasattr(s.status, "value") else s.status }}</td>
+      <td>{{ s.status.value if s.status else "-" }}</td>
       <td>{{ "Sì" if s.is_active else "No" }}</td>
       <td>
         <a href="/manager/cantieri/{{ s.id }}/modifica">Modifica</a>

@@ -27,14 +27,8 @@
       {% for m in machines %}
       <tr>
         <td>{{ m.name }}</td>
-        <td>{{ m.code if hasattr(m, "code") else "" }}</td>
-        <td>
-          {% if hasattr(m, "machine_type") %}
-            {{ m.machine_type.value if hasattr(m.machine_type, "value") else m.machine_type }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
+        <td>{{ m.code or "" }}</td>
+        <td>{{ m.machine_type.value if m.machine_type else "-" }}</td>
         <td>
           {% if m.site %}
             {{ m.site.name }}
