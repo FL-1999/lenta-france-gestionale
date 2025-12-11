@@ -6,13 +6,13 @@
 <div class="page-header">
     <h1 class="page-title">📝 Nuovo rapportino giornaliero</h1>
     <p class="page-subtitle">
-        Compila il rapportino per il cantiere a te assegnato.
+        Compila il rapportino della giornata per il cantiere selezionato. In seguito invieremo
+        questi dati al backend per il salvataggio definitivo.
     </p>
 </div>
 
-<section class="form-card">
-    <form method="post" action="#">
-
+<div class="form-card">
+    <form id="rapportino-form">
         <div class="form-row">
             <label for="data">📅 Data</label>
             <input type="date" id="data" name="data" required />
@@ -20,38 +20,107 @@
 
         <div class="form-row">
             <label for="cantiere">🏗️ Cantiere</label>
-            <select id="cantiere" name="cantiere" required>
-                <option value="">Seleziona un cantiere…</option>
-                <option value="1">Cantiere esempio 1</option>
-                <option value="2">Cantiere esempio 2</option>
-            </select>
+            <input type="text" id="cantiere" name="cantiere" required placeholder="Nome o codice cantiere" />
         </div>
 
         <div class="form-row">
-            <label for="personale">👥 Personale presente</label>
-            <input type="number" id="personale" name="personale" min="0" placeholder="Numero lavoratori" />
+            <label for="ore_totali">⏱️ Ore totali lavorate</label>
+            <input type="number" id="ore_totali" name="ore_totali" min="0" step="0.5" required placeholder="es. 8" />
         </div>
 
         <div class="form-row">
-            <label for="ore">⏱️ Ore lavorate</label>
-            <input type="number" id="ore" name="ore" min="0" step="0.5" placeholder="Es. 8" />
+            <label for="numero_operai">👷 Numero operai</label>
+            <input type="number" id="numero_operai" name="numero_operai" min="0" required placeholder="es. 3" />
         </div>
 
         <div class="form-row">
-            <label for="attivita">📌 Attività svolte</label>
-            <textarea id="attivita" name="attivita" rows="4" placeholder="Descrivi le attività svolte..."></textarea>
+            <label for="macchinari">🚜 Macchinari utilizzati</label>
+            <textarea id="macchinari" name="macchinari" rows="2"
+                      placeholder="Es. Escavatore 20t, Minipala, Furgone..."></textarea>
         </div>
 
         <div class="form-row">
-            <label for="note">🗒️ Note (opzionale)</label>
-            <textarea id="note" name="note" rows="3" placeholder="Eventuali note aggiuntive..."></textarea>
+            <label for="attivita">📋 Attività svolte</label>
+            <textarea id="attivita" name="attivita" rows="4"
+                      placeholder="Descrivi brevemente le attività eseguite in giornata."></textarea>
         </div>
+
+        <div class="form-row">
+            <label for="note">🗒️ Note aggiuntive</label>
+            <textarea id="note" name="note" rows="3"
+                      placeholder="Eventuali problemi, ritardi, materiali mancanti, ecc."></textarea>
+        </div>
+
+        <div id="rapportino-error" class="error-text" style="display:none;"></div>
+        <div id="rapportino-success" class="success-text" style="display:none;"></div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">💾 Salva (mock)</button>
+            <button type="submit" class="btn btn-primary">💾 Salva rapportino</button>
             <a href="/capo/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
         </div>
-
     </form>
-</section>
+</div>
+
+<script>
+document.getElementById("rapportino-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const data = document.getElementById("data").value;
+    const cantiere = (document.getElementById("cantiere").value || "").trim();
+    const ore_totali = parseFloat(document.getElementById("ore_totali").value || "0");
+    const numero_operai = parseInt(document.getElementById("numero_operai").value || "0", 10);
+    const macchinari = (document.getElementById("macchinari").value || "").trim();
+    const attivita = (document.getElementById("attivita").value || "").trim();
+    const note = (document.getElementById("note").value || "").trim();
+
+    const errorBox = document.getElementById("rapportino-error");
+    const successBox = document.getElementById("rapportino-success");
+
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+    successBox.style.display = "none";
+    successBox.textContent = "";
+
+    if (!data || !cantiere) {
+        errorBox.textContent = "Data e cantiere sono obbligatori.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    // In futuro questi dati verranno inviati al backend (es. POST /reports).
+    // Per ora prepariamo il payload e facciamo solo un log, così la pagina funziona
+    // senza dipendere dall'API.
+    const payload = {
+        date: data,
+        site_name_or_code: cantiere,
+        total_hours: ore_totali,
+        workers_count: numero_operai,
+        machines_used: macchinari,
+        activities: attivita,
+        notes: note,
+    };
+
+    console.log("Rapportino pronto da inviare al backend:", payload);
+
+    // TODO: quando agganciamo il backend, faremo qualcosa tipo:
+    //
+    // const token = localStorage.getItem("lf_token");
+    // const resp = await fetch("/reports", {
+    //     method: "POST",
+    //     headers: {
+    //         "Content-Type": "application/json",
+    //         "Authorization": "Bearer " + token,
+    //     },
+    //     body: JSON.stringify(payload),
+    // });
+    //
+    // e gestiremo le risposte (201, 400, 401, ecc.)
+
+    successBox.textContent = "Rapportino compilato correttamente (per ora solo preparato, non ancora salvato nel DB).";
+    successBox.style.display = "block";
+
+    // Se vuoi, puoi pulire il form dopo:
+    // document.getElementById("rapportino-form").reset();
+});
+</script>
 {% endblock %}
