@@ -17,7 +17,7 @@
         <p class="subtitle">Filtra e consulta i rapportini giornalieri inviati dai capisquadra.</p>
     </div>
     <div class="actions">
-        <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
+        <a href="/capo/rapportini/nuovo" class="btn btn-primary btn--rapportini">➕ Nuovo rapportino</a>
     </div>
 </div>
 
@@ -55,8 +55,8 @@
                 </select>
             </div>
             <div class="col-12 d-flex gap-2 mt-2">
-                <button type="submit" class="btn btn-primary">Filtra</button>
-                <a href="/manager/rapportini" class="btn btn-secondary">Reset</a>
+                <button type="submit" class="btn btn-primary btn--rapportini">Filtra</button>
+                <a href="/manager/rapportini" class="btn btn-secondary btn--rapportini">Reset</a>
             </div>
         </form>
     </div>
@@ -107,7 +107,7 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a href="/manager/rapportini/{{ r.id }}" class="btn btn-sm btn-primary">Vedi</a>
+                            <a href="/manager/rapportini/{{ r.id }}" class="btn btn-sm btn-primary btn--rapportini">Vedi</a>
                         </td>
                     </tr>
                     {% endfor %}

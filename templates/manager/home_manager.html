@@ -11,9 +11,9 @@
             <p>Benvenuto{{ ' ' + user.full_name if user and user.full_name else '' }}, qui trovi il riepilogo dei rapportini salvati e le scorciatoie per la gestione.</p>
         </div>
         <div class="header-actions">
-            <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo rapportino</a>
-            <a href="/manager/rapportini" class="btn btn-secondary">Elenco rapportini</a>
-            <a href="/manager/fiches" class="btn btn-secondary">Vedi fiches</a>
+            <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-primary btn--rapportini">➕ Nuovo rapportino</a>
+            <a href="/manager/rapportini" class="btn btn-lg btn-secondary btn--rapportini">Elenco rapportini</a>
+            <a href="/manager/fiches" class="btn btn-lg btn-secondary btn--fiches">Vedi fiches</a>
         </div>
     </div>
 
@@ -102,8 +102,8 @@
             <div class="card-body">
                 <p>Monitora l'avanzamento dei cantieri, gestisci dettagli e assegnazioni delle squadre.</p>
             <div class="card-actions">
-                <a href="/manager/cantieri" class="btn btn-secondary">Lista cantieri</a>
-                <a href="/manager/cantieri/nuovo" class="btn btn-primary btn-sm">➕ Nuovo cantiere</a>
+                <a href="/manager/cantieri" class="btn btn-secondary btn--cantieri">Lista cantieri</a>
+                <a href="/manager/cantieri/nuovo" class="btn btn-primary btn--cantieri">➕ Nuovo cantiere</a>
             </div>
             </div>
         </div>
@@ -124,7 +124,7 @@
             <div class="card-body">
                 <p>Gestisci il parco macchinari, lo stato e le assegnazioni ai cantieri in corso.</p>
             <div class="card-actions">
-                <a href="/manager/macchinari" class="btn btn-primary">Lista macchinari</a>
+                <a href="/manager/macchinari" class="btn btn-secondary btn--macchinari">Lista macchinari</a>
             </div>
             </div>
         </div>
@@ -146,7 +146,7 @@
             <div class="card-body">
                 <p>Consulta e filtra le fiches inserite dai capisquadra per avere una vista rapida delle attività.</p>
             <div class="card-actions">
-                <a href="/manager/fiches" class="btn btn-primary">Vedi fiches</a>
+                <a href="/manager/fiches" class="btn btn-primary btn--fiches">Vedi fiches</a>
             </div>
             </div>
         </div>
@@ -166,7 +166,7 @@
             <div class="card-body">
                 <p>Consulta, filtra e approfondisci tutti i rapportini inviati dai capisquadra.</p>
             <div class="card-actions">
-                <a href="/manager/rapportini" class="btn btn-primary">Vai all'elenco rapportini</a>
+                <a href="/manager/rapportini" class="btn btn-primary btn--rapportini">Vai all'elenco rapportini</a>
             </div>
             </div>
         </div>
@@ -188,8 +188,8 @@
             <div class="card-body">
                 <p>Gestisci gli utenti, crea nuovi capisquadra e modifica i ruoli in base alle necessità operative.</p>
             <div class="card-actions">
-                <a href="/manager/utenti" class="btn btn-secondary">Lista utenti</a>
-                <a href="/manager/utenti/nuovo" class="btn btn-primary btn-sm">➕ Nuovo utente</a>
+                <a href="/manager/utenti" class="btn btn-secondary btn--utenti">Lista utenti</a>
+                <a href="/manager/utenti/nuovo" class="btn btn-primary btn--utenti">➕ Nuovo utente</a>
             </div>
             </div>
         </div>
