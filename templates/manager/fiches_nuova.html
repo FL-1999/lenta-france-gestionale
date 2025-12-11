@@ -1,0 +1,51 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Nuova Fiche – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📄 Nuova fiche di cantiere</h1>
+    <p class="page-subtitle">
+        Registra una fiche completa per un cantiere.
+    </p>
+</div>
+
+<div class="form-card">
+    <form method="post" action="#">
+        <div class="form-row">
+            <label for="data">📅 Data</label>
+            <input type="date" id="data" name="data" required />
+        </div>
+
+        <div class="form-row">
+            <label for="cantiere">🏗️ Cantiere</label>
+            <select id="cantiere" name="cantiere" required>
+                <option value="">Seleziona un cantiere…</option>
+                <option>Cantiere Lyon</option>
+                <option>Cantiere Marseille</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <label for="macchinario">🚜 Macchinario</label>
+            <input id="macchinario" name="macchinario" type="text" placeholder="Es. Escavatore 30t" />
+        </div>
+
+        <div class="form-row">
+            <label for="ore_uso">⏱️ Ore utilizzo</label>
+            <input id="ore_uso" name="ore_uso" type="number" min="0" step="0.5" placeholder="Es. 5" />
+        </div>
+
+        <div class="form-row">
+            <label for="descrizione">📌 Dettagli</label>
+            <textarea id="descrizione" name="descrizione" rows="4"
+                      placeholder="Descrivi attività e note importanti..."></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">💾 Salva (mock)</button>
+            <a href="/manager/fiches" class="btn btn-secondary">⬅️ Torna alle fiches</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
