@@ -29,9 +29,7 @@
                     <tr>
                         <td>{{ u.email }}</td>
                         <td>{{ u.full_name or "-" }}</td>
-                        <td>
-                            {{ u.role.value if hasattr(u.role, "value") else u.role }}
-                        </td>
+                        <td>{{ u.role.value if hasattr(u.role, "value") else u.role }}</td>
                         <td>{{ u.language or "-" }}</td>
                         <td>
                             {% if hasattr(u, "is_active") %}
