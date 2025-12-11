@@ -3,7 +3,7 @@ import warnings
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -89,6 +89,41 @@ async def get_current_user(
 
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    return current_user
+
+async def get_current_user_html(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    redirect_exception = HTTPException(
+        status_code=status.HTTP_303_SEE_OTHER,
+        headers={"Location": "/login"},
+    )
+
+    cookie_token = request.cookies.get("access_token")
+    if not cookie_token:
+        raise redirect_exception
+
+    token = cookie_token
+    if token.startswith("Bearer "):
+        token = token[len("Bearer ") :]
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: Optional[str] = payload.get("sub")
+        if email is None:
+            raise redirect_exception
+    except JWTError:
+        raise redirect_exception
+
+    user = get_user_by_email(db, email=email)
+    if user is None:
+        raise redirect_exception
+    return user
+
+async def get_current_active_user_html(
+    current_user: Annotated[User, Depends(get_current_user_html)],
 ) -> User:
     return current_user
 
