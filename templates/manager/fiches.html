@@ -26,7 +26,7 @@
     <select name="fiche_type">
       <option value="">Tutti</option>
       {% for ft in fiche_types %}
-        <option value="{{ ft.value if hasattr(ft, 'value') else ft }}" {% if filter_fiche_type == (ft.value if hasattr(ft, 'value') else ft) %}selected{% endif %}>{{ ft.value if hasattr(ft, 'value') else ft }}</option>
+        <option value="{{ ft.value }}" {% if filter_fiche_type == ft.value %}selected{% endif %}>{{ ft.value }}</option>
       {% endfor %}
     </select>
   </label>
@@ -51,11 +51,11 @@
     {% for f in fiches %}
     <tr>
       <td>{{ f.date.strftime("%d/%m/%Y") }}</td>
-      <td>{{ f.site_name }}</td>
-      <td>{{ f.machine_name or "-" }}</td>
-      <td>{{ f.fiche_type.value if hasattr(f.fiche_type, "value") else f.fiche_type }}</td>
+      <td>{{ f.site.name if f.site else "" }}</td>
+      <td>{% if f.machine %}{{ f.machine.name }}{% else %}-{% endif %}</td>
+      <td>{{ f.fiche_type.value }}</td>
       <td>{{ "%.1f"|format(f.hours) }}</td>
-      <td>{{ f.created_by_name }}</td>
+      <td>{{ f.created_by.full_name or f.created_by.email }}</td>
       <td>
         <a href="/manager/fiches/{{ f.id }}">Apri</a>
       </td>
