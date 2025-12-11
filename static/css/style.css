@@ -92,3 +92,23 @@ body {
 .lang-btn:hover {
     background: #778da9;
 }
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+    border-bottom: 1px solid #1f2937;
+    padding: 8px 10px;
+    text-align: left;
+}
+
+.table th {
+    color: #e5e7eb;
+}
+
+.table tr:nth-child(even) {
+    background: #020617;
+}
