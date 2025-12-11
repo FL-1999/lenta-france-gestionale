@@ -1,5 +1,7 @@
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Annotated
+import warnings
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -15,8 +17,15 @@ from models import User, RoleEnum
 # CONFIGURAZIONE JWT
 # =====================================
 
-# 👉 Cambiala in produzione con una stringa lunga e segreta
-SECRET_KEY = "cambia-questa-chiave-super-segreta-lenta-france-2025"
+# 👉 La chiave deve essere impostata tramite variabile d'ambiente in produzione
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    warnings.warn(
+        "SECRET_KEY non impostata: utilizzare una variabile d'ambiente in produzione",
+        RuntimeWarning,
+    )
+    SECRET_KEY = "changeme"  # chiave di fallback per ambienti di sviluppo
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 ora
 

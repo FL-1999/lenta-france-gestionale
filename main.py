@@ -1,5 +1,7 @@
+import os
+
 from fastapi import FastAPI, Request, Depends, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -24,25 +26,36 @@ from routers import users, sites, machines, reports, fiches
 Base.metadata.create_all(bind=engine)
 
 
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+ADMIN_LANGUAGE = os.getenv("ADMIN_LANGUAGE", "it")
+
+
 def create_initial_admin():
     """
     Crea l'utente admin iniziale se non esiste.
-    Admin:
-        email:  lenta.federico@gmail.com
-        pass:   Fulvio72
-        ruolo:  admin
-        lingua: it
+
+    Per motivi di sicurezza le credenziali vengono lette da variabili
+    d'ambiente (ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_LANGUAGE). Se non
+    sono presenti, l'utente non viene creato automaticamente.
     """
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        print(
+            "Variabili d'ambiente ADMIN_EMAIL/ADMIN_PASSWORD mancanti: "
+            "creazione admin iniziale saltata."
+        )
+        return
+
     db = SessionLocal()
     try:
         admin = db.query(User).filter(User.role == RoleEnum.admin).first()
         if not admin:
             user = User(
-                email="lenta.federico@gmail.com",
-                full_name="Federico Lenta",
+                email=ADMIN_EMAIL,
+                full_name=ADMIN_EMAIL,
                 role=RoleEnum.admin,
-                language="it",
-                hashed_password=hash_password("Fulvio72"),
+                language=ADMIN_LANGUAGE,
+                hashed_password=hash_password(ADMIN_PASSWORD),
             )
             db.add(user)
             db.commit()
