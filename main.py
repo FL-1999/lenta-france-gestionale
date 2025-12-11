@@ -584,44 +584,49 @@ def capo_fiche_nuova_get(
 
 
 @app.post("/capo/fiches/nuova")
-def capo_fiche_nuova_post(
+async def capo_fiche_nuova_post(
     request: Request,
-    date_str: str = Form(...),
-    site_id: int = Form(...),
-    machine_id: str | None = Form(None),
-    fiche_type: str = Form(...),
-    description: str = Form(...),
-    hours: str = Form(...),
-    notes: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
+    form = await request.form()
+
+    date_str = form.get("date")
+    site_id_str = form.get("site_id")
+    machine_id_str = form.get("machine_id")
+    fiche_type_str = form.get("fiche_type")
+    description = form.get("description")
+    hours_str = form.get("hours")
+    notes = form.get("notes")
+
     try:
         fiche_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    except ValueError:
+    except Exception:
         raise HTTPException(status_code=400, detail="Data non valida")
 
     try:
-        hours_value = float(hours)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Ore non valide")
+        site_id = int(site_id_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Cantiere non valido")
 
     machine_id_value: int | None = None
-    if machine_id:
+    if machine_id_str:
         try:
-            machine_id_value = int(machine_id)
-        except ValueError:
+            machine_id_value = int(machine_id_str)
+        except Exception:
             raise HTTPException(status_code=400, detail="Macchinario non valido")
 
-    if fiche_type not in FicheTypeEnum.__members__:
-        try:
-            fiche_type_value = FicheTypeEnum(fiche_type)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Tipo fiche non valido")
-    else:
-        fiche_type_value = FicheTypeEnum[fiche_type]
+    try:
+        fiche_type_value = FicheTypeEnum(fiche_type_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Tipo fiche non valido")
+
+    try:
+        hours_value = float(hours_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Ore non valide")
 
     db = SessionLocal()
     try:
@@ -727,7 +732,14 @@ def manager_fiches(
             except ValueError:
                 parsed_fiche_type = None
 
-        query = db.query(Fiche).join(Site).outerjoin(Machine).join(User)
+        query = (
+            db.query(Fiche)
+            .options(
+                joinedload(Fiche.site),
+                joinedload(Fiche.machine),
+                joinedload(Fiche.created_by),
+            )
+        )
 
         if parsed_from_date:
             query = query.filter(Fiche.date >= parsed_from_date)
@@ -739,7 +751,13 @@ def manager_fiches(
             query = query.filter(Fiche.fiche_type == parsed_fiche_type)
 
         fiches_list = query.order_by(Fiche.date.desc(), Fiche.id.desc()).all()
-        sites_list = db.query(Site).order_by(Site.name).all()
+        sites_list = (
+            db.query(Site)
+            .filter(Site.is_active.is_(True))
+            .order_by(Site.name)
+            .all()
+        )
+        fiche_types_list = [ft for ft in FicheTypeEnum]
     finally:
         db.close()
 
@@ -748,25 +766,13 @@ def manager_fiches(
         {
             "request": request,
             "user": current_user,
-            "fiches": [
-                {
-                    "id": fiche.id,
-                    "date": fiche.date,
-                    "site_name": fiche.site.name if fiche.site else "",
-                    "machine_name": fiche.machine.name if fiche.machine else None,
-                    "fiche_type": fiche.fiche_type,
-                    "hours": fiche.hours,
-                    "created_by_name": fiche.created_by.full_name
-                    or fiche.created_by.email,
-                }
-                for fiche in fiches_list
-            ],
+            "fiches": fiches_list,
             "sites": sites_list,
-            "fiche_types": [ft for ft in FicheTypeEnum],
+            "fiche_types": fiche_types_list,
             "filter_from_date": from_date,
             "filter_to_date": to_date,
             "filter_site_id": parsed_site_id,
-            "filter_fiche_type": parsed_fiche_type.value if parsed_fiche_type else None,
+            "filter_fiche_type": fiche_type,
         },
     )
 
