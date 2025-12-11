@@ -1,24 +1,33 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Request, Depends, Form
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
-from database import Base, engine, SessionLocal
-from auth import router as auth_router, hash_password
-from models import User, RoleEnum
+from database import Base, engine, SessionLocal, get_db
+from auth import (
+    router as auth_router,
+    hash_password,
+    authenticate_user,
+    create_access_token,
+    get_current_active_user,
+)
+from models import User, RoleEnum, Report
 from routers import users, sites, machines, reports, fiches
+
 
 # -------------------------------------------------
 # CREAZIONE TABELLE + ADMIN INIZIALE
 # -------------------------------------------------
 
+# Crea tutte le tabelle definite in models.py
 Base.metadata.create_all(bind=engine)
+
 
 def create_initial_admin():
     """
-    Crea o aggiorna l'utente admin iniziale.
-    Forza sempre questa combinazione:
+    Crea l'utente admin iniziale se non esiste.
+    Admin:
         email:  lenta.federico@gmail.com
         pass:   Fulvio72
         ruolo:  admin
@@ -26,37 +35,29 @@ def create_initial_admin():
     """
     db = SessionLocal()
     try:
-        # Cerchiamo per email, non solo per ruolo
-        admin = db.query(User).filter(User.email == "lenta.federico@gmail.com").first()
-
+        admin = db.query(User).filter(User.role == RoleEnum.admin).first()
         if not admin:
-            # Se non esiste, lo creiamo da zero
-            admin = User(
+            user = User(
                 email="lenta.federico@gmail.com",
                 full_name="Federico Lenta",
                 role=RoleEnum.admin,
                 language="it",
                 hashed_password=hash_password("Fulvio72"),
             )
-            db.add(admin)
-            msg = "Admin iniziale creato."
+            db.add(user)
+            db.commit()
+            print("Admin iniziale creato.")
         else:
-            # Se esiste già, lo aggiornamo e resettiamo la password
-            admin.full_name = "Federico Lenta"
-            admin.role = RoleEnum.admin
-            admin.language = "it"
-            admin.hashed_password = hash_password("Fulvio72")
-            msg = "Admin iniziale aggiornato (password resettata)."
-
-        db.commit()
-        print(msg)
+            print("Admin già presente, nessuna creazione.")
     finally:
         db.close()
 
+
 create_initial_admin()
 
+
 # -------------------------------------------------
-# CONFIGURAZIONE FASTAPI
+# APP FASTAPI
 # -------------------------------------------------
 
 app = FastAPI(
@@ -65,23 +66,23 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],        # se vuoi, in futuro, restringi ai tuoi domini
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Static files
+# Static (CSS, immagini, JS)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Templates
+# Templates HTML (Jinja2)
 templates = Jinja2Templates(directory="templates")
 
+
 # -------------------------------------------------
-# LINGUA (COOKIE)
+# MULTILINGUA (COOKIE) + HOMEPAGE TEMPLATE
 # -------------------------------------------------
 
 def get_lang_from_request(request: Request) -> str:
@@ -90,14 +91,14 @@ def get_lang_from_request(request: Request) -> str:
         return lang
     return "it"
 
-# -------------------------------------------------
-# HOMEPAGE (usa home.html)
-# -------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
 def homepage(request: Request):
+    """
+    Homepage con selezione lingua, login e accesso dashboard.
+    Usa il template 'home.html'.
+    """
     lang = get_lang_from_request(request)
-
     return templates.TemplateResponse(
         "home.html",
         {
@@ -109,22 +110,25 @@ def homepage(request: Request):
 
 @app.get("/set-lang")
 def set_lang(lang: str = "it"):
+    """
+    Imposta la lingua (it / fr) nel cookie e torna alla homepage.
+    """
     if lang not in ("it", "fr"):
         lang = "it"
-
     response = RedirectResponse(url="/")
     response.set_cookie(key="lang", value=lang, max_age=60 * 60 * 24 * 365)
     return response
 
+
 # -------------------------------------------------
-# PAGINA LOGIN (FRONTEND)
+# LOGIN FRONTEND (PAGINA + API SEMPLICE)
 # -------------------------------------------------
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     """
-    Pagina di login: inserisci email e password,
-    la pagina farà una chiamata a /auth/login.
+    Pagina di login HTML (form).
+    Il JS dentro login.html può usare /auth/login o /auth/token per ottenere il JWT.
     """
     return templates.TemplateResponse(
         "login.html",
@@ -133,244 +137,143 @@ def login_page(request: Request):
         },
     )
 
+
+@app.post("/auth/login")
+def login_api(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    db=Depends(get_db),
+):
+    """
+    Endpoint usato dal form di login.
+    - Verifica le credenziali
+    - Se ok, crea un JWT
+    - Decide dove mandare l'utente (manager vs caposquadra)
+    """
+    user = authenticate_user(db, email=email, password=password)
+    if not user:
+        # Torniamo la pagina di login con errore
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "login_error": "Email o password non corretti",
+            },
+            status_code=400,
+        )
+
+    # Crea il token JWT (usa la stessa funzione di /auth/token)
+    access_token = create_access_token(data={"sub": user.email})
+
+    # Puoi salvare il token in un cookie HttpOnly (così il JS può recuperarlo)
+    response = RedirectResponse(
+        url="/manager/dashboard" if user.role in (RoleEnum.admin, RoleEnum.manager) else "/capo/dashboard",
+        status_code=303,
+    )
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        max_age=60 * 60,  # 1 ora
+        path="/",
+    )
+    return response
+
+
 # -------------------------------------------------
-# PAGINE FRONTEND — MANAGER
+# PAGINE FRONTEND — MANAGER & CAPOSQUADRA
 # -------------------------------------------------
 
 @app.get("/manager/dashboard", response_class=HTMLResponse)
-def manager_dashboard(request: Request):
+def manager_dashboard(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+):
     """
-    Dashboard manager: accesso completo.
+    Dashboard manager con accesso a cantieri, fiches, rapportini e macchinari.
     """
     return templates.TemplateResponse(
         "manager/home_manager.html",
         {
             "request": request,
+            "user": current_user,
             "user_role": "manager",
         },
     )
 
-
-@app.get("/manager/cantieri", response_class=HTMLResponse)
-def manager_cantieri_lista(request: Request):
-    """
-    Lista cantieri (vista manager).
-    """
-    return templates.TemplateResponse(
-        "manager/cantieri_lista.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/cantieri/nuovo", response_class=HTMLResponse)
-def manager_cantieri_nuovo(request: Request):
-    """
-    Creazione nuovo cantiere (manager).
-    """
-    return templates.TemplateResponse(
-        "manager/cantieri_nuovo.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/fiches", response_class=HTMLResponse)
-def manager_fiches_lista(request: Request):
-    """
-    Lista fiches (manager).
-    """
-    return templates.TemplateResponse(
-        "manager/fiches_lista.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/fiches/nuova", response_class=HTMLResponse)
-def manager_fiches_nuova(request: Request):
-    """
-    Nuova fiche (manager).
-    """
-    return templates.TemplateResponse(
-        "manager/fiches_nuova.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/rapportini", response_class=HTMLResponse)
-def manager_rapportini_lista(request: Request):
-    """
-    Lista rapportini (manager).
-    """
-    return templates.TemplateResponse(
-        "manager/rapportini_lista.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/rapportini/esporta", response_class=HTMLResponse)
-def manager_rapportini_esporta(request: Request):
-    """
-    Pagina mock per esportazione rapportini (in futuro: PDF/Excel).
-    """
-    return templates.TemplateResponse(
-        "manager/rapportini_esporta.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/macchinari", response_class=HTMLResponse)
-def manager_macchinari_lista(request: Request):
-    """
-    Lista macchinari (manager).
-    """
-    return templates.TemplateResponse(
-        "manager/macchinari_lista.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/macchinari/assegna", response_class=HTMLResponse)
-def manager_macchinari_assegna(request: Request):
-    """
-    Assegnazione macchinari ai cantieri (manager).
-    """
-    return templates.TemplateResponse(
-        "manager/macchinari_assegna.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/utenti", response_class=HTMLResponse)
-def manager_utenti_lista(request: Request):
-    """
-    Gestione utenti (lista) – visibile solo a chi ha ruolo admin/manager.
-    (La protezione reale è gestita dal token e dal backend.)
-    """
-    return templates.TemplateResponse(
-        "manager/utenti_lista.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-
-@app.get("/manager/utenti/nuovo", response_class=HTMLResponse)
-def manager_utenti_nuovo(request: Request):
-    """
-    Pagina per creare un nuovo utente (admin).
-    """
-    return templates.TemplateResponse(
-        "manager/utenti_nuovo.html",
-        {
-            "request": request,
-            "user_role": "manager",
-        },
-    )
-
-# -------------------------------------------------
-# PAGINE FRONTEND — CAPOSQUADRA
-# -------------------------------------------------
 
 @app.get("/capo/dashboard", response_class=HTMLResponse)
-def capo_dashboard(request: Request):
+def capo_dashboard(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+):
     """
-    Dashboard caposquadra: funzioni limitate ai cantieri assegnati.
+    Dashboard caposquadra con funzioni limitate ai cantieri assegnati.
     """
     return templates.TemplateResponse(
         "capo/home_capo.html",
         {
             "request": request,
-            "user_role": "capo",
+            "user": current_user,
+            "user_role": "caposquadra",
         },
     )
 
 
 @app.get("/capo/rapportini/nuovo", response_class=HTMLResponse)
-def pagina_nuovo_rapportino_capo(request: Request):
+def pagina_nuovo_rapportino_capo(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+):
     """
-    Pagina per creare un nuovo rapportino giornaliero.
+    Pagina per creare un nuovo rapportino giornaliero (caposquadra).
+    Il JS della pagina chiamerà l'API POST /reports con il token JWT.
     """
     return templates.TemplateResponse(
         "capo_nuovo_rapportino.html",
         {
             "request": request,
-            "user_role": "capo",
+            "user": current_user,
         },
     )
 
 
-@app.get("/capo/rapportini", response_class=HTMLResponse)
-def capo_lista_rapportini(request: Request):
+@app.get("/manager/rapportini", response_class=HTMLResponse)
+def manager_rapportini(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+):
     """
-    Lista dei rapportini del caposquadra.
+    Pagina manager: lista dei rapportini salvati nel database.
     """
+    db = SessionLocal()
+    try:
+        reports_list = (
+            db.query(Report)
+            .order_by(Report.date.desc(), Report.id.desc())
+            .all()
+        )
+    finally:
+        db.close()
+
     return templates.TemplateResponse(
-        "capo_lista_rapportini.html",
+        "manager/rapportini.html",
         {
             "request": request,
-            "user_role": "capo",
+            "user": current_user,
+            "reports": reports_list,
         },
     )
 
-
-@app.get("/capo/fiches/nuova", response_class=HTMLResponse)
-def capo_nuova_fiche(request: Request):
-    """
-    Creazione di una nuova fiche di cantiere.
-    """
-    return templates.TemplateResponse(
-        "capo_nuova_fiche.html",
-        {
-            "request": request,
-            "user_role": "capo",
-        },
-    )
-
-
-@app.get("/capo/fiches", response_class=HTMLResponse)
-def capo_lista_fiches(request: Request):
-    """
-    Lista delle fiches del caposquadra.
-    """
-    return templates.TemplateResponse(
-        "capo_lista_fiches.html",
-        {
-            "request": request,
-            "user_role": "capo",
-        },
-    )
 
 # -------------------------------------------------
-# ROUTER API
+# INCLUDE DEI ROUTER API
 # -------------------------------------------------
 
-app.include_router(auth_router)
-app.include_router(users.router)
-app.include_router(sites.router)
-app.include_router(machines.router)
-app.include_router(reports.router)
-app.include_router(fiches.router)
+app.include_router(auth_router)       # /auth/token, /auth/me
+app.include_router(users.router)      # /users
+app.include_router(sites.router)      # /sites
+app.include_router(machines.router)   # /machines
+app.include_router(reports.router)    # /reports
+app.include_router(fiches.router)     # /fiches
