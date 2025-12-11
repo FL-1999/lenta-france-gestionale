@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Dettaglio rapportino – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Dettaglio rapportino</h1>
+  <p class="subtitle">Consulta tutte le informazioni del rapportino selezionato.</p>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <p><strong>Data:</strong> {{ report.date.strftime("%d/%m/%Y") }}</p>
+    <p><strong>Cantiere:</strong> {{ report.site_name_or_code }}</p>
+    <p><strong>Ore totali:</strong> {{ "%.1f"|format(report.total_hours) }}</p>
+    <p><strong>N. operai:</strong> {{ report.workers_count }}</p>
+    <p><strong>Macchinari:</strong> {{ report.machines_used or "-" }}</p>
+    <p><strong>Attività:</strong> {{ report.activities or "-" }}</p>
+    <p><strong>Note:</strong> {{ report.notes or "-" }}</p>
+    <p><strong>Creato da:</strong>
+      {% if report.created_by %}
+        {{ report.created_by.full_name or report.created_by.email }}
+      {% else %}
+        -
+      {% endif %}
+    </p>
+    <p><strong>Ruolo creatore:</strong>
+      {% if report.created_by and report.created_by.role %}
+        {{ report.created_by.role.value if report.created_by.role.value is defined else report.created_by.role }}
+      {% else %}
+        -
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<p><a href="/manager/rapportini">Torna all’elenco</a></p>
+{% endblock %}
