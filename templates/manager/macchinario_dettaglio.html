@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Dettaglio macchinario{% endblock %}
+
+{% block content %}
+<h1>Dettaglio macchinario</h1>
+
+<div class="card">
+  <p><strong>Nome:</strong> {{ machine.name }}</p>
+  <p><strong>Tipo:</strong> {{ machine.machine_type.value if machine.machine_type else '-' }}</p>
+  <p><strong>Stato:</strong> {{ machine.status }}</p>
+  <p><strong>Note:</strong> {{ machine.notes or '—' }}</p>
+  <p><strong>Cantiere assegnato:</strong>
+    {% if machine.site %}
+      {{ machine.site.name }} ({{ machine.site.code }})
+    {% else %}
+      Nessun cantiere assegnato
+    {% endif %}
+  </p>
+</div>
+
+<div class="actions">
+  <a href="/manager/macchinari/modifica/{{ machine.id }}" class="button">✏️ Modifica</a>
+  <a href="/manager/macchinari/assegna/{{ machine.id }}" class="button">📌 Assegna a cantiere</a>
+  <a href="/manager/macchinari" class="button">⬅️ Torna alla lista</a>
+</div>
+{% endblock %}

@@ -141,6 +141,9 @@ class Machine(Base, TimestampMixin):
     machine_type = Column(Enum(MachineTypeEnum), nullable=True)
     plate = Column(String(50), nullable=True)  # targa, se presente
 
+    status = Column(String(50), nullable=False, default="attivo")
+    notes = Column(Text, nullable=True)
+
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
     site = relationship("Site", back_populates="machines")
 

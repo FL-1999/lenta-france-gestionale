@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from datetime import date
 from typing import Optional, List
 
@@ -64,10 +64,12 @@ class SiteRead(SiteBase):
 
 class MachineBase(BaseModel):
     name: str
-    model: Optional[str] = None
-    type: MachineTypeEnum
-    current_site_id: Optional[int] = None
+    machine_type: MachineTypeEnum = Field(alias="type")
     notes: Optional[str] = None
+    status: str
+    site_id: Optional[int] = None
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class MachineCreate(MachineBase):
@@ -76,11 +78,8 @@ class MachineCreate(MachineBase):
 
 class MachineRead(MachineBase):
     id: int
-    has_issue: bool
-    issue_notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class MachineIssueUpdate(BaseModel):
