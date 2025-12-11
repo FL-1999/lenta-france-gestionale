@@ -14,17 +14,15 @@ router = APIRouter(
     tags=["reports"],
 )
 
+
 # ===========================
-# SCHEMI Pydantic
+# SCHEMI Pydantic (v2)
 # ===========================
 
-class ReportCreate(BaseModel):
-    # Pydantic v2: config
+class ReportBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    # NOTA: il campo si chiama report_date per evitare il conflitto "date: date"
-    # ma l'alias JSON resta "date", quindi il frontend può continuare a mandare { "date": "2025-12-11", ... }
-    report_date: dt_date = Field(..., alias="date", description="Data del rapportino")
+    date: dt_date = Field(..., description="Data del rapportino")
     site_name_or_code: str = Field(..., description="Nome o codice cantiere")
     total_hours: float = Field(..., ge=0, description="Ore totali lavorate")
     workers_count: int = Field(..., ge=0, description="Numero operai")
@@ -39,10 +37,13 @@ class ReportCreate(BaseModel):
     )
 
 
-class ReportOut(ReportCreate):
-    # Pydantic v2: stessa config
-    model_config = ConfigDict(from_attributes=True)
+class ReportCreate(ReportBase):
+    """Schema usato in input (creazione rapportino)."""
+    pass
 
+
+class ReportOut(ReportBase):
+    """Schema usato in output (risposta API)."""
     id: int
     created_by_email: Optional[str] = None
     created_by_role: Optional[str] = None
@@ -74,7 +75,7 @@ def create_report(
         )
 
     db_report = Report(
-        date=report_in.report_date,  # <-- qui usiamo report_date
+        date=report_in.date,
         site_name_or_code=report_in.site_name_or_code,
         total_hours=report_in.total_hours,
         workers_count=report_in.workers_count,
@@ -90,7 +91,7 @@ def create_report(
 
     return ReportOut(
         id=db_report.id,
-        report_date=db_report.date,  # mappiamo sulla property report_date
+        date=db_report.date,
         site_name_or_code=db_report.site_name_or_code,
         total_hours=db_report.total_hours,
         workers_count=db_report.workers_count,
@@ -99,7 +100,9 @@ def create_report(
         notes=db_report.notes,
         created_by_email=current_user.email,
         created_by_role=(
-            current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+            current_user.role.value
+            if hasattr(current_user.role, "value")
+            else str(current_user.role)
         ),
     )
 
@@ -128,7 +131,7 @@ def list_reports_for_manager(
         result.append(
             ReportOut(
                 id=r.id,
-                report_date=r.date,
+                date=r.date,
                 site_name_or_code=r.site_name_or_code,
                 total_hours=r.total_hours,
                 workers_count=r.workers_count,
