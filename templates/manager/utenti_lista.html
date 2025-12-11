@@ -1,0 +1,122 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Utenti – Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">👥 Gestione utenti</h1>
+    <p class="page-subtitle">
+        Qui puoi visualizzare gli utenti del gestionale. La creazione e modifica
+        è riservata all’admin tramite API protette.
+    </p>
+</div>
+
+<div class="card">
+    <div class="form-actions" style="justify-content: space-between; align-items: center;">
+        <span>Elenco utenti registrati.</span>
+        <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ Nuovo utente</a>
+    </div>
+
+    <div id="users-error" class="error-text" style="display:none; margin-bottom: 10px;"></div>
+
+    <table class="table" id="users-table">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Nome completo</th>
+                <th>Ruolo</th>
+                <th>Lingua</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Verrà riempito via JavaScript -->
+        </tbody>
+    </table>
+</div>
+
+<div class="form-actions">
+    <a href="/manager/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
+</div>
+
+<script>
+(async function() {
+    const errorBox = document.getElementById("users-error");
+    const tbody = document.querySelector("#users-table tbody");
+
+    function showError(msg) {
+        errorBox.textContent = msg;
+        errorBox.style.display = "block";
+    }
+
+    let token = null;
+    try {
+        token = localStorage.getItem("lf_token");
+    } catch (e) {
+        console.error("Impossibile leggere lf_token:", e);
+    }
+
+    if (!token) {
+        showError("Nessun token trovato. Effettua di nuovo il login.");
+        return;
+    }
+
+    try {
+        const resp = await fetch("/users", {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token,
+            },
+        });
+
+        if (!resp.ok) {
+            if (resp.status === 401 || resp.status === 403) {
+                showError("Non hai i permessi per vedere la lista utenti (solo admin).");
+            } else {
+                showError("Errore nel caricamento degli utenti. Codice: " + resp.status);
+            }
+            return;
+        }
+
+        const data = await resp.json();
+        // Ci aspettiamo una lista di utenti
+        tbody.innerHTML = "";
+
+        if (!Array.isArray(data) || data.length === 0) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 4;
+            td.textContent = "Nessun utente trovato.";
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+
+        data.forEach(user => {
+            const tr = document.createElement("tr");
+
+            const tdEmail = document.createElement("td");
+            tdEmail.textContent = user.email || "";
+            tr.appendChild(tdEmail);
+
+            const tdName = document.createElement("td");
+            tdName.textContent = user.full_name || "";
+            tr.appendChild(tdName);
+
+            const tdRole = document.createElement("td");
+            tdRole.textContent = user.role || "";
+            tr.appendChild(tdRole);
+
+            const tdLang = document.createElement("td");
+            tdLang.textContent = user.language || "";
+            tr.appendChild(tdLang);
+
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error(err);
+        showError("Errore di connessione al server durante il caricamento utenti.");
+    }
+})();
+</script>
+{% endblock %}
