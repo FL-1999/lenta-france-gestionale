@@ -157,7 +157,13 @@
     --color-theme-toggle-icon: #78350f;
 }
 
-.dashboard-actions,
+.dashboard-actions {
+    display: flex;               /* keep buttons aligned in a row */
+    gap: 0.75rem;                /* keep the gap between buttons */
+    margin-bottom: 32px;         /* <-- spazio sotto i pulsanti */
+    flex-wrap: wrap;             /* so it still works on small screens */
+}
+
 .page-actions,
 .action-buttons {
     margin-bottom: 32px !important;   /* Increase spacing under the top buttons */
