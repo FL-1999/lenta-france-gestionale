@@ -420,13 +420,19 @@ body {
 
 .table th,
 .table td {
-    border-bottom: 1px solid var(--border-table);
-    padding: 8px 10px;
+    padding: 0.55rem 0.75rem;
     text-align: left;
+    border-bottom: 1px solid var(--border-table);
+    vertical-align: middle;
 }
 
 .table th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     color: var(--table-head-text);
+    background: var(--bg-table-head);
+    white-space: nowrap;
 }
 
 .table thead tr {
@@ -439,6 +445,40 @@ body {
 
 .table tbody tr:nth-child(odd) {
     background: transparent;
+}
+
+.table tbody tr {
+    transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+}
+
+.table tbody tr:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    background: rgba(148, 163, 184, 0.10);
+}
+
+.table-actions {
+    display: inline-flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.table .btn-sm {
+    padding: 0.25rem 0.7rem;
+    font-size: 0.78rem;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
 }
 
 /* DASHBOARD */
@@ -718,5 +758,13 @@ body {
     .card,
     .kpi-card {
         padding: 0.9rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .table th,
+    .table td {
+        padding: 0.45rem 0.5rem;
+        font-size: 0.82rem;
     }
 }
