@@ -1,11 +1,13 @@
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from database import Base, engine, SessionLocal, get_db
@@ -234,9 +236,49 @@ def manager_dashboard(
     try:
         reports_list = (
             db.query(Report)
+            .options(joinedload(Report.site))
             .order_by(Report.date.desc(), Report.id.desc())
             .all()
         )
+
+        start_date = date.today() - timedelta(days=30)
+
+        reports_last_30_days_rows = (
+            db.query(Report.date.label("report_date"), func.count(Report.id).label("count"))
+            .filter(Report.date >= start_date)
+            .group_by(Report.date)
+            .order_by(Report.date)
+            .all()
+        )
+        reports_last_30_days = [
+            {"date": row.report_date.isoformat(), "count": row.count}
+            for row in reports_last_30_days_rows
+        ]
+
+        hours_per_site_rows = (
+            db.query(
+                func.coalesce(Site.name, Report.site_name_or_code).label("site_name"),
+                func.sum(Report.total_hours).label("hours"),
+            )
+            .outerjoin(Site, Site.id == Report.site_id)
+            .filter(Report.date >= start_date)
+            .group_by("site_name")
+            .order_by(func.sum(Report.total_hours).desc())
+            .all()
+        )
+        hours_per_site_30_days = [
+            {"site_name": row.site_name or "Senza nome", "hours": float(row.hours or 0)}
+            for row in hours_per_site_rows
+        ]
+
+        reports_by_status_counts = {"Aperti": 0, "Chiusi": 0}
+        for report in reports_list:
+            status_key = "Chiusi" if (report.total_hours or 0) > 0 else "Aperti"
+            reports_by_status_counts[status_key] += 1
+        reports_by_status = [
+            {"status": key, "count": value}
+            for key, value in reports_by_status_counts.items()
+        ]
     finally:
         db.close()
 
@@ -247,6 +289,9 @@ def manager_dashboard(
             "user": current_user,
             "user_role": "manager",
             "reports": reports_list,
+            "chart_reports_last_30_days": jsonable_encoder(reports_last_30_days),
+            "chart_hours_per_site_30_days": jsonable_encoder(hours_per_site_30_days),
+            "chart_reports_by_status": jsonable_encoder(reports_by_status),
         },
     )
 
