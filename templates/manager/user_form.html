@@ -3,56 +3,76 @@
 {% block title %}{{ 'Nuovo utente' if mode == 'create' else 'Modifica utente' }} – Manager{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>{{ 'Nuovo utente' if mode == 'create' else 'Modifica utente' }}</h1>
+<div class="form-page">
+    <div class="form-page-header">
+        <p class="eyebrow">Area Manager</p>
+        <h1 class="page-title">
+            <span class="page-icon page-icon--users" aria-hidden="true"></span>
+            {{ 'Nuovo utente' if mode == 'create' else 'Modifica utente' }}
+        </h1>
+        <p class="subtitle">
+            Gestisci i dati dell'utente e i permessi di accesso al gestionale.
+        </p>
+    </div>
+
+    <div class="card form-card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>Dettagli utente</span>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if error_message %}
+            <div class="form-error">{{ error_message }}</div>
+            {% endif %}
+
+            <form method="post" class="form" action="{{ '/manager/utenti/nuovo' if mode == 'create' else '/manager/utenti/' + ((user_obj.id if user_obj else user_id) | string) + '/modifica' }}">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email*</label>
+                        <input id="email" type="email" name="email" class="form-control" required value="{{ form_email or (user_obj.email if user_obj else '') }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="full_name">Nome completo</label>
+                        <input id="full_name" type="text" name="full_name" class="form-control" value="{{ form_full_name or (user_obj.full_name if user_obj else '') }}">
+                    </div>
+
+                    {% if mode == 'create' %}
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password*</label>
+                        <input id="password" type="password" name="password" class="form-control" required>
+                    </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label class="form-label" for="role">Ruolo*</label>
+                        <select id="role" name="role" class="form-select" required>
+                            {% for r in role_choices %}
+                                {% set current_role = form_role or (user_obj.role.value if user_obj and user_obj.role else '') %}
+                                <option value="{{ r.value }}" {% if current_role == r.value %}selected{% endif %}>{{ r.value }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="language">Lingua</label>
+                        <select id="language" name="language" class="form-select">
+                            {% set current_lang = form_language or (user_obj.language if user_obj else '') %}
+                            <option value="" {% if not current_lang %}selected{% endif %}>(Nessuna)</option>
+                            {% for lang in language_choices %}
+                            <option value="{{ lang }}" {% if current_lang == lang %}selected{% endif %}>{{ lang }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                    <a href="/manager/utenti" class="btn btn-secondary">Annulla</a>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
-
-{% if error_message %}
-<div class="alert alert-danger">{{ error_message }}</div>
-{% endif %}
-
-<form method="post" class="form" action="{{ '/manager/utenti/nuovo' if mode == 'create' else '/manager/utenti/' + ((user_obj.id if user_obj else user_id) | string) + '/modifica' }}">
-    <div class="form-group">
-        <label for="email">Email*</label>
-        <input id="email" type="email" name="email" required value="{{ form_email or (user_obj.email if user_obj else '') }}">
-    </div>
-
-    <div class="form-group">
-        <label for="full_name">Nome completo</label>
-        <input id="full_name" type="text" name="full_name" value="{{ form_full_name or (user_obj.full_name if user_obj else '') }}">
-    </div>
-
-    {% if mode == 'create' %}
-    <div class="form-group">
-        <label for="password">Password*</label>
-        <input id="password" type="password" name="password" required>
-    </div>
-    {% endif %}
-
-    <div class="form-group">
-        <label for="role">Ruolo*</label>
-        <select id="role" name="role" required>
-            {% for r in role_choices %}
-                {% set current_role = form_role or (user_obj.role.value if user_obj and user_obj.role else '') %}
-                <option value="{{ r.value }}" {% if current_role == r.value %}selected{% endif %}>{{ r.value }}</option>
-            {% endfor %}
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="language">Lingua</label>
-        <select id="language" name="language">
-            {% set current_lang = form_language or (user_obj.language if user_obj else '') %}
-            <option value="" {% if not current_lang %}selected{% endif %}>(Nessuna)</option>
-            {% for lang in language_choices %}
-            <option value="{{ lang }}" {% if current_lang == lang %}selected{% endif %}>{{ lang }}</option>
-            {% endfor %}
-        </select>
-    </div>
-
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Salva</button>
-        <a href="/manager/utenti" class="btn btn-secondary">Annulla</a>
-    </div>
-</form>
 {% endblock %}

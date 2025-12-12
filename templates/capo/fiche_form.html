@@ -3,52 +3,82 @@
 {% block title %}Nuova fiche di cantiere{% endblock %}
 
 {% block content %}
-<h1>Nuova fiche di cantiere</h1>
-<form method="post" class="form">
-  <label>Data:
-    <input type="date" name="date" required>
-  </label>
-
-  <label>Cantiere:
-    <select name="site_id" required>
-      {% for s in sites %}
-        <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
-      {% endfor %}
-    </select>
-  </label>
-
-  <label>Macchina:
-    <select name="machine_id">
-      <option value="">Nessuna</option>
-      {% for m in machines %}
-        <option value="{{ m.id }}">{{ m.name }}{% if m.code %} ({{ m.code }}){% endif %}</option>
-      {% endfor %}
-    </select>
-  </label>
-
-  <label>Tipo fiche:
-    <select name="fiche_type" required>
-      {% for ft in fiche_types %}
-        <option value="{{ ft.value }}">{{ ft.value }}</option>
-      {% endfor %}
-    </select>
-  </label>
-
-  <label>Ore:
-    <input type="number" name="hours" step="0.1" required>
-  </label>
-
-  <label>Descrizione:
-    <textarea name="description" rows="4" required></textarea>
-  </label>
-
-  <label>Note:
-    <textarea name="notes" rows="3"></textarea>
-  </label>
-
-  <div class="form-actions">
-    <button type="submit">Salva fiche</button>
-    <a class="btn" href="/capo/dashboard">Annulla</a>
+<div class="form-page">
+  <div class="form-page-header">
+    <p class="eyebrow">Area Caposquadra</p>
+    <h1 class="page-title">
+      <span class="page-icon page-icon--fiches" aria-hidden="true"></span>
+      Nuova fiche di cantiere
+    </h1>
+    <p class="subtitle">Compila la fiche con i dettagli delle attività e dei macchinari.</p>
   </div>
-</form>
+
+  <div class="card form-card">
+    <div class="card-header">
+      <div class="card-title">
+        <span>Dettagli fiche</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <form method="post" class="form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="date">Data</label>
+            <input type="date" id="date" name="date" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="site_id">Cantiere</label>
+            <select id="site_id" name="site_id" class="form-select" required>
+              {% for s in sites %}
+                <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="machine_id">Macchina</label>
+            <select id="machine_id" name="machine_id" class="form-select">
+              <option value="">Nessuna</option>
+              {% for m in machines %}
+                <option value="{{ m.id }}">{{ m.name }}{% if m.code %} ({{ m.code }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="fiche_type">Tipo fiche</label>
+            <select id="fiche_type" name="fiche_type" class="form-select" required>
+              {% for ft in fiche_types %}
+                <option value="{{ ft.value }}">{{ ft.value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="hours">Ore</label>
+            <input type="number" id="hours" name="hours" class="form-control" step="0.1" required>
+          </div>
+        </div>
+
+        <div class="form-group form-grid form-grid--single">
+          <div class="form-group">
+            <label class="form-label" for="description">Descrizione</label>
+            <textarea id="description" name="description" class="form-textarea" rows="4" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="notes">Note</label>
+            <textarea id="notes" name="notes" class="form-textarea" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salva fiche</button>
+          <a class="btn btn-secondary" href="/capo/dashboard">Annulla</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
