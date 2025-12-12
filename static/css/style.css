@@ -65,53 +65,67 @@
 :root[data-theme="light"] {
     color-scheme: light;
 
-    --bg-body: radial-gradient(circle at top left, #f9fafb 0, #f3f4f6 35%, #faf7f2 100%);
-    --bg-navbar: rgba(255, 255, 255, 0.9);
-    --bg-card: rgba(255, 255, 255, 0.96);
-    --bg-card-strong: rgba(255, 255, 255, 0.98);
-    --bg-table-head: #e5e7eb;
-    --bg-table-row-alt: #f9fafb;
+    /* Warm, creamy body background */
+    --bg-body: radial-gradient(circle at top left, #fef3c7 0, #fdf6e3 35%, #faf3dd 100%);
+    /* Navbar almost white but slightly warm */
+    --bg-navbar: rgba(255, 252, 245, 0.95);
+    /* Cards warm ivory */
+    --bg-card: rgba(255, 250, 240, 0.98);
+    --bg-card-strong: rgba(255, 248, 231, 0.99);
+    /* Table background tones */
+    --bg-table-head: #f3e8ff; /* very light warm lilac/neutral, not blue */
+    --bg-table-row-alt: #fefce8;
 
-    --border-soft: rgba(226, 232, 240, 0.9);
-    --border-strong: rgba(191, 219, 254, 0.8);
-    --border-table: rgba(209, 213, 219, 0.9);
+    /* Borders & outlines (warm neutrals) */
+    --border-soft: rgba(230, 210, 185, 0.9);
+    --border-strong: rgba(214, 189, 152, 0.9);
+    --border-table: rgba(229, 231, 235, 0.9);
 
-    --text-main: #111827;
+    /* Text (warm dark greys) */
+    --text-main: #292524;    /* warm dark brownish grey */
     --text-muted: #6b7280;
-    --text-subtle: #6b7280;
-    --text-strong: #0f172a;
+    --text-subtle: #78716c;
+    --text-strong: #1c1917;
 
-    --nav-text: #111827;
+    /* Navbar text */
+    --nav-text: #1f2937;
     --nav-text-hover: #111827;
 
+    /* Buttons secondary (neutral warm) */
     --btn-secondary-bg: #e5e7eb;
-    --btn-secondary-bg-hover: #d1d5db;
-    --btn-secondary-border: #cbd5e1;
+    --btn-secondary-bg-hover: #d4d4d8;
+    --btn-secondary-border: #d4d4d8;
     --btn-secondary-text: #111827;
     --btn-secondary-shadow: 0 0 10px rgba(15, 23, 42, 0.08);
     --btn-secondary-shadow-hover: 0 0 16px rgba(15, 23, 42, 0.12);
 
+    /* Card radius & shadow */
     --card-radius: 18px;
-    --card-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+    --card-shadow: 0 14px 30px rgba(148, 114, 76, 0.18);
 
-    --kpi-bg: linear-gradient(145deg, #eef2ff, #e0f2fe);
-    --kpi-text: #1f2937;
-    --kpi-value: #0f172a;
-    --kpi-sub: #6b7280;
+    /* KPI background: warm, no blue */
+    --kpi-bg: linear-gradient(145deg, #fef3c7, #fed7aa);
+    --kpi-text: #78350f;
+    --kpi-value: #7c2d12;
+    --kpi-sub: #854d0e;
 
-    --mini-chart-bg: rgba(249, 250, 251, 0.96);
-    --mini-chart-border: rgba(226, 232, 240, 0.9);
+    /* Mini-chart panel */
+    --mini-chart-bg: rgba(255, 250, 240, 0.96);
+    --mini-chart-border: rgba(230, 210, 185, 0.9);
 
-    --table-text: #111827;
-    --table-head-text: #111827;
+    /* Table text */
+    --table-text: #292524;
+    --table-head-text: #1f2937;
 
+    /* Badges (keep same green/red, fine on warm background) */
     --badge-success-bg: #16a34a;
     --badge-danger-bg: #dc2626;
     --badge-text: #f9fafb;
 
-    --theme-toggle-bg: rgba(255, 255, 255, 0.9);
-    --theme-toggle-border: rgba(148, 163, 184, 0.6);
-    --theme-toggle-icon: #374151;
+    /* Theme toggle */
+    --theme-toggle-bg: rgba(255, 250, 240, 0.96);
+    --theme-toggle-border: rgba(214, 189, 152, 0.8);
+    --theme-toggle-icon: #78350f;
 }
 
 body {
