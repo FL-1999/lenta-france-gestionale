@@ -67,7 +67,6 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
     padding: 0.55rem 1.2rem;
     border-radius: 9999px;
     font-weight: 500;
@@ -78,34 +77,29 @@ body {
     background: transparent;
     color: #e5e7eb;
     text-decoration: none;
-    letter-spacing: 0.01em;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
+    white-space: nowrap;
 }
 
 .btn-lg {
-    padding: 0.8rem 1.7rem;
-    font-size: 1rem;
+    padding: 0.7rem 1.6rem;
+    font-size: 0.95rem;
 }
 
 .btn-sm {
-    padding: 0.36rem 0.9rem;
-    font-size: 0.82rem;
-    border-radius: 14px;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.8rem;
 }
 
 .btn-primary {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: #f9fafb;
-    box-shadow: 0 0 18px rgba(129, 140, 248, 0.35);
     border-color: transparent;
+    box-shadow: 0 0 18px rgba(129, 140, 248, 0.35);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #6f72ff, #9c6ff7);
-    box-shadow: 0 0 24px rgba(129, 140, 248, 0.6);
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    box-shadow: 0 0 24px rgba(129, 140, 248, 0.55);
     transform: translateY(-1px);
 }
 
@@ -168,8 +162,8 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.04);
-    box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.55);
     margin-right: 0.75rem;
 }
 
@@ -178,11 +172,6 @@ body {
     width: 18px;
     height: 18px;
     stroke-width: 1.8;
-}
-
-.card-icon--reports svg,
-.page-icon--reports svg {
-    stroke: #818cf8;
 }
 
 .card-icon--sites svg,
@@ -195,14 +184,19 @@ body {
     stroke: #fb923c;
 }
 
-.card-icon--users svg,
-.page-icon--users svg {
-    stroke: #38bdf8;
-}
-
 .card-icon--fiches svg,
 .page-icon--fiches svg {
     stroke: #facc15;
+}
+
+.card-icon--reports svg,
+.page-icon--reports svg {
+    stroke: #818cf8;
+}
+
+.card-icon--users svg,
+.page-icon--users svg {
+    stroke: #38bdf8;
 }
 
 .card-icon--activity svg,
