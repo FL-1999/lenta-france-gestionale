@@ -162,11 +162,10 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
-    background: rgba(15, 23, 42, 0.95);
-    box-shadow: 0 0 18px rgba(0, 0, 0, 0.55);
     margin-right: 0.75rem;
 }
 
+/* default icon size */
 .card-icon svg,
 .page-icon svg {
     width: 18px;
@@ -174,34 +173,82 @@ body {
     stroke-width: 1.8;
 }
 
+/* KPI ICONS (KEEP AS THEY ARE) */
+/* assume KPI icons are inside a container like .dashboard-kpi-grid */
+
+.dashboard-kpi-grid .card-icon {
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.55);
+}
+
+.dashboard-kpi-grid .card-icon svg {
+    stroke: #ffffff;
+}
+
+/* Cantieri */
+.card-icon--sites,
+.page-icon--sites {
+    background: #ECFDF5;
+}
+
 .card-icon--sites svg,
 .page-icon--sites svg {
-    stroke: #4ade80;
+    stroke: #059669;
+}
+
+/* Macchinari */
+.card-icon--machines,
+.page-icon--machines {
+    background: #FFF7ED;
 }
 
 .card-icon--machines svg,
 .page-icon--machines svg {
-    stroke: #fb923c;
+    stroke: #EA580C;
+}
+
+/* Fiches */
+.card-icon--fiches,
+.page-icon--fiches {
+    background: #FEFCE8;
 }
 
 .card-icon--fiches svg,
 .page-icon--fiches svg {
-    stroke: #facc15;
+    stroke: #CA8A04;
+}
+
+/* Rapportini */
+.card-icon--reports,
+.page-icon--reports {
+    background: #EEF2FF;
 }
 
 .card-icon--reports svg,
 .page-icon--reports svg {
-    stroke: #818cf8;
+    stroke: #4F46E5;
+}
+
+/* Utenti */
+.card-icon--users,
+.page-icon--users {
+    background: #F0F9FF;
 }
 
 .card-icon--users svg,
 .page-icon--users svg {
-    stroke: #38bdf8;
+    stroke: #0EA5E9;
+}
+
+/* Attività recente */
+.card-icon--activity,
+.page-icon--activity {
+    background: #FDF2F8;
 }
 
 .card-icon--activity svg,
 .page-icon--activity svg {
-    stroke: #f472b6;
+    stroke: #DB2777;
 }
 .table {
     width: 100%;
