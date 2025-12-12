@@ -157,6 +157,12 @@
     --color-theme-toggle-icon: #78350f;
 }
 
+.dashboard-actions,
+.page-actions,
+.action-buttons {
+    margin-bottom: 32px !important;   /* Increase spacing under the top buttons */
+}
+
 @keyframes surfaceFadeInUp {
     from {
         opacity: 0;
