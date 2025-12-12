@@ -905,12 +905,55 @@ def capo_dashboard(
     """
     Dashboard caposquadra con funzioni limitate ai cantieri assegnati.
     """
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())
+
+    db = SessionLocal()
+    try:
+        kpi_reports_today = (
+            db.query(func.count(Report.id))
+            .filter(Report.created_by_id == current_user.id)
+            .filter(Report.date == today)
+            .scalar()
+            or 0
+        )
+
+        kpi_hours_this_week = (
+            db.query(func.coalesce(func.sum(Report.total_hours), 0.0))
+            .filter(Report.created_by_id == current_user.id)
+            .filter(Report.date >= start_of_week)
+            .scalar()
+            or 0
+        )
+
+        kpi_assigned_sites = (
+            db.query(func.count(func.distinct(Report.site_id)))
+            .filter(Report.created_by_id == current_user.id)
+            .filter(Report.site_id.isnot(None))
+            .scalar()
+            or 0
+        )
+
+        kpi_open_reports = (
+            db.query(func.count(Report.id))
+            .filter(Report.created_by_id == current_user.id)
+            .filter(func.coalesce(Report.total_hours, 0) <= 0)
+            .scalar()
+            or 0
+        )
+    finally:
+        db.close()
+
     return templates.TemplateResponse(
         "capo/home_capo.html",
         {
             "request": request,
             "user": current_user,
-            "user_role": "caposquadra",
+            "user_role": "capo",
+            "kpi_reports_today": kpi_reports_today,
+            "kpi_hours_this_week": kpi_hours_this_week,
+            "kpi_assigned_sites": kpi_assigned_sites,
+            "kpi_open_reports": kpi_open_reports,
         },
     )
 
