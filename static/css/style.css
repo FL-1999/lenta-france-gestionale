@@ -2,9 +2,9 @@
     /* Theme mode hint */
     color-scheme: dark;
 
-    /* COLOR PALETTE – DARK SOFT */
+    /* DARK – BASE PALETTE (versione precedente) */
     --color-bg-body: radial-gradient(circle at top left, #1f2937 0, #0b1120 40%, #020617 100%);
-    --color-bg-elevated: #111827;
+    --color-bg-elevated: #020617;
     --color-bg-card: #1f2937;
     --color-bg-card-strong: #020617;
     --color-bg-navbar: rgba(15, 23, 42, 0.7);
@@ -26,15 +26,15 @@
     --color-accent: #6366f1;
     --color-accent-soft: #8b5cf6;
 
-    /* KPI – dark */
-    --color-kpi-bg: linear-gradient(145deg, #1b2433 0%, #111827 60%, #020617 100%);
+    /* KPI – dark, leggermente freddi e “notte blu” */
+    --color-kpi-bg: linear-gradient(145deg, #020617 0%, #111827 55%, #1f2937 100%);
     --color-kpi-text: #d7e3f4;
     --color-kpi-value: #f8fafc;
     --color-kpi-sub: #9fb0c7;
     --color-kpi-border: rgba(129, 140, 248, 0.4);
     --color-kpi-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
 
-    /* BUTTONS – shared */
+    /* BUTTONS */
     --color-btn-primary-bg: linear-gradient(135deg, #6366f1, #8b5cf6);
     --color-btn-primary-bg-hover: linear-gradient(135deg, #4f46e5, #7c3aed);
     --color-btn-primary-text: #f9fafb;
@@ -59,7 +59,7 @@
     --color-mini-chart-bg: rgba(15, 23, 42, 0.65);
     --color-mini-chart-border: rgba(148, 163, 184, 0.28);
 
-    /* PAPER TEXTURE OVERLAY */
+    /* PAPER TEXTURE */
     --card-paper-texture: rgba(255, 255, 255, 0.06);
 
     /* THEME TOGGLE */
@@ -105,34 +105,35 @@
 :root[data-theme="light"] {
     color-scheme: light;
 
-    --color-bg-body: radial-gradient(circle at top left, #fef6e7 0, #faf1e2 40%, #f7ecde 100%);
+    /* LIGHT – crema/caffelatte (versione precedente) */
+    --color-bg-body: radial-gradient(circle at top left, #fef3c7 0, #fdf6e3 35%, #faf3dd 100%);
     --color-bg-elevated: #f5ede1;
-    --color-bg-card: #fffaf3;
-    --color-bg-card-strong: #fdf3e3;
+    --color-bg-card: rgba(255, 250, 240, 0.98);
+    --color-bg-card-strong: rgba(255, 248, 231, 0.99);
     --color-bg-navbar: rgba(255, 252, 245, 0.95);
-    --color-bg-table-head: #f4e4cf;
-    --color-bg-table-row-alt: #fff7ea;
+    --color-bg-table-head: #f3e8ff;
+    --color-bg-table-row-alt: #fefce8;
 
     --color-border-soft: rgba(230, 210, 185, 0.9);
     --color-border-strong: rgba(214, 189, 152, 0.9);
-    --color-border-table: rgba(214, 189, 152, 0.9);
+    --color-border-table: rgba(229, 231, 235, 0.9);
 
     --color-text-main: #292524;
     --color-text-strong: #1c1917;
-    --color-text-muted: #7a6a5e;
-    --color-text-subtle: #a08f7d;
+    --color-text-muted: #6b7280;
+    --color-text-subtle: #78716c;
 
     --color-nav-text: #1f2937;
     --color-nav-text-hover: #111827;
 
-    --color-accent: #b48352;
+    --color-accent: #b48352;    /* accent caldo */
     --color-accent-soft: #c4935d;
 
-    /* KPI – caffè latte */
+    /* KPI – caffè latte soft (che avevamo prima) */
     --color-kpi-bg: linear-gradient(145deg, #f4ede3 0%, #e9dfd2 50%, #f5ece1 100%);
-    --color-kpi-text: #5b4a3f;
-    --color-kpi-value: #473a32;
-    --color-kpi-sub: #7e6f65;
+    --color-kpi-text: #5c4033;
+    --color-kpi-value: #4a372d;
+    --color-kpi-sub: #7a6a5e;
     --color-kpi-border: rgba(210, 195, 180, 0.9);
     --color-kpi-shadow: 0 12px 28px rgba(130, 110, 90, 0.18);
 
