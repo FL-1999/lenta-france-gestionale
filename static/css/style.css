@@ -103,11 +103,18 @@
     --card-radius: 18px;
     --card-shadow: 0 14px 30px rgba(148, 114, 76, 0.18);
 
-    /* KPI background: warm, no blue */
---kpi-bg: linear-gradient(145deg, #f8efe4, #efe3d8);
---kpi-text: #5c4033;     /* coffee-brown */
---kpi-value: #4a372d;    /* darker espresso */
---kpi-sub: #7a6a5e;      /* muted warm */
+    /* KPI – Premium Caffè Latte Boosted */
+    --kpi-bg: linear-gradient(145deg, #f4ede3 0%, #e9dfd2 50%, #f5ece1 100%);
+    --kpi-text: #5b4a3f;     /* warm espresso grey-brown */
+    --kpi-value: #473a32;    /* deeper coffee tone */
+    --kpi-sub: #7e6f65;      /* muted latte */
+
+    /* KPI boosted highlights */
+    --kpi-border: rgba(210, 195, 180, 0.9);
+    --kpi-shadow: 0 12px 28px rgba(130, 110, 90, 0.18);
+
+    /* Soft-paper effect for cards */
+    --card-paper-texture: rgba(255, 255, 255, 0.15);
 
 
     /* Mini-chart panel */
@@ -473,15 +480,25 @@ body {
 
 .kpi-card {
     background: var(--kpi-bg);
+    background-blend-mode: soft-light;
     border-radius: 20px;
     padding: 1.1rem;
-    box-shadow:
-        0 18px 45px rgba(15, 23, 42, 0.9),
-        0 0 0 1px rgba(129, 140, 248, 0.25);
-    border: 1px solid var(--border-strong);
+    box-shadow: var(--kpi-shadow), 0 0 0 1px var(--kpi-border);
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: var(--card-paper-texture);
+    opacity: 0.25;
+    mix-blend-mode: overlay;
 }
 
 .kpi-top {
