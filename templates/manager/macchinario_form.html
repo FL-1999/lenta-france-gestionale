@@ -3,41 +3,72 @@
 {% block title %}{% if mode == 'create' %}Nuovo macchinario{% else %}Modifica macchinario{% endif %}{% endblock %}
 
 {% block content %}
-<h1>{% if mode == 'create' %}Nuovo macchinario{% else %}Modifica macchinario{% endif %}</h1>
-
-<form method="post">
-  <label>Nome*
-    <input type="text" name="name" value="{{ machine.name if machine else '' }}" required>
-  </label>
-  <label>Tipo*
-    <select name="type" required>
-      {% for t in machine_types %}
-      <option value="{{ t.value }}" {% if machine and machine.machine_type and machine.machine_type.value == t.value %}selected{% endif %}>{{ t.value }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label>Stato*
-    <select name="status" required>
-      {% for s in status_choices %}
-      <option value="{{ s }}" {% if machine and machine.status == s %}selected{% endif %}>{{ s }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label>Note
-    <textarea name="notes" rows="4" placeholder="Annotazioni aggiuntive">{{ machine.notes if machine else '' }}</textarea>
-  </label>
-  <label>Cantiere assegnato
-    <select name="site_id">
-      <option value="">Nessuno</option>
-      {% for s in sites %}
-      <option value="{{ s.id }}" {% if machine and machine.site_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
-      {% endfor %}
-    </select>
-  </label>
-
-  <div class="form-actions">
-    <button type="submit">Salva</button>
-    <a href="/manager/macchinari">Annulla</a>
+<div class="form-page">
+  <div class="form-page-header">
+    <p class="eyebrow">Area Manager</p>
+    <h1 class="page-title">
+      <span class="page-icon page-icon--machines" aria-hidden="true"></span>
+      {% if mode == 'create' %}Nuovo macchinario{% else %}Modifica macchinario{% endif %}
+    </h1>
+    <p class="subtitle">Inserisci o aggiorna i dati del macchinario assegnato ai cantieri.</p>
   </div>
-</form>
+
+  <div class="card form-card">
+    <div class="card-header">
+      <div class="card-title">
+        <span>Dettagli macchinario</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="name">Nome*</label>
+            <input type="text" id="name" name="name" class="form-control" value="{{ machine.name if machine else '' }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="type">Tipo*</label>
+            <select id="type" name="type" class="form-select" required>
+              {% for t in machine_types %}
+              <option value="{{ t.value }}" {% if machine and machine.machine_type and machine.machine_type.value == t.value %}selected{% endif %}>{{ t.value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="status">Stato*</label>
+            <select id="status" name="status" class="form-select" required>
+              {% for s in status_choices %}
+              <option value="{{ s }}" {% if machine and machine.status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="site_id">Cantiere assegnato</label>
+            <select id="site_id" name="site_id" class="form-select">
+              <option value="">Nessuno</option>
+              {% for s in sites %}
+              <option value="{{ s.id }}" {% if machine and machine.site_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group form-grid form-grid--single">
+          <div class="form-group">
+            <label class="form-label" for="notes">Note</label>
+            <textarea id="notes" name="notes" class="form-textarea" rows="4" placeholder="Annotazioni aggiuntive">{{ machine.notes if machine else '' }}</textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salva</button>
+          <a href="/manager/macchinari" class="btn btn-secondary">Annulla</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}

@@ -879,6 +879,128 @@ body {
         );
 }
 
+/* FORM PAGE LAYOUT */
+.form-page {
+    padding: 16px;
+}
+
+.form-page-header {
+    margin-bottom: 1.5rem;
+}
+
+.form-page-header .page-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.25rem 0;
+}
+
+.form-page-header .subtitle {
+    margin-top: 0.25rem;
+}
+
+.form-card {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.form-card .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 1.25rem;
+}
+
+.form-grid--single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.form-group-inline {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.form-control,
+.form-select,
+.form-textarea {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-soft);
+    background: rgba(15, 23, 42, 0.45);
+    color: var(--text-main);
+    padding: 0.55rem 0.75rem;
+    font-size: 0.9rem;
+    outline: none;
+    transition:
+        border-color var(--anim-fast) var(--anim-ease-standard),
+        box-shadow var(--anim-fast) var(--anim-ease-standard),
+        background var(--anim-fast) var(--anim-ease-standard),
+        transform var(--anim-fast) var(--anim-ease-standard);
+}
+
+:root[data-theme="light"] .form-control,
+:root[data-theme="light"] .form-select,
+:root[data-theme="light"] .form-textarea {
+    background: rgba(255, 250, 240, 0.9);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-textarea:focus {
+    border-color: rgba(129, 140, 248, 0.9);
+    box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.5);
+    transform: translateY(-1px);
+}
+
+.form-textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.form-help {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.form-error {
+    font-size: 0.8rem;
+    color: #f97373;
+}
+
+.form-actions {
+    margin-top: 1.25rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 640px) {
     .btn {
         margin: 6px;
