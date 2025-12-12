@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it" data-theme="dark">
+<html lang="{{ request.cookies.get('lang', 'it') }}" data-theme="dark">
 <head>
     <meta charset="UTF-8" />
     <title>{{ title if title else "Lenta France Gestionale" }}</title>
@@ -19,6 +19,16 @@
         </div>
 
         <div class="nav-right">
+            <div class="nav-lang-switch">
+                <a href="/set-language/it"
+                   class="lang-flag {% if request.cookies.get('lang', 'it') == 'it' %}lang-flag--active{% endif %}">
+                    🇮🇹
+                </a>
+                <a href="/set-language/fr"
+                   class="lang-flag {% if request.cookies.get('lang', 'it') == 'fr' %}lang-flag--active{% endif %}">
+                    🇫🇷
+                </a>
+            </div>
             <a href="/" class="nav-link">🏠 Home</a>
             <a href="/docs" class="nav-link">📘 API Docs</a>
             <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Cambia tema">
