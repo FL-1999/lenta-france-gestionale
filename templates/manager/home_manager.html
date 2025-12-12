@@ -227,5 +227,68 @@
             </div>
         </div>
     </div>
+
+    <div class="dashboard-analytics-grid">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--reports" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" />
+                            <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>Rapportini ultimi 30 giorni</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="chartReportsLast30Days"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--sites" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
+                            <path d="M10 20v-5h4v5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>Ore per cantiere (30 giorni)</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="chartHoursPerSite"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--reports" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" />
+                            <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>Stato rapportini</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="chartReportsByStatus"></canvas>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    window.managerDashboardData = {
+        reportsLast30Days: {{ chart_reports_last_30_days | tojson | safe }},
+        hoursPerSite30Days: {{ chart_hours_per_site_30_days | tojson | safe }},
+        reportsByStatus: {{ chart_reports_by_status | tojson | safe }}
+    };
+</script>
+<script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
 {% endblock %}
