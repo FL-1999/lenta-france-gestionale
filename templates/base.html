@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" data-theme="dark">
 <head>
     <meta charset="UTF-8" />
     <title>{{ title if title else "Lenta France Gestionale" }}</title>
@@ -21,6 +21,10 @@
         <div class="nav-right">
             <a href="/" class="nav-link">🏠 Home</a>
             <a href="/docs" class="nav-link">📘 API Docs</a>
+            <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Cambia tema">
+                <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
+                <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
+            </button>
         </div>
     </nav>
 
@@ -29,6 +33,6 @@
         {% block content %}
         {% endblock %}
     </main>
-
+    <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
 </body>
 </html>
