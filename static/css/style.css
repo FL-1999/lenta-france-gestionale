@@ -104,10 +104,11 @@
     --card-shadow: 0 14px 30px rgba(148, 114, 76, 0.18);
 
     /* KPI background: warm, no blue */
-    --kpi-bg: linear-gradient(145deg, #fef3c7, #fed7aa);
-    --kpi-text: #78350f;
-    --kpi-value: #7c2d12;
-    --kpi-sub: #854d0e;
+--kpi-bg: linear-gradient(145deg, #f8efe4, #efe3d8);
+--kpi-text: #5c4033;     /* coffee-brown */
+--kpi-value: #4a372d;    /* darker espresso */
+--kpi-sub: #7a6a5e;      /* muted warm */
+
 
     /* Mini-chart panel */
     --mini-chart-bg: rgba(255, 250, 240, 0.96);
