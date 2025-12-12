@@ -3,99 +3,176 @@
 {% block title %}Dashboard Caposquadra – Lenta France{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">
-        <span class="page-icon page-icon--reports" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="5" y="4" width="6" height="6" rx="1.2" />
-                <rect x="13" y="4" width="6" height="6" rx="1.2" />
-                <rect x="5" y="12" width="6" height="8" rx="1.2" />
-                <rect x="13" y="12" width="6" height="8" rx="1.2" />
-            </svg>
-        </span>
-        Dashboard Caposquadra
-    </h1>
-    <p class="page-subtitle">
-        Qui puoi compilare i rapportini giornalieri, le fiches di cantiere
-        e vedere lo stato dei tuoi cantieri.
-    </p>
-</div>
+<div class="dashboard-page">
+    <div class="page-header">
+        <div>
+            <p class="eyebrow">Area Caposquadra</p>
+            <h1 class="page-title">
+                <span class="page-icon page-icon--reports" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="5" y="4" width="6" height="6" rx="1.2" />
+                        <rect x="13" y="4" width="6" height="6" rx="1.2" />
+                        <rect x="5" y="12" width="6" height="8" rx="1.2" />
+                        <rect x="13" y="12" width="6" height="8" rx="1.2" />
+                    </svg>
+                </span>
+                Dashboard caposquadra
+            </h1>
+            <p class="subtitle">
+                Riepilogo rapido dei tuoi rapportini, cantieri assegnati e attività recenti.
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-primary">Nuovo rapportino</a>
+            <a href="/capo/rapportini" class="btn btn-lg btn-secondary">I miei rapportini</a>
+        </div>
+    </div>
 
-<div class="dashboard-grid">
-    <!-- Rapportino giornaliero -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <div class="card-icon card-icon--reports" aria-hidden="true">
+    <div class="dashboard-kpi-grid">
+        <div class="kpi-card kpi-accent-1">
+            <div class="kpi-top">
+                <div class="kpi-icon">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" />
                         <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
                     </svg>
                 </div>
-                <span>Nuovo rapportino</span>
+                <span class="kpi-label">Rapportini di oggi</span>
             </div>
-            <span class="card-badge">Giornaliero</span>
+            <div class="kpi-value">{{ kpi_reports_today or 0 }}</div>
+            <div class="kpi-sub">Rapportini che hai compilato oggi.</div>
         </div>
-        <div class="card-body">
-            <p>
-                Compila il rapportino giornaliero con ore, personale, macchinari e attività svolte.
-            </p>
-            <div class="button-row">
-                <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Compila rapportino</a>
-                <a href="/capo/rapportini" class="btn btn-secondary">📋 Rapportini inviati</a>
-            </div>
-        </div>
-    </section>
 
-    <!-- Fiches -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <div class="card-icon card-icon--fiches" aria-hidden="true">
+        <div class="kpi-card kpi-accent-2">
+            <div class="kpi-top">
+                <div class="kpi-icon">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M7.5 4h7L17.5 7.5V20h-10V4z" stroke-linejoin="round" />
-                        <path d="M14.5 4v4h4" stroke-linejoin="round" />
-                        <path d="M9.5 11h5" stroke-linecap="round" />
-                        <path d="M9.5 14h5" stroke-linecap="round" />
+                        <circle cx="12" cy="12" r="7" />
+                        <path d="M12 8v4l3 2" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                 </div>
-                <span>Fiches di cantiere</span>
+                <span class="kpi-label">Ore questa settimana</span>
             </div>
-            <span class="card-badge">Documenti</span>
+            <div class="kpi-value">{{ kpi_hours_this_week or 0 }}</div>
+            <div class="kpi-sub">Ore lavorate dall'inizio della settimana.</div>
         </div>
-        <div class="card-body">
-            <p>
-                Compila fiches operative legate ai lavori in corso nei cantieri assegnati.
-            </p>
-            <div class="button-row">
-                <a href="/capo/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
-                <a href="/capo/fiches" class="btn btn-secondary">📚 Fiches compilate</a>
-            </div>
-        </div>
-    </section>
 
-    <!-- Cantieri assegnati (placeholder) -->
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <div class="card-icon card-icon--sites" aria-hidden="true">
+        <div class="kpi-card kpi-accent-3">
+            <div class="kpi-top">
+                <div class="kpi-icon">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
                         <path d="M10 20v-5h4v5" stroke-linecap="round" />
                     </svg>
                 </div>
-                <span>Cantieri assegnati</span>
+                <span class="kpi-label">Cantieri assegnati</span>
             </div>
-            <span class="card-badge">Coming soon</span>
+            <div class="kpi-value">{{ kpi_assigned_sites or 0 }}</div>
+            <div class="kpi-sub">Cantieri su cui sei attualmente caposquadra.</div>
         </div>
-        <div class="card-body">
-            <p>
-                In futuro qui vedrai la lista dei cantieri a te assegnati, con stato e informazioni principali.
-            </p>
-            <div class="button-row">
-                <a href="/" class="btn btn-secondary">⬅️ Torna alla home</a>
+
+        <div class="kpi-card kpi-accent-4">
+            <div class="kpi-top">
+                <div class="kpi-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z" />
+                        <path d="M12 8v4" stroke-linecap="round" />
+                        <circle cx="12" cy="15.5" r="0.9" />
+                    </svg>
+                </div>
+                <span class="kpi-label">Rapportini aperti</span>
+            </div>
+            <div class="kpi-value">{{ kpi_open_reports or 0 }}</div>
+            <div class="kpi-sub">Rapportini da completare o chiudere.</div>
+        </div>
+    </div>
+
+    <div class="dashboard-modules-grid">
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--reports" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" />
+                            <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>Rapportini</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Compila nuovi rapportini di lavoro e consulta lo storico dei tuoi rapporti.</p>
+                <div class="card-actions">
+                    <a href="/capo/rapportini/nuovo" class="btn btn-primary">Nuovo rapportino</a>
+                    <a href="/capo/rapportini" class="btn btn-secondary">I miei rapportini</a>
+                </div>
             </div>
         </div>
-    </section>
+
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--sites" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
+                            <path d="M10 20v-5h4v5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>Cantieri assegnati</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Visualizza i cantieri a cui sei assegnato e i dettagli operativi.</p>
+                <div class="card-actions">
+                    <a href="/capo/rapportini" class="btn btn-secondary">Vedi cantieri</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--fiches" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7.5 4h7L17.5 7.5V20h-10V4z" stroke-linejoin="round" />
+                            <path d="M14.5 4v4h4" stroke-linejoin="round" />
+                            <path d="M9.5 11h5" stroke-linecap="round" />
+                            <path d="M9.5 14h5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>Fiches</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Consulta le fiches correlate ai tuoi cantieri e rapportini.</p>
+                <div class="card-actions">
+                    <a href="/capo/fiches/nuova" class="btn btn-primary">Nuova fiche</a>
+                    <a href="/capo/fiches" class="btn btn-secondary">Vedi fiches</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--users" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="9" cy="9" r="3" />
+                            <circle cx="16" cy="10" r="2.5" />
+                            <path d="M4.5 19.5c0-2.5 2.3-4.5 5.1-4.5h1.8c2.8 0 5.1 2 5.1 4.5" stroke-linecap="round" />
+                            <path d="M15.4 12.8c2.2 0 4.1 1.6 4.1 3.7" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>Il tuo profilo</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Riepilogo delle tue informazioni e attività recenti.</p>
+                <div class="card-actions">
+                    <a href="/capo/dashboard" class="btn btn-secondary">Vai al profilo</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
