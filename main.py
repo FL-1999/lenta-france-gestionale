@@ -157,6 +157,29 @@ def set_lang(lang: str = "it"):
     return response
 
 
+@app.get("/set-language/{lang_code}")
+async def set_language(lang_code: str, request: Request):
+    """
+    Set UI language via cookie and redirect back to the previous page.
+    """
+    lang = lang_code.lower()
+    if lang not in ("it", "fr"):
+        lang = "it"
+
+    referer = request.headers.get("referer") or "/"
+    response = RedirectResponse(url=referer, status_code=303)
+    # Cookie non-HttpOnly per poterlo leggere anche lato client se necessario
+    response.set_cookie(
+        key="lang",
+        value=lang,
+        max_age=60 * 60 * 24 * 365,  # 1 year
+        secure=False,
+        httponly=False,
+        samesite="lax",
+    )
+    return response
+
+
 # -------------------------------------------------
 # LOGIN FRONTEND (PAGINA + API SEMPLICE)
 # -------------------------------------------------
