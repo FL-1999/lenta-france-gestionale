@@ -907,33 +907,33 @@ body {
 .form-card .card-body {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
+    gap: 2rem;              /* more space between sections inside the card */
 }
 
 .form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 1.6rem;      /* MORE vertical breathing space */
-    column-gap: 1.4rem;
+    row-gap: 2rem;          /* LOT more vertical space between rows */
+    column-gap: 1.6rem;
 }
 
 .form-grid--single {
     grid-template-columns: minmax(0, 1fr);
-    row-gap: 1.4rem;
+    row-gap: 1.8rem;
 }
 
 @media (max-width: 768px) {
     .form-grid {
         grid-template-columns: minmax(0, 1fr);
-        row-gap: 1.2rem;   /* more spacing even on mobile */
+        row-gap: 1.6rem;
     }
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;          /* spacing between label/input/help */
-    margin-bottom: 0.6rem; /* separation BETWEEN groups */
+    gap: 0.55rem;           /* space between label, input, help/error */
+    margin-bottom: 0.8rem;  /* extra separation between groups */
 }
 
 .form-group-inline {
