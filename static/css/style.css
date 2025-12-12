@@ -1,6 +1,6 @@
 body {
     margin: 0;
-    background: #222f45;
+    background: #111827;
     color: #e5e7eb;
     font-family: Arial, sans-serif;
 }
@@ -8,7 +8,7 @@ body {
 /* NAVBAR */
 .navbar {
     height: 60px;
-    background: #273651;
+    background: #0f172a;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -47,15 +47,21 @@ body {
     padding: 32px;
 }
 
+.app-shell,
+.main-layout,
+.page-wrapper {
+    background: transparent;
+}
+
 /* HOME CARD */
 .home-card {
     max-width: 600px;
     margin: auto;
     padding: 32px;
-    background: #2b3b55;
+    background: #1f2937;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .subtitle {
@@ -261,7 +267,7 @@ body {
 
 .table th,
 .table td {
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
     padding: 8px 10px;
     text-align: left;
 }
@@ -270,12 +276,12 @@ body {
     color: #e5e7eb;
 }
 
-.table tr:nth-child(even) {
-    background: rgba(255,255,255,0.02);
+.table tbody tr:nth-child(even) {
+    background: rgba(15, 23, 42, 0.6);
 }
 
 .table thead tr {
-    background: rgba(255,255,255,0.03);
+    background: rgba(15, 23, 42, 0.9);
 }
 
 /* DASHBOARD */
@@ -392,11 +398,11 @@ body {
 }
 
 .card {
-    background: #2b3b55;
+    background: #1f2937;
     border-radius: 12px;
     padding: 1.1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .card-header {
@@ -405,7 +411,7 @@ body {
     justify-content: space-between;
     padding-bottom: 0.5rem;
     margin-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
     background: transparent;
 }
 
