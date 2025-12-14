@@ -2,7 +2,13 @@
 <html lang="{{ request.cookies.get('lang', 'it') }}" data-theme="dark">
 <head>
     <meta charset="UTF-8" />
-    <title>{{ title if title else "Lenta France Gestionale" }}</title>
+    <title>
+        {% if lang == 'fr' %}
+            {{ title if title else "Lenta France Logiciel" }}
+        {% else %}
+            {{ title if title else "Lenta France Gestionale" }}
+        {% endif %}
+    </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Foglio di stile -->
@@ -52,7 +58,7 @@
                     API Docs
                 {% endif %}
             </a>
-            <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Cambia tema">
+            <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="{% if lang == 'fr' %}Changer de thème{% else %}Cambia tema{% endif %}">
                 <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
                 <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
             </button>

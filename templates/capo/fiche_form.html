@@ -1,34 +1,36 @@
 {% extends "base.html" %}
 
-{% block title %}Nuova fiche di cantiere{% endblock %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}{% if lang == 'fr' %}Nouvelle fiche de chantier{% else %}Nuova fiche di cantiere{% endif %}{% endblock %}
 
 {% block content %}
 <div class="form-page">
   <div class="form-page-header">
-    <p class="eyebrow">Area Caposquadra</p>
+    <p class="eyebrow">{% if lang == 'fr' %}Espace Chef d'équipe{% else %}Area Caposquadra{% endif %}</p>
     <h1 class="page-title">
       <span class="page-icon page-icon--fiches" aria-hidden="true"></span>
-      Nuova fiche di cantiere
+      {% if lang == 'fr' %}Nouvelle fiche de chantier{% else %}Nuova fiche di cantiere{% endif %}
     </h1>
-    <p class="subtitle">Compila la fiche con i dettagli delle attività e dei macchinari.</p>
+    <p class="subtitle">{% if lang == 'fr' %}Renseignez la fiche avec les détails des activités et des machines.{% else %}Compila la fiche con i dettagli delle attività e dei macchinari.{% endif %}</p>
   </div>
 
   <div class="card form-card">
     <div class="card-header">
       <div class="card-title">
-        <span>Dettagli fiche</span>
+        <span>{% if lang == 'fr' %}Détails de la fiche{% else %}Dettagli fiche{% endif %}</span>
       </div>
     </div>
     <div class="card-body">
       <form method="post" class="form">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label" for="date">Data</label>
+            <label class="form-label" for="date">{% if lang == 'fr' %}Date{% else %}Data{% endif %}</label>
             <input type="date" id="date" name="date" class="form-control" required>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="site_id">Cantiere</label>
+            <label class="form-label" for="site_id">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
             <select id="site_id" name="site_id" class="form-select" required>
               {% for s in sites %}
                 <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
@@ -37,9 +39,9 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="machine_id">Macchina</label>
+            <label class="form-label" for="machine_id">{% if lang == 'fr' %}Machine{% else %}Macchina{% endif %}</label>
             <select id="machine_id" name="machine_id" class="form-select">
-              <option value="">Nessuna</option>
+              <option value="">{% if lang == 'fr' %}Aucune{% else %}Nessuna{% endif %}</option>
               {% for m in machines %}
                 <option value="{{ m.id }}">{{ m.name }}{% if m.code %} ({{ m.code }}){% endif %}</option>
               {% endfor %}
@@ -47,7 +49,7 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="fiche_type">Tipo fiche</label>
+            <label class="form-label" for="fiche_type">{% if lang == 'fr' %}Type de fiche{% else %}Tipo fiche{% endif %}</label>
             <select id="fiche_type" name="fiche_type" class="form-select" required>
               {% for ft in fiche_types %}
                 <option value="{{ ft.value }}">{{ ft.value }}</option>
@@ -56,26 +58,26 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="hours">Ore</label>
+            <label class="form-label" for="hours">{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</label>
             <input type="number" id="hours" name="hours" class="form-control" step="0.1" required>
           </div>
         </div>
 
         <div class="form-group form-grid form-grid--single">
           <div class="form-group">
-            <label class="form-label" for="description">Descrizione</label>
+            <label class="form-label" for="description">{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</label>
             <textarea id="description" name="description" class="form-textarea" rows="4" required></textarea>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="notes">Note</label>
+            <label class="form-label" for="notes">{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
             <textarea id="notes" name="notes" class="form-textarea" rows="3"></textarea>
           </div>
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Salva fiche</button>
-          <a class="btn btn-secondary" href="/capo/dashboard">Annulla</a>
+          <button type="submit" class="btn btn-primary">{% if lang == 'fr' %}Enregistrer la fiche{% else %}Salva fiche{% endif %}</button>
+          <a class="btn btn-secondary" href="/capo/dashboard">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
         </div>
       </form>
     </div>
