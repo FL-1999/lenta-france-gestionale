@@ -315,7 +315,7 @@ body {
 
 .home-header {
     margin-top: 1.25rem;
-    margin-bottom: 2.25rem;
+    margin-bottom: 2.25rem; /* space between hero and first cards */
 }
 
 .page-header-main {
