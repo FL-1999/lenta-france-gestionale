@@ -1,157 +1,89 @@
 <!DOCTYPE html>
-<html lang="{{ request.cookies.get('lang', 'it') }}">
+<html lang="{{ request.cookies.get('lang', 'it') }}" data-theme="dark">
 <head>
     <meta charset="UTF-8" />
-    <title>{% block title %}Lenta France – Gestionale{% endblock %}</title>
+    <title>
+        {% block title %}
+            Lenta France Gestionale
+        {% endblock %}
+    </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Foglio di stile -->
     <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
-    {% set role = user_role if user_role is defined else None %}
 
-    <!-- TOP BAR -->
-    <header class="topbar">
-        <div class="topbar-left">
-            <div class="logo-circle">LF</div>
-            <div class="logo-text">
-                <span class="brand">
-                    {% if lang == 'fr' %}
-                        Lenta France Logiciel de chantiers
-                    {% else %}
-                        Lenta France Gestionale Cantieri
-                    {% endif %}
-                </span>
-            </div>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <img src="{{ url_for('static', path='img/logo.png') }}" class="logo" alt="Logo Lenta France" />
+            <span class="brand">
+                {% if lang == 'fr' %}
+                    Lenta France Logiciel de chantiers
+                {% else %}
+                    Lenta France Gestionale Cantieri
+                {% endif %}
+            </span>
         </div>
-
-        <nav class="topbar-nav">
-            <a href="/" class="nav-link">🏠 {% if lang == 'fr' %}Accueil{% else %}Home{% endif %}</a>
-            <a href="/manager/dashboard"
-               class="nav-link {% if role == 'manager' %}nav-link-active{% endif %}">
-                👔 {% if lang == 'fr' %}Manager{% else %}Manager{% endif %}
-            </a>
-            <a href="/capo/dashboard"
-               class="nav-link {% if role == 'capo' %}nav-link-active{% endif %}">
-                👷 {% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}
-            </a>
-            <a href="/docs" class="nav-link">📚 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
-        </nav>
-
-        <div class="topbar-right">
-            <div class="lang-switch">
-                <a href="/set-lang?lang=it" class="chip">🇮🇹 IT</a>
-                <a href="/set-lang?lang=fr" class="chip chip-ghost">🇫🇷 FR</a>
+        <div class="nav-right">
+            <div class="nav-lang-switch">
+                <a href="/set-language/it"
+                   class="lang-flag {% if lang == 'it' %}lang-flag--active{% endif %}">
+                    🇮🇹
+                </a>
+                <a href="/set-language/fr"
+                   class="lang-flag {% if lang == 'fr' %}lang-flag--active{% endif %}">
+                    🇫🇷
+                </a>
             </div>
-        </div>
-    </header>
 
-    <!-- CONTENUTO PAGINA -->
-    <main class="page-container">
-        {% block content %}{% endblock %}
+            <a href="/" class="nav-link">
+                🏠
+                {% if lang == 'fr' %}
+                    Accueil
+                {% else %}
+                    Home
+                {% endif %}
+            </a>
+            <a href="/manager/dashboard" class="nav-link">
+                📊
+                {% if lang == 'fr' %}
+                    Manager
+                {% else %}
+                    Manager
+                {% endif %}
+            </a>
+            <a href="/capo/dashboard" class="nav-link">
+                👷
+                {% if lang == 'fr' %}
+                    Chef d'équipe
+                {% else %}
+                    Caposquadra
+                {% endif %}
+            </a>
+            <a href="/docs" class="nav-link">
+                📘
+                {% if lang == 'fr' %}
+                    Docs API
+                {% else %}
+                    API Docs
+                {% endif %}
+            </a>
+
+            <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Cambia tema">
+                <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
+                <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- CONTENUTO -->
+    <main class="container">
+        {% block content %}
+        {% endblock %}
     </main>
 
-    <footer class="footer">
-        <span>
-            {% if lang == 'fr' %}
-                © 2025 Lenta France · Logiciel de chantiers 🏗️
-            {% else %}
-                © 2025 Lenta France · Gestionale cantieri 🏗️
-            {% endif %}
-        </span>
-    </footer>
-
-    <!-- =======================================================
-         CONTROLLO TOKEN JWT PER PAGINE PROTETTE (MANAGER / CAPO)
-         ======================================================= -->
-    <script>
-    (function() {
-        // Valore passato dal backend:
-        // - "manager" sulle pagine manager
-        // - "capo" sulle pagine caposquadra
-        // - "" sulle pagine pubbliche (home, login, ecc.)
-        const requiredRole = "{{ user_role if user_role is defined else '' }}";
-
-        // Se la pagina non è protetta, non facciamo nulla
-        if (!requiredRole) {
-            return;
-        }
-
-        const loginUrl = "/login";
-
-        function redirectToLogin() {
-            try {
-                localStorage.removeItem("lf_token");
-            } catch (e) {
-                console.error("Errore rimozione token:", e);
-            }
-            window.location.href = loginUrl;
-        }
-
-        let token = null;
-        try {
-            token = localStorage.getItem("lf_token");
-        } catch (e) {
-            console.error("Impossibile leggere il token da localStorage:", e);
-        }
-
-        // Se non c'è token → vai al login
-        if (!token) {
-            redirectToLogin();
-            return;
-        }
-
-        try {
-            const parts = token.split(".");
-            if (parts.length !== 3) {
-                console.error("Formato token JWT non valido");
-                redirectToLogin();
-                return;
-            }
-
-            // Decodifica payload (parte centrale del JWT)
-            const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-            const payloadJson = atob(base64);
-            const payload = JSON.parse(payloadJson);
-
-            const roleFromToken = payload.role || payload["role"];
-
-            if (!roleFromToken) {
-                console.error("Token senza ruolo");
-                redirectToLogin();
-                return;
-            }
-
-            // Regole di accesso:
-            // - Pagina manager: accettiamo "manager" e "admin"
-            // - Pagina capo: accettiamo solo "caposquadra"
-            if (requiredRole === "manager") {
-                if (roleFromToken !== "manager" && roleFromToken !== "admin") {
-                    // Se è caposquadra → mandalo alla sua area
-                    if (roleFromToken === "caposquadra") {
-                        window.location.href = "/capo/dashboard";
-                    } else {
-                        redirectToLogin();
-                    }
-                    return;
-                }
-            } else if (requiredRole === "capo") {
-                if (roleFromToken !== "caposquadra") {
-                    // Se è manager/admin → mandalo all’area manager
-                    if (roleFromToken === "manager" || roleFromToken === "admin") {
-                        window.location.href = "/manager/dashboard";
-                    } else {
-                        redirectToLogin();
-                    }
-                    return;
-                }
-            }
-            // Se arriviamo qui, il ruolo è compatibile con la pagina
-        } catch (e) {
-            console.error("Errore durante il controllo del token:", e);
-            redirectToLogin();
-        }
-    })();
-    </script>
+    <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
 </body>
 </html>
