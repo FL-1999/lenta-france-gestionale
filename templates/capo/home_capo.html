@@ -1,30 +1,58 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Dashboard Caposquadra – Lenta France{% endblock %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}
+        Tableau de bord Chef d'équipe – Lenta France
+    {% else %}
+        Dashboard Caposquadra – Lenta France
+    {% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="dashboard-page">
     <div class="page-header">
-        <div>
-            <p class="eyebrow">Area Caposquadra</p>
+        <div class="page-header-main">
+            <p class="page-eyebrow">
+                {% if lang == 'fr' %}
+                    Espace Chef d'équipe
+                {% else %}
+                    Area Caposquadra
+                {% endif %}
+            </p>
+
             <h1 class="page-title">
-                <span class="page-icon page-icon--reports" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="5" y="4" width="6" height="6" rx="1.2" />
-                        <rect x="13" y="4" width="6" height="6" rx="1.2" />
-                        <rect x="5" y="12" width="6" height="8" rx="1.2" />
-                        <rect x="13" y="12" width="6" height="8" rx="1.2" />
-                    </svg>
-                </span>
-                Dashboard caposquadra
+                {% if lang == 'fr' %}
+                    Tableau de bord Chef d'équipe
+                {% else %}
+                    Dashboard Caposquadra
+                {% endif %}
             </h1>
-            <p class="subtitle">
-                Riepilogo rapido dei tuoi rapportini, cantieri assegnati e attività recenti.
+
+            <p class="page-subtitle">
+                {% if lang == 'fr' %}
+                    Vue d'ensemble des chantiers et des rapports de votre équipe.
+                {% else %}
+                    Panoramica dei cantieri e dei rapportini della tua squadra.
+                {% endif %}
             </p>
         </div>
         <div class="header-actions">
-            <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-primary">Nuovo rapportino</a>
-            <a href="/capo/rapportini" class="btn btn-lg btn-secondary">I miei rapportini</a>
+            <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-primary">
+                {% if lang == 'fr' %}
+                    Nouveau rapport
+                {% else %}
+                    Nuovo rapportino
+                {% endif %}
+            </a>
+            <a href="/capo/rapportini" class="btn btn-lg btn-secondary">
+                {% if lang == 'fr' %}
+                    Mes rapports
+                {% else %}
+                    I miei rapportini
+                {% endif %}
+            </a>
         </div>
     </div>
 
@@ -37,10 +65,22 @@
                         <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
                     </svg>
                 </div>
-                <span class="kpi-label">Rapportini di oggi</span>
+                <span class="kpi-label">
+                    {% if lang == 'fr' %}
+                        Rapports d'aujourd'hui
+                    {% else %}
+                        Rapportini di oggi
+                    {% endif %}
+                </span>
             </div>
             <div class="kpi-value">{{ kpi_reports_today or 0 }}</div>
-            <div class="kpi-sub">Rapportini che hai compilato oggi.</div>
+            <div class="kpi-sub">
+                {% if lang == 'fr' %}
+                    Rapports que vous avez complétés aujourd'hui.
+                {% else %}
+                    Rapportini che hai compilato oggi.
+                {% endif %}
+            </div>
         </div>
 
         <div class="kpi-card kpi-accent-2">
@@ -51,10 +91,22 @@
                         <path d="M12 8v4l3 2" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                 </div>
-                <span class="kpi-label">Ore questa settimana</span>
+                <span class="kpi-label">
+                    {% if lang == 'fr' %}
+                        Heures cette semaine
+                    {% else %}
+                        Ore questa settimana
+                    {% endif %}
+                </span>
             </div>
             <div class="kpi-value">{{ kpi_hours_this_week or 0 }}</div>
-            <div class="kpi-sub">Ore lavorate dall'inizio della settimana.</div>
+            <div class="kpi-sub">
+                {% if lang == 'fr' %}
+                    Heures travaillées depuis le début de la semaine.
+                {% else %}
+                    Ore lavorate dall'inizio della settimana.
+                {% endif %}
+            </div>
         </div>
 
         <div class="kpi-card kpi-accent-3">
@@ -65,10 +117,22 @@
                         <path d="M10 20v-5h4v5" stroke-linecap="round" />
                     </svg>
                 </div>
-                <span class="kpi-label">Cantieri assegnati</span>
+                <span class="kpi-label">
+                    {% if lang == 'fr' %}
+                        Chantiers assignés
+                    {% else %}
+                        Cantieri assegnati
+                    {% endif %}
+                </span>
             </div>
             <div class="kpi-value">{{ kpi_assigned_sites or 0 }}</div>
-            <div class="kpi-sub">Cantieri su cui sei attualmente caposquadra.</div>
+            <div class="kpi-sub">
+                {% if lang == 'fr' %}
+                    Chantiers dont vous êtes actuellement chef d'équipe.
+                {% else %}
+                    Cantieri su cui sei attualmente caposquadra.
+                {% endif %}
+            </div>
         </div>
 
         <div class="kpi-card kpi-accent-4">
@@ -80,10 +144,22 @@
                         <circle cx="12" cy="15.5" r="0.9" />
                     </svg>
                 </div>
-                <span class="kpi-label">Rapportini aperti</span>
+                <span class="kpi-label">
+                    {% if lang == 'fr' %}
+                        Rapports ouverts
+                    {% else %}
+                        Rapportini aperti
+                    {% endif %}
+                </span>
             </div>
             <div class="kpi-value">{{ kpi_open_reports or 0 }}</div>
-            <div class="kpi-sub">Rapportini da completare o chiudere.</div>
+            <div class="kpi-sub">
+                {% if lang == 'fr' %}
+                    Rapports à compléter ou à clôturer.
+                {% else %}
+                    Rapportini da completare o chiudere.
+                {% endif %}
+            </div>
         </div>
     </div>
 
@@ -97,14 +173,38 @@
                             <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
                         </svg>
                     </div>
-                    <span>Rapportini</span>
+                    <span>
+                        {% if lang == 'fr' %}
+                            Rapports
+                        {% else %}
+                            Rapportini
+                        {% endif %}
+                    </span>
                 </div>
             </div>
             <div class="card-body">
-                <p>Compila nuovi rapportini di lavoro e consulta lo storico dei tuoi rapporti.</p>
+                <p>
+                    {% if lang == 'fr' %}
+                        Remplissez de nouveaux rapports de travail et consultez votre historique.
+                    {% else %}
+                        Compila nuovi rapportini di lavoro e consulta lo storico dei tuoi rapporti.
+                    {% endif %}
+                </p>
                 <div class="card-actions">
-                    <a href="/capo/rapportini/nuovo" class="btn btn-primary">Nuovo rapportino</a>
-                    <a href="/capo/rapportini" class="btn btn-secondary">I miei rapportini</a>
+                    <a href="/capo/rapportini/nuovo" class="btn btn-primary">
+                        {% if lang == 'fr' %}
+                            Nouveau rapport
+                        {% else %}
+                            Nuovo rapportino
+                        {% endif %}
+                    </a>
+                    <a href="/capo/rapportini" class="btn btn-secondary">
+                        {% if lang == 'fr' %}
+                            Mes rapports
+                        {% else %}
+                            I miei rapportini
+                        {% endif %}
+                    </a>
                 </div>
             </div>
         </div>
@@ -118,13 +218,31 @@
                             <path d="M10 20v-5h4v5" stroke-linecap="round" />
                         </svg>
                     </div>
-                    <span>Cantieri assegnati</span>
+                    <span>
+                        {% if lang == 'fr' %}
+                            Chantiers assignés
+                        {% else %}
+                            Cantieri assegnati
+                        {% endif %}
+                    </span>
                 </div>
             </div>
             <div class="card-body">
-                <p>Visualizza i cantieri a cui sei assegnato e i dettagli operativi.</p>
+                <p>
+                    {% if lang == 'fr' %}
+                        Affichez les chantiers auxquels vous êtes assigné et les détails opérationnels.
+                    {% else %}
+                        Visualizza i cantieri a cui sei assegnato e i dettagli operativi.
+                    {% endif %}
+                </p>
                 <div class="card-actions">
-                    <a href="/capo/rapportini" class="btn btn-secondary">Vedi cantieri</a>
+                    <a href="/capo/rapportini" class="btn btn-secondary">
+                        {% if lang == 'fr' %}
+                            Voir les chantiers
+                        {% else %}
+                            Vedi cantieri
+                        {% endif %}
+                    </a>
                 </div>
             </div>
         </div>
@@ -140,14 +258,38 @@
                             <path d="M9.5 14h5" stroke-linecap="round" />
                         </svg>
                     </div>
-                    <span>Fiches</span>
+                    <span>
+                        {% if lang == 'fr' %}
+                            Fiches
+                        {% else %}
+                            Fiches
+                        {% endif %}
+                    </span>
                 </div>
             </div>
             <div class="card-body">
-                <p>Consulta le fiches correlate ai tuoi cantieri e rapportini.</p>
+                <p>
+                    {% if lang == 'fr' %}
+                        Consultez les fiches liées à vos chantiers et rapports.
+                    {% else %}
+                        Consulta le fiches correlate ai tuoi cantieri e rapportini.
+                    {% endif %}
+                </p>
                 <div class="card-actions">
-                    <a href="/capo/fiches/nuova" class="btn btn-primary">Nuova fiche</a>
-                    <a href="/capo/fiches" class="btn btn-secondary">Vedi fiches</a>
+                    <a href="/capo/fiches/nuova" class="btn btn-primary">
+                        {% if lang == 'fr' %}
+                            Nouvelle fiche
+                        {% else %}
+                            Nuova fiche
+                        {% endif %}
+                    </a>
+                    <a href="/capo/fiches" class="btn btn-secondary">
+                        {% if lang == 'fr' %}
+                            Voir les fiches
+                        {% else %}
+                            Vedi fiches
+                        {% endif %}
+                    </a>
                 </div>
             </div>
         </div>
@@ -163,13 +305,31 @@
                             <path d="M15.4 12.8c2.2 0 4.1 1.6 4.1 3.7" stroke-linecap="round" />
                         </svg>
                     </div>
-                    <span>Il tuo profilo</span>
+                    <span>
+                        {% if lang == 'fr' %}
+                            Votre profil
+                        {% else %}
+                            Il tuo profilo
+                        {% endif %}
+                    </span>
                 </div>
             </div>
             <div class="card-body">
-                <p>Riepilogo delle tue informazioni e attività recenti.</p>
+                <p>
+                    {% if lang == 'fr' %}
+                        Récapitulatif de vos informations et activités récentes.
+                    {% else %}
+                        Riepilogo delle tue informazioni e attività recenti.
+                    {% endif %}
+                </p>
                 <div class="card-actions">
-                    <a href="/capo/dashboard" class="btn btn-secondary">Vai al profilo</a>
+                    <a href="/capo/dashboard" class="btn btn-secondary">
+                        {% if lang == 'fr' %}
+                            Aller au profil
+                        {% else %}
+                            Vai al profilo
+                        {% endif %}
+                    </a>
                 </div>
             </div>
         </div>
