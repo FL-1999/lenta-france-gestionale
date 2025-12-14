@@ -4,16 +4,17 @@
 {% block title %}{% if lang == 'fr' %}Accueil – Lenta France{% else %}Home – Lenta France{% endif %}{% endblock %}
 
 {% block content %}
-<div class="page-header dashboard-header home-header">
-    <div>
-        <p class="eyebrow">
+<div class="page-header home-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
             {% if lang == 'fr' %}
                 Gestion des chantiers et rapports
             {% else %}
-                Gestionale cantieri e rapportini
+                Gestione cantieri e rapportini
             {% endif %}
         </p>
-        <h1>
+
+        <h1 class="page-title">
             {% if lang == 'fr' %}
                 Lenta France – Gestionnaire de chantiers
             {% else %}
@@ -21,8 +22,8 @@
             {% endif %}
         </h1>
 
-        <p>
-            {% if lang == "fr" %}
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
                 Gestion des chantiers, machines, fiches et rapports journaliers de Lenta France.
             {% else %}
                 Gestionale per cantieri, macchinari, fiches e rapportini giornalieri di Lenta France.
