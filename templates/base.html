@@ -10,12 +10,19 @@
 </head>
 
 <body>
+    {% set lang = request.cookies.get('lang', 'it') %}
 
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="nav-left">
              <img src="{{ url_for('static', path='img/logo.png') }}" class="logo" alt="Logo Lenta France" />
-            <span class="brand">Lenta France Gestionale</span>
+            <span class="brand">
+                {% if lang == 'fr' %}
+                    Lenta France Logiciel
+                {% else %}
+                    Lenta France Gestionale
+                {% endif %}
+            </span>
         </div>
 
         <div class="nav-right">
@@ -29,8 +36,22 @@
                     🇫🇷
                 </a>
             </div>
-            <a href="/" class="nav-link">🏠 Home</a>
-            <a href="/docs" class="nav-link">📘 API Docs</a>
+            <a href="/" class="nav-link">
+                🏠
+                {% if lang == 'fr' %}
+                    Accueil
+                {% else %}
+                    Home
+                {% endif %}
+            </a>
+            <a href="/docs" class="nav-link">
+                📘
+                {% if lang == 'fr' %}
+                    Docs API
+                {% else %}
+                    API Docs
+                {% endif %}
+            </a>
             <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Cambia tema">
                 <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
                 <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
