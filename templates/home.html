@@ -1,10 +1,17 @@
 {% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
 
-{% block title %}Home – Lenta France{% endblock %}
+{% block title %}{% if lang == 'fr' %}Accueil – Lenta France{% else %}Home – Lenta France{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">🏗️ Lenta France – Gestionale Cantieri</h1>
+    <h1 class="page-title">
+        {% if lang == 'fr' %}
+            🏗️ Lenta France – Logiciel de chantiers
+        {% else %}
+            🏗️ Lenta France – Gestionale Cantieri
+        {% endif %}
+    </h1>
 
     {% if lang == "fr" %}
         <p class="page-subtitle">
@@ -18,9 +25,19 @@
 </div>
 
 <div class="home-card">
-    <h2>Seleziona la tua area 👇</h2>
+    <h2>
+        {% if lang == 'fr' %}
+            Sélectionnez votre espace 👇
+        {% else %}
+            Seleziona la tua area 👇
+        {% endif %}
+    </h2>
     <p class="subtitle">
-        Accedi con il tuo utente (manager o caposquadra) e usa le funzioni dedicate.
+        {% if lang == 'fr' %}
+            Connectez-vous avec votre compte (manager ou chef d'équipe) et utilisez les fonctions dédiées.
+        {% else %}
+            Accedi con il tuo utente (manager o caposquadra) e usa le funzioni dedicate.
+        {% endif %}
     </p>
 
     <div class="dashboard-grid">
@@ -28,16 +45,20 @@
         <!-- Area Manager -->
         <section class="card">
             <div class="card-header">
-                <div class="card-title">👔 Area Manager</div>
-                <span class="card-badge">Amministrazione</span>
+                <div class="card-title">👔 {% if lang == 'fr' %}Espace Manager{% else %}Area Manager{% endif %}</div>
+                <span class="card-badge">{% if lang == 'fr' %}Administration{% else %}Amministrazione{% endif %}</span>
             </div>
             <div class="card-body">
                 <p>
-                    Gestione completa di cantieri, macchinari, fiches e rapportini.
+                    {% if lang == 'fr' %}
+                        Gestion complète des chantiers, machines, fiches et rapports.
+                    {% else %}
+                        Gestione completa di cantieri, macchinari, fiches e rapportini.
+                    {% endif %}
                 </p>
                 <div class="button-row">
-                    <a href="/login" class="btn btn-primary">🔐 Login Manager</a>
-                    <a href="/manager/dashboard" class="btn btn-secondary">📊 Vai alla dashboard</a>
+                    <a href="/login" class="btn btn-primary">🔐 {% if lang == 'fr' %}Login Manager{% else %}Login Manager{% endif %}</a>
+                    <a href="/manager/dashboard" class="btn btn-secondary">📊 {% if lang == 'fr' %}Aller au tableau de bord{% else %}Vai alla dashboard{% endif %}</a>
                 </div>
             </div>
         </section>
@@ -45,16 +66,20 @@
         <!-- Area Caposquadra -->
         <section class="card">
             <div class="card-header">
-                <div class="card-title">👷 Area Caposquadra</div>
-                <span class="card-badge">Operativo</span>
+                <div class="card-title">👷 {% if lang == 'fr' %}Espace Chef d'équipe{% else %}Area Caposquadra{% endif %}</div>
+                <span class="card-badge">{% if lang == 'fr' %}Opérationnel{% else %}Operativo{% endif %}</span>
             </div>
             <div class="card-body">
                 <p>
-                    Compilazione di fiches e rapportini solo per i cantieri assegnati.
+                    {% if lang == 'fr' %}
+                        Saisie de fiches et rapports uniquement pour les chantiers attribués.
+                    {% else %}
+                        Compilazione di fiches e rapportini solo per i cantieri assegnati.
+                    {% endif %}
                 </p>
                 <div class="button-row">
-                    <a href="/login" class="btn btn-primary">🔐 Login Caposquadra</a>
-                    <a href="/capo/dashboard" class="btn btn-secondary">📋 Vai all’area capo</a>
+                    <a href="/login" class="btn btn-primary">🔐 {% if lang == 'fr' %}Login Chef d'équipe{% else %}Login Caposquadra{% endif %}</a>
+                    <a href="/capo/dashboard" class="btn btn-secondary">📋 {% if lang == 'fr' %}Aller à l’espace chef{% else %}Vai all’area capo{% endif %}</a>
                 </div>
             </div>
         </section>
@@ -63,9 +88,13 @@
 
     <div class="home-actions">
         <p>
-            Oppure entra direttamente nella pagina di autenticazione:
+            {% if lang == 'fr' %}
+                Ou accédez directement à la page d'authentification :
+            {% else %}
+                Oppure entra direttamente nella pagina di autenticazione:
+            {% endif %}
         </p>
-        <a href="/login" class="btn btn-primary">🔐 Vai al login</a>
+        <a href="/login" class="btn btn-primary">🔐 {% if lang == 'fr' %}Aller au login{% else %}Vai al login{% endif %}</a>
     </div>
 </div>
 {% endblock %}

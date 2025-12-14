@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="{{ request.cookies.get('lang', 'it') }}">
 <head>
     <meta charset="UTF-8" />
     <title>{% block title %}Lenta France – Gestionale{% endblock %}</title>
@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
+    {% set lang = request.cookies.get('lang', 'it') %}
     {% set role = user_role if user_role is defined else None %}
 
     <!-- TOP BAR -->
@@ -15,21 +16,27 @@
             <div class="logo-circle">LF</div>
             <div class="logo-text">
                 <span class="logo-title">Lenta France</span>
-                <span class="logo-subtitle">Gestionale Cantieri</span>
+                <span class="logo-subtitle">
+                    {% if lang == 'fr' %}
+                        Logiciel de chantiers
+                    {% else %}
+                        Gestionale Cantieri
+                    {% endif %}
+                </span>
             </div>
         </div>
 
         <nav class="topbar-nav">
-            <a href="/" class="nav-link">🏠 Home</a>
+            <a href="/" class="nav-link">🏠 {% if lang == 'fr' %}Accueil{% else %}Home{% endif %}</a>
             <a href="/manager/dashboard"
                class="nav-link {% if role == 'manager' %}nav-link-active{% endif %}">
-                👔 Manager
+                👔 {% if lang == 'fr' %}Manager{% else %}Manager{% endif %}
             </a>
             <a href="/capo/dashboard"
                class="nav-link {% if role == 'capo' %}nav-link-active{% endif %}">
-                👷 Caposquadra
+                👷 {% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}
             </a>
-            <a href="/docs" class="nav-link">📚 API Docs</a>
+            <a href="/docs" class="nav-link">📚 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
         </nav>
 
         <div class="topbar-right">
@@ -46,7 +53,13 @@
     </main>
 
     <footer class="footer">
-        <span>© 2025 Lenta France · Gestionale cantieri 🏗️</span>
+        <span>
+            {% if lang == 'fr' %}
+                © 2025 Lenta France · Logiciel de chantiers 🏗️
+            {% else %}
+                © 2025 Lenta France · Gestionale cantieri 🏗️
+            {% endif %}
+        </span>
     </footer>
 
     <!-- =======================================================
