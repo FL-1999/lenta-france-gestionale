@@ -307,6 +307,64 @@ body {
     padding: var(--space-6);
 }
 
+.page-header {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.35);
+    margin-bottom: 1.75rem;
+}
+
+.home-header {
+    margin-top: 1.25rem;
+    margin-bottom: 2.25rem;
+}
+
+.page-header-main {
+    max-width: 900px;
+}
+
+.page-eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.page-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--color-text-strong);
+    margin: 0;
+}
+
+.page-subtitle {
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    color: var(--color-text-muted);
+    max-width: 56rem;
+}
+
+:root[data-theme="light"] .page-header {
+    border-bottom-color: rgba(214, 189, 152, 0.6);
+}
+
+:root[data-theme="light"] .page-subtitle {
+    color: var(--color-text-subtle);
+}
+
+@media (max-width: 768px) {
+    .home-header {
+        margin-top: 0.75rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+    }
+}
+
 .app-shell,
 .main-layout,
 .page-wrapper {
