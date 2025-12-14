@@ -1,16 +1,34 @@
 {% extends "base.html" %}
-{% block content %}
 
 {% set lang = request.cookies.get('lang', 'it') %}
 
-<h1 class="page-title">👷 {% if lang == 'fr' %}Tableau de bord Chef d'équipe{% else %}Dashboard Caposquadra{% endif %}</h1>
-<p class="page-subtitle">
-    {% if lang == 'fr' %}
-        Ici vous voyez uniquement le chantier qui vous est attribué et vous pouvez créer fiches et rapports journaliers.
-    {% else %}
-        Qui vedi solo il cantiere a cui sei assegnato e puoi creare fiches e rapportini giornalieri.
-    {% endif %}
-</p>
+{% block content %}
+
+<div class="page-header dashboard-header">
+    <div>
+        <p class="eyebrow">
+            {% if lang == 'fr' %}
+                Espace Chef d'équipe
+            {% else %}
+                Area Caposquadra
+            {% endif %}
+        </p>
+        <h1>
+            {% if lang == 'fr' %}
+                Tableau de bord Chef d'équipe
+            {% else %}
+                Dashboard Caposquadra
+            {% endif %}
+        </h1>
+        <p>
+            {% if lang == 'fr' %}
+                Ici vous voyez uniquement le chantier qui vous est attribué et vous pouvez créer fiches et rapports journaliers.
+            {% else %}
+                Qui vedi solo il cantiere a cui sei assegnato e puoi creare fiches e rapportini giornalieri.
+            {% endif %}
+        </p>
+    </div>
+</div>
 
 <div class="card-grid">
     <div class="card">
