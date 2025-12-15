@@ -313,13 +313,22 @@ body {
     margin-bottom: 1.75rem;
 }
 
+/* HERO della HOME – centrato */
 .home-header {
     margin-top: 1.25rem;
     margin-bottom: 2.25rem; /* space between hero and first cards */
+    text-align: center;          /* << centra i testi della home */
 }
 
 .page-header-main {
     max-width: 900px;
+}
+
+/* restringiamo il blocco solo nella home per un effetto più elegante */
+.home-header .page-header-main {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 720px;            /* << larghezza più armoniosa */
 }
 
 .page-eyebrow {
@@ -345,6 +354,7 @@ body {
     color: var(--color-text-muted);
     max-width: 56rem;
 }
+
 
 :root[data-theme="light"] .page-header {
     border-bottom-color: rgba(214, 189, 152, 0.6);
