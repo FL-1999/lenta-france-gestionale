@@ -123,6 +123,7 @@ class FicheCreate(BaseModel):
     machine_id: Optional[int] = None
     fiche_type: FicheTypeEnum
     description: str
+    operator: Optional[str] = None
     hours: float
     notes: Optional[str] = None
 
@@ -136,6 +137,7 @@ class FicheRead(BaseModel):
     machine_id: Optional[int]
     fiche_type: FicheTypeEnum
     description: str
+    operator: Optional[str]
     hours: float
     notes: Optional[str]
     site_name: str
@@ -152,6 +154,7 @@ class FicheListItem(BaseModel):
     site_name: str
     machine_name: Optional[str]
     fiche_type: FicheTypeEnum
+    operator: Optional[str]
     hours: float
     created_by_name: str
 

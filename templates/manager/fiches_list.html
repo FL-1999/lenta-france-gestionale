@@ -1,0 +1,90 @@
+{% extends "shared/base.html" %}
+{% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
+    {% if lang == 'fr' %}Fiches – Manager – Lenta France{% else %}Fiches – Manager – Lenta France{% endif %}
+{% endblock %}
+{% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}
+                Gestion des fiches
+            {% else %}
+                Gestione fiches
+            {% endif %}
+        </p>
+        <h1 class="page-title">Fiches</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Vue d'ensemble des fiches enregistrées pour les chantiers.
+            {% else %}
+                Panoramica delle fiches registrate per i cantieri.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            📄
+            {% if lang == 'fr' %}
+                Liste des fiches
+            {% else %}
+                Elenco fiches
+            {% endif %}
+        </div>
+        <div class="card-actions">
+            <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-primary btn-sm">
+                ➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if fiches %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Cantiere{% else %}Cantiere{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fiches %}
+                        <tr>
+                            <td>{{ f.date }}</td>
+                            <td>{{ f.site.name if f.site else '-' }}</td>
+                            <td>{{ f.machine.name if f.machine else '-' }}</td>
+                            <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
+                            <td>{{ f.hours }}</td>
+                            <td>{{ f.fiche_type.value if f.fiche_type else '-' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="text-muted">
+                {% if lang == 'fr' %}
+                    Total fiches: {{ total_fiches }}
+                {% else %}
+                    Fiches totali: {{ total_fiches }}
+                {% endif %}
+            </p>
+        {% else %}
+            <p class="text-muted">
+                {% if lang == 'fr' %}
+                    Aucune fiche enregistrée pour le moment.
+                {% else %}
+                    Nessuna fiche registrata al momento.
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

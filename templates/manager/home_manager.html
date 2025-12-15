@@ -39,6 +39,9 @@
         <div class="header-actions dashboard-actions">
             <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-primary">➕ {% if lang == 'fr' %}Nouveau rapport{% else %}Nuovo rapportino{% endif %}</a>
             <a href="/manager/rapportini" class="btn btn-lg btn-secondary">{% if lang == 'fr' %}Liste des rapports{% else %}Elenco rapportini{% endif %}</a>
+            <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-lg btn-primary">
+                📄 {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+            </a>
             <a href="/manager/fiches" class="btn btn-lg btn-secondary">{% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}</a>
         </div>
     </div>
@@ -174,6 +177,7 @@
                 <p>{% if lang == 'fr' %}Consultez et filtrez les fiches saisies par les chefs d'équipe pour une vue rapide des activités.{% else %}Consulta e filtra le fiches inserite dai capisquadra per avere una vista rapida delle attività.{% endif %}</p>
             <div class="card-actions">
                 <a href="/manager/fiches" class="btn btn-secondary">{% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}</a>
+                <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}</a>
             </div>
             </div>
         </div>

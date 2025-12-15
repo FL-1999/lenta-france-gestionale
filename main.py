@@ -319,6 +319,105 @@ def manager_dashboard(
     )
 
 
+@app.get(
+    "/manager/fiches/nuova",
+    response_class=HTMLResponse,
+    name="manager_fiche_new_form",
+)
+def manager_fiche_new_form(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        sites = (
+            db.query(Site)
+            .filter(Site.is_active.is_(True))
+            .order_by(Site.name.asc())
+            .all()
+        )
+        machines = (
+            db.query(Machine)
+            .filter(Machine.is_active.is_(True))
+            .order_by(Machine.name.asc())
+            .all()
+        )
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/fiches_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "cantieri": sites,
+            "macchinari": machines,
+            "is_edit": False,
+        },
+    )
+
+
+@app.post(
+    "/manager/fiches/nuova",
+    response_class=HTMLResponse,
+    name="manager_fiche_create",
+)
+async def manager_fiche_create(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+    cantiere_id: int = Form(...),
+    macchinario_id: str | None = Form(None),
+    data: date = Form(...),
+    operatore: str = Form(...),
+    descrizione: str = Form(...),
+    ore_lavorate: float = Form(...),
+    note: str | None = Form(None),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    parsed_machine_id: int | None = None
+    if macchinario_id not in (None, ""):
+        try:
+            parsed_machine_id = int(macchinario_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Macchinario non valido")
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == cantiere_id).first()
+        if not site:
+            raise HTTPException(status_code=400, detail="Cantiere non trovato")
+
+        if parsed_machine_id is not None:
+            machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
+            if not machine:
+                raise HTTPException(status_code=400, detail="Macchinario non trovato")
+
+        fiche = Fiche(
+            date=data,
+            site_id=cantiere_id,
+            machine_id=parsed_machine_id,
+            fiche_type=FicheTypeEnum.produzione,
+            description=descrizione,
+            operator=operatore,
+            hours=ore_lavorate,
+            notes=note,
+            created_by_id=current_user.id,
+        )
+        db.add(fiche)
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(
+        url=request.url_for("manager_fiches_list"), status_code=303
+    )
+
+
 @app.get("/manager/utenti", response_class=HTMLResponse)
 def manager_users(
     request: Request,
@@ -981,6 +1080,28 @@ def capo_dashboard(
     )
 
 
+def _get_capo_assigned_sites(db: SessionLocal, capo: User) -> list[Site]:
+    site_ids_rows = (
+        db.query(Report.site_id)
+        .filter(Report.created_by_id == capo.id)
+        .filter(Report.site_id.isnot(None))
+        .distinct()
+        .all()
+    )
+    site_ids = [row[0] for row in site_ids_rows if row[0] is not None]
+
+    if not site_ids:
+        return []
+
+    return (
+        db.query(Site)
+        .filter(Site.id.in_(site_ids))
+        .filter(Site.is_active.is_(True))
+        .order_by(Site.name.asc())
+        .all()
+    )
+
+
 @app.get("/capo/rapportini/nuovo", response_class=HTMLResponse)
 def pagina_nuovo_rapportino_capo(
     request: Request,
@@ -1009,31 +1130,23 @@ def capo_fiche_nuova_get(
 
     db = SessionLocal()
     try:
-        sites = (
-            db.query(Site)
-            .filter(Site.is_active.is_(True))
-            .order_by(Site.name)
-            .all()
-        )
-        machines = (
-            db.query(Machine)
-            .filter(Machine.is_active.is_(True))
-            .order_by(Machine.name)
-            .all()
-        )
+        sites = _get_capo_assigned_sites(db, current_user)
+        allowed_site_ids = [s.id for s in sites]
+
+        machines_query = db.query(Machine).filter(Machine.is_active.is_(True))
+        if allowed_site_ids:
+            machines_query = machines_query.filter(Machine.site_id.in_(allowed_site_ids))
+        machines = machines_query.order_by(Machine.name.asc()).all()
     finally:
         db.close()
 
-    fiche_types = [ft for ft in FicheTypeEnum]
-
     return templates.TemplateResponse(
-        "capo/fiche_form.html",
+        "capo/fiches_form.html",
         {
             "request": request,
             "user": current_user,
-            "sites": sites,
-            "machines": machines,
-            "fiche_types": fiche_types,
+            "cantieri": sites,
+            "macchinari": machines,
         },
     )
 
@@ -1048,13 +1161,13 @@ async def capo_fiche_nuova_post(
 
     form = await request.form()
 
-    date_str = form.get("date")
-    site_id_str = form.get("site_id")
-    machine_id_str = form.get("machine_id")
-    fiche_type_str = form.get("fiche_type")
-    description = form.get("description")
-    hours_str = form.get("hours")
-    notes = form.get("notes")
+    date_str = form.get("data")
+    site_id_str = form.get("cantiere_id")
+    machine_id_str = form.get("macchinario_id")
+    operator = form.get("operatore")
+    description = form.get("descrizione")
+    hours_str = form.get("ore_lavorate")
+    notes = form.get("note")
 
     try:
         fiche_date = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -1074,20 +1187,17 @@ async def capo_fiche_nuova_post(
             raise HTTPException(status_code=400, detail="Macchinario non valido")
 
     try:
-        fiche_type_value = FicheTypeEnum(fiche_type_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Tipo fiche non valido")
-
-    try:
         hours_value = float(hours_str)
     except Exception:
         raise HTTPException(status_code=400, detail="Ore non valide")
 
     db = SessionLocal()
     try:
+        allowed_sites = _get_capo_assigned_sites(db, current_user)
+        allowed_site_ids = {s.id for s in allowed_sites}
         site = db.query(Site).filter(Site.id == site_id).first()
-        if not site:
-            raise HTTPException(status_code=400, detail="Cantiere non trovato")
+        if not site or (allowed_site_ids and site.id not in allowed_site_ids):
+            raise HTTPException(status_code=403, detail="Cantiere non valido")
 
         if machine_id_value is not None:
             machine = db.query(Machine).filter(Machine.id == machine_id_value).first()
@@ -1098,8 +1208,9 @@ async def capo_fiche_nuova_post(
             date=fiche_date,
             site_id=site_id,
             machine_id=machine_id_value,
-            fiche_type=fiche_type_value,
+            fiche_type=FicheTypeEnum.produzione,
             description=description,
+            operator=operator,
             hours=hours_value,
             notes=notes,
             created_by_id=current_user.id,
@@ -1112,7 +1223,11 @@ async def capo_fiche_nuova_post(
     return RedirectResponse(url="/capo/dashboard", status_code=303)
 
 
-@app.get("/manager/fiches", response_class=HTMLResponse)
+@app.get(
+    "/manager/fiches",
+    response_class=HTMLResponse,
+    name="manager_fiches_list",
+)
 def manager_fiches(
     request: Request,
     from_date: str | None = None,
@@ -1156,13 +1271,10 @@ def manager_fiches(
             except ValueError:
                 parsed_fiche_type = None
 
-        query = (
-            db.query(Fiche)
-            .options(
-                joinedload(Fiche.site),
-                joinedload(Fiche.machine),
-                joinedload(Fiche.created_by),
-            )
+        query = db.query(Fiche).options(
+            joinedload(Fiche.site),
+            joinedload(Fiche.machine),
+            joinedload(Fiche.created_by),
         )
 
         if parsed_from_date:
@@ -1175,28 +1287,16 @@ def manager_fiches(
             query = query.filter(Fiche.fiche_type == parsed_fiche_type)
 
         fiches_list = query.order_by(Fiche.date.desc(), Fiche.id.desc()).all()
-        sites_list = (
-            db.query(Site)
-            .filter(Site.is_active.is_(True))
-            .order_by(Site.name)
-            .all()
-        )
-        fiche_types_list = [ft for ft in FicheTypeEnum]
     finally:
         db.close()
 
     return templates.TemplateResponse(
-        "manager/fiches.html",
+        "manager/fiches_list.html",
         {
             "request": request,
             "user": current_user,
             "fiches": fiches_list,
-            "sites": sites_list,
-            "fiche_types": fiche_types_list,
-            "filter_from_date": from_date,
-            "filter_to_date": to_date,
-            "filter_site_id": parsed_site_id,
-            "filter_fiche_type": fiche_type,
+            "total_fiches": len(fiches_list),
         },
     )
 
