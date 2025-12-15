@@ -301,9 +301,9 @@
                                 <div class="form-group geom-paratia">
                                     <label class="form-label" for="larghezza_pannello">
                                         {% if lang == 'fr' %}
-                                            Largeur panneau (m)
+                                            Longueur panneau (m)
                                         {% else %}
-                                            Larghezza pannello (m)
+                                            Lunghezza pannello (m)
                                         {% endif %}
                                     </label>
                                     <input id="larghezza_pannello"
@@ -316,9 +316,9 @@
                                 <div class="form-group geom-paratia">
                                     <label class="form-label" for="altezza_pannello">
                                         {% if lang == 'fr' %}
-                                            Hauteur panneau (m)
+                                            Épaisseur panneau (cm)
                                         {% else %}
-                                            Altezza pannello (m)
+                                            Spessore pannello (cm)
                                         {% endif %}
                                     </label>
                                     <input id="altezza_pannello"
@@ -435,7 +435,7 @@ document.addEventListener("DOMContentLoaded", function () {
             labelLarghezza.textContent = w ? w + " m" : "";
             labelLarghezza.style.display = w ? "block" : "none";
 
-            labelAltezza.textContent = h ? h + " m" : "";
+            labelAltezza.textContent = h ? h + " cm" : "";
             labelAltezza.style.display = h ? "block" : "none";
 
             labelDiametro.style.display = "none";
