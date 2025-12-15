@@ -233,12 +233,41 @@
                     <div class="card fiche-sketch">
                         <div class="card-body">
                             <svg id="fiche-sketch-svg" width="140" height="140" viewBox="0 0 140 140">
-                                <!-- Cerchio per PALO -->
-                                <circle id="sketch-palo" cx="70" cy="70" r="35" stroke="currentColor"
-                                        stroke-width="4" fill="none" style="display: none;" />
-                                <!-- Rettangolo per PARATIA -->
-                                <rect id="sketch-paratia" x="30" y="35" width="80" height="70"
-                                      stroke="currentColor" stroke-width="4" fill="none" style="display: none;" />
+                                <circle id="sketch-palo"
+                                        cx="70" cy="70" r="35"
+                                        stroke="currentColor"
+                                        stroke-width="4"
+                                        fill="none"
+                                        style="display: none;" />
+
+                                <rect id="sketch-paratia"
+                                      x="20" y="40" width="100" height="50"
+                                      stroke="currentColor"
+                                      stroke-width="4"
+                                      fill="none"
+                                      style="display: none;" />
+
+                                <text id="label-diametro"
+                                      x="70" y="20"
+                                      text-anchor="middle"
+                                      font-size="10"
+                                      style="display:none;">
+                                </text>
+
+                                <text id="label-larghezza"
+                                      x="70" y="110"
+                                      text-anchor="middle"
+                                      font-size="10"
+                                      style="display:none;">
+                                </text>
+
+                                <text id="label-altezza"
+                                      x="15" y="65"
+                                      text-anchor="middle"
+                                      font-size="10"
+                                      transform="rotate(-90 15 65)"
+                                      style="display:none;">
+                                </text>
                             </svg>
                             <p class="text-muted" id="fiche-sketch-label" style="margin-top: 0.5rem;">
                                 {% if lang == 'fr' %}
@@ -367,10 +396,20 @@ document.addEventListener("DOMContentLoaded", function () {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const selectType = document.getElementById("tipologia_scavo");
+
     const circle = document.getElementById("sketch-palo");
-    const rect = document.getElementById("sketch-paratia");
-    const geomPalo = document.querySelectorAll(".geom-palo");
+    const rect   = document.getElementById("sketch-paratia");
+
+    const geomPalo    = document.querySelectorAll(".geom-palo");
     const geomParatia = document.querySelectorAll(".geom-paratia");
+
+    const diametroInput   = document.getElementById("diametro_palo");
+    const larghezzaInput  = document.getElementById("larghezza_pannello");
+    const altezzaInput    = document.getElementById("altezza_pannello");
+
+    const labelDiametro  = document.getElementById("label-diametro");
+    const labelLarghezza = document.getElementById("label-larghezza");
+    const labelAltezza   = document.getElementById("label-altezza");
 
     function setDisplay(elems, display) {
         elems.forEach(function (el) {
@@ -378,31 +417,67 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function updateLabels() {
+        const tipo = selectType ? selectType.value : "";
+
+        if (tipo === "palo") {
+            const d = diametroInput?.value || "";
+            labelDiametro.textContent = d ? d + " m" : "";
+            labelDiametro.style.display = d ? "block" : "none";
+
+            labelLarghezza.style.display = "none";
+            labelAltezza.style.display   = "none";
+
+        } else if (tipo === "paratia") {
+            const w = larghezzaInput?.value || "";
+            const h = altezzaInput?.value || "";
+
+            labelLarghezza.textContent = w ? w + " m" : "";
+            labelLarghezza.style.display = w ? "block" : "none";
+
+            labelAltezza.textContent = h ? h + " m" : "";
+            labelAltezza.style.display = h ? "block" : "none";
+
+            labelDiametro.style.display = "none";
+
+        } else {
+            labelDiametro.style.display  = "none";
+            labelLarghezza.style.display = "none";
+            labelAltezza.style.display   = "none";
+        }
+    }
+
     function updateSketchAndGeom() {
         const value = selectType ? selectType.value : "";
 
         if (value === "palo") {
-            if (circle) circle.style.display = "block";
-            if (rect) rect.style.display = "none";
+            circle.style.display = "block";
+            rect.style.display   = "none";
             setDisplay(geomPalo, "block");
             setDisplay(geomParatia, "none");
+
         } else if (value === "paratia") {
-            if (circle) circle.style.display = "none";
-            if (rect) rect.style.display = "block";
+            circle.style.display = "none";
+            rect.style.display   = "block";
             setDisplay(geomPalo, "none");
             setDisplay(geomParatia, "block");
+
         } else {
-            if (circle) circle.style.display = "none";
-            if (rect) rect.style.display = "none";
+            circle.style.display = "none";
+            rect.style.display   = "none";
             setDisplay(geomPalo, "none");
             setDisplay(geomParatia, "none");
         }
+
+        updateLabels();
     }
 
-    if (selectType) {
-        selectType.addEventListener("change", updateSketchAndGeom);
-        updateSketchAndGeom();
-    }
+    selectType?.addEventListener("change", updateSketchAndGeom);
+    diametroInput?.addEventListener("input", updateLabels);
+    larghezzaInput?.addEventListener("input", updateLabels);
+    altezzaInput?.addEventListener("input", updateLabels);
+
+    updateSketchAndGeom();
 });
 </script>
 
