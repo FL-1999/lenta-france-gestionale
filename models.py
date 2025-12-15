@@ -213,6 +213,7 @@ class Fiche(Base, TimestampMixin):
 
     fiche_type = Column(Enum(FicheTypeEnum), nullable=False)
     description = Column(Text, nullable=False)
+    operator = Column(String(255), nullable=True)
     hours = Column(Float, nullable=False)
     notes = Column(Text, nullable=True)
 

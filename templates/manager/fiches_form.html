@@ -1,0 +1,107 @@
+{% extends "shared/base.html" %}
+{% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
+    {% if lang == 'fr' %}Nouvelle fiche – Lenta France{% else %}Nuova fiche – Lenta France{% endif %}
+{% endblock %}
+{% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+<div class="form-page">
+    <div class="form-page-header">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}Gestion des fiches{% else %}Gestione fiches{% endif %}
+        </p>
+        <h1 class="page-title">
+            {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Renseignez les informations pour enregistrer une nouvelle fiche.
+            {% else %}
+                Compila le informazioni per registrare una nuova fiche.
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="card form-card">
+        <div class="card-body">
+            <form method="post" class="form-grid form-grid--single">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="cantiere_id">
+                            {% if lang == 'fr' %}Chantier*{% else %}Cantiere*{% endif %}
+                        </label>
+                        <select id="cantiere_id" name="cantiere_id" class="form-select" required>
+                            <option value="">
+                                {% if lang == 'fr' %}Sélectionnez un chantier{% else %}Seleziona un cantiere{% endif %}
+                            </option>
+                            {% for c in cantieri %}
+                                <option value="{{ c.id }}">{{ c.name }}{% if c.code %} ({{ c.code }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="macchinario_id">
+                            {% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}
+                        </label>
+                        <select id="macchinario_id" name="macchinario_id" class="form-select">
+                            <option value="">
+                                {% if lang == 'fr' %}Aucun{% else %}Nessuno{% endif %}
+                            </option>
+                            {% for m in macchinari %}
+                                <option value="{{ m.id }}">{{ m.name }}{% if m.code %} ({{ m.code }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="data">
+                            {% if lang == 'fr' %}Date*{% else %}Data*{% endif %}
+                        </label>
+                        <input id="data" name="data" type="date" class="form-control" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="operatore">
+                            {% if lang == 'fr' %}Opérateur / équipe*{% else %}Operatore / squadra*{% endif %}
+                        </label>
+                        <input id="operatore" name="operatore" class="form-control" required />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="descrizione">
+                        {% if lang == 'fr' %}Description des travaux*{% else %}Descrizione lavori*{% endif %}
+                    </label>
+                    <textarea id="descrizione" name="descrizione" class="form-textarea" rows="4" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="ore_lavorate">
+                        {% if lang == 'fr' %}Heures travaillées*{% else %}Ore lavorate*{% endif %}
+                    </label>
+                    <input id="ore_lavorate" name="ore_lavorate" type="number" step="0.25" min="0" class="form-control" required />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="note">
+                        {% if lang == 'fr' %}Remarques{% else %}Note{% endif %}
+                    </label>
+                    <textarea id="note" name="note" class="form-textarea" rows="3"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <a href="{{ url_for('manager_fiches_list') }}" class="btn btn-secondary">
+                        {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
