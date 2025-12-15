@@ -105,26 +105,6 @@ def manager_machines_page(
     )
 
 
-@router.get("/manager/macchinari/{machine_id}", response_class=HTMLResponse)
-def manager_machine_detail(
-    request: Request,
-    machine_id: int,
-    current_user=Depends(get_current_active_user_html),
-    db: Session = Depends(get_db),
-):
-    _require_manager_or_admin(current_user)
-    machine = _get_machine_or_404(db, machine_id)
-
-    return templates.TemplateResponse(
-        "manager/macchinario_dettaglio.html",
-        {
-            "request": request,
-            "machine": machine,
-            "current_user": current_user,
-        },
-    )
-
-
 @router.get("/manager/macchinari/nuovo", response_class=HTMLResponse)
 def manager_machine_new_get(
     request: Request,
@@ -192,6 +172,26 @@ def manager_machine_new_post(
     db.commit()
 
     return RedirectResponse(url="/manager/macchinari", status_code=303)
+
+
+@router.get("/manager/macchinari/{machine_id}", response_class=HTMLResponse)
+def manager_machine_detail(
+    request: Request,
+    machine_id: int,
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_manager_or_admin(current_user)
+    machine = _get_machine_or_404(db, machine_id)
+
+    return templates.TemplateResponse(
+        "manager/macchinario_dettaglio.html",
+        {
+            "request": request,
+            "machine": machine,
+            "current_user": current_user,
+        },
+    )
 
 
 @router.get("/manager/macchinari/modifica/{machine_id}", response_class=HTMLResponse)

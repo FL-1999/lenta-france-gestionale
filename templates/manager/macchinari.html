@@ -16,7 +16,7 @@
 <p class="page-subtitle">Elenco di tutti i macchinari registrati.</p>
 
 <div class="actions">
-  <a href="/manager/macchinari/nuovo" class="btn btn-lg btn-primary">➕ Nuovo macchinario</a>
+  <a href="{{ request.url_for('manager_machine_new_get') }}" class="btn btn-lg btn-primary">➕ Nuovo macchinario</a>
 </div>
 
 {% if machines and machines|length > 0 %}
