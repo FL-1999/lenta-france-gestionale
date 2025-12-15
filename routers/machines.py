@@ -79,7 +79,11 @@ def list_machines_api(
 # PAGINE MANAGER HTML
 # -------------------------------------------------
 
-@router.get("/manager/macchinari", response_class=HTMLResponse)
+@router.get(
+    "/manager/macchinari",
+    response_class=HTMLResponse,
+    name="manager_machines_list",
+)
 def manager_machines_page(
     request: Request,
     current_user=Depends(get_current_active_user_html),
@@ -94,18 +98,31 @@ def manager_machines_page(
         .all()
     )
 
+    kpi_total = len(machines)
+    kpi_active = len([m for m in machines if (m.status or "attivo") == "attivo"])
+    kpi_oos = len(
+        [m for m in machines if (m.status or "attivo") == "fuori_servizio"]
+    )
+
     return templates.TemplateResponse(
-        "manager/macchinari.html",
+        "manager/macchinari_list.html",
         {
             "request": request,
             "user": current_user,
             "user_role": "manager",
             "machines": machines,
+            "kpi_total": kpi_total,
+            "kpi_active": kpi_active,
+            "kpi_oos": kpi_oos,
         },
     )
 
 
-@router.get("/manager/macchinari/nuovo", response_class=HTMLResponse)
+@router.get(
+    "/manager/macchinari/nuovo",
+    response_class=HTMLResponse,
+    name="new_machine_form",
+)
 def manager_machine_new_get(
     request: Request,
     current_user=Depends(get_current_active_user_html),
@@ -115,12 +132,12 @@ def manager_machine_new_get(
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
 
     return templates.TemplateResponse(
-        "manager/macchinario_form.html",
+        "manager/macchinari_form.html",
         {
             "request": request,
             "current_user": current_user,
-            "mode": "create",
-            "machine": None,
+            "is_edit": False,
+            "macchinario": None,
             "machine_types": list(MachineTypeEnum),
             "status_choices": MACHINE_STATUS_CHOICES,
             "sites": sites,
@@ -128,7 +145,7 @@ def manager_machine_new_get(
     )
 
 
-@router.post("/manager/macchinari/nuovo")
+@router.post("/manager/macchinari/nuovo", name="create_machine")
 def manager_machine_new_post(
     request: Request,
     code: str = Form(...),
@@ -174,7 +191,11 @@ def manager_machine_new_post(
     return RedirectResponse(url="/manager/macchinari", status_code=303)
 
 
-@router.get("/manager/macchinari/{machine_id}", response_class=HTMLResponse)
+@router.get(
+    "/manager/macchinari/{machine_id}",
+    response_class=HTMLResponse,
+    name="manager_machine_detail",
+)
 def manager_machine_detail(
     request: Request,
     machine_id: int,
@@ -185,16 +206,20 @@ def manager_machine_detail(
     machine = _get_machine_or_404(db, machine_id)
 
     return templates.TemplateResponse(
-        "manager/macchinario_dettaglio.html",
+        "manager/macchinari_detail.html",
         {
             "request": request,
-            "machine": machine,
+            "macchinario": machine,
             "current_user": current_user,
         },
     )
 
 
-@router.get("/manager/macchinari/modifica/{machine_id}", response_class=HTMLResponse)
+@router.get(
+    "/manager/macchinari/{machine_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_machine_edit",
+)
 def manager_machine_edit_get(
     request: Request,
     machine_id: int,
@@ -206,12 +231,12 @@ def manager_machine_edit_get(
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
 
     return templates.TemplateResponse(
-        "manager/macchinario_form.html",
+        "manager/macchinari_form.html",
         {
             "request": request,
             "current_user": current_user,
-            "mode": "edit",
-            "machine": machine,
+            "is_edit": True,
+            "macchinario": machine,
             "machine_types": list(MachineTypeEnum),
             "status_choices": MACHINE_STATUS_CHOICES,
             "sites": sites,
@@ -219,7 +244,10 @@ def manager_machine_edit_get(
     )
 
 
-@router.post("/manager/macchinari/modifica/{machine_id}")
+@router.post(
+    "/manager/macchinari/{machine_id}/modifica",
+    name="manager_machine_update",
+)
 def manager_machine_edit_post(
     request: Request,
     machine_id: int,

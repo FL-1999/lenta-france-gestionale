@@ -1,0 +1,104 @@
+{% extends "shared/base.html" %}
+{% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
+    {% if lang == 'fr' %}
+        Détails macchinario – Lenta France
+    {% else %}
+        Dettaglio macchinario – Lenta France
+    {% endif %}
+{% endblock %}
+{% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}
+                Gestion des machines
+            {% else %}
+                Gestione macchinari
+            {% endif %}
+        </p>
+        <h1 class="page-title">
+            {{ macchinario.name }}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Code: {{ macchinario.code }}
+            {% else %}
+                Codice: {{ macchinario.code }}
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="dashboard-analytics-grid">
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">
+                🧾
+                {% if lang == 'fr' %}
+                    Détails du macchinario
+                {% else %}
+                    Dettagli macchinario
+                {% endif %}
+            </div>
+            <div>
+                {% set stato = macchinario.status or 'attivo' %}
+                {% if stato == 'fuori_servizio' %}
+                    <span class="badge badge-danger">
+                        {% if lang == 'fr' %}Hors service{% else %}Fuori servizio{% endif %}
+                    </span>
+                {% else %}
+                    <span class="badge badge-success">
+                        {% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            <p><strong>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}:</strong> {{ macchinario.code }}</p>
+            <p><strong>{% if lang == 'fr' %}Marque{% else %}Marca{% endif %}:</strong> {{ macchinario.brand }}</p>
+            <p><strong>{% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}:</strong> {{ macchinario.model_name }}</p>
+            <p><strong>{% if lang == 'fr' %}Matricule{% else %}Matricola{% endif %}:</strong> {{ macchinario.plate }}</p>
+            <p><strong>{% if lang == 'fr' %}Type{% else %}Tipologia{% endif %}:</strong> {{ macchinario.machine_type.value if macchinario.machine_type else '-' }}</p>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">
+                📝
+                {% if lang == 'fr' %}
+                    Notes
+                {% else %}
+                    Note
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            {% if macchinario.notes %}
+                <p>{{ macchinario.notes }}</p>
+            {% else %}
+                <p class="text-muted">
+                    {% if lang == 'fr' %}
+                        Aucune note pour ce macchinario.
+                    {% else %}
+                        Nessuna nota per questo macchinario.
+                    {% endif %}
+                </p>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+<div class="form-actions" style="margin-top: 2rem;">
+    <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-secondary">
+        {% if lang == 'fr' %}Retour à la liste{% else %}Torna all'elenco{% endif %}
+    </a>
+    <a href="{{ request.url_for('manager_machine_edit', machine_id=macchinario.id) }}" class="btn btn-primary">
+        {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+    </a>
+</div>
+
+{% endblock %}
