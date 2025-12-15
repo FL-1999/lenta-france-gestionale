@@ -43,6 +43,9 @@ def list_fiches(
             fiche_type=fiche.fiche_type,
             operator=fiche.operator,
             hours=fiche.hours,
+            tipologia_scavo=fiche.tipologia_scavo,
+            stratigrafia=fiche.stratigrafia,
+            materiale=fiche.materiale,
             created_by_name=fiche.created_by.full_name or fiche.created_by.email,
         )
         for fiche in fiches
