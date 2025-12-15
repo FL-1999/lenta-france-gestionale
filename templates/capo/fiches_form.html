@@ -157,6 +157,87 @@
                     <textarea id="stratigrafia" name="stratigrafia" class="form-textarea" rows="3"></textarea>
                 </div>
 
+                <h2 class="page-title" style="font-size: 1.1rem; margin-top: 1.5rem;">
+                    {% if lang == 'fr' %}
+                        Stratigraphie de l'excavation
+                    {% else %}
+                        Stratigrafia dello scavo
+                    {% endif %}
+                </h2>
+
+                <p class="text-muted" style="margin-bottom: 0.75rem;">
+                    {% if lang == 'fr' %}
+                        Ajoutez les couches de sol rencontrées (de m à m, avec le matériau).
+                    {% else %}
+                        Aggiungi gli strati di terreno incontrati (da m a m, con il materiale).
+                    {% endif %}
+                </p>
+
+                <div class="card fiche-sketch">
+                    <div class="card-body">
+                        <div id="strati-container">
+                            <div class="form-grid strato-row">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        {% if lang == 'fr' %}De (m){% else %}Da (m){% endif %}
+                                    </label>
+                                    <input type="number" step="0.1" min="0" name="strato_da" class="form-control" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        {% if lang == 'fr' %}À (m){% else %}A (m){% endif %}
+                                    </label>
+                                    <input type="number" step="0.1" min="0" name="strato_a" class="form-control" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        {% if lang == 'fr' %}Matériau{% else %}Materiale{% endif %}
+                                    </label>
+                                    <select name="strato_materiale" class="form-select">
+                                        <option value="">
+                                            {% if lang == 'fr' %}Sélectionnez{% else %}Seleziona{% endif %}
+                                        </option>
+                                        <option value="argilla">
+                                            {% if lang == 'fr' %}Argile{% else %}Argilla{% endif %}
+                                        </option>
+                                        <option value="riporto">
+                                            {% if lang == 'fr' %}Remblai{% else %}Riporto{% endif %}
+                                        </option>
+                                        <option value="sabbia">
+                                            {% if lang == 'fr' %}Sable{% else %}Sabbia{% endif %}
+                                        </option>
+                                        <option value="ghiaia">
+                                            {% if lang == 'fr' %}Gravier{% else %}Ghiaia{% endif %}
+                                        </option>
+                                        <option value="roccia">
+                                            {% if lang == 'fr' %}Roche{% else %}Roccia{% endif %}
+                                        </option>
+                                        <option value="altro">
+                                            {% if lang == 'fr' %}Autre{% else %}Altro{% endif %}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="align-self: flex-end;">
+                                    <button type="button" class="btn btn-secondary btn-sm remove-strato" style="display:none;">
+                                        {% if lang == 'fr' %}Supprimer{% else %}Rimuovi{% endif %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 0.75rem;">
+                            <button type="button" id="add-strato-btn" class="btn btn-primary btn-sm">
+                                ➕
+                                {% if lang == 'fr' %}
+                                    Ajouter une couche
+                                {% else %}
+                                    Aggiungi strato
+                                {% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label">
                         {% if lang == 'fr' %}
@@ -206,6 +287,46 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const container = document.getElementById("strati-container");
+    const addBtn = document.getElementById("add-strato-btn");
+    if (!container || !addBtn) return;
+
+    function bindRemoveButtons() {
+        const rows = container.querySelectorAll(".strato-row");
+        rows.forEach((row, index) => {
+            const removeBtn = row.querySelector(".remove-strato");
+            if (!removeBtn) return;
+            if (index === 0 && rows.length === 1) {
+                removeBtn.style.display = "none";
+            } else {
+                removeBtn.style.display = "inline-flex";
+                removeBtn.onclick = function () {
+                    row.remove();
+                    bindRemoveButtons();
+                };
+            }
+        });
+    }
+
+    addBtn.addEventListener("click", function () {
+        const rows = container.querySelectorAll(".strato-row");
+        if (rows.length === 0) return;
+        const templateRow = rows[0];
+        const clone = templateRow.cloneNode(true);
+
+        clone.querySelectorAll("input").forEach((input) => { input.value = ""; });
+        clone.querySelectorAll("select").forEach((sel) => { sel.value = ""; });
+
+        container.appendChild(clone);
+        bindRemoveButtons();
+    });
+
+    bindRemoveButtons();
+});
+</script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {

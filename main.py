@@ -1,5 +1,6 @@
 import os
 from datetime import date, datetime, timedelta
+from typing import List
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException, status
 from fastapi.encoders import jsonable_encoder
@@ -28,6 +29,7 @@ from models import (
     Machine,
     FicheTypeEnum,
     Fiche,
+    FicheStratigrafia,
 )
 from routers import users, sites, machines, reports, fiches
 
@@ -378,6 +380,9 @@ async def manager_fiche_create(
     tipologia_scavo: str | None = Form(None),
     stratigrafia: str | None = Form(None),
     materiale: str | None = Form(None),
+    strato_da: List[float] = Form(default_factory=list),
+    strato_a: List[float] = Form(default_factory=list),
+    strato_materiale: List[str] = Form(default_factory=list),
 ):
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -415,6 +420,23 @@ async def manager_fiche_create(
             created_by_id=current_user.id,
         )
         db.add(fiche)
+        db.commit()
+        db.refresh(fiche)
+
+        for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
+            if not mat:
+                continue
+            if da_val is None or a_val is None:
+                continue
+            if a_val <= da_val:
+                continue
+            layer = FicheStratigrafia(
+                fiche_id=fiche.id,
+                da_profondita=da_val,
+                a_profondita=a_val,
+                materiale=mat,
+            )
+            db.add(layer)
         db.commit()
     finally:
         db.close()
@@ -1161,73 +1183,75 @@ def capo_fiche_nuova_get(
 async def capo_fiche_nuova_post(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
+    data: date = Form(...),
+    cantiere_id: int = Form(...),
+    macchinario_id: str | None = Form(None),
+    operatore: str = Form(...),
+    descrizione: str = Form(...),
+    ore_lavorate: float = Form(...),
+    note: str | None = Form(None),
+    tipologia_scavo: str | None = Form(None),
+    stratigrafia: str | None = Form(None),
+    materiale: str | None = Form(None),
+    strato_da: List[float] = Form(default_factory=list),
+    strato_a: List[float] = Form(default_factory=list),
+    strato_materiale: List[str] = Form(default_factory=list),
 ):
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    form = await request.form()
-
-    date_str = form.get("data")
-    site_id_str = form.get("cantiere_id")
-    machine_id_str = form.get("macchinario_id")
-    operator = form.get("operatore")
-    description = form.get("descrizione")
-    hours_str = form.get("ore_lavorate")
-    notes = form.get("note")
-    tipologia_scavo = form.get("tipologia_scavo")
-    stratigrafia = form.get("stratigrafia")
-    materiale = form.get("materiale")
-
-    try:
-        fiche_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Data non valida")
-
-    try:
-        site_id = int(site_id_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Cantiere non valido")
-
-    machine_id_value: int | None = None
-    if machine_id_str:
+    parsed_machine_id: int | None = None
+    if macchinario_id not in (None, ""):
         try:
-            machine_id_value = int(machine_id_str)
-        except Exception:
+            parsed_machine_id = int(macchinario_id)
+        except ValueError:
             raise HTTPException(status_code=400, detail="Macchinario non valido")
-
-    try:
-        hours_value = float(hours_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Ore non valide")
 
     db = SessionLocal()
     try:
         allowed_sites = _get_capo_assigned_sites(db, current_user)
         allowed_site_ids = {s.id for s in allowed_sites}
-        site = db.query(Site).filter(Site.id == site_id).first()
+        site = db.query(Site).filter(Site.id == cantiere_id).first()
         if not site or (allowed_site_ids and site.id not in allowed_site_ids):
             raise HTTPException(status_code=403, detail="Cantiere non valido")
 
-        if machine_id_value is not None:
-            machine = db.query(Machine).filter(Machine.id == machine_id_value).first()
+        if parsed_machine_id is not None:
+            machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
             if not machine:
                 raise HTTPException(status_code=400, detail="Macchinario non trovato")
 
         fiche = Fiche(
-            date=fiche_date,
-            site_id=site_id,
-            machine_id=machine_id_value,
+            date=data,
+            site_id=cantiere_id,
+            machine_id=parsed_machine_id,
             fiche_type=FicheTypeEnum.produzione,
-            description=description,
-            operator=operator,
-            hours=hours_value,
-            notes=notes,
+            description=descrizione,
+            operator=operatore,
+            hours=ore_lavorate,
+            notes=note,
             tipologia_scavo=tipologia_scavo or None,
             stratigrafia=stratigrafia or None,
             materiale=materiale or None,
             created_by_id=current_user.id,
         )
         db.add(fiche)
+        db.commit()
+        db.refresh(fiche)
+
+        for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
+            if not mat:
+                continue
+            if da_val is None or a_val is None:
+                continue
+            if a_val <= da_val:
+                continue
+            layer = FicheStratigrafia(
+                fiche_id=fiche.id,
+                da_profondita=da_val,
+                a_profondita=a_val,
+                materiale=mat,
+            )
+            db.add(layer)
         db.commit()
     finally:
         db.close()
