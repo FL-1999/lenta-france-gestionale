@@ -1,0 +1,45 @@
+{% extends "shared/base.html" %}
+
+{% block title %}
+    {% if lang == 'fr' %}Nouveau personnel{% else %}Nuovo personale{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">👥 {% if lang == 'fr' %}Nouveau personnel{% else %}Nuovo personale{% endif %}</h1>
+</div>
+
+<form method="post" action="{{ url_for('manager_personale_create') }}" class="form">
+    <div class="form-grid">
+        <label>
+            {% if lang == 'fr' %}Prénom{% else %}Nome{% endif %}
+            <input type="text" name="nome" required />
+        </label>
+        <label>
+            {% if lang == 'fr' %}Nom{% else %}Cognome{% endif %}
+            <input type="text" name="cognome" required />
+        </label>
+        <label>
+            {% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}
+            <input type="text" name="ruolo" />
+        </label>
+        <label>
+            {% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}
+            <input type="text" name="telefono" />
+        </label>
+        <label>
+            Email
+            <input type="email" name="email" />
+        </label>
+    </div>
+    <label>
+        Notes
+        <textarea name="note" rows="4"></textarea>
+    </label>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+        <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary">⬅️ {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+    </div>
+</form>
+{% endblock %}
