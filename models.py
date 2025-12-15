@@ -121,6 +121,7 @@ class Site(Base, TimestampMixin):
     reports = relationship("Report", back_populates="site", cascade="all, delete-orphan")
     fiches = relationship("Fiche", back_populates="site", cascade="all, delete-orphan")
     machines = relationship("Machine", back_populates="site", cascade="all, delete-orphan")
+    veicoli = relationship("Veicolo", back_populates="cantiere")
 
     def __repr__(self) -> str:
         return f"<Site id={self.id} code={self.code} name={self.name}>"
@@ -156,6 +157,63 @@ class Machine(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<Machine id={self.id} code={self.code} name={self.name}>"
+
+
+# ============================================================
+# MODELLO PERSONALE
+# ============================================================
+
+
+class Personale(Base, TimestampMixin):
+    __tablename__ = "personale"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    nome = Column(String(255), nullable=False)
+    cognome = Column(String(255), nullable=False)
+    ruolo = Column(String(255), nullable=True)
+    telefono = Column(String(100), nullable=True)
+    email = Column(String(255), nullable=True)
+    data_assunzione = Column(Date, nullable=True)
+    attivo = Column(Boolean, default=True, nullable=False)
+    note = Column(Text, nullable=True)
+
+    veicoli = relationship("Veicolo", back_populates="personale")
+
+    def __repr__(self) -> str:
+        return f"<Personale id={self.id} nome={self.nome} cognome={self.cognome}>"
+
+
+# ============================================================
+# MODELLO VEICOLO
+# ============================================================
+
+
+class Veicolo(Base, TimestampMixin):
+    __tablename__ = "veicoli"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    targa = Column(String(50), nullable=False)
+    marca = Column(String(255), nullable=True)
+    modello = Column(String(255), nullable=True)
+    anno = Column(Integer, nullable=True)
+    tipo = Column(String(100), nullable=True)
+    km_attuali = Column(Integer, nullable=True)
+    scadenza_revisione = Column(Date, nullable=True)
+    scadenza_assicurazione = Column(Date, nullable=True)
+
+    personale_id = Column(Integer, ForeignKey("personale.id"), nullable=True)
+    personale = relationship("Personale", back_populates="veicoli")
+
+    cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    cantiere = relationship("Site", back_populates="veicoli")
+
+    note = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<Veicolo id={self.id} targa={self.targa}>"
 
 
 # ============================================================
