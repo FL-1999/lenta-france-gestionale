@@ -221,9 +221,36 @@ class Fiche(Base, TimestampMixin):
     materiale = Column(String(100), nullable=True)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
+    stratigrafie = relationship(
+        "FicheStratigrafia",
+        back_populates="fiche",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Fiche id={self.id} date={self.date} type={self.fiche_type}>"
+
+
+# ============================================================
+# MODELLO STRATIGRAFIA FICHE (MULTI-LAYER)
+# ============================================================
+
+class FicheStratigrafia(Base, TimestampMixin):
+    __tablename__ = "fiche_stratigrafia"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fiche_id = Column(Integer, ForeignKey("fiches.id"), nullable=False)
+    fiche = relationship("Fiche", back_populates="stratigrafie")
+
+    da_profondita = Column(Float, nullable=False)
+    a_profondita = Column(Float, nullable=False)
+    materiale = Column(String(100), nullable=False)
+
+    def __repr__(self) -> str:
+        return (
+            f"<FicheStratigrafia id={self.id} fiche_id={self.fiche_id} "
+            f"da={self.da_profondita} a={self.a_profondita}>"
+        )
 
 
 # ============================================================
