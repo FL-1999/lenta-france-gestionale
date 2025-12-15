@@ -219,6 +219,10 @@ class Fiche(Base, TimestampMixin):
     tipologia_scavo = Column(String(50), nullable=True)
     stratigrafia = Column(Text, nullable=True)
     materiale = Column(String(100), nullable=True)
+    profondita_totale = Column(Float, nullable=True)
+    diametro_palo = Column(Float, nullable=True)
+    larghezza_pannello = Column(Float, nullable=True)
+    altezza_pannello = Column(Float, nullable=True)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
     stratigrafie = relationship(
