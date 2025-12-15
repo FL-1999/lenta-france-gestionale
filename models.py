@@ -138,8 +138,11 @@ class Machine(Base, TimestampMixin):
     name = Column(String(255), nullable=False)
     code = Column(String(50), unique=True, index=True, nullable=True)
 
+    brand = Column(String(255), nullable=True)
+    model_name = Column(String(255), nullable=True)
+
     machine_type = Column(Enum(MachineTypeEnum), nullable=True)
-    plate = Column(String(50), nullable=True)  # targa, se presente
+    plate = Column(String(50), nullable=True)  # targa / matricola, se presente
 
     status = Column(String(50), nullable=False, default="attivo")
     notes = Column(Text, nullable=True)
