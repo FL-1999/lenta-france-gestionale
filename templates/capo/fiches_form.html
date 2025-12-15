@@ -85,6 +85,101 @@
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label" for="tipologia_scavo">
+                        {% if lang == 'fr' %}
+                            Type d'excavation
+                        {% else %}
+                            Tipologia di scavo
+                        {% endif %}
+                    </label>
+                    <select id="tipologia_scavo" name="tipologia_scavo" class="form-select">
+                        <option value="">
+                            {% if lang == 'fr' %}Aucun{% else %}Nessuna{% endif %}
+                        </option>
+                        <option value="palo">
+                            {% if lang == 'fr' %}Pieu (palo){% else %}Palo{% endif %}
+                        </option>
+                        <option value="paratia">
+                            {% if lang == 'fr' %}Paroi (paratia){% else %}Paratia{% endif %}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="materiale">
+                        {% if lang == 'fr' %}
+                            Matériau de la stratigraphie
+                        {% else %}
+                            Materiale della stratigrafia
+                        {% endif %}
+                    </label>
+                    <select id="materiale" name="materiale" class="form-select">
+                        <option value="">
+                            {% if lang == 'fr' %}Sélectionnez un matériau{% else %}Seleziona un materiale{% endif %}
+                        </option>
+                        <option value="argilla">
+                            {% if lang == 'fr' %}Argile{% else %}Argilla{% endif %}
+                        </option>
+                        <option value="riporto">
+                            {% if lang == 'fr' %}Remblai{% else %}Riporto{% endif %}
+                        </option>
+                        <option value="sabbia">
+                            {% if lang == 'fr' %}Sable{% else %}Sabbia{% endif %}
+                        </option>
+                        <option value="ghiaia">
+                            {% if lang == 'fr' %}Gravier{% else %}Ghiaia{% endif %}
+                        </option>
+                        <option value="roccia">
+                            {% if lang == 'fr' %}Roche{% else %}Roccia{% endif %}
+                        </option>
+                        <option value="altro">
+                            {% if lang == 'fr' %}Autre{% else %}Altro{% endif %}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="stratigrafia">
+                        {% if lang == 'fr' %}
+                            Stratigraphie (description)
+                        {% else %}
+                            Stratigrafia (descrizione)
+                        {% endif %}
+                    </label>
+                    <textarea id="stratigrafia" name="stratigrafia" class="form-textarea" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        {% if lang == 'fr' %}
+                            Schéma de l'élément (palo / paratia)
+                        {% else %}
+                            Disegno dell'elemento (palo / paratia)
+                        {% endif %}
+                    </label>
+
+                    <div class="card fiche-sketch">
+                        <div class="card-body">
+                            <svg id="fiche-sketch-svg" width="140" height="140" viewBox="0 0 140 140">
+                                <!-- Cerchio per PALO -->
+                                <circle id="sketch-palo" cx="70" cy="70" r="35" stroke="currentColor"
+                                        stroke-width="4" fill="none" style="display: none;" />
+                                <!-- Rettangolo per PARATIA -->
+                                <rect id="sketch-paratia" x="30" y="35" width="80" height="70"
+                                      stroke="currentColor" stroke-width="4" fill="none" style="display: none;" />
+                            </svg>
+                            <p class="text-muted" id="fiche-sketch-label" style="margin-top: 0.5rem;">
+                                {% if lang == 'fr' %}
+                                    Sélectionnez "palo" ou "paratia" pour voir le schéma.
+                                {% else %}
+                                    Seleziona "palo" o "paratia" per vedere il disegno.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label" for="note">
                         {% if lang == 'fr' %}Remarques{% else %}Note{% endif %}
                     </label>
@@ -103,5 +198,33 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const selectType = document.getElementById("tipologia_scavo");
+    if (!selectType) return;
+
+    const circle = document.getElementById("sketch-palo");
+    const rect = document.getElementById("sketch-paratia");
+    const label = document.getElementById("fiche-sketch-label");
+
+    function updateSketch() {
+        const value = selectType.value;
+        if (value === "palo") {
+            if (circle) circle.style.display = "block";
+            if (rect) rect.style.display = "none";
+        } else if (value === "paratia") {
+            if (circle) circle.style.display = "none";
+            if (rect) rect.style.display = "block";
+        } else {
+            if (circle) circle.style.display = "none";
+            if (rect) rect.style.display = "none";
+        }
+    }
+
+    selectType.addEventListener("change", updateSketch);
+    updateSketch();
+});
+</script>
 
 {% endblock %}

@@ -1096,3 +1096,19 @@ body {
         font-size: 0.82rem;
     }
 }
+
+.fiche-sketch {
+    max-width: 260px;
+}
+
+.fiche-sketch svg {
+    display: block;
+    margin: 0 auto;
+    color: var(--color-text-strong);
+}
+
+@media (max-width: 640px) {
+    .fiche-sketch {
+        max-width: 100%;
+    }
+}

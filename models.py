@@ -216,6 +216,9 @@ class Fiche(Base, TimestampMixin):
     operator = Column(String(255), nullable=True)
     hours = Column(Float, nullable=False)
     notes = Column(Text, nullable=True)
+    tipologia_scavo = Column(String(50), nullable=True)
+    stratigrafia = Column(Text, nullable=True)
+    materiale = Column(String(100), nullable=True)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
 

@@ -375,6 +375,9 @@ async def manager_fiche_create(
     descrizione: str = Form(...),
     ore_lavorate: float = Form(...),
     note: str | None = Form(None),
+    tipologia_scavo: str | None = Form(None),
+    stratigrafia: str | None = Form(None),
+    materiale: str | None = Form(None),
 ):
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -406,6 +409,9 @@ async def manager_fiche_create(
             operator=operatore,
             hours=ore_lavorate,
             notes=note,
+            tipologia_scavo=tipologia_scavo or None,
+            stratigrafia=stratigrafia or None,
+            materiale=materiale or None,
             created_by_id=current_user.id,
         )
         db.add(fiche)
@@ -1168,6 +1174,9 @@ async def capo_fiche_nuova_post(
     description = form.get("descrizione")
     hours_str = form.get("ore_lavorate")
     notes = form.get("note")
+    tipologia_scavo = form.get("tipologia_scavo")
+    stratigrafia = form.get("stratigrafia")
+    materiale = form.get("materiale")
 
     try:
         fiche_date = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -1213,6 +1222,9 @@ async def capo_fiche_nuova_post(
             operator=operator,
             hours=hours_value,
             notes=notes,
+            tipologia_scavo=tipologia_scavo or None,
+            stratigrafia=stratigrafia or None,
+            materiale=materiale or None,
             created_by_id=current_user.id,
         )
         db.add(fiche)
