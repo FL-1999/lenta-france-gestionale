@@ -114,36 +114,19 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="materiale">
+                    <label class="form-label" for="profondita_totale">
                         {% if lang == 'fr' %}
-                            Matériau de la stratigraphie
+                            Profondeur totale excavée (m)
                         {% else %}
-                            Materiale della stratigrafia
+                            Tot metri scavati (m)
                         {% endif %}
                     </label>
-                    <select id="materiale" name="materiale" class="form-select">
-                        <option value="">
-                            {% if lang == 'fr' %}Sélectionnez un matériau{% else %}Seleziona un materiale{% endif %}
-                        </option>
-                        <option value="argilla">
-                            {% if lang == 'fr' %}Argile{% else %}Argilla{% endif %}
-                        </option>
-                        <option value="riporto">
-                            {% if lang == 'fr' %}Remblai{% else %}Riporto{% endif %}
-                        </option>
-                        <option value="sabbia">
-                            {% if lang == 'fr' %}Sable{% else %}Sabbia{% endif %}
-                        </option>
-                        <option value="ghiaia">
-                            {% if lang == 'fr' %}Gravier{% else %}Ghiaia{% endif %}
-                        </option>
-                        <option value="roccia">
-                            {% if lang == 'fr' %}Roche{% else %}Roccia{% endif %}
-                        </option>
-                        <option value="altro">
-                            {% if lang == 'fr' %}Autre{% else %}Altro{% endif %}
-                        </option>
-                    </select>
+                    <input id="profondita_totale"
+                           name="profondita_totale"
+                           type="number"
+                           step="0.1"
+                           min="0"
+                           class="form-control" />
                 </div>
 
                 <div class="form-group">
@@ -247,26 +230,79 @@
                         {% endif %}
                     </label>
 
-                    <div class="card fiche-sketch">
-                        <div class="card-body">
-                            <svg id="fiche-sketch-svg" width="140" height="140" viewBox="0 0 140 140">
-                                <!-- Cerchio per PALO -->
-                                <circle id="sketch-palo" cx="70" cy="70" r="35" stroke="currentColor"
-                                        stroke-width="4" fill="none" style="display: none;" />
-                                <!-- Rettangolo per PARATIA -->
-                                <rect id="sketch-paratia" x="30" y="35" width="80" height="70"
-                                      stroke="currentColor" stroke-width="4" fill="none" style="display: none;" />
-                            </svg>
-                            <p class="text-muted" id="fiche-sketch-label" style="margin-top: 0.5rem;">
-                                {% if lang == 'fr' %}
-                                    Sélectionnez "palo" ou "paratia" pour voir le schéma.
-                                {% else %}
-                                    Seleziona "palo" o "paratia" per vedere il disegno.
-                                {% endif %}
-                            </p>
+                        <div class="card fiche-sketch">
+                            <div class="card-body">
+                                <svg id="fiche-sketch-svg" width="140" height="140" viewBox="0 0 140 140">
+                                    <!-- Cerchio per PALO -->
+                                    <circle id="sketch-palo" cx="70" cy="70" r="35" stroke="currentColor"
+                                            stroke-width="4" fill="none" style="display: none;" />
+                                    <!-- Rettangolo per PARATIA -->
+                                    <rect id="sketch-paratia" x="30" y="35" width="80" height="70"
+                                          stroke="currentColor" stroke-width="4" fill="none" style="display: none;" />
+                                </svg>
+                                <p class="text-muted" id="fiche-sketch-label" style="margin-top: 0.5rem;">
+                                    {% if lang == 'fr' %}
+                                        Sélectionnez "palo" ou "paratia" pour voir le schéma.
+                                    {% else %}
+                                        Seleziona "palo" o "paratia" per vedere il disegno.
+                                    {% endif %}
+                                </p>
+
+                                <hr style="margin: 1rem 0; border-color: rgba(0,0,0,0.05);" />
+
+                                <div class="form-grid" id="geom-fields">
+                                    <!-- For PALO: diameter -->
+                                    <div class="form-group geom-palo">
+                                        <label class="form-label" for="diametro_palo">
+                                            {% if lang == 'fr' %}
+                                                Diamètre du pieu (m)
+                                            {% else %}
+                                                Diametro palo (m)
+                                            {% endif %}
+                                        </label>
+                                        <input id="diametro_palo"
+                                               name="diametro_palo"
+                                               type="number"
+                                               step="0.01"
+                                               min="0"
+                                               class="form-control" />
+                                    </div>
+
+                                    <!-- For PARATIA: panel dimensions -->
+                                    <div class="form-group geom-paratia">
+                                        <label class="form-label" for="larghezza_pannello">
+                                            {% if lang == 'fr' %}
+                                                Largeur panneau (m)
+                                            {% else %}
+                                                Larghezza pannello (m)
+                                            {% endif %}
+                                        </label>
+                                        <input id="larghezza_pannello"
+                                               name="larghezza_pannello"
+                                               type="number"
+                                               step="0.01"
+                                               min="0"
+                                               class="form-control" />
+                                    </div>
+                                    <div class="form-group geom-paratia">
+                                        <label class="form-label" for="altezza_pannello">
+                                            {% if lang == 'fr' %}
+                                                Hauteur panneau (m)
+                                            {% else %}
+                                                Altezza pannello (m)
+                                            {% endif %}
+                                        </label>
+                                        <input id="altezza_pannello"
+                                               name="altezza_pannello"
+                                               type="number"
+                                               step="0.01"
+                                               min="0"
+                                               class="form-control" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
                 <div class="form-group">
                     <label class="form-label" for="note">
@@ -331,28 +367,42 @@ document.addEventListener("DOMContentLoaded", function () {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const selectType = document.getElementById("tipologia_scavo");
-    if (!selectType) return;
-
     const circle = document.getElementById("sketch-palo");
     const rect = document.getElementById("sketch-paratia");
-    const label = document.getElementById("fiche-sketch-label");
+    const geomPalo = document.querySelectorAll(".geom-palo");
+    const geomParatia = document.querySelectorAll(".geom-paratia");
 
-    function updateSketch() {
-        const value = selectType.value;
+    function setDisplay(elems, display) {
+        elems.forEach(function (el) {
+            if (el) el.style.display = display;
+        });
+    }
+
+    function updateSketchAndGeom() {
+        const value = selectType ? selectType.value : "";
+
         if (value === "palo") {
             if (circle) circle.style.display = "block";
             if (rect) rect.style.display = "none";
+            setDisplay(geomPalo, "block");
+            setDisplay(geomParatia, "none");
         } else if (value === "paratia") {
             if (circle) circle.style.display = "none";
             if (rect) rect.style.display = "block";
+            setDisplay(geomPalo, "none");
+            setDisplay(geomParatia, "block");
         } else {
             if (circle) circle.style.display = "none";
             if (rect) rect.style.display = "none";
+            setDisplay(geomPalo, "none");
+            setDisplay(geomParatia, "none");
         }
     }
 
-    selectType.addEventListener("change", updateSketch);
-    updateSketch();
+    if (selectType) {
+        selectType.addEventListener("change", updateSketchAndGeom);
+        updateSketchAndGeom();
+    }
 });
 </script>
 

@@ -380,6 +380,10 @@ async def manager_fiche_create(
     tipologia_scavo: str | None = Form(None),
     stratigrafia: str | None = Form(None),
     materiale: str | None = Form(None),
+    profondita_totale: float | None = Form(None),
+    diametro_palo: float | None = Form(None),
+    larghezza_pannello: float | None = Form(None),
+    altezza_pannello: float | None = Form(None),
     strato_da: List[float] = Form(default_factory=list),
     strato_a: List[float] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
@@ -417,6 +421,10 @@ async def manager_fiche_create(
             tipologia_scavo=tipologia_scavo or None,
             stratigrafia=stratigrafia or None,
             materiale=materiale or None,
+            profondita_totale=profondita_totale,
+            diametro_palo=diametro_palo,
+            larghezza_pannello=larghezza_pannello,
+            altezza_pannello=altezza_pannello,
             created_by_id=current_user.id,
         )
         db.add(fiche)
@@ -1193,6 +1201,10 @@ async def capo_fiche_nuova_post(
     tipologia_scavo: str | None = Form(None),
     stratigrafia: str | None = Form(None),
     materiale: str | None = Form(None),
+    profondita_totale: float | None = Form(None),
+    diametro_palo: float | None = Form(None),
+    larghezza_pannello: float | None = Form(None),
+    altezza_pannello: float | None = Form(None),
     strato_da: List[float] = Form(default_factory=list),
     strato_a: List[float] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
@@ -1232,6 +1244,10 @@ async def capo_fiche_nuova_post(
             tipologia_scavo=tipologia_scavo or None,
             stratigrafia=stratigrafia or None,
             materiale=materiale or None,
+            profondita_totale=profondita_totale,
+            diametro_palo=diametro_palo,
+            larghezza_pannello=larghezza_pannello,
+            altezza_pannello=altezza_pannello,
             created_by_id=current_user.id,
         )
         db.add(fiche)

@@ -129,6 +129,10 @@ class FicheCreate(BaseModel):
     tipologia_scavo: Optional[str] = None
     stratigrafia: Optional[str] = None
     materiale: Optional[str] = None
+    profondita_totale: Optional[float] = None
+    diametro_palo: Optional[float] = None
+    larghezza_pannello: Optional[float] = None
+    altezza_pannello: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
@@ -146,6 +150,10 @@ class FicheRead(BaseModel):
     tipologia_scavo: Optional[str] = None
     stratigrafia: Optional[str] = None
     materiale: Optional[str] = None
+    profondita_totale: Optional[float] = None
+    diametro_palo: Optional[float] = None
+    larghezza_pannello: Optional[float] = None
+    altezza_pannello: Optional[float] = None
     site_name: str
     machine_name: Optional[str]
     created_by_name: str
@@ -165,6 +173,10 @@ class FicheListItem(BaseModel):
     tipologia_scavo: Optional[str] = None
     stratigrafia: Optional[str] = None
     materiale: Optional[str] = None
+    profondita_totale: Optional[float] = None
+    diametro_palo: Optional[float] = None
+    larghezza_pannello: Optional[float] = None
+    altezza_pannello: Optional[float] = None
     created_by_name: str
 
     model_config = {"from_attributes": True}

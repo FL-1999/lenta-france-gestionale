@@ -46,6 +46,10 @@ def list_fiches(
             tipologia_scavo=fiche.tipologia_scavo,
             stratigrafia=fiche.stratigrafia,
             materiale=fiche.materiale,
+            profondita_totale=fiche.profondita_totale,
+            diametro_palo=fiche.diametro_palo,
+            larghezza_pannello=fiche.larghezza_pannello,
+            altezza_pannello=fiche.altezza_pannello,
             created_by_name=fiche.created_by.full_name or fiche.created_by.email,
         )
         for fiche in fiches
@@ -85,6 +89,10 @@ def get_fiche_detail(
         tipologia_scavo=fiche.tipologia_scavo,
         stratigrafia=fiche.stratigrafia,
         materiale=fiche.materiale,
+        profondita_totale=fiche.profondita_totale,
+        diametro_palo=fiche.diametro_palo,
+        larghezza_pannello=fiche.larghezza_pannello,
+        altezza_pannello=fiche.altezza_pannello,
         site_name=fiche.site.name if fiche.site else "",
         machine_name=fiche.machine.name if fiche.machine else None,
         created_by_name=fiche.created_by.full_name or fiche.created_by.email,
@@ -120,6 +128,10 @@ def create_fiche(
         tipologia_scavo=fiche_in.tipologia_scavo,
         stratigrafia=fiche_in.stratigrafia,
         materiale=fiche_in.materiale,
+        profondita_totale=fiche_in.profondita_totale,
+        diametro_palo=fiche_in.diametro_palo,
+        larghezza_pannello=fiche_in.larghezza_pannello,
+        altezza_pannello=fiche_in.altezza_pannello,
         created_by_id=current_user.id,
     )
     db.add(fiche)
@@ -139,6 +151,10 @@ def create_fiche(
         tipologia_scavo=fiche.tipologia_scavo,
         stratigrafia=fiche.stratigrafia,
         materiale=fiche.materiale,
+        profondita_totale=fiche.profondita_totale,
+        diametro_palo=fiche.diametro_palo,
+        larghezza_pannello=fiche.larghezza_pannello,
+        altezza_pannello=fiche.altezza_pannello,
         site_name=site.name,
         machine_name=machine.name if machine else None,
         created_by_name=current_user.full_name or current_user.email,
