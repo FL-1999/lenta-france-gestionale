@@ -1,71 +1,145 @@
 {% extends "base.html" %}
 
-{% block title %}{% if mode == 'create' %}Nuovo macchinario{% else %}Modifica macchinario{% endif %}{% endblock %}
+{% block title %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% if mode == 'create' %}
+  {% if lang == 'fr' %}Nouveau macchinario – Lenta France{% else %}Nuovo macchinario – Lenta France{% endif %}
+{% else %}
+  {% if lang == 'fr' %}Modifier macchinario – Lenta France{% else %}Modifica macchinario – Lenta France{% endif %}
+{% endif %}
+{% endblock %}
 
 {% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
 <div class="form-page">
   <div class="form-page-header">
-    <p class="eyebrow">Area Manager</p>
+    <p class="page-eyebrow">
+      {% if lang == 'fr' %}
+        Gestion des machines
+      {% else %}
+        Gestione macchinari
+      {% endif %}
+    </p>
     <h1 class="page-title">
-      <span class="page-icon page-icon--machines" aria-hidden="true"></span>
-      {% if mode == 'create' %}Nuovo macchinario{% else %}Modifica macchinario{% endif %}
+      {% if mode == 'create' %}
+        {% if lang == 'fr' %}Nouveau macchinario{% else %}Nuovo macchinario{% endif %}
+      {% else %}
+        {% if lang == 'fr' %}Modifier macchinario{% else %}Modifica macchinario{% endif %}
+      {% endif %}
     </h1>
-    <p class="subtitle">Inserisci o aggiorna i dati del macchinario assegnato ai cantieri.</p>
+    <p class="subtitle">
+      {% if lang == 'fr' %}
+        Renseignez les détails pour enregistrer ou mettre à jour un macchinario.
+      {% else %}
+        Compila i dettagli per registrare o aggiornare un macchinario.
+      {% endif %}
+    </p>
   </div>
 
   <div class="card form-card">
     <div class="card-header">
       <div class="card-title">
-        <span>Dettagli macchinario</span>
+        <span>
+          {% if lang == 'fr' %}Détails du macchinario{% else %}Dettagli macchinario{% endif %}
+        </span>
       </div>
     </div>
     <div class="card-body">
-      <form method="post">
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label" for="name">Nome*</label>
-            <input type="text" id="name" name="name" class="form-control" value="{{ machine.name if machine else '' }}" required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="type">Tipo*</label>
-            <select id="type" name="type" class="form-select" required>
-              {% for t in machine_types %}
-              <option value="{{ t.value }}" {% if machine and machine.machine_type and machine.machine_type.value == t.value %}selected{% endif %}>{{ t.value }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="status">Stato*</label>
-            <select id="status" name="status" class="form-select" required>
-              {% for s in status_choices %}
-              <option value="{{ s }}" {% if machine and machine.status == s %}selected{% endif %}>{{ s }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="site_id">Cantiere assegnato</label>
-            <select id="site_id" name="site_id" class="form-select">
-              <option value="">Nessuno</option>
-              {% for s in sites %}
-              <option value="{{ s.id }}" {% if machine and machine.site_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
-              {% endfor %}
-            </select>
-          </div>
+      <form method="post" class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="name">
+            {% if lang == 'fr' %}Nom du macchinario*{% else %}Nome macchinario*{% endif %}
+          </label>
+          <input type="text" id="name" name="name" class="form-control" value="{{ machine.name if machine else '' }}" required>
         </div>
 
-        <div class="form-group form-grid form-grid--single">
-          <div class="form-group">
-            <label class="form-label" for="notes">Note</label>
-            <textarea id="notes" name="notes" class="form-textarea" rows="4" placeholder="Annotazioni aggiuntive">{{ machine.notes if machine else '' }}</textarea>
-          </div>
+        <div class="form-group">
+          <label class="form-label" for="code">
+            {% if lang == 'fr' %}Code interne*{% else %}Codice interno*{% endif %}
+          </label>
+          <input type="text" id="code" name="code" class="form-control" value="{{ machine.code if machine else '' }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="brand">
+            {% if lang == 'fr' %}Marque{% else %}Marca{% endif %}
+          </label>
+          <input type="text" id="brand" name="brand" class="form-control" value="{{ machine.brand if machine else '' }}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="model_name">
+            {% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}
+          </label>
+          <input type="text" id="model_name" name="model_name" class="form-control" value="{{ machine.model_name if machine else '' }}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="plate">
+            {% if lang == 'fr' %}Matricule / N° de série{% else %}Matricola / N° di serie{% endif %}
+          </label>
+          <input type="text" id="plate" name="plate" class="form-control" value="{{ machine.plate if machine else '' }}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="type">
+            {% if lang == 'fr' %}Type{% else %}Tipologia{% endif %}
+          </label>
+          <select id="type" name="type" class="form-select">
+            <option value="">
+              {% if lang == 'fr' %}Sélectionnez un type{% else %}Seleziona una tipologia{% endif %}
+            </option>
+            {% for t in machine_types %}
+              <option value="{{ t.value }}" {% if machine and machine.machine_type and machine.machine_type.value == t.value %}selected{% endif %}>{{ t.value }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="status">
+            {% if lang == 'fr' %}Statut{% else %}Stato{% endif %}
+          </label>
+          <select id="status" name="status" class="form-select" required>
+            {% for s in status_choices %}
+              <option value="{{ s }}" {% if machine and machine.status == s %}selected{% endif %}>
+                {% if lang == 'fr' %}
+                  {% if s == 'attivo' %}Actif{% elif s == 'fuori_servizio' %}Hors service{% else %}Maintenance{% endif %}
+                {% else %}
+                  {% if s == 'attivo' %}Attivo{% elif s == 'fuori_servizio' %}Fuori servizio{% else %}Manutenzione{% endif %}
+                {% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="site_id">
+            {% if lang == 'fr' %}Chantier assigné{% else %}Cantiere assegnato{% endif %}
+          </label>
+          <select id="site_id" name="site_id" class="form-select">
+            <option value="">
+              {% if lang == 'fr' %}Aucun{% else %}Nessuno{% endif %}
+            </option>
+            {% for s in sites %}
+              <option value="{{ s.id }}" {% if machine and machine.site_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group form-grid--single">
+          <label class="form-label" for="notes">
+            {% if lang == 'fr' %}Remarques{% else %}Note{% endif %}
+          </label>
+          <textarea id="notes" name="notes" class="form-textarea" rows="4" placeholder="{% if lang == 'fr' %}Détails supplémentaires{% else %}Dettagli aggiuntivi{% endif %}">{{ machine.notes if machine else '' }}</textarea>
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Salva</button>
-          <a href="/manager/macchinari" class="btn btn-secondary">Annulla</a>
+          <a href="/manager/macchinari" class="btn btn-secondary">
+            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+          </a>
+          <button type="submit" class="btn btn-primary">
+            {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+          </button>
         </div>
       </form>
     </div>

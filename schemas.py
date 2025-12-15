@@ -65,7 +65,11 @@ class SiteRead(SiteBase):
 
 class MachineBase(BaseModel):
     name: str
-    machine_type: MachineTypeEnum = Field(alias="type")
+    code: Optional[str] = None
+    machine_type: Optional[MachineTypeEnum] = Field(default=None, alias="type")
+    brand: Optional[str] = None
+    model_name: Optional[str] = Field(default=None, alias="model")
+    plate: Optional[str] = None
     notes: Optional[str] = None
     status: str
     site_id: Optional[int] = None

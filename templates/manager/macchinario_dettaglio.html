@@ -1,27 +1,42 @@
 {% extends "base.html" %}
 
-{% block title %}Dettaglio macchinario{% endblock %}
+{% block title %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% if lang == 'fr' %}Détail macchinario{% else %}Dettaglio macchinario{% endif %}
+{% endblock %}
 
 {% block content %}
-<h1>Dettaglio macchinario</h1>
-
-<div class="card">
-  <p><strong>Nome:</strong> {{ machine.name }}</p>
-  <p><strong>Tipo:</strong> {{ machine.machine_type.value if machine.machine_type else '-' }}</p>
-  <p><strong>Stato:</strong> {{ machine.status }}</p>
-  <p><strong>Note:</strong> {{ machine.notes or '—' }}</p>
-  <p><strong>Cantiere assegnato:</strong>
-    {% if machine.site %}
-      {{ machine.site.name }} ({{ machine.site.code }})
-    {% else %}
-      Nessun cantiere assegnato
-    {% endif %}
+{% set lang = request.cookies.get('lang', 'it') %}
+<div class="page-header">
+  <h1 class="page-title">🚜 {% if lang == 'fr' %}Détail macchinario{% else %}Dettaglio macchinario{% endif %}</h1>
+  <p class="page-subtitle">
+    {% if lang == 'fr' %}Vérifiez les informations et l'assignation.{% else %}Controlla le informazioni e l'assegnazione.{% endif %}
   </p>
 </div>
 
-<div class="actions">
-  <a href="/manager/macchinari/modifica/{{ machine.id }}" class="button">✏️ Modifica</a>
-  <a href="/manager/macchinari/assegna/{{ machine.id }}" class="button">📌 Assegna a cantiere</a>
-  <a href="/manager/macchinari" class="button">⬅️ Torna alla lista</a>
+<div class="card">
+  <div class="card-body">
+    <p><strong>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}:</strong> {{ machine.name }}</p>
+    <p><strong>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}:</strong> {{ machine.code or '—' }}</p>
+    <p><strong>{% if lang == 'fr' %}Marque{% else %}Marca{% endif %}:</strong> {{ machine.brand or '—' }}</p>
+    <p><strong>{% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}:</strong> {{ machine.model_name or '—' }}</p>
+    <p><strong>{% if lang == 'fr' %}Matricule{% else %}Matricola{% endif %}:</strong> {{ machine.plate or '—' }}</p>
+    <p><strong>{% if lang == 'fr' %}Type{% else %}Tipologia{% endif %}:</strong> {{ machine.machine_type.value if machine.machine_type else '—' }}</p>
+    <p><strong>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}:</strong> {{ machine.status }}</p>
+    <p><strong>{% if lang == 'fr' %}Remarques{% else %}Note{% endif %}:</strong> {{ machine.notes or '—' }}</p>
+    <p><strong>{% if lang == 'fr' %}Chantier assigné{% else %}Cantiere assegnato{% endif %}:</strong>
+      {% if machine.site %}
+        {{ machine.site.name }} ({{ machine.site.code }})
+      {% else %}
+        {% if lang == 'fr' %}Aucun chantier{% else %}Nessun cantiere{% endif %}
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="form-actions">
+  <a href="/manager/macchinari/modifica/{{ machine.id }}" class="btn btn-primary">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a>
+  <a href="/manager/macchinari/assegna/{{ machine.id }}" class="btn btn-secondary">📌 {% if lang == 'fr' %}Assigner{% else %}Assegna{% endif %}</a>
+  <a href="/manager/macchinari" class="btn btn-secondary">⬅️ {% if lang == 'fr' %}Retour à la liste{% else %}Torna alla lista{% endif %}</a>
 </div>
 {% endblock %}

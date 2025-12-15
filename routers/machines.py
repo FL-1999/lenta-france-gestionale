@@ -50,7 +50,11 @@ def create_machine_api(
 
     machine = Machine(
         name=machine_in.name,
+        code=machine_in.code,
         machine_type=machine_in.machine_type,
+        brand=machine_in.brand,
+        model_name=machine_in.model_name,
+        plate=machine_in.plate,
         status=machine_in.status,
         notes=machine_in.notes,
         site_id=machine_in.site_id,
@@ -147,8 +151,12 @@ def manager_machine_new_get(
 @router.post("/manager/macchinari/nuovo")
 def manager_machine_new_post(
     request: Request,
+    code: str = Form(...),
     name: str = Form(...),
-    type: str = Form(...),
+    type: str | None = Form(None),
+    brand: str | None = Form(None),
+    model_name: str | None = Form(None),
+    plate: str | None = Form(None),
     status: str = Form(...),
     notes: str | None = Form(None),
     site_id: str | None = Form(None),
@@ -157,10 +165,12 @@ def manager_machine_new_post(
 ):
     _require_manager_or_admin(current_user)
 
-    try:
-        machine_type = MachineTypeEnum(type)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Tipo macchinario non valido")
+    machine_type = None
+    if type:
+        try:
+            machine_type = MachineTypeEnum(type)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Tipo macchinario non valido")
 
     if status not in MACHINE_STATUS_CHOICES:
         raise HTTPException(status_code=400, detail="Stato macchinario non valido")
@@ -168,8 +178,12 @@ def manager_machine_new_post(
     parsed_site_id = _parse_site_id(site_id)
 
     machine = Machine(
+        code=code,
         name=name,
         machine_type=machine_type,
+        brand=brand,
+        model_name=model_name,
+        plate=plate,
         status=status,
         notes=notes,
         site_id=parsed_site_id,
@@ -209,8 +223,12 @@ def manager_machine_edit_get(
 def manager_machine_edit_post(
     request: Request,
     machine_id: int,
+    code: str = Form(...),
     name: str = Form(...),
-    type: str = Form(...),
+    type: str | None = Form(None),
+    brand: str | None = Form(None),
+    model_name: str | None = Form(None),
+    plate: str | None = Form(None),
     status: str = Form(...),
     notes: str | None = Form(None),
     site_id: str | None = Form(None),
@@ -220,16 +238,22 @@ def manager_machine_edit_post(
     _require_manager_or_admin(current_user)
     machine = _get_machine_or_404(db, machine_id)
 
-    try:
-        machine_type = MachineTypeEnum(type)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Tipo macchinario non valido")
+    machine_type = None
+    if type:
+        try:
+            machine_type = MachineTypeEnum(type)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Tipo macchinario non valido")
 
     if status not in MACHINE_STATUS_CHOICES:
         raise HTTPException(status_code=400, detail="Stato macchinario non valido")
 
+    machine.code = code
     machine.name = name
     machine.machine_type = machine_type
+    machine.brand = brand
+    machine.model_name = model_name
+    machine.plate = plate
     machine.status = status
     machine.notes = notes
     machine.site_id = _parse_site_id(site_id)
