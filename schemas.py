@@ -133,6 +133,8 @@ class FicheCreate(BaseModel):
     diametro_palo: Optional[float] = None
     larghezza_pannello: Optional[float] = None
     altezza_pannello: Optional[float] = None
+    data_getto: Optional[date] = None
+    metri_cubi_gettati: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
@@ -154,6 +156,8 @@ class FicheRead(BaseModel):
     diametro_palo: Optional[float] = None
     larghezza_pannello: Optional[float] = None
     altezza_pannello: Optional[float] = None
+    data_getto: Optional[date] = None
+    metri_cubi_gettati: Optional[float] = None
     site_name: str
     machine_name: Optional[str]
     created_by_name: str
@@ -177,6 +181,8 @@ class FicheListItem(BaseModel):
     diametro_palo: Optional[float] = None
     larghezza_pannello: Optional[float] = None
     altezza_pannello: Optional[float] = None
+    data_getto: Optional[date] = None
+    metri_cubi_gettati: Optional[float] = None
     created_by_name: str
 
     model_config = {"from_attributes": True}

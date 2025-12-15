@@ -372,9 +372,11 @@ async def manager_fiche_create(
     current_user: User = Depends(get_current_active_user_html),
     cantiere_id: int = Form(...),
     macchinario_id: str | None = Form(None),
-    data: date = Form(...),
+    data_scavo: date = Form(...),
+    data_getto: date | None = Form(None),
+    metri_cubi_gettati: float | None = Form(None),
     operatore: str = Form(...),
-    descrizione: str = Form(...),
+    descrizione: str = Form(""),
     ore_lavorate: float = Form(...),
     note: str | None = Form(None),
     tipologia_scavo: str | None = Form(None),
@@ -410,11 +412,11 @@ async def manager_fiche_create(
                 raise HTTPException(status_code=400, detail="Macchinario non trovato")
 
         fiche = Fiche(
-            date=data,
+            date=data_scavo,
             site_id=cantiere_id,
             machine_id=parsed_machine_id,
             fiche_type=FicheTypeEnum.produzione,
-            description=descrizione,
+            description=descrizione or "",
             operator=operatore,
             hours=ore_lavorate,
             notes=note,
@@ -425,6 +427,8 @@ async def manager_fiche_create(
             diametro_palo=diametro_palo,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
+            data_getto=data_getto,
+            metri_cubi_gettati=metri_cubi_gettati,
             created_by_id=current_user.id,
         )
         db.add(fiche)
@@ -1191,11 +1195,13 @@ def capo_fiche_nuova_get(
 async def capo_fiche_nuova_post(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
-    data: date = Form(...),
+    data_scavo: date = Form(...),
+    data_getto: date | None = Form(None),
+    metri_cubi_gettati: float | None = Form(None),
     cantiere_id: int = Form(...),
     macchinario_id: str | None = Form(None),
     operatore: str = Form(...),
-    descrizione: str = Form(...),
+    descrizione: str = Form(""),
     ore_lavorate: float = Form(...),
     note: str | None = Form(None),
     tipologia_scavo: str | None = Form(None),
@@ -1233,11 +1239,11 @@ async def capo_fiche_nuova_post(
                 raise HTTPException(status_code=400, detail="Macchinario non trovato")
 
         fiche = Fiche(
-            date=data,
+            date=data_scavo,
             site_id=cantiere_id,
             machine_id=parsed_machine_id,
             fiche_type=FicheTypeEnum.produzione,
-            description=descrizione,
+            description=descrizione or "",
             operator=operatore,
             hours=ore_lavorate,
             notes=note,
@@ -1248,6 +1254,8 @@ async def capo_fiche_nuova_post(
             diametro_palo=diametro_palo,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
+            data_getto=data_getto,
+            metri_cubi_gettati=metri_cubi_gettati,
             created_by_id=current_user.id,
         )
         db.add(fiche)

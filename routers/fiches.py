@@ -50,6 +50,8 @@ def list_fiches(
             diametro_palo=fiche.diametro_palo,
             larghezza_pannello=fiche.larghezza_pannello,
             altezza_pannello=fiche.altezza_pannello,
+            data_getto=fiche.data_getto,
+            metri_cubi_gettati=fiche.metri_cubi_gettati,
             created_by_name=fiche.created_by.full_name or fiche.created_by.email,
         )
         for fiche in fiches
@@ -93,6 +95,8 @@ def get_fiche_detail(
         diametro_palo=fiche.diametro_palo,
         larghezza_pannello=fiche.larghezza_pannello,
         altezza_pannello=fiche.altezza_pannello,
+        data_getto=fiche.data_getto,
+        metri_cubi_gettati=fiche.metri_cubi_gettati,
         site_name=fiche.site.name if fiche.site else "",
         machine_name=fiche.machine.name if fiche.machine else None,
         created_by_name=fiche.created_by.full_name or fiche.created_by.email,
@@ -132,6 +136,8 @@ def create_fiche(
         diametro_palo=fiche_in.diametro_palo,
         larghezza_pannello=fiche_in.larghezza_pannello,
         altezza_pannello=fiche_in.altezza_pannello,
+        data_getto=fiche_in.data_getto,
+        metri_cubi_gettati=fiche_in.metri_cubi_gettati,
         created_by_id=current_user.id,
     )
     db.add(fiche)
@@ -155,6 +161,8 @@ def create_fiche(
         diametro_palo=fiche.diametro_palo,
         larghezza_pannello=fiche.larghezza_pannello,
         altezza_pannello=fiche.altezza_pannello,
+        data_getto=fiche.data_getto,
+        metri_cubi_gettati=fiche.metri_cubi_gettati,
         site_name=site.name,
         machine_name=machine.name if machine else None,
         created_by_name=current_user.full_name or current_user.email,
