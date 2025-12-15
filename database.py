@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlmodel import SQLModel, Session, create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 DATABASE_URL = "sqlite:///./lenta_france.db"
@@ -18,3 +18,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def get_session():
+    with Session(engine) as session:
+        yield session

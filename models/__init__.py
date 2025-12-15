@@ -1,4 +1,5 @@
 from enum import Enum as PyEnum
+from typing import Optional
 from datetime import datetime, date
 
 from sqlalchemy import (
@@ -14,6 +15,7 @@ from sqlalchemy import (
     DateTime,
 )
 from sqlalchemy.orm import relationship
+from sqlmodel import SQLModel, Field
 
 from database import Base
 
@@ -279,6 +281,23 @@ class StratigraphyLayer(Base):
         return f"<StratigraphyLayer id={self.id} fiche_id={self.fiche_id} layer_index={self.layer_index}>"
 
 
+class Personale(SQLModel, table=True):
+    __tablename__ = "personale"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nome: str
+    cognome: str
+    ruolo: Optional[str] = Field(
+        default=None, description="Ruolo in azienda (operaio, caposquadra, ecc.)"
+    )
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    data_assunzione: Optional[date] = None
+    attivo: bool = Field(default=True)
+    note: Optional[str] = None
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 # Import dei modelli specifici
-from .personale import Personale
 from .veicoli import Veicolo

@@ -7,3 +7,4 @@ python-jose[cryptography]
 passlib
 jinja2
 python-multipart
+sqlmodel
