@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-
 {% set lang = request.cookies.get('lang', 'it') %}
-
 {% block title %}
     {% if lang == 'fr' %}
         Tableau de bord Manager – Lenta France
@@ -9,7 +7,6 @@
         Dashboard Manager – Lenta France
     {% endif %}
 {% endblock %}
-
 {% block content %}
 <div class="dashboard-page">
     <div class="page-header dashboard-header">
@@ -130,10 +127,10 @@
             </div>
             <div class="card-body">
                 <p>{% if lang == 'fr' %}Surveillez l'avancement des chantiers, gérez les détails et l'assignation des équipes.{% else %}Monitora l'avanzamento dei cantieri, gestisci dettagli e assegnazioni delle squadre.{% endif %}</p>
-            <div class="card-actions">
-                <a href="/manager/cantieri" class="btn btn-secondary">{% if lang == 'fr' %}Liste des chantiers{% else %}Lista cantieri{% endif %}</a>
-                <a href="/manager/cantieri/nuovo" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouveau chantier{% else %}Nuovo cantiere{% endif %}</a>
-            </div>
+                <div class="card-actions">
+                    <a href="/manager/cantieri" class="btn btn-secondary">{% if lang == 'fr' %}Liste des chantiers{% else %}Lista cantieri{% endif %}</a>
+                    <a href="/manager/cantieri/nuovo" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouveau chantier{% else %}Nuovo cantiere{% endif %}</a>
+                </div>
             </div>
         </div>
 
@@ -152,10 +149,10 @@
             </div>
             <div class="card-body">
                 <p>{% if lang == 'fr' %}Gérez le parc machines, leur état et les affectations aux chantiers en cours.{% else %}Gestisci il parco macchinari, lo stato e le assegnazioni ai cantieri in corso.{% endif %}</p>
-            <div class="card-actions">
-                <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Liste des machines{% else %}Lista macchinari{% endif %}</a>
-                <a href="{{ request.url_for('new_machine_form') }}" class="btn btn-primary">🛠 {% if lang == 'fr' %}Nouveau macchinario{% else %}Nuovo macchinario{% endif %}</a>
-            </div>
+                <div class="card-actions">
+                    <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Liste des machines{% else %}Lista macchinari{% endif %}</a>
+                    <a href="{{ request.url_for('new_machine_form') }}" class="btn btn-primary">🛠 {% if lang == 'fr' %}Nouveau macchinario{% else %}Nuovo macchinario{% endif %}</a>
+                </div>
             </div>
         </div>
 
@@ -175,10 +172,10 @@
             </div>
             <div class="card-body">
                 <p>{% if lang == 'fr' %}Consultez et filtrez les fiches saisies par les chefs d'équipe pour une vue rapide des activités.{% else %}Consulta e filtra le fiches inserite dai capisquadra per avere una vista rapida delle attività.{% endif %}</p>
-            <div class="card-actions">
-                <a href="/manager/fiches" class="btn btn-secondary">{% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}</a>
-                <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}</a>
-            </div>
+                <div class="card-actions">
+                    <a href="/manager/fiches" class="btn btn-secondary">{% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}</a>
+                    <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}</a>
+                </div>
             </div>
         </div>
 
@@ -196,9 +193,9 @@
             </div>
             <div class="card-body">
                 <p>{% if lang == 'fr' %}Consultez, filtrez et analysez tous les rapports envoyés par les chefs d'équipe.{% else %}Consulta, filtra e approfondisci tutti i rapportini inviati dai capisquadra.{% endif %}</p>
-            <div class="card-actions">
-                <a href="/manager/rapportini" class="btn btn-secondary">{% if lang == 'fr' %}Aller à la liste des rapports{% else %}Vai all'elenco rapportini{% endif %}</a>
-            </div>
+                <div class="card-actions">
+                    <a href="/manager/rapportini" class="btn btn-secondary">{% if lang == 'fr' %}Aller à la liste des rapports{% else %}Vai all'elenco rapportini{% endif %}</a>
+                </div>
             </div>
         </div>
 
@@ -218,12 +215,47 @@
             </div>
             <div class="card-body">
                 <p>{% if lang == 'fr' %}Gérez les utilisateurs, créez de nouveaux chefs d'équipe et modifiez les rôles selon les besoins opérationnels.{% else %}Gestisci gli utenti, crea nuovi capisquadra e modifica i ruoli in base alle necessità operative.{% endif %}</p>
-            <div class="card-actions">
-                <a href="/manager/utenti" class="btn btn-secondary">{% if lang == 'fr' %}Liste des utilisateurs{% else %}Lista utenti{% endif %}</a>
-                <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouvel utilisateur{% else %}Nuovo utente{% endif %}</a>
-            </div>
+                <div class="card-actions">
+                    <a href="/manager/utenti" class="btn btn-secondary">{% if lang == 'fr' %}Liste des utilisateurs{% else %}Lista utenti{% endif %}</a>
+                    <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouvel utilisateur{% else %}Nuovo utente{% endif %}</a>
+                </div>
             </div>
         </div>
+
+        <!-- ✅ NUOVA CARD PERSONALE -->
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--users" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="9" cy="9" r="3" />
+                            <circle cx="16" cy="10" r="2.5" />
+                            <path d="M4.5 19.5c0-2.5 2.3-4.5 5.1-4.5h1.8c2.8 0 5.1 2 5.1 4.5" stroke-linecap="round" />
+                            <path d="M15.4 12.8c2.2 0 4.1 1.6 4.1 3.7" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>{% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>
+                    {% if lang == 'fr' %}
+                        Gérez l’ensemble du personnel (équipes, opérateurs, chefs d’équipe, etc.).
+                    {% else %}
+                        Gestisci tutto il personale (operatori, capisquadra, ecc.).
+                    {% endif %}
+                </p>
+                <div class="card-actions">
+                    <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary">
+                        📋 {% if lang == 'fr' %}Liste du personnel{% else %}Lista personale{% endif %}
+                    </a>
+                    <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
+                        ➕ {% if lang == 'fr' %}Nouvel employé{% else %}Nuovo personale{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- fine nuova card -->
 
         <div class="card module-card">
             <div class="card-header">
