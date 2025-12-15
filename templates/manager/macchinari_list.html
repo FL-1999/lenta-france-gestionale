@@ -1,0 +1,147 @@
+{% extends "shared/base.html" %}
+{% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
+    {% if lang == 'fr' %}Macchinari – Manager – Lenta France{% else %}Macchinari – Manager – Lenta France{% endif %}
+{% endblock %}
+{% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}
+                Gestion des machines
+            {% else %}
+                Gestione macchinari
+            {% endif %}
+        </p>
+        <h1 class="page-title">
+            {% if lang == 'fr' %}
+                Macchinari
+            {% else %}
+                Macchinari
+            {% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Vue d'ensemble de tous les macchinari disponibles et de leur statut.
+            {% else %}
+                Panoramica di tutti i macchinari disponibili e del loro stato.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="dashboard-kpi-grid">
+    <div class="kpi-card kpi-accent-1">
+        <div class="kpi-top">
+            <span class="kpi-icon">🛠</span>
+            <span>
+                {% if lang == 'fr' %}Macchinari totaux{% else %}Macchinari totali{% endif %}
+            </span>
+        </div>
+        <div class="kpi-value">{{ kpi_total }}</div>
+        <div class="kpi-sub">
+            {% if lang == 'fr' %}Toutes les machines enregistrées{% else %}Tutti i macchinari registrati{% endif %}
+        </div>
+    </div>
+    <div class="kpi-card kpi-accent-2">
+        <div class="kpi-top">
+            <span class="kpi-icon">✅</span>
+            <span>
+                {% if lang == 'fr' %}Actifs{% else %}Attivi{% endif %}
+            </span>
+        </div>
+        <div class="kpi-value">{{ kpi_active }}</div>
+        <div class="kpi-sub">
+            {% if lang == 'fr' %}Disponibles pour les chantiers{% else %}Disponibili per i cantieri{% endif %}
+        </div>
+    </div>
+    <div class="kpi-card kpi-accent-3">
+        <div class="kpi-top">
+            <span class="kpi-icon">⛔️</span>
+            <span>
+                {% if lang == 'fr' %}Hors service{% else %}Fuori servizio{% endif %}
+            </span>
+        </div>
+        <div class="kpi-value">{{ kpi_oos }}</div>
+        <div class="kpi-sub">
+            {% if lang == 'fr' %}Machines à vérifier{% else %}Macchinari da verificare{% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            🛠
+            {% if lang == 'fr' %}
+                Liste des macchinari
+            {% else %}
+                Elenco macchinari
+            {% endif %}
+        </div>
+        <div class="card-actions">
+            <a href="{{ request.url_for('new_machine_form') }}" class="btn btn-primary btn-sm">
+                ➕
+                {% if lang == 'fr' %}Nouveau macchinario{% else %}Nuovo macchinario{% endif %}
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if machines %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Marque / Modèle{% else %}Marca / Modello{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in machines %}
+                        <tr>
+                            <td>{{ m.name }}</td>
+                            <td>{{ m.code }}</td>
+                            <td>{{ m.brand }} {{ m.model_name }}</td>
+                            <td>
+                                {% set stato = m.status or 'attivo' %}
+                                {% if stato == 'fuori_servizio' %}
+                                    <span class="badge badge-danger">
+                                        {% if lang == 'fr' %}Hors service{% else %}Fuori servizio{% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-success">
+                                        {% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-right">
+                                <div class="table-actions">
+                                    <a href="{{ request.url_for('manager_machine_detail', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
+                                        {% if lang == 'fr' %}Détails{% else %}Dettagli{% endif %}
+                                    </a>
+                                    <a href="{{ request.url_for('manager_machine_edit', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
+                                        {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-muted">
+                {% if lang == 'fr' %}
+                    Aucun macchinario enregistré pour le moment.
+                {% else %}
+                    Nessun macchinario registrato al momento.
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
