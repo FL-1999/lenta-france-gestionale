@@ -1,4 +1,5 @@
 {% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
 
 {% block title %}
     {% if lang == 'fr' %}Personnel – Manager{% else %}Personale – Manager{% endif %}
@@ -6,60 +7,73 @@
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</h1>
-    <p class="page-subtitle">
-        {% if lang == 'fr' %}
-            Gestion complète du personnel de l'entreprise.
-        {% else %}
-            Gestione completa del personale aziendale.
-        {% endif %}
-    </p>
-    <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
-        ➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuovo personale{% endif %}
-    </a>
+    <div class="page-header-main">
+        <h1 class="page-title">
+            👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Gestion complète du personnel de l'entreprise.
+            {% else %}
+                Gestione completa del personale aziendale.
+            {% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvel employé{% else %}Nuovo personale{% endif %}
+        </a>
+    </div>
 </div>
 
 <div class="card">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>{% if lang == 'fr' %}Nom complet{% else %}Nome completo{% endif %}</th>
-                <th>{% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}</th>
-                <th>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</th>
-                <th>Email</th>
-                <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in personale %}
+    <div class="card-body">
+        <table class="table">
+            <thead>
                 <tr>
-                    <td>{{ p.nome }} {{ p.cognome }}</td>
-                    <td>{{ p.ruolo or '-' }}</td>
-                    <td>{{ p.telefono or '-' }}</td>
-                    <td>{{ p.email or '-' }}</td>
-                    <td class="actions">
-                        <a class="btn btn-secondary" href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
-                            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-                        </a>
-                        <form method="post" action="{{ url_for('manager_personale_delete', personale_id=p.id) }}" style="display:inline;">
-                            <button type="submit" class="btn btn-danger" onclick="return confirm('{% if lang == 'fr' %}Supprimer cet enregistrement ?{% else %}Eliminare questa scheda?{% endif %}');">
-                                🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
-                            </button>
-                        </form>
-                    </td>
+                    <th>{% if lang == 'fr' %}Nom complet{% else %}Nome completo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</th>
+                    <th>Email</th>
+                    <th class="text-right">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                 </tr>
-            {% else %}
-                <tr>
-                    <td colspan="5">
-                        {% if lang == 'fr' %}
-                            Aucun personnel enregistré pour le moment.
-                        {% else %}
-                            Nessun personale registrato al momento.
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for p in personale %}
+                    <tr>
+                        <td>{{ p.nome }} {{ p.cognome }}</td>
+                        <td>{{ p.ruolo or '-' }}</td>
+                        <td>{{ p.telefono or '-' }}</td>
+                        <td>{{ p.email or '-' }}</td>
+                        <td class="text-right">
+                            <a class="btn btn-secondary btn-sm"
+                               href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
+                                ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                            </a>
+                            <form method="post"
+                                  action="{{ url_for('manager_personale_delete', personale_id=p.id) }}"
+                                  style="display:inline;">
+                                <button type="submit"
+                                        class="btn btn-danger btn-sm"
+                                        onclick="return confirm('{% if lang == 'fr' %}Supprimer cet enregistrement ?{% else %}Eliminare questa scheda?{% endif %}');">
+                                    🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">
+                            {% if lang == 'fr' %}
+                                Aucun personnel enregistré pour le moment.
+                            {% else %}
+                                Nessun personale registrato al momento.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
