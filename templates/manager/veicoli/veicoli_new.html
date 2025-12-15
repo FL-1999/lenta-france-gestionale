@@ -1,0 +1,45 @@
+{% extends "shared/base.html" %}
+
+{% block title %}
+    {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">🚐 {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}</h1>
+</div>
+
+<form method="post" action="{{ url_for('manager_veicoli_create') }}" class="form">
+    <div class="form-grid">
+        <label>
+            {% if lang == 'fr' %}Marque{% else %}Marca{% endif %}
+            <input type="text" name="marca" required />
+        </label>
+        <label>
+            {% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}
+            <input type="text" name="modello" required />
+        </label>
+        <label>
+            {% if lang == 'fr' %}Immatriculation{% else %}Targa{% endif %}
+            <input type="text" name="targa" required />
+        </label>
+        <label>
+            {% if lang == 'fr' %}Année{% else %}Anno{% endif %}
+            <input type="number" name="anno" />
+        </label>
+        <label>
+            KM
+            <input type="number" name="km" />
+        </label>
+    </div>
+    <label>
+        Notes
+        <textarea name="note" rows="4"></textarea>
+    </label>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+        <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">⬅️ {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+    </div>
+</form>
+{% endblock %}
