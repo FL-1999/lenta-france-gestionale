@@ -1,4 +1,5 @@
 {% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
 
 {% block title %}
     {% if lang == 'fr' %}Nouveau personnel{% else %}Nuovo personale{% endif %}
@@ -7,39 +8,58 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">👥 {% if lang == 'fr' %}Nouveau personnel{% else %}Nuovo personale{% endif %}</h1>
+    <p class="page-subtitle">
+        {% if lang == 'fr' %}
+            Ajoutez un nouveau membre du personnel à la base de données.
+        {% else %}
+            Aggiungi un nuovo membro del personale all'anagrafica.
+        {% endif %}
+    </p>
 </div>
 
-<form method="post" action="{{ url_for('manager_personale_create') }}" class="form">
-    <div class="form-grid">
-        <label>
-            {% if lang == 'fr' %}Prénom{% else %}Nome{% endif %}
-            <input type="text" name="nome" required />
-        </label>
-        <label>
-            {% if lang == 'fr' %}Nom{% else %}Cognome{% endif %}
-            <input type="text" name="cognome" required />
-        </label>
-        <label>
-            {% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}
-            <input type="text" name="ruolo" />
-        </label>
-        <label>
-            {% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}
-            <input type="text" name="telefono" />
-        </label>
-        <label>
-            Email
-            <input type="email" name="email" />
-        </label>
-    </div>
-    <label>
-        Notes
-        <textarea name="note" rows="4"></textarea>
-    </label>
+<div class="card">
+    <div class="card-body">
+        <form method="post" action="{{ url_for('manager_personale_create') }}" class="form">
+            <div class="form-grid">
+                <label>
+                    {% if lang == 'fr' %}Prénom{% else %}Nome{% endif %}
+                    <input type="text" name="nome" required />
+                </label>
+                <label>
+                    {% if lang == 'fr' %}Nom{% else %}Cognome{% endif %}
+                    <input type="text" name="cognome" required />
+                </label>
+                <label>
+                    {% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}
+                    <input type="text" name="ruolo" />
+                </label>
+                <label>
+                    {% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}
+                    <input type="text" name="telefono" />
+                </label>
+                <label>
+                    Email
+                    <input type="email" name="email" />
+                </label>
+                <label>
+                    {% if lang == 'fr' %}Date d'embauche{% else %}Data assunzione{% endif %}
+                    <input type="date" name="data_assunzione" />
+                </label>
+                <label class="checkbox-field">
+                    <input type="checkbox" name="attivo" value="true" checked />
+                    <span>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+                </label>
+            </div>
+            <label>
+                {% if lang == 'fr' %}Notes{% else %}Note{% endif %}
+                <textarea name="note" rows="4"></textarea>
+            </label>
 
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
-        <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary">⬅️ {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+                <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary">⬅️ {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+            </div>
+        </form>
     </div>
-</form>
+</div>
 {% endblock %}
