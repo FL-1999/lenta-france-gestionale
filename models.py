@@ -223,6 +223,8 @@ class Fiche(Base, TimestampMixin):
     diametro_palo = Column(Float, nullable=True)
     larghezza_pannello = Column(Float, nullable=True)
     altezza_pannello = Column(Float, nullable=True)
+    data_getto = Column(Date, nullable=True)
+    metri_cubi_gettati = Column(Float, nullable=True)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
     stratigrafie = relationship(

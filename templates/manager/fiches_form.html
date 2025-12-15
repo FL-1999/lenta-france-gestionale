@@ -56,10 +56,32 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="data">
-                            {% if lang == 'fr' %}Date*{% else %}Data*{% endif %}
+                        <label class="form-label" for="data_scavo">
+                            {% if lang == 'fr' %}
+                                Date de forage*
+                            {% else %}
+                                Data di scavo*
+                            {% endif %}
                         </label>
-                        <input id="data" name="data" type="date" class="form-control" required />
+                        <input id="data_scavo"
+                               name="data_scavo"
+                               type="date"
+                               class="form-control"
+                               required />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="data_getto">
+                            {% if lang == 'fr' %}
+                                Date de bétonnage
+                            {% else %}
+                                Data di getto
+                            {% endif %}
+                        </label>
+                        <input id="data_getto"
+                               name="data_getto"
+                               type="date"
+                               class="form-control" />
                     </div>
 
                     <div class="form-group">
@@ -71,17 +93,26 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="descrizione">
-                        {% if lang == 'fr' %}Description des travaux*{% else %}Descrizione lavori*{% endif %}
-                    </label>
-                    <textarea id="descrizione" name="descrizione" class="form-textarea" rows="4" required></textarea>
-                </div>
-
-                <div class="form-group">
                     <label class="form-label" for="ore_lavorate">
                         {% if lang == 'fr' %}Heures travaillées*{% else %}Ore lavorate*{% endif %}
                     </label>
                     <input id="ore_lavorate" name="ore_lavorate" type="number" step="0.25" min="0" class="form-control" required />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="metri_cubi_gettati">
+                        {% if lang == 'fr' %}
+                            Mètres cubes bétonnés
+                        {% else %}
+                            Metri cubi gettati
+                        {% endif %}
+                    </label>
+                    <input id="metri_cubi_gettati"
+                           name="metri_cubi_gettati"
+                           type="number"
+                           step="0.1"
+                           min="0"
+                           class="form-control" />
                 </div>
 
                 <h3 class="form-section-title">
