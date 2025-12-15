@@ -1,0 +1,65 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}
+    {% if lang == 'fr' %}Personnel – Manager – Lenta France{% else %}Personale – Manager – Lenta France{% endif %}
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">
+      {% if lang == 'fr' %}Gestion du personnel{% else %}Gestione del personale{% endif %}
+    </p>
+    <h1 class="page-title">
+      {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}
+    </h1>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
+      {% if lang == 'fr' %}Nouvel employé{% else %}Nuovo dipendente{% endif %}
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+          <th>{% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}</th>
+          <th>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</th>
+          <th>Email</th>
+          <th>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
+          <th class="text-right">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in personale %}
+        <tr>
+          <td>{{ p.cognome }} {{ p.nome }}</td>
+          <td>{{ p.ruolo or "-" }}</td>
+          <td>{{ p.telefono or "-" }}</td>
+          <td>{{ p.email or "-" }}</td>
+          <td>{{ "✔" if p.attivo else "✖" }}</td>
+          <td class="text-right">
+            <a href="{{ url_for('manager_personale_edit', personale_id=p.id) }}" class="btn btn-secondary btn-sm">
+              {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted">
+            {% if lang == 'fr' %}
+              Aucun employé enregistré.
+            {% else %}
+              Nessun dipendente registrato.
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

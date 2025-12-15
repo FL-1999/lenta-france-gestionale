@@ -1,0 +1,99 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}
+    {% if veicolo %}
+        {% if lang == 'fr' %}Modifier véhicule{% else %}Modifica veicolo{% endif %} – Lenta France
+    {% else %}
+        {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %} – Lenta France
+    {% endif %}
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">
+      {% if lang == 'fr' %}Gestion des véhicules{% else %}Gestione veicoli{% endif %}
+    </p>
+    <h1 class="page-title">
+      {% if veicolo %}
+        {% if lang == 'fr' %}Modifier véhicule{% else %}Modifica veicolo{% endif %}
+      {% else %}
+        {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
+      {% endif %}
+    </h1>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-grid">
+      <div class="form-group">
+        <label class="form-label" for="targa">{% if lang == 'fr' %}Plaque{% else %}Targa{% endif %}*</label>
+        <input type="text" id="targa" name="targa" class="form-control" required value="{{ veicolo.targa if veicolo else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="marca">{% if lang == 'fr' %}Marque{% else %}Marca{% endif %}</label>
+        <input type="text" id="marca" name="marca" class="form-control" value="{{ veicolo.marca if veicolo else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="modello">{% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}</label>
+        <input type="text" id="modello" name="modello" class="form-control" value="{{ veicolo.modello if veicolo else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="anno">{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</label>
+        <input type="number" id="anno" name="anno" class="form-control" value="{{ veicolo.anno if veicolo and veicolo.anno is not none else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="tipo">{% if lang == 'fr' %}Type{% else %}Tipo{% endif %}</label>
+        <select id="tipo" name="tipo" class="form-select">
+          {% set current_tipo = veicolo.tipo if veicolo else '' %}
+          <option value="" {% if not current_tipo %}selected{% endif %}>-</option>
+          <option value="auto" {% if current_tipo == 'auto' %}selected{% endif %}>{% if lang == 'fr' %}Auto{% else %}Auto{% endif %}</option>
+          <option value="furgone" {% if current_tipo == 'furgone' %}selected{% endif %}>{% if lang == 'fr' %}Fourgon{% else %}Furgone{% endif %}</option>
+          <option value="camion" {% if current_tipo == 'camion' %}selected{% endif %}>{% if lang == 'fr' %}Camion{% else %}Camion{% endif %}</option>
+          <option value="altro" {% if current_tipo == 'altro' %}selected{% endif %}>{% if lang == 'fr' %}Autre{% else %}Altro{% endif %}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="km_attuali">{% if lang == 'fr' %}Km actuels{% else %}Km attuali{% endif %}</label>
+        <input type="number" id="km_attuali" name="km_attuali" class="form-control" value="{{ veicolo.km_attuali if veicolo and veicolo.km_attuali is not none else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="scadenza_revisione">{% if lang == 'fr' %}Révision{% else %}Revisione{% endif %}</label>
+        <input type="date" id="scadenza_revisione" name="scadenza_revisione" class="form-control" value="{{ veicolo.scadenza_revisione.isoformat() if veicolo and veicolo.scadenza_revisione else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="scadenza_assicurazione">{% if lang == 'fr' %}Assurance{% else %}Assicurazione{% endif %}</label>
+        <input type="date" id="scadenza_assicurazione" name="scadenza_assicurazione" class="form-control" value="{{ veicolo.scadenza_assicurazione.isoformat() if veicolo and veicolo.scadenza_assicurazione else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="personale_id">{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</label>
+        <select id="personale_id" name="personale_id" class="form-select">
+          {% set current_personale = veicolo.personale_id if veicolo else '' %}
+          <option value="" {% if not current_personale %}selected{% endif %}>-</option>
+          {% for p in personale %}
+          <option value="{{ p.id }}" {% if current_personale == p.id %}selected{% endif %}>{{ p.cognome }} {{ p.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="cantiere_id">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
+        <select id="cantiere_id" name="cantiere_id" class="form-select">
+          {% set current_cantiere = veicolo.cantiere_id if veicolo else '' %}
+          <option value="" {% if not current_cantiere %}selected{% endif %}>-</option>
+          {% for c in cantieri %}
+          <option value="{{ c.id }}" {% if current_cantiere == c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group form-group-full">
+        <label class="form-label" for="note">{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
+        <textarea id="note" name="note" class="form-control" rows="3">{{ veicolo.note if veicolo else '' }}</textarea>
+      </div>
+      <div class="form-actions form-group-full">
+        <button type="submit" class="btn btn-primary">{% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+        <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -54,6 +54,22 @@
                     Manager
                 {% endif %}
             </a>
+            <a href="{{ url_for('manager_personale_list') }}" class="nav-link">
+                👥
+                {% if lang == 'fr' %}
+                    Personnel
+                {% else %}
+                    Personale
+                {% endif %}
+            </a>
+            <a href="{{ url_for('manager_veicoli_list') }}" class="nav-link">
+                🚐
+                {% if lang == 'fr' %}
+                    Véhicules
+                {% else %}
+                    Veicoli
+                {% endif %}
+            </a>
             <a href="/capo/dashboard" class="nav-link">
                 👷
                 {% if lang == 'fr' %}
