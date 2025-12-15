@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
+from sqlmodel import SQLModel
 
 from database import Base, engine, SessionLocal, get_db
 from auth import (
@@ -43,6 +44,7 @@ from routes import manager_personale, manager_veicoli
 
 # Crea tutte le tabelle definite in models.py
 Base.metadata.create_all(bind=engine)
+SQLModel.metadata.create_all(bind=engine)
 
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
