@@ -13,7 +13,6 @@
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
-
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="nav-left">
@@ -46,6 +45,7 @@
                     Home
                 {% endif %}
             </a>
+
             <a href="/manager/dashboard" class="nav-link">
                 📊
                 {% if lang == 'fr' %}
@@ -54,6 +54,8 @@
                     Manager
                 {% endif %}
             </a>
+
+            <!-- Nuova voce PERSONALE (Manager) -->
             <a href="{{ url_for('manager_personale_list') }}" class="nav-link">
                 👥
                 {% if lang == 'fr' %}
@@ -62,6 +64,9 @@
                     Personale
                 {% endif %}
             </a>
+
+            <!-- Lasciamo i veicoli per dopo, quando avremo le route pronte -->
+            {# 
             <a href="{{ url_for('manager_veicoli_list') }}" class="nav-link">
                 🚐
                 {% if lang == 'fr' %}
@@ -70,6 +75,8 @@
                     Veicoli
                 {% endif %}
             </a>
+            #}
+
             <a href="/capo/dashboard" class="nav-link">
                 👷
                 {% if lang == 'fr' %}
@@ -78,6 +85,7 @@
                     Caposquadra
                 {% endif %}
             </a>
+
             <a href="/docs" class="nav-link">
                 📘
                 {% if lang == 'fr' %}
@@ -100,6 +108,6 @@
         {% endblock %}
     </main>
 
-    <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
+    <script src="{{ url_for('static', path='js/theme_switcher.js') }}"></script>
 </body>
 </html>
