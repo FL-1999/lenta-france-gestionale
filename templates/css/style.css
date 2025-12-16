@@ -212,3 +212,53 @@ form textarea {
     color: var(--testo-secondario);
     margin-bottom: 20px;
 }
+/* --- Layout più arioso per la dashboard manager --- */
+
+/* Contenitore generale della dashboard */
+.dashboard-page {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);          /* spazio verticale fra header, KPI, card, grafici */
+}
+
+/* Header un filo più staccato dal resto */
+.dashboard-header {
+    margin-bottom: var(--space-5);
+}
+
+/* KPI in alto: più “respiro” e stacco dal blocco sotto */
+.dashboard-kpi-grid {
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+
+/* Card principali (cantieri, macchinari, veicoli, ecc.) più distanziate */
+.dashboard-modules-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-4);          /* prima era 1.5rem circa, ora più largo */
+    margin-top: var(--space-4);
+}
+
+/* Grafici in fondo un po' più separati e leggeri */
+.dashboard-analytics-grid {
+    gap: var(--space-4);
+    margin-top: var(--space-5);
+}
+
+/* Card leggermente più “importanti” ma meno affollate dentro */
+.card.module-card {
+    padding: var(--space-5);
+}
+
+/* Su schermi piccoli teniamo comunque aria tra le card */
+@media (max-width: 768px) {
+    .dashboard-page {
+        gap: var(--space-5);
+    }
+    .dashboard-modules-grid,
+    .dashboard-analytics-grid {
+        gap: var(--space-3);
+    }
+}
