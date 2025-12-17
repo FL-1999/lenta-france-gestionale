@@ -1,147 +1,184 @@
 {% extends "base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
+
 {% block title %}
     {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
 {% endblock %}
 
 {% block content %}
+
 <div class="page-header">
-    <h1 class="page-title">
-        🚐 {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
-    </h1>
-    <p class="page-subtitle">
-        {% if lang == 'fr' %}
-            Ajoutez un nouveau véhicule au parc automobile.
-        {% else %}
-            Aggiungi un nuovo veicolo aziendale alla flotta.
-        {% endif %}
-    </p>
+    <div>
+        <p class="eyebrow">
+            {% if lang == 'fr' %}
+                Gestion des véhicules
+            {% else %}
+                Gestione veicoli
+            {% endif %}
+        </p>
+        <h1 class="page-title">
+            🚐 {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Ajoutez un nouveau véhicule au parc automobile de l’entreprise.
+            {% else %}
+                Aggiungi un nuovo veicolo aziendale alla flotta, con i dati principali e le scadenze.
+            {% endif %}
+        </p>
+    </div>
 </div>
 
-<form method="post" class="form-card">
+<form method="post">
 
-    <!-- DATI PRINCIPALI -->
-    <h2 class="section-title">
-        {% if lang == 'fr' %}Données principales{% else %}Dati principali{% endif %}
-    </h2>
-
-    <div class="form-grid-2">
-        <div class="form-field">
-            <label>Marca*</label>
-            <input type="text" name="marca" placeholder="Es. Fiat" required>
-        </div>
-
-        <div class="form-field">
-            <label>Modello*</label>
-            <input type="text" name="modello" placeholder="Es. Ducato" required>
-        </div>
-
-        <div class="form-field">
-            <label>Targa*</label>
-            <input type="text" name="targa" placeholder="AB123CD" required>
-            <small>
+    <div class="card large-form-card vehicle-form-card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>
+                    {% if lang == 'fr' %}Détails du véhicule{% else %}Dettagli veicolo{% endif %}
+                </span>
+            </div>
+            <p class="card-subtitle">
                 {% if lang == 'fr' %}
-                    Enregistrée automatiquement en majuscule.
+                    Complétez les informations principales, les échéances et l’affectation.
                 {% else %}
-                    La targa verrà salvata automaticamente in maiuscolo.
+                    Compila i dati principali, le scadenze e l’eventuale assegnazione del veicolo.
                 {% endif %}
-            </small>
+            </p>
         </div>
 
-        <div class="form-field">
-            <label>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</label>
-            <input type="number" name="anno" placeholder="2020" min="1900" max="2100">
-        </div>
-    </div>
+        <div class="card-body">
 
-    <!-- DETTAGLI VEICOLO -->
-    <h2 class="section-title">
-        {% if lang == 'fr' %}Détails du véhicule{% else %}Dettagli veicolo{% endif %}
-    </h2>
+            <!-- DATI PRINCIPALI -->
+            <h2 class="section-title">
+                {% if lang == 'fr' %}Données principales{% else %}Dati principali{% endif %}
+            </h2>
 
-    <div class="form-grid-2">
-        <div class="form-field">
-            <label>Km</label>
-            <input type="number" name="km" placeholder="150000">
-            <small>
-                {% if lang == 'fr' %}
-                    Kilométrage actuel (même approximatif).
-                {% else %}
-                    Chilometraggio attuale (anche indicativo).
-                {% endif %}
-            </small>
-        </div>
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>Marca*</label>
+                    <input type="text" name="marca" placeholder="Es. Fiat" required>
+                </div>
 
-        <div class="form-field">
-            <label>{% if lang == 'fr' %}Carburant{% else %}Carburante{% endif %}</label>
-            <select name="carburante">
-                <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
-                <option value="Diesel">Diesel</option>
-                <option value="Benzina">Benzina</option>
-                <option value="GPL">GPL</option>
-                <option value="Ibrido">Ibrido</option>
-                <option value="Elettrico">Elettrico</option>
-            </select>
-        </div>
-    </div>
+                <div class="form-field">
+                    <label>Modello*</label>
+                    <input type="text" name="modello" placeholder="Es. Ducato" required>
+                </div>
 
-    <!-- SCADENZE -->
-    <h2 class="section-title">
-        {% if lang == 'fr' %}Échéances{% else %}Scadenze{% endif %}
-    </h2>
+                <div class="form-field">
+                    <label>Targa*</label>
+                    <input type="text" name="targa" placeholder="AB123CD" required>
+                    <small>
+                        {% if lang == 'fr' %}
+                            La plaque sera enregistrée automatiquement en majuscule.
+                        {% else %}
+                            La targa verrà salvata automaticamente in maiuscolo.
+                        {% endif %}
+                    </small>
+                </div>
 
-    <div class="form-grid-2">
-        <div class="form-field">
-            <label>
-                {% if lang == 'fr' %}Révision – échéance{% else %}Revisione – scadenza{% endif %}
-            </label>
-            <input type="date" name="revisione_scadenza">
-        </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</label>
+                    <input type="number" name="anno" placeholder="2020" min="1900" max="2100">
+                </div>
+            </div>
 
-        <div class="form-field">
-            <label>
-                {% if lang == 'fr' %}Assurance – échéance{% else %}Assicurazione – scadenza{% endif %}
-            </label>
-            <input type="date" name="assicurazione_scadenza">
-        </div>
-    </div>
+            <!-- DETTAGLI VEICOLO -->
+            <h2 class="section-title">
+                {% if lang == 'fr' %}Détails du véhicule{% else %}Dettagli veicolo{% endif %}
+            </h2>
 
-    <!-- ASSEGNAZIONE -->
-    <h2 class="section-title">
-        {% if lang == 'fr' %}Affectation{% else %}Assegnazione{% endif %}
-    </h2>
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>Km</label>
+                    <input type="number" name="km" placeholder="150000">
+                    <small>
+                        {% if lang == 'fr' %}
+                            Kilométrage actuel (même approximatif).
+                        {% else %}
+                            Chilometraggio attuale (anche indicativo).
+                        {% endif %}
+                    </small>
+                </div>
 
-    <div class="form-grid-2">
-        <div class="form-field">
-            <label>
-                {% if lang == 'fr' %}Véhicule assigné à{% else %}Veicolo assegnato a{% endif %}
-            </label>
-            <select name="assegnato_a_id">
-                <option value="">
-                    {% if lang == 'fr' %}Aucun / véhicule partagé{% else %}Nessuno / veicolo condiviso{% endif %}
-                </option>
-                {% for persona in personale_list %}
-                    <option value="{{ persona.id }}">
-                        {{ persona.nome }} {{ persona.cognome }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Carburant{% else %}Carburante{% endif %}</label>
+                    <select name="carburante">
+                        <option value="">
+                            {% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}
+                        </option>
+                        <option value="Diesel">Diesel</option>
+                        <option value="Benzina">Benzina</option>
+                        <option value="GPL">GPL</option>
+                        <option value="Ibrido">Ibrido</option>
+                        <option value="Elettrico">Elettrico</option>
+                    </select>
+                </div>
+            </div>
 
-        <div class="form-field">
-            <label>Note</label>
-            <textarea name="note"
-                      placeholder="{% if lang == 'fr' %}Informations supplémentaires{% else %}Assicurazione, stato generale, conducente abituale...{% endif %}"></textarea>
-        </div>
-    </div>
+            <!-- SCADENZE -->
+            <h2 class="section-title">
+                {% if lang == 'fr' %}Échéances{% else %}Scadenze{% endif %}
+            </h2>
 
-    <div class="form-actions">
-        <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">
-            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
-        </a>
-        <button type="submit" class="btn btn-primary">
-            {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
-        </button>
-    </div>
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>
+                        {% if lang == 'fr' %}Révision – échéance{% else %}Revisione – scadenza{% endif %}
+                    </label>
+                    <input type="date" name="revisione_scadenza">
+                </div>
+
+                <div class="form-field">
+                    <label>
+                        {% if lang == 'fr' %}Assurance – échéance{% else %}Assicurazione – scadenza{% endif %}
+                    </label>
+                    <input type="date" name="assicurazione_scadenza">
+                </div>
+            </div>
+
+            <!-- ASSEGNAZIONE -->
+            <h2 class="section-title">
+                {% if lang == 'fr' %}Affectation{% else %}Assegnazione{% endif %}
+            </h2>
+
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>
+                        {% if lang == 'fr' %}Véhicule assigné à{% else %}Veicolo assegnato a{% endif %}
+                    </label>
+                    <select name="assegnato_a_id">
+                        <option value="">
+                            {% if lang == 'fr' %}Aucun / véhicule partagé{% else %}Nessuno / veicolo condiviso{% endif %}
+                        </option>
+                        {% for persona in personale_list %}
+                            <option value="{{ persona.id }}">
+                                {{ persona.nome }} {{ persona.cognome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <label>Note</label>
+                    <textarea name="note"
+                              placeholder="{% if lang == 'fr' %}Informations supplémentaires{% else %}Assicurazione, stato generale, conducente abituale...{% endif %}"></textarea>
+                </div>
+            </div>
+
+            <!-- AZIONI -->
+            <div class="form-actions">
+                <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                </button>
+            </div>
+
+        </div><!-- /card-body -->
+    </div><!-- /card -->
+
 </form>
+
 {% endblock %}
