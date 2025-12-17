@@ -20,14 +20,12 @@
 
 <form method="post" class="form-card">
 
-    <!-- ====================== -->
-    <!-- DATI PRINCIPALI        -->
-    <!-- ====================== -->
-
-    <h2 class="section-title">{% if lang == 'fr' %}Données principales{% else %}Dati principali{% endif %}</h2>
+    <!-- DATI PRINCIPALI -->
+    <h2 class="section-title">
+        {% if lang == 'fr' %}Données principales{% else %}Dati principali{% endif %}
+    </h2>
 
     <div class="form-grid-2">
-
         <div class="form-field">
             <label>Marca*</label>
             <input type="text" name="marca" placeholder="Es. Fiat" required>
@@ -41,28 +39,37 @@
         <div class="form-field">
             <label>Targa*</label>
             <input type="text" name="targa" placeholder="AB123CD" required>
-            <small>{% if lang == 'fr' %}Enregistrée automatiquement en majuscule.{% else %}Salvata automaticamente in maiuscolo.{% endif %}</small>
+            <small>
+                {% if lang == 'fr' %}
+                    Enregistrée automatiquement en majuscule.
+                {% else %}
+                    La targa verrà salvata automaticamente in maiuscolo.
+                {% endif %}
+            </small>
         </div>
 
         <div class="form-field">
             <label>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</label>
             <input type="number" name="anno" placeholder="2020" min="1900" max="2100">
         </div>
-
     </div>
 
-
-    <!-- ====================== -->
-    <!-- DETTAGLI VEICOLO        -->
-    <!-- ====================== -->
-
-    <h2 class="section-title">{% if lang == 'fr' %}Détails du véhicule{% else %}Dettagli veicolo{% endif %}</h2>
+    <!-- DETTAGLI VEICOLO -->
+    <h2 class="section-title">
+        {% if lang == 'fr' %}Détails du véhicule{% else %}Dettagli veicolo{% endif %}
+    </h2>
 
     <div class="form-grid-2">
-
         <div class="form-field">
             <label>Km</label>
             <input type="number" name="km" placeholder="150000">
+            <small>
+                {% if lang == 'fr' %}
+                    Kilométrage actuel (même approximatif).
+                {% else %}
+                    Chilometraggio attuale (anche indicativo).
+                {% endif %}
+            </small>
         </div>
 
         <div class="form-field">
@@ -76,71 +83,65 @@
                 <option value="Elettrico">Elettrico</option>
             </select>
         </div>
-
     </div>
 
-
-    <!-- ====================== -->
-    <!-- SCADENZE                -->
-    <!-- ====================== -->
-
-    <h2 class="section-title">{% if lang == 'fr' %}Échéances{% else %}Scadenze{% endif %}</h2>
+    <!-- SCADENZE -->
+    <h2 class="section-title">
+        {% if lang == 'fr' %}Échéances{% else %}Scadenze{% endif %}
+    </h2>
 
     <div class="form-grid-2">
-
         <div class="form-field">
-            <label>{% if lang == 'fr' %}Révision – échéance{% else %}Revisione – scadenza{% endif %}</label>
+            <label>
+                {% if lang == 'fr' %}Révision – échéance{% else %}Revisione – scadenza{% endif %}
+            </label>
             <input type="date" name="revisione_scadenza">
         </div>
 
         <div class="form-field">
-            <label>{% if lang == 'fr' %}Assurance – échéance{% else %}Assicurazione – scadenza{% endif %}</label>
+            <label>
+                {% if lang == 'fr' %}Assurance – échéance{% else %}Assicurazione – scadenza{% endif %}
+            </label>
             <input type="date" name="assicurazione_scadenza">
         </div>
-
     </div>
 
-
-    <!-- ====================== -->
-    <!-- ASSEGNAZIONE           -->
-    <!-- ====================== -->
-
-    <h2 class="section-title">{% if lang == 'fr' %}Affectation{% else %}Assegnazione{% endif %}</h2>
+    <!-- ASSEGNAZIONE -->
+    <h2 class="section-title">
+        {% if lang == 'fr' %}Affectation{% else %}Assegnazione{% endif %}
+    </h2>
 
     <div class="form-grid-2">
-
         <div class="form-field">
-            <label>{% if lang == 'fr' %}Véhicule assigné à{% else %}Veicolo assegnato a{% endif %}</label>
+            <label>
+                {% if lang == 'fr' %}Véhicule assigné à{% else %}Veicolo assegnato a{% endif %}
+            </label>
             <select name="assegnato_a_id">
-                <option value="">{% if lang == 'fr' %}Aucun / véhicule partagé{% else %}Nessuno / veicolo condiviso{% endif %}</option>
-                {% for persona in personale %}
-                    <option value="{{ persona.id }}">{{ persona.nome }} {{ persona.cognome }}</option>
+                <option value="">
+                    {% if lang == 'fr' %}Aucun / véhicule partagé{% else %}Nessuno / veicolo condiviso{% endif %}
+                </option>
+                {% for persona in personale_list %}
+                    <option value="{{ persona.id }}">
+                        {{ persona.nome }} {{ persona.cognome }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
 
         <div class="form-field">
             <label>Note</label>
-            <textarea name="note" placeholder="{% if lang == 'fr' %}Informations supplémentaires{% else %}Informazioni aggiuntive{% endif %}"></textarea>
+            <textarea name="note"
+                      placeholder="{% if lang == 'fr' %}Informations supplémentaires{% else %}Assicurazione, stato generale, conducente abituale...{% endif %}"></textarea>
         </div>
-
     </div>
-
-
-    <!-- ====================== -->
-    <!-- PULSANTI                -->
-    <!-- ====================== -->
 
     <div class="form-actions">
         <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">
             {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
         </a>
-
-        <button class="btn btn-primary" type="submit">
+        <button type="submit" class="btn btn-primary">
             {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
         </button>
     </div>
-
 </form>
-
 {% endblock %}
