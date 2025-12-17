@@ -1,31 +1,41 @@
-from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey
-from sqlalchemy.orm import relationship
-from database import Base
+from __future__ import annotations
+
+from datetime import date
+from typing import Optional
+
+from sqlmodel import SQLModel, Field, Relationship
 
 
-class Veicolo(Base):
+class Veicolo(SQLModel, table=True):
     __tablename__ = "veicoli"
 
-    id = Column(Integer, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
 
     # Dati principali
-    marca = Column(String(120), nullable=False)
-    modello = Column(String(120), nullable=False)
-    targa = Column(String(50), nullable=False, unique=True)
+    marca: str = Field(max_length=120)
+    modello: str = Field(max_length=120)
+    targa: str = Field(max_length=50, index=True)
 
-    anno = Column(Integer)
-    km = Column(Integer)
+    anno: Optional[int] = None
+    km: Optional[int] = None
 
     # Nuovi campi
-    carburante = Column(String(50))  # es. diesel, benzina, elettrico, ibrido...
-    assicurazione_scadenza = Column(Date, nullable=True)
-    revisione_scadenza = Column(Date, nullable=True)
+    carburante: Optional[str] = Field(default=None, max_length=50)
+    assicurazione_scadenza: Optional[date] = None
+    revisione_scadenza: Optional[date] = None
 
-    # Collegamento al personale (facoltativo)
-    assegnato_a_id = Column(Integer, ForeignKey("personale.id"), nullable=True)
-    assegnato_a = relationship("Personale", backref="veicoli_assegnati")
+    # FK verso personale.id (SQLModel)
+    assegnato_a_id: Optional[int] = Field(
+        default=None,
+        foreign_key="personale.id",
+    )
 
-    note = Column(Text)
+    # Se vuoi usare v.assegnato_a nel template:
+    # (funziona anche se la relationship inversa non è definita,
+    # ma è più pulito se la aggiungi in Personale)
+    assegnato_a: Optional["Personale"] = Relationship()
+
+    note: Optional[str] = None
 
     def __repr__(self) -> str:
         return f"<Veicolo id={self.id} targa={self.targa}>"
