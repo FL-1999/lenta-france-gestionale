@@ -1,59 +1,61 @@
-{% extends "shared/base.html" %}
+{% extends "base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
 
 {% block title %}
-    {% set lang = request.cookies.get('lang', 'it') %}
     {% if lang == 'fr' %}Véhicules – Manager{% else %}Veicoli – Manager{% endif %}
 {% endblock %}
 
 {% block content %}
-{% set lang = request.cookies.get('lang', 'it') %}
-
 <div class="page-header">
-    <h1 class="page-title">🚐 {% if lang == 'fr' %}Véhicules{% else %}Veicoli{% endif %}</h1>
-    <p class="page-subtitle">
-        {% if lang == 'fr' %}
-            Gestion complète des véhicules de l'entreprise (plaques, kilométrage, affectation).
-        {% else %}
-            Gestione completa dei veicoli aziendali (targhe, chilometraggio, assegnazioni).
-        {% endif %}
-    </p>
-    <a href="{{ url_for('manager_veicoli_new') }}" class="btn btn-primary">
-        ➕ {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
-    </a>
+    <div>
+        <h1 class="page-title">
+            🚐 {% if lang == 'fr' %}Véhicules{% else %}Veicoli{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Gérez les véhicules d'entreprise, les plaques, le kilométrage et les échéances.
+            {% else %}
+                Gestisci i veicoli aziendali, targhe, chilometraggio e scadenze.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_veicoli_new') }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
+        </a>
+    </div>
 </div>
 
-<div class="card">
-    <table class="table">
+<div class="card table-card">
+    <table class="data-table">
         <thead>
             <tr>
+                <th>ID</th>
                 <th>{% if lang == 'fr' %}Marque{% else %}Marca{% endif %}</th>
                 <th>{% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}</th>
                 <th>{% if lang == 'fr' %}Plaque{% else %}Targa{% endif %}</th>
                 <th>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</th>
                 <th>Km</th>
                 <th>{% if lang == 'fr' %}Carburant{% else %}Carburante{% endif %}</th>
-                <th>{% if lang == 'fr' %}Affecté à{% else %}Assegnato a{% endif %}</th>
-                <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                <th>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</th>
+                <th class="table-actions-col">
+                    {% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}
+                </th>
             </tr>
         </thead>
         <tbody>
             {% for v in veicoli %}
                 <tr>
+                    <td>#{{ v.id }}</td>
                     <td>{{ v.marca }}</td>
                     <td>{{ v.modello }}</td>
                     <td>{{ v.targa }}</td>
-                    <td>{{ v.anno or '-' }}</td>
-                    <td>{{ v.km or '-' }}</td>
-                    <td>{{ v.carburante or '-' }}</td>
-                    <td>
-                        {% if v.assegnato_a %}
-                            {{ v.assegnato_a.cognome }} {{ v.assegnato_a.nome }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td class="actions">
-                        <a class="btn btn-secondary"
+                    <td>{{ v.anno or '—' }}</td>
+                    <td>{{ v.km or '—' }}</td>
+                    <td>{{ v.carburante or '—' }}</td>
+                    <td>{{ v.assegnato_a_id or '—' }}</td>
+                    <td class="table-actions">
+                        <a class="btn btn-secondary btn-sm"
                            href="{{ url_for('manager_veicoli_edit', veicolo_id=v.id) }}">
                             ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                         </a>
@@ -61,7 +63,7 @@
                               action="{{ url_for('manager_veicoli_delete', veicolo_id=v.id) }}"
                               style="display:inline;">
                             <button type="submit"
-                                    class="btn btn-danger"
+                                    class="btn btn-danger btn-sm"
                                     onclick="return confirm('{% if lang == 'fr' %}Supprimer ce véhicule ?{% else %}Eliminare questo veicolo?{% endif %}');">
                                 🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
                             </button>
@@ -70,7 +72,7 @@
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="8">
+                    <td colspan="9" class="table-empty">
                         {% if lang == 'fr' %}
                             Aucun véhicule enregistré pour le moment.
                         {% else %}
