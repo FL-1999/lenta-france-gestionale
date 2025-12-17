@@ -1,17 +1,20 @@
 {% extends "shared/base.html" %}
 
 {% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
     {% if lang == 'fr' %}Véhicules – Manager{% else %}Veicoli – Manager{% endif %}
 {% endblock %}
 
 {% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
 <div class="page-header">
     <h1 class="page-title">🚐 {% if lang == 'fr' %}Véhicules{% else %}Veicoli{% endif %}</h1>
     <p class="page-subtitle">
         {% if lang == 'fr' %}
-            Parc véhicules séparé des machines de chantier.
+            Gestion complète des véhicules de l'entreprise (targhe, kilométrage, notes).
         {% else %}
-            Parco veicoli separato dai macchinari di cantiere.
+            Gestione completa dei veicoli aziendali (targhe, chilometraggio, note).
         {% endif %}
     </p>
     <a href="{{ url_for('manager_veicoli_new') }}" class="btn btn-primary">
@@ -25,9 +28,9 @@
             <tr>
                 <th>{% if lang == 'fr' %}Marque{% else %}Marca{% endif %}</th>
                 <th>{% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}</th>
-                <th>{% if lang == 'fr' %}Immatriculation{% else %}Targa{% endif %}</th>
+                <th>{% if lang == 'fr' %}Plaque{% else %}Targa{% endif %}</th>
                 <th>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</th>
-                <th>KM</th>
+                <th>{% if lang == 'fr' %}Km{% else %}Km{% endif %}</th>
                 <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
             </tr>
         </thead>
@@ -40,11 +43,16 @@
                     <td>{{ v.anno or '-' }}</td>
                     <td>{{ v.km or '-' }}</td>
                     <td class="actions">
-                        <a class="btn btn-secondary" href="{{ url_for('manager_veicoli_edit', veicolo_id=v.id) }}">
+                        <a class="btn btn-secondary"
+                           href="{{ url_for('manager_veicoli_edit', veicolo_id=v.id) }}">
                             ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                         </a>
-                        <form method="post" action="{{ url_for('manager_veicoli_delete', veicolo_id=v.id) }}" style="display:inline;">
-                            <button type="submit" class="btn btn-danger" onclick="return confirm('{% if lang == 'fr' %}Supprimer ce véhicule ?{% else %}Eliminare questo veicolo?{% endif %}');">
+                        <form method="post"
+                              action="{{ url_for('manager_veicoli_delete', veicolo_id=v.id) }}"
+                              style="display:inline;">
+                            <button type="submit"
+                                    class="btn btn-danger"
+                                    onclick="return confirm('{% if lang == 'fr' %}Supprimer ce véhicule ?{% else %}Eliminare questo veicolo?{% endif %}');">
                                 🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
                             </button>
                         </form>
@@ -54,9 +62,9 @@
                 <tr>
                     <td colspan="6">
                         {% if lang == 'fr' %}
-                            Aucun véhicule enregistré.
+                            Aucun véhicule enregistré pour le moment.
                         {% else %}
-                            Nessun veicolo registrato.
+                            Nessun veicolo registrato al momento.
                         {% endif %}
                     </td>
                 </tr>
