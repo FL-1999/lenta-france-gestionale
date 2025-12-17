@@ -12,9 +12,9 @@
     <h1 class="page-title">🚐 {% if lang == 'fr' %}Véhicules{% else %}Veicoli{% endif %}</h1>
     <p class="page-subtitle">
         {% if lang == 'fr' %}
-            Gestion complète des véhicules de l'entreprise (targhe, kilométrage, notes).
+            Gestion complète des véhicules de l'entreprise (plaques, kilométrage, affectation).
         {% else %}
-            Gestione completa dei veicoli aziendali (targhe, chilometraggio, note).
+            Gestione completa dei veicoli aziendali (targhe, chilometraggio, assegnazioni).
         {% endif %}
     </p>
     <a href="{{ url_for('manager_veicoli_new') }}" class="btn btn-primary">
@@ -30,7 +30,9 @@
                 <th>{% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}</th>
                 <th>{% if lang == 'fr' %}Plaque{% else %}Targa{% endif %}</th>
                 <th>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</th>
-                <th>{% if lang == 'fr' %}Km{% else %}Km{% endif %}</th>
+                <th>Km</th>
+                <th>{% if lang == 'fr' %}Carburant{% else %}Carburante{% endif %}</th>
+                <th>{% if lang == 'fr' %}Affecté à{% else %}Assegnato a{% endif %}</th>
                 <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
             </tr>
         </thead>
@@ -42,6 +44,14 @@
                     <td>{{ v.targa }}</td>
                     <td>{{ v.anno or '-' }}</td>
                     <td>{{ v.km or '-' }}</td>
+                    <td>{{ v.carburante or '-' }}</td>
+                    <td>
+                        {% if v.assegnato_a %}
+                            {{ v.assegnato_a.cognome }} {{ v.assegnato_a.nome }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td class="actions">
                         <a class="btn btn-secondary"
                            href="{{ url_for('manager_veicoli_edit', veicolo_id=v.id) }}">
@@ -60,7 +70,7 @@
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="6">
+                    <td colspan="8">
                         {% if lang == 'fr' %}
                             Aucun véhicule enregistré pour le moment.
                         {% else %}
