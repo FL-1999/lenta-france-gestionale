@@ -1,45 +1,64 @@
 {% extends "shared/base.html" %}
 
 {% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
     {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
 {% endblock %}
 
 {% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
 <div class="page-header">
     <h1 class="page-title">🚐 {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}</h1>
+    <p class="page-subtitle">
+        {% if lang == 'fr' %}
+            Ajoutez un nouveau véhicule aziendale à la flotte.
+        {% else %}
+            Aggiungi un nuovo veicolo aziendale alla flotta.
+        {% endif %}
+    </p>
 </div>
 
-<form method="post" action="{{ url_for('manager_veicoli_create') }}" class="form">
-    <div class="form-grid">
-        <label>
-            {% if lang == 'fr' %}Marque{% else %}Marca{% endif %}
-            <input type="text" name="marca" required />
-        </label>
-        <label>
-            {% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}
-            <input type="text" name="modello" required />
-        </label>
-        <label>
-            {% if lang == 'fr' %}Immatriculation{% else %}Targa{% endif %}
-            <input type="text" name="targa" required />
-        </label>
-        <label>
-            {% if lang == 'fr' %}Année{% else %}Anno{% endif %}
-            <input type="number" name="anno" />
-        </label>
-        <label>
-            KM
-            <input type="number" name="km" />
-        </label>
-    </div>
-    <label>
-        Notes
-        <textarea name="note" rows="4"></textarea>
-    </label>
+<div class="card">
+    <form method="post" action="{{ url_for('manager_veicoli_create') }}" class="form-grid">
+        <div class="form-field">
+            <label for="marca">{% if lang == 'fr' %}Marque*{% else %}Marca*{% endif %}</label>
+            <input type="text" id="marca" name="marca" required />
+        </div>
 
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
-        <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">⬅️ {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
-    </div>
-</form>
+        <div class="form-field">
+            <label for="modello">{% if lang == 'fr' %}Modèle*{% else %}Modello*{% endif %}</label>
+            <input type="text" id="modello" name="modello" required />
+        </div>
+
+        <div class="form-field">
+            <label for="targa">{% if lang == 'fr' %}Plaque*{% else %}Targa*{% endif %}</label>
+            <input type="text" id="targa" name="targa" required />
+        </div>
+
+        <div class="form-field">
+            <label for="anno">{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</label>
+            <input type="number" id="anno" name="anno" min="1900" max="2100" />
+        </div>
+
+        <div class="form-field">
+            <label for="km">Km</label>
+            <input type="number" id="km" name="km" min="0" step="1" />
+        </div>
+
+        <div class="form-field form-field--full">
+            <label for="note">{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
+            <textarea id="note" name="note" rows="3"></textarea>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">
+                {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+            </a>
+            <button type="submit" class="btn btn-primary">
+                💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
 {% endblock %}
