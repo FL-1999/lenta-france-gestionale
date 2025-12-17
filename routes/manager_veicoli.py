@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -5,9 +7,8 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import RoleEnum, User
+from models import RoleEnum, User, Personale
 from models.veicoli import Veicolo
-
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(tags=["manager-veicoli"])
@@ -27,6 +28,15 @@ def _parse_int(value: str | None) -> int | None:
         return None
 
 
+def _parse_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
 @router.get(
     "/manager/veicoli",
     response_class=HTMLResponse,
@@ -37,9 +47,15 @@ def manager_veicoli_list(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    """
+    Lista veicoli aziendali.
+    """
     _ensure_manager(current_user)
-
-    veicoli = db.query(Veicolo).order_by(Veicolo.marca.asc(), Veicolo.modello.asc()).all()
+    veicoli = (
+        db.query(Veicolo)
+        .order_by(Veicolo.marca.asc(), Veicolo.modello.asc(), Veicolo.targa.asc())
+        .all()
+    )
     return templates.TemplateResponse(
         "manager/veicoli/veicoli_list.html",
         {
@@ -57,12 +73,25 @@ def manager_veicoli_list(
 )
 def manager_veicoli_new(
     request: Request,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    """
+    Form creazione nuovo veicolo.
+    """
     _ensure_manager(current_user)
+    personale_list = (
+        db.query(Personale)
+        .order_by(Personale.cognome.asc(), Personale.nome.asc())
+        .all()
+    )
     return templates.TemplateResponse(
         "manager/veicoli/veicoli_new.html",
-        {"request": request, "user": current_user},
+        {
+            "request": request,
+            "user": current_user,
+            "personale_list": personale_list,
+        },
     )
 
 
@@ -79,9 +108,16 @@ def manager_veicoli_create(
     anno: str | None = Form(None),
     km: str | None = Form(None),
     note: str | None = Form(None),
+    carburante: str | None = Form(None),
+    assicurazione_scadenza: str | None = Form(None),
+    revisione_scadenza: str | None = Form(None),
+    assegnato_a_id: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    """
+    Salvataggio nuovo veicolo.
+    """
     _ensure_manager(current_user)
 
     veicolo = Veicolo(
@@ -91,12 +127,17 @@ def manager_veicoli_create(
         anno=_parse_int(anno),
         km=_parse_int(km),
         note=(note or "").strip() or None,
+        carburante=(carburante or "").strip() or None,
+        assicurazione_scadenza=_parse_date(assicurazione_scadenza),
+        revisione_scadenza=_parse_date(revisione_scadenza),
+        assegnato_a_id=_parse_int(assegnato_a_id),
     )
     db.add(veicolo)
     db.commit()
 
     return RedirectResponse(
-        url=request.url_for("manager_veicoli_list"), status_code=303
+        url=request.url_for("manager_veicoli_list"),
+        status_code=303,
     )
 
 
@@ -111,13 +152,22 @@ def manager_veicoli_edit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    """
+    Form modifica veicolo esistente.
+    """
     _ensure_manager(current_user)
-
     veicolo = db.query(Veicolo).filter(Veicolo.id == veicolo_id).first()
     if not veicolo:
         return RedirectResponse(
-            url=request.url_for("manager_veicoli_list"), status_code=303
+            url=request.url_for("manager_veicoli_list"),
+            status_code=303,
         )
+
+    personale_list = (
+        db.query(Personale)
+        .order_by(Personale.cognome.asc(), Personale.nome.asc())
+        .all()
+    )
 
     return templates.TemplateResponse(
         "manager/veicoli/veicoli_edit.html",
@@ -125,6 +175,7 @@ def manager_veicoli_edit(
             "request": request,
             "user": current_user,
             "veicolo": veicolo,
+            "personale_list": personale_list,
         },
     )
 
@@ -143,15 +194,22 @@ def manager_veicoli_update(
     anno: str | None = Form(None),
     km: str | None = Form(None),
     note: str | None = Form(None),
+    carburante: str | None = Form(None),
+    assicurazione_scadenza: str | None = Form(None),
+    revisione_scadenza: str | None = Form(None),
+    assegnato_a_id: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    """
+    Aggiornamento veicolo esistente.
+    """
     _ensure_manager(current_user)
-
     veicolo = db.query(Veicolo).filter(Veicolo.id == veicolo_id).first()
     if not veicolo:
         return RedirectResponse(
-            url=request.url_for("manager_veicoli_list"), status_code=303
+            url=request.url_for("manager_veicoli_list"),
+            status_code=303,
         )
 
     veicolo.marca = marca.strip()
@@ -161,11 +219,17 @@ def manager_veicoli_update(
     veicolo.km = _parse_int(km)
     veicolo.note = (note or "").strip() or None
 
+    veicolo.carburante = (carburante or "").strip() or None
+    veicolo.assicurazione_scadenza = _parse_date(assicurazione_scadenza)
+    veicolo.revisione_scadenza = _parse_date(revisione_scadenza)
+    veicolo.assegnato_a_id = _parse_int(assegnato_a_id)
+
     db.add(veicolo)
     db.commit()
 
     return RedirectResponse(
-        url=request.url_for("manager_veicoli_list"), status_code=303
+        url=request.url_for("manager_veicoli_list"),
+        status_code=303,
     )
 
 
@@ -180,13 +244,16 @@ def manager_veicoli_delete(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    """
+    Eliminazione veicolo.
+    """
     _ensure_manager(current_user)
-
     veicolo = db.query(Veicolo).filter(Veicolo.id == veicolo_id).first()
     if veicolo:
         db.delete(veicolo)
         db.commit()
 
     return RedirectResponse(
-        url=request.url_for("manager_veicoli_list"), status_code=303
+        url=request.url_for("manager_veicoli_list"),
+        status_code=303,
     )
