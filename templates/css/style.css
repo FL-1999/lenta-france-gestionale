@@ -261,4 +261,142 @@ form textarea {
     .dashboard-analytics-grid {
         gap: var(--space-3);
     }
+    /* --- Form card generico (cantieri, veicoli, ecc.) --- */
+
+.form-card {
+    background: var(--surface-elevated, #171c2b);
+    padding: var(--space-5, 2rem);
+    border-radius: var(--radius-xl, 18px);
+    box-shadow: var(--shadow-soft, 0 18px 45px rgba(0, 0, 0, 0.45));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4, 1.5rem);
 }
+
+.section-title {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.8;
+    margin-top: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+/* griglia 2 colonne, che su mobile diventa 1 */
+
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4, 1.5rem);
+}
+
+@media (max-width: 768px) {
+    .form-grid-2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* campi */
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.form-field label {
+    font-size: 0.85rem;
+    opacity: 0.85;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    width: 100%;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(5, 9, 22, 0.9);
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+    outline: none;
+    color: #fff;
+}
+
+.form-field textarea {
+    border-radius: 18px;
+    min-height: 90px;
+    resize: vertical;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    border-color: #6c63ff;
+    box-shadow: 0 0 0 1px rgba(108, 99, 255, 0.5);
+}
+
+.form-field small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+/* bottoni form in linea, come nelle card dashboard */
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3, 1rem);
+    margin-top: var(--space-4, 1.5rem);
+}
+
+.form-actions .btn {
+    min-width: 140px;
+}
+
+/* --- Tabella veicoli moderna --- */
+
+.table-card {
+    background: var(--surface-elevated, #171c2b);
+    border-radius: var(--radius-xl, 18px);
+    padding: var(--space-4, 1.5rem);
+    box-shadow: var(--shadow-soft, 0 18px 45px rgba(0, 0, 0, 0.45));
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.data-table thead tr {
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.6rem 0.5rem;
+    white-space: nowrap;
+}
+
+.data-table tbody tr:nth-child(every-2) {
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.table-empty {
+    text-align: center;
+    padding: 1.5rem 0;
+    opacity: 0.7;
+}
+
+.table-actions-col {
+    text-align: right;
+}
+
+.table-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+}
+
