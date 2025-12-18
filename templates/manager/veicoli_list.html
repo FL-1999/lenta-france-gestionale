@@ -1,8 +1,10 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
+
 {% block title %}
     {% if lang == 'fr' %}Véhicules – Manager – Lenta France{% else %}Veicoli – Manager – Lenta France{% endif %}
 {% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
@@ -13,16 +15,17 @@
       {% if lang == 'fr' %}Véhicules{% else %}Veicoli{% endif %}
     </h1>
   </div>
+
   <div class="page-actions">
     <a href="{{ url_for('manager_veicoli_new') }}" class="btn btn-primary">
-      {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
+      ➕ {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
     </a>
   </div>
 </div>
 
-<div class="card">
+<div class="card table-card">
   <div class="card-body">
-    <table class="table">
+    <table class="data-table">
       <thead>
         <tr>
           <th>{% if lang == 'fr' %}Plaque{% else %}Targa{% endif %}</th>
@@ -33,13 +36,14 @@
           <th>{% if lang == 'fr' %}Assurance{% else %}Assicurazione{% endif %}</th>
           <th>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</th>
           <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
-          <th class="text-right">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+          <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
         </tr>
       </thead>
+
       <tbody>
         {% for v in veicoli %}
         <tr>
-          <td>{{ v.targa }}</td>
+          <td><strong>{{ v.targa }}</strong></td>
           <td>{{ (v.marca or '-') ~ ' ' ~ (v.modello or '') }}</td>
           <td>{{ v.tipo or '-' }}</td>
           <td>{{ v.km_attuali if v.km_attuali is not none else '-' }}</td>
@@ -59,20 +63,16 @@
               #{{ v.cantiere_id }}
             {% else %}-{% endif %}
           </td>
-          <td class="text-right">
+          <td class="table-actions">
             <a href="{{ url_for('manager_veicoli_edit', veicolo_id=v.id) }}" class="btn btn-secondary btn-sm">
-              {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+              ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
             </a>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="9" class="text-center text-muted">
-            {% if lang == 'fr' %}
-              Aucun véhicule enregistré.
-            {% else %}
-              Nessun veicolo registrato.
-            {% endif %}
+          <td colspan="9" class="table-empty">
+            {% if lang == 'fr' %}Aucun véhicule enregistré.{% else %}Nessun veicolo registrato.{% endif %}
           </td>
         </tr>
         {% endfor %}
