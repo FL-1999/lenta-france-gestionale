@@ -399,4 +399,85 @@ form textarea {
     justify-content: flex-end;
     gap: 0.4rem;
 }
+/* =========================
+   TABLE UI (liste manager)
+   ========================= */
+
+.table-card {
+  overflow-x: auto;
+  border-radius: var(--radius-xl, 18px);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.data-table thead tr {
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.75rem 0.85rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.data-table th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+.data-table tbody tr {
+  transition: background 0.18s ease, transform 0.12s ease;
+}
+
+.data-table tbody tr:nth-child(odd) {
+  background: rgba(255,255,255,0.02);
+}
+
+.data-table tbody tr:hover {
+  background: rgba(108, 99, 255, 0.10);
+  transform: translateY(-1px);
+}
+
+.table-actions-col {
+  text-align: right;
+}
+
+.table-actions {
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.table-empty {
+  text-align: center;
+  padding: 1.5rem 0;
+  opacity: 0.7;
+}
+
+.btn.btn-sm {
+  padding: 0.30rem 0.75rem;
+  font-size: 0.82rem;
+  border-radius: 999px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .data-table th,
+  .data-table td {
+    white-space: normal;
+  }
+
+  .table-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
 
