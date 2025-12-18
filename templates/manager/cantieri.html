@@ -18,34 +18,38 @@
   </div>
 </div>
 
-{% if sites %}
-<table class="table">
-  <thead>
-    <tr>
-      <th>Nome</th>
-      <th>Codice</th>
-      <th>Città</th>
-      <th>Stato</th>
-      <th>Attivo</th>
-      <th>Azioni</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for s in sites %}
-    <tr>
-      <td>{{ s.name }}</td>
-      <td>{{ s.code }}</td>
-      <td>{{ s.city or "-" }}</td>
-      <td>{{ s.status.value if s.status else "-" }}</td>
-      <td>{{ "Sì" if s.is_active else "No" }}</td>
-      <td>
-        <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-sm btn-primary">Modifica</a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<p>Nessun cantiere presente.</p>
-{% endif %}
+<div class="card table-card">
+  <div class="card-body">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Codice</th>
+          <th>Città</th>
+          <th>Stato</th>
+          <th>Attivo</th>
+          <th class="table-actions-col">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sites %}
+        <tr>
+          <td>{{ s.name }}</td>
+          <td>{{ s.code }}</td>
+          <td>{{ s.city or "-" }}</td>
+          <td>{{ s.status.value if s.status else "-" }}</td>
+          <td>{{ "Sì" if s.is_active else "No" }}</td>
+          <td class="table-actions">
+            <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-sm btn-primary">Modifica</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="table-empty">Nessun cantiere presente.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

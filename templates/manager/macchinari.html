@@ -3,62 +3,65 @@
 {% block title %}Macchinari – Manager{% endblock %}
 
 {% block content %}
-<h1 class="page-title">
-  <span class="page-icon page-icon--machines" aria-hidden="true">
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="7" />
-      <path d="M12 8.5v-2M12 17.5v-2M15.5 12h2M6.5 12h2M14.95 9.05l1.35-1.35M7.7 16.3l1.35-1.35M9.05 9.05 7.7 7.7M16.3 16.3l-1.35-1.35" stroke-linecap="round" />
-      <circle cx="12" cy="12" r="2.3" />
-    </svg>
-  </span>
-  Macchinari
-</h1>
-<p class="page-subtitle">Elenco di tutti i macchinari registrati.</p>
-
-<div class="actions">
-  <a href="{{ request.url_for('new_machine_form') }}" class="btn btn-lg btn-primary">➕ Nuovo macchinario</a>
+<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+  <div>
+    <h1 class="page-title">
+      <span class="page-icon page-icon--machines" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="7" />
+          <path d="M12 8.5v-2M12 17.5v-2M15.5 12h2M6.5 12h2M14.95 9.05l1.35-1.35M7.7 16.3l1.35-1.35M9.05 9.05 7.7 7.7M16.3 16.3l-1.35 1.35" stroke-linecap="round" />
+          <circle cx="12" cy="12" r="2.3" />
+        </svg>
+      </span>
+      Macchinari
+    </h1>
+    <p class="page-subtitle">Elenco di tutti i macchinari registrati.</p>
+  </div>
+  <div class="actions">
+    <a href="{{ request.url_for('new_machine_form') }}" class="btn btn-lg btn-primary">➕ Nuovo macchinario</a>
+  </div>
 </div>
 
-{% if machines and machines|length > 0 %}
-<div class="table-responsive">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Nome</th>
-        <th>Codice</th>
-        <th>Tipo</th>
-        <th>Cantiere associato</th>
-        <th>Attivo</th>
-        <th>Azioni</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for m in machines %}
-      <tr>
-        <td>{{ m.name }}</td>
-        <td>{{ m.code or "" }}</td>
-        <td>{{ m.machine_type.value if m.machine_type else "-" }}</td>
-        <td>
-          {% if m.site %}
-            {{ m.site.name }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>{{ "Sì" if m.is_active else "No" }}</td>
-        <td>
-          <div class="table-actions d-flex flex-wrap gap-2">
+<div class="card table-card">
+  <div class="card-body">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Codice</th>
+          <th>Tipo</th>
+          <th>Cantiere associato</th>
+          <th>Attivo</th>
+          <th class="table-actions-col">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in machines %}
+        <tr>
+          <td>{{ m.name }}</td>
+          <td>{{ m.code or "" }}</td>
+          <td>{{ m.machine_type.value if m.machine_type else "-" }}</td>
+          <td>
+            {% if m.site %}
+              {{ m.site.name }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>{{ "Sì" if m.is_active else "No" }}</td>
+          <td class="table-actions">
             <a href="/manager/macchinari/{{ m.id }}" class="btn btn-sm btn-secondary">Dettaglio</a>
             <a href="/manager/macchinari/modifica/{{ m.id }}" class="btn btn-sm btn-primary">Modifica</a>
             <a href="/manager/macchinari/assegna/{{ m.id }}" class="btn btn-sm btn-primary">Assegna a cantiere</a>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="table-empty">Nessun macchinario presente.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
-{% else %}
-<p>Nessun macchinario presente.</p>
-{% endif %}
 {% endblock %}

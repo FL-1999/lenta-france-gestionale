@@ -62,59 +62,61 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card table-card">
     <div class="card-body">
-        {% if reports and reports|length > 0 %}
-        <div class="table-responsive">
-            <table class="table align-middle">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Cantiere</th>
-                        <th>Ore totali</th>
-                        <th>Operai</th>
-                        <th>Caposquadra</th>
-                        <th>Note/attività</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in reports %}
-                    <tr>
-                        <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
-                        <td>
-                            {% if r.site %}
-                                {{ r.site.name }}{% if r.site.code %} ({{ r.site.code }}){% endif %}
-                            {% else %}
-                                {{ r.site_name_or_code }}
-                            {% endif %}
-                        </td>
-                        <td>{{ "%.1f"|format(r.total_hours) }}</td>
-                        <td>{{ r.workers_count }}</td>
-                        <td>
-                            {% if r.created_by %}
-                                {{ r.created_by.full_name or r.created_by.email }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% set preview = r.notes or r.activities or "-" %}
-                            {% if preview|length > 40 %}
-                                {{ preview[:40] }}…
-                            {% else %}
-                                {{ preview }}
-                            {% endif %}
-                        </td>
-                        <td class="text-end">
-                            <a href="/manager/rapportini/{{ r.id }}" class="btn btn-sm btn-secondary">Vedi</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Cantiere</th>
+                    <th>Ore totali</th>
+                    <th>Operai</th>
+                    <th>Caposquadra</th>
+                    <th>Note/attività</th>
+                    <th class="table-actions-col"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reports %}
+                <tr>
+                    <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
+                    <td>
+                        {% if r.site %}
+                            {{ r.site.name }}{% if r.site.code %} ({{ r.site.code }}){% endif %}
+                        {% else %}
+                            {{ r.site_name_or_code }}
+                        {% endif %}
+                    </td>
+                    <td>{{ "%.1f"|format(r.total_hours) }}</td>
+                    <td>{{ r.workers_count }}</td>
+                    <td>
+                        {% if r.created_by %}
+                            {{ r.created_by.full_name or r.created_by.email }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set preview = r.notes or r.activities or "-" %}
+                        {% if preview|length > 40 %}
+                            {{ preview[:40] }}…
+                        {% else %}
+                            {{ preview }}
+                        {% endif %}
+                    </td>
+                    <td class="table-actions">
+                        <a href="/manager/rapportini/{{ r.id }}" class="btn btn-sm btn-secondary">Vedi</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="table-empty">Nessun rapportino trovato con i filtri selezionati.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
+        {% if reports and reports|length > 0 %}
         <div class="d-flex justify-content-between align-items-center mt-3">
             <div>Pagina {{ page }} di {{ total_pages }}</div>
             <div class="d-flex gap-2">
@@ -126,8 +128,6 @@
                 {% endif %}
             </div>
         </div>
-        {% else %}
-        <p class="mb-0">Nessun rapportino trovato con i filtri selezionati.</p>
         {% endif %}
     </div>
 </div>

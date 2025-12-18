@@ -470,9 +470,10 @@ body {
 }
 
 .btn-sm {
-    padding: 0.35rem 0.85rem;
-    font-size: 0.82rem;
-    line-height: 1.2;
+    padding: 0.4rem 0.95rem;
+    font-size: 0.85rem;
+    line-height: 1.25;
+    min-height: 34px;
 }
 
 /* PRIMARY */
@@ -655,6 +656,7 @@ body {
     stroke: #DB2777;
 }
 
+
 .table-card {
     background: var(--color-bg-card);
     border: 1px solid var(--color-border-soft);
@@ -665,25 +667,35 @@ body {
     margin-top: var(--space-3);
 }
 
-.data-table {
+.table-card .card-body {
+    padding: 0;
+    overflow-x: auto;
+}
+
+.data-table,
+.table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     font-size: 0.92rem;
     color: var(--color-table-text);
     background: transparent;
+    min-width: 640px;
 }
 
 .data-table th,
-.data-table td {
-    padding: 0.85rem 1rem;
+.data-table td,
+.table th,
+.table td {
+    padding: 0.9rem 1rem;
     text-align: left;
     border-bottom: 1px solid var(--color-border-table);
     vertical-align: middle;
     white-space: nowrap;
 }
 
-.data-table th {
+.data-table th,
+.table th {
     font-size: var(--font-size-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -691,31 +703,38 @@ body {
     background: var(--color-bg-table-head);
 }
 
-.data-table thead tr {
+.data-table thead tr,
+.table thead tr {
     background: var(--color-bg-table-head);
 }
 
-.data-table thead th:first-child {
+.data-table thead th:first-child,
+.table thead th:first-child {
     border-top-left-radius: var(--radius-md);
 }
 
-.data-table thead th:last-child {
+.data-table thead th:last-child,
+.table thead th:last-child {
     border-top-right-radius: var(--radius-md);
 }
 
-.data-table tbody tr:nth-child(even) {
+.data-table tbody tr:nth-child(even),
+.table tbody tr:nth-child(even) {
     background: var(--color-bg-table-row-alt);
 }
 
-.data-table tbody tr:nth-child(odd) {
+.data-table tbody tr:nth-child(odd),
+.table tbody tr:nth-child(odd) {
     background: transparent;
 }
 
-.data-table tbody tr {
+.data-table tbody tr,
+.table tbody tr {
     transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
 }
 
-.data-table tbody tr:hover {
+.data-table tbody tr:hover,
+.table tbody tr:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
     background: rgba(148, 163, 184, 0.10);
@@ -724,11 +743,12 @@ body {
 .table-actions-col {
     text-align: right;
     width: 1%;
+    white-space: nowrap;
 }
 
 .table-actions {
     display: inline-flex;
-    gap: 0.35rem;
+    gap: 0.4rem;
     align-items: center;
     justify-content: flex-end;
     flex-wrap: wrap;
@@ -742,12 +762,15 @@ body {
 }
 
 @media (max-width: 768px) {
-    .table-card {
-        overflow-x: auto;
+    .data-table,
+    .table {
+        min-width: auto;
     }
 
     .data-table th,
-    .data-table td {
+    .data-table td,
+    .table th,
+    .table td {
         white-space: normal;
         word-break: break-word;
     }
@@ -757,65 +780,9 @@ body {
     }
 }
 
-.table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-    background: transparent;
-    color: var(--color-table-text);
-}
-
-.table th,
-.table td {
-    padding: 0.55rem 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border-table);
-    vertical-align: middle;
-}
-
-.table th {
-    font-size: var(--font-size-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-table-head-text);
-    background: var(--color-bg-table-head);
-    white-space: nowrap;
-}
-
-.table thead tr {
-    background: var(--color-bg-table-head);
-}
-
-.table tbody tr:nth-child(even) {
-    background: var(--color-bg-table-row-alt);
-}
-
-.table tbody tr:nth-child(odd) {
-    background: transparent;
-}
-
-.table tbody tr {
-    transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
-}
-
-.table tbody tr:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-    background: rgba(148, 163, 184, 0.10);
-}
-
-.table-actions {
-    display: inline-flex;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-}
-
 .text-right { text-align: right !important; }
 .text-center { text-align: center !important; }
 .text-muted { color: var(--color-text-muted) !important; }
-
 /* DASHBOARD GRIDS */
 .dashboard-modules-grid {
     display: grid;

@@ -46,36 +46,40 @@
   <a href="/manager/fiches" class="btn btn-secondary">Reset</a>
 </form>
 
-{% if fiches %}
-<table class="table">
-  <thead>
-    <tr>
-      <th>Data</th>
-      <th>Cantiere</th>
-      <th>Macchina</th>
-      <th>Tipo</th>
-      <th>Ore</th>
-      <th>Creato da</th>
-      <th>Dettaglio</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for f in fiches %}
-    <tr>
-      <td>{{ f.date.strftime("%d/%m/%Y") }}</td>
-      <td>{{ f.site.name if f.site else "" }}</td>
-      <td>{% if f.machine %}{{ f.machine.name }}{% else %}-{% endif %}</td>
-      <td>{{ f.fiche_type.value }}</td>
-      <td>{{ "%.1f"|format(f.hours) }}</td>
-      <td>{{ f.created_by.full_name or f.created_by.email }}</td>
-      <td>
-        <a href="/manager/fiches/{{ f.id }}" class="btn btn-sm btn-secondary">Apri</a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<p>Nessuna fiche trovata.</p>
-{% endif %}
+<div class="card table-card">
+  <div class="card-body">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Cantiere</th>
+          <th>Macchina</th>
+          <th>Tipo</th>
+          <th>Ore</th>
+          <th>Creato da</th>
+          <th class="table-actions-col">Dettaglio</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fiches %}
+        <tr>
+          <td>{{ f.date.strftime("%d/%m/%Y") }}</td>
+          <td>{{ f.site.name if f.site else "" }}</td>
+          <td>{% if f.machine %}{{ f.machine.name }}{% else %}-{% endif %}</td>
+          <td>{{ f.fiche_type.value }}</td>
+          <td>{{ "%.1f"|format(f.hours) }}</td>
+          <td>{{ f.created_by.full_name or f.created_by.email }}</td>
+          <td class="table-actions">
+            <a href="/manager/fiches/{{ f.id }}" class="btn btn-sm btn-secondary">Apri</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="table-empty">Nessuna fiche trovata.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
