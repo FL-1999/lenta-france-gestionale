@@ -3,35 +3,38 @@
 {% block title %}Utenti – Manager{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">👥 Gestione utenti</h1>
-    <p class="page-subtitle">
-        Qui puoi visualizzare gli utenti del gestionale. La creazione e modifica
-        è riservata all’admin tramite API protette.
-    </p>
-</div>
-
-<div class="card">
-    <div class="form-actions" style="justify-content: space-between; align-items: center;">
-        <span>Elenco utenti registrati.</span>
+<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+        <h1 class="page-title">👥 Gestione utenti</h1>
+        <p class="page-subtitle">
+            Qui puoi visualizzare gli utenti del gestionale. La creazione e modifica
+            è riservata all’admin tramite API protette.
+        </p>
+    </div>
+    <div class="actions">
         <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ Nuovo utente</a>
     </div>
+</div>
 
-    <div id="users-error" class="error-text" style="display:none; margin-bottom: 10px;"></div>
+<div class="card table-card">
+    <div class="card-body">
+        <p class="text-muted mb-3">Elenco utenti registrati.</p>
+        <div id="users-error" class="error-text" style="display:none; margin-bottom: 10px;"></div>
 
-    <table class="table" id="users-table">
-        <thead>
-            <tr>
-                <th>Email</th>
-                <th>Nome completo</th>
-                <th>Ruolo</th>
-                <th>Lingua</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Verrà riempito via JavaScript -->
-        </tbody>
-    </table>
+        <table class="data-table" id="users-table">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Nome completo</th>
+                    <th>Ruolo</th>
+                    <th>Lingua</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Verrà riempito via JavaScript -->
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div class="form-actions">
@@ -86,6 +89,7 @@
             const td = document.createElement("td");
             td.colSpan = 4;
             td.textContent = "Nessun utente trovato.";
+            td.className = "table-empty";
             tr.appendChild(td);
             tbody.appendChild(tr);
             return;

@@ -25,44 +25,46 @@
   <a href="/manager/rapportini">Reset</a>
 </form>
 
-<div class="table-wrapper">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Data</th>
-        <th>Cantiere</th>
-        <th>Ore totali</th>
-        <th>N. operai</th>
-        <th>Creato da</th>
-        <th>Note</th>
-        <th>Dettaglio</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in reports %}
-      <tr>
-        <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
-        <td>{{ r.site_name_or_code }}</td>
-        <td>{{ "%.1f"|format(r.total_hours) }}</td>
-        <td>{{ r.workers_count }}</td>
-        <td>
-          {% if r.created_by %}
-            {{ r.created_by.full_name or r.created_by.email }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>{{ r.notes or r.activities or "-" }}</td>
-        <td>
-          <a href="/manager/rapportini/{{ r.id }}">Apri</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="card table-card">
+  <div class="card-body">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Cantiere</th>
+          <th>Ore totali</th>
+          <th>N. operai</th>
+          <th>Creato da</th>
+          <th>Note</th>
+          <th class="table-actions-col">Dettaglio</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
+          <td>{{ r.site_name_or_code }}</td>
+          <td>{{ "%.1f"|format(r.total_hours) }}</td>
+          <td>{{ r.workers_count }}</td>
+          <td>
+            {% if r.created_by %}
+              {{ r.created_by.full_name or r.created_by.email }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>{{ r.notes or r.activities or "-" }}</td>
+          <td class="table-actions">
+            <a href="/manager/rapportini/{{ r.id }}" class="btn btn-secondary btn-sm">Apri</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="table-empty">Nessun rapportino trovato con questi filtri.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
-
-{% if not reports or reports|length == 0 %}
-  <p>Nessun rapportino trovato con questi filtri.</p>
-{% endif %}
 {% endblock %}

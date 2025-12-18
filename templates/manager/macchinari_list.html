@@ -71,7 +71,7 @@
     </div>
 </div>
 
-<div class="card" style="margin-top: 1.5rem;">
+<div class="card table-card" style="margin-top: 1.5rem;">
     <div class="card-header">
         <div class="card-title">
             🛠
@@ -89,58 +89,56 @@
         </div>
     </div>
     <div class="card-body">
-        {% if machines %}
-            <table class="table">
-                <thead>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Marque / Modèle{% else %}Marca / Modello{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in machines %}
                     <tr>
-                        <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Marque / Modèle{% else %}Marca / Modello{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
-                        <th class="text-right">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                        <td>{{ m.name }}</td>
+                        <td>{{ m.code }}</td>
+                        <td>{{ m.brand }} {{ m.model_name }}</td>
+                        <td>
+                            {% set stato = m.status or 'attivo' %}
+                            {% if stato == 'fuori_servizio' %}
+                                <span class="badge badge-danger">
+                                    {% if lang == 'fr' %}Hors service{% else %}Fuori servizio{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="badge badge-success">
+                                    {% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="table-actions">
+                            <a href="{{ request.url_for('manager_machine_detail', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
+                                {% if lang == 'fr' %}Détails{% else %}Dettagli{% endif %}
+                            </a>
+                            <a href="{{ request.url_for('manager_machine_edit', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
+                                {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                            </a>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    {% for m in machines %}
-                        <tr>
-                            <td>{{ m.name }}</td>
-                            <td>{{ m.code }}</td>
-                            <td>{{ m.brand }} {{ m.model_name }}</td>
-                            <td>
-                                {% set stato = m.status or 'attivo' %}
-                                {% if stato == 'fuori_servizio' %}
-                                    <span class="badge badge-danger">
-                                        {% if lang == 'fr' %}Hors service{% else %}Fuori servizio{% endif %}
-                                    </span>
-                                {% else %}
-                                    <span class="badge badge-success">
-                                        {% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="text-right">
-                                <div class="table-actions">
-                                    <a href="{{ request.url_for('manager_machine_detail', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
-                                        {% if lang == 'fr' %}Détails{% else %}Dettagli{% endif %}
-                                    </a>
-                                    <a href="{{ request.url_for('manager_machine_edit', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
-                                        {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p class="text-muted">
-                {% if lang == 'fr' %}
-                    Aucun macchinario enregistré pour le moment.
                 {% else %}
-                    Nessun macchinario registrato al momento.
-                {% endif %}
-            </p>
-        {% endif %}
+                    <tr>
+                        <td colspan="5" class="table-empty">
+                            {% if lang == 'fr' %}
+                                Aucun macchinario enregistré pour le moment.
+                            {% else %}
+                                Nessun macchinario registrato al momento.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 

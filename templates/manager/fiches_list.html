@@ -26,7 +26,7 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card table-card">
     <div class="card-header">
         <div class="card-title">
             📄
@@ -43,47 +43,47 @@
         </div>
     </div>
     <div class="card-body">
-        {% if fiches %}
-            <table class="table">
-                <thead>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Cantiere{% else %}Cantiere{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fiches %}
                     <tr>
-                        <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Cantiere{% else %}Cantiere{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                        <td>{{ f.date }}</td>
+                        <td>{{ f.site.name if f.site else '-' }}</td>
+                        <td>{{ f.machine.name if f.machine else '-' }}</td>
+                        <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
+                        <td>{{ f.hours }}</td>
+                        <td>{{ f.fiche_type.value if f.fiche_type else '-' }}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    {% for f in fiches %}
-                        <tr>
-                            <td>{{ f.date }}</td>
-                            <td>{{ f.site.name if f.site else '-' }}</td>
-                            <td>{{ f.machine.name if f.machine else '-' }}</td>
-                            <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
-                            <td>{{ f.hours }}</td>
-                            <td>{{ f.fiche_type.value if f.fiche_type else '-' }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <p class="text-muted">
-                {% if lang == 'fr' %}
-                    Total fiches: {{ total_fiches }}
                 {% else %}
-                    Fiches totali: {{ total_fiches }}
-                {% endif %}
-            </p>
-        {% else %}
-            <p class="text-muted">
-                {% if lang == 'fr' %}
-                    Aucune fiche enregistrée pour le moment.
-                {% else %}
-                    Nessuna fiche registrata al momento.
-                {% endif %}
-            </p>
-        {% endif %}
+                    <tr>
+                        <td colspan="6" class="table-empty">
+                            {% if lang == 'fr' %}
+                                Aucune fiche enregistrée pour le moment.
+                            {% else %}
+                                Nessuna fiche registrata al momento.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p class="text-muted">
+            {% if lang == 'fr' %}
+                Total fiches: {{ total_fiches }}
+            {% else %}
+                Fiches totali: {{ total_fiches }}
+            {% endif %}
+        </p>
     </div>
 </div>
 
