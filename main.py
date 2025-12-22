@@ -188,6 +188,73 @@ async def set_language(lang_code: str, request: Request):
 
 
 # -------------------------------------------------
+# VALIDAZIONE DATI FICHE
+# -------------------------------------------------
+
+def _validate_fiche_geometria(
+    diametro_palo: float | None,
+    larghezza_pannello: float | None,
+    altezza_pannello: float | None,
+    profondita_totale: float | None,
+) -> None:
+    has_diametro = diametro_palo is not None
+    has_larghezza = larghezza_pannello is not None
+    has_altezza = altezza_pannello is not None
+
+    if diametro_palo is not None and diametro_palo <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Il diametro del palo deve essere maggiore di zero.",
+        )
+
+    if larghezza_pannello is not None and larghezza_pannello <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="La larghezza del pannello deve essere maggiore di zero.",
+        )
+
+    if altezza_pannello is not None and altezza_pannello <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="L'altezza del pannello deve essere maggiore di zero.",
+        )
+
+    if profondita_totale is not None and profondita_totale <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="La profondità totale deve essere maggiore di zero.",
+        )
+
+    if has_diametro and (has_larghezza or has_altezza):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Se inserisci il diametro del palo, lascia vuote le misure del pannello."
+            ),
+        )
+
+    if has_larghezza or has_altezza:
+        if not (has_larghezza and has_altezza):
+            raise HTTPException(
+                status_code=400,
+                detail="Per il pannello devi indicare sia larghezza sia altezza.",
+            )
+        if has_diametro:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Se compili larghezza e altezza del pannello, il diametro del palo deve restare vuoto."
+                ),
+            )
+
+    if (has_diametro or has_larghezza or has_altezza) and profondita_totale is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Se compili i dati geometrici devi indicare anche la profondità totale.",
+        )
+
+
+# -------------------------------------------------
 # LOGIN FRONTEND (PAGINA + API SEMPLICE)
 # -------------------------------------------------
 
@@ -404,6 +471,13 @@ async def manager_fiche_create(
             parsed_machine_id = int(macchinario_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Macchinario non valido")
+
+    _validate_fiche_geometria(
+        diametro_palo=diametro_palo,
+        larghezza_pannello=larghezza_pannello,
+        altezza_pannello=altezza_pannello,
+        profondita_totale=profondita_totale,
+    )
 
     db = SessionLocal()
     try:
@@ -1229,6 +1303,13 @@ async def capo_fiche_nuova_post(
             parsed_machine_id = int(macchinario_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Macchinario non valido")
+
+    _validate_fiche_geometria(
+        diametro_palo=diametro_palo,
+        larghezza_pannello=larghezza_pannello,
+        altezza_pannello=altezza_pannello,
+        profondita_totale=profondita_totale,
+    )
 
     db = SessionLocal()
     try:
