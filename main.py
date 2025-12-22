@@ -254,6 +254,103 @@ def _validate_fiche_geometria(
         )
 
 
+def _build_fiche_form_data(
+    cantiere_id: int | str | None = None,
+    macchinario_id: int | str | None = None,
+    data_scavo: date | None = None,
+    data_getto: date | None = None,
+    metri_cubi_gettati: float | None = None,
+    operatore: str | None = None,
+    descrizione: str | None = None,
+    ore_lavorate: float | None = None,
+    note: str | None = None,
+    tipologia_scavo: str | None = None,
+    stratigrafia: str | None = None,
+    materiale: str | None = None,
+    profondita_totale: float | None = None,
+    diametro_palo: float | None = None,
+    larghezza_pannello: float | None = None,
+    altezza_pannello: float | None = None,
+    strato_da: list[float] | None = None,
+    strato_a: list[float] | None = None,
+    strato_materiale: list[str] | None = None,
+) -> dict:
+    def _fmt(value):
+        return "" if value is None else str(value)
+
+    strato_da = strato_da or []
+    strato_a = strato_a or []
+    strato_materiale = strato_materiale or []
+
+    max_len = max(len(strato_da), len(strato_a), len(strato_materiale), 1)
+    strati = []
+    for i in range(max_len):
+        strati.append(
+            {
+                "da": _fmt(strato_da[i]) if i < len(strato_da) else "",
+                "a": _fmt(strato_a[i]) if i < len(strato_a) else "",
+                "materiale": _fmt(strato_materiale[i])
+                if i < len(strato_materiale)
+                else "",
+            }
+        )
+
+    return {
+        "cantiere_id": _fmt(cantiere_id),
+        "macchinario_id": _fmt(macchinario_id),
+        "data_scavo": data_scavo.isoformat() if data_scavo else "",
+        "data_getto": data_getto.isoformat() if data_getto else "",
+        "metri_cubi_gettati": _fmt(metri_cubi_gettati),
+        "operatore": operatore or "",
+        "descrizione": descrizione or "",
+        "ore_lavorate": _fmt(ore_lavorate),
+        "note": note or "",
+        "tipologia_scavo": tipologia_scavo or "",
+        "stratigrafia": stratigrafia or "",
+        "materiale": materiale or "",
+        "profondita_totale": _fmt(profondita_totale),
+        "diametro_palo": _fmt(diametro_palo),
+        "larghezza_pannello": _fmt(larghezza_pannello),
+        "altezza_pannello": _fmt(altezza_pannello),
+        "strati": strati,
+    }
+
+
+def _load_capo_form_collections(current_user: User) -> tuple[list[Site], list[Machine]]:
+    db = SessionLocal()
+    try:
+        sites = _get_capo_assigned_sites(db, current_user)
+        allowed_site_ids = [s.id for s in sites]
+
+        machines_query = db.query(Machine).filter(Machine.is_active.is_(True))
+        if allowed_site_ids:
+            machines_query = machines_query.filter(Machine.site_id.in_(allowed_site_ids))
+        machines = machines_query.order_by(Machine.name.asc()).all()
+        return sites, machines
+    finally:
+        db.close()
+
+
+def _load_manager_form_collections() -> tuple[list[Site], list[Machine]]:
+    db = SessionLocal()
+    try:
+        sites = (
+            db.query(Site)
+            .filter(Site.is_active.is_(True))
+            .order_by(Site.name.asc())
+            .all()
+        )
+        machines = (
+            db.query(Machine)
+            .filter(Machine.is_active.is_(True))
+            .order_by(Machine.name.asc())
+            .all()
+        )
+        return sites, machines
+    finally:
+        db.close()
+
+
 # -------------------------------------------------
 # LOGIN FRONTEND (PAGINA + API SEMPLICE)
 # -------------------------------------------------
@@ -405,22 +502,7 @@ def manager_fiche_new_form(
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
-    db = SessionLocal()
-    try:
-        sites = (
-            db.query(Site)
-            .filter(Site.is_active.is_(True))
-            .order_by(Site.name.asc())
-            .all()
-        )
-        machines = (
-            db.query(Machine)
-            .filter(Machine.is_active.is_(True))
-            .order_by(Machine.name.asc())
-            .all()
-        )
-    finally:
-        db.close()
+    sites, machines = _load_manager_form_collections()
 
     return templates.TemplateResponse(
         "manager/fiches_form.html",
@@ -430,6 +512,8 @@ def manager_fiche_new_form(
             "cantieri": sites,
             "macchinari": machines,
             "is_edit": False,
+            "form_data": _build_fiche_form_data(),
+            "error_message": None,
         },
     )
 
@@ -465,72 +549,147 @@ async def manager_fiche_create(
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
-    parsed_machine_id: int | None = None
-    if macchinario_id not in (None, ""):
-        try:
-            parsed_machine_id = int(macchinario_id)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Macchinario non valido")
-
-    _validate_fiche_geometria(
-        diametro_palo=diametro_palo,
-        larghezza_pannello=larghezza_pannello,
-        altezza_pannello=altezza_pannello,
-        profondita_totale=profondita_totale,
-    )
-
-    db = SessionLocal()
     try:
-        site = db.query(Site).filter(Site.id == cantiere_id).first()
-        if not site:
-            raise HTTPException(status_code=400, detail="Cantiere non trovato")
+        parsed_machine_id: int | None = None
+        if macchinario_id not in (None, ""):
+            parsed_machine_id = int(macchinario_id)
 
-        if parsed_machine_id is not None:
-            machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
-            if not machine:
-                raise HTTPException(status_code=400, detail="Macchinario non trovato")
+        _validate_fiche_geometria(
+            diametro_palo=diametro_palo,
+            larghezza_pannello=larghezza_pannello,
+            altezza_pannello=altezza_pannello,
+            profondita_totale=profondita_totale,
+        )
 
-        fiche = Fiche(
-            date=data_scavo,
-            site_id=cantiere_id,
-            machine_id=parsed_machine_id,
-            fiche_type=FicheTypeEnum.produzione,
-            description=descrizione or "",
-            operator=operatore,
-            hours=ore_lavorate,
-            notes=note,
-            tipologia_scavo=tipologia_scavo or None,
-            stratigrafia=stratigrafia or None,
-            materiale=materiale or None,
+        db = SessionLocal()
+        try:
+            site = db.query(Site).filter(Site.id == cantiere_id).first()
+            if not site:
+                raise HTTPException(status_code=400, detail="Cantiere non trovato")
+
+            if parsed_machine_id is not None:
+                machine = (
+                    db.query(Machine).filter(Machine.id == parsed_machine_id).first()
+                )
+                if not machine:
+                    raise HTTPException(status_code=400, detail="Macchinario non trovato")
+
+            fiche = Fiche(
+                date=data_scavo,
+                site_id=cantiere_id,
+                machine_id=parsed_machine_id,
+                fiche_type=FicheTypeEnum.produzione,
+                description=descrizione or "",
+                operator=operatore,
+                hours=ore_lavorate,
+                notes=note,
+                tipologia_scavo=tipologia_scavo or None,
+                stratigrafia=stratigrafia or None,
+                materiale=materiale or None,
+                profondita_totale=profondita_totale,
+                diametro_palo=diametro_palo,
+                larghezza_pannello=larghezza_pannello,
+                altezza_pannello=altezza_pannello,
+                data_getto=data_getto,
+                metri_cubi_gettati=metri_cubi_gettati,
+                created_by_id=current_user.id,
+            )
+            db.add(fiche)
+            db.commit()
+            db.refresh(fiche)
+
+            for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
+                if not mat:
+                    continue
+                if da_val is None or a_val is None:
+                    continue
+                if a_val <= da_val:
+                    continue
+                layer = FicheStratigrafia(
+                    fiche_id=fiche.id,
+                    da_profondita=da_val,
+                    a_profondita=a_val,
+                    materiale=mat,
+                )
+                db.add(layer)
+            db.commit()
+        finally:
+            db.close()
+    except ValueError:
+        # macchinario_id non numerico
+        form_data = _build_fiche_form_data(
+            cantiere_id=cantiere_id,
+            macchinario_id=macchinario_id,
+            data_scavo=data_scavo,
+            data_getto=data_getto,
+            metri_cubi_gettati=metri_cubi_gettati,
+            operatore=operatore,
+            descrizione=descrizione,
+            ore_lavorate=ore_lavorate,
+            note=note,
+            tipologia_scavo=tipologia_scavo,
+            stratigrafia=stratigrafia,
+            materiale=materiale,
             profondita_totale=profondita_totale,
             diametro_palo=diametro_palo,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
+            strato_da=strato_da,
+            strato_a=strato_a,
+            strato_materiale=strato_materiale,
+        )
+        sites, machines = _load_manager_form_collections()
+        return templates.TemplateResponse(
+            "manager/fiches_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "cantieri": sites,
+                "macchinari": machines,
+                "is_edit": False,
+                "form_data": form_data,
+                "error_message": "Macchinario non valido",
+            },
+            status_code=400,
+        )
+    except HTTPException as exc:
+        if exc.status_code != 400:
+            raise
+        form_data = _build_fiche_form_data(
+            cantiere_id=cantiere_id,
+            macchinario_id=macchinario_id,
+            data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
-            created_by_id=current_user.id,
+            operatore=operatore,
+            descrizione=descrizione,
+            ore_lavorate=ore_lavorate,
+            note=note,
+            tipologia_scavo=tipologia_scavo,
+            stratigrafia=stratigrafia,
+            materiale=materiale,
+            profondita_totale=profondita_totale,
+            diametro_palo=diametro_palo,
+            larghezza_pannello=larghezza_pannello,
+            altezza_pannello=altezza_pannello,
+            strato_da=strato_da,
+            strato_a=strato_a,
+            strato_materiale=strato_materiale,
         )
-        db.add(fiche)
-        db.commit()
-        db.refresh(fiche)
-
-        for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
-            if not mat:
-                continue
-            if da_val is None or a_val is None:
-                continue
-            if a_val <= da_val:
-                continue
-            layer = FicheStratigrafia(
-                fiche_id=fiche.id,
-                da_profondita=da_val,
-                a_profondita=a_val,
-                materiale=mat,
-            )
-            db.add(layer)
-        db.commit()
-    finally:
-        db.close()
+        sites, machines = _load_manager_form_collections()
+        return templates.TemplateResponse(
+            "manager/fiches_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "cantieri": sites,
+                "macchinari": machines,
+                "is_edit": False,
+                "form_data": form_data,
+                "error_message": exc.detail,
+            },
+            status_code=400,
+        )
 
     return RedirectResponse(
         url=request.url_for("manager_fiches_list"), status_code=303
@@ -1247,17 +1406,7 @@ def capo_fiche_nuova_get(
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    db = SessionLocal()
-    try:
-        sites = _get_capo_assigned_sites(db, current_user)
-        allowed_site_ids = [s.id for s in sites]
-
-        machines_query = db.query(Machine).filter(Machine.is_active.is_(True))
-        if allowed_site_ids:
-            machines_query = machines_query.filter(Machine.site_id.in_(allowed_site_ids))
-        machines = machines_query.order_by(Machine.name.asc()).all()
-    finally:
-        db.close()
+    sites, machines = _load_capo_form_collections(current_user)
 
     return templates.TemplateResponse(
         "capo/fiches_form.html",
@@ -1266,6 +1415,8 @@ def capo_fiche_nuova_get(
             "user": current_user,
             "cantieri": sites,
             "macchinari": machines,
+            "form_data": _build_fiche_form_data(),
+            "error_message": None,
         },
     )
 
@@ -1297,74 +1448,146 @@ async def capo_fiche_nuova_post(
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    parsed_machine_id: int | None = None
-    if macchinario_id not in (None, ""):
-        try:
-            parsed_machine_id = int(macchinario_id)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Macchinario non valido")
-
-    _validate_fiche_geometria(
-        diametro_palo=diametro_palo,
-        larghezza_pannello=larghezza_pannello,
-        altezza_pannello=altezza_pannello,
-        profondita_totale=profondita_totale,
-    )
-
-    db = SessionLocal()
     try:
-        allowed_sites = _get_capo_assigned_sites(db, current_user)
-        allowed_site_ids = {s.id for s in allowed_sites}
-        site = db.query(Site).filter(Site.id == cantiere_id).first()
-        if not site or (allowed_site_ids and site.id not in allowed_site_ids):
-            raise HTTPException(status_code=403, detail="Cantiere non valido")
+        parsed_machine_id: int | None = None
+        if macchinario_id not in (None, ""):
+            parsed_machine_id = int(macchinario_id)
 
-        if parsed_machine_id is not None:
-            machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
-            if not machine:
-                raise HTTPException(status_code=400, detail="Macchinario non trovato")
+        _validate_fiche_geometria(
+            diametro_palo=diametro_palo,
+            larghezza_pannello=larghezza_pannello,
+            altezza_pannello=altezza_pannello,
+            profondita_totale=profondita_totale,
+        )
 
-        fiche = Fiche(
-            date=data_scavo,
-            site_id=cantiere_id,
-            machine_id=parsed_machine_id,
-            fiche_type=FicheTypeEnum.produzione,
-            description=descrizione or "",
-            operator=operatore,
-            hours=ore_lavorate,
-            notes=note or None,
-            tipologia_scavo=tipologia_scavo or None,
-            stratigrafia=stratigrafia or None,
-            materiale=materiale or None,
+        db = SessionLocal()
+        try:
+            allowed_sites = _get_capo_assigned_sites(db, current_user)
+            allowed_site_ids = {s.id for s in allowed_sites}
+            site = db.query(Site).filter(Site.id == cantiere_id).first()
+            if not site or (allowed_site_ids and site.id not in allowed_site_ids):
+                raise HTTPException(status_code=403, detail="Cantiere non valido")
+
+            if parsed_machine_id is not None:
+                machine = (
+                    db.query(Machine).filter(Machine.id == parsed_machine_id).first()
+                )
+                if not machine:
+                    raise HTTPException(status_code=400, detail="Macchinario non trovato")
+
+            fiche = Fiche(
+                date=data_scavo,
+                site_id=cantiere_id,
+                machine_id=parsed_machine_id,
+                fiche_type=FicheTypeEnum.produzione,
+                description=descrizione or "",
+                operator=operatore,
+                hours=ore_lavorate,
+                notes=note or None,
+                tipologia_scavo=tipologia_scavo or None,
+                stratigrafia=stratigrafia or None,
+                materiale=materiale or None,
+                profondita_totale=profondita_totale,
+                diametro_palo=diametro_palo,
+                larghezza_pannello=larghezza_pannello,
+                altezza_pannello=altezza_pannello,
+                data_getto=data_getto,
+                metri_cubi_gettati=metri_cubi_gettati,
+                created_by_id=current_user.id,
+            )
+            db.add(fiche)
+            db.commit()
+            db.refresh(fiche)
+
+            for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
+                if not mat:
+                    continue
+                if da_val is None or a_val is None:
+                    continue
+                if a_val <= da_val:
+                    continue
+                layer = FicheStratigrafia(
+                    fiche_id=fiche.id,
+                    da_profondita=da_val,
+                    a_profondita=a_val,
+                    materiale=mat,
+                )
+                db.add(layer)
+            db.commit()
+        finally:
+            db.close()
+    except ValueError:
+        form_data = _build_fiche_form_data(
+            cantiere_id=cantiere_id,
+            macchinario_id=macchinario_id,
+            data_scavo=data_scavo,
+            data_getto=data_getto,
+            metri_cubi_gettati=metri_cubi_gettati,
+            operatore=operatore,
+            descrizione=descrizione,
+            ore_lavorate=ore_lavorate,
+            note=note,
+            tipologia_scavo=tipologia_scavo,
+            stratigrafia=stratigrafia,
+            materiale=materiale,
             profondita_totale=profondita_totale,
             diametro_palo=diametro_palo,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
+            strato_da=strato_da,
+            strato_a=strato_a,
+            strato_materiale=strato_materiale,
+        )
+        sites, machines = _load_capo_form_collections(current_user)
+        return templates.TemplateResponse(
+            "capo/fiches_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "cantieri": sites,
+                "macchinari": machines,
+                "form_data": form_data,
+                "error_message": "Macchinario non valido",
+            },
+            status_code=400,
+        )
+    except HTTPException as exc:
+        if exc.status_code != 400:
+            raise
+        form_data = _build_fiche_form_data(
+            cantiere_id=cantiere_id,
+            macchinario_id=macchinario_id,
+            data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
-            created_by_id=current_user.id,
+            operatore=operatore,
+            descrizione=descrizione,
+            ore_lavorate=ore_lavorate,
+            note=note,
+            tipologia_scavo=tipologia_scavo,
+            stratigrafia=stratigrafia,
+            materiale=materiale,
+            profondita_totale=profondita_totale,
+            diametro_palo=diametro_palo,
+            larghezza_pannello=larghezza_pannello,
+            altezza_pannello=altezza_pannello,
+            strato_da=strato_da,
+            strato_a=strato_a,
+            strato_materiale=strato_materiale,
         )
-        db.add(fiche)
-        db.commit()
-        db.refresh(fiche)
-
-        for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
-            if not mat:
-                continue
-            if da_val is None or a_val is None:
-                continue
-            if a_val <= da_val:
-                continue
-            layer = FicheStratigrafia(
-                fiche_id=fiche.id,
-                da_profondita=da_val,
-                a_profondita=a_val,
-                materiale=mat,
-            )
-            db.add(layer)
-        db.commit()
-    finally:
-        db.close()
+        sites, machines = _load_capo_form_collections(current_user)
+        return templates.TemplateResponse(
+            "capo/fiches_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "cantieri": sites,
+                "macchinari": machines,
+                "form_data": form_data,
+                "error_message": exc.detail,
+            },
+            status_code=400,
+        )
 
     return RedirectResponse(url="/capo/dashboard", status_code=303)
 
