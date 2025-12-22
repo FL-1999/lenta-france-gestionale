@@ -2,8 +2,64 @@
 {% block title %}Nuova Fiche – Manager{% endblock %}
 
 {% block content %}
-<div class="form-page">
 
+<style>
+  /* === FICHE: preview palo/paratia (testi più grandi) === */
+  .fiche-shape-row{
+    display:flex;
+    align-items:flex-start;
+    gap: .9rem;
+    padding: .9rem 1rem;
+    border: 1px solid var(--color-border-soft, rgba(148,163,184,.22));
+    border-radius: var(--radius-lg, 14px);
+    background: rgba(148,163,184,.04);
+  }
+
+  .fiche-shape-icon{
+    width: 44px;
+    height: 44px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius: 12px;
+    background: rgba(148,163,184,.08);
+    color: var(--color-text-primary, #fff);
+    flex: 0 0 auto;
+  }
+
+  .fiche-shape-icon svg{
+    width: 30px;
+    height: 30px;
+    opacity: .95;
+  }
+
+  .fiche-shape-values{ line-height: 1.15; }
+
+  /* TESTO PRINCIPALE (Ø / L×H) */
+  .fiche-shape-values .shape-main{
+    font-size: 1.35rem;     /* <-- più grande */
+    font-weight: 750;
+    letter-spacing: .02em;
+    margin-bottom: .25rem;
+    color: var(--color-text-primary, #fff);
+  }
+
+  /* TESTO SECONDARIO (Profondità) */
+  .fiche-shape-values .shape-sub{
+    font-size: 1.05rem;     /* <-- più grande */
+    font-weight: 600;
+    opacity: .85;
+    color: var(--color-text-secondary, rgba(255,255,255,.85));
+  }
+
+  /* Mobile: ancora leggibile */
+  @media (max-width: 768px){
+    .fiche-shape-values .shape-main{ font-size: 1.2rem; }
+    .fiche-shape-values .shape-sub{ font-size: 1rem; }
+  }
+</style>
+
+<div class="form-page">
   <!-- HEADER -->
   <div class="form-page-header">
     <p class="eyebrow">Area Manager</p>
@@ -84,8 +140,8 @@
         <!-- PREVIEW CERCHIO -->
         <div class="fiche-shape-row" style="margin-top:1.25rem;">
           <div class="fiche-shape-icon">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="7" stroke="currentColor"/>
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/>
             </svg>
           </div>
           <div class="fiche-shape-values">
@@ -97,8 +153,9 @@
         <!-- PREVIEW RETTANGOLO -->
         <div class="fiche-shape-row" style="margin-top:.75rem;">
           <div class="fiche-shape-icon">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <rect x="6" y="7" width="12" height="10" rx="2" stroke="currentColor"/>
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="6" y="7" width="12" height="10" rx="2"
+                    stroke="currentColor" stroke-width="1.8"/>
             </svg>
           </div>
           <div class="fiche-shape-values">
@@ -124,4 +181,5 @@
     </div>
   </div>
 </div>
+
 {% endblock %}
