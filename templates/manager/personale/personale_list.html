@@ -8,7 +8,9 @@
 {% block content %}
 <div class="page-header">
     <div class="page-header-main">
-        <h1 class="page-title">👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</h1>
+        <h1 class="page-title">
+            👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}
+        </h1>
         <p class="page-subtitle">
             {% if lang == 'fr' %}
                 Gestion complète du personnel de l'entreprise.
@@ -42,10 +44,10 @@
                 {% for p in personale %}
                     <tr>
                         <td>{{ p.cognome }} {{ p.nome }}</td>
-                        <td>{{ p.ruolo or '-' }}</td>
-                        <td>{{ p.telefono or '-' }}</td>
-                        <td>{{ p.email or '-' }}</td>
-                        <td>{{ p.data_assunzione or '-' }}</td>
+                        <td>{{ p.ruolo or '—' }}</td>
+                        <td>{{ p.telefono or '—' }}</td>
+                        <td>{{ p.email or '—' }}</td>
+                        <td>{{ p.data_assunzione or '—' }}</td>
                         <td class="text-right">
                             {% if p.attivo %}
                                 <span class="badge badge-success">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
@@ -54,10 +56,13 @@
                             {% endif %}
                         </td>
                         <td class="table-actions">
-                            <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
+                            <a class="btn btn-secondary btn-sm"
+                               href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
                                 ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                             </a>
-                            <form method="post" action="{{ url_for('manager_personale_delete', personale_id=p.id) }}" style="display:inline;">
+                            <form method="post"
+                                  action="{{ url_for('manager_personale_delete', personale_id=p.id) }}"
+                                  style="display:inline;">
                                 <button type="submit"
                                         class="btn btn-danger btn-sm"
                                         onclick="return confirm('{% if lang == 'fr' %}Supprimer cet enregistrement ?{% else %}Eliminare questa scheda?{% endif %}');">
