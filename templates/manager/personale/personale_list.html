@@ -61,8 +61,7 @@
                                 ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                             </a>
                             <form method="post"
-                                  action="{{ url_for('manager_personale_delete', personale_id=p.id) }}"
-                                  style="display:inline;">
+                                  action="{{ url_for('manager_personale_delete', personale_id=p.id) }}">
                                 <button type="submit"
                                         class="btn btn-danger btn-sm"
                                         onclick="return confirm('{% if lang == 'fr' %}Supprimer cet enregistrement ?{% else %}Eliminare questa scheda?{% endif %}');">
@@ -72,8 +71,8 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr>
-                        <td colspan="7" class="table-empty">
+                    <tr class="table-empty">
+                        <td colspan="7">
                             {% if lang == 'fr' %}
                                 Aucun personnel enregistré pour le moment.
                             {% else %}
