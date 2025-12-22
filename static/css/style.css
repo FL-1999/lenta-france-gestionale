@@ -681,82 +681,71 @@ body {
     border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card-subtle);
-    padding: var(--space-3);
+    padding: 0;
     overflow: hidden;
     margin-top: var(--space-3);
 }
 
 .table-card .card-body {
-    padding: 0.35rem;
+    padding: var(--space-4);
     overflow-x: auto;
 }
 
 .data-table,
 .table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.92rem;
+    border-collapse: collapse;
+    font-size: 0.94rem;
     color: var(--color-table-text);
     background: transparent;
-    min-width: 640px;
 }
 
 .data-table th,
 .data-table td,
 .table th,
 .table td {
-    padding: 0.9rem 1rem;
+    padding: 0.85rem 0.9rem;
     text-align: left;
     border-bottom: 1px solid var(--color-border-table);
     vertical-align: middle;
-    white-space: nowrap;
 }
 
 .data-table th,
 .table th {
     font-size: var(--font-size-xs);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     color: var(--color-table-head-text);
     background: var(--color-bg-table-head);
+    white-space: nowrap;
 }
 
 .data-table thead tr,
 .table thead tr {
     background: var(--color-bg-table-head);
-}
-
-.data-table thead th:first-child,
-.table thead th:first-child {
-    border-top-left-radius: var(--radius-md);
-}
-
-.data-table thead th:last-child,
-.table thead th:last-child {
-    border-top-right-radius: var(--radius-md);
-}
-
-.data-table tbody tr:nth-child(even),
-.table tbody tr:nth-child(even) {
-    background: var(--color-bg-table-row-alt);
+    border-bottom: 1px solid var(--color-border-table);
 }
 
 .data-table tbody tr:nth-child(odd),
 .table tbody tr:nth-child(odd) {
+    background: rgba(148, 163, 184, 0.04);
+}
+
+.data-table tbody tr:nth-child(even),
+.table tbody tr:nth-child(even) {
     background: transparent;
 }
 
 .data-table tbody tr,
 .table tbody tr {
-    transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+    transition: background var(--anim-normal) var(--anim-ease-standard), transform var(--anim-fast) var(--anim-ease-standard), box-shadow var(--anim-normal) var(--anim-ease-standard);
 }
 
 .data-table tbody tr:hover,
 .table tbody tr:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-    background: rgba(148, 163, 184, 0.10);
+    background: rgba(99, 102, 241, 0.10);
 }
 
 .table-actions-col {
@@ -767,23 +756,29 @@ body {
 
 .table-actions {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.45rem;
     align-items: center;
     justify-content: flex-end;
     flex-wrap: wrap;
 }
 
-.table-empty {
+.table-empty,
+.table-empty td {
     text-align: center;
-    padding: 1.25rem;
+    padding: 1.5rem;
     color: var(--color-text-muted);
     background: rgba(148, 163, 184, 0.06);
 }
 
+.table-empty:hover {
+    transform: none;
+    box-shadow: none;
+    background: rgba(148, 163, 184, 0.06);
+}
+
 @media (max-width: 768px) {
-    .data-table,
-    .table {
-        min-width: auto;
+    .table-card .card-body {
+        padding: var(--space-3);
     }
 
     .data-table th,

@@ -61,8 +61,7 @@
                                 ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                             </a>
                             <form method="post"
-                                  action="{{ url_for('manager_veicoli_delete', veicolo_id=v.id) }}"
-                                  style="display:inline;">
+                                  action="{{ url_for('manager_veicoli_delete', veicolo_id=v.id) }}">
                                 <button type="submit"
                                         class="btn btn-danger btn-sm"
                                         onclick="return confirm('{% if lang == 'fr' %}Supprimer ce véhicule ?{% else %}Eliminare questo veicolo?{% endif %}');">
@@ -72,8 +71,8 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr>
-                        <td colspan="9" class="table-empty">
+                    <tr class="table-empty">
+                        <td colspan="9">
                             {% if lang == 'fr' %}
                                 Aucun véhicule enregistré pour le moment.
                             {% else %}
