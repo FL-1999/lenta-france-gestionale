@@ -521,5 +521,12 @@ form textarea {
   .fiche-shape-values .shape-main{ font-size: 1rem; }
   .fiche-shape-values .shape-sub{ font-size: .9rem; }
 }
-
+/* ===== LABEL DIMENSIONI DISEGNO (PALO / PARATIA) ===== */
+.element-drawing-label {
+    font-size: 1.8rem;        /* grande e leggibile */
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-text-primary);
+    text-align: center;
+    margin-bottom: 0.75rem;
 }
