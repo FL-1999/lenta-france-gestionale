@@ -1,154 +1,163 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
+
 {% block title %}
-    {% if lang == 'fr' %}Modifier le véhicule{% else %}Modifica veicolo{% endif %}
+  {% if lang == 'fr' %}Modifier le véhicule{% else %}Modifica veicolo{% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">
-        🚐 {% if lang == 'fr' %}Modifier le véhicule{% else %}Modifica veicolo{% endif %}
-    </h1>
-    <p class="page-subtitle">
-        {% if lang == 'fr' %}
-            Mettez à jour les informations du véhicule sélectionné.
-        {% else %}
-            Aggiorna le informazioni del veicolo selezionato.
-        {% endif %}
+  <div class="page-header-main">
+    <p class="page-eyebrow">
+      {% if lang == 'fr' %}Gestion des véhicules{% else %}Gestione veicoli{% endif %}
     </p>
+    <h1 class="page-title">✏️ {% if lang == 'fr' %}Modifier le véhicule{% else %}Modifica veicolo{% endif %}</h1>
+    <p class="page-subtitle">
+      {% if lang == 'fr' %}
+        Mettez à jour les informations du véhicule sélectionné.
+      {% else %}
+        Aggiorna le informazioni del veicolo selezionato.
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="header-actions">
+    <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">
+      ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+    </a>
+  </div>
 </div>
 
-<form method="post" class="form-card">
+<form method="post">
+  <div class="card large-form-card vehicle-form-card">
+    <div class="card-header">
+      <div class="card-title">
+        <span>{% if lang == 'fr' %}Détails du véhicule{% else %}Dettagli veicolo{% endif %}</span>
+      </div>
+      <p class="card-subtitle">
+        {% if lang == 'fr' %}
+          Modifiez les champs nécessaires puis enregistrez.
+        {% else %}
+          Modifica i campi necessari e poi salva.
+        {% endif %}
+      </p>
+    </div>
 
-    <!-- DATI PRINCIPALI -->
-    <h2 class="section-title">
-        {% if lang == 'fr' %}Données principales{% else %}Dati principali{% endif %}
-    </h2>
-
-    <div class="form-grid-2">
+    <div class="card-body">
+      <!-- DATI PRINCIPALI -->
+      <h2 class="section-title">{% if lang == 'fr' %}Données principales{% else %}Dati principali{% endif %}</h2>
+      <div class="form-grid-2">
         <div class="form-field">
-            <label>Marca*</label>
-            <input type="text" name="marca" value="{{ veicolo.marca }}" required>
+          <label>Marca*</label>
+          <input type="text" name="marca" value="{{ veicolo.marca }}" required>
         </div>
 
         <div class="form-field">
-            <label>Modello*</label>
-            <input type="text" name="modello" value="{{ veicolo.modello }}" required>
+          <label>Modello*</label>
+          <input type="text" name="modello" value="{{ veicolo.modello }}" required>
         </div>
 
         <div class="form-field">
-            <label>Targa*</label>
-            <input type="text" name="targa" value="{{ veicolo.targa }}" required>
-            <small>
-                {% if lang == 'fr' %}
-                    Enregistrée automatiquement en majuscule.
-                {% else %}
-                    La targa verrà salvata automaticamente in maiuscolo.
-                {% endif %}
+          <label>Targa*</label>
+          <input type="text" name="targa" value="{{ veicolo.targa }}" required>
+          <small>
+            {% if lang == 'fr' %}Enregistrée automatiquement en majuscule.{% else %}La targa verrà salvata automaticamente in maiuscolo.{% endif %}
+          </small>
+        </div>
+
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</label>
+          <input type="number" name="anno" value="{{ veicolo.anno or '' }}" min="1900" max="2100">
+        </div>
+      </div>
+
+      <!-- DETTAGLI VEICOLO -->
+      <h2 class="section-title">{% if lang == 'fr' %}Détails du véhicule{% else %}Dettagli veicolo{% endif %}</h2>
+      <div class="form-grid-2">
+        <div class="form-field">
+          <label>Km</label>
+          <input type="number" name="km" value="{{ veicolo.km or '' }}">
+          <small>
+            {% if lang == 'fr' %}
+              Kilométrage actuel (même approximatif).
+            {% else %}
+              Chilometraggio attuale (anche indicativo).
+            {% endif %}
+          </small>
+        </div>
+
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Carburant{% else %}Carburante{% endif %}</label>
+          <select name="carburante">
+            <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+            <option value="Diesel" {% if veicolo.carburante == "Diesel" %}selected{% endif %}>Diesel</option>
+            <option value="Benzina" {% if veicolo.carburante == "Benzina" %}selected{% endif %}>Benzina</option>
+            <option value="GPL" {% if veicolo.carburante == "GPL" %}selected{% endif %}>GPL</option>
+            <option value="Ibrido" {% if veicolo.carburante == "Ibrido" %}selected{% endif %}>Ibrido</option>
+            <option value="Elettrico" {% if veicolo.carburante == "Elettrico" %}selected{% endif %}>Elettrico</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- SCADENZE -->
+      <h2 class="section-title">{% if lang == 'fr' %}Échéances{% else %}Scadenze{% endif %}</h2>
+      <div class="form-grid-2">
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Révision – échéance{% else %}Revisione – scadenza{% endif %}</label>
+          <input type="date" name="revisione_scadenza"
+                 value="{{ veicolo.revisione_scadenza.isoformat() if veicolo.revisione_scadenza else '' }}">
+        </div>
+
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Assurance – échéance{% else %}Assicurazione – scadenza{% endif %}</label>
+          <input type="date" name="assicurazione_scadenza"
+                 value="{{ veicolo.assicurazione_scadenza.isoformat() if veicolo.assicurazione_scadenza else '' }}">
+        </div>
+      </div>
+
+      <!-- ASSEGNAZIONE -->
+      <h2 class="section-title">{% if lang == 'fr' %}Affectation{% else %}Assegnazione{% endif %}</h2>
+      {% set people = personale_list|default([]) %}
+      <div class="form-grid-2">
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Véhicule assigné à{% else %}Veicolo assegnato a{% endif %}</label>
+          <select name="assegnato_a_id">
+            <option value="">
+              {% if lang == 'fr' %}Aucun / véhicule partagé{% else %}Nessuno / veicolo condiviso{% endif %}
+            </option>
+            {% for persona in people %}
+              <option value="{{ persona.id }}" {% if veicolo.assegnato_a_id == persona.id %}selected{% endif %}>
+                {{ persona.nome }} {{ persona.cognome }}
+              </option>
+            {% endfor %}
+          </select>
+          {% if not people %}
+            <small style="opacity:.75;">
+              {% if lang == 'fr' %}
+                Liste du personnel non disponible (variable <code>personale_list</code> manquante).
+              {% else %}
+                Lista personale non disponibile (variabile <code>personale_list</code> mancante).
+              {% endif %}
             </small>
+          {% endif %}
         </div>
 
         <div class="form-field">
-            <label>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</label>
-            <input type="number" name="anno"
-                   value="{{ veicolo.anno or '' }}"
-                   min="1900" max="2100">
+          <label>Note</label>
+          <textarea name="note"
+            placeholder="{% if lang == 'fr' %}Informations supplémentaires{% else %}Assicurazione, stato generale, conducente abituale...{% endif %}">{{ veicolo.note or '' }}</textarea>
         </div>
-    </div>
+      </div>
 
-    <!-- DETTAGLI VEICOLO -->
-    <h2 class="section-title">
-        {% if lang == 'fr' %}Détails du véhicule{% else %}Dettagli veicolo{% endif %}
-    </h2>
-
-    <div class="form-grid-2">
-        <div class="form-field">
-            <label>Km</label>
-            <input type="number" name="km" value="{{ veicolo.km or '' }}">
-            <small>
-                {% if lang == 'fr' %}
-                    Kilométrage actuel (même approximatif).
-                {% else %}
-                    Chilometraggio attuale (anche indicativo).
-                {% endif %}
-            </small>
-        </div>
-
-        <div class="form-field">
-            <label>{% if lang == 'fr' %}Carburant{% else %}Carburante{% endif %}</label>
-            <select name="carburante">
-                <option value="">
-                    {% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}
-                </option>
-                <option value="Diesel"   {% if veicolo.carburante == "Diesel" %}selected{% endif %}>Diesel</option>
-                <option value="Benzina"  {% if veicolo.carburante == "Benzina" %}selected{% endif %}>Benzina</option>
-                <option value="GPL"      {% if veicolo.carburante == "GPL" %}selected{% endif %}>GPL</option>
-                <option value="Ibrido"   {% if veicolo.carburante == "Ibrido" %}selected{% endif %}>Ibrido</option>
-                <option value="Elettrico"{% if veicolo.carburante == "Elettrico" %}selected{% endif %}>Elettrico</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- SCADENZE -->
-    <h2 class="section-title">
-        {% if lang == 'fr' %}Échéances{% else %}Scadenze{% endif %}
-    </h2>
-
-    <div class="form-grid-2">
-        <div class="form-field">
-            <label>
-                {% if lang == 'fr' %}Révision – échéance{% else %}Revisione – scadenza{% endif %}
-            </label>
-            <input type="date" name="revisione_scadenza"
-                   value="{{ veicolo.revisione_scadenza.isoformat() if veicolo.revisione_scadenza else '' }}">
-        </div>
-
-        <div class="form-field">
-            <label>
-                {% if lang == 'fr' %}Assurance – échéance{% else %}Assicurazione – scadenza{% endif %}
-            </label>
-            <input type="date" name="assicurazione_scadenza"
-                   value="{{ veicolo.assicurazione_scadenza.isoformat() if veicolo.assicurazione_scadenza else '' }}">
-        </div>
-    </div>
-
-    <!-- ASSEGNAZIONE -->
-    <h2 class="section-title">
-        {% if lang == 'fr' %}Affectation{% else %}Assegnazione{% endif %}
-    </h2>
-
-    <div class="form-grid-2">
-        <div class="form-field">
-            <label>
-                {% if lang == 'fr' %}Véhicule assigné à{% else %}Veicolo assegnato a{% endif %}
-            </label>
-            <select name="assegnato_a_id">
-                <option value="">
-                    {% if lang == 'fr' %}Aucun / véhicule partagé{% else %}Nessuno / veicolo condiviso{% endif %}
-                </option>
-                {% for persona in personale_list %}
-                    <option value="{{ persona.id }}"
-                        {% if veicolo.assegnato_a_id == persona.id %}selected{% endif %}>
-                        {{ persona.nome }} {{ persona.cognome }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="form-field">
-            <label>Note</label>
-            <textarea name="note"
-                      placeholder="{% if lang == 'fr' %}Informations supplémentaires{% else %}Assicurazione, stato generale, conducente abituale...{% endif %}">{{ veicolo.note or '' }}</textarea>
-        </div>
-    </div>
-
-    <div class="form-actions">
+      <div class="form-actions">
         <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">
-            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+          {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
         </a>
         <button type="submit" class="btn btn-primary">
-            {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+          {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
         </button>
+      </div>
     </div>
+  </div>
 </form>
 {% endblock %}
