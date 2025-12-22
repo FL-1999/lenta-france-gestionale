@@ -1,88 +1,80 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
-
 {% block title %}
-    {% if lang == 'fr' %}Véhicules – Manager{% else %}Veicoli – Manager{% endif %}
+  {% if lang == 'fr' %}Véhicules – Manager – Lenta France{% else %}Veicoli – Manager – Lenta France{% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <div class="page-header-main">
-        <h1 class="page-title">
-            🚐 {% if lang == 'fr' %}Véhicules{% else %}Veicoli{% endif %}
-        </h1>
-        <p class="page-subtitle">
-            {% if lang == 'fr' %}
-                Gérez les véhicules d'entreprise, les plaques, le kilométrage et les échéances.
-            {% else %}
-                Gestisci i veicoli aziendali, targhe, chilometraggio e scadenze.
-            {% endif %}
-        </p>
-    </div>
-    <div class="header-actions">
-        <a href="{{ url_for('manager_veicoli_new') }}" class="btn btn-primary">
-            ➕ {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
-        </a>
-    </div>
+  <div class="page-header-main">
+    <p class="page-eyebrow">
+      {% if lang == 'fr' %}Gestion des véhicules{% else %}Gestione veicoli{% endif %}
+    </p>
+    <h1 class="page-title">🚐 {% if lang == 'fr' %}Véhicules{% else %}Veicoli{% endif %}</h1>
+  </div>
+
+  <div class="header-actions">
+    <a href="{{ url_for('manager_veicoli_new') }}" class="btn btn-primary">
+      ➕ {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
+    </a>
+  </div>
 </div>
 
 <div class="card table-card">
-    <div class="card-body">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>{% if lang == 'fr' %}Marque{% else %}Marca{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Plaque{% else %}Targa{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Année{% else %}Anno{% endif %}</th>
-                    <th>Km</th>
-                    <th>{% if lang == 'fr' %}Carburant{% else %}Carburante{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</th>
-                    <th class="table-actions-col">
-                        {% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for v in veicoli %}
-                    <tr>
-                        <td>#{{ v.id }}</td>
-                        <td>{{ v.marca }}</td>
-                        <td>{{ v.modello }}</td>
-                        <td>{{ v.targa }}</td>
-                        <td>{{ v.anno or '—' }}</td>
-                        <td>{{ v.km or '—' }}</td>
-                        <td>{{ v.carburante or '—' }}</td>
-                        <td>{{ v.assegnato_a_id or '—' }}</td>
-                        <td class="table-actions">
-                            <a class="btn btn-secondary btn-sm"
-                               href="{{ url_for('manager_veicoli_edit', veicolo_id=v.id) }}">
-                                ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-                            </a>
-                            <form method="post"
-                                  action="{{ url_for('manager_veicoli_delete', veicolo_id=v.id) }}">
-                                <button type="submit"
-                                        class="btn btn-danger btn-sm"
-                                        onclick="return confirm('{% if lang == 'fr' %}Supprimer ce véhicule ?{% else %}Eliminare questo veicolo?{% endif %}');">
-                                    🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr class="table-empty">
-                        <td colspan="9">
-                            {% if lang == 'fr' %}
-                                Aucun véhicule enregistré pour le moment.
-                            {% else %}
-                                Nessun veicolo registrato al momento.
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+  <div class="card-body">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>{% if lang == 'fr' %}Plaque{% else %}Targa{% endif %}</th>
+          <th>{% if lang == 'fr' %}Marque / Modèle{% else %}Marca / Modello{% endif %}</th>
+          <th>{% if lang == 'fr' %}Type{% else %}Tipo{% endif %}</th>
+          <th>{% if lang == 'fr' %}Km actuels{% else %}Km attuali{% endif %}</th>
+          <th>{% if lang == 'fr' %}Révision{% else %}Revisione{% endif %}</th>
+          <th>{% if lang == 'fr' %}Assurance{% else %}Assicurazione{% endif %}</th>
+          <th>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</th>
+          <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+          <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for v in veicoli %}
+        <tr>
+          <td><strong>{{ v.targa }}</strong></td>
+          <td>{{ (v.marca or '-') ~ ' ' ~ (v.modello or '') }}</td>
+          <td>{{ v.tipo or '-' }}</td>
+          <td>{{ v.km_attuali if v.km_attuali is not none else '-' }}</td>
+          <td>{{ v.scadenza_revisione.strftime('%Y-%m-%d') if v.scadenza_revisione else '-' }}</td>
+          <td>{{ v.scadenza_assicurazione.strftime('%Y-%m-%d') if v.scadenza_assicurazione else '-' }}</td>
+          <td>
+            {% if v.personale %}
+              {{ v.personale.cognome }} {{ v.personale.nome }}
+            {% elif v.personale_id %}
+              #{{ v.personale_id }}
+            {% else %}-{% endif %}
+          </td>
+          <td>
+            {% if v.cantiere %}
+              {{ v.cantiere.name }}
+            {% elif v.cantiere_id %}
+              #{{ v.cantiere_id }}
+            {% else %}-{% endif %}
+          </td>
+          <td class="table-actions">
+            <a href="{{ url_for('manager_veicoli_edit', veicolo_id=v.id) }}" class="btn btn-secondary btn-sm">
+              ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr class="table-empty">
+          <td colspan="9">
+            {% if lang == 'fr' %}Aucun véhicule enregistré.{% else %}Nessun veicolo registrato.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
