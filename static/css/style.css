@@ -1192,6 +1192,107 @@ body {
     flex-wrap: wrap;
 }
 
+/* Avvisi e alert */
+.alert {
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-soft);
+    margin-bottom: var(--space-4);
+    font-weight: 600;
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(248, 113, 113, 0.4);
+    color: #fecdd3;
+}
+
+.alert-danger a {
+    color: #fecdd3;
+    text-decoration: underline;
+}
+
+/* Geometria fiche */
+.geometry-note {
+    font-size: 0.95rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+}
+
+.geometry-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.geometry-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.geometry-section-title {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+    color: var(--color-text-strong);
+}
+
+.geometry-field .form-label,
+.geometry-label {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.geometry-input {
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding: 10px 12px;
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.input-with-unit .form-control {
+    flex: 1;
+}
+
+.unit-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-soft);
+    background: var(--color-bg-elevated);
+    color: var(--color-text-subtle);
+    font-weight: 700;
+}
+
+.geometry-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+}
+
+.geometry-divider-line {
+    height: 1px;
+    background: var(--color-border-soft);
+    flex: 1;
+}
+
+.geometry-divider-text {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
 @media (max-width: 640px) {
     .btn {
         margin: 6px;
