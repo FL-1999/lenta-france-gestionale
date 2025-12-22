@@ -1,68 +1,127 @@
 {% extends "shared/base.html" %}
-
 {% block title %}Nuova Fiche – Manager{% endblock %}
 
 {% block content %}
 <div class="form-page">
-    <div class="form-page-header">
-        <p class="eyebrow">Area Manager</p>
-        <h1 class="page-title">
-            <span class="page-icon page-icon--fiches" aria-hidden="true"></span>
-            Nuova fiche di cantiere
-        </h1>
-        <p class="subtitle">
-            Registra una fiche completa per un cantiere.
-        </p>
+
+  <!-- HEADER -->
+  <div class="form-page-header">
+    <p class="eyebrow">Area Manager</p>
+    <h1 class="page-title">
+      <span class="page-icon page-icon--fiches" aria-hidden="true"></span>
+      Nuova fiche di cantiere
+    </h1>
+    <p class="subtitle">
+      Registra una fiche completa per un cantiere.
+    </p>
+  </div>
+
+  <!-- CARD -->
+  <div class="card form-card">
+    <div class="card-header">
+      <div class="card-title">
+        <span>Dettagli fiche</span>
+      </div>
     </div>
 
-    <div class="card form-card">
-        <div class="card-header">
-            <div class="card-title">
-                <span>Dettagli fiche</span>
-            </div>
+    <div class="card-body">
+      <form method="post">
+
+        <!-- DATI BASE -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input type="date" name="data" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Cantiere</label>
+            <select name="cantiere_id" class="form-select" required>
+              <option value="">Seleziona un cantiere…</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Macchinario</label>
+            <input type="text" name="macchinario" class="form-control"
+                   placeholder="Es. Trivella CFA">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Ore utilizzo</label>
+            <input type="number" name="ore_uso" class="form-control"
+                   step="0.5" min="0" placeholder="Es. 6.5">
+          </div>
         </div>
-        <div class="card-body">
-            <form method="post" action="#">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="data">Data</label>
-                        <input type="date" id="data" name="data" class="form-control" required />
-                    </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="cantiere">Cantiere</label>
-                        <select id="cantiere" name="cantiere" class="form-select" required>
-                            <option value="">Seleziona un cantiere…</option>
-                            <option>Cantiere Lyon</option>
-                            <option>Cantiere Marseille</option>
-                        </select>
-                    </div>
+        <!-- GEOMETRIA -->
+        <h2 class="section-title" style="margin-top:1.5rem;">
+          Geometria / Scavo
+        </h2>
 
-                    <div class="form-group">
-                        <label class="form-label" for="macchinario">Macchinario</label>
-                        <input id="macchinario" name="macchinario" class="form-control" type="text" placeholder="Es. Escavatore 30t" />
-                    </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Diametro (mm)</label>
+            <input type="number" name="diametro" class="form-control" placeholder="600">
+          </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="ore_uso">Ore utilizzo</label>
-                        <input id="ore_uso" name="ore_uso" class="form-control" type="number" min="0" step="0.5" placeholder="Es. 5" />
-                    </div>
-                </div>
+          <div class="form-group">
+            <label class="form-label">Larghezza (cm)</label>
+            <input type="number" name="larghezza" class="form-control" placeholder="120">
+          </div>
 
-                <div class="form-group form-grid form-grid--single">
-                    <div class="form-group">
-                        <label class="form-label" for="descrizione">Dettagli</label>
-                        <textarea id="descrizione" name="descrizione" class="form-textarea" rows="4"
-                                  placeholder="Descrivi attività e note importanti..."></textarea>
-                    </div>
-                </div>
+          <div class="form-group">
+            <label class="form-label">Altezza (cm)</label>
+            <input type="number" name="altezza" class="form-control" placeholder="80">
+          </div>
 
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Salva (mock)</button>
-                    <a href="/manager/fiches" class="btn btn-secondary">Torna alle fiches</a>
-                </div>
-            </form>
+          <div class="form-group">
+            <label class="form-label">Profondità (m)</label>
+            <input type="number" name="profondita" class="form-control" placeholder="18">
+          </div>
         </div>
+
+        <!-- PREVIEW CERCHIO -->
+        <div class="fiche-shape-row" style="margin-top:1.25rem;">
+          <div class="fiche-shape-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="7" stroke="currentColor"/>
+            </svg>
+          </div>
+          <div class="fiche-shape-values">
+            <div class="shape-main">Ø 600 mm</div>
+            <div class="shape-sub">Profondità 18 m</div>
+          </div>
+        </div>
+
+        <!-- PREVIEW RETTANGOLO -->
+        <div class="fiche-shape-row" style="margin-top:.75rem;">
+          <div class="fiche-shape-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <rect x="6" y="7" width="12" height="10" rx="2" stroke="currentColor"/>
+            </svg>
+          </div>
+          <div class="fiche-shape-values">
+            <div class="shape-main">120 × 80 cm</div>
+            <div class="shape-sub">Profondità 12 m</div>
+          </div>
+        </div>
+
+        <!-- NOTE -->
+        <div class="form-group" style="margin-top:1.5rem;">
+          <label class="form-label">Note operative</label>
+          <textarea name="note" class="form-textarea" rows="4"
+            placeholder="Note, imprevisti, materiale utilizzato…"></textarea>
+        </div>
+
+        <!-- AZIONI -->
+        <div class="form-actions">
+          <a href="/manager/fiches" class="btn btn-secondary">Annulla</a>
+          <button type="submit" class="btn btn-primary">Salva fiche</button>
+        </div>
+
+      </form>
     </div>
+  </div>
 </div>
 {% endblock %}
