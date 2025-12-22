@@ -1,40 +1,63 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
 
-{% block title %}Utenti – Manager{% endblock %}
+{% block title %}
+    {% if lang == 'fr' %}Utilisateurs – Manager – Lenta France{% else %}Utenti – Manager – Lenta France{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">
-        <span class="page-icon page-icon--users" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="9" cy="9" r="3" />
-                <circle cx="16" cy="10" r="2.5" />
-                <path d="M4.5 19.5c0-2.5 2.3-4.5 5.1-4.5h1.8c2.8 0 5.1 2 5.1 4.5" stroke-linecap="round" />
-                <path d="M15.4 12.8c2.2 0 4.1 1.6 4.1 3.7" stroke-linecap="round" />
-            </svg>
-        </span>
-        Gestione utenti
-    </h1>
-    <div class="actions">
-        <a href="/manager/utenti/nuovo" class="btn btn-lg btn-primary">➕ Nuovo utente</a>
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}Gestion des comptes{% else %}Gestione account{% endif %}
+        </p>
+        <h1 class="page-title">
+            <span class="page-icon page-icon--users" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="9" cy="9" r="3" />
+                    <circle cx="16" cy="10" r="2.5" />
+                    <path d="M4.5 19.5c0-2.5 2.3-4.5 5.1-4.5h1.8c2.8 0 5.1 2 5.1 4.5" stroke-linecap="round" />
+                    <path d="M15.4 12.8c2.2 0 4.1 1.6 4.1 3.7" stroke-linecap="round" />
+                </svg>
+            </span>
+            {% if lang == 'fr' %}Utilisateurs{% else %}Utenti{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Vue d'ensemble des comptes habilités au gestionnel, avec rôle, langue et statut.
+            {% else %}
+                Panoramica degli account abilitati al gestionale, con ruolo, lingua e stato.
+            {% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="/manager/utenti/nuovo" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvel utilisateur{% else %}Nuovo utente{% endif %}
+        </a>
     </div>
 </div>
 
 <div class="card table-card">
+    <div class="card-header">
+        <div class="card-title">
+            👥 {% if lang == 'fr' %}Liste des utilisateurs{% else %}Elenco utenti{% endif %}
+        </div>
+    </div>
     <div class="card-body">
         <table class="data-table">
             <thead>
                 <tr>
                     <th>Email</th>
-                    <th>Nome completo</th>
-                    <th>Ruolo</th>
-                    <th>Lingua</th>
-                    <th>Attivo</th>
-                    <th class="table-actions-col">Azioni</th>
+                    <th>{% if lang == 'fr' %}Nom complet{% else %}Nome completo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Langue{% else %}Lingua{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                 </tr>
             </thead>
             <tbody>
-                {% for u in users %}
+                {% set users_list = users | default([]) %}
+                {% for u in users_list %}
                 <tr>
                     <td>{{ u.email }}</td>
                     <td>{{ u.full_name or "-" }}</td>
@@ -42,22 +65,30 @@
                     <td>{{ u.language or "-" }}</td>
                     <td>
                         {% if u.is_active %}
-                        <span class="badge badge-success">Attivo</span>
+                        <span class="badge badge-success">
+                            {% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}
+                        </span>
                         {% else %}
-                        <span class="badge badge-danger">Disattivato</span>
+                        <span class="badge badge-danger">
+                            {% if lang == 'fr' %}Désactivé{% else %}Disattivato{% endif %}
+                        </span>
                         {% endif %}
                     </td>
                     <td class="table-actions">
-                        <a class="btn btn-sm btn-primary" href="/manager/utenti/{{ u.id }}/modifica">Modifica</a>
-                        <a class="btn btn-sm btn-primary" href="/manager/utenti/{{ u.id }}/reset-password">Reset password</a>
+                        <a class="btn btn-secondary btn-sm" href="/manager/utenti/{{ u.id }}/modifica">
+                            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                        </a>
+                        <a class="btn btn-secondary btn-sm" href="/manager/utenti/{{ u.id }}/reset-password">
+                            🔐 {% if lang == 'fr' %}Réinitialiser{% else %}Reset password{% endif %}
+                        </a>
                         <form method="post" action="/manager/utenti/{{ u.id }}/toggle-attivo" style="display:inline;">
                             {% if u.is_active %}
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                Disattiva
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                ⛔ {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
                             </button>
                             {% else %}
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                Attiva
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                ✅ {% if lang == 'fr' %}Activer{% else %}Attiva{% endif %}
                             </button>
                             {% endif %}
                         </form>
@@ -65,7 +96,13 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="table-empty">Nessun utente presente.</td>
+                    <td colspan="6" class="table-empty">
+                        {% if lang == 'fr' %}
+                            Aucun utilisateur enregistré pour le moment.
+                        {% else %}
+                            Nessun utente presente al momento.
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

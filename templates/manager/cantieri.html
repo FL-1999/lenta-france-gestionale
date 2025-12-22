@@ -1,51 +1,88 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
 
-{% block title %}Cantieri – Manager{% endblock %}
+{% block title %}
+    {% if lang == 'fr' %}Chantiers – Manager – Lenta France{% else %}Cantieri – Manager – Lenta France{% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-3">
-  <h1 class="page-title">
-    <span class="page-icon page-icon--sites" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
-        <path d="M10 20v-5h4v5" stroke-linecap="round" />
-      </svg>
-    </span>
-    Gestione cantieri
-  </h1>
-  <div class="actions">
-    <a href="/manager/cantieri/nuovo" class="btn btn-lg btn-primary">➕ Nuovo cantiere</a>
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">
+      {% if lang == 'fr' %}Gestion des chantiers{% else %}Gestione cantieri{% endif %}
+    </p>
+    <h1 class="page-title">
+      <span class="page-icon page-icon--sites" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
+          <path d="M10 20v-5h4v5" stroke-linecap="round" />
+        </svg>
+      </span>
+      {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}
+    </h1>
+    <p class="page-subtitle">
+      {% if lang == 'fr' %}
+        Vue d'ensemble des chantiers gérés par Lenta France, avec état et activités à jour.
+      {% else %}
+        Panoramica dei cantieri gestiti da Lenta France, con stato e attività aggiornati.
+      {% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/manager/cantieri/nuovo" class="btn btn-primary">
+      ➕ {% if lang == 'fr' %}Nouveau chantier{% else %}Nuovo cantiere{% endif %}
+    </a>
   </div>
 </div>
 
 <div class="card table-card">
+  <div class="card-header">
+    <div class="card-title">
+      🏗️ {% if lang == 'fr' %}Liste des chantiers{% else %}Elenco cantieri{% endif %}
+    </div>
+  </div>
   <div class="card-body">
     <table class="data-table">
       <thead>
         <tr>
-          <th>Nome</th>
-          <th>Codice</th>
-          <th>Città</th>
-          <th>Stato</th>
-          <th>Attivo</th>
-          <th class="table-actions-col">Azioni</th>
+          <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+          <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+          <th>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}</th>
+          <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+          <th class="text-center">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
+          <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
         </tr>
       </thead>
       <tbody>
-        {% for s in sites %}
+        {% set sites_list = sites | default([]) %}
+        {% for s in sites_list %}
         <tr>
-          <td>{{ s.name }}</td>
-          <td>{{ s.code }}</td>
-          <td>{{ s.city or "-" }}</td>
+          <td><strong>{{ s.name or s.nome or "-" }}</strong></td>
+          <td>{{ s.code or "-" }}</td>
+          <td>{{ s.city or s.location or "-" }}</td>
           <td>{{ s.status.value if s.status else "-" }}</td>
-          <td>{{ "Sì" if s.is_active else "No" }}</td>
+          <td class="text-center">
+            {% if s.is_active %}
+              {% if lang == 'fr' %}Oui{% else %}Sì{% endif %}
+            {% else %}
+              {% if lang == 'fr' %}Non{% else %}No{% endif %}
+            {% endif %}
+          </td>
           <td class="table-actions">
-            <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-sm btn-primary">Modifica</a>
+            <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
+              ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            </a>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="table-empty">Nessun cantiere presente.</td>
+          <td colspan="6" class="table-empty">
+            {% if lang == 'fr' %}
+              Aucun chantier enregistré pour le moment.
+            {% else %}
+              Nessun cantiere presente al momento.
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
