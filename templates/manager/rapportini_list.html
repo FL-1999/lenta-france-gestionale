@@ -1,10 +1,16 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
 
-{% block title %}Rapportini – Manager{% endblock %}
+{% block title %}
+    {% if lang == 'fr' %}Rapports – Manager – Lenta France{% else %}Rapportini – Manager – Lenta France{% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex align-items-center justify-content-between flex-wrap">
-    <div>
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}Gestion des rapports{% else %}Gestione rapportini{% endif %}
+        </p>
         <h1 class="page-title">
             <span class="page-icon page-icon--reports" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -12,30 +18,49 @@
                     <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
                 </svg>
             </span>
-            Rapportini
+            {% if lang == 'fr' %}Rapports{% else %}Rapportini{% endif %}
         </h1>
-        <p class="subtitle">Filtra e consulta i rapportini giornalieri inviati dai capisquadra.</p>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Filtrez et consultez les rapports quotidiens envoyés par les chefs d'équipe.
+            {% else %}
+                Filtra e consulta i rapportini giornalieri inviati dai capisquadra.
+            {% endif %}
+        </p>
     </div>
-    <div class="actions">
-        <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-primary">➕ Nuovo rapportino</a>
+    <div class="page-actions">
+        <a href="/capo/rapportini/nuovo" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouveau rapport{% else %}Nuovo rapportino{% endif %}
+        </a>
     </div>
 </div>
 
-<div class="card mb-4">
+<div class="card" style="margin-bottom: var(--space-3);">
+    <div class="card-header">
+        <div class="card-title">
+            🔍 {% if lang == 'fr' %}Filtrer les résultats{% else %}Filtra i risultati{% endif %}
+        </div>
+    </div>
     <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-3">
-                <label for="start_date" class="form-label">Data inizio</label>
+        <form method="get" class="form-grid">
+            <div class="form-group">
+                <label for="start_date" class="form-label">
+                    {% if lang == 'fr' %}Date de début{% else %}Data inizio{% endif %}
+                </label>
                 <input type="date" id="start_date" name="start_date" class="form-control" value="{{ filters.start_date or '' }}">
             </div>
-            <div class="col-md-3">
-                <label for="end_date" class="form-label">Data fine</label>
+            <div class="form-group">
+                <label for="end_date" class="form-label">
+                    {% if lang == 'fr' %}Date de fin{% else %}Data fine{% endif %}
+                </label>
                 <input type="date" id="end_date" name="end_date" class="form-control" value="{{ filters.end_date or '' }}">
             </div>
-            <div class="col-md-3">
-                <label for="site_id" class="form-label">Cantiere</label>
+            <div class="form-group">
+                <label for="site_id" class="form-label">
+                    {% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}
+                </label>
                 <select id="site_id" name="site_id" class="form-select">
-                    <option value="">Tutti</option>
+                    <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
                     {% for s in sites %}
                         <option value="{{ s.id }}" {% if filters.site_id and filters.site_id == s.id %}selected{% endif %}>
                             {{ s.name }}{% if s.code %} ({{ s.code }}){% endif %}
@@ -43,10 +68,12 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
-                <label for="created_by" class="form-label">Caposquadra</label>
+            <div class="form-group">
+                <label for="created_by" class="form-label">
+                    {% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}
+                </label>
                 <select id="created_by" name="created_by" class="form-select">
-                    <option value="">Tutti</option>
+                    <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
                     {% for c in capisquadra %}
                         <option value="{{ c.id }}" {% if filters.created_by and filters.created_by == c.id %}selected{% endif %}>
                             {{ c.full_name or c.email }}
@@ -54,32 +81,42 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-12 d-flex gap-2 mt-2">
-                <button type="submit" class="btn btn-secondary">Filtra</button>
-                <a href="/manager/rapportini" class="btn btn-secondary">Reset</a>
+            <div class="form-actions" style="justify-content: flex-end; margin-top: 0;">
+                <button type="submit" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Filtrer{% else %}Filtra{% endif %}
+                </button>
+                <a href="/manager/rapportini" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Réinitialiser{% else %}Reset{% endif %}
+                </a>
             </div>
         </form>
     </div>
 </div>
 
 <div class="card table-card">
+    <div class="card-header">
+        <div class="card-title">
+            📝 {% if lang == 'fr' %}Liste des rapports{% else %}Elenco rapportini{% endif %}
+        </div>
+    </div>
     <div class="card-body">
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Data</th>
-                    <th>Cantiere</th>
-                    <th>Ore totali</th>
-                    <th>Operai</th>
-                    <th>Caposquadra</th>
-                    <th>Note/attività</th>
-                    <th class="table-actions-col"></th>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Heures totales{% else %}Ore totali{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Ouvriers{% else %}Operai{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Notes / Activités{% else %}Note / attività{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                 </tr>
             </thead>
             <tbody>
-                {% for r in reports %}
+                {% set reports_list = reports | default([]) %}
+                {% for r in reports_list %}
                 <tr>
-                    <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
+                    <td>{{ r.date.strftime("%d/%m/%Y") if r.date else "-" }}</td>
                     <td>
                         {% if r.site %}
                             {{ r.site.name }}{% if r.site.code %} ({{ r.site.code }}){% endif %}
@@ -105,26 +142,40 @@
                         {% endif %}
                     </td>
                     <td class="table-actions">
-                        <a href="/manager/rapportini/{{ r.id }}" class="btn btn-sm btn-secondary">Vedi</a>
+                        <a href="/manager/rapportini/{{ r.id }}" class="btn btn-sm btn-secondary">
+                            {% if lang == 'fr' %}Voir{% else %}Vedi{% endif %}
+                        </a>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="table-empty">Nessun rapportino trovato con i filtri selezionati.</td>
+                    <td colspan="7" class="table-empty">
+                        {% if lang == 'fr' %}
+                            Aucun rapport trouvé avec les filtres sélectionnés.
+                        {% else %}
+                            Nessun rapportino trovato con i filtri selezionati.
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
-        {% if reports and reports|length > 0 %}
-        <div class="d-flex justify-content-between align-items-center mt-3">
-            <div>Pagina {{ page }} di {{ total_pages }}</div>
-            <div class="d-flex gap-2">
+        {% if reports_list and reports_list|length > 0 %}
+        <div class="card-actions" style="justify-content: space-between; align-items: center; margin-top: var(--space-3);">
+            <div class="text-muted">
+                {% if lang == 'fr' %}
+                    Page {{ page }} sur {{ total_pages }}
+                {% else %}
+                    Pagina {{ page }} di {{ total_pages }}
+                {% endif %}
+            </div>
+            <div class="table-actions">
                 {% if page > 1 %}
-                    <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page-1) }}">&laquo; Precedente</a>
+                    <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page-1) }}">&laquo; {% if lang == 'fr' %}Précédent{% else %}Precedente{% endif %}</a>
                 {% endif %}
                 {% if page < total_pages %}
-                    <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page+1) }}">Successiva &raquo;</a>
+                    <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page+1) }}">{% if lang == 'fr' %}Suivant{% else %}Successiva{% endif %} &raquo;</a>
                 {% endif %}
             </div>
         </div>
