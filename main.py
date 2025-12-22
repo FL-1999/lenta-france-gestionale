@@ -653,8 +653,7 @@ async def manager_fiche_create(
             status_code=400,
         )
     except HTTPException as exc:
-        if exc.status_code != 400:
-            raise
+        status_code = exc.status_code or 400
         form_data = _build_fiche_form_data(
             cantiere_id=cantiere_id,
             macchinario_id=macchinario_id,
@@ -688,7 +687,7 @@ async def manager_fiche_create(
                 "form_data": form_data,
                 "error_message": exc.detail,
             },
-            status_code=400,
+            status_code=status_code,
         )
 
     return RedirectResponse(
@@ -1552,8 +1551,7 @@ async def capo_fiche_nuova_post(
             status_code=400,
         )
     except HTTPException as exc:
-        if exc.status_code != 400:
-            raise
+        status_code = exc.status_code or 400
         form_data = _build_fiche_form_data(
             cantiere_id=cantiere_id,
             macchinario_id=macchinario_id,
@@ -1586,7 +1584,7 @@ async def capo_fiche_nuova_post(
                 "form_data": form_data,
                 "error_message": exc.detail,
             },
-            status_code=400,
+            status_code=status_code,
         )
 
     return RedirectResponse(url="/capo/dashboard", status_code=303)
