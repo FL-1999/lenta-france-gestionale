@@ -3,15 +3,17 @@
 {% block title %}Cantieri – Manager{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-3">
-    <div>
+<div class="page-header">
+    <div class="page-header-main">
         <h1 class="page-title">🏗️ Cantieri</h1>
         <p class="page-subtitle">
             Elenco dei cantieri gestiti da Lenta France.
         </p>
     </div>
-    <div class="actions">
-        <a href="/manager/cantieri/nuovo" class="btn btn-primary">➕ Nuovo cantiere</a>
+    <div class="header-actions">
+        <a href="/manager/cantieri/nuovo" class="btn btn-primary">
+            ➕ Nuovo cantiere
+        </a>
     </div>
 </div>
 
@@ -24,22 +26,30 @@
                     <th>Codice</th>
                     <th>Località</th>
                     <th>Stato</th>
+                    <th class="table-actions-col">Azioni</th>
                 </tr>
             </thead>
             <tbody>
-                <!-- Dati di esempio -->
+                {% set cantieri_list = cantieri | default([]) %}
+                {% for cantiere in cantieri_list %}
                 <tr>
-                    <td>Cantiere Lyon</td>
-                    <td>LY-001</td>
-                    <td>Lyon</td>
-                    <td>Attivo</td>
+                    <td>{{ cantiere.nome or cantiere.name or '—' }}</td>
+                    <td>{{ cantiere.codice or cantiere.code or '—' }}</td>
+                    <td>{{ cantiere.localita or cantiere.citta or cantiere.city or '—' }}</td>
+                    <td>{{ cantiere.stato or cantiere.status or '—' }}</td>
+                    <td class="table-actions">
+                        <a href="/manager/cantieri/{{ cantiere.id }}/modifica" class="btn btn-secondary btn-sm">
+                            ✏️ Modifica
+                        </a>
+                    </td>
                 </tr>
+                {% else %}
                 <tr>
-                    <td>Cantiere Marseille</td>
-                    <td>MA-002</td>
-                    <td>Marseille</td>
-                    <td>In avvio</td>
+                    <td colspan="5" class="table-empty">
+                        Nessun cantiere registrato al momento.
+                    </td>
                 </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
