@@ -1688,7 +1688,11 @@ def manager_fiches(
     )
 
 
-@app.get("/manager/fiches/{fiche_id}", response_class=HTMLResponse)
+@app.get(
+    "/manager/fiches/{fiche_id}",
+    response_class=HTMLResponse,
+    name="manager_fiches_detail",
+)
 def manager_fiche_dettaglio(
     request: Request,
     fiche_id: int,
@@ -1705,17 +1709,21 @@ def manager_fiche_dettaglio(
                 joinedload(Fiche.site),
                 joinedload(Fiche.machine),
                 joinedload(Fiche.created_by),
+                joinedload(Fiche.stratigrafie),
+                joinedload(Fiche.layers),
             )
             .filter(Fiche.id == fiche_id)
             .first()
         )
         if not fiche:
-            raise HTTPException(status_code=404, detail="Fiche non trovata")
+            return RedirectResponse(
+                url=request.url_for("manager_fiches_list"), status_code=303
+            )
     finally:
         db.close()
 
     return templates.TemplateResponse(
-        "manager/fiche_dettaglio.html",
+        "manager/fiches/fiche_detail.html",
         {
             "request": request,
             "user": current_user,

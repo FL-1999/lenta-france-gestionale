@@ -52,6 +52,7 @@
                     <th>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</th>
                     <th>{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</th>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th class="text-end">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -63,10 +64,15 @@
                         <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
                         <td>{{ f.hours }}</td>
                         <td>{{ f.fiche_type.value if f.fiche_type else '-' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('manager_fiches_detail', fiche_id=f.id) }}" class="btn btn-sm btn-secondary">
+                                {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
+                            </a>
+                        </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="6" class="table-empty">
+                        <td colspan="7" class="table-empty">
                             {% if lang == 'fr' %}
                                 Aucune fiche enregistrée pour le moment.
                             {% else %}
