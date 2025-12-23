@@ -35,6 +35,14 @@
             {% set selected_site = form_data.get('cantiere_id', '') %}
             {% set selected_machine = form_data.get('macchinario_id', '') %}
             {% set selected_tipologia = form_data.get('tipologia_scavo', '') %}
+            {% set diametro_value_cm = "" %}
+            {% if form_data is defined %}
+              {% if form_data.get('diametro_palo_cm') %}
+                {% set diametro_value_cm = form_data.get('diametro_palo_cm') %}
+              {% elif form_data.get('diametro_palo') %}
+                {% set diametro_value_cm = (form_data.get('diametro_palo')|float * 100)|round(1) %}
+              {% endif %}
+            {% endif %}
 
             <form method="post" class="form-grid form-grid--single">
                 <div class="form-grid">
@@ -314,8 +322,8 @@
                     <div class="card fiche-sketch">
                         <div class="card-body">
                             <div class="element-drawing-label">
-                              {% if form_data is defined and form_data.get('diametro_palo_cm') %}
-                                {{ form_data.get('diametro_palo_cm') }} cm
+                              {% if diametro_value_cm %}
+                                {{ diametro_value_cm }} cm
                               {% else %}
                                 Inserisci diametro (cm)
                               {% endif %}
@@ -389,7 +397,7 @@
                                           min="1"
                                           class="form-control"
                                           placeholder="Es. 104"
-                                          value="{{ form_data.get('diametro_palo_cm','') if form_data is defined else '' }}"
+                                          value="{{ diametro_value_cm }}"
                                         >
                                         <span class="unit-badge">cm</span>
                                       </div>

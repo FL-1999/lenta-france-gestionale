@@ -35,6 +35,14 @@
             {% set selected_site = form_data.get('cantiere_id', '') %}
             {% set selected_machine = form_data.get('macchinario_id', '') %}
             {% set selected_tipologia = form_data.get('tipologia_scavo', '') %}
+            {% set diametro_value_cm = "" %}
+            {% if form_data is defined %}
+              {% if form_data.get('diametro_palo_cm') %}
+                {% set diametro_value_cm = form_data.get('diametro_palo_cm') %}
+              {% elif form_data.get('diametro_palo') %}
+                {% set diametro_value_cm = (form_data.get('diametro_palo')|float * 100)|round(1) %}
+              {% endif %}
+            {% endif %}
 
             <form method="post" class="form-grid form-grid--single">
                 <div class="form-grid">
@@ -296,6 +304,13 @@
 
                     <div class="card fiche-sketch">
                         <div class="card-body">
+                            <div class="element-drawing-label">
+                              {% if diametro_value_cm %}
+                                {{ diametro_value_cm }} cm
+                              {% else %}
+                                Inserisci diametro (cm)
+                              {% endif %}
+                            </div>
                             <svg id="fiche-sketch-svg" width="140" height="140" viewBox="0 0 140 140">
                                 <circle id="sketch-palo"
                                         cx="70" cy="70" r="35"
@@ -316,6 +331,11 @@
                                       text-anchor="middle"
                                       font-size="10"
                                       style="display:none;">
+                                  {% if diametro_value_cm %}
+                                    {{ diametro_value_cm }} cm
+                                  {% else %}
+                                    Inserisci diametro (cm)
+                                  {% endif %}
                                 </text>
 
                                 <text id="label-larghezza"
@@ -391,22 +411,17 @@
                                             </h4>
                                         </div>
                                         <div class="form-group geometry-field">
-                                            <label class="form-label geometry-label" for="diametro_palo">
-                                                {% if lang == 'fr' %}
-                                                    Diamètre du pieu
-                                                {% else %}
-                                                    Diametro palo
-                                                {% endif %}
-                                            </label>
+                                            <label class="form-label geometry-label" for="diametro_palo_cm">DIAMETRO PALO</label>
                                             <div class="input-with-unit">
-                                                <input id="diametro_palo"
-                                                       name="diametro_palo"
+                                                <input id="diametro_palo_cm"
+                                                       name="diametro_palo_cm"
                                                        type="number"
-                                                       step="0.01"
-                                                       min="0.01"
+                                                       step="1"
+                                                       min="1"
                                                        class="form-control geometry-input"
-                                                       value="{{ form_data.get('diametro_palo', '') }}" />
-                                                <span class="unit-badge">mm</span>
+                                                       placeholder="Es. 104"
+                                                       value="{{ diametro_value_cm }}" />
+                                                <span class="unit-badge">cm</span>
                                             </div>
                                         </div>
                                     </div>
@@ -540,10 +555,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const geomPalo    = document.querySelectorAll(".geom-palo");
     const geomParatia = document.querySelectorAll(".geom-paratia");
 
-    const diametroInput   = document.getElementById("diametro_palo");
+    const diametroInput   = document.getElementById("diametro_palo_cm");
     const larghezzaInput  = document.getElementById("larghezza_pannello");
     const altezzaInput    = document.getElementById("altezza_pannello");
 
+    const elementDrawingLabel = document.querySelector(".element-drawing-label");
     const labelDiametro  = document.getElementById("label-diametro");
     const labelLarghezza = document.getElementById("label-larghezza");
     const labelAltezza   = document.getElementById("label-altezza");
@@ -563,8 +579,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (tipo === "palo") {
             const d = diametroInput?.value || "";
-            labelDiametro.textContent = d ? d + " mm" : "";
-            labelDiametro.style.display = d ? "block" : "none";
+            const testoDiametro = d ? d + " cm" : "Inserisci diametro (cm)";
+
+            if (labelDiametro) {
+                labelDiametro.textContent = testoDiametro;
+                labelDiametro.style.display = "block";
+            }
+            if (elementDrawingLabel) {
+                elementDrawingLabel.textContent = testoDiametro;
+            }
 
             labelLarghezza.style.display = "none";
             labelAltezza.style.display   = "none";
@@ -579,12 +602,22 @@ document.addEventListener("DOMContentLoaded", function () {
             labelAltezza.textContent = h ? h + " cm" : "";
             labelAltezza.style.display = h ? "block" : "none";
 
-            labelDiametro.style.display = "none";
+            if (labelDiametro) {
+                labelDiametro.style.display = "none";
+            }
+            if (elementDrawingLabel) {
+                elementDrawingLabel.textContent = "Inserisci diametro (cm)";
+            }
 
         } else {
-            labelDiametro.style.display  = "none";
+            if (labelDiametro) {
+                labelDiametro.style.display  = "none";
+            }
             labelLarghezza.style.display = "none";
             labelAltezza.style.display   = "none";
+            if (elementDrawingLabel) {
+                elementDrawingLabel.textContent = "Inserisci diametro (cm)";
+            }
         }
     }
 

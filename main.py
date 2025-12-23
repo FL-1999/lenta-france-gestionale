@@ -192,16 +192,16 @@ async def set_language(lang_code: str, request: Request):
 # -------------------------------------------------
 
 def _validate_fiche_geometria(
-    diametro_palo: float | None,
+    diametro_palo_cm: float | None,
     larghezza_pannello: float | None,
     altezza_pannello: float | None,
     profondita_totale: float | None,
 ) -> None:
-    has_diametro = diametro_palo is not None
+    has_diametro = diametro_palo_cm is not None
     has_larghezza = larghezza_pannello is not None
     has_altezza = altezza_pannello is not None
 
-    if diametro_palo is not None and diametro_palo <= 0:
+    if diametro_palo_cm is not None and diametro_palo_cm <= 0:
         raise HTTPException(
             status_code=400,
             detail="Il diametro del palo deve essere maggiore di zero.",
@@ -269,6 +269,7 @@ def _build_fiche_form_data(
     materiale: str | None = None,
     profondita_totale: float | None = None,
     diametro_palo: float | None = None,
+    diametro_palo_cm: float | None = None,
     larghezza_pannello: float | None = None,
     altezza_pannello: float | None = None,
     strato_da: list[float] | None = None,
@@ -295,6 +296,10 @@ def _build_fiche_form_data(
             }
         )
 
+    cm_value = diametro_palo_cm
+    if cm_value is None and diametro_palo is not None:
+        cm_value = round(diametro_palo * 100, 1)
+
     return {
         "cantiere_id": _fmt(cantiere_id),
         "macchinario_id": _fmt(macchinario_id),
@@ -310,7 +315,7 @@ def _build_fiche_form_data(
         "materiale": materiale or "",
         "profondita_totale": _fmt(profondita_totale),
         "diametro_palo": _fmt(diametro_palo),
-        "diametro_palo_cm": _fmt(diametro_palo),
+        "diametro_palo_cm": _fmt(cm_value),
         "larghezza_pannello": _fmt(larghezza_pannello),
         "altezza_pannello": _fmt(altezza_pannello),
         "strati": strati,
@@ -555,10 +560,13 @@ async def manager_fiche_create(
         if macchinario_id not in (None, ""):
             parsed_machine_id = int(macchinario_id)
 
-        diametro_value = diametro_palo_cm
+        diametro_value_cm = diametro_palo_cm
+        diametro_value_m = (
+            diametro_value_cm / 100 if diametro_value_cm is not None else None
+        )
 
         _validate_fiche_geometria(
-            diametro_palo=diametro_value,
+            diametro_palo_cm=diametro_value_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             profondita_totale=profondita_totale,
@@ -590,7 +598,7 @@ async def manager_fiche_create(
                 stratigrafia=stratigrafia or None,
                 materiale=materiale or None,
                 profondita_totale=profondita_totale,
-                diametro_palo=diametro_value,
+                diametro_palo=diametro_value_m,
                 larghezza_pannello=larghezza_pannello,
                 altezza_pannello=altezza_pannello,
                 data_getto=data_getto,
@@ -634,7 +642,8 @@ async def manager_fiche_create(
             stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
-            diametro_palo=diametro_value,
+            diametro_palo=diametro_value_m,
+            diametro_palo_cm=diametro_value_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             strato_da=strato_da,
@@ -671,7 +680,8 @@ async def manager_fiche_create(
             stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
-            diametro_palo=diametro_value,
+            diametro_palo=diametro_value_m,
+            diametro_palo_cm=diametro_value_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             strato_da=strato_da,
@@ -1440,7 +1450,7 @@ async def capo_fiche_nuova_post(
     stratigrafia: str | None = Form(None),
     materiale: str | None = Form(None),
     profondita_totale: float | None = Form(None),
-    diametro_palo: float | None = Form(None),
+    diametro_palo_cm: float | None = Form(None),
     larghezza_pannello: float | None = Form(None),
     altezza_pannello: float | None = Form(None),
     strato_da: List[float] = Form(default_factory=list),
@@ -1455,8 +1465,13 @@ async def capo_fiche_nuova_post(
         if macchinario_id not in (None, ""):
             parsed_machine_id = int(macchinario_id)
 
+        diametro_value_cm = diametro_palo_cm
+        diametro_value_m = (
+            diametro_value_cm / 100 if diametro_value_cm is not None else None
+        )
+
         _validate_fiche_geometria(
-            diametro_palo=diametro_palo,
+            diametro_palo_cm=diametro_value_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             profondita_totale=profondita_totale,
@@ -1490,7 +1505,7 @@ async def capo_fiche_nuova_post(
                 stratigrafia=stratigrafia or None,
                 materiale=materiale or None,
                 profondita_totale=profondita_totale,
-                diametro_palo=diametro_palo,
+                diametro_palo=diametro_value_m,
                 larghezza_pannello=larghezza_pannello,
                 altezza_pannello=altezza_pannello,
                 data_getto=data_getto,
@@ -1533,7 +1548,8 @@ async def capo_fiche_nuova_post(
             stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
-            diametro_palo=diametro_palo,
+            diametro_palo=diametro_value_m,
+            diametro_palo_cm=diametro_value_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             strato_da=strato_da,
@@ -1569,7 +1585,8 @@ async def capo_fiche_nuova_post(
             stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
-            diametro_palo=diametro_palo,
+            diametro_palo=diametro_value_m,
+            diametro_palo_cm=diametro_value_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             strato_da=strato_da,
