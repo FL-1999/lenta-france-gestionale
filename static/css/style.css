@@ -1385,3 +1385,20 @@ label.form-label[for="profondita_totale"]{
 }
 
 }
+
+.unit-input{display:flex; gap:.6rem; align-items:center;}
+.unit-badge{
+  min-width: 56px;
+  text-align:center;
+  padding: .7rem .8rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-soft);
+  background: rgba(148,163,184,.10);
+  font-weight: 800;
+}
+
+.geometry-field .form-label{
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: .03em;
+}

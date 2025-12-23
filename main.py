@@ -310,6 +310,7 @@ def _build_fiche_form_data(
         "materiale": materiale or "",
         "profondita_totale": _fmt(profondita_totale),
         "diametro_palo": _fmt(diametro_palo),
+        "diametro_palo_cm": _fmt(diametro_palo),
         "larghezza_pannello": _fmt(larghezza_pannello),
         "altezza_pannello": _fmt(altezza_pannello),
         "strati": strati,
@@ -539,7 +540,7 @@ async def manager_fiche_create(
     stratigrafia: str | None = Form(None),
     materiale: str | None = Form(None),
     profondita_totale: float | None = Form(None),
-    diametro_palo: float | None = Form(None),
+    diametro_palo_cm: float | None = Form(None),
     larghezza_pannello: float | None = Form(None),
     altezza_pannello: float | None = Form(None),
     strato_da: List[float] = Form(default_factory=list),
@@ -554,8 +555,10 @@ async def manager_fiche_create(
         if macchinario_id not in (None, ""):
             parsed_machine_id = int(macchinario_id)
 
+        diametro_value = diametro_palo_cm
+
         _validate_fiche_geometria(
-            diametro_palo=diametro_palo,
+            diametro_palo=diametro_value,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             profondita_totale=profondita_totale,
@@ -587,7 +590,7 @@ async def manager_fiche_create(
                 stratigrafia=stratigrafia or None,
                 materiale=materiale or None,
                 profondita_totale=profondita_totale,
-                diametro_palo=diametro_palo,
+                diametro_palo=diametro_value,
                 larghezza_pannello=larghezza_pannello,
                 altezza_pannello=altezza_pannello,
                 data_getto=data_getto,
@@ -631,7 +634,7 @@ async def manager_fiche_create(
             stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
-            diametro_palo=diametro_palo,
+            diametro_palo=diametro_value,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             strato_da=strato_da,
@@ -668,7 +671,7 @@ async def manager_fiche_create(
             stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
-            diametro_palo=diametro_palo,
+            diametro_palo=diametro_value,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
             strato_da=strato_da,
