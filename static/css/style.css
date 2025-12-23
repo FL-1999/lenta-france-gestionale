@@ -1370,4 +1370,18 @@ body {
     .fiche-sketch {
         max-width: 100%;
     }
+    /* FICHE: campo profondità totale (metri scavati) più evidente */
+label.form-label[for="profondita_totale"]{
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  letter-spacing: .01em;
+}
+
+#profondita_totale{
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  padding-top: .85rem;
+  padding-bottom: .85rem;
+}
+
 }
