@@ -14,6 +14,9 @@
 {% set altezza_cm = fiche.altezza_pannello %}
 {% set stratigrafie = fiche.stratigrafie or [] %}
 {% set strat_layers = fiche.layers or [] %}
+{% set tipologia_scavo = fiche.tipologia_scavo|lower if fiche.tipologia_scavo else "" %}
+{% set is_palo = tipologia_scavo == "palo" %}
+{% set is_paratia = tipologia_scavo == "paratia" %}
 
 <div class="page-header">
     <div class="page-header-main">
@@ -53,9 +56,9 @@
         <div class="dashboard-kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-top">📏 {% if lang == 'fr' %}Profondeur totale{% else %}Profondità totale{% endif %}</div>
-                <div class="kpi-value">
-                    {{ fiche.profondita_totale if fiche.profondita_totale is not none else "-" }}
-                    <span class="kpi-sub">m</span>
+                <div class="kpi-value kpi-value--emphasis">
+                    <span class="kpi-number kpi-number--xl">{{ fiche.profondita_totale if fiche.profondita_totale is not none else "-" }}</span>
+                    <span class="unit-badge unit-badge--kpi">m</span>
                 </div>
                 <div class="kpi-sub">
                     {% if lang == 'fr' %}
@@ -76,45 +79,49 @@
                         Type de scavo indiqué
                     {% else %}
                         Tipologia di scavo indicata
-                    {% endif %}
+                {% endif %}
                 </div>
             </div>
 
-            <div class="kpi-card">
-                <div class="kpi-top">🧭 {% if lang == 'fr' %}Diamètre du pieu{% else %}Diametro palo{% endif %}</div>
-                <div class="kpi-value">
-                    {% if diametro_cm is not none %}
-                        {{ "%.1f"|format(diametro_cm) }} cm
-                    {% else %}
-                        -
-                    {% endif %}
+            {% if is_palo %}
+                <div class="kpi-card">
+                    <div class="kpi-top">🧭 {% if lang == 'fr' %}Diamètre du pieu{% else %}Diametro palo{% endif %}</div>
+                    <div class="kpi-value kpi-value--geometry">
+                        {% if diametro_cm is not none %}
+                            <span class="kpi-number">{{ "%.1f"|format(diametro_cm) }}</span>
+                            <span class="unit-badge unit-badge--kpi">cm</span>
+                        {% else %}
+                            <span class="kpi-number">-</span>
+                        {% endif %}
+                    </div>
+                    <div class="kpi-sub">
+                        {% if lang == 'fr' %}
+                            Valeur affichée en centimètres
+                        {% else %}
+                            Valore mostrato in centimetri
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="kpi-sub">
-                    {% if lang == 'fr' %}
-                        Valeur affichée en centimètres
-                    {% else %}
-                        Valore mostrato in centimetri
-                    {% endif %}
+            {% elif is_paratia %}
+                <div class="kpi-card">
+                    <div class="kpi-top">📐 {% if lang == 'fr' %}Paroi (L × H){% else %}Paratia (L × H){% endif %}</div>
+                    <div class="kpi-value kpi-value--geometry">
+                        {% if larghezza_cm is not none or altezza_cm is not none %}
+                            <span class="kpi-number">{{ larghezza_cm|round(1) if larghezza_cm is not none else "-" }} × {{ altezza_cm|round(1) if altezza_cm is not none else "-" }}</span>
+                            <span class="unit-badge unit-badge--kpi">cm</span>
+                        {% else %}
+                            <span class="kpi-number">-</span>
+                        {% endif %}
+                    </div>
+                    <div class="kpi-sub">
+                        {% if lang == 'fr' %}
+                            Dimensions indiquées pour la paroi
+                        {% else %}
+                            Dimensioni indicate per la paratia
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-
-            <div class="kpi-card">
-                <div class="kpi-top">📐 {% if lang == 'fr' %}Paroi (L × H){% else %}Paratia (L × H){% endif %}</div>
-                <div class="kpi-value">
-                    {% if larghezza_cm is not none or altezza_cm is not none %}
-                        {{ larghezza_cm|round(1) if larghezza_cm is not none else "-" }} × {{ altezza_cm|round(1) if altezza_cm is not none else "-" }} cm
-                    {% else %}
-                        -
-                    {% endif %}
-                </div>
-                <div class="kpi-sub">
-                    {% if lang == 'fr' %}
-                        Dimensions indiquées pour la paroi
-                    {% else %}
-                        Dimensioni indicate per la paratia
-                    {% endif %}
-                </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -180,10 +187,20 @@
         </div>
     </div>
     <div class="card-body">
-        {% if fiche.stratigrafia %}
-            <div style="background: rgba(0,0,0,0.03); border: 1px solid var(--color-border-soft); border-radius: var(--radius-md); padding: 1rem; white-space: pre-wrap; line-height: 1.5;">
-                {{ fiche.stratigrafia }}
-            </div>
+        {% set strat_text = fiche.stratigrafia %}
+        {% set strat_is_long = strat_text|length > 180 if strat_text else False %}
+        {% if strat_text %}
+            {% if strat_is_long %}
+                <div class="stratigrafia-card">
+                    <div class="stratigrafia-content">
+                        {{ strat_text }}
+                    </div>
+                </div>
+            {% else %}
+                <div class="stratigrafia-content stratigrafia-inline">
+                    {{ strat_text }}
+                </div>
+            {% endif %}
         {% else %}
             <p class="text-muted">
                 {% if lang == 'fr' %}
@@ -195,50 +212,58 @@
         {% endif %}
 
         {% if stratigrafie %}
-            <div class="table-responsive" style="margin-top: 1rem;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>{% if lang == 'fr' %}Prof. de{% else %}Prof. da{% endif %} (m)</th>
-                            <th>{% if lang == 'fr' %}Prof. à{% else %}Prof. a{% endif %} (m)</th>
-                            <th>{% if lang == 'fr' %}Type de terrain{% else %}Tipo terreno{% endif %}</th>
-                            <th>Note</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for layer in stratigrafie|sort(attribute='da_profondita') %}
-                            <tr>
-                                <td>{{ layer.da_profondita }}</td>
-                                <td>{{ layer.a_profondita }}</td>
-                                <td>{{ layer.materiale }}</td>
-                                <td>-</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>{% if lang == 'fr' %}Prof. de{% else %}Prof. da{% endif %} (m)</th>
+                                    <th>{% if lang == 'fr' %}Prof. à{% else %}Prof. a{% endif %} (m)</th>
+                                    <th>{% if lang == 'fr' %}Type de terrain{% else %}Tipo terreno{% endif %}</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for layer in stratigrafie|sort(attribute='da_profondita') %}
+                                    <tr>
+                                        <td>{{ layer.da_profondita }}</td>
+                                        <td>{{ layer.a_profondita }}</td>
+                                        <td>{{ layer.materiale }}</td>
+                                        <td>-</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         {% elif strat_layers %}
-            <div class="table-responsive" style="margin-top: 1rem;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>{% if lang == 'fr' %}Strate{% else %}Strato{% endif %}</th>
-                            <th>{% if lang == 'fr' %}Épaisseur{% else %}Spessore{% endif %} (m)</th>
-                            <th>{% if lang == 'fr' %}Type de terrain{% else %}Tipo terreno{% endif %}</th>
-                            <th>Note</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for layer in strat_layers|sort(attribute='layer_index') %}
-                            <tr>
-                                <td>{{ layer.layer_index }}</td>
-                                <td>{{ layer.thickness_m }}</td>
-                                <td>{{ layer.material }}</td>
-                                <td>{{ layer.notes or "-" }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>{% if lang == 'fr' %}Strate{% else %}Strato{% endif %}</th>
+                                    <th>{% if lang == 'fr' %}Épaisseur{% else %}Spessore{% endif %} (m)</th>
+                                    <th>{% if lang == 'fr' %}Type de terrain{% else %}Tipo terreno{% endif %}</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for layer in strat_layers|sort(attribute='layer_index') %}
+                                    <tr>
+                                        <td>{{ layer.layer_index }}</td>
+                                        <td>{{ layer.thickness_m }}</td>
+                                        <td>{{ layer.material }}</td>
+                                        <td>{{ layer.notes or "-" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         {% else %}
             <p class="text-muted" style="margin-top: 1rem;">

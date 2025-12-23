@@ -691,6 +691,25 @@ body {
     overflow-x: auto;
 }
 
+.stratigrafia-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card-subtle);
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
+}
+
+.stratigrafia-content {
+    white-space: pre-wrap;
+    line-height: 1.6;
+    color: var(--color-text-main);
+}
+
+.stratigrafia-inline {
+    margin: 0 0 var(--space-3) 0;
+}
+
 .data-table,
 .table {
     width: 100%;
@@ -931,6 +950,39 @@ body {
 .kpi-value {
     font-size: var(--font-size-kpi-value);
     font-weight: 800;
+    color: var(--color-kpi-value);
+}
+
+.kpi-value--emphasis,
+.kpi-value--geometry {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.kpi-number {
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.kpi-number--xl {
+    font-size: 2.3rem;
+}
+
+.unit-badge--kpi {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--color-kpi-text);
+    padding: 0.35rem 0.85rem;
+    min-width: 44px;
+    font-size: 0.92rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="light"] .unit-badge--kpi {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
     color: var(--color-kpi-value);
 }
 
