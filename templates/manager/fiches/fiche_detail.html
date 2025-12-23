@@ -1,0 +1,255 @@
+{% extends "shared/base.html" %}
+{% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
+    {% if lang == 'fr' %}
+        Détail fiche – Manager
+    {% else %}
+        Dettaglio fiche – Manager
+    {% endif %}
+{% endblock %}
+{% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% set diametro_cm = fiche.diametro_palo * 100 if fiche.diametro_palo is not none else None %}
+{% set larghezza_cm = fiche.larghezza_pannello * 100 if fiche.larghezza_pannello is not none else None %}
+{% set altezza_cm = fiche.altezza_pannello %}
+{% set stratigrafie = fiche.stratigrafie or [] %}
+{% set strat_layers = fiche.layers or [] %}
+
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}
+                Gestion des fiches
+            {% else %}
+                Gestione fiches
+            {% endif %}
+        </p>
+        <h1 class="page-title">
+            {% if lang == 'fr' %}Détail fiche{% else %}Dettaglio fiche{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Vue complète de la fiche sélectionnée.
+            {% else %}
+                Vista completa della fiche selezionata.
+            {% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_fiches_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour à la liste{% else %}Torna alla lista{% endif %}
+        </a>
+    </div>
+</div>
+
+<section class="card">
+    <div class="card-header">
+        <div class="card-title">
+            📌
+            {% if lang == 'fr' %}Informations principales{% else %}Informazioni principali{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="dashboard-kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-top">📏 {% if lang == 'fr' %}Profondeur totale{% else %}Profondità totale{% endif %}</div>
+                <div class="kpi-value">
+                    {{ fiche.profondita_totale if fiche.profondita_totale is not none else "-" }}
+                    <span class="kpi-sub">m</span>
+                </div>
+                <div class="kpi-sub">
+                    {% if lang == 'fr' %}
+                        Profondeur finale de l'excavation
+                    {% else %}
+                        Profondità finale dello scavo
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">🛠️ {% if lang == 'fr' %}Typologie{% else %}Tipologia{% endif %}</div>
+                <div class="kpi-value">
+                    {{ fiche.tipologia_scavo or "-" }}
+                </div>
+                <div class="kpi-sub">
+                    {% if lang == 'fr' %}
+                        Type de scavo indiqué
+                    {% else %}
+                        Tipologia di scavo indicata
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">🧭 {% if lang == 'fr' %}Diamètre du pieu{% else %}Diametro palo{% endif %}</div>
+                <div class="kpi-value">
+                    {% if diametro_cm is not none %}
+                        {{ "%.1f"|format(diametro_cm) }} cm
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+                <div class="kpi-sub">
+                    {% if lang == 'fr' %}
+                        Valeur affichée en centimètres
+                    {% else %}
+                        Valore mostrato in centimetri
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">📐 {% if lang == 'fr' %}Paroi (L × H){% else %}Paratia (L × H){% endif %}</div>
+                <div class="kpi-value">
+                    {% if larghezza_cm is not none or altezza_cm is not none %}
+                        {{ larghezza_cm|round(1) if larghezza_cm is not none else "-" }} × {{ altezza_cm|round(1) if altezza_cm is not none else "-" }} cm
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+                <div class="kpi-sub">
+                    {% if lang == 'fr' %}
+                        Dimensions indiquées pour la paroi
+                    {% else %}
+                        Dimensioni indicate per la paratia
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            📋 {% if lang == 'fr' %}Informations de base{% else %}Informazioni base{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Date{% else %}Data{% endif %}</p>
+                <p class="mb-0"><strong>{{ fiche.date.strftime("%d/%m/%Y") if fiche.date else "-" }}</strong></p>
+            </div>
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Cantiere{% else %}Cantiere{% endif %}</p>
+                <p class="mb-0">
+                    {% if fiche.site %}
+                        {{ fiche.site.name }}{% if fiche.site.code %} ({{ fiche.site.code }}){% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Machine{% else %}Macchinario{% endif %}</p>
+                <p class="mb-0">
+                    {% if fiche.machine %}
+                        {{ fiche.machine.name }}{% if fiche.machine.machine_type %} – {{ fiche.machine.machine_type.value }}{% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</p>
+                <p class="mb-0">{{ fiche.operator or (fiche.created_by.full_name if fiche.created_by else "-") }}</p>
+            </div>
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</p>
+                <p class="mb-0">{{ "%.1f"|format(fiche.hours) if fiche.hours is not none else "-" }}</p>
+            </div>
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</p>
+                <p class="mb-0">
+                    {% if fiche.fiche_type %}
+                        {{ fiche.fiche_type.value }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            🪨 Stratigrafia
+        </div>
+    </div>
+    <div class="card-body">
+        {% if fiche.stratigrafia %}
+            <div style="background: rgba(0,0,0,0.03); border: 1px solid var(--color-border-soft); border-radius: var(--radius-md); padding: 1rem; white-space: pre-wrap; line-height: 1.5;">
+                {{ fiche.stratigrafia }}
+            </div>
+        {% else %}
+            <p class="text-muted">
+                {% if lang == 'fr' %}
+                    Pas de description textuelle fournie.
+                {% else %}
+                    Nessuna descrizione testuale fornita.
+                {% endif %}
+            </p>
+        {% endif %}
+
+        {% if stratigrafie %}
+            <div class="table-responsive" style="margin-top: 1rem;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'fr' %}Prof. de{% else %}Prof. da{% endif %} (m)</th>
+                            <th>{% if lang == 'fr' %}Prof. à{% else %}Prof. a{% endif %} (m)</th>
+                            <th>{% if lang == 'fr' %}Type de terrain{% else %}Tipo terreno{% endif %}</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for layer in stratigrafie|sort(attribute='da_profondita') %}
+                            <tr>
+                                <td>{{ layer.da_profondita }}</td>
+                                <td>{{ layer.a_profondita }}</td>
+                                <td>{{ layer.materiale }}</td>
+                                <td>-</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% elif strat_layers %}
+            <div class="table-responsive" style="margin-top: 1rem;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'fr' %}Strate{% else %}Strato{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Épaisseur{% else %}Spessore{% endif %} (m)</th>
+                            <th>{% if lang == 'fr' %}Type de terrain{% else %}Tipo terreno{% endif %}</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for layer in strat_layers|sort(attribute='layer_index') %}
+                            <tr>
+                                <td>{{ layer.layer_index }}</td>
+                                <td>{{ layer.thickness_m }}</td>
+                                <td>{{ layer.material }}</td>
+                                <td>{{ layer.notes or "-" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted" style="margin-top: 1rem;">
+                {% if lang == 'fr' %}
+                    Aucune stratigraphie structurée enregistrée.
+                {% else %}
+                    Nessuna stratigrafia strutturata registrata.
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</section>
+
+{% endblock %}
