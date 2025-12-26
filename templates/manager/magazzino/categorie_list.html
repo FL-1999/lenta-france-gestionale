@@ -1,0 +1,91 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Catégories magasin{% else %}Macro categorie magazzino{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">
+            🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Gérez les macro-catégories du magasin.
+            {% else %}
+                Gestisci le macro categorie del magazzino.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+        <a href="{{ url_for('manager_magazzino_categorie_new') }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvelle catégorie{% else %}Nuova categoria{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if categorie %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                            <th>Slug</th>
+                            <th>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for categoria in categorie %}
+                            <tr>
+                                <td>{{ categoria.nome }}</td>
+                                <td>{{ categoria.slug }}</td>
+                                <td>{{ categoria.ordine }}</td>
+                                <td>
+                                    {% if categoria.attiva %}
+                                        <span class="badge badge-success">{% if lang == 'fr' %}Active{% else %}Attiva{% endif %}</span>
+                                    {% else %}
+                                        <span class="badge badge-muted">{% if lang == 'fr' %}Inactive{% else %}Disattiva{% endif %}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="display:flex; gap: var(--space-2); flex-wrap: wrap;">
+                                        <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn btn-secondary btn-sm">
+                                            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                                        </a>
+                                        {% if categoria.attiva %}
+                                            <form method="post" action="{{ url_for('manager_magazzino_categorie_disable', categoria_id=categoria.id) }}">
+                                                <button type="submit" class="btn btn-danger btn-sm"
+                                                        onclick="return confirm('{% if lang == 'fr' %}Désactiver cette catégorie ?{% else %}Disattivare questa categoria?{% endif %}');">
+                                                    📴 {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="magazzino-item-desc">
+                {% if lang == 'fr' %}
+                    Aucune catégorie configurée.
+                {% else %}
+                    Nessuna categoria configurata.
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

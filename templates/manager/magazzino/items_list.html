@@ -24,6 +24,9 @@
         <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
             🧾 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
         </a>
+        <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
+            🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
+        </a>
         <button type="button" class="btn btn-primary" data-modal-open="new-item">
             ➕ {% if lang == 'fr' %}Nouvelle carte{% else %}Nuova card{% endif %}
         </button>
@@ -50,10 +53,17 @@
                 </label>
                 <select id="categoria" name="categoria" class="form-select">
                     <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
-                    {% for categoria in categorie %}
-                        <option value="{{ categoria.key }}" {% if filters.categoria == categoria.key %}selected{% endif %}>
-                            {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                    {% if fallback_categoria.id is none %}
+                        <option value="none" {% if filters.categoria == 'none' %}selected{% endif %}>
+                            {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
                         </option>
+                    {% endif %}
+                    {% for categoria in categorie %}
+                        {% if categoria.id is not none %}
+                            <option value="{{ categoria.id }}" {% if filters.categoria == categoria.id|string %}selected{% endif %}>
+                                {{ categoria.nome }}
+                            </option>
+                        {% endif %}
                     {% endfor %}
                 </select>
             </div>
@@ -105,12 +115,12 @@
 {% endif %}
 
 {% for categoria in categorie %}
-    {% set category_items = items_by_categoria.get(categoria.key, []) %}
+    {% set category_items = items_by_categoria.get(categoria.id, []) %}
     {% if category_items %}
         <section class="magazzino-category">
             <div class="magazzino-category-header">
                 <h2>
-                    {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                    {{ categoria.nome }}
                 </h2>
             </div>
             <div class="magazzino-items-grid">
@@ -221,11 +231,14 @@
                     </div>
                     <div class="form-field">
                         <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>
-                        <select name="categoria" required>
+                        <select name="categoria_id">
+                            <option value="">{% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}</option>
                             {% for categoria in categorie %}
-                                <option value="{{ categoria.key }}">
-                                    {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
-                                </option>
+                                {% if categoria.id is not none %}
+                                    <option value="{{ categoria.id }}" {% if default_categoria_id == categoria.id %}selected{% endif %}>
+                                        {{ categoria.nome }}
+                                    </option>
+                                {% endif %}
                             {% endfor %}
                         </select>
                     </div>

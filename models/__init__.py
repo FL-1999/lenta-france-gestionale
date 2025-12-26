@@ -60,12 +60,6 @@ class MagazzinoRichiestaStatusEnum(PyEnum):
     evasa = "EVASA"
 
 
-class MagazzinoCategoriaEnum(PyEnum):
-    accessori_macchinari = "accessori_macchinari"
-    bulloni = "bulloni"
-    vari = "vari"
-
-
 class MagazzinoMovimentoTipoEnum(PyEnum):
     scarico = "scarico"
     carico = "carico"
@@ -303,6 +297,19 @@ class StratigraphyLayer(Base):
         return f"<StratigraphyLayer id={self.id} fiche_id={self.fiche_id} layer_index={self.layer_index}>"
 
 
+class MagazzinoCategoria(Base, TimestampMixin):
+    __tablename__ = "magazzino_categorie"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(255), nullable=False, unique=True)
+    slug = Column(String(255), nullable=False, unique=True)
+    ordine = Column(Integer, nullable=False, default=0)
+    attiva = Column(Boolean, default=True, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<MagazzinoCategoria id={self.id} nome={self.nome} slug={self.slug}>"
+
+
 class MagazzinoItem(Base, TimestampMixin):
     __tablename__ = "magazzino_items"
 
@@ -311,15 +318,12 @@ class MagazzinoItem(Base, TimestampMixin):
     codice = Column(String(120), nullable=False, default="")
     descrizione = Column(Text, nullable=True)
     unita_misura = Column(String(50), nullable=False, default="pz")
-    categoria = Column(
-        Enum(MagazzinoCategoriaEnum),
-        nullable=False,
-        default=MagazzinoCategoriaEnum.vari,
-    )
+    categoria_id = Column(Integer, ForeignKey("magazzino_categorie.id"), nullable=True)
     quantita_disponibile = Column(Float, nullable=False, default=0.0)
     soglia_minima = Column(Float, nullable=True)
     attivo = Column(Boolean, default=True, nullable=False)
 
+    categoria = relationship("MagazzinoCategoria")
     righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")
 
     def __repr__(self) -> str:

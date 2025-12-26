@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -11,7 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user_html
 from database import get_db
 from models import (
-    MagazzinoCategoriaEnum,
+    MagazzinoCategoria,
     MagazzinoItem,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
@@ -26,24 +27,6 @@ from models import (
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(tags=["magazzino"])
-
-MAGAZZINO_CATEGORIE = [
-    {
-        "key": MagazzinoCategoriaEnum.accessori_macchinari.value,
-        "label_it": "Accessori macchinari",
-        "label_fr": "Accessoires machines",
-    },
-    {
-        "key": MagazzinoCategoriaEnum.bulloni.value,
-        "label_it": "Bulloni",
-        "label_fr": "Boulons",
-    },
-    {
-        "key": MagazzinoCategoriaEnum.vari.value,
-        "label_it": "Vari",
-        "label_fr": "Divers",
-    },
-]
 
 
 def ensure_caposquadra_or_manager(user: User) -> None:
@@ -77,13 +60,48 @@ def _parse_status(value: str | None) -> MagazzinoRichiestaStatusEnum | None:
     return None
 
 
-def _parse_categoria(value: str | None) -> MagazzinoCategoriaEnum:
-    if not value:
-        return MagazzinoCategoriaEnum.vari
-    for categoria in MagazzinoCategoriaEnum:
-        if value.lower() in (categoria.value.lower(), categoria.name.lower()):
-            return categoria
-    return MagazzinoCategoriaEnum.vari
+def _parse_categoria_id(value: str | None) -> int | None:
+    if value in (None, "", "none"):
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+def _slugify(value: str) -> str:
+    cleaned = (value or "").strip().lower()
+    if not cleaned:
+        return "categoria"
+    slug_chars: list[str] = []
+    last_dash = False
+    for char in cleaned:
+        if char.isalnum():
+            slug_chars.append(char)
+            last_dash = False
+        else:
+            if not last_dash:
+                slug_chars.append("-")
+                last_dash = True
+    slug = "".join(slug_chars).strip("-")
+    return slug or "categoria"
+
+
+def _ensure_unique_slug(
+    db: Session,
+    base_slug: str,
+    exclude_id: int | None = None,
+) -> str:
+    slug = base_slug
+    counter = 2
+    while True:
+        query = db.query(MagazzinoCategoria).filter(MagazzinoCategoria.slug == slug)
+        if exclude_id is not None:
+            query = query.filter(MagazzinoCategoria.id != exclude_id)
+        if not query.first():
+            return slug
+        slug = f"{base_slug}-{counter}"
+        counter += 1
 
 
 def _parse_date(value: str | None) -> date | None:
@@ -95,18 +113,45 @@ def _parse_date(value: str | None) -> date | None:
         return None
 
 
-def _group_items_by_categoria(items: list[MagazzinoItem]) -> dict[str, list[MagazzinoItem]]:
-    grouped = {categoria["key"]: [] for categoria in MAGAZZINO_CATEGORIE}
+def _group_items_by_categoria(
+    items: list[MagazzinoItem],
+    categorie: list[MagazzinoCategoria],
+    fallback_categoria_id: int | None,
+) -> dict[int | None, list[MagazzinoItem]]:
+    grouped: dict[int | None, list[MagazzinoItem]] = {
+        categoria.id: [] for categoria in categorie
+    }
+    if fallback_categoria_id not in grouped:
+        grouped[fallback_categoria_id] = []
     for item in items:
-        categoria = (
-            item.categoria.value
-            if item.categoria is not None
-            else MagazzinoCategoriaEnum.vari.value
-        )
-        if categoria not in grouped:
-            categoria = MagazzinoCategoriaEnum.vari.value
-        grouped[categoria].append(item)
+        categoria_id = item.categoria_id if item.categoria_id is not None else fallback_categoria_id
+        if categoria_id not in grouped:
+            grouped[categoria_id] = []
+        grouped[categoria_id].append(item)
     return grouped
+
+
+def _load_categorie(
+    db: Session,
+    include_inactive: bool = False,
+) -> tuple[list[MagazzinoCategoria | SimpleNamespace], MagazzinoCategoria | SimpleNamespace, int | None]:
+    query = db.query(MagazzinoCategoria)
+    if not include_inactive:
+        query = query.filter(MagazzinoCategoria.attiva.is_(True))
+    categorie = query.order_by(MagazzinoCategoria.ordine.asc(), MagazzinoCategoria.nome.asc()).all()
+    vari_categoria = next(
+        (categoria for categoria in categorie if categoria.slug == "vari"),
+        None,
+    )
+    if vari_categoria:
+        return categorie, vari_categoria, vari_categoria.id
+    fallback = SimpleNamespace(
+        id=None,
+        nome="Senza categoria",
+        slug="senza-categoria",
+        attiva=True,
+    )
+    return [*categorie, fallback], fallback, None
 
 
 @router.get(
@@ -124,6 +169,10 @@ def capo_magazzino_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_caposquadra_or_manager(current_user)
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
+        db,
+        include_inactive=True,
+    )
     query = db.query(MagazzinoItem).filter(MagazzinoItem.attivo.is_(True))
     q_value = (q or "").strip()
     if q_value:
@@ -134,14 +183,19 @@ def capo_magazzino_list(
                 MagazzinoItem.nome.ilike(like_pattern),
             )
         )
-    categoria_enum = None
-    if categoria:
-        try:
-            categoria_enum = MagazzinoCategoriaEnum(categoria)
-        except ValueError:
-            categoria_enum = None
-    if categoria_enum:
-        query = query.filter(MagazzinoItem.categoria == categoria_enum)
+    categoria_id = _parse_categoria_id(categoria)
+    if categoria == "none":
+        query = query.filter(MagazzinoItem.categoria_id.is_(None))
+    elif categoria_id is not None:
+        if fallback_categoria_id and categoria_id == fallback_categoria_id:
+            query = query.filter(
+                or_(
+                    MagazzinoItem.categoria_id == categoria_id,
+                    MagazzinoItem.categoria_id.is_(None),
+                )
+            )
+        else:
+            query = query.filter(MagazzinoItem.categoria_id == categoria_id)
     if sotto_soglia == 1:
         query = query.filter(
             MagazzinoItem.soglia_minima.isnot(None),
@@ -149,11 +203,23 @@ def capo_magazzino_list(
         )
     if esauriti == 1:
         query = query.filter(MagazzinoItem.quantita_disponibile <= 0)
-    items = query.order_by(MagazzinoItem.categoria.asc(), MagazzinoItem.nome.asc()).all()
-    items_by_categoria = _group_items_by_categoria(items)
+    items = (
+        query.outerjoin(MagazzinoCategoria)
+        .order_by(
+            MagazzinoCategoria.ordine.asc(),
+            MagazzinoCategoria.nome.asc(),
+            MagazzinoItem.nome.asc(),
+        )
+        .all()
+    )
+    items_by_categoria = _group_items_by_categoria(
+        items,
+        [categoria for categoria in categorie if isinstance(categoria, MagazzinoCategoria)],
+        fallback_categoria_id,
+    )
     filters = {
         "q": q_value,
-        "categoria": categoria_enum.value if categoria_enum else "",
+        "categoria": categoria or "",
         "sotto_soglia": sotto_soglia == 1,
         "esauriti": esauriti == 1,
     }
@@ -162,7 +228,8 @@ def capo_magazzino_list(
         {
             "request": request,
             "user": current_user,
-            "categorie": MAGAZZINO_CATEGORIE,
+            "categorie": categorie,
+            "fallback_categoria": fallback_categoria,
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
             "filters": filters,
@@ -353,6 +420,10 @@ def manager_magazzino_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
+        db,
+        include_inactive=True,
+    )
     query = db.query(MagazzinoItem)
     q_value = (q or "").strip()
     if q_value:
@@ -363,14 +434,19 @@ def manager_magazzino_list(
                 MagazzinoItem.nome.ilike(like_pattern),
             )
         )
-    categoria_enum = None
-    if categoria:
-        try:
-            categoria_enum = MagazzinoCategoriaEnum(categoria)
-        except ValueError:
-            categoria_enum = None
-    if categoria_enum:
-        query = query.filter(MagazzinoItem.categoria == categoria_enum)
+    categoria_id = _parse_categoria_id(categoria)
+    if categoria == "none":
+        query = query.filter(MagazzinoItem.categoria_id.is_(None))
+    elif categoria_id is not None:
+        if fallback_categoria_id and categoria_id == fallback_categoria_id:
+            query = query.filter(
+                or_(
+                    MagazzinoItem.categoria_id == categoria_id,
+                    MagazzinoItem.categoria_id.is_(None),
+                )
+            )
+        else:
+            query = query.filter(MagazzinoItem.categoria_id == categoria_id)
     if attivi == 1:
         query = query.filter(MagazzinoItem.attivo.is_(True))
     if sotto_soglia == 1:
@@ -380,17 +456,29 @@ def manager_magazzino_list(
         )
     if esauriti == 1:
         query = query.filter(MagazzinoItem.quantita_disponibile <= 0)
-    items = query.order_by(MagazzinoItem.categoria.asc(), MagazzinoItem.nome.asc()).all()
+    items = (
+        query.outerjoin(MagazzinoCategoria)
+        .order_by(
+            MagazzinoCategoria.ordine.asc(),
+            MagazzinoCategoria.nome.asc(),
+            MagazzinoItem.nome.asc(),
+        )
+        .all()
+    )
     cantieri = (
         db.query(Site)
         .filter(Site.is_active.is_(True))
         .order_by(Site.name.asc())
         .all()
     )
-    items_by_categoria = _group_items_by_categoria(items)
+    items_by_categoria = _group_items_by_categoria(
+        items,
+        [categoria for categoria in categorie if isinstance(categoria, MagazzinoCategoria)],
+        fallback_categoria_id,
+    )
     filters = {
         "q": q_value,
-        "categoria": categoria_enum.value if categoria_enum else "",
+        "categoria": categoria or "",
         "attivi": attivi == 1,
         "sotto_soglia": sotto_soglia == 1,
         "esauriti": esauriti == 1,
@@ -400,7 +488,9 @@ def manager_magazzino_list(
         {
             "request": request,
             "user": current_user,
-            "categorie": MAGAZZINO_CATEGORIE,
+            "categorie": categorie,
+            "fallback_categoria": fallback_categoria,
+            "default_categoria_id": fallback_categoria_id,
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
             "filters": filters,
@@ -507,6 +597,255 @@ def manager_magazzino_movimenti(
 
 
 @router.get(
+    "/manager/magazzino/categorie",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_list",
+)
+def manager_magazzino_categorie_list(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categorie = (
+        db.query(MagazzinoCategoria)
+        .order_by(MagazzinoCategoria.ordine.asc(), MagazzinoCategoria.nome.asc())
+        .all()
+    )
+    return templates.TemplateResponse(
+        "manager/magazzino/categorie_list.html",
+        {
+            "request": request,
+            "user": current_user,
+            "categorie": categorie,
+        },
+    )
+
+
+@router.get(
+    "/manager/magazzino/categorie/nuova",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_new",
+)
+def manager_magazzino_categorie_new(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    return templates.TemplateResponse(
+        "manager/magazzino/categorie_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "categoria": None,
+            "form_action": "manager_magazzino_categorie_create",
+            "title": "Nuova macro categoria",
+        },
+    )
+
+
+@router.post(
+    "/manager/magazzino/categorie/nuova",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_create",
+)
+def manager_magazzino_categorie_create(
+    request: Request,
+    nome: str = Form(...),
+    ordine: str | None = Form("0"),
+    attiva: bool = Form(False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    nome_value = nome.strip()
+    if not nome_value:
+        return templates.TemplateResponse(
+            "manager/magazzino/categorie_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "categoria": None,
+                "form_action": "manager_magazzino_categorie_create",
+                "title": "Nuova macro categoria",
+                "error_message": "Il nome della categoria è obbligatorio.",
+            },
+        )
+    existing = (
+        db.query(MagazzinoCategoria)
+        .filter(func.lower(MagazzinoCategoria.nome) == nome_value.lower())
+        .first()
+    )
+    if existing:
+        return templates.TemplateResponse(
+            "manager/magazzino/categorie_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "categoria": None,
+                "form_action": "manager_magazzino_categorie_create",
+                "title": "Nuova macro categoria",
+                "error_message": "Esiste già una categoria con questo nome.",
+            },
+        )
+    try:
+        ordine_value = int(ordine or 0)
+    except ValueError:
+        ordine_value = 0
+    base_slug = _slugify(nome_value)
+    slug = _ensure_unique_slug(db, base_slug)
+    categoria = MagazzinoCategoria(
+        nome=nome_value,
+        slug=slug,
+        ordine=ordine_value,
+        attiva=attiva,
+    )
+    db.add(categoria)
+    db.commit()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.get(
+    "/manager/magazzino/categorie/{categoria_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_edit",
+)
+def manager_magazzino_categorie_edit(
+    categoria_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == categoria_id)
+        .first()
+    )
+    if not categoria:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_list"),
+            status_code=303,
+        )
+    return templates.TemplateResponse(
+        "manager/magazzino/categorie_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "categoria": categoria,
+            "form_action": "manager_magazzino_categorie_update",
+            "title": "Modifica macro categoria",
+        },
+    )
+
+
+@router.post(
+    "/manager/magazzino/categorie/{categoria_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_update",
+)
+def manager_magazzino_categorie_update(
+    categoria_id: int,
+    request: Request,
+    nome: str = Form(...),
+    ordine: str | None = Form("0"),
+    attiva: bool = Form(False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == categoria_id)
+        .first()
+    )
+    if not categoria:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_list"),
+            status_code=303,
+        )
+    nome_value = nome.strip()
+    if not nome_value:
+        return templates.TemplateResponse(
+            "manager/magazzino/categorie_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "categoria": categoria,
+                "form_action": "manager_magazzino_categorie_update",
+                "title": "Modifica macro categoria",
+                "error_message": "Il nome della categoria è obbligatorio.",
+            },
+        )
+    existing = (
+        db.query(MagazzinoCategoria)
+        .filter(
+            func.lower(MagazzinoCategoria.nome) == nome_value.lower(),
+            MagazzinoCategoria.id != categoria.id,
+        )
+        .first()
+    )
+    if existing:
+        return templates.TemplateResponse(
+            "manager/magazzino/categorie_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "categoria": categoria,
+                "form_action": "manager_magazzino_categorie_update",
+                "title": "Modifica macro categoria",
+                "error_message": "Esiste già una categoria con questo nome.",
+            },
+        )
+    try:
+        ordine_value = int(ordine or 0)
+    except ValueError:
+        ordine_value = categoria.ordine or 0
+    if categoria.nome != nome_value:
+        base_slug = _slugify(nome_value)
+        categoria.slug = _ensure_unique_slug(db, base_slug, exclude_id=categoria.id)
+    categoria.nome = nome_value
+    categoria.ordine = ordine_value
+    categoria.attiva = attiva
+    db.add(categoria)
+    db.commit()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/categorie/{categoria_id}/disattiva",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_disable",
+)
+def manager_magazzino_categorie_disable(
+    categoria_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == categoria_id)
+        .first()
+    )
+    if categoria:
+        categoria.attiva = False
+        db.add(categoria)
+        db.commit()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.get(
     "/manager/magazzino/nuovo",
     response_class=HTMLResponse,
     name="manager_magazzino_new",
@@ -514,15 +853,19 @@ def manager_magazzino_movimenti(
 def manager_magazzino_new(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
 ):
     ensure_magazzino_manager(current_user)
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(db, include_inactive=True)
     return templates.TemplateResponse(
         "manager/magazzino/item_new.html",
         {
             "request": request,
             "user": current_user,
             "item": None,
-            "categorie": MAGAZZINO_CATEGORIE,
+            "categorie": categorie,
+            "fallback_categoria": fallback_categoria,
+            "default_categoria_id": fallback_categoria_id,
             "form_action": "manager_magazzino_create",
             "title": "Nuovo articolo",
         },
@@ -539,7 +882,7 @@ def manager_magazzino_create(
     nome: str = Form(...),
     codice: str = Form(...),
     descrizione: str = Form(""),
-    categoria: str = Form(MagazzinoCategoriaEnum.vari.value),
+    categoria_id: str | None = Form(None),
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
     attivo: bool = Form(False),
@@ -552,7 +895,7 @@ def manager_magazzino_create(
         nome=nome.strip(),
         codice=codice.strip(),
         descrizione=(descrizione or "").strip() or None,
-        categoria=_parse_categoria(categoria),
+        categoria_id=_parse_categoria_id(categoria_id),
         quantita_disponibile=_parse_float(quantita_disponibile) or 0.0,
         soglia_minima=_parse_float(soglia_minima),
         attivo=attivo,
@@ -595,6 +938,7 @@ def manager_magazzino_edit(
             url=request.url_for("manager_magazzino_list"),
             status_code=303,
         )
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(db, include_inactive=True)
 
     return templates.TemplateResponse(
         "manager/magazzino/item_edit.html",
@@ -602,7 +946,9 @@ def manager_magazzino_edit(
             "request": request,
             "user": current_user,
             "item": item,
-            "categorie": MAGAZZINO_CATEGORIE,
+            "categorie": categorie,
+            "fallback_categoria": fallback_categoria,
+            "default_categoria_id": fallback_categoria_id,
             "form_action": "manager_magazzino_update",
             "title": "Modifica articolo",
         },
@@ -620,7 +966,7 @@ def manager_magazzino_update(
     nome: str = Form(...),
     codice: str = Form(...),
     descrizione: str = Form(""),
-    categoria: str = Form(MagazzinoCategoriaEnum.vari.value),
+    categoria_id: str | None = Form(None),
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
     attivo: bool = Form(False),
@@ -633,14 +979,14 @@ def manager_magazzino_update(
         return RedirectResponse(
             url=request.url_for("manager_magazzino_list"),
             status_code=303,
-    )
+        )
 
     quantita_precedente = item.quantita_disponibile or 0.0
 
     item.nome = nome.strip()
     item.codice = codice.strip()
     item.descrizione = (descrizione or "").strip() or None
-    item.categoria = _parse_categoria(categoria)
+    item.categoria_id = _parse_categoria_id(categoria_id)
     item.quantita_disponibile = _parse_float(quantita_disponibile) or 0.0
     item.soglia_minima = _parse_float(soglia_minima)
     item.attivo = attivo
