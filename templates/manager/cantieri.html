@@ -48,6 +48,7 @@
           <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
           <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
           <th>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}</th>
+          <th>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</th>
           <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
           <th class="text-center">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
           <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
@@ -56,10 +57,12 @@
       <tbody>
         {% set sites_list = sites | default([]) %}
         {% for s in sites_list %}
+        {% set caposquadra = site_caposquadra_map.get(s.id) if site_caposquadra_map else None %}
         <tr>
           <td><strong>{{ s.name or s.nome or "-" }}</strong></td>
           <td>{{ s.code or "-" }}</td>
           <td>{{ s.city or s.location or "-" }}</td>
+          <td>{{ caposquadra.full_name if caposquadra and caposquadra.full_name else "—" }}</td>
           <td>{{ s.status.value if s.status else "-" }}</td>
           <td class="text-center">
             {% if s.is_active %}
@@ -76,7 +79,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="table-empty">
+          <td colspan="7" class="table-empty">
             {% if lang == 'fr' %}
               Aucun chantier enregistré pour le moment.
             {% else %}
