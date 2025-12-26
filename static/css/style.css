@@ -49,6 +49,8 @@
     /* BADGES */
     --color-badge-success-bg: #16a34a;
     --color-badge-danger-bg: #dc2626;
+    --color-badge-muted-bg: #64748b;
+    --color-badge-secondary-bg: #475569;
     --color-badge-text: #f9fafb;
 
     /* TABLE */
@@ -143,6 +145,13 @@
     --color-btn-secondary-text: #111827;
     --shadow-btn-secondary: 0 0 10px rgba(15, 23, 42, 0.08);
     --shadow-btn-secondary-hover: 0 0 16px rgba(15, 23, 42, 0.12);
+
+    /* BADGES */
+    --color-badge-success-bg: #16a34a;
+    --color-badge-danger-bg: #dc2626;
+    --color-badge-muted-bg: #94a3b8;
+    --color-badge-secondary-bg: #64748b;
+    --color-badge-text: #f9fafb;
 
     --color-table-text: #292524;
     --color-table-head-text: #1f2937;
@@ -583,6 +592,16 @@ body {
 
 .badge-danger {
     background: var(--color-badge-danger-bg);
+    color: var(--color-badge-text);
+}
+
+.badge-muted {
+    background: var(--color-badge-muted-bg);
+    color: var(--color-badge-text);
+}
+
+.badge-secondary {
+    background: var(--color-badge-secondary-bg);
     color: var(--color-badge-text);
 }
 
