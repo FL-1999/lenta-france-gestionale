@@ -30,16 +30,90 @@
     </div>
 </div>
 
+<div class="card" style="margin-bottom: var(--space-3);">
+    <div class="card-header">
+        <div class="card-title">
+            🔍 {% if lang == 'fr' %}Filtres magasin{% else %}Filtri magazzino{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="get" class="form-grid">
+            <div class="form-group">
+                <label for="search_q" class="form-label">
+                    {% if lang == 'fr' %}Code ou nom{% else %}Codice o nome{% endif %}
+                </label>
+                <input type="text" id="search_q" name="q" class="form-control" value="{{ filters.q or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="categoria" class="form-label">
+                    {% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}
+                </label>
+                <select id="categoria" name="categoria" class="form-select">
+                    <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
+                    {% for categoria in categorie %}
+                        <option value="{{ categoria.key }}" {% if filters.categoria == categoria.key %}selected{% endif %}>
+                            {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">{% if lang == 'fr' %}Disponibilité{% else %}Disponibilità{% endif %}</label>
+                <label class="checkbox">
+                    <input type="checkbox" name="attivi" value="1" {% if filters.attivi %}checked{% endif %}>
+                    <span>{% if lang == 'fr' %}Actifs uniquement{% else %}Solo attivi{% endif %}</span>
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" name="sotto_soglia" value="1" {% if filters.sotto_soglia %}checked{% endif %}>
+                    <span>{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" name="esauriti" value="1" {% if filters.esauriti %}checked{% endif %}>
+                    <span>{% if lang == 'fr' %}Épuisés{% else %}Solo esauriti{% endif %}</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="form-label">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</label>
+                <div style="display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary">
+                        {% if lang == 'fr' %}Filtrer{% else %}Filtra{% endif %}
+                    </button>
+                    <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+                        {% if lang == 'fr' %}Réinitialiser{% else %}Reset filtri{% endif %}
+                    </a>
+                </div>
+            </div>
+        </form>
+        <div style="margin-top: var(--space-2); font-weight: 600;">
+            {% if lang == 'fr' %}Résultats{% else %}Risultati{% endif %}: {{ items_count }}
+        </div>
+    </div>
+</div>
+
+{% if items_count == 0 %}
+    <div class="card" style="margin-bottom: var(--space-3);">
+        <div class="card-body">
+            <p class="magazzino-item-desc">
+                {% if lang == 'fr' %}
+                    Aucun résultat avec ces filtres.
+                {% else %}
+                    Nessun risultato con questi filtri.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+{% endif %}
+
 {% for categoria in categorie %}
     {% set category_items = items_by_categoria.get(categoria.key, []) %}
-    <section class="magazzino-category">
-        <div class="magazzino-category-header">
-            <h2>
-                {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
-            </h2>
-        </div>
-        <div class="magazzino-items-grid">
-            {% if category_items %}
+    {% if category_items %}
+        <section class="magazzino-category">
+            <div class="magazzino-category-header">
+                <h2>
+                    {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                </h2>
+            </div>
+            <div class="magazzino-items-grid">
                 {% for item in category_items %}
                     {% set non_disponibile = (not item.attivo) or (item.quantita_disponibile is not none and item.quantita_disponibile <= 0) %}
                     {% set sotto_soglia = (not non_disponibile) and (item.soglia_minima is not none) and (item.quantita_disponibile is not none) and (item.quantita_disponibile < item.soglia_minima) %}
@@ -120,21 +194,9 @@
                         </div>
                     </div>
                 {% endfor %}
-            {% else %}
-                <div class="card magazzino-item-card">
-                    <div class="card-body">
-                        <p class="magazzino-item-desc">
-                            {% if lang == 'fr' %}
-                                Aucun article dans cette catégorie.
-                            {% else %}
-                                Nessun articolo in questa categoria.
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-            {% endif %}
-        </div>
-    </section>
+            </div>
+        </section>
+    {% endif %}
 {% endfor %}
 
 <div class="modal" id="new-item-modal" aria-hidden="true">
