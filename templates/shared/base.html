@@ -65,6 +65,17 @@
                 {% endif %}
             </a>
 
+            {% if user and (user.role.value == 'admin' or user.is_magazzino_manager) %}
+                <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link">
+                    📦
+                    {% if lang == 'fr' %}
+                        Magasin
+                    {% else %}
+                        Magazzino
+                    {% endif %}
+                </a>
+            {% endif %}
+
             <!-- Lasciamo i veicoli per dopo, quando avremo le route pronte -->
             {# 
             <a href="{{ url_for('manager_veicoli_list') }}" class="nav-link">
@@ -85,6 +96,17 @@
                     Caposquadra
                 {% endif %}
             </a>
+
+            {% if user and user.role.value == 'caposquadra' %}
+                <a href="{{ url_for('capo_magazzino_list') }}" class="nav-link">
+                    📦
+                    {% if lang == 'fr' %}
+                        Magasin
+                    {% else %}
+                        Magazzino
+                    {% endif %}
+                </a>
+            {% endif %}
 
             <a href="/docs" class="nav-link">
                 📘
