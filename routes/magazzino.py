@@ -116,17 +116,47 @@ def _group_items_by_categoria(items: list[MagazzinoItem]) -> dict[str, list[Maga
 )
 def capo_magazzino_list(
     request: Request,
+    q: str | None = None,
+    categoria: str | None = None,
+    sotto_soglia: int | None = None,
+    esauriti: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_caposquadra_or_manager(current_user)
-    items = (
-        db.query(MagazzinoItem)
-        .filter(MagazzinoItem.attivo.is_(True))
-        .order_by(MagazzinoItem.categoria.asc(), MagazzinoItem.nome.asc())
-        .all()
-    )
+    query = db.query(MagazzinoItem).filter(MagazzinoItem.attivo.is_(True))
+    q_value = (q or "").strip()
+    if q_value:
+        like_pattern = f"%{q_value}%"
+        query = query.filter(
+            or_(
+                MagazzinoItem.codice.ilike(like_pattern),
+                MagazzinoItem.nome.ilike(like_pattern),
+            )
+        )
+    categoria_enum = None
+    if categoria:
+        try:
+            categoria_enum = MagazzinoCategoriaEnum(categoria)
+        except ValueError:
+            categoria_enum = None
+    if categoria_enum:
+        query = query.filter(MagazzinoItem.categoria == categoria_enum)
+    if sotto_soglia == 1:
+        query = query.filter(
+            MagazzinoItem.soglia_minima.isnot(None),
+            MagazzinoItem.quantita_disponibile <= MagazzinoItem.soglia_minima,
+        )
+    if esauriti == 1:
+        query = query.filter(MagazzinoItem.quantita_disponibile <= 0)
+    items = query.order_by(MagazzinoItem.categoria.asc(), MagazzinoItem.nome.asc()).all()
     items_by_categoria = _group_items_by_categoria(items)
+    filters = {
+        "q": q_value,
+        "categoria": categoria_enum.value if categoria_enum else "",
+        "sotto_soglia": sotto_soglia == 1,
+        "esauriti": esauriti == 1,
+    }
     return templates.TemplateResponse(
         "capo/magazzino/items_list.html",
         {
@@ -134,6 +164,8 @@ def capo_magazzino_list(
             "user": current_user,
             "categorie": MAGAZZINO_CATEGORIE,
             "items_by_categoria": items_by_categoria,
+            "items_count": len(items),
+            "filters": filters,
         },
     )
 
