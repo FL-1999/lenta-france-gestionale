@@ -27,6 +27,9 @@
         <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
             🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
         </a>
+        <button type="button" class="btn btn-secondary" data-modal-open="new-macro">
+            ➕ {% if lang == 'fr' %}Nouvelle macro{% else %}Nuova macro{% endif %}
+        </button>
         <button type="button" class="btn btn-primary" data-modal-open="new-item">
             ➕ {% if lang == 'fr' %}Nouvelle carte{% else %}Nuova card{% endif %}
         </button>
@@ -209,6 +212,48 @@
     {% endif %}
 {% endfor %}
 
+<div class="modal" id="new-macro-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-content card">
+        <div class="card-body">
+            <div class="modal-header">
+                <h2>
+                    {% if lang == 'fr' %}Nouvelle macro catégorie{% else %}Nuova macro categoria{% endif %}
+                </h2>
+                <button type="button" class="btn btn-secondary btn-sm" data-modal-close>✖</button>
+            </div>
+            <form method="post" action="{{ url_for('manager_magazzino_categorie_create') }}">
+                <div class="form-grid-2">
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
+                        <input type="text" name="nome" required>
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</label>
+                        <input type="number" name="ordine" min="0" value="0">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label class="checkbox">
+                        <input type="checkbox" name="attiva" checked>
+                        <span>{% if lang == 'fr' %}Active{% else %}Attiva{% endif %}</span>
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-modal-close>
+                        {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal" id="new-item-modal" aria-hidden="true">
     <div class="modal-backdrop" data-modal-close></div>
     <div class="modal-content card">
@@ -279,38 +324,48 @@
 
 <script>
     (() => {
-        const openButton = document.querySelector('[data-modal-open="new-item"]');
-        const modal = document.getElementById('new-item-modal');
-        if (!openButton || !modal) {
-            return;
-        }
-        const closeButtons = modal.querySelectorAll('[data-modal-close]');
+        const openButtons = document.querySelectorAll('[data-modal-open]');
         const focusableSelector = 'input, select, textarea, button';
 
-        const openModal = () => {
+        const openModal = (modal, trigger) => {
             modal.classList.add('is-open');
             modal.setAttribute('aria-hidden', 'false');
             const firstInput = modal.querySelector(focusableSelector);
             if (firstInput) {
                 firstInput.focus();
             }
+            modal.dataset.modalTrigger = trigger;
         };
 
-        const closeModal = () => {
+        const closeModal = (modal) => {
             modal.classList.remove('is-open');
             modal.setAttribute('aria-hidden', 'true');
-            openButton.focus();
+            const triggerSelector = modal.dataset.modalTrigger;
+            if (triggerSelector) {
+                const trigger = document.querySelector(`[data-modal-open="${triggerSelector}"]`);
+                if (trigger) {
+                    trigger.focus();
+                }
+            }
         };
 
-        openButton.addEventListener('click', openModal);
-        closeButtons.forEach((button) => {
-            button.addEventListener('click', closeModal);
-        });
-
-        modal.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
-                closeModal();
+        openButtons.forEach((button) => {
+            const modalName = button.getAttribute('data-modal-open');
+            const modal = document.getElementById(`${modalName}-modal`);
+            if (!modal) {
+                return;
             }
+            const closeButtons = modal.querySelectorAll('[data-modal-close]');
+            button.addEventListener('click', () => openModal(modal, modalName));
+            closeButtons.forEach((closeButton) => {
+                closeButton.addEventListener('click', () => closeModal(modal));
+            });
+
+            modal.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeModal(modal);
+                }
+            });
         });
     })();
 </script>
