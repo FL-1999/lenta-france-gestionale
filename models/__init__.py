@@ -66,6 +66,12 @@ class MagazzinoCategoriaEnum(PyEnum):
     vari = "vari"
 
 
+class MagazzinoMovimentoTipoEnum(PyEnum):
+    carico = "CARICO"
+    scarico = "SCARICO"
+    rettifica = "RETTIFICA"
+
+
 # ============================================================
 # MIXIN PER TIMESTAMP
 # ============================================================
@@ -299,9 +305,9 @@ class MagazzinoItem(Base, TimestampMixin):
     __tablename__ = "magazzino_items"
 
     id = Column(Integer, primary_key=True, index=True)
+    codice = Column(String(100), nullable=False, unique=True, index=True)
     nome = Column(String(255), nullable=False)
     descrizione = Column(Text, nullable=True)
-    unita_misura = Column(String(50), nullable=False)
     categoria = Column(
         Enum(MagazzinoCategoriaEnum),
         nullable=False,
@@ -312,9 +318,30 @@ class MagazzinoItem(Base, TimestampMixin):
     attivo = Column(Boolean, default=True, nullable=False)
 
     righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")
+    movimenti = relationship("MagazzinoMovimento", back_populates="item")
 
     def __repr__(self) -> str:
-        return f"<MagazzinoItem id={self.id} nome={self.nome} unita={self.unita_misura}>"
+        return f"<MagazzinoItem id={self.id} codice={self.codice} nome={self.nome}>"
+
+
+class MagazzinoMovimento(Base):
+    __tablename__ = "magazzino_movimenti"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=False)
+    tipo = Column(Enum(MagazzinoMovimentoTipoEnum), nullable=False)
+    quantita = Column(Float, nullable=False)
+    cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    note = Column(Text, nullable=True)
+    creato_da_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    riferimento_richiesta_id = Column(Integer, ForeignKey("magazzino_richieste.id"), nullable=True)
+
+    item = relationship("MagazzinoItem", back_populates="movimenti")
+    cantiere = relationship("Site")
+    creato_da = relationship("User")
+    riferimento_richiesta = relationship("MagazzinoRichiesta")
 
 
 class MagazzinoRichiesta(Base, TimestampMixin):

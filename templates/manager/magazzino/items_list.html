@@ -21,6 +21,12 @@
         <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
             🧾 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
         </a>
+        <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
+            📋 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
+        </a>
+        <a href="{{ url_for('manager_magazzino_scarico') }}" class="btn btn-primary">
+            📤 {% if lang == 'fr' %}Sortie{% else %}Scarico{% endif %}
+        </a>
         <a href="{{ url_for('manager_magazzino_new') }}" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvel article{% else %}Nuovo articolo{% endif %}
         </a>
@@ -51,7 +57,7 @@
                                 {% endif %}
                             </div>
                             <p class="magazzino-item-meta">
-                                <span>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}: {{ item.unita_misura }}</span>
+                                <span>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}: {{ item.codice }}</span>
                             </p>
                             <p class="magazzino-item-desc">{{ item.descrizione or '—' }}</p>
                             <div class="magazzino-item-stats">

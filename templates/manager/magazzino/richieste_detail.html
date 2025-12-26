@@ -65,7 +65,7 @@
             <thead>
                 <tr>
                     <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
                     <th class="text-right">{% if lang == 'fr' %}Quantité demandée{% else %}Quantità richiesta{% endif %}</th>
                 </tr>
             </thead>
@@ -73,7 +73,7 @@
                 {% for riga in richiesta.righe %}
                     <tr>
                         <td>{{ riga.item.nome }}</td>
-                        <td>{{ riga.item.unita_misura }}</td>
+                        <td>{{ riga.item.codice }}</td>
                         <td class="text-right">{{ riga.quantita_richiesta }}</td>
                     </tr>
                 {% else %}

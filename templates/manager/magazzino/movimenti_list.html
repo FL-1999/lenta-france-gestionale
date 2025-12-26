@@ -1,0 +1,64 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Mouvements magasin – Manager{% else %}Movimenti magazzino – Manager{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">📋 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Derniers mouvements de stock enregistrés.
+            {% else %}
+                Ultimi movimenti di magazzino registrati.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Type{% else %}Tipo{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Créé par{% else %}Creato da{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for movimento in movimenti %}
+                    <tr>
+                        <td>{{ movimento.created_at.strftime('%d/%m/%Y %H:%M') if movimento.created_at else '—' }}</td>
+                        <td>{{ movimento.item.nome if movimento.item else '—' }}</td>
+                        <td>{{ movimento.item.codice if movimento.item else '—' }}</td>
+                        <td>{{ movimento.tipo.value if movimento.tipo else '—' }}</td>
+                        <td class="text-right">{{ movimento.quantita }}</td>
+                        <td>{{ movimento.cantiere.name if movimento.cantiere else '—' }}</td>
+                        <td>{{ movimento.creato_da.full_name if movimento.creato_da else '—' }}</td>
+                        <td>{{ movimento.note or '—' }}</td>
+                    </tr>
+                {% else %}
+                    <tr class="table-empty">
+                        <td colspan="8">—</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

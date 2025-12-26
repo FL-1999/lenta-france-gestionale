@@ -12,10 +12,13 @@ from database import get_db
 from models import (
     MagazzinoCategoriaEnum,
     MagazzinoItem,
+    MagazzinoMovimento,
+    MagazzinoMovimentoTipoEnum,
     MagazzinoRichiesta,
     MagazzinoRichiestaRiga,
     MagazzinoRichiestaStatusEnum,
     RoleEnum,
+    Site,
     User,
 )
 
@@ -82,6 +85,17 @@ def _parse_categoria(value: str | None) -> MagazzinoCategoriaEnum:
     return MagazzinoCategoriaEnum.vari
 
 
+def _validate_codice_unique(
+    db: Session,
+    codice: str,
+    item_id: int | None = None,
+) -> bool:
+    query = db.query(MagazzinoItem).filter(MagazzinoItem.codice == codice)
+    if item_id is not None:
+        query = query.filter(MagazzinoItem.id != item_id)
+    return query.first() is None
+
+
 def _group_items_by_categoria(items: list[MagazzinoItem]) -> dict[str, list[MagazzinoItem]]:
     grouped = {categoria["key"]: [] for categoria in MAGAZZINO_CATEGORIE}
     for item in items:
@@ -94,6 +108,51 @@ def _group_items_by_categoria(items: list[MagazzinoItem]) -> dict[str, list[Maga
             categoria = MagazzinoCategoriaEnum.vari.value
         grouped[categoria].append(item)
     return grouped
+
+
+def _render_item_form(
+    request: Request,
+    current_user: User,
+    item: MagazzinoItem | None,
+    form_action: str,
+    title: str,
+    error_message: str | None = None,
+):
+    return templates.TemplateResponse(
+        "manager/magazzino/item_form.html",
+        {
+            "request": request,
+            "user": current_user,
+            "item": item,
+            "categorie": MAGAZZINO_CATEGORIE,
+            "form_action": form_action,
+            "title": title,
+            "error_message": error_message,
+        },
+        status_code=400 if error_message else 200,
+    )
+
+
+def _render_scarico_form(
+    request: Request,
+    current_user: User,
+    items: list[MagazzinoItem],
+    cantieri: list[Site],
+    error_message: str | None = None,
+    form_data: dict[str, str] | None = None,
+):
+    return templates.TemplateResponse(
+        "manager/magazzino/scarico.html",
+        {
+            "request": request,
+            "user": current_user,
+            "items": items,
+            "cantieri": cantieri,
+            "error_message": error_message,
+            "form_data": form_data or {},
+        },
+        status_code=400 if error_message else 200,
+    )
 
 
 @router.get(
@@ -321,6 +380,193 @@ def manager_magazzino_list(
 
 
 @router.get(
+    "/manager/magazzino/movimenti",
+    response_class=HTMLResponse,
+    name="manager_magazzino_movimenti",
+)
+def manager_magazzino_movimenti(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    movimenti = (
+        db.query(MagazzinoMovimento)
+        .options(
+            joinedload(MagazzinoMovimento.item),
+            joinedload(MagazzinoMovimento.cantiere),
+            joinedload(MagazzinoMovimento.creato_da),
+        )
+        .order_by(MagazzinoMovimento.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    return templates.TemplateResponse(
+        "manager/magazzino/movimenti_list.html",
+        {"request": request, "user": current_user, "movimenti": movimenti},
+    )
+
+
+@router.get(
+    "/manager/magazzino/scarico",
+    response_class=HTMLResponse,
+    name="manager_magazzino_scarico",
+)
+def manager_magazzino_scarico(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    items = (
+        db.query(MagazzinoItem)
+        .filter(MagazzinoItem.attivo.is_(True))
+        .order_by(MagazzinoItem.nome.asc())
+        .all()
+    )
+    cantieri = (
+        db.query(Site)
+        .filter(Site.is_active.is_(True))
+        .order_by(Site.name.asc())
+        .all()
+    )
+    return _render_scarico_form(
+        request=request,
+        current_user=current_user,
+        items=items,
+        cantieri=cantieri,
+    )
+
+
+@router.post(
+    "/manager/magazzino/scarico",
+    response_class=HTMLResponse,
+    name="manager_magazzino_scarico_create",
+)
+def manager_magazzino_scarico_create(
+    request: Request,
+    item_id: int = Form(...),
+    quantita: str = Form(...),
+    cantiere_id: str | None = Form(""),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    items = (
+        db.query(MagazzinoItem)
+        .filter(MagazzinoItem.attivo.is_(True))
+        .order_by(MagazzinoItem.nome.asc())
+        .all()
+    )
+    cantieri = (
+        db.query(Site)
+        .filter(Site.is_active.is_(True))
+        .order_by(Site.name.asc())
+        .all()
+    )
+
+    quantita_value = _parse_float(quantita)
+    if quantita_value is None or quantita_value <= 0:
+        return _render_scarico_form(
+            request=request,
+            current_user=current_user,
+            items=items,
+            cantieri=cantieri,
+            error_message="Quantità non valida.",
+            form_data={
+                "item_id": str(item_id),
+                "quantita": quantita,
+                "cantiere_id": cantiere_id or "",
+                "note": note,
+            },
+        )
+
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item or not item.attivo:
+        return _render_scarico_form(
+            request=request,
+            current_user=current_user,
+            items=items,
+            cantieri=cantieri,
+            error_message="Articolo non disponibile.",
+            form_data={
+                "item_id": str(item_id),
+                "quantita": quantita,
+                "cantiere_id": cantiere_id or "",
+                "note": note,
+            },
+        )
+
+    if item.quantita_disponibile < quantita_value:
+        return _render_scarico_form(
+            request=request,
+            current_user=current_user,
+            items=items,
+            cantieri=cantieri,
+            error_message="Quantità insufficiente in magazzino.",
+            form_data={
+                "item_id": str(item_id),
+                "quantita": quantita,
+                "cantiere_id": cantiere_id or "",
+                "note": note,
+            },
+        )
+
+    cantiere_id_value = None
+    if cantiere_id:
+        try:
+            cantiere_id_value = int(cantiere_id)
+        except ValueError:
+            return _render_scarico_form(
+                request=request,
+                current_user=current_user,
+                items=items,
+                cantieri=cantieri,
+                error_message="Cantiere non valido.",
+                form_data={
+                    "item_id": str(item_id),
+                    "quantita": quantita,
+                    "cantiere_id": cantiere_id,
+                    "note": note,
+                },
+            )
+        cantiere = db.query(Site).filter(Site.id == cantiere_id_value).first()
+        if not cantiere:
+            return _render_scarico_form(
+                request=request,
+                current_user=current_user,
+                items=items,
+                cantieri=cantieri,
+                error_message="Cantiere non valido.",
+                form_data={
+                    "item_id": str(item_id),
+                    "quantita": quantita,
+                    "cantiere_id": cantiere_id,
+                    "note": note,
+                },
+            )
+
+    with db.begin():
+        item.quantita_disponibile -= quantita_value
+        movimento = MagazzinoMovimento(
+            item_id=item.id,
+            tipo=MagazzinoMovimentoTipoEnum.scarico,
+            quantita=quantita_value,
+            cantiere_id=cantiere_id_value,
+            note=(note or "").strip() or None,
+            creato_da_user_id=current_user.id,
+        )
+        db.add(item)
+        db.add(movimento)
+
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_list"),
+        status_code=303,
+    )
+
+
+@router.get(
     "/manager/magazzino/nuovo",
     response_class=HTMLResponse,
     name="manager_magazzino_new",
@@ -330,16 +576,12 @@ def manager_magazzino_new(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    return templates.TemplateResponse(
-        "manager/magazzino/item_new.html",
-        {
-            "request": request,
-            "user": current_user,
-            "item": None,
-            "categorie": MAGAZZINO_CATEGORIE,
-            "form_action": "manager_magazzino_create",
-            "title": "Nuovo articolo",
-        },
+    return _render_item_form(
+        request=request,
+        current_user=current_user,
+        item=None,
+        form_action="manager_magazzino_create",
+        title="Nuovo articolo",
     )
 
 
@@ -350,8 +592,8 @@ def manager_magazzino_new(
 )
 def manager_magazzino_create(
     request: Request,
+    codice: str = Form(...),
     nome: str = Form(...),
-    unita_misura: str = Form(...),
     descrizione: str = Form(""),
     categoria: str = Form(MagazzinoCategoriaEnum.vari.value),
     quantita_disponibile: str | None = Form(""),
@@ -362,9 +604,38 @@ def manager_magazzino_create(
 ):
     ensure_magazzino_manager(current_user)
 
+    codice_value = codice.strip()
+    if not codice_value:
+        return _render_item_form(
+            request=request,
+            current_user=current_user,
+            item=None,
+            form_action="manager_magazzino_create",
+            title="Nuovo articolo",
+            error_message="Il codice è obbligatorio.",
+        )
+    if not _validate_codice_unique(db, codice_value):
+        temp_item = MagazzinoItem(
+            codice=codice_value,
+            nome=nome.strip(),
+            descrizione=(descrizione or "").strip() or None,
+            categoria=_parse_categoria(categoria),
+            quantita_disponibile=_parse_float(quantita_disponibile) or 0.0,
+            soglia_minima=_parse_float(soglia_minima),
+            attivo=attivo,
+        )
+        return _render_item_form(
+            request=request,
+            current_user=current_user,
+            item=temp_item,
+            form_action="manager_magazzino_create",
+            title="Nuovo articolo",
+            error_message="Codice già presente. Scegli un valore univoco.",
+        )
+
     item = MagazzinoItem(
+        codice=codice_value,
         nome=nome.strip(),
-        unita_misura=unita_misura.strip(),
         descrizione=(descrizione or "").strip() or None,
         categoria=_parse_categoria(categoria),
         quantita_disponibile=_parse_float(quantita_disponibile) or 0.0,
@@ -399,16 +670,12 @@ def manager_magazzino_edit(
             status_code=303,
         )
 
-    return templates.TemplateResponse(
-        "manager/magazzino/item_edit.html",
-        {
-            "request": request,
-            "user": current_user,
-            "item": item,
-            "categorie": MAGAZZINO_CATEGORIE,
-            "form_action": "manager_magazzino_update",
-            "title": "Modifica articolo",
-        },
+    return _render_item_form(
+        request=request,
+        current_user=current_user,
+        item=item,
+        form_action="manager_magazzino_update",
+        title="Modifica articolo",
     )
 
 
@@ -420,8 +687,8 @@ def manager_magazzino_edit(
 def manager_magazzino_update(
     item_id: int,
     request: Request,
+    codice: str = Form(...),
     nome: str = Form(...),
-    unita_misura: str = Form(...),
     descrizione: str = Form(""),
     categoria: str = Form(MagazzinoCategoriaEnum.vari.value),
     quantita_disponibile: str | None = Form(""),
@@ -438,8 +705,42 @@ def manager_magazzino_update(
             status_code=303,
         )
 
+    codice_value = codice.strip()
+    if not codice_value:
+        item.codice = codice_value
+        item.nome = nome.strip()
+        item.descrizione = (descrizione or "").strip() or None
+        item.categoria = _parse_categoria(categoria)
+        item.quantita_disponibile = _parse_float(quantita_disponibile) or 0.0
+        item.soglia_minima = _parse_float(soglia_minima)
+        item.attivo = attivo
+        return _render_item_form(
+            request=request,
+            current_user=current_user,
+            item=item,
+            form_action="manager_magazzino_update",
+            title="Modifica articolo",
+            error_message="Il codice è obbligatorio.",
+        )
+    if not _validate_codice_unique(db, codice_value, item_id=item.id):
+        item.codice = codice_value
+        item.nome = nome.strip()
+        item.descrizione = (descrizione or "").strip() or None
+        item.categoria = _parse_categoria(categoria)
+        item.quantita_disponibile = _parse_float(quantita_disponibile) or 0.0
+        item.soglia_minima = _parse_float(soglia_minima)
+        item.attivo = attivo
+        return _render_item_form(
+            request=request,
+            current_user=current_user,
+            item=item,
+            form_action="manager_magazzino_update",
+            title="Modifica articolo",
+            error_message="Codice già presente. Scegli un valore univoco.",
+        )
+
+    item.codice = codice_value
     item.nome = nome.strip()
-    item.unita_misura = unita_misura.strip()
     item.descrizione = (descrizione or "").strip() or None
     item.categoria = _parse_categoria(categoria)
     item.quantita_disponibile = _parse_float(quantita_disponibile) or 0.0

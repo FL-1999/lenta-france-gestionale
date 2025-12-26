@@ -1,0 +1,86 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Sortie stock – Manager{% else %}Scarico magazzino – Manager{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">📤 {% if lang == 'fr' %}Sortie stock{% else %}Scarico magazzino{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Enregistrez une sortie d'articles vers un chantier.
+            {% else %}
+                Registra lo scarico degli articoli verso un cantiere.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+{% if error_message %}
+    <div class="card" style="margin-bottom: 16px;">
+        <div class="card-body">
+            <p style="margin: 0; color: #b42318;">{{ error_message }}</p>
+        </div>
+    </div>
+{% endif %}
+
+<form method="post" action="{{ url_for('manager_magazzino_scarico_create') }}">
+    <div class="card large-form-card">
+        <div class="card-body">
+            {% set selected_item = form_data.get('item_id', '') %}
+            {% set selected_cantiere = form_data.get('cantiere_id', '') %}
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}*</label>
+                    <select name="item_id" required>
+                        <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                        {% for item in items %}
+                            <option value="{{ item.id }}" {% if selected_item == item.id|string %}selected{% endif %}>
+                                {{ item.codice }} - {{ item.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}*</label>
+                    <input type="number" name="quantita" min="0" step="0.01" required value="{{ form_data.get('quantita', '') }}">
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
+                    <select name="cantiere_id">
+                        <option value="">{% if lang == 'fr' %}Aucun{% else %}Nessuno{% endif %}</option>
+                        {% for cantiere in cantieri %}
+                            <option value="{{ cantiere.id }}" {% if selected_cantiere == cantiere.id|string %}selected{% endif %}>
+                                {{ cantiere.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
+                <textarea name="note">{{ form_data.get('note', '') }}</textarea>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if lang == 'fr' %}Enregistrer{% else %}Registra scarico{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

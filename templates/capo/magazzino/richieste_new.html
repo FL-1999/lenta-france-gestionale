@@ -31,7 +31,7 @@
             <template id="item-options">
                 <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
                 {% for item in items %}
-                    <option value="{{ item.id }}">{{ item.nome }} ({{ item.unita_misura }})</option>
+                    <option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>
                 {% endfor %}
             </template>
             <table class="data-table" id="righe-table">
@@ -48,7 +48,7 @@
                             <select name="item_id" required>
                                 <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
                                 {% for item in items %}
-                                    <option value="{{ item.id }}">{{ item.nome }} ({{ item.unita_misura }})</option>
+                                    <option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>
                                 {% endfor %}
                             </select>
                         </td>
