@@ -854,9 +854,6 @@ def manager_magazzino_richiesta_evadi(
                         f"richiesta {riga.quantita_richiesta})"
                     ),
                 )
-        for riga in richiesta.righe:
-            riga.item.quantita_disponibile -= riga.quantita_richiesta
-            db.add(riga.item)
 
         richiesta.stato = MagazzinoRichiestaStatusEnum.evasa
         richiesta.gestito_da_user_id = current_user.id
