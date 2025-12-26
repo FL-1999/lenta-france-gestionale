@@ -52,13 +52,17 @@
                                     <span class="badge badge-success">OK</span>
                                 {% endif %}
                             </div>
+                            <p class="magazzino-item-meta">
+                                <strong>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}:</strong>
+                                {{ item.codice or '—' }}
+                            </p>
                             <p class="magazzino-item-desc">{{ item.descrizione or '—' }}</p>
                             <div class="magazzino-item-stats">
                                 <div>
                                     <span class="label">{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</span>
-                                    <span class="value">
+                                    <span class="kpi-value">
                                         {% if item.quantita_disponibile is not none %}
-                                            {{ item.quantita_disponibile }} {{ item.unita_misura }}
+                                            {{ item.quantita_disponibile }}
                                         {% else %}
                                             —
                                         {% endif %}

@@ -1,0 +1,2 @@
+ALTER TABLE magazzino_items
+    ADD COLUMN codice VARCHAR(120) NOT NULL DEFAULT '';

@@ -16,6 +16,7 @@ from models import (
     MagazzinoRichiestaRiga,
     MagazzinoRichiestaStatusEnum,
     RoleEnum,
+    Site,
     User,
 )
 
@@ -308,6 +309,12 @@ def manager_magazzino_list(
         .order_by(MagazzinoItem.categoria.asc(), MagazzinoItem.nome.asc())
         .all()
     )
+    cantieri = (
+        db.query(Site)
+        .filter(Site.is_active.is_(True))
+        .order_by(Site.name.asc())
+        .all()
+    )
     items_by_categoria = _group_items_by_categoria(items)
     return templates.TemplateResponse(
         "manager/magazzino/items_list.html",
@@ -316,6 +323,7 @@ def manager_magazzino_list(
             "user": current_user,
             "categorie": MAGAZZINO_CATEGORIE,
             "items_by_categoria": items_by_categoria,
+            "cantieri": cantieri,
         },
     )
 
@@ -351,7 +359,7 @@ def manager_magazzino_new(
 def manager_magazzino_create(
     request: Request,
     nome: str = Form(...),
-    unita_misura: str = Form(...),
+    codice: str = Form(...),
     descrizione: str = Form(""),
     categoria: str = Form(MagazzinoCategoriaEnum.vari.value),
     quantita_disponibile: str | None = Form(""),
@@ -364,7 +372,7 @@ def manager_magazzino_create(
 
     item = MagazzinoItem(
         nome=nome.strip(),
-        unita_misura=unita_misura.strip(),
+        codice=codice.strip(),
         descrizione=(descrizione or "").strip() or None,
         categoria=_parse_categoria(categoria),
         quantita_disponibile=_parse_float(quantita_disponibile) or 0.0,
@@ -421,7 +429,7 @@ def manager_magazzino_update(
     item_id: int,
     request: Request,
     nome: str = Form(...),
-    unita_misura: str = Form(...),
+    codice: str = Form(...),
     descrizione: str = Form(""),
     categoria: str = Form(MagazzinoCategoriaEnum.vari.value),
     quantita_disponibile: str | None = Form(""),
@@ -436,15 +444,56 @@ def manager_magazzino_update(
         return RedirectResponse(
             url=request.url_for("manager_magazzino_list"),
             status_code=303,
-        )
+    )
 
     item.nome = nome.strip()
-    item.unita_misura = unita_misura.strip()
+    item.codice = codice.strip()
     item.descrizione = (descrizione or "").strip() or None
     item.categoria = _parse_categoria(categoria)
     item.quantita_disponibile = _parse_float(quantita_disponibile) or 0.0
     item.soglia_minima = _parse_float(soglia_minima)
     item.attivo = attivo
+
+    db.add(item)
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/scarico",
+    response_class=HTMLResponse,
+    name="manager_magazzino_scarico",
+)
+def manager_magazzino_scarico(
+    request: Request,
+    item_id: int = Form(...),
+    quantita: str = Form(...),
+    cantiere_id: int | None = Form(None),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+
+    quantita_valore = _parse_float(quantita)
+    if not quantita_valore or quantita_valore <= 0:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+
+    quantita_attuale = item.quantita_disponibile or 0.0
+    item.quantita_disponibile = max(0.0, quantita_attuale - quantita_valore)
 
     db.add(item)
     db.commit()

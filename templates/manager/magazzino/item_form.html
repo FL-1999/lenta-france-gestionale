@@ -46,8 +46,8 @@
                     <input type="text" name="nome" value="{{ item.nome if item else '' }}" required>
                 </div>
                 <div class="form-field">
-                    <label>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}*</label>
-                    <input type="text" name="unita_misura" value="{{ item.unita_misura if item else '' }}" required>
+                    <label>{% if lang == 'fr' %}Code article{% else %}Codice articolo{% endif %}*</label>
+                    <input type="text" name="codice" value="{{ item.codice if item else '' }}" required>
                 </div>
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>
