@@ -723,7 +723,15 @@ def manager_users(
 
     db = SessionLocal()
     try:
-        users_list = db.query(User).order_by(User.role, User.email).all()
+        users_list = (
+            db.query(User)
+            .options(joinedload(User.assigned_sites))
+            .order_by(User.role, User.email)
+            .all()
+        )
+        user_sites_map = {
+            user.id: list(user.assigned_sites or []) for user in users_list
+        }
     finally:
         db.close()
 
@@ -734,6 +742,7 @@ def manager_users(
             "user": current_user,
             "user_role": "manager",
             "users": users_list,
+            "user_sites_map": user_sites_map,
         },
     )
 
@@ -1124,6 +1133,7 @@ def manager_cantieri(
     try:
         sites_list = (
             db.query(Site)
+            .options(joinedload(Site.caposquadra))
             .order_by(
                 Site.is_active.desc(),
                 Site.start_date.desc(),
@@ -1131,6 +1141,9 @@ def manager_cantieri(
             )
             .all()
         )
+        site_caposquadra_map = {
+            site.id: site.caposquadra for site in sites_list
+        }
     finally:
         db.close()
 
@@ -1140,6 +1153,7 @@ def manager_cantieri(
             "request": request,
             "sites": sites_list,
             "user": current_user,
+            "site_caposquadra_map": site_caposquadra_map,
         },
     )
 
