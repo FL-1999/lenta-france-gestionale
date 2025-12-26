@@ -192,7 +192,7 @@ def capo_magazzino_richiesta_create(
 ):
     ensure_caposquadra_or_manager(current_user)
 
-    righe: list[tuple[int, float]] = []
+    righe_map: dict[int, float] = {}
     for raw_item_id, raw_quantita in zip(item_id, quantita):
         if not raw_item_id and not raw_quantita:
             continue
@@ -204,13 +204,21 @@ def capo_magazzino_richiesta_create(
         if parsed_quantita is None or parsed_quantita <= 0:
             raise HTTPException(status_code=400, detail="Quantità non valida")
 
-        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == parsed_item_id).first()
+        righe_map[parsed_item_id] = righe_map.get(parsed_item_id, 0.0) + parsed_quantita
+
+    if not righe_map:
+        raise HTTPException(status_code=400, detail="Nessuna riga valida")
+
+    items = (
+        db.query(MagazzinoItem)
+        .filter(MagazzinoItem.id.in_(righe_map.keys()))
+        .all()
+    )
+    items_by_id = {item.id: item for item in items}
+    for item_id_value in righe_map:
+        item = items_by_id.get(item_id_value)
         if not item or not item.attivo:
             raise HTTPException(status_code=400, detail="Item non disponibile")
-        righe.append((parsed_item_id, parsed_quantita))
-
-    if not righe:
-        raise HTTPException(status_code=400, detail="Nessuna riga valida")
 
     richiesta = MagazzinoRichiesta(
         richiesto_da_user_id=current_user.id,
@@ -219,7 +227,7 @@ def capo_magazzino_richiesta_create(
     db.add(richiesta)
     db.flush()
 
-    for item_id_value, quantita_value in righe:
+    for item_id_value, quantita_value in righe_map.items():
         db.add(
             MagazzinoRichiestaRiga(
                 richiesta_id=richiesta.id,
@@ -496,12 +504,35 @@ def manager_magazzino_richiesta_approva(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    richiesta = db.query(MagazzinoRichiesta).filter(MagazzinoRichiesta.id == richiesta_id).first()
+    richiesta = (
+        db.query(MagazzinoRichiesta)
+        .options(
+            joinedload(MagazzinoRichiesta.righe).joinedload(
+                MagazzinoRichiestaRiga.item
+            )
+        )
+        .filter(MagazzinoRichiesta.id == richiesta_id)
+        .first()
+    )
     if not richiesta:
         return RedirectResponse(
             url=request.url_for("manager_magazzino_richieste"),
             status_code=303,
         )
+
+    for riga in richiesta.righe:
+        if riga.item is None:
+            raise HTTPException(status_code=400, detail="Item non disponibile")
+        if riga.item.quantita_disponibile < riga.quantita_richiesta:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Quantità insufficiente per "
+                    f"{riga.item.nome} (disponibile "
+                    f"{riga.item.quantita_disponibile}, "
+                    f"richiesta {riga.quantita_richiesta})"
+                ),
+            )
 
     richiesta.stato = MagazzinoRichiestaStatusEnum.approvata
     richiesta.risposta_manager = (risposta_manager or "").strip() or None
@@ -511,6 +542,71 @@ def manager_magazzino_richiesta_approva(
 
     db.add(richiesta)
     db.commit()
+
+    return RedirectResponse(
+        url=request.url_for(
+            "manager_magazzino_richiesta_detail", richiesta_id=richiesta.id
+        ),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/richieste/{richiesta_id}/evadi",
+    response_class=HTMLResponse,
+    name="manager_magazzino_richiesta_evadi",
+)
+def manager_magazzino_richiesta_evadi(
+    richiesta_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    richiesta = (
+        db.query(MagazzinoRichiesta)
+        .options(
+            joinedload(MagazzinoRichiesta.righe).joinedload(
+                MagazzinoRichiestaRiga.item
+            )
+        )
+        .filter(MagazzinoRichiesta.id == richiesta_id)
+        .first()
+    )
+    if not richiesta:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_richieste"),
+            status_code=303,
+        )
+
+    if richiesta.stato != MagazzinoRichiestaStatusEnum.approvata:
+        raise HTTPException(
+            status_code=400, detail="La richiesta non è approvata"
+        )
+
+    with db.begin():
+        for riga in richiesta.righe:
+            if riga.item is None or not riga.item.attivo:
+                raise HTTPException(status_code=400, detail="Item non disponibile")
+            if riga.item.quantita_disponibile < riga.quantita_richiesta:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Quantità insufficiente per "
+                        f"{riga.item.nome} (disponibile "
+                        f"{riga.item.quantita_disponibile}, "
+                        f"richiesta {riga.quantita_richiesta})"
+                    ),
+                )
+        for riga in richiesta.righe:
+            riga.item.quantita_disponibile -= riga.quantita_richiesta
+            db.add(riga.item)
+
+        richiesta.stato = MagazzinoRichiestaStatusEnum.evasa
+        richiesta.gestito_da_user_id = current_user.id
+        richiesta.gestito_at = datetime.utcnow()
+        richiesta.letto_da_richiedente = False
+        db.add(richiesta)
 
     return RedirectResponse(
         url=request.url_for(

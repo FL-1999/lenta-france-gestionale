@@ -100,6 +100,11 @@
                 <button type="submit" class="btn btn-danger" formaction="{{ url_for('manager_magazzino_richiesta_rifiuta', richiesta_id=richiesta.id) }}">
                     ❌ {% if lang == 'fr' %}Refuser{% else %}Rifiuta{% endif %}
                 </button>
+                {% if richiesta.stato and richiesta.stato.value == 'APPROVATA' %}
+                    <button type="submit" class="btn btn-secondary" formaction="{{ url_for('manager_magazzino_richiesta_evadi', richiesta_id=richiesta.id) }}">
+                        📦 {% if lang == 'fr' %}Marquer comme livrée{% else %}Segna come EVASA{% endif %}
+                    </button>
+                {% endif %}
             </div>
         </form>
     </div>
