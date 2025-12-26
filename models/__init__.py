@@ -53,6 +53,13 @@ class FicheTypeEnum(PyEnum):
     altro = "altro"
 
 
+class MagazzinoRichiestaStatusEnum(PyEnum):
+    in_attesa = "IN_ATTESA"
+    approvata = "APPROVATA"
+    rifiutata = "RIFIUTATA"
+    evasa = "EVASA"
+
+
 # ============================================================
 # MIXIN PER TIMESTAMP
 # ============================================================
@@ -87,6 +94,7 @@ class User(Base, TimestampMixin):
     language = Column(String(10), nullable=True, default="it")
 
     is_active = Column(Boolean, default=True, nullable=False)
+    is_magazzino_manager = Column(Boolean, default=False, nullable=False)
 
     # Relazioni
     reports = relationship("Report", back_populates="created_by", cascade="all, delete-orphan")
@@ -279,6 +287,73 @@ class StratigraphyLayer(Base):
 
     def __repr__(self) -> str:
         return f"<StratigraphyLayer id={self.id} fiche_id={self.fiche_id} layer_index={self.layer_index}>"
+
+
+class MagazzinoItem(Base, TimestampMixin):
+    __tablename__ = "magazzino_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(255), nullable=False)
+    descrizione = Column(Text, nullable=True)
+    unita_misura = Column(String(50), nullable=False)
+    quantita_disponibile = Column(Float, nullable=False, default=0.0)
+    soglia_minima = Column(Float, nullable=True)
+    attivo = Column(Boolean, default=True, nullable=False)
+
+    righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")
+
+    def __repr__(self) -> str:
+        return f"<MagazzinoItem id={self.id} nome={self.nome} unita={self.unita_misura}>"
+
+
+class MagazzinoRichiesta(Base, TimestampMixin):
+    __tablename__ = "magazzino_richieste"
+
+    id = Column(Integer, primary_key=True, index=True)
+    stato = Column(
+        Enum(MagazzinoRichiestaStatusEnum),
+        nullable=False,
+        default=MagazzinoRichiestaStatusEnum.in_attesa,
+    )
+
+    richiesto_da_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    note = Column(Text, nullable=True)
+
+    risposta_manager = Column(Text, nullable=True)
+    gestito_da_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    gestito_at = Column(DateTime, nullable=True)
+
+    richiesto_da = relationship("User", foreign_keys=[richiesto_da_user_id])
+    gestito_da = relationship("User", foreign_keys=[gestito_da_user_id])
+    cantiere = relationship("Site")
+
+    righe = relationship(
+        "MagazzinoRichiestaRiga",
+        back_populates="richiesta",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<MagazzinoRichiesta id={self.id} stato={self.stato}>"
+
+
+class MagazzinoRichiestaRiga(Base):
+    __tablename__ = "magazzino_richieste_righe"
+
+    id = Column(Integer, primary_key=True, index=True)
+    richiesta_id = Column(Integer, ForeignKey("magazzino_richieste.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=False)
+    quantita_richiesta = Column(Float, nullable=False)
+
+    richiesta = relationship("MagazzinoRichiesta", back_populates="righe")
+    item = relationship("MagazzinoItem", back_populates="righe_richiesta")
+
+    def __repr__(self) -> str:
+        return (
+            "<MagazzinoRichiestaRiga "
+            f"id={self.id} richiesta_id={self.richiesta_id} item_id={self.item_id}>"
+        )
 
 
 class Personale(SQLModel, table=True):
