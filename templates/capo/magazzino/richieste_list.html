@@ -59,6 +59,15 @@
                                 <div class="card-body">
                                     <div class="stack gap-2">
                                         <div>{{ richiesta.risposta_manager or '—' }}</div>
+                                        {% if richiesta.stato and richiesta.stato.value == 'EVASA' %}
+                                            <div class="text-muted">
+                                                {% if lang == 'fr' %}
+                                                    Livrée le {{ richiesta.gestito_at.strftime('%d/%m/%Y') if richiesta.gestito_at else '—' }}
+                                                {% else %}
+                                                    Consegnata il {{ richiesta.gestito_at.strftime('%d/%m/%Y') if richiesta.gestito_at else '—' }}
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
                                         {% if richiesta.id in unread_ids %}
                                             <div class="badge badge-warning">Nuova risposta</div>
                                         {% endif %}

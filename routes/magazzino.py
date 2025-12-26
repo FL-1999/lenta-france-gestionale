@@ -842,18 +842,36 @@ def manager_magazzino_richiesta_evadi(
 
     with db.begin():
         for riga in richiesta.righe:
+            if riga.quantita_richiesta is None or riga.quantita_richiesta <= 0:
+                raise HTTPException(
+                    status_code=400, detail="Quantità richiesta non valida"
+                )
             if riga.item is None or not riga.item.attivo:
                 raise HTTPException(status_code=400, detail="Item non disponibile")
-            if riga.item.quantita_disponibile < riga.quantita_richiesta:
+            quantita_disponibile = riga.item.quantita_disponibile or 0.0
+            if quantita_disponibile < riga.quantita_richiesta:
                 raise HTTPException(
                     status_code=400,
                     detail=(
                         "Quantità insufficiente per "
                         f"{riga.item.nome} (disponibile "
-                        f"{riga.item.quantita_disponibile}, "
+                        f"{quantita_disponibile}, "
                         f"richiesta {riga.quantita_richiesta})"
                     ),
                 )
+            riga.item.quantita_disponibile = (
+                quantita_disponibile - riga.quantita_richiesta
+            )
+            db.add(riga.item)
+            movimento = MagazzinoMovimento(
+                item_id=riga.item.id,
+                tipo=MagazzinoMovimentoTipoEnum.scarico,
+                quantita=riga.quantita_richiesta,
+                cantiere_id=richiesta.cantiere_id,
+                user_id=current_user.id,
+                riferimento_richiesta_id=richiesta.id,
+            )
+            db.add(movimento)
 
         richiesta.stato = MagazzinoRichiestaStatusEnum.evasa
         richiesta.gestito_da_user_id = current_user.id

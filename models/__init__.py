@@ -385,12 +385,16 @@ class MagazzinoMovimento(Base, TimestampMixin):
     tipo = Column(Enum(MagazzinoMovimentoTipoEnum), nullable=False)
     quantita = Column(Float, nullable=False)
     cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    riferimento_richiesta_id = Column(
+        Integer, ForeignKey("magazzino_richieste.id"), nullable=True
+    )
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     note = Column(Text, nullable=True)
 
     item = relationship("MagazzinoItem")
     cantiere = relationship("Site")
     user = relationship("User")
+    richiesta = relationship("MagazzinoRichiesta")
 
 
 class Personale(SQLModel, table=True):
