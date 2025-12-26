@@ -1153,6 +1153,17 @@ def manager_cantiere_nuovo_get(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     site_status_values = [status.name for status in SiteStatusEnum]
+    db = SessionLocal()
+    try:
+        capisquadra = (
+            db.query(User)
+            .filter(User.role == RoleEnum.caposquadra)
+            .filter(User.is_active.is_(True))
+            .order_by(User.full_name, User.email)
+            .all()
+        )
+    finally:
+        db.close()
 
     return templates.TemplateResponse(
         "manager/cantiere_form.html",
@@ -1162,6 +1173,7 @@ def manager_cantiere_nuovo_get(
             "mode": "create",
             "site": None,
             "site_status_values": site_status_values,
+            "capisquadra": capisquadra,
         },
     )
 
@@ -1178,6 +1190,7 @@ def manager_cantiere_nuovo_post(
     end_date: str | None = Form(None),
     status: str = Form(...),
     is_active: str | None = Form(None),
+    caposquadra_id: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
@@ -1194,6 +1207,14 @@ def manager_cantiere_nuovo_post(
         except ValueError:
             return None
 
+    def parse_caposquadra(value: str | None) -> int | None:
+        if value in (None, ""):
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            return None
+
     start_date_parsed = parse_date(start_date)
     end_date_parsed = parse_date(end_date)
 
@@ -1203,6 +1224,18 @@ def manager_cantiere_nuovo_post(
 
     db = SessionLocal()
     try:
+        parsed_capo_id = parse_caposquadra(caposquadra_id)
+        if parsed_capo_id is not None:
+            capo = (
+                db.query(User)
+                .filter(User.id == parsed_capo_id)
+                .filter(User.role == RoleEnum.caposquadra)
+                .filter(User.is_active.is_(True))
+                .first()
+            )
+            if not capo:
+                raise HTTPException(status_code=400, detail="Caposquadra non valido")
+
         new_site = Site(
             name=name,
             code=code,
@@ -1213,6 +1246,7 @@ def manager_cantiere_nuovo_post(
             end_date=end_date_parsed,
             status=status_value,
             is_active=is_active is not None,
+            caposquadra_id=parsed_capo_id,
         )
         db.add(new_site)
         db.commit()
@@ -1237,6 +1271,13 @@ def manager_cantiere_modifica_get(
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
         site_status_values = [status.name for status in SiteStatusEnum]
+        capisquadra = (
+            db.query(User)
+            .filter(User.role == RoleEnum.caposquadra)
+            .filter(User.is_active.is_(True))
+            .order_by(User.full_name, User.email)
+            .all()
+        )
         scarichi_recenti = (
             db.query(MagazzinoMovimento)
             .options(
@@ -1263,6 +1304,7 @@ def manager_cantiere_modifica_get(
             "site": site,
             "site_status_values": site_status_values,
             "scarichi_recenti": scarichi_recenti,
+            "capisquadra": capisquadra,
         },
     )
 
@@ -1280,6 +1322,7 @@ def manager_cantiere_modifica_post(
     end_date: str | None = Form(None),
     status: str = Form(...),
     is_active: str | None = Form(None),
+    caposquadra_id: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
@@ -1296,6 +1339,14 @@ def manager_cantiere_modifica_post(
         except ValueError:
             return None
 
+    def parse_caposquadra(value: str | None) -> int | None:
+        if value in (None, ""):
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            return None
+
     start_date_parsed = parse_date(start_date)
     end_date_parsed = parse_date(end_date)
 
@@ -1309,6 +1360,18 @@ def manager_cantiere_modifica_post(
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
+        parsed_capo_id = parse_caposquadra(caposquadra_id)
+        if parsed_capo_id is not None:
+            capo = (
+                db.query(User)
+                .filter(User.id == parsed_capo_id)
+                .filter(User.role == RoleEnum.caposquadra)
+                .filter(User.is_active.is_(True))
+                .first()
+            )
+            if not capo:
+                raise HTTPException(status_code=400, detail="Caposquadra non valido")
+
         site.name = name
         site.code = code
         site.address = address
@@ -1318,6 +1381,7 @@ def manager_cantiere_modifica_post(
         site.end_date = end_date_parsed
         site.status = status_value
         site.is_active = is_active is not None
+        site.caposquadra_id = parsed_capo_id
 
         db.commit()
     finally:
@@ -1356,9 +1420,9 @@ def capo_dashboard(
         )
 
         kpi_assigned_sites = (
-            db.query(func.count(func.distinct(Report.site_id)))
-            .filter(Report.created_by_id == current_user.id)
-            .filter(Report.site_id.isnot(None))
+            db.query(func.count(Site.id))
+            .filter(Site.caposquadra_id == current_user.id)
+            .filter(Site.is_active.is_(True))
             .scalar()
             or 0
         )
@@ -1388,21 +1452,9 @@ def capo_dashboard(
 
 
 def _get_capo_assigned_sites(db: SessionLocal, capo: User) -> list[Site]:
-    site_ids_rows = (
-        db.query(Report.site_id)
-        .filter(Report.created_by_id == capo.id)
-        .filter(Report.site_id.isnot(None))
-        .distinct()
-        .all()
-    )
-    site_ids = [row[0] for row in site_ids_rows if row[0] is not None]
-
-    if not site_ids:
-        return []
-
     return (
         db.query(Site)
-        .filter(Site.id.in_(site_ids))
+        .filter(Site.caposquadra_id == capo.id)
         .filter(Site.is_active.is_(True))
         .order_by(Site.name.asc())
         .all()
