@@ -66,6 +66,11 @@ class MagazzinoCategoriaEnum(PyEnum):
     vari = "vari"
 
 
+class MagazzinoMovimentoTipoEnum(PyEnum):
+    scarico = "scarico"
+    carico = "carico"
+
+
 # ============================================================
 # MIXIN PER TIMESTAMP
 # ============================================================
@@ -370,6 +375,22 @@ class MagazzinoRichiestaRiga(Base):
             "<MagazzinoRichiestaRiga "
             f"id={self.id} richiesta_id={self.richiesta_id} item_id={self.item_id}>"
         )
+
+
+class MagazzinoMovimento(Base, TimestampMixin):
+    __tablename__ = "magazzino_movimenti"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=False)
+    tipo = Column(Enum(MagazzinoMovimentoTipoEnum), nullable=False)
+    quantita = Column(Float, nullable=False)
+    cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    note = Column(Text, nullable=True)
+
+    item = relationship("MagazzinoItem")
+    cantiere = relationship("Site")
+    user = relationship("User")
 
 
 class Personale(SQLModel, table=True):
