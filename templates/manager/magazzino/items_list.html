@@ -27,60 +27,73 @@
     </div>
 </div>
 
-<div class="card table-card">
-    <div class="card-body">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
-                    <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
-                    <th class="text-right">{% if lang == 'fr' %}Seuil{% else %}Soglia{% endif %}</th>
-                    <th class="text-right">{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
-                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in items %}
-                    <tr>
-                        <td>{{ item.nome }}</td>
-                        <td>{{ item.unita_misura }}</td>
-                        <td>{{ item.descrizione or '—' }}</td>
-                        <td class="text-right">{{ item.quantita_disponibile }}</td>
-                        <td class="text-right">{{ item.soglia_minima or '—' }}</td>
-                        <td class="text-right">
-                            {% if item.attivo %}
-                                <span class="badge badge-success">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
-                            {% else %}
-                                <span class="badge badge-muted">{% if lang == 'fr' %}Inactif{% else %}Inattivo{% endif %}</span>
-                            {% endif %}
-                        </td>
-                        <td class="table-actions">
-                            <a href="{{ url_for('manager_magazzino_edit', item_id=item.id) }}" class="btn btn-secondary btn-sm">
-                                ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-                            </a>
-                            <form method="post" action="{{ url_for('manager_magazzino_delete', item_id=item.id) }}">
-                                <button type="submit" class="btn btn-danger btn-sm"
-                                        onclick="return confirm('{% if lang == 'fr' %}Désactiver cet article ?{% else %}Disattivare questo articolo?{% endif %}');">
-                                    🗑️ {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr class="table-empty">
-                        <td colspan="7">
-                            {% if lang == 'fr' %}
-                                Aucun article disponible.
-                            {% else %}
-                                Nessun articolo disponibile.
-                            {% endif %}
-                        </td>
-                    </tr>
+{% set state = namespace(has_items=false) %}
+{% for categoria in categorie %}
+    {% set category_items = items_by_categoria.get(categoria.key, []) %}
+    {% if category_items %}
+        {% set state.has_items = true %}
+        <section class="magazzino-category">
+            <div class="magazzino-category-header">
+                <h2>
+                    {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                </h2>
+            </div>
+            <div class="magazzino-items-grid">
+                {% for item in category_items %}
+                    <div class="card magazzino-item-card">
+                        <div class="card-body">
+                            <div class="magazzino-item-header">
+                                <h3>{{ item.nome }}</h3>
+                                {% if item.attivo %}
+                                    <span class="badge badge-success">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+                                {% else %}
+                                    <span class="badge badge-muted">{% if lang == 'fr' %}Inactif{% else %}Inattivo{% endif %}</span>
+                                {% endif %}
+                            </div>
+                            <p class="magazzino-item-meta">
+                                <span>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}: {{ item.unita_misura }}</span>
+                            </p>
+                            <p class="magazzino-item-desc">{{ item.descrizione or '—' }}</p>
+                            <div class="magazzino-item-stats">
+                                <div>
+                                    <span class="label">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</span>
+                                    <span class="value">{{ item.quantita_disponibile }}</span>
+                                </div>
+                                <div>
+                                    <span class="label">{% if lang == 'fr' %}Seuil{% else %}Soglia{% endif %}</span>
+                                    <span class="value">{{ item.soglia_minima or '—' }}</span>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ url_for('manager_magazzino_edit', item_id=item.id) }}" class="btn btn-secondary btn-sm">
+                                    ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                                </a>
+                                <form method="post" action="{{ url_for('manager_magazzino_delete', item_id=item.id) }}">
+                                    <button type="submit" class="btn btn-danger btn-sm"
+                                            onclick="return confirm('{% if lang == 'fr' %}Désactiver cet article ?{% else %}Disattivare questo articolo?{% endif %}');">
+                                        🗑️ {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+        </section>
+    {% endif %}
+{% endfor %}
+
+{% if not state.has_items %}
+    <div class="card table-card">
+        <div class="card-body">
+            <div class="table-empty">
+                {% if lang == 'fr' %}
+                    Aucun article disponible.
+                {% else %}
+                    Nessun articolo disponibile.
+                {% endif %}
+            </div>
+        </div>
     </div>
-</div>
+{% endif %}
 {% endblock %}

@@ -50,6 +50,18 @@
                     <input type="text" name="unita_misura" value="{{ item.unita_misura if item else '' }}" required>
                 </div>
                 <div class="form-field">
+                    <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>
+                    {% set categoria_value = item.categoria.value if item and item.categoria else 'vari' %}
+                    <select name="categoria" required>
+                        {% for categoria in categorie %}
+                            <option value="{{ categoria.key }}"
+                                    {% if categoria_value == categoria.key %}selected{% endif %}>
+                                {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
                     <label>{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</label>
                     <input type="number" name="quantita_disponibile" step="0.01" min="0" value="{{ item.quantita_disponibile if item else '' }}">
                 </div>
