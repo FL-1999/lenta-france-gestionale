@@ -118,13 +118,17 @@ def _group_items_by_categoria(
     categorie: list[MagazzinoCategoria],
     fallback_categoria_id: int | None,
 ) -> dict[int | None, list[MagazzinoItem]]:
+    valid_ids = {categoria.id for categoria in categorie if categoria.id is not None}
     grouped: dict[int | None, list[MagazzinoItem]] = {
         categoria.id: [] for categoria in categorie
     }
     if fallback_categoria_id not in grouped:
         grouped[fallback_categoria_id] = []
     for item in items:
-        categoria_id = item.categoria_id if item.categoria_id is not None else fallback_categoria_id
+        if item.categoria_id in valid_ids:
+            categoria_id = item.categoria_id
+        else:
+            categoria_id = fallback_categoria_id
         if categoria_id not in grouped:
             grouped[categoria_id] = []
         grouped[categoria_id].append(item)
@@ -154,6 +158,17 @@ def _load_categorie(
     return [*categorie, fallback], fallback, None
 
 
+def _order_categorie_for_display(
+    categorie: list[MagazzinoCategoria | SimpleNamespace],
+    fallback_categoria_id: int | None,
+) -> list[MagazzinoCategoria | SimpleNamespace]:
+    if fallback_categoria_id is None:
+        return categorie
+    fallback = [categoria for categoria in categorie if categoria.id == fallback_categoria_id]
+    others = [categoria for categoria in categorie if categoria.id != fallback_categoria_id]
+    return [*others, *fallback]
+
+
 @router.get(
     "/capo/magazzino",
     response_class=HTMLResponse,
@@ -171,7 +186,7 @@ def capo_magazzino_list(
     ensure_caposquadra_or_manager(current_user)
     categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
         db,
-        include_inactive=True,
+        include_inactive=False,
     )
     query = db.query(MagazzinoItem).filter(MagazzinoItem.attivo.is_(True))
     q_value = (q or "").strip()
@@ -217,6 +232,7 @@ def capo_magazzino_list(
         [categoria for categoria in categorie if isinstance(categoria, MagazzinoCategoria)],
         fallback_categoria_id,
     )
+    categorie_display = _order_categorie_for_display(categorie, fallback_categoria_id)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -228,7 +244,7 @@ def capo_magazzino_list(
         {
             "request": request,
             "user": current_user,
-            "categorie": categorie,
+            "categorie": categorie_display,
             "fallback_categoria": fallback_categoria,
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
@@ -422,7 +438,7 @@ def manager_magazzino_list(
     ensure_magazzino_manager(current_user)
     categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
         db,
-        include_inactive=True,
+        include_inactive=False,
     )
     query = db.query(MagazzinoItem)
     q_value = (q or "").strip()
@@ -476,6 +492,7 @@ def manager_magazzino_list(
         [categoria for categoria in categorie if isinstance(categoria, MagazzinoCategoria)],
         fallback_categoria_id,
     )
+    categorie_display = _order_categorie_for_display(categorie, fallback_categoria_id)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -488,7 +505,7 @@ def manager_magazzino_list(
         {
             "request": request,
             "user": current_user,
-            "categorie": categorie,
+            "categorie": categorie_display,
             "fallback_categoria": fallback_categoria,
             "default_categoria_id": fallback_categoria_id,
             "items_by_categoria": items_by_categoria,
@@ -856,7 +873,7 @@ def manager_magazzino_new(
     db: Session = Depends(get_db),
 ):
     ensure_magazzino_manager(current_user)
-    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(db, include_inactive=True)
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(db, include_inactive=False)
     return templates.TemplateResponse(
         "manager/magazzino/item_new.html",
         {
@@ -938,7 +955,7 @@ def manager_magazzino_edit(
             url=request.url_for("manager_magazzino_list"),
             status_code=303,
         )
-    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(db, include_inactive=True)
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(db, include_inactive=False)
 
     return templates.TemplateResponse(
         "manager/magazzino/item_edit.html",
