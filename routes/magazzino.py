@@ -840,7 +840,7 @@ def manager_magazzino_richiesta_evadi(
             status_code=400, detail="La richiesta non è approvata"
         )
 
-    with db.begin():
+    try:
         for riga in richiesta.righe:
             if riga.quantita_richiesta is None or riga.quantita_richiesta <= 0:
                 raise HTTPException(
@@ -878,6 +878,32 @@ def manager_magazzino_richiesta_evadi(
         richiesta.gestito_at = datetime.utcnow()
         richiesta.letto_da_richiedente = False
         db.add(richiesta)
+
+        db.commit()
+    except HTTPException as exc:
+        db.rollback()
+        return templates.TemplateResponse(
+            "manager/magazzino/richiesta_detail.html",
+            {
+                "request": request,
+                "user": current_user,
+                "richiesta": richiesta,
+                "error_message": exc.detail,
+            },
+            status_code=exc.status_code,
+        )
+    except Exception:
+        db.rollback()
+        return templates.TemplateResponse(
+            "manager/magazzino/richiesta_detail.html",
+            {
+                "request": request,
+                "user": current_user,
+                "richiesta": richiesta,
+                "error_message": "Errore durante l'evasione della richiesta.",
+            },
+            status_code=500,
+        )
 
     return RedirectResponse(
         url=request.url_for(

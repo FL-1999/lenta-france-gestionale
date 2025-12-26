@@ -31,6 +31,10 @@
     </div>
 </div>
 
+{% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
 <div class="card" style="margin-bottom: 16px;">
     <div class="card-body">
         {% set stato_label = richiesta.stato.value if richiesta.stato else '—' %}
