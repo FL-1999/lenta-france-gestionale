@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user_html
 from database import get_db
 from models import (
+    MagazzinoCategoriaEnum,
     MagazzinoItem,
     MagazzinoRichiesta,
     MagazzinoRichiestaRiga,
@@ -21,6 +22,24 @@ from models import (
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(tags=["magazzino"])
+
+MAGAZZINO_CATEGORIE = [
+    {
+        "key": MagazzinoCategoriaEnum.accessori_macchinari.value,
+        "label_it": "Accessori macchinari",
+        "label_fr": "Accessoires machines",
+    },
+    {
+        "key": MagazzinoCategoriaEnum.bulloni.value,
+        "label_it": "Bulloni",
+        "label_fr": "Boulons",
+    },
+    {
+        "key": MagazzinoCategoriaEnum.vari.value,
+        "label_it": "Vari",
+        "label_fr": "Divers",
+    },
+]
 
 
 def ensure_caposquadra_or_manager(user: User) -> None:
@@ -54,6 +73,29 @@ def _parse_status(value: str | None) -> MagazzinoRichiestaStatusEnum | None:
     return None
 
 
+def _parse_categoria(value: str | None) -> MagazzinoCategoriaEnum:
+    if not value:
+        return MagazzinoCategoriaEnum.vari
+    for categoria in MagazzinoCategoriaEnum:
+        if value.lower() in (categoria.value.lower(), categoria.name.lower()):
+            return categoria
+    return MagazzinoCategoriaEnum.vari
+
+
+def _group_items_by_categoria(items: list[MagazzinoItem]) -> dict[str, list[MagazzinoItem]]:
+    grouped = {categoria["key"]: [] for categoria in MAGAZZINO_CATEGORIE}
+    for item in items:
+        categoria = (
+            item.categoria.value
+            if item.categoria is not None
+            else MagazzinoCategoriaEnum.vari.value
+        )
+        if categoria not in grouped:
+            categoria = MagazzinoCategoriaEnum.vari.value
+        grouped[categoria].append(item)
+    return grouped
+
+
 @router.get(
     "/capo/magazzino",
     response_class=HTMLResponse,
@@ -68,12 +110,18 @@ def capo_magazzino_list(
     items = (
         db.query(MagazzinoItem)
         .filter(MagazzinoItem.attivo.is_(True))
-        .order_by(MagazzinoItem.nome.asc())
+        .order_by(MagazzinoItem.categoria.asc(), MagazzinoItem.nome.asc())
         .all()
     )
+    items_by_categoria = _group_items_by_categoria(items)
     return templates.TemplateResponse(
         "capo/magazzino/items_list.html",
-        {"request": request, "user": current_user, "items": items},
+        {
+            "request": request,
+            "user": current_user,
+            "categorie": MAGAZZINO_CATEGORIE,
+            "items_by_categoria": items_by_categoria,
+        },
     )
 
 
@@ -255,10 +303,20 @@ def manager_magazzino_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    items = db.query(MagazzinoItem).order_by(MagazzinoItem.nome.asc()).all()
+    items = (
+        db.query(MagazzinoItem)
+        .order_by(MagazzinoItem.categoria.asc(), MagazzinoItem.nome.asc())
+        .all()
+    )
+    items_by_categoria = _group_items_by_categoria(items)
     return templates.TemplateResponse(
         "manager/magazzino/items_list.html",
-        {"request": request, "user": current_user, "items": items},
+        {
+            "request": request,
+            "user": current_user,
+            "categorie": MAGAZZINO_CATEGORIE,
+            "items_by_categoria": items_by_categoria,
+        },
     )
 
 
@@ -278,6 +336,7 @@ def manager_magazzino_new(
             "request": request,
             "user": current_user,
             "item": None,
+            "categorie": MAGAZZINO_CATEGORIE,
             "form_action": "manager_magazzino_create",
             "title": "Nuovo articolo",
         },
@@ -294,6 +353,7 @@ def manager_magazzino_create(
     nome: str = Form(...),
     unita_misura: str = Form(...),
     descrizione: str = Form(""),
+    categoria: str = Form(MagazzinoCategoriaEnum.vari.value),
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
     attivo: bool = Form(False),
@@ -306,6 +366,7 @@ def manager_magazzino_create(
         nome=nome.strip(),
         unita_misura=unita_misura.strip(),
         descrizione=(descrizione or "").strip() or None,
+        categoria=_parse_categoria(categoria),
         quantita_disponibile=_parse_float(quantita_disponibile) or 0.0,
         soglia_minima=_parse_float(soglia_minima),
         attivo=attivo,
@@ -344,6 +405,7 @@ def manager_magazzino_edit(
             "request": request,
             "user": current_user,
             "item": item,
+            "categorie": MAGAZZINO_CATEGORIE,
             "form_action": "manager_magazzino_update",
             "title": "Modifica articolo",
         },
@@ -361,6 +423,7 @@ def manager_magazzino_update(
     nome: str = Form(...),
     unita_misura: str = Form(...),
     descrizione: str = Form(""),
+    categoria: str = Form(MagazzinoCategoriaEnum.vari.value),
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
     attivo: bool = Form(False),
@@ -378,6 +441,7 @@ def manager_magazzino_update(
     item.nome = nome.strip()
     item.unita_misura = unita_misura.strip()
     item.descrizione = (descrizione or "").strip() or None
+    item.categoria = _parse_categoria(categoria)
     item.quantita_disponibile = _parse_float(quantita_disponibile) or 0.0
     item.soglia_minima = _parse_float(soglia_minima)
     item.attivo = attivo

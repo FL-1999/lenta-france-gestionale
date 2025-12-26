@@ -60,6 +60,12 @@ class MagazzinoRichiestaStatusEnum(PyEnum):
     evasa = "EVASA"
 
 
+class MagazzinoCategoriaEnum(PyEnum):
+    accessori_macchinari = "accessori_macchinari"
+    bulloni = "bulloni"
+    vari = "vari"
+
+
 # ============================================================
 # MIXIN PER TIMESTAMP
 # ============================================================
@@ -296,6 +302,11 @@ class MagazzinoItem(Base, TimestampMixin):
     nome = Column(String(255), nullable=False)
     descrizione = Column(Text, nullable=True)
     unita_misura = Column(String(50), nullable=False)
+    categoria = Column(
+        Enum(MagazzinoCategoriaEnum),
+        nullable=False,
+        default=MagazzinoCategoriaEnum.vari,
+    )
     quantita_disponibile = Column(Float, nullable=False, default=0.0)
     soglia_minima = Column(Float, nullable=True)
     attivo = Column(Boolean, default=True, nullable=False)

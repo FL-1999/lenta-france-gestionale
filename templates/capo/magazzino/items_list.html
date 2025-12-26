@@ -27,38 +27,56 @@
     </div>
 </div>
 
-<div class="card table-card">
-    <div class="card-body">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Unité{% else %}UM{% endif %}</th>
-                    <th class="text-right">{% if lang == 'fr' %}Disponible{% else %}Disponibile{% endif %}</th>
-                    <th class="text-right">{% if lang == 'fr' %}Seuil{% else %}Soglia{% endif %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in items %}
-                    <tr>
-                        <td>{{ item.nome }}</td>
-                        <td>{{ item.unita_misura }}</td>
-                        <td class="text-right">{{ item.quantita_disponibile }}</td>
-                        <td class="text-right">{{ item.soglia_minima if item.soglia_minima is not none else '—' }}</td>
-                    </tr>
-                {% else %}
-                    <tr class="table-empty">
-                        <td colspan="4">
-                            {% if lang == 'fr' %}
-                                Aucun article actif disponible.
-                            {% else %}
-                                Nessun articolo attivo disponibile.
-                            {% endif %}
-                        </td>
-                    </tr>
+{% set state = namespace(has_items=false) %}
+{% for categoria in categorie %}
+    {% set category_items = items_by_categoria.get(categoria.key, []) %}
+    {% if category_items %}
+        {% set state.has_items = true %}
+        <section class="magazzino-category">
+            <div class="magazzino-category-header">
+                <h2>
+                    {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                </h2>
+            </div>
+            <div class="magazzino-items-grid">
+                {% for item in category_items %}
+                    <div class="card magazzino-item-card">
+                        <div class="card-body">
+                            <div class="magazzino-item-header">
+                                <h3>{{ item.nome }}</h3>
+                            </div>
+                            <p class="magazzino-item-meta">
+                                <span>{% if lang == 'fr' %}Unité{% else %}UM{% endif %}: {{ item.unita_misura }}</span>
+                            </p>
+                            <div class="magazzino-item-stats">
+                                <div>
+                                    <span class="label">{% if lang == 'fr' %}Disponible{% else %}Disponibile{% endif %}</span>
+                                    <span class="value">{{ item.quantita_disponibile }}</span>
+                                </div>
+                                <div>
+                                    <span class="label">{% if lang == 'fr' %}Seuil{% else %}Soglia{% endif %}</span>
+                                    <span class="value">{{ item.soglia_minima if item.soglia_minima is not none else '—' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+        </section>
+    {% endif %}
+{% endfor %}
+
+{% if not state.has_items %}
+    <div class="card table-card">
+        <div class="card-body">
+            <div class="table-empty">
+                {% if lang == 'fr' %}
+                    Aucun article actif disponible.
+                {% else %}
+                    Nessun articolo attivo disponibile.
+                {% endif %}
+            </div>
+        </div>
     </div>
-</div>
+{% endif %}
 {% endblock %}
