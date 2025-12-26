@@ -99,9 +99,27 @@ def capo_magazzino_richieste(
         .order_by(MagazzinoRichiesta.created_at.desc())
         .all()
     )
+    unread_ids = [
+        richiesta.id
+        for richiesta in richieste
+        if richiesta.gestito_at and not richiesta.letto_da_richiedente
+    ]
+    if unread_ids:
+        db.query(MagazzinoRichiesta).filter(
+            MagazzinoRichiesta.id.in_(unread_ids)
+        ).update(
+            {MagazzinoRichiesta.letto_da_richiedente: True},
+            synchronize_session=False,
+        )
+        db.commit()
     return templates.TemplateResponse(
         "capo/magazzino/richieste_list.html",
-        {"request": request, "user": current_user, "richieste": richieste},
+        {
+            "request": request,
+            "user": current_user,
+            "richieste": richieste,
+            "unread_ids": set(unread_ids),
+        },
     )
 
 
