@@ -1,0 +1,120 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Nouvelle demande – Magasin{% else %}Nuova richiesta – Magazzino{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">📝 {% if lang == 'fr' %}Nouvelle demande{% else %}Nuova richiesta{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Sélectionnez les articles et les quantités demandées.
+            {% else %}
+                Seleziona gli articoli e le quantità richieste.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('capo_magazzino_richieste') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<form method="post">
+    <div class="card table-card">
+        <div class="card-body">
+            <template id="item-options">
+                <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                {% for item in items %}
+                    <option value="{{ item.id }}">{{ item.nome }} ({{ item.unita_misura }})</option>
+                {% endfor %}
+            </template>
+            <table class="data-table" id="righe-table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <select name="item_id" required>
+                                <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                                {% for item in items %}
+                                    <option value="{{ item.id }}">{{ item.nome }} ({{ item.unita_misura }})</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td class="text-right">
+                            <input type="number" name="quantita" min="0" step="0.01" required>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="form-actions" style="margin-top: 16px;">
+                <button type="button" class="btn btn-secondary" id="add-row">
+                    ➕ {% if lang == 'fr' %}Ajouter une ligne{% else %}Aggiungi riga{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card large-form-card" style="margin-top: 16px;">
+        <div class="card-body">
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
+                <textarea name="note" placeholder="{% if lang == 'fr' %}Informations supplémentaires{% else %}Indicazioni aggiuntive{% endif %}"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('capo_magazzino_richieste') }}" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if lang == 'fr' %}Envoyer{% else %}Invia richiesta{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    const addRowButton = document.getElementById('add-row');
+    const tableBody = document.querySelector('#righe-table tbody');
+    const itemOptions = document.getElementById('item-options');
+    if (addRowButton && tableBody && itemOptions) {
+        addRowButton.addEventListener('click', () => {
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>
+                    <select name="item_id" required>
+                        ${itemOptions.innerHTML}
+                    </select>
+                </td>
+                <td class="text-right">
+                    <input type="number" name="quantita" min="0" step="0.01" required>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button>
+                </td>
+            `;
+            tableBody.appendChild(newRow);
+        });
+
+        tableBody.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target && target.classList.contains('remove-row')) {
+                target.closest('tr').remove();
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -35,7 +35,7 @@ from models import (
     Veicolo,
 )
 from routers import users, sites, machines, reports, fiches
-from routes import manager_personale, manager_veicoli
+from routes import manager_personale, manager_veicoli, magazzino
 
 
 # -------------------------------------------------
@@ -1744,3 +1744,4 @@ app.include_router(reports.router)    # /reports
 app.include_router(fiches.router)     # /fiches
 app.include_router(manager_personale.router)
 app.include_router(manager_veicoli.router)
+app.include_router(magazzino.router)

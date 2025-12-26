@@ -1,0 +1,64 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Magasin – Chef d'équipe{% else %}Magazzino – Caposquadra{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">📦 {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Consultez les articles disponibles et leurs quantités.
+            {% else %}
+                Consulta gli articoli disponibili e le quantità in magazzino.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('capo_magazzino_richieste') }}" class="btn btn-secondary">
+            📄 {% if lang == 'fr' %}Mes demandes{% else %}Le mie richieste{% endif %}
+        </a>
+        <a href="{{ url_for('capo_magazzino_richiesta_new') }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvelle demande{% else %}Nuova richiesta{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr>
+                        <td>{{ item.nome }}</td>
+                        <td>{{ item.descrizione or '—' }}</td>
+                        <td>{{ item.unita_misura }}</td>
+                        <td class="text-right">{{ item.quantita_disponibile }}</td>
+                    </tr>
+                {% else %}
+                    <tr class="table-empty">
+                        <td colspan="4">
+                            {% if lang == 'fr' %}
+                                Aucun article actif disponible.
+                            {% else %}
+                                Nessun articolo attivo disponibile.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
