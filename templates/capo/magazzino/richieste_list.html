@@ -59,17 +59,12 @@
                                 <div class="card-body">
                                     <div class="stack gap-2">
                                         <div>{{ richiesta.risposta_manager or '—' }}</div>
-                                        {% if richiesta.gestito_at and not richiesta.letto_da_richiedente %}
+                                        {% if richiesta.id in unread_ids %}
                                             <div class="badge badge-warning">Nuova risposta</div>
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
-                            {% if richiesta.gestito_at and not richiesta.letto_da_richiedente %}
-                                <form method="post" action="{{ url_for('capo_magazzino_richiesta_letto', richiesta_id=richiesta.id) }}" class="mt-2">
-                                    <button type="submit" class="btn btn-secondary btn-sm">Segna come letto</button>
-                                </form>
-                            {% endif %}
                         </td>
                     </tr>
                 {% else %}
