@@ -51,13 +51,20 @@
                 </div>
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>
-                    {% set categoria_value = item.categoria.value if item and item.categoria else 'vari' %}
-                    <select name="categoria" required>
+                    {% if item %}
+                        {% set categoria_value = item.categoria_id %}
+                    {% else %}
+                        {% set categoria_value = default_categoria_id %}
+                    {% endif %}
+                    <select name="categoria_id">
+                        <option value="">{% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}</option>
                         {% for categoria in categorie %}
-                            <option value="{{ categoria.key }}"
-                                    {% if categoria_value == categoria.key %}selected{% endif %}>
-                                {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
-                            </option>
+                            {% if categoria.id is not none %}
+                                <option value="{{ categoria.id }}"
+                                        {% if categoria_value == categoria.id %}selected{% endif %}>
+                                    {{ categoria.nome }}
+                                </option>
+                            {% endif %}
                         {% endfor %}
                     </select>
                 </div>

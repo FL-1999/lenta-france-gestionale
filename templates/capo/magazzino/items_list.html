@@ -47,10 +47,17 @@
                 </label>
                 <select id="categoria" name="categoria" class="form-select">
                     <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
-                    {% for categoria in categorie %}
-                        <option value="{{ categoria.key }}" {% if filters.categoria == categoria.key %}selected{% endif %}>
-                            {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                    {% if fallback_categoria.id is none %}
+                        <option value="none" {% if filters.categoria == 'none' %}selected{% endif %}>
+                            {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
                         </option>
+                    {% endif %}
+                    {% for categoria in categorie %}
+                        {% if categoria.id is not none %}
+                            <option value="{{ categoria.id }}" {% if filters.categoria == categoria.id|string %}selected{% endif %}>
+                                {{ categoria.nome }}
+                            </option>
+                        {% endif %}
                     {% endfor %}
                 </select>
             </div>
@@ -98,12 +105,12 @@
 {% endif %}
 
 {% for categoria in categorie %}
-    {% set category_items = items_by_categoria.get(categoria.key, []) %}
+    {% set category_items = items_by_categoria.get(categoria.id, []) %}
     {% if category_items %}
         <section class="magazzino-category">
             <div class="magazzino-category-header">
                 <h2>
-                    {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                    {{ categoria.nome }}
                 </h2>
             </div>
             <div class="magazzino-items-grid">

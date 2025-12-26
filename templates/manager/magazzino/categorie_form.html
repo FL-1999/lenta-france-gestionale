@@ -1,0 +1,75 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% set is_edit = categoria is not none %}
+
+{% block title %}
+    {% if lang == 'fr' %}
+        {% if is_edit %}Modifier catégorie{% else %}Nouvelle catégorie{% endif %}
+    {% else %}
+        {% if is_edit %}Modifica categoria{% else %}Nuova categoria{% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">
+            🗂️
+            {% if lang == 'fr' %}
+                {% if is_edit %}Modifier catégorie{% else %}Nouvelle catégorie{% endif %}
+            {% else %}
+                {% if is_edit %}Modifica categoria{% else %}Nuova categoria{% endif %}
+            {% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Renseignez le nom, l'ordre et l'état de la catégorie.
+            {% else %}
+                Compila nome, ordine e stato della categoria.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for(form_action, categoria_id=categoria.id) if is_edit else url_for(form_action) }}">
+    <div class="card large-form-card">
+        <div class="card-body">
+            {% if error_message %}
+                <div class="form-error">{{ error_message }}</div>
+            {% endif %}
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
+                    <input type="text" name="nome" value="{{ categoria.nome if categoria else '' }}" required>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</label>
+                    <input type="number" name="ordine" value="{{ categoria.ordine if categoria else 0 }}" min="0">
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label class="checkbox">
+                    <input type="checkbox" name="attiva" {% if categoria is none or categoria.attiva %}checked{% endif %}>
+                    <span>{% if lang == 'fr' %}Active{% else %}Attiva{% endif %}</span>
+                </label>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
