@@ -1,0 +1,96 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Demandes magasin – Manager{% else %}Richieste magazzino – Manager{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">🧾 {% if lang == 'fr' %}Demandes magasin{% else %}Richieste magazzino{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Consultez et gérez les demandes de matériel.
+            {% else %}
+                Consulta e gestisci le richieste di materiale.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Articles{% else %}Articoli{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 16px;">
+    <div class="card-body">
+        <form method="get">
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Filtrer par statut{% else %}Filtra per stato{% endif %}</label>
+                    <select name="stato">
+                        <option value="tutte" {% if not stato_filtro %}selected{% endif %}>
+                            {% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}
+                        </option>
+                        {% for stato in stati %}
+                            <option value="{{ stato.value }}" {% if stato_filtro == stato %}selected{% endif %}>
+                                {{ stato.value }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-field" style="align-self: end;">
+                    <button type="submit" class="btn btn-primary">
+                        {% if lang == 'fr' %}Appliquer{% else %}Applica{% endif %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>{% if lang == 'fr' %}Demandeur{% else %}Richiedente{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for richiesta in richieste %}
+                    <tr>
+                        <td>#{{ richiesta.id }}</td>
+                        <td>{{ richiesta.richiesto_da.full_name or richiesta.richiesto_da.email }}</td>
+                        <td>{{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}</td>
+                        <td>
+                            <span class="badge">{{ richiesta.stato.value if richiesta.stato else '—' }}</span>
+                        </td>
+                        <td class="table-actions">
+                            <a href="{{ url_for('manager_magazzino_richiesta_detail', richiesta_id=richiesta.id) }}" class="btn btn-secondary btn-sm">
+                                🔍 {% if lang == 'fr' %}Détails{% else %}Dettaglio{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr class="table-empty">
+                        <td colspan="5">
+                            {% if lang == 'fr' %}
+                                Aucune demande trouvée.
+                            {% else %}
+                                Nessuna richiesta trovata.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

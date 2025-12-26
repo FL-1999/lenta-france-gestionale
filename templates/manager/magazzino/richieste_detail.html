@@ -1,0 +1,107 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Détail demande{% else %}Dettaglio richiesta{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">📄 {% if lang == 'fr' %}Demande #{{ richiesta.id }}{% else %}Richiesta #{{ richiesta.id }}{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Demande envoyée par {{ richiesta.richiesto_da.full_name or richiesta.richiesto_da.email }}.
+            {% else %}
+                Richiesta inviata da {{ richiesta.richiesto_da.full_name or richiesta.richiesto_da.email }}.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 16px;">
+    <div class="card-body">
+        <div class="form-grid-2">
+            <div>
+                <strong>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}:</strong>
+                <span class="badge">{{ richiesta.stato.value if richiesta.stato else '—' }}</span>
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Date{% else %}Data{% endif %}:</strong>
+                {{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Gestionnaire{% else %}Gestito da{% endif %}:</strong>
+                {{ richiesta.gestito_da.full_name if richiesta.gestito_da else '—' }}
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Réponse{% else %}Risposta{% endif %}:</strong>
+                {{ richiesta.risposta_manager or '—' }}
+            </div>
+        </div>
+        {% if richiesta.note %}
+            <p style="margin-top: 12px;"><strong>Note:</strong> {{ richiesta.note }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Quantité demandée{% else %}Quantità richiesta{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for riga in richiesta.righe %}
+                    <tr>
+                        <td>{{ riga.item.nome }}</td>
+                        <td>{{ riga.item.unita_misura }}</td>
+                        <td class="text-right">{{ riga.quantita_richiesta }}</td>
+                    </tr>
+                {% else %}
+                    <tr class="table-empty">
+                        <td colspan="3">—</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+    <div class="card-body">
+        <form method="post" action="{{ url_for('manager_magazzino_richiesta_approva', richiesta_id=richiesta.id) }}">
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Réponse du manager{% else %}Risposta del manager{% endif %}</label>
+                <textarea name="risposta_manager" placeholder="{% if lang == 'fr' %}Message d'approbation{% else %}Messaggio di approvazione{% endif %}">{{ richiesta.risposta_manager or '' }}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    ✅ {% if lang == 'fr' %}Approuver{% else %}Approva{% endif %}
+                </button>
+            </div>
+        </form>
+        <form method="post" action="{{ url_for('manager_magazzino_richiesta_rifiuta', richiesta_id=richiesta.id) }}">
+            <div class="form-field" style="margin-top: 12px;">
+                <label>{% if lang == 'fr' %}Motif de refus{% else %}Motivo del rifiuto{% endif %}</label>
+                <textarea name="risposta_manager" placeholder="{% if lang == 'fr' %}Message de refus{% else %}Messaggio di rifiuto{% endif %}"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">
+                    ❌ {% if lang == 'fr' %}Refuser{% else %}Rifiuta{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

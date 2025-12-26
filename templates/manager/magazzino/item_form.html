@@ -1,0 +1,85 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% set is_edit = item is not none %}
+
+{% block title %}
+    {% if lang == 'fr' %}
+        {% if is_edit %}Modifier article{% else %}Nouvel article{% endif %}
+    {% else %}
+        {% if is_edit %}Modifica articolo{% else %}Nuovo articolo{% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">
+            📦
+            {% if lang == 'fr' %}
+                {% if is_edit %}Modifier article{% else %}Nouvel article{% endif %}
+            {% else %}
+                {% if is_edit %}Modifica articolo{% else %}Nuovo articolo{% endif %}
+            {% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Renseignez les informations principales de l'article.
+            {% else %}
+                Compila le informazioni principali dell'articolo.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for(form_action, item_id=item.id) if is_edit else url_for(form_action) }}">
+    <div class="card large-form-card">
+        <div class="card-body">
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
+                    <input type="text" name="nome" value="{{ item.nome if item else '' }}" required>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}*</label>
+                    <input type="text" name="unita_misura" value="{{ item.unita_misura if item else '' }}" required>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</label>
+                    <input type="number" name="quantita_disponibile" step="0.01" min="0" value="{{ item.quantita_disponibile if item else '' }}">
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Seuil minimum{% else %}Soglia minima{% endif %}</label>
+                    <input type="number" name="soglia_minima" step="0.01" min="0" value="{{ item.soglia_minima if item and item.soglia_minima is not none else '' }}">
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</label>
+                <textarea name="descrizione">{{ item.descrizione if item else '' }}</textarea>
+            </div>
+
+            <div class="form-field">
+                <label class="checkbox">
+                    <input type="checkbox" name="attivo" {% if item is none or item.attivo %}checked{% endif %}>
+                    <span>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+                </label>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

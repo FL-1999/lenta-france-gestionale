@@ -1,0 +1,86 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Magasin – Manager{% else %}Magazzino – Manager{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">📦 {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Gérez les articles du magasin et les niveaux de stock.
+            {% else %}
+                Gestisci gli articoli di magazzino e le quantità disponibili.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
+            🧾 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
+        </a>
+        <a href="{{ url_for('manager_magazzino_new') }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvel article{% else %}Nuovo articolo{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Seuil{% else %}Soglia{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr>
+                        <td>{{ item.nome }}</td>
+                        <td>{{ item.unita_misura }}</td>
+                        <td>{{ item.descrizione or '—' }}</td>
+                        <td class="text-right">{{ item.quantita_disponibile }}</td>
+                        <td class="text-right">{{ item.soglia_minima or '—' }}</td>
+                        <td class="text-right">
+                            {% if item.attivo %}
+                                <span class="badge badge-success">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+                            {% else %}
+                                <span class="badge badge-muted">{% if lang == 'fr' %}Inactif{% else %}Inattivo{% endif %}</span>
+                            {% endif %}
+                        </td>
+                        <td class="table-actions">
+                            <a href="{{ url_for('manager_magazzino_edit', item_id=item.id) }}" class="btn btn-secondary btn-sm">
+                                ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                            </a>
+                            <form method="post" action="{{ url_for('manager_magazzino_delete', item_id=item.id) }}">
+                                <button type="submit" class="btn btn-danger btn-sm"
+                                        onclick="return confirm('{% if lang == 'fr' %}Désactiver cet article ?{% else %}Disattivare questo articolo?{% endif %}');">
+                                    🗑️ {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr class="table-empty">
+                        <td colspan="7">
+                            {% if lang == 'fr' %}
+                                Aucun article disponible.
+                            {% else %}
+                                Nessun articolo disponibile.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

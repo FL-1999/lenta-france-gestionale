@@ -1,0 +1,80 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Mes demandes – Magasin{% else %}Le mie richieste – Magazzino{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">🧾 {% if lang == 'fr' %}Mes demandes{% else %}Le mie richieste{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Suivez l'état des demandes envoyées au magasin.
+            {% else %}
+                Segui lo stato delle richieste inviate al magazzino.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('capo_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour au magasin{% else %}Torna al magazzino{% endif %}
+        </a>
+        <a href="{{ url_for('capo_magazzino_richiesta_new') }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvelle demande{% else %}Nuova richiesta{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}ID{% else %}ID{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Réponse{% else %}Risposta{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Articles{% else %}Articoli{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for richiesta in richieste %}
+                    <tr>
+                        <td>#{{ richiesta.id }}</td>
+                        <td>{{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}</td>
+                        <td>
+                            <span class="badge">
+                                {{ richiesta.stato.value if richiesta.stato else '—' }}
+                            </span>
+                        </td>
+                        <td>{{ richiesta.risposta_manager or '—' }}</td>
+                        <td>
+                            {% if richiesta.righe %}
+                                <ul>
+                                    {% for riga in richiesta.righe %}
+                                        <li>{{ riga.item.nome }} – {{ riga.quantita_richiesta }} {{ riga.item.unita_misura }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr class="table-empty">
+                        <td colspan="5">
+                            {% if lang == 'fr' %}
+                                Aucune demande enregistrée.
+                            {% else %}
+                                Nessuna richiesta registrata.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
