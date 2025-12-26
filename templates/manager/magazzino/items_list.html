@@ -21,47 +21,52 @@
         <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
             🧾 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
         </a>
-        <a href="{{ url_for('manager_magazzino_new') }}" class="btn btn-primary">
-            ➕ {% if lang == 'fr' %}Nouvel article{% else %}Nuovo articolo{% endif %}
-        </a>
+        <button type="button" class="btn btn-primary" data-modal-open="new-item">
+            ➕ {% if lang == 'fr' %}Nouvelle carte{% else %}Nuova card{% endif %}
+        </button>
     </div>
 </div>
 
-{% set state = namespace(has_items=false) %}
 {% for categoria in categorie %}
     {% set category_items = items_by_categoria.get(categoria.key, []) %}
-    {% if category_items %}
-        {% set state.has_items = true %}
-        <section class="magazzino-category">
-            <div class="magazzino-category-header">
-                <h2>
-                    {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
-                </h2>
-            </div>
-            <div class="magazzino-items-grid">
+    <section class="magazzino-category">
+        <div class="magazzino-category-header">
+            <h2>
+                {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+            </h2>
+        </div>
+        <div class="magazzino-items-grid">
+            {% if category_items %}
                 {% for item in category_items %}
+                    {% set non_disponibile = (not item.attivo) or (item.quantita_disponibile is not none and item.quantita_disponibile <= 0) %}
+                    {% set sotto_soglia = (not non_disponibile) and (item.soglia_minima is not none) and (item.quantita_disponibile is not none) and (item.quantita_disponibile < item.soglia_minima) %}
                     <div class="card magazzino-item-card">
                         <div class="card-body">
                             <div class="magazzino-item-header">
                                 <h3>{{ item.nome }}</h3>
-                                {% if item.attivo %}
-                                    <span class="badge badge-success">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+                                {% if non_disponibile %}
+                                    <span class="badge badge-muted">{% if lang == 'fr' %}Indisponible{% else %}Non disponibile{% endif %}</span>
+                                {% elif sotto_soglia %}
+                                    <span class="badge badge-danger">{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
                                 {% else %}
-                                    <span class="badge badge-muted">{% if lang == 'fr' %}Inactif{% else %}Inattivo{% endif %}</span>
+                                    <span class="badge badge-success">OK</span>
                                 {% endif %}
                             </div>
-                            <p class="magazzino-item-meta">
-                                <span>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}: {{ item.unita_misura }}</span>
-                            </p>
                             <p class="magazzino-item-desc">{{ item.descrizione or '—' }}</p>
                             <div class="magazzino-item-stats">
                                 <div>
-                                    <span class="label">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</span>
-                                    <span class="value">{{ item.quantita_disponibile }}</span>
+                                    <span class="label">{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</span>
+                                    <span class="value">
+                                        {% if item.quantita_disponibile is not none %}
+                                            {{ item.quantita_disponibile }} {{ item.unita_misura }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </span>
                                 </div>
                                 <div>
-                                    <span class="label">{% if lang == 'fr' %}Seuil{% else %}Soglia{% endif %}</span>
-                                    <span class="value">{{ item.soglia_minima or '—' }}</span>
+                                    <span class="label">{% if lang == 'fr' %}Seuil minimum{% else %}Soglia minima{% endif %}</span>
+                                    <span class="value">{{ item.soglia_minima if item.soglia_minima is not none else '—' }}</span>
                                 </div>
                             </div>
                             <div class="card-actions">
@@ -70,30 +75,131 @@
                                 </a>
                                 <form method="post" action="{{ url_for('manager_magazzino_delete', item_id=item.id) }}">
                                     <button type="submit" class="btn btn-danger btn-sm"
-                                            onclick="return confirm('{% if lang == 'fr' %}Désactiver cet article ?{% else %}Disattivare questo articolo?{% endif %}');">
-                                        🗑️ {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
+                                            onclick="return confirm('{% if lang == 'fr' %}Supprimer cet article ?{% else %}Eliminare questo articolo?{% endif %}');">
+                                        🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
                                     </button>
                                 </form>
                             </div>
                         </div>
                     </div>
                 {% endfor %}
-            </div>
-        </section>
-    {% endif %}
+            {% else %}
+                <div class="card magazzino-item-card">
+                    <div class="card-body">
+                        <p class="magazzino-item-desc">
+                            {% if lang == 'fr' %}
+                                Aucun article dans cette catégorie.
+                            {% else %}
+                                Nessun articolo in questa categoria.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </section>
 {% endfor %}
 
-{% if not state.has_items %}
-    <div class="card table-card">
+<div class="modal" id="new-item-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-content card">
         <div class="card-body">
-            <div class="table-empty">
-                {% if lang == 'fr' %}
-                    Aucun article disponible.
-                {% else %}
-                    Nessun articolo disponibile.
-                {% endif %}
+            <div class="modal-header">
+                <h2>
+                    {% if lang == 'fr' %}Nouvelle carte{% else %}Nuova card{% endif %}
+                </h2>
+                <button type="button" class="btn btn-secondary btn-sm" data-modal-close>✖</button>
             </div>
+            <form method="post" action="{{ url_for('manager_magazzino_create') }}">
+                <div class="form-grid-2">
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
+                        <input type="text" name="nome" required>
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Unité{% else %}UM{% endif %}*</label>
+                        <input type="text" name="unita_misura" required>
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>
+                        <select name="categoria" required>
+                            {% for categoria in categorie %}
+                                <option value="{{ categoria.key }}">
+                                    {% if lang == 'fr' %}{{ categoria.label_fr }}{% else %}{{ categoria.label_it }}{% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</label>
+                        <input type="number" name="quantita_disponibile" step="0.01" min="0">
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Seuil minimum{% else %}Soglia minima{% endif %}</label>
+                        <input type="number" name="soglia_minima" step="0.01" min="0">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</label>
+                    <textarea name="descrizione"></textarea>
+                </div>
+
+                <div class="form-field">
+                    <label class="checkbox">
+                        <input type="checkbox" name="attivo" checked>
+                        <span>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-modal-close>
+                        {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-{% endif %}
+</div>
+
+<script>
+    (() => {
+        const openButton = document.querySelector('[data-modal-open="new-item"]');
+        const modal = document.getElementById('new-item-modal');
+        if (!openButton || !modal) {
+            return;
+        }
+        const closeButtons = modal.querySelectorAll('[data-modal-close]');
+        const focusableSelector = 'input, select, textarea, button';
+
+        const openModal = () => {
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            const firstInput = modal.querySelector(focusableSelector);
+            if (firstInput) {
+                firstInput.focus();
+            }
+        };
+
+        const closeModal = () => {
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+            openButton.focus();
+        };
+
+        openButton.addEventListener('click', openModal);
+        closeButtons.forEach((button) => {
+            button.addEventListener('click', closeModal);
+        });
+
+        modal.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+    })();
+</script>
 {% endblock %}
