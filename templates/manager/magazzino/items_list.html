@@ -52,13 +52,17 @@
                                     <span class="badge badge-success">OK</span>
                                 {% endif %}
                             </div>
+                            <p class="magazzino-item-meta">
+                                <strong>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}:</strong>
+                                {{ item.codice or '—' }}
+                            </p>
                             <p class="magazzino-item-desc">{{ item.descrizione or '—' }}</p>
                             <div class="magazzino-item-stats">
                                 <div>
                                     <span class="label">{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</span>
-                                    <span class="value">
+                                    <span class="kpi-value">
                                         {% if item.quantita_disponibile is not none %}
-                                            {{ item.quantita_disponibile }} {{ item.unita_misura }}
+                                            {{ item.quantita_disponibile }}
                                         {% else %}
                                             —
                                         {% endif %}
@@ -69,6 +73,36 @@
                                     <span class="value">{{ item.soglia_minima if item.soglia_minima is not none else '—' }}</span>
                                 </div>
                             </div>
+                            <details>
+                                <summary class="btn btn-primary btn-sm">⬇️ {% if lang == 'fr' %}Déstockage{% else %}Scarico{% endif %}</summary>
+                                <form method="post" action="{{ url_for('manager_magazzino_scarico') }}" style="margin-top: 0.75rem;">
+                                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                                    <div class="form-grid-2">
+                                        <div class="form-field">
+                                            <label>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}*</label>
+                                            <input type="number" name="quantita" min="0" step="0.01" required>
+                                        </div>
+                                        <div class="form-field">
+                                            <label>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}*</label>
+                                            <select name="cantiere_id" required>
+                                                <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                                                {% for cantiere in cantieri %}
+                                                    <option value="{{ cantiere.id }}">{{ cantiere.name }}{% if cantiere.code %} ({{ cantiere.code }}){% endif %}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-field">
+                                        <label>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
+                                        <textarea name="note" placeholder="{% if lang == 'fr' %}Informations complémentaires{% else %}Indicazioni aggiuntive{% endif %}"></textarea>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            ⬇️ {% if lang == 'fr' %}Confirmer{% else %}Conferma scarico{% endif %}
+                                        </button>
+                                    </div>
+                                </form>
+                            </details>
                             <div class="card-actions">
                                 <a href="{{ url_for('manager_magazzino_edit', item_id=item.id) }}" class="btn btn-secondary btn-sm">
                                     ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
@@ -117,8 +151,8 @@
                         <input type="text" name="nome" required>
                     </div>
                     <div class="form-field">
-                        <label>{% if lang == 'fr' %}Unité{% else %}UM{% endif %}*</label>
-                        <input type="text" name="unita_misura" required>
+                        <label>{% if lang == 'fr' %}Code article{% else %}Codice articolo{% endif %}*</label>
+                        <input type="text" name="codice" required>
                     </div>
                     <div class="form-field">
                         <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>

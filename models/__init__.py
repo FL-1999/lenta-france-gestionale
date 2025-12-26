@@ -300,8 +300,9 @@ class MagazzinoItem(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(255), nullable=False)
+    codice = Column(String(120), nullable=False, default="")
     descrizione = Column(Text, nullable=True)
-    unita_misura = Column(String(50), nullable=False)
+    unita_misura = Column(String(50), nullable=False, default="pz")
     categoria = Column(
         Enum(MagazzinoCategoriaEnum),
         nullable=False,
@@ -314,7 +315,10 @@ class MagazzinoItem(Base, TimestampMixin):
     righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")
 
     def __repr__(self) -> str:
-        return f"<MagazzinoItem id={self.id} nome={self.nome} unita={self.unita_misura}>"
+        return (
+            f"<MagazzinoItem id={self.id} codice={self.codice} nome={self.nome} "
+            f"unita={self.unita_misura}>"
+        )
 
 
 class MagazzinoRichiesta(Base, TimestampMixin):
