@@ -105,6 +105,37 @@ def capo_magazzino_richieste(
     )
 
 
+@router.post(
+    "/capo/magazzino/richieste/{richiesta_id}/letto",
+    response_class=HTMLResponse,
+    name="capo_magazzino_richiesta_letto",
+)
+def capo_magazzino_richiesta_letto(
+    richiesta_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_caposquadra_or_manager(current_user)
+    richiesta = (
+        db.query(MagazzinoRichiesta)
+        .filter(
+            MagazzinoRichiesta.id == richiesta_id,
+            MagazzinoRichiesta.richiesto_da_user_id == current_user.id,
+        )
+        .first()
+    )
+    if richiesta and richiesta.gestito_at:
+        richiesta.letto_da_richiedente = True
+        db.add(richiesta)
+        db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("capo_magazzino_richieste"),
+        status_code=303,
+    )
+
+
 @router.get(
     "/capo/magazzino/richieste/nuova",
     response_class=HTMLResponse,
@@ -458,6 +489,7 @@ def manager_magazzino_richiesta_approva(
     richiesta.risposta_manager = (risposta_manager or "").strip() or None
     richiesta.gestito_da_user_id = current_user.id
     richiesta.gestito_at = datetime.utcnow()
+    richiesta.letto_da_richiedente = False
 
     db.add(richiesta)
     db.commit()
@@ -494,6 +526,7 @@ def manager_magazzino_richiesta_rifiuta(
     richiesta.risposta_manager = (risposta_manager or "").strip() or None
     richiesta.gestito_da_user_id = current_user.id
     richiesta.gestito_at = datetime.utcnow()
+    richiesta.letto_da_richiedente = False
 
     db.add(richiesta)
     db.commit()
