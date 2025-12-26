@@ -50,6 +50,7 @@
                     <th>Email</th>
                     <th>{% if lang == 'fr' %}Nom complet{% else %}Nome completo{% endif %}</th>
                     <th>{% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chantier assigné{% else %}Cantiere assegnato{% endif %}</th>
                     <th>{% if lang == 'fr' %}Langue{% else %}Lingua{% endif %}</th>
                     <th>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
                     <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
@@ -58,10 +59,28 @@
             <tbody>
                 {% set users_list = users | default([]) %}
                 {% for u in users_list %}
+                {% set assigned_sites = user_sites_map.get(u.id, []) if user_sites_map else [] %}
                 <tr>
                     <td>{{ u.email }}</td>
                     <td>{{ u.full_name or "-" }}</td>
                     <td>{{ u.role.value if u.role else "-" }}</td>
+                    <td>
+                        {% if assigned_sites %}
+                            {% for site in assigned_sites %}
+                                {{ site.name or site.nome or "-" }}
+                                {% if site.code and site.city %}
+                                    <span class="text-muted">({{ site.code }}, {{ site.city }})</span>
+                                {% elif site.code %}
+                                    <span class="text-muted">({{ site.code }})</span>
+                                {% elif site.city %}
+                                    <span class="text-muted">({{ site.city }})</span>
+                                {% endif %}
+                                {% if not loop.last %}<br />{% endif %}
+                            {% endfor %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
                     <td>{{ u.language or "-" }}</td>
                     <td>
                         {% if u.is_active %}
@@ -96,7 +115,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="table-empty">
+                    <td colspan="7" class="table-empty">
                         {% if lang == 'fr' %}
                             Aucun utilisateur enregistré pour le moment.
                         {% else %}
