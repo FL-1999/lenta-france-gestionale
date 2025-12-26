@@ -74,6 +74,19 @@
             </select>
           </div>
 
+          <div class="form-group">
+            <label class="form-label" for="caposquadra_id">Caposquadra responsabile</label>
+            <select id="caposquadra_id" name="caposquadra_id" class="form-select">
+              {% set selected_capo = site.caposquadra_id if site else '' %}
+              <option value="" {% if not selected_capo %}selected{% endif %}>-</option>
+              {% for capo in capisquadra %}
+                <option value="{{ capo.id }}" {% if selected_capo == capo.id %}selected{% endif %}>
+                  {{ capo.full_name or capo.email }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
           <div class="form-group form-group-inline">
             <input type="checkbox" id="is_active" name="is_active" class="form-control" {% if not site or site.is_active %}checked{% endif %}>
             <label class="form-label" for="is_active">Cantiere attivo</label>

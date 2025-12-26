@@ -110,6 +110,7 @@ class User(Base, TimestampMixin):
     # Relazioni
     reports = relationship("Report", back_populates="created_by", cascade="all, delete-orphan")
     fiches = relationship("Fiche", back_populates="created_by", cascade="all, delete-orphan")
+    assigned_sites = relationship("Site", back_populates="caposquadra")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"
@@ -137,6 +138,8 @@ class Site(Base, TimestampMixin):
     status = Column(Enum(SiteStatusEnum), nullable=False, default=SiteStatusEnum.aperto)
 
     is_active = Column(Boolean, default=True, nullable=False)
+    caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    caposquadra = relationship("User", back_populates="assigned_sites")
 
     # Relazioni
     reports = relationship("Report", back_populates="site", cascade="all, delete-orphan")
