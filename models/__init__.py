@@ -323,6 +323,7 @@ class MagazzinoRichiesta(Base, TimestampMixin):
     risposta_manager = Column(Text, nullable=True)
     gestito_da_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     gestito_at = Column(DateTime, nullable=True)
+    letto_da_richiedente = Column(Boolean, default=False, nullable=False)
 
     richiesto_da = relationship("User", foreign_keys=[richiesto_da_user_id])
     gestito_da = relationship("User", foreign_keys=[gestito_da_user_id])
