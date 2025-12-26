@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, time
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_html
@@ -12,6 +13,8 @@ from database import get_db
 from models import (
     MagazzinoCategoriaEnum,
     MagazzinoItem,
+    MagazzinoMovimento,
+    MagazzinoMovimentoTipoEnum,
     MagazzinoRichiesta,
     MagazzinoRichiestaRiga,
     MagazzinoRichiestaStatusEnum,
@@ -81,6 +84,15 @@ def _parse_categoria(value: str | None) -> MagazzinoCategoriaEnum:
         if value.lower() in (categoria.value.lower(), categoria.name.lower()):
             return categoria
     return MagazzinoCategoriaEnum.vari
+
+
+def _parse_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
 
 
 def _group_items_by_categoria(items: list[MagazzinoItem]) -> dict[str, list[MagazzinoItem]]:
@@ -329,6 +341,103 @@ def manager_magazzino_list(
 
 
 @router.get(
+    "/manager/magazzino/movimenti",
+    response_class=HTMLResponse,
+    name="manager_magazzino_movimenti",
+)
+def manager_magazzino_movimenti(
+    request: Request,
+    cantiere_id: int | None = None,
+    item_id: int | None = None,
+    tipo: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+
+    parsed_from = _parse_date(date_from)
+    parsed_to = _parse_date(date_to)
+
+    query = db.query(MagazzinoMovimento).options(
+        joinedload(MagazzinoMovimento.item),
+        joinedload(MagazzinoMovimento.cantiere),
+        joinedload(MagazzinoMovimento.user),
+    )
+    if cantiere_id:
+        query = query.filter(MagazzinoMovimento.cantiere_id == cantiere_id)
+    if item_id:
+        query = query.filter(MagazzinoMovimento.item_id == item_id)
+    if tipo in (MagazzinoMovimentoTipoEnum.scarico.value, MagazzinoMovimentoTipoEnum.carico.value):
+        query = query.filter(MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum(tipo))
+    if parsed_from:
+        query = query.filter(
+            MagazzinoMovimento.created_at >= datetime.combine(parsed_from, time.min)
+        )
+    if parsed_to:
+        query = query.filter(
+            MagazzinoMovimento.created_at <= datetime.combine(parsed_to, time.max)
+        )
+
+    movimenti = query.order_by(MagazzinoMovimento.created_at.desc()).all()
+
+    summary_query = db.query(
+        Site,
+        func.coalesce(func.sum(MagazzinoMovimento.quantita), 0.0),
+    ).join(
+        MagazzinoMovimento,
+        MagazzinoMovimento.cantiere_id == Site.id,
+    ).filter(
+        MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum.scarico,
+    )
+    if cantiere_id:
+        summary_query = summary_query.filter(MagazzinoMovimento.cantiere_id == cantiere_id)
+    if item_id:
+        summary_query = summary_query.filter(MagazzinoMovimento.item_id == item_id)
+    if parsed_from:
+        summary_query = summary_query.filter(
+            MagazzinoMovimento.created_at >= datetime.combine(parsed_from, time.min)
+        )
+    if parsed_to:
+        summary_query = summary_query.filter(
+            MagazzinoMovimento.created_at <= datetime.combine(parsed_to, time.max)
+        )
+    totals = (
+        summary_query.group_by(Site.id)
+        .order_by(Site.name.asc())
+        .all()
+    )
+
+    cantieri = db.query(Site).order_by(Site.name.asc()).all()
+    items = db.query(MagazzinoItem).order_by(MagazzinoItem.nome.asc()).all()
+
+    return templates.TemplateResponse(
+        "manager/magazzino/movimenti_list.html",
+        {
+            "request": request,
+            "user": current_user,
+            "movimenti": movimenti,
+            "cantieri": cantieri,
+            "items": items,
+            "tipo_options": [
+                MagazzinoMovimentoTipoEnum.scarico.value,
+                MagazzinoMovimentoTipoEnum.carico.value,
+            ],
+            "selected": {
+                "cantiere_id": cantiere_id,
+                "item_id": item_id,
+                "tipo": tipo,
+                "date_from": parsed_from.isoformat() if parsed_from else "",
+                "date_to": parsed_to.isoformat() if parsed_to else "",
+            },
+            "totals": totals,
+            "has_period_filter": bool(parsed_from or parsed_to),
+        },
+    )
+
+
+@router.get(
     "/manager/magazzino/nuovo",
     response_class=HTMLResponse,
     name="manager_magazzino_new",
@@ -380,6 +489,17 @@ def manager_magazzino_create(
         attivo=attivo,
     )
     db.add(item)
+    db.flush()
+
+    if item.quantita_disponibile and item.quantita_disponibile > 0:
+        movimento = MagazzinoMovimento(
+            item_id=item.id,
+            tipo=MagazzinoMovimentoTipoEnum.carico,
+            quantita=item.quantita_disponibile,
+            user_id=current_user.id,
+            note="Carico iniziale",
+        )
+        db.add(movimento)
     db.commit()
 
     return RedirectResponse(
@@ -446,6 +566,8 @@ def manager_magazzino_update(
             status_code=303,
     )
 
+    quantita_precedente = item.quantita_disponibile or 0.0
+
     item.nome = nome.strip()
     item.codice = codice.strip()
     item.descrizione = (descrizione or "").strip() or None
@@ -455,6 +577,18 @@ def manager_magazzino_update(
     item.attivo = attivo
 
     db.add(item)
+    differenza = (item.quantita_disponibile or 0.0) - quantita_precedente
+    if abs(differenza) > 0:
+        movimento = MagazzinoMovimento(
+            item_id=item.id,
+            tipo=MagazzinoMovimentoTipoEnum.carico
+            if differenza > 0
+            else MagazzinoMovimentoTipoEnum.scarico,
+            quantita=abs(differenza),
+            user_id=current_user.id,
+            note="Rettifica quantità",
+        )
+        db.add(movimento)
     db.commit()
 
     return RedirectResponse(
@@ -496,6 +630,15 @@ def manager_magazzino_scarico(
     item.quantita_disponibile = max(0.0, quantita_attuale - quantita_valore)
 
     db.add(item)
+    movimento = MagazzinoMovimento(
+        item_id=item.id,
+        tipo=MagazzinoMovimentoTipoEnum.scarico,
+        quantita=quantita_valore,
+        cantiere_id=cantiere_id,
+        user_id=current_user.id,
+        note=(note or "").strip() or None,
+    )
+    db.add(movimento)
     db.commit()
 
     return RedirectResponse(

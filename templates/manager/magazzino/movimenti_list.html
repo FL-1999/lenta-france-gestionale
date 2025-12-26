@@ -1,0 +1,155 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Mouvements magasin{% else %}Movimenti magazzino{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">📊 {% if lang == 'fr' %}Mouvements magasin{% else %}Movimenti magazzino{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Consultez l'historique des entrées et sorties.
+            {% else %}
+                Consulta lo storico di carichi e scarichi dal magazzino.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour au magasin{% else %}Torna al magazzino{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card form-card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            <span>{% if lang == 'fr' %}Filtres{% else %}Filtri{% endif %}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="get">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="cantiere_id">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
+                    <select id="cantiere_id" name="cantiere_id" class="form-select">
+                        <option value="">—</option>
+                        {% for cantiere in cantieri %}
+                            <option value="{{ cantiere.id }}" {% if selected.cantiere_id == cantiere.id %}selected{% endif %}>
+                                {{ cantiere.name }}{% if cantiere.code %} ({{ cantiere.code }}){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="item_id">{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</label>
+                    <select id="item_id" name="item_id" class="form-select">
+                        <option value="">—</option>
+                        {% for item in items %}
+                            <option value="{{ item.id }}" {% if selected.item_id == item.id %}selected{% endif %}>
+                                {{ item.codice or '—' }} - {{ item.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="tipo">{% if lang == 'fr' %}Type{% else %}Tipo{% endif %}</label>
+                    <select id="tipo" name="tipo" class="form-select">
+                        <option value="">—</option>
+                        {% for option in tipo_options %}
+                            <option value="{{ option }}" {% if selected.tipo == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="date_from">{% if lang == 'fr' %}Du{% else %}Dal{% endif %}</label>
+                    <input type="date" id="date_from" name="date_from" class="form-control" value="{{ selected.date_from }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="date_to">{% if lang == 'fr' %}Au{% else %}Al{% endif %}</label>
+                    <input type="date" id="date_to" name="date_to" class="form-control" value="{{ selected.date_to }}">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if lang == 'fr' %}Appliquer{% else %}Applica{% endif %}</button>
+                <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">{% if lang == 'fr' %}Réinitialiser{% else %}Reset{% endif %}</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if has_period_filter %}
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+            <div class="card-title">
+                <span>{% if lang == 'fr' %}Total déstocké par chantier{% else %}Totale scaricato per cantiere{% endif %}</span>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if totals %}
+                <ul class="list-unstyled" style="margin: 0;">
+                    {% for site, total in totals %}
+                        <li style="display: flex; justify-content: space-between; padding: 0.35rem 0;">
+                            <span>{{ site.name }}{% if site.code %} ({{ site.code }}){% endif %}</span>
+                            <strong>{{ total }}</strong>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">{% if lang == 'fr' %}Aucun mouvement dans la période sélectionnée.{% else %}Nessun movimento nel periodo selezionato.{% endif %}</p>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <span>{% if lang == 'fr' %}Historique{% else %}Storico{% endif %}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Type{% else %}Tipo{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movimento in movimenti %}
+                        <tr>
+                            <td>{{ movimento.created_at.strftime('%d/%m/%Y %H:%M') if movimento.created_at else '—' }}</td>
+                            <td>
+                                {% if movimento.item %}
+                                    {{ movimento.item.codice or '—' }} - {{ movimento.item.nome }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>{{ movimento.tipo.value if movimento.tipo else '—' }}</td>
+                            <td>{{ movimento.quantita }}</td>
+                            <td>{{ movimento.cantiere.name if movimento.cantiere else '—' }}</td>
+                            <td>{{ movimento.user.full_name if movimento.user and movimento.user.full_name else (movimento.user.email if movimento.user else '—') }}</td>
+                            <td>{{ movimento.note or '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="muted">{% if lang == 'fr' %}Aucun mouvement enregistré.{% else %}Nessun movimento registrato.{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

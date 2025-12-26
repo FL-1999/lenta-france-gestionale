@@ -33,6 +33,8 @@ from models import (
     FicheStratigrafia,
     Personale,
     Veicolo,
+    MagazzinoMovimento,
+    MagazzinoMovimentoTipoEnum,
 )
 from routers import users, sites, machines, reports, fiches
 from routes import manager_personale, manager_veicoli, magazzino
@@ -1235,6 +1237,20 @@ def manager_cantiere_modifica_get(
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
         site_status_values = [status.name for status in SiteStatusEnum]
+        scarichi_recenti = (
+            db.query(MagazzinoMovimento)
+            .options(
+                joinedload(MagazzinoMovimento.item),
+                joinedload(MagazzinoMovimento.user),
+            )
+            .filter(
+                MagazzinoMovimento.cantiere_id == site_id,
+                MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum.scarico,
+            )
+            .order_by(MagazzinoMovimento.created_at.desc())
+            .limit(20)
+            .all()
+        )
     finally:
         db.close()
 
@@ -1246,6 +1262,7 @@ def manager_cantiere_modifica_get(
             "mode": "edit",
             "site": site,
             "site_status_values": site_status_values,
+            "scarichi_recenti": scarichi_recenti,
         },
     )
 
