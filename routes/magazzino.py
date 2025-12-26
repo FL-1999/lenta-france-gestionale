@@ -216,7 +216,7 @@ def manager_magazzino_new(
 ):
     ensure_magazzino_manager(current_user)
     return templates.TemplateResponse(
-        "manager/magazzino/item_form.html",
+        "manager/magazzino/item_new.html",
         {
             "request": request,
             "user": current_user,
@@ -282,7 +282,7 @@ def manager_magazzino_edit(
         )
 
     return templates.TemplateResponse(
-        "manager/magazzino/item_form.html",
+        "manager/magazzino/item_edit.html",
         {
             "request": request,
             "user": current_user,
@@ -429,7 +429,7 @@ def manager_magazzino_richiesta_detail(
         )
 
     return templates.TemplateResponse(
-        "manager/magazzino/richieste_detail.html",
+        "manager/magazzino/richiesta_detail.html",
         {"request": request, "user": current_user, "richiesta": richiesta},
     )
 

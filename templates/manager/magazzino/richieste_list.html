@@ -6,6 +6,12 @@
 {% endblock %}
 
 {% block content %}
+{% set stato_class_map = {
+    'IN_ATTESA': 'badge-muted',
+    'APPROVATA': 'badge-success',
+    'RIFIUTATA': 'badge-danger',
+    'EVASA': 'badge-secondary'
+} %}
 <div class="page-header">
     <div class="page-header-main">
         <h1 class="page-title">🧾 {% if lang == 'fr' %}Demandes magasin{% else %}Richieste magazzino{% endif %}</h1>
@@ -56,25 +62,27 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>{% if lang == 'fr' %}Demandeur{% else %}Richiedente{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chef{% else %}Capo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
                     <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for richiesta in richieste %}
+                    {% set stato_label = richiesta.stato.value if richiesta.stato else '—' %}
+                    {% set badge_class = stato_class_map.get(stato_label, 'badge-muted') %}
                     <tr>
-                        <td>#{{ richiesta.id }}</td>
-                        <td>{{ richiesta.richiesto_da.full_name or richiesta.richiesto_da.email }}</td>
-                        <td>{{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}</td>
                         <td>
-                            <span class="badge">{{ richiesta.stato.value if richiesta.stato else '—' }}</span>
+                            <span class="badge {{ badge_class }}">{{ stato_label }}</span>
                         </td>
+                        <td>{{ richiesta.richiesto_da.full_name or richiesta.richiesto_da.email }}</td>
+                        <td>{{ richiesta.cantiere.name if richiesta.cantiere else '—' }}</td>
+                        <td>{{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}</td>
                         <td class="table-actions">
                             <a href="{{ url_for('manager_magazzino_richiesta_detail', richiesta_id=richiesta.id) }}" class="btn btn-secondary btn-sm">
-                                🔍 {% if lang == 'fr' %}Détails{% else %}Dettaglio{% endif %}
+                                🔍 {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
                             </a>
                         </td>
                     </tr>

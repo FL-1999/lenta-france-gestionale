@@ -6,6 +6,12 @@
 {% endblock %}
 
 {% block content %}
+{% set stato_class_map = {
+    'IN_ATTESA': 'badge-muted',
+    'APPROVATA': 'badge-success',
+    'RIFIUTATA': 'badge-danger',
+    'EVASA': 'badge-secondary'
+} %}
 <div class="page-header">
     <div class="page-header-main">
         <h1 class="page-title">🧾 {% if lang == 'fr' %}Mes demandes{% else %}Le mie richieste{% endif %}</h1>
@@ -32,39 +38,33 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>{% if lang == 'fr' %}ID{% else %}ID{% endif %}</th>
                     <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
                     <th>{% if lang == 'fr' %}Réponse{% else %}Risposta{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Articles{% else %}Articoli{% endif %}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for richiesta in richieste %}
+                    {% set stato_label = richiesta.stato.value if richiesta.stato else '—' %}
+                    {% set badge_class = stato_class_map.get(stato_label, 'badge-muted') %}
                     <tr>
-                        <td>#{{ richiesta.id }}</td>
                         <td>{{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}</td>
                         <td>
-                            <span class="badge">
-                                {{ richiesta.stato.value if richiesta.stato else '—' }}
+                            <span class="badge {{ badge_class }}">
+                                {{ stato_label }}
                             </span>
                         </td>
-                        <td>{{ richiesta.risposta_manager or '—' }}</td>
                         <td>
-                            {% if richiesta.righe %}
-                                <ul>
-                                    {% for riga in richiesta.righe %}
-                                        <li>{{ riga.item.nome }} – {{ riga.quantita_richiesta }} {{ riga.item.unita_misura }}</li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                —
-                            {% endif %}
+                            <div class="card">
+                                <div class="card-body">
+                                    {{ richiesta.risposta_manager or '—' }}
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 {% else %}
                     <tr class="table-empty">
-                        <td colspan="5">
+                        <td colspan="3">
                             {% if lang == 'fr' %}
                                 Aucune demande enregistrée.
                             {% else %}

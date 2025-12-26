@@ -32,19 +32,19 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Unité{% else %}Unità{% endif %}</th>
-                    <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Unité{% else %}UM{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Disponible{% else %}Disponibile{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Seuil{% else %}Soglia{% endif %}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
                     <tr>
                         <td>{{ item.nome }}</td>
-                        <td>{{ item.descrizione or '—' }}</td>
                         <td>{{ item.unita_misura }}</td>
                         <td class="text-right">{{ item.quantita_disponibile }}</td>
+                        <td class="text-right">{{ item.soglia_minima if item.soglia_minima is not none else '—' }}</td>
                     </tr>
                 {% else %}
                     <tr class="table-empty">
