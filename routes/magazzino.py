@@ -158,6 +158,43 @@ def _load_categorie(
     return [*categorie, fallback], fallback, None
 
 
+def _load_active_categorie(db: Session) -> list[MagazzinoCategoria]:
+    return (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.attiva.is_(True))
+        .order_by(MagazzinoCategoria.ordine.asc(), MagazzinoCategoria.nome.asc())
+        .all()
+    )
+
+
+def _swap_categoria_order(
+    db: Session,
+    categoria: MagazzinoCategoria,
+    direction: str,
+) -> None:
+    categorie = _load_active_categorie(db)
+    categoria_index = next(
+        (index for index, item in enumerate(categorie) if item.id == categoria.id),
+        None,
+    )
+    if categoria_index is None:
+        return
+    if direction == "su":
+        if categoria_index == 0:
+            return
+        other = categorie[categoria_index - 1]
+    elif direction == "giu":
+        if categoria_index >= len(categorie) - 1:
+            return
+        other = categorie[categoria_index + 1]
+    else:
+        return
+    categoria.ordine, other.ordine = other.ordine, categoria.ordine
+    db.add(categoria)
+    db.add(other)
+    db.commit()
+
+
 def _order_categorie_for_display(
     categorie: list[MagazzinoCategoria | SimpleNamespace],
     fallback_categoria_id: int | None,
@@ -624,11 +661,7 @@ def manager_magazzino_categorie_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    categorie = (
-        db.query(MagazzinoCategoria)
-        .order_by(MagazzinoCategoria.ordine.asc(), MagazzinoCategoria.nome.asc())
-        .all()
-    )
+    categorie = _load_active_categorie(db)
     return templates.TemplateResponse(
         "manager/magazzino/categorie_list.html",
         {
@@ -856,6 +889,56 @@ def manager_magazzino_categorie_disable(
         categoria.attiva = False
         db.add(categoria)
         db.commit()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/categorie/{categoria_id}/su",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_up",
+)
+def manager_magazzino_categorie_up(
+    categoria_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == categoria_id, MagazzinoCategoria.attiva.is_(True))
+        .first()
+    )
+    if categoria:
+        _swap_categoria_order(db, categoria, "su")
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/categorie/{categoria_id}/giu",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_down",
+)
+def manager_magazzino_categorie_down(
+    categoria_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == categoria_id, MagazzinoCategoria.attiva.is_(True))
+        .first()
+    )
+    if categoria:
+        _swap_categoria_order(db, categoria, "giu")
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
         status_code=303,
