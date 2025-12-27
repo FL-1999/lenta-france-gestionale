@@ -43,13 +43,13 @@
             </div>
             <div class="form-group">
                 <label for="categoria" class="form-label">
-                    {% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}
+                    {% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}
                 </label>
                 <select id="categoria" name="categoria" class="form-select">
                     <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
                     {% if fallback_categoria.id is none %}
                         <option value="none" {% if filters.categoria == 'none' %}selected{% endif %}>
-                            {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
+                            {% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}
                         </option>
                     {% endif %}
                     {% for categoria in categorie %}
@@ -110,7 +110,11 @@
         <section class="magazzino-category">
             <div class="magazzino-category-header">
                 <h2>
-                    {{ categoria.nome }}
+                    {% if categoria.id == fallback_categoria.id %}
+                        {% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}
+                    {% else %}
+                        {{ categoria.nome }}
+                    {% endif %}
                 </h2>
             </div>
             <div class="magazzino-items-grid">
