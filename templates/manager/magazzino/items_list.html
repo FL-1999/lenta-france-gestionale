@@ -52,13 +52,13 @@
             </div>
             <div class="form-group">
                 <label for="categoria" class="form-label">
-                    {% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}
+                    {% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}
                 </label>
                 <select id="categoria" name="categoria" class="form-select">
                     <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
                     {% if fallback_categoria.id is none %}
                         <option value="none" {% if filters.categoria == 'none' %}selected{% endif %}>
-                            {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
+                            {% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}
                         </option>
                     {% endif %}
                     {% for categoria in categorie %}
@@ -123,7 +123,11 @@
         <section class="magazzino-category">
             <div class="magazzino-category-header">
                 <h2>
-                    {{ categoria.nome }}
+                    {% if categoria.id == fallback_categoria.id %}
+                        {% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}
+                    {% else %}
+                        {{ categoria.nome }}
+                    {% endif %}
                 </h2>
             </div>
             <div class="magazzino-items-grid">
@@ -275,9 +279,9 @@
                         <input type="text" name="codice" required>
                     </div>
                     <div class="form-field">
-                        <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>
+                        <label>{% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}</label>
                         <select name="categoria_id">
-                            <option value="">{% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}</option>
+                            <option value="">{% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}</option>
                             {% for categoria in categorie %}
                                 {% if categoria.id is not none %}
                                     <option value="{{ categoria.id }}" {% if default_categoria_id == categoria.id %}selected{% endif %}>

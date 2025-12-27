@@ -50,14 +50,14 @@
                     <input type="text" name="codice" value="{{ item.codice if item else '' }}" required>
                 </div>
                 <div class="form-field">
-                    <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>
+                    <label>{% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}</label>
                     {% if item %}
                         {% set categoria_value = item.categoria_id %}
                     {% else %}
                         {% set categoria_value = default_categoria_id %}
                     {% endif %}
                     <select name="categoria_id">
-                        <option value="">{% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}</option>
+                        <option value="">{% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}</option>
                         {% for categoria in categorie %}
                             {% if categoria.id is not none %}
                                 <option value="{{ categoria.id }}"
