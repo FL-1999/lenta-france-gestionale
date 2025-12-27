@@ -12,38 +12,36 @@ ALTER TABLE magazzino_items
     ADD COLUMN categoria_id INTEGER;
 
 INSERT OR IGNORE INTO magazzino_categorie (nome, slug, ordine, attiva, created_at, updated_at)
-SELECT
-    nome,
-    CASE
-        WHEN rn = 1 THEN base_slug
-        ELSE base_slug || '-' || rn
-    END,
-    0,
-    1,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-FROM (
-    SELECT
-        categoria AS nome,
-        replace(lower(categoria), ' ', '-') AS base_slug,
-        row_number() OVER (
-            PARTITION BY replace(lower(categoria), ' ', '-')
-            ORDER BY categoria
-        ) AS rn
-    FROM (
-        SELECT DISTINCT categoria
-        FROM magazzino_items
-        WHERE categoria IS NOT NULL
-    )
-);
-
-INSERT OR IGNORE INTO magazzino_categorie (nome, slug, ordine, attiva, created_at, updated_at)
-VALUES ('Vari', 'vari', 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+VALUES
+    ('Accessori macchinari', 'accessori-macchinari', 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Bulloni', 'bulloni', 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('Vari', 'vari', 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 UPDATE magazzino_items
 SET categoria_id = (
     SELECT id
     FROM magazzino_categorie
-    WHERE lower(magazzino_categorie.nome) = lower(magazzino_items.categoria)
+    WHERE lower(magazzino_categorie.nome) = (
+        CASE
+            WHEN lower(magazzino_items.categoria) IN (
+                'accessori macchinari',
+                'accessori',
+                'macchinari'
+            ) THEN 'accessori macchinari'
+            WHEN lower(magazzino_items.categoria) IN (
+                'bulloni',
+                'bullone',
+                'bulloneria',
+                'viti'
+            ) THEN 'bulloni'
+            WHEN lower(magazzino_items.categoria) IN (
+                'vari',
+                'varie',
+                'misc',
+                'altro'
+            ) THEN 'vari'
+            ELSE NULL
+        END
+    )
 )
 WHERE categoria IS NOT NULL;
