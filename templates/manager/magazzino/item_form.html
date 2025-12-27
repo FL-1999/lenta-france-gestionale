@@ -57,7 +57,7 @@
                         {% set categoria_value = default_categoria_id %}
                     {% endif %}
                     <select name="categoria_id">
-                        <option value="">{% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}</option>
+                        <option value="">{% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}</option>
                         {% for categoria in categorie %}
                             {% if categoria.id is not none %}
                                 <option value="{{ categoria.id }}"
