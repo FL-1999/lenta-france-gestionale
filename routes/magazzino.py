@@ -138,24 +138,24 @@ def _group_items_by_categoria(
 def _load_categorie(
     db: Session,
     include_inactive: bool = False,
-) -> tuple[list[MagazzinoCategoria | SimpleNamespace], MagazzinoCategoria | SimpleNamespace, int | None]:
+    include_fallback: bool = True,
+) -> tuple[list[MagazzinoCategoria | SimpleNamespace], SimpleNamespace, int | None]:
     query = db.query(MagazzinoCategoria)
     if not include_inactive:
         query = query.filter(MagazzinoCategoria.attiva.is_(True))
-    categorie = query.order_by(MagazzinoCategoria.ordine.asc(), MagazzinoCategoria.nome.asc()).all()
-    vari_categoria = next(
-        (categoria for categoria in categorie if categoria.slug == "vari"),
-        None,
-    )
-    if vari_categoria:
-        return categorie, vari_categoria, vari_categoria.id
+    categorie = query.order_by(
+        MagazzinoCategoria.ordine.asc(),
+        MagazzinoCategoria.nome.asc(),
+    ).all()
     fallback = SimpleNamespace(
         id=None,
         nome="Senza categoria",
         slug="senza-categoria",
         attiva=True,
     )
-    return [*categorie, fallback], fallback, None
+    if include_fallback:
+        return [*categorie, fallback], fallback, None
+    return categorie, fallback, None
 
 
 def _load_active_categorie(db: Session) -> list[MagazzinoCategoria]:
@@ -197,12 +197,9 @@ def _swap_categoria_order(
 
 def _order_categorie_for_display(
     categorie: list[MagazzinoCategoria | SimpleNamespace],
-    fallback_categoria_id: int | None,
 ) -> list[MagazzinoCategoria | SimpleNamespace]:
-    if fallback_categoria_id is None:
-        return categorie
-    fallback = [categoria for categoria in categorie if categoria.id == fallback_categoria_id]
-    others = [categoria for categoria in categorie if categoria.id != fallback_categoria_id]
+    fallback = [categoria for categoria in categorie if categoria.id is None]
+    others = [categoria for categoria in categorie if categoria.id is not None]
     return [*others, *fallback]
 
 
@@ -224,6 +221,7 @@ def capo_magazzino_list(
     categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
         db,
         include_inactive=False,
+        include_fallback=True,
     )
     query = db.query(MagazzinoItem).filter(MagazzinoItem.attivo.is_(True))
     q_value = (q or "").strip()
@@ -269,7 +267,7 @@ def capo_magazzino_list(
         [categoria for categoria in categorie if isinstance(categoria, MagazzinoCategoria)],
         fallback_categoria_id,
     )
-    categorie_display = _order_categorie_for_display(categorie, fallback_categoria_id)
+    categorie_display = _order_categorie_for_display(categorie)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -476,6 +474,7 @@ def manager_magazzino_list(
     categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
         db,
         include_inactive=False,
+        include_fallback=True,
     )
     query = db.query(MagazzinoItem)
     q_value = (q or "").strip()
@@ -529,7 +528,7 @@ def manager_magazzino_list(
         [categoria for categoria in categorie if isinstance(categoria, MagazzinoCategoria)],
         fallback_categoria_id,
     )
-    categorie_display = _order_categorie_for_display(categorie, fallback_categoria_id)
+    categorie_display = _order_categorie_for_display(categorie)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -661,13 +660,22 @@ def manager_magazzino_categorie_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    categorie = _load_active_categorie(db)
+    categorie, _, _ = _load_categorie(
+        db,
+        include_inactive=True,
+        include_fallback=False,
+    )
+    active_ids = [categoria.id for categoria in categorie if categoria.attiva]
+    first_active_id = active_ids[0] if active_ids else None
+    last_active_id = active_ids[-1] if active_ids else None
     return templates.TemplateResponse(
         "manager/magazzino/categorie_list.html",
         {
             "request": request,
             "user": current_user,
             "categorie": categorie,
+            "first_active_id": first_active_id,
+            "last_active_id": last_active_id,
         },
     )
 
@@ -896,6 +904,33 @@ def manager_magazzino_categorie_disable(
 
 
 @router.post(
+    "/manager/magazzino/categorie/{categoria_id}/toggle",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_toggle",
+)
+def manager_magazzino_categorie_toggle(
+    categoria_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == categoria_id)
+        .first()
+    )
+    if categoria:
+        categoria.attiva = not categoria.attiva
+        db.add(categoria)
+        db.commit()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.post(
     "/manager/magazzino/categorie/{categoria_id}/su",
     response_class=HTMLResponse,
     name="manager_magazzino_categorie_up",
@@ -956,7 +991,11 @@ def manager_magazzino_new(
     db: Session = Depends(get_db),
 ):
     ensure_magazzino_manager(current_user)
-    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(db, include_inactive=False)
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
+        db,
+        include_inactive=False,
+        include_fallback=False,
+    )
     return templates.TemplateResponse(
         "manager/magazzino/item_new.html",
         {
@@ -1038,7 +1077,11 @@ def manager_magazzino_edit(
             url=request.url_for("manager_magazzino_list"),
             status_code=303,
         )
-    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(db, include_inactive=False)
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
+        db,
+        include_inactive=False,
+        include_fallback=False,
+    )
 
     return templates.TemplateResponse(
         "manager/magazzino/item_edit.html",

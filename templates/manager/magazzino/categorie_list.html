@@ -37,9 +37,8 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-                            <th>Slug</th>
                             <th>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
                             <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
                             <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                         </tr>
@@ -47,25 +46,10 @@
                     <tbody>
                         {% for categoria in categorie %}
                             <tr>
-                                <td>{{ categoria.nome }}</td>
-                                <td>{{ categoria.slug }}</td>
                                 <td>
-                                    <div style="display:flex; gap: var(--space-2); align-items: center;">
-                                        <span>{{ categoria.ordine }}</span>
-                                        <div style="display:flex; gap: var(--space-1);">
-                                            <form method="post" action="{{ url_for('manager_magazzino_categorie_up', categoria_id=categoria.id) }}">
-                                                <button type="submit" class="btn btn-secondary btn-sm" {% if loop.first %}disabled{% endif %}>
-                                                    ↑
-                                                </button>
-                                            </form>
-                                            <form method="post" action="{{ url_for('manager_magazzino_categorie_down', categoria_id=categoria.id) }}">
-                                                <button type="submit" class="btn btn-secondary btn-sm" {% if loop.last %}disabled{% endif %}>
-                                                    ↓
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
+                                    {{ categoria.ordine }}
                                 </td>
+                                <td>{{ categoria.nome }}</td>
                                 <td>
                                     {% if categoria.attiva %}
                                         <span class="badge badge-success">{% if lang == 'fr' %}Active{% else %}Attiva{% endif %}</span>
@@ -75,17 +59,34 @@
                                 </td>
                                 <td>
                                     <div style="display:flex; gap: var(--space-2); flex-wrap: wrap;">
+                                        <form method="post" action="{{ url_for('manager_magazzino_categorie_up', categoria_id=categoria.id) }}">
+                                            <button type="submit"
+                                                    class="btn btn-secondary btn-sm"
+                                                    {% if not categoria.attiva or categoria.id == first_active_id %}disabled{% endif %}>
+                                                ↑
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{{ url_for('manager_magazzino_categorie_down', categoria_id=categoria.id) }}">
+                                            <button type="submit"
+                                                    class="btn btn-secondary btn-sm"
+                                                    {% if not categoria.attiva or categoria.id == last_active_id %}disabled{% endif %}>
+                                                ↓
+                                            </button>
+                                        </form>
                                         <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn btn-secondary btn-sm">
                                             ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                                         </a>
-                                        {% if categoria.attiva %}
-                                            <form method="post" action="{{ url_for('manager_magazzino_categorie_disable', categoria_id=categoria.id) }}">
-                                                <button type="submit" class="btn btn-danger btn-sm"
-                                                        onclick="return confirm('{% if lang == 'fr' %}Désactiver cette catégorie ?{% else %}Disattivare questa categoria?{% endif %}');">
+                                        <form method="post" action="{{ url_for('manager_magazzino_categorie_toggle', categoria_id=categoria.id) }}">
+                                            <button type="submit"
+                                                    class="btn {% if categoria.attiva %}btn-danger{% else %}btn-primary{% endif %} btn-sm"
+                                                    onclick="return confirm('{% if categoria.attiva %}{% if lang == 'fr' %}Désactiver cette catégorie ?{% else %}Disattivare questa categoria?{% endif %}{% else %}{% if lang == 'fr' %}Réactiver cette catégorie ?{% else %}Riattivare questa categoria?{% endif %}{% endif %}');">
+                                                {% if categoria.attiva %}
                                                     📴 {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
-                                                </button>
-                                            </form>
-                                        {% endif %}
+                                                {% else %}
+                                                    🔁 {% if lang == 'fr' %}Réactiver{% else %}Riattiva{% endif %}
+                                                {% endif %}
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>

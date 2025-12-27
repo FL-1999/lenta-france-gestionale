@@ -49,7 +49,7 @@
                     <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
                     {% if fallback_categoria.id is none %}
                         <option value="none" {% if filters.categoria == 'none' %}selected{% endif %}>
-                            {% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}
+                            {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
                         </option>
                     {% endif %}
                     {% for categoria in categorie %}
@@ -111,7 +111,7 @@
             <div class="magazzino-category-header">
                 <h2>
                     {% if categoria.id == fallback_categoria.id %}
-                        {% if lang == 'fr' %}Sans catégorie/Vari{% else %}Senza categoria/Vari{% endif %}
+                        {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
                     {% else %}
                         {{ categoria.nome }}
                     {% endif %}
