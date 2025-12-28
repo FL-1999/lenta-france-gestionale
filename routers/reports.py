@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user, get_current_active_user_html
 from database import get_db
 from models import RoleEnum, Report, Site, User
+from template_context import register_manager_badges
 
 router = APIRouter(
     prefix="",
@@ -17,6 +18,7 @@ router = APIRouter(
 )
 
 templates = Jinja2Templates(directory="templates")
+register_manager_badges(templates)
 
 
 # ===========================
