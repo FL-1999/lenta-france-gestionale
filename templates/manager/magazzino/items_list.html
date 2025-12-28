@@ -18,6 +18,9 @@
         </p>
     </div>
     <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_sotto_soglia') }}" class="btn btn-secondary">
+            📉 {% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}
+        </a>
         <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
             📊 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
         </a>

@@ -671,6 +671,52 @@ def manager_magazzino_list(
 
 
 @router.get(
+    "/manager/magazzino/sotto-soglia",
+    response_class=HTMLResponse,
+    name="manager_magazzino_sotto_soglia",
+)
+def manager_magazzino_sotto_soglia(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+
+    items = (
+        db.query(MagazzinoItem)
+        .filter(
+            MagazzinoItem.attivo.is_(True),
+            MagazzinoItem.soglia_minima.isnot(None),
+            MagazzinoItem.quantita_disponibile <= MagazzinoItem.soglia_minima,
+        )
+        .order_by(MagazzinoItem.nome.asc())
+        .all()
+    )
+    items_with_order = []
+    for item in items:
+        if item.soglia_minima is None or item.quantita_disponibile is None:
+            da_ordinare = None
+        else:
+            da_ordinare = max(item.soglia_minima - item.quantita_disponibile, 0)
+        items_with_order.append(
+            SimpleNamespace(
+                item=item,
+                da_ordinare=da_ordinare,
+            )
+        )
+
+    return templates.TemplateResponse(
+        "manager/magazzino/sotto_soglia.html",
+        {
+            "request": request,
+            "user": current_user,
+            "items": items_with_order,
+            "items_count": len(items_with_order),
+        },
+    )
+
+
+@router.get(
     "/manager/magazzino/movimenti",
     response_class=HTMLResponse,
     name="manager_magazzino_movimenti",
