@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     DateTime,
+    CheckConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlmodel import SQLModel, Field
@@ -63,6 +64,7 @@ class MagazzinoRichiestaStatusEnum(PyEnum):
 class MagazzinoMovimentoTipoEnum(PyEnum):
     scarico = "scarico"
     carico = "carico"
+    rettifica = "rettifica"
 
 
 # ============================================================
@@ -388,6 +390,9 @@ class MagazzinoRichiestaRiga(Base):
 
 class MagazzinoMovimento(Base, TimestampMixin):
     __tablename__ = "magazzino_movimenti"
+    __table_args__ = (
+        CheckConstraint("quantita > 0", name="chk_magazzino_movimenti_quantita_positive"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=False)
@@ -397,12 +402,12 @@ class MagazzinoMovimento(Base, TimestampMixin):
     riferimento_richiesta_id = Column(
         Integer, ForeignKey("magazzino_richieste.id"), nullable=True
     )
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    creato_da_user_id = Column("user_id", Integer, ForeignKey("users.id"), nullable=True)
     note = Column(Text, nullable=True)
 
     item = relationship("MagazzinoItem")
     cantiere = relationship("Site")
-    user = relationship("User")
+    creato_da_user = relationship("User")
     richiesta = relationship("MagazzinoRichiesta")
 
 

@@ -34,6 +34,17 @@
         <form method="get">
             <div class="form-grid">
                 <div class="form-group">
+                    <label class="form-label" for="q">{% if lang == 'fr' %}Recherche{% else %}Ricerca{% endif %}</label>
+                    <input
+                        type="text"
+                        id="q"
+                        name="q"
+                        class="form-control"
+                        placeholder="{% if lang == 'fr' %}Code ou nom article{% else %}Codice o nome articolo{% endif %}"
+                        value="{{ selected.q }}"
+                    >
+                </div>
+                <div class="form-group">
                     <label class="form-label" for="cantiere_id">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
                     <select id="cantiere_id" name="cantiere_id" class="form-select">
                         <option value="">—</option>
@@ -123,6 +134,7 @@
                         <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
                         <th>{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</th>
                         <th>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Demande{% else %}Richiesta{% endif %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -139,12 +151,19 @@
                             <td>{{ movimento.tipo.value if movimento.tipo else '—' }}</td>
                             <td>{{ movimento.quantita }}</td>
                             <td>{{ movimento.cantiere.name if movimento.cantiere else '—' }}</td>
-                            <td>{{ movimento.user.full_name if movimento.user and movimento.user.full_name else (movimento.user.email if movimento.user else '—') }}</td>
+                            <td>{{ movimento.creato_da_user.full_name if movimento.creato_da_user and movimento.creato_da_user.full_name else (movimento.creato_da_user.email if movimento.creato_da_user else '—') }}</td>
                             <td>{{ movimento.note or '—' }}</td>
+                            <td>
+                                {% if movimento.riferimento_richiesta_id %}
+                                    {% if lang == 'fr' %}Demande{% else %}Richiesta{% endif %} #{{ movimento.riferimento_richiesta_id }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="7" class="muted">{% if lang == 'fr' %}Aucun mouvement enregistré.{% else %}Nessun movimento registrato.{% endif %}</td>
+                            <td colspan="8" class="muted">{% if lang == 'fr' %}Aucun mouvement enregistré.{% else %}Nessun movimento registrato.{% endif %}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

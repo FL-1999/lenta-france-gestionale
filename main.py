@@ -1296,7 +1296,7 @@ def manager_cantiere_modifica_get(
             db.query(MagazzinoMovimento)
             .options(
                 joinedload(MagazzinoMovimento.item),
-                joinedload(MagazzinoMovimento.user),
+                joinedload(MagazzinoMovimento.creato_da_user),
             )
             .filter(
                 MagazzinoMovimento.cantiere_id == site_id,
