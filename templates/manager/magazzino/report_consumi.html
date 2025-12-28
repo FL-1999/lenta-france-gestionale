@@ -1,0 +1,101 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Consommations chantier{% else %}Consumi cantiere{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">📊 {% if lang == 'fr' %}Consommations chantier{% else %}Consumi cantiere{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Chantier: {{ cantiere.name }}{% if cantiere.code %} ({{ cantiere.code }}){% endif %}
+            {% else %}
+                Cantiere: {{ cantiere.name }}{% if cantiere.code %} ({{ cantiere.code }}){% endif %}
+            {% endif %}
+        </p>
+        <p class="muted" style="margin: 0;">
+            {% if lang == 'fr' %}
+                Période: {{ date_from.strftime('%d/%m/%Y') if date_from else '—' }} → {{ date_to.strftime('%d/%m/%Y') if date_to else '—' }}
+            {% else %}
+                Periodo: {{ date_from.strftime('%d/%m/%Y') if date_from else '—' }} → {{ date_to.strftime('%d/%m/%Y') if date_to else '—' }}
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour aux mouvements{% else %}Torna ai movimenti{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            <span>{% if lang == 'fr' %}Totaux{% else %}Totali{% endif %}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <p class="muted" style="margin: 0 0 0.35rem 0;">{% if lang == 'fr' %}Total lignes de sortie{% else %}Totale righe scarico{% endif %}</p>
+                <strong>{{ total_rows }}</strong>
+            </div>
+            <div>
+                <p class="muted" style="margin: 0 0 0.35rem 0;">{% if lang == 'fr' %}Total déstocké{% else %}Totale scaricato{% endif %}</p>
+                <strong>{{ total_quantity }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <span>{% if lang == 'fr' %}Articles les plus consommés{% else %}Top articoli scaricati{% endif %}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Total déstocké{% else %}Totale scaricato{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if items %}
+                        {% for codice, nome, totale in items %}
+                            <tr>
+                                <td>{{ codice or '—' }}</td>
+                                <td>{{ nome }}</td>
+                                <td>{{ totale }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="3" class="muted">
+                                {% if lang == 'fr' %}Aucun mouvement dans la période sélectionnée.{% else %}Nessun movimento nel periodo selezionato.{% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                {% if items %}
+                    <tfoot>
+                        <tr>
+                            <th colspan="2" style="text-align: right;">
+                                {% if lang == 'fr' %}Total général{% else %}Totale generale{% endif %}
+                            </th>
+                            <th>{{ total_quantity }}</th>
+                        </tr>
+                    </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
