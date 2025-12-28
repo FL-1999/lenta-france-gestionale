@@ -1,0 +1,103 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Permissions magasin – Admin – Lenta France{% else %}Permessi magazzino – Admin – Lenta France{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}Autorisations magasin{% else %}Autorizzazioni magazzino{% endif %}
+        </p>
+        <h1 class="page-title">
+            <span class="page-icon page-icon--users" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="9" cy="9" r="3" />
+                    <circle cx="16" cy="10" r="2.5" />
+                    <path d="M4.5 19.5c0-2.5 2.3-4.5 5.1-4.5h1.8c2.8 0 5.1 2 5.1 4.5" stroke-linecap="round" />
+                    <path d="M15.4 12.8c2.2 0 4.1 1.6 4.1 3.7" stroke-linecap="round" />
+                </svg>
+            </span>
+            {% if lang == 'fr' %}Permissions magazzino{% else %}Permessi magazzino{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Activez ou désactivez l'accès au module magasin pour chaque utilisateur.
+            {% else %}
+                Abilita o disabilita l'accesso al modulo magazzino per ogni utente.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-header">
+        <div class="card-title">
+            📦 {% if lang == 'fr' %}Liste des utilisateurs{% else %}Elenco utenti{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>{% if lang == 'fr' %}Nom complet{% else %}Nome completo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Accès magasin{% else %}Accesso magazzino{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Action{% else %}Azione{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set users_list = users | default([]) %}
+                {% for u in users_list %}
+                <tr>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.full_name or "-" }}</td>
+                    <td>{{ u.role.value if u.role else "-" }}</td>
+                    <td>
+                        {% if u.is_magazzino_manager %}
+                        <span class="badge badge-success">
+                            {% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}
+                        </span>
+                        {% else %}
+                        <span class="badge badge-danger">
+                            {% if lang == 'fr' %}Désactivé{% else %}Disattivato{% endif %}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="table-actions">
+                        <form method="post" action="/admin/permessi-magazzino/{{ u.id }}/toggle" style="display:inline;">
+                            {% if u.is_magazzino_manager %}
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                ⛔ {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
+                            </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                ✅ {% if lang == 'fr' %}Activer{% else %}Attiva{% endif %}
+                            </button>
+                            {% endif %}
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="table-empty">
+                        {% if lang == 'fr' %}
+                            Aucun utilisateur disponible.
+                        {% else %}
+                            Nessun utente disponibile.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="form-actions">
+    <a href="/manager/dashboard" class="btn btn-secondary">⬅️ {% if lang == 'fr' %}Retour au tableau de bord{% else %}Torna alla dashboard{% endif %}</a>
+</div>
+{% endblock %}
