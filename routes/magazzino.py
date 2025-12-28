@@ -758,6 +758,78 @@ def manager_magazzino_movimenti(
 
 
 @router.get(
+    "/manager/magazzino/report-consumi",
+    response_class=HTMLResponse,
+    name="manager_magazzino_report_consumi",
+)
+def manager_magazzino_report_consumi(
+    request: Request,
+    cantiere_id: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+
+    if not cantiere_id:
+        raise HTTPException(status_code=400, detail="Cantiere obbligatorio")
+
+    cantiere = db.query(Site).filter(Site.id == cantiere_id).first()
+    if not cantiere:
+        raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+    parsed_from = _parse_date(date_from)
+    parsed_to = _parse_date(date_to)
+
+    filters = [
+        MagazzinoMovimento.cantiere_id == cantiere_id,
+        MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum.scarico,
+    ]
+    if parsed_from:
+        filters.append(
+            MagazzinoMovimento.created_at >= datetime.combine(parsed_from, time.min)
+        )
+    if parsed_to:
+        filters.append(
+            MagazzinoMovimento.created_at <= datetime.combine(parsed_to, time.max)
+        )
+
+    total_rows = db.query(func.count(MagazzinoMovimento.id)).filter(*filters).scalar() or 0
+    total_quantity = (
+        db.query(func.coalesce(func.sum(MagazzinoMovimento.quantita), 0.0))
+        .filter(*filters)
+        .scalar()
+    )
+    items = (
+        db.query(
+            MagazzinoItem.codice,
+            MagazzinoItem.nome,
+            func.coalesce(func.sum(MagazzinoMovimento.quantita), 0.0).label("totale"),
+        )
+        .join(MagazzinoMovimento, MagazzinoMovimento.item_id == MagazzinoItem.id)
+        .filter(*filters)
+        .group_by(MagazzinoItem.id)
+        .order_by(func.sum(MagazzinoMovimento.quantita).desc(), MagazzinoItem.nome.asc())
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "manager/magazzino/report_consumi.html",
+        {
+            "request": request,
+            "user": current_user,
+            "cantiere": cantiere,
+            "date_from": parsed_from,
+            "date_to": parsed_to,
+            "total_rows": total_rows,
+            "total_quantity": total_quantity,
+            "items": items,
+        },
+    )
+
+
+@router.get(
     "/manager/magazzino/categorie",
     response_class=HTMLResponse,
     name="manager_magazzino_categorie_list",
