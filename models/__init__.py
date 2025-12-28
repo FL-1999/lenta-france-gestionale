@@ -113,6 +113,31 @@ class User(Base, TimestampMixin):
 
 
 # ============================================================
+# MODELLO AUDIT LOG
+# ============================================================
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    azione = Column(String(255), nullable=False)
+    entita = Column(String(255), nullable=False)
+    entita_id = Column(Integer, nullable=True)
+    dettagli = Column(Text, nullable=True)
+
+    user = relationship("User")
+
+    def __repr__(self) -> str:
+        return (
+            "<AuditLog "
+            f"id={self.id} azione={self.azione} entita={self.entita} entita_id={self.entita_id}>"
+        )
+
+
+# ============================================================
 # MODELLO CANTIERE (SITE)
 # ============================================================
 

@@ -55,6 +55,17 @@
                 {% endif %}
             </a>
 
+            {% if user and (user.role.value == 'admin' or user.role.value == 'manager') %}
+                <a href="{{ url_for('manager_audit_list') }}" class="nav-link">
+                    🧾
+                    {% if lang == 'fr' %}
+                        Audit
+                    {% else %}
+                        Audit
+                    {% endif %}
+                </a>
+            {% endif %}
+
             <!-- Nuova voce PERSONALE (Manager) -->
             <a href="{{ url_for('manager_personale_list') }}" class="nav-link">
                 👥
