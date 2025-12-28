@@ -1486,21 +1486,21 @@ def manager_magazzino_scarico(
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list"),
+            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
             status_code=303,
         )
 
     quantita_valore = _parse_float(quantita)
     if not quantita_valore or quantita_valore <= 0:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list"),
+            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_non_valida",
             status_code=303,
         )
 
     quantita_attuale = item.quantita_disponibile or 0.0
     if quantita_valore > quantita_attuale:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list"),
+            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_insufficiente",
             status_code=303,
         )
     item.quantita_disponibile = quantita_attuale - quantita_valore
@@ -1518,7 +1518,7 @@ def manager_magazzino_scarico(
     db.commit()
 
     return RedirectResponse(
-        url=request.url_for("manager_magazzino_list"),
+        url=f"{request.url_for('manager_magazzino_list')}?ok=scarico",
         status_code=303,
     )
 
@@ -1540,14 +1540,14 @@ def manager_magazzino_carico_rapido(
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list"),
+            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
             status_code=303,
         )
 
     quantita_valore = _parse_float(quantita)
     if not quantita_valore or quantita_valore <= 0:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list"),
+            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_non_valida",
             status_code=303,
         )
 
@@ -1564,7 +1564,7 @@ def manager_magazzino_carico_rapido(
     db.commit()
 
     return RedirectResponse(
-        url=request.url_for("manager_magazzino_list"),
+        url=f"{request.url_for('manager_magazzino_list')}?ok=carico",
         status_code=303,
     )
 
@@ -1587,21 +1587,21 @@ def manager_magazzino_scarico_rapido(
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list"),
+            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
             status_code=303,
         )
 
     quantita_valore = _parse_float(quantita)
     if not quantita_valore or quantita_valore <= 0:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list"),
+            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_non_valida",
             status_code=303,
         )
 
     quantita_attuale = item.quantita_disponibile or 0.0
     if quantita_valore > quantita_attuale:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list"),
+            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_insufficiente",
             status_code=303,
         )
 
@@ -1619,7 +1619,7 @@ def manager_magazzino_scarico_rapido(
     db.commit()
 
     return RedirectResponse(
-        url=request.url_for("manager_magazzino_list"),
+        url=f"{request.url_for('manager_magazzino_list')}?ok=scarico",
         status_code=303,
     )
 
@@ -1808,13 +1808,19 @@ def manager_magazzino_richiesta_evadi(
     )
     if not richiesta:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_richieste"),
+            url=f"{request.url_for('manager_magazzino_richieste')}?err=richiesta_non_trovata",
             status_code=303,
         )
 
     if richiesta.stato != MagazzinoRichiestaStatusEnum.approvata:
-        raise HTTPException(
-            status_code=400, detail="La richiesta non è approvata"
+        return RedirectResponse(
+            url=(
+                request.url_for(
+                    "manager_magazzino_richiesta_detail", richiesta_id=richiesta.id
+                )
+                + "?err=stato_non_approvato"
+            ),
+            status_code=303,
         )
 
     try:

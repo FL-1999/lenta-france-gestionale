@@ -33,6 +33,27 @@
     </div>
 </div>
 
+{% set ok = request.query_params.get('ok') %}
+{% set err = request.query_params.get('err') %}
+{% if ok %}
+    <div class="alert alert-success">
+        {% if ok == 'evasa' %}
+            {% if lang == 'fr' %}Demande traitée avec succès.{% else %}Richiesta evasa con successo.{% endif %}
+        {% else %}
+            {% if lang == 'fr' %}Opération terminée avec succès.{% else %}Operazione completata con successo.{% endif %}
+        {% endif %}
+    </div>
+{% endif %}
+{% if err %}
+    <div class="alert alert-danger">
+        {% if err == 'richiesta_non_trovata' %}
+            {% if lang == 'fr' %}Demande introuvable.{% else %}Richiesta non trovata.{% endif %}
+        {% else %}
+            {% if lang == 'fr' %}Erreur lors de l'opération.{% else %}Errore durante l'operazione.{% endif %}
+        {% endif %}
+    </div>
+{% endif %}
+
 <div class="card table-card">
     <div class="card-body">
         <table class="data-table">
