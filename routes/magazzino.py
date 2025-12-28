@@ -2014,6 +2014,9 @@ def manager_magazzino_richiesta_evadi(
                         f"richiesta {riga.quantita_richiesta})"
                     ),
                 )
+
+        for riga in richiesta.righe:
+            quantita_disponibile = riga.item.quantita_disponibile or 0.0
             riga.item.quantita_disponibile = (
                 quantita_disponibile - riga.quantita_richiesta
             )
