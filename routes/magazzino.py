@@ -1498,8 +1498,114 @@ def manager_magazzino_scarico(
         )
 
     quantita_attuale = item.quantita_disponibile or 0.0
-    item.quantita_disponibile = max(0.0, quantita_attuale - quantita_valore)
+    if quantita_valore > quantita_attuale:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+    item.quantita_disponibile = quantita_attuale - quantita_valore
 
+    db.add(item)
+    movimento = MagazzinoMovimento(
+        item_id=item.id,
+        tipo=MagazzinoMovimentoTipoEnum.scarico,
+        quantita=quantita_valore,
+        cantiere_id=cantiere_id,
+        creato_da_user_id=current_user.id,
+        note=(note or "").strip() or None,
+    )
+    db.add(movimento)
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/items/{item_id}/carico",
+    response_class=HTMLResponse,
+    name="manager_magazzino_carico_rapido",
+)
+def manager_magazzino_carico_rapido(
+    item_id: int,
+    request: Request,
+    quantita: str = Form(...),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+
+    quantita_valore = _parse_float(quantita)
+    if not quantita_valore or quantita_valore <= 0:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+
+    item.quantita_disponibile = (item.quantita_disponibile or 0.0) + quantita_valore
+    db.add(item)
+    movimento = MagazzinoMovimento(
+        item_id=item.id,
+        tipo=MagazzinoMovimentoTipoEnum.carico,
+        quantita=quantita_valore,
+        creato_da_user_id=current_user.id,
+        note=(note or "").strip() or None,
+    )
+    db.add(movimento)
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/items/{item_id}/scarico-rapido",
+    response_class=HTMLResponse,
+    name="manager_magazzino_scarico_rapido",
+)
+def manager_magazzino_scarico_rapido(
+    item_id: int,
+    request: Request,
+    quantita: str = Form(...),
+    note: str = Form(""),
+    cantiere_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+
+    quantita_valore = _parse_float(quantita)
+    if not quantita_valore or quantita_valore <= 0:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+
+    quantita_attuale = item.quantita_disponibile or 0.0
+    if quantita_valore > quantita_attuale:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+
+    item.quantita_disponibile = quantita_attuale - quantita_valore
     db.add(item)
     movimento = MagazzinoMovimento(
         item_id=item.id,
