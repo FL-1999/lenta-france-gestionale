@@ -134,7 +134,7 @@
                     {% endif %}
                   </td>
                   <td>{{ movimento.quantita }}</td>
-                  <td>{{ movimento.user.full_name if movimento.user and movimento.user.full_name else (movimento.user.email if movimento.user else '—') }}</td>
+                  <td>{{ movimento.creato_da_user.full_name if movimento.creato_da_user and movimento.creato_da_user.full_name else (movimento.creato_da_user.email if movimento.creato_da_user else '—') }}</td>
                   <td>{{ movimento.note or '—' }}</td>
                 </tr>
               {% endfor %}

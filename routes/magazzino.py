@@ -645,6 +645,7 @@ def manager_magazzino_list(
 )
 def manager_magazzino_movimenti(
     request: Request,
+    q: str | None = None,
     cantiere_id: int | None = None,
     item_id: int | None = None,
     tipo: str | None = None,
@@ -661,13 +662,25 @@ def manager_magazzino_movimenti(
     query = db.query(MagazzinoMovimento).options(
         joinedload(MagazzinoMovimento.item),
         joinedload(MagazzinoMovimento.cantiere),
-        joinedload(MagazzinoMovimento.user),
+        joinedload(MagazzinoMovimento.creato_da_user),
     )
+    if q:
+        search = f"%{q.strip()}%"
+        query = query.join(MagazzinoItem).filter(
+            or_(
+                MagazzinoItem.codice.ilike(search),
+                MagazzinoItem.nome.ilike(search),
+            )
+        )
     if cantiere_id:
         query = query.filter(MagazzinoMovimento.cantiere_id == cantiere_id)
     if item_id:
         query = query.filter(MagazzinoMovimento.item_id == item_id)
-    if tipo in (MagazzinoMovimentoTipoEnum.scarico.value, MagazzinoMovimentoTipoEnum.carico.value):
+    if tipo in (
+        MagazzinoMovimentoTipoEnum.scarico.value,
+        MagazzinoMovimentoTipoEnum.carico.value,
+        MagazzinoMovimentoTipoEnum.rettifica.value,
+    ):
         query = query.filter(MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum(tipo))
     if parsed_from:
         query = query.filter(
@@ -689,6 +702,17 @@ def manager_magazzino_movimenti(
     ).filter(
         MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum.scarico,
     )
+    if q:
+        search = f"%{q.strip()}%"
+        summary_query = summary_query.join(
+            MagazzinoItem,
+            MagazzinoMovimento.item_id == MagazzinoItem.id,
+        ).filter(
+            or_(
+                MagazzinoItem.codice.ilike(search),
+                MagazzinoItem.nome.ilike(search),
+            )
+        )
     if cantiere_id:
         summary_query = summary_query.filter(MagazzinoMovimento.cantiere_id == cantiere_id)
     if item_id:
@@ -718,11 +742,9 @@ def manager_magazzino_movimenti(
             "movimenti": movimenti,
             "cantieri": cantieri,
             "items": items,
-            "tipo_options": [
-                MagazzinoMovimentoTipoEnum.scarico.value,
-                MagazzinoMovimentoTipoEnum.carico.value,
-            ],
+            "tipo_options": [tipo.value for tipo in MagazzinoMovimentoTipoEnum],
             "selected": {
+                "q": q or "",
                 "cantiere_id": cantiere_id,
                 "item_id": item_id,
                 "tipo": tipo,
@@ -1207,7 +1229,7 @@ def manager_magazzino_create(
             item_id=item.id,
             tipo=MagazzinoMovimentoTipoEnum.carico,
             quantita=item.quantita_disponibile,
-            user_id=current_user.id,
+            creato_da_user_id=current_user.id,
             note="Carico iniziale",
         )
         db.add(movimento)
@@ -1303,7 +1325,7 @@ def manager_magazzino_update(
             if differenza > 0
             else MagazzinoMovimentoTipoEnum.scarico,
             quantita=abs(differenza),
-            user_id=current_user.id,
+            creato_da_user_id=current_user.id,
             note="Rettifica quantità",
         )
         db.add(movimento)
@@ -1353,7 +1375,7 @@ def manager_magazzino_scarico(
         tipo=MagazzinoMovimentoTipoEnum.scarico,
         quantita=quantita_valore,
         cantiere_id=cantiere_id,
-        user_id=current_user.id,
+        creato_da_user_id=current_user.id,
         note=(note or "").strip() or None,
     )
     db.add(movimento)
@@ -1586,7 +1608,7 @@ def manager_magazzino_richiesta_evadi(
                 tipo=MagazzinoMovimentoTipoEnum.scarico,
                 quantita=riga.quantita_richiesta,
                 cantiere_id=richiesta.cantiere_id,
-                user_id=current_user.id,
+                creato_da_user_id=current_user.id,
                 riferimento_richiesta_id=richiesta.id,
             )
             db.add(movimento)
