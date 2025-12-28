@@ -747,6 +747,70 @@ def manager_users(
     )
 
 
+@app.get("/admin/permessi-magazzino", response_class=HTMLResponse)
+def admin_magazzino_permissions(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
+
+    db = SessionLocal()
+    try:
+        users_list = db.query(User).order_by(User.role, User.email).all()
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "admin/permessi_magazzino.html",
+        {
+            "request": request,
+            "user": current_user,
+            "users": users_list,
+        },
+    )
+
+
+@app.post("/admin/permessi-magazzino/{user_id}/toggle", response_class=HTMLResponse)
+def admin_magazzino_permissions_toggle(
+    request: Request,
+    user_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
+
+    db = SessionLocal()
+    try:
+        user_to_toggle = db.query(User).filter(User.id == user_id).first()
+        if not user_to_toggle:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+
+        user_to_toggle.is_magazzino_manager = not bool(
+            user_to_toggle.is_magazzino_manager
+        )
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errore durante l'aggiornamento dei permessi",
+        )
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/admin/permessi-magazzino", status_code=303)
+
+
 @app.get("/manager/utenti/nuovo", response_class=HTMLResponse)
 async def manager_new_user_get(
     request: Request,
