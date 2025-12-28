@@ -28,6 +28,19 @@ from models import (
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(tags=["magazzino"])
 
+DEFAULT_CATEGORIA_ICON = "📦"
+DEFAULT_CATEGORIA_COLOR = "indigo"
+CATEGORIA_COLOR_MAP = {
+    "indigo": "#4f46e5",
+    "emerald": "#10b981",
+    "amber": "#f59e0b",
+    "rose": "#f43f5e",
+    "slate": "#64748b",
+}
+CATEGORIA_COLOR_OPTIONS = list(CATEGORIA_COLOR_MAP.keys())
+MAX_CATEGORIA_ICON_LENGTH = 32
+MAX_CATEGORIA_COLOR_LENGTH = 20
+
 
 def ensure_caposquadra_or_manager(user: User) -> None:
     if user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
@@ -67,6 +80,31 @@ def _parse_categoria_id(value: str | None) -> int | None:
         return int(value)
     except ValueError:
         return None
+
+
+def _clean_short_text(value: str | None, max_length: int) -> str | None:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return None
+    if len(cleaned) > max_length:
+        raise ValueError(f"Il valore deve avere massimo {max_length} caratteri.")
+    return cleaned
+
+
+def _normalize_categoria_fields(icon: str | None, color: str | None) -> tuple[str | None, str | None]:
+    icon_value = _clean_short_text(icon, MAX_CATEGORIA_ICON_LENGTH)
+    color_value = _clean_short_text(color, MAX_CATEGORIA_COLOR_LENGTH)
+    if color_value:
+        color_value = color_value.lower()
+        if color_value not in CATEGORIA_COLOR_OPTIONS:
+            raise ValueError("Seleziona un colore valido.")
+    return icon_value, color_value
+
+
+def _categoria_color_style(color: str | None) -> str:
+    resolved_color = (color or DEFAULT_CATEGORIA_COLOR).lower()
+    hex_color = CATEGORIA_COLOR_MAP.get(resolved_color, CATEGORIA_COLOR_MAP[DEFAULT_CATEGORIA_COLOR])
+    return f"background-color: {hex_color}; color: #ffffff;"
 
 
 def _slugify(value: str) -> str:
@@ -152,6 +190,8 @@ def _load_categorie(
         nome="Senza categoria",
         slug="senza-categoria",
         attiva=True,
+        icon=DEFAULT_CATEGORIA_ICON,
+        color=DEFAULT_CATEGORIA_COLOR,
     )
     if include_fallback:
         return [*categorie, fallback], fallback, None
@@ -201,6 +241,45 @@ def _order_categorie_for_display(
     fallback = [categoria for categoria in categorie if categoria.id is None]
     others = [categoria for categoria in categorie if categoria.id is not None]
     return [*others, *fallback]
+
+
+def _build_categoria_sections(
+    categorie: list[MagazzinoCategoria | SimpleNamespace],
+    items_by_categoria: dict[int | None, list[MagazzinoItem]],
+) -> list[dict[str, object]]:
+    sections = []
+    for categoria in categorie:
+        items = items_by_categoria.get(categoria.id, [])
+        sotto_soglia_count = sum(
+            1
+            for item in items
+            if item.soglia_minima is not None
+            and item.quantita_disponibile is not None
+            and item.quantita_disponibile <= item.soglia_minima
+        )
+        esauriti_count = sum(
+            1
+            for item in items
+            if item.quantita_disponibile is not None
+            and item.quantita_disponibile <= 0
+        )
+        icon_value = getattr(categoria, "icon", None) or DEFAULT_CATEGORIA_ICON
+        color_value = getattr(categoria, "color", None) or DEFAULT_CATEGORIA_COLOR
+        sections.append(
+            {
+                "cat": categoria,
+                "items": items,
+                "stats": {
+                    "total_items": len(items),
+                    "sotto_soglia_count": sotto_soglia_count,
+                    "esauriti_count": esauriti_count,
+                },
+                "icon": icon_value,
+                "color": color_value,
+                "color_style": _categoria_color_style(color_value),
+            }
+        )
+    return sections
 
 
 @router.get(
@@ -268,6 +347,7 @@ def capo_magazzino_list(
         fallback_categoria_id,
     )
     categorie_display = _order_categorie_for_display(categorie)
+    categorie_sections = _build_categoria_sections(categorie_display, items_by_categoria)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -280,6 +360,7 @@ def capo_magazzino_list(
             "request": request,
             "user": current_user,
             "categorie": categorie_display,
+            "categorie_sections": categorie_sections,
             "fallback_categoria": fallback_categoria,
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
@@ -529,6 +610,7 @@ def manager_magazzino_list(
         fallback_categoria_id,
     )
     categorie_display = _order_categorie_for_display(categorie)
+    categorie_sections = _build_categoria_sections(categorie_display, items_by_categoria)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -542,12 +624,16 @@ def manager_magazzino_list(
             "request": request,
             "user": current_user,
             "categorie": categorie_display,
+            "categorie_sections": categorie_sections,
             "fallback_categoria": fallback_categoria,
             "default_categoria_id": fallback_categoria_id,
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
             "filters": filters,
             "cantieri": cantieri,
+            "color_options": CATEGORIA_COLOR_OPTIONS,
+            "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+            "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
         },
     )
 
@@ -698,6 +784,9 @@ def manager_magazzino_categorie_new(
             "categoria": None,
             "form_action": "manager_magazzino_categorie_create",
             "title": "Nuova macro categoria",
+            "color_options": CATEGORIA_COLOR_OPTIONS,
+            "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+            "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
         },
     )
 
@@ -711,6 +800,8 @@ def manager_magazzino_categorie_create(
     request: Request,
     nome: str = Form(...),
     ordine: str | None = Form("0"),
+    icon: str | None = Form(""),
+    color: str | None = Form(""),
     attiva: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -727,6 +818,9 @@ def manager_magazzino_categorie_create(
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova macro categoria",
                 "error_message": "Il nome della categoria è obbligatorio.",
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
         )
     existing = (
@@ -744,12 +838,39 @@ def manager_magazzino_categorie_create(
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova macro categoria",
                 "error_message": "Esiste già una categoria con questo nome.",
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
         )
     try:
         ordine_value = int(ordine or 0)
     except ValueError:
         ordine_value = 0
+    try:
+        icon_value, color_value = _normalize_categoria_fields(icon, color)
+    except ValueError as exc:
+        categoria_preview = SimpleNamespace(
+            nome=nome_value,
+            ordine=ordine_value,
+            attiva=attiva,
+            icon=icon,
+            color=color,
+        )
+        return templates.TemplateResponse(
+            "manager/magazzino/categorie_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "categoria": categoria_preview,
+                "form_action": "manager_magazzino_categorie_create",
+                "title": "Nuova macro categoria",
+                "error_message": str(exc),
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+            },
+        )
     base_slug = _slugify(nome_value)
     slug = _ensure_unique_slug(db, base_slug)
     categoria = MagazzinoCategoria(
@@ -757,6 +878,8 @@ def manager_magazzino_categorie_create(
         slug=slug,
         ordine=ordine_value,
         attiva=attiva,
+        icon=icon_value or DEFAULT_CATEGORIA_ICON,
+        color=color_value or DEFAULT_CATEGORIA_COLOR,
     )
     db.add(categoria)
     db.commit()
@@ -796,6 +919,9 @@ def manager_magazzino_categorie_edit(
             "categoria": categoria,
             "form_action": "manager_magazzino_categorie_update",
             "title": "Modifica macro categoria",
+            "color_options": CATEGORIA_COLOR_OPTIONS,
+            "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+            "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
         },
     )
 
@@ -810,6 +936,8 @@ def manager_magazzino_categorie_update(
     request: Request,
     nome: str = Form(...),
     ordine: str | None = Form("0"),
+    icon: str | None = Form(""),
+    color: str | None = Form(""),
     attiva: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -836,6 +964,9 @@ def manager_magazzino_categorie_update(
                 "form_action": "manager_magazzino_categorie_update",
                 "title": "Modifica macro categoria",
                 "error_message": "Il nome della categoria è obbligatorio.",
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
         )
     existing = (
@@ -856,18 +987,42 @@ def manager_magazzino_categorie_update(
                 "form_action": "manager_magazzino_categorie_update",
                 "title": "Modifica macro categoria",
                 "error_message": "Esiste già una categoria con questo nome.",
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
         )
     try:
         ordine_value = int(ordine or 0)
     except ValueError:
         ordine_value = categoria.ordine or 0
+    try:
+        icon_value, color_value = _normalize_categoria_fields(icon, color)
+    except ValueError as exc:
+        categoria.icon = icon
+        categoria.color = color
+        return templates.TemplateResponse(
+            "manager/magazzino/categorie_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "categoria": categoria,
+                "form_action": "manager_magazzino_categorie_update",
+                "title": "Modifica macro categoria",
+                "error_message": str(exc),
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+            },
+        )
     if categoria.nome != nome_value:
         base_slug = _slugify(nome_value)
         categoria.slug = _ensure_unique_slug(db, base_slug, exclude_id=categoria.id)
     categoria.nome = nome_value
     categoria.ordine = ordine_value
     categoria.attiva = attiva
+    categoria.icon = icon_value or DEFAULT_CATEGORIA_ICON
+    categoria.color = color_value or DEFAULT_CATEGORIA_COLOR
     db.add(categoria)
     db.commit()
     return RedirectResponse(
@@ -996,6 +1151,11 @@ def manager_magazzino_new(
         include_inactive=False,
         include_fallback=False,
     )
+    categoria_param = request.query_params.get("categoria_id")
+    parsed_categoria_id = _parse_categoria_id(categoria_param)
+    valid_ids = {categoria.id for categoria in categorie if categoria.id is not None}
+    if parsed_categoria_id not in valid_ids:
+        parsed_categoria_id = fallback_categoria_id
     return templates.TemplateResponse(
         "manager/magazzino/item_new.html",
         {
@@ -1004,7 +1164,7 @@ def manager_magazzino_new(
             "item": None,
             "categorie": categorie,
             "fallback_categoria": fallback_categoria,
-            "default_categoria_id": fallback_categoria_id,
+            "default_categoria_id": parsed_categoria_id,
             "form_action": "manager_magazzino_create",
             "title": "Nuovo articolo",
         },

@@ -104,18 +104,26 @@
     </div>
 {% endif %}
 
-{% for categoria in categorie %}
-    {% set category_items = items_by_categoria.get(categoria.id, []) %}
+{% for section in categorie_sections %}
+    {% set category_items = section.items %}
     {% if category_items %}
         <section class="magazzino-category">
-            <div class="magazzino-category-header">
-                <h2>
-                    {% if categoria.id == fallback_categoria.id %}
+            <div class="magazzino-category-header" style="display: flex; flex-direction: column; gap: var(--space-2);">
+                <h2 style="display: flex; align-items: center; gap: var(--space-2);">
+                    <span class="badge badge-{{ section.color }}" style="{{ section.color_style }}">
+                        {{ section.icon }}
+                    </span>
+                    {% if section.cat.id == fallback_categoria.id %}
                         {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
                     {% else %}
-                        {{ categoria.nome }}
+                        {{ section.cat.nome }}
                     {% endif %}
                 </h2>
+                <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; font-size: 0.85rem;">
+                    <span><strong>{{ section.stats.total_items }}</strong> {% if lang == 'fr' %}articles{% else %}articoli{% endif %}</span>
+                    <span><strong>{{ section.stats.sotto_soglia_count }}</strong> {% if lang == 'fr' %}sous seuil{% else %}sotto soglia{% endif %}</span>
+                    <span><strong>{{ section.stats.esauriti_count }}</strong> {% if lang == 'fr' %}épuisés{% else %}esauriti{% endif %}</span>
+                </div>
             </div>
             <div class="magazzino-items-grid">
                 {% for item in category_items %}

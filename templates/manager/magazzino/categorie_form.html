@@ -53,6 +53,24 @@
                     <input type="number" name="ordine" value="{{ categoria.ordine if categoria else 0 }}" min="0">
                 </div>
             </div>
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Icône{% else %}Icona{% endif %}</label>
+                    <input type="text" name="icon" maxlength="32" placeholder="📦"
+                           value="{{ categoria.icon if categoria and categoria.icon else default_categoria_icon }}">
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Couleur{% else %}Colore{% endif %}</label>
+                    <select name="color">
+                        {% for option in color_options %}
+                            {% set selected_color = categoria.color if categoria and categoria.color else default_categoria_color %}
+                            <option value="{{ option }}" {% if option == selected_color %}selected{% endif %}>
+                                {{ option|capitalize }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
             <div class="form-field">
                 <label class="checkbox">

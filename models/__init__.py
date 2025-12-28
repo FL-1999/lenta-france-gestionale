@@ -305,6 +305,8 @@ class MagazzinoCategoria(Base, TimestampMixin):
     slug = Column(String(255), nullable=False, unique=True)
     ordine = Column(Integer, nullable=False, default=0)
     attiva = Column(Boolean, default=True, nullable=False)
+    icon = Column(String(32), nullable=True, default="📦")
+    color = Column(String(20), nullable=True, default="indigo")
 
     def __repr__(self) -> str:
         return f"<MagazzinoCategoria id={self.id} nome={self.nome} slug={self.slug}>"
