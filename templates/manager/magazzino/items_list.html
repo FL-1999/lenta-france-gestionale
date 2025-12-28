@@ -117,18 +117,33 @@
     </div>
 {% endif %}
 
-{% for categoria in categorie %}
-    {% set category_items = items_by_categoria.get(categoria.id, []) %}
+{% for section in categorie_sections %}
+    {% set category_items = section.items %}
     {% if category_items %}
         <section class="magazzino-category">
-            <div class="magazzino-category-header">
-                <h2>
-                    {% if categoria.id == fallback_categoria.id %}
-                        {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
-                    {% else %}
-                        {{ categoria.nome }}
+            <div class="magazzino-category-header" style="display: flex; flex-direction: column; gap: var(--space-2);">
+                <div style="display: flex; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; align-items: center;">
+                    <h2 style="display: flex; align-items: center; gap: var(--space-2);">
+                        <span class="badge badge-{{ section.color }}" style="{{ section.color_style }}">
+                            {{ section.icon }}
+                        </span>
+                        {% if section.cat.id == fallback_categoria.id %}
+                            {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
+                        {% else %}
+                            {{ section.cat.nome }}
+                        {% endif %}
+                    </h2>
+                    {% if section.cat.id is not none %}
+                        <a href="{{ url_for('manager_magazzino_new', categoria_id=section.cat.id) }}" class="btn btn-secondary btn-sm">
+                            ➕ {% if lang == 'fr' %}Nouvel article dans cette macro{% else %}Nuovo articolo in questa macro{% endif %}
+                        </a>
                     {% endif %}
-                </h2>
+                </div>
+                <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; font-size: 0.85rem;">
+                    <span><strong>{{ section.stats.total_items }}</strong> {% if lang == 'fr' %}articles{% else %}articoli{% endif %}</span>
+                    <span><strong>{{ section.stats.sotto_soglia_count }}</strong> {% if lang == 'fr' %}sous seuil{% else %}sotto soglia{% endif %}</span>
+                    <span><strong>{{ section.stats.esauriti_count }}</strong> {% if lang == 'fr' %}épuisés{% else %}esauriti{% endif %}</span>
+                </div>
             </div>
             <div class="magazzino-items-grid">
                 {% for item in category_items %}
@@ -235,6 +250,23 @@
                     <div class="form-field">
                         <label>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</label>
                         <input type="number" name="ordine" min="0" value="0">
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Icône{% else %}Icona{% endif %}</label>
+                        <input type="text" name="icon" maxlength="32" placeholder="📦"
+                               value="{{ default_categoria_icon }}">
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Couleur{% else %}Colore{% endif %}</label>
+                        <select name="color">
+                            {% for option in color_options %}
+                                <option value="{{ option }}" {% if option == default_categoria_color %}selected{% endif %}>
+                                    {{ option|capitalize }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
 
