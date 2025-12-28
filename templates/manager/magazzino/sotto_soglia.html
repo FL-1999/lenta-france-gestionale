@@ -1,0 +1,80 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">📉 {% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Liste des articles à réapprovisionner et quantités suggérées.
+            {% else %}
+                Elenco degli articoli da reintegrare e quantità suggerite.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour au magasin{% else %}Torna al magazzino{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            {% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}
+            <span class="muted" style="margin-left: 0.5rem;">({{ items_count }})</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Disponible{% else %}Disponibile{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Seuil{% else %}Soglia{% endif %}</th>
+                        <th>{% if lang == 'fr' %}À commander{% else %}Da ordinare{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if items %}
+                        {% for entry in items %}
+                            {% set item = entry.item %}
+                            <tr>
+                                <td>{{ item.codice or '—' }}</td>
+                                <td>{{ item.nome }}</td>
+                                <td>{{ item.quantita_disponibile }}</td>
+                                <td>{{ item.soglia_minima }}</td>
+                                <td>
+                                    {% if entry.da_ordinare is not none %}
+                                        {{ entry.da_ordinare }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="muted">
+                                {% if lang == 'fr' %}
+                                    Aucun article sous seuil.
+                                {% else %}
+                                    Nessun articolo sotto soglia.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
