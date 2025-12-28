@@ -134,7 +134,7 @@
                         {% endif %}
                     </h2>
                     {% if section.cat.id is not none %}
-                        <a href="{{ url_for('manager_magazzino_new', categoria_id=section.cat.id) }}" class="btn btn-secondary btn-sm">
+                        <a href="{{ url_for('manager_magazzino_new') }}?categoria_id={{ section.cat.id }}" class="btn btn-secondary btn-sm">
                             ➕ {% if lang == 'fr' %}Nouvel article dans cette macro{% else %}Nuovo articolo in questa macro{% endif %}
                         </a>
                     {% endif %}
