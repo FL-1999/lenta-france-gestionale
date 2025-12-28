@@ -38,6 +38,7 @@ from models import (
 )
 from routers import users, sites, machines, reports, fiches
 from routes import manager_personale, manager_veicoli, magazzino, audit
+from template_context import register_manager_badges
 
 
 # -------------------------------------------------
@@ -125,6 +126,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Templates HTML (Jinja2)
 templates = Jinja2Templates(directory="templates")
+register_manager_badges(templates)
 
 
 # -------------------------------------------------

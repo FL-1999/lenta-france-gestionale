@@ -51,12 +51,23 @@
                 {% endif %}
             </a>
             {% if user and (user.role.value == 'admin' or user.is_magazzino_manager) %}
+                {% set manager_badges = manager_badge_counts(request, user) %}
                 <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link">
                     📦
                     {% if lang == 'fr' %}
                         Magasin
                     {% else %}
                         Magazzino
+                    {% endif %}
+                    {% if manager_badges.pending_requests %}
+                        <span class="nav-badge nav-badge--pending" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
+                            {{ manager_badges.pending_requests }}
+                        </span>
+                    {% endif %}
+                    {% if manager_badges.low_stock %}
+                        <span class="nav-badge nav-badge--alert" title="{% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}">
+                            {{ manager_badges.low_stock }}
+                        </span>
                     {% endif %}
                 </a>
             {% endif %}

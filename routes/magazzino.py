@@ -27,9 +27,11 @@ from models import (
     Site,
     User,
 )
+from template_context import register_manager_badges
 
 
 templates = Jinja2Templates(directory="templates")
+register_manager_badges(templates)
 router = APIRouter(tags=["magazzino"])
 
 DEFAULT_CATEGORIA_ICON = "📦"
