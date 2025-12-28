@@ -27,6 +27,33 @@
     </div>
 </div>
 
+{% set ok = request.query_params.get('ok') %}
+{% set err = request.query_params.get('err') %}
+{% if ok %}
+    <div class="alert alert-success">
+        {% if ok == 'carico' %}
+            {% if lang == 'fr' %}Chargement enregistré avec succès.{% else %}Carico registrato con successo.{% endif %}
+        {% elif ok == 'scarico' %}
+            {% if lang == 'fr' %}Déchargement enregistré avec succès.{% else %}Scarico registrato con successo.{% endif %}
+        {% else %}
+            {% if lang == 'fr' %}Opération terminée avec succès.{% else %}Operazione completata con successo.{% endif %}
+        {% endif %}
+    </div>
+{% endif %}
+{% if err %}
+    <div class="alert alert-danger">
+        {% if err == 'item_non_trovato' %}
+            {% if lang == 'fr' %}Article introuvable.{% else %}Articolo non trovato.{% endif %}
+        {% elif err == 'quantita_non_valida' %}
+            {% if lang == 'fr' %}Quantité non valide.{% else %}Quantità non valida.{% endif %}
+        {% elif err == 'quantita_insufficiente' %}
+            {% if lang == 'fr' %}Quantité insuffisante en stock.{% else %}Quantità insufficiente in magazzino.{% endif %}
+        {% else %}
+            {% if lang == 'fr' %}Erreur lors de l'opération.{% else %}Errore durante l'operazione.{% endif %}
+        {% endif %}
+    </div>
+{% endif %}
+
 <div class="card" style="margin-bottom: var(--space-3);">
     <div class="card-header">
         <div class="card-title">
