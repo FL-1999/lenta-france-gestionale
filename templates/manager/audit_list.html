@@ -1,0 +1,98 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Journal d'audit – Manager{% else %}Audit – Manager{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">🧾 {% if lang == 'fr' %}Journal d'audit{% else %}Audit{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Suivez qui a fait quoi et quand.
+            {% else %}
+                Traccia chi ha fatto cosa e quando.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<section class="card" style="margin-bottom: var(--space-4);">
+    <form method="get" class="form-grid" style="gap: var(--space-3);">
+        <div class="form-group">
+            <label for="azione">{% if lang == 'fr' %}Action{% else %}Azione{% endif %}</label>
+            <select id="azione" name="azione" class="form-control">
+                <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
+                {% for voce in azioni %}
+                    <option value="{{ voce }}" {% if filtri.azione == voce %}selected{% endif %}>{{ voce }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="user_id">{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</label>
+            <select id="user_id" name="user_id" class="form-control">
+                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                {% for u in utenti %}
+                    {% set label = u.full_name or u.email %}
+                    <option value="{{ u.id }}" {% if filtri.user_id|string == u.id|string %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="date_from">{% if lang == 'fr' %}Du{% else %}Dal{% endif %}</label>
+            <input type="date" id="date_from" name="date_from" class="form-control" value="{{ filtri.date_from }}">
+        </div>
+        <div class="form-group">
+            <label for="date_to">{% if lang == 'fr' %}Au{% else %}Al{% endif %}</label>
+            <input type="date" id="date_to" name="date_to" class="form-control" value="{{ filtri.date_to }}">
+        </div>
+        <div class="form-group" style="align-self: end;">
+            <button class="btn btn-primary" type="submit">
+                🔍 {% if lang == 'fr' %}Filtrer{% else %}Filtra{% endif %}
+            </button>
+            <a href="{{ url_for('manager_audit_list') }}" class="btn btn-secondary">
+                {% if lang == 'fr' %}Réinitialiser{% else %}Reset{% endif %}
+            </a>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    {% if logs %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Action{% else %}Azione{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Entité{% else %}Entità{% endif %}</th>
+                        <th>ID</th>
+                        <th>{% if lang == 'fr' %}Détails{% else %}Dettagli{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                        <tr>
+                            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '' }}</td>
+                            <td>{{ log.user.full_name or log.user.email if log.user else '—' }}</td>
+                            <td>{{ log.azione }}</td>
+                            <td>{{ log.entita }}</td>
+                            <td>{{ log.entita_id or '—' }}</td>
+                            <td>{{ log.dettagli or '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p style="margin: 0;">
+            {% if lang == 'fr' %}Aucun événement pour les filtres sélectionnés.{% else %}Nessun evento per i filtri selezionati.{% endif %}
+        </p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 from datetime import date, datetime, time
 from types import SimpleNamespace
 
@@ -21,6 +22,7 @@ from models import (
     MagazzinoRichiesta,
     MagazzinoRichiestaRiga,
     MagazzinoRichiestaStatusEnum,
+    AuditLog,
     RoleEnum,
     Site,
     User,
@@ -82,6 +84,26 @@ def _parse_categoria_id(value: str | None) -> int | None:
         return int(value)
     except ValueError:
         return None
+
+
+def _log_audit(
+    db: Session,
+    user: User,
+    azione: str,
+    entita: str,
+    entita_id: int | None,
+    dettagli: dict | None = None,
+) -> None:
+    payload = json.dumps(dettagli, ensure_ascii=False) if dettagli else None
+    db.add(
+        AuditLog(
+            user_id=user.id if user else None,
+            azione=azione,
+            entita=entita,
+            entita_id=entita_id,
+            dettagli=payload,
+        )
+    )
 
 
 def _clean_short_text(value: str | None, max_length: int) -> str | None:
@@ -440,6 +462,14 @@ def capo_magazzino_richiesta_letto(
     if richiesta and richiesta.gestito_at:
         richiesta.letto_da_richiedente = True
         db.add(richiesta)
+        _log_audit(
+            db,
+            current_user,
+            "richiesta_consegnata",
+            "magazzino_richiesta",
+            richiesta.id,
+            {"stato": richiesta.stato.value if richiesta.stato else None},
+        )
         db.commit()
 
     return RedirectResponse(
@@ -1035,6 +1065,21 @@ def manager_magazzino_categorie_create(
         color=color_value or DEFAULT_CATEGORIA_COLOR,
     )
     db.add(categoria)
+    db.flush()
+    _log_audit(
+        db,
+        current_user,
+        "categoria_creata",
+        "magazzino_categoria",
+        categoria.id,
+        {
+            "nome": categoria.nome,
+            "ordine": categoria.ordine,
+            "attiva": categoria.attiva,
+            "icon": categoria.icon,
+            "color": categoria.color,
+        },
+    )
     db.commit()
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
@@ -1177,6 +1222,20 @@ def manager_magazzino_categorie_update(
     categoria.icon = icon_value or DEFAULT_CATEGORIA_ICON
     categoria.color = color_value or DEFAULT_CATEGORIA_COLOR
     db.add(categoria)
+    _log_audit(
+        db,
+        current_user,
+        "categoria_modificata",
+        "magazzino_categoria",
+        categoria.id,
+        {
+            "nome": categoria.nome,
+            "ordine": categoria.ordine,
+            "attiva": categoria.attiva,
+            "icon": categoria.icon,
+            "color": categoria.color,
+        },
+    )
     db.commit()
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
@@ -1355,6 +1414,20 @@ def manager_magazzino_create(
     db.add(item)
     db.flush()
 
+    _log_audit(
+        db,
+        current_user,
+        "item_creato",
+        "magazzino_item",
+        item.id,
+        {
+            "nome": item.nome,
+            "codice": item.codice,
+            "quantita_iniziale": item.quantita_disponibile,
+            "categoria_id": item.categoria_id,
+        },
+    )
+
     if item.quantita_disponibile and item.quantita_disponibile > 0:
         movimento = MagazzinoMovimento(
             item_id=item.id,
@@ -1364,6 +1437,18 @@ def manager_magazzino_create(
             note="Carico iniziale",
         )
         db.add(movimento)
+        _log_audit(
+            db,
+            current_user,
+            "movimento_carico",
+            "magazzino_movimento",
+            None,
+            {
+                "item_id": item.id,
+                "quantita": item.quantita_disponibile,
+                "note": "Carico iniziale",
+            },
+        )
     db.commit()
 
     return RedirectResponse(
@@ -1460,6 +1545,44 @@ def manager_magazzino_update(
             note="Rettifica quantità",
         )
         db.add(movimento)
+        _log_audit(
+            db,
+            current_user,
+            "rettifica_magazzino",
+            "magazzino_item",
+            item.id,
+            {
+                "quantita_precedente": quantita_precedente,
+                "quantita_nuova": item.quantita_disponibile,
+                "differenza": differenza,
+            },
+        )
+        _log_audit(
+            db,
+            current_user,
+            "movimento_rettifica",
+            "magazzino_movimento",
+            None,
+            {
+                "item_id": item.id,
+                "quantita": abs(differenza),
+                "note": "Rettifica quantità",
+            },
+        )
+    _log_audit(
+        db,
+        current_user,
+        "item_modificato",
+        "magazzino_item",
+        item.id,
+        {
+            "nome": item.nome,
+            "codice": item.codice,
+            "quantita": item.quantita_disponibile,
+            "categoria_id": item.categoria_id,
+            "attivo": item.attivo,
+        },
+    )
     db.commit()
 
     return RedirectResponse(
@@ -1515,6 +1638,19 @@ def manager_magazzino_scarico(
         note=(note or "").strip() or None,
     )
     db.add(movimento)
+    _log_audit(
+        db,
+        current_user,
+        "movimento_scarico",
+        "magazzino_movimento",
+        None,
+        {
+            "item_id": item.id,
+            "quantita": quantita_valore,
+            "cantiere_id": cantiere_id,
+            "note": (note or "").strip() or None,
+        },
+    )
     db.commit()
 
     return RedirectResponse(
@@ -1561,6 +1697,18 @@ def manager_magazzino_carico_rapido(
         note=(note or "").strip() or None,
     )
     db.add(movimento)
+    _log_audit(
+        db,
+        current_user,
+        "movimento_carico",
+        "magazzino_movimento",
+        None,
+        {
+            "item_id": item.id,
+            "quantita": quantita_valore,
+            "note": (note or "").strip() or None,
+        },
+    )
     db.commit()
 
     return RedirectResponse(
@@ -1616,6 +1764,19 @@ def manager_magazzino_scarico_rapido(
         note=(note or "").strip() or None,
     )
     db.add(movimento)
+    _log_audit(
+        db,
+        current_user,
+        "movimento_scarico",
+        "magazzino_movimento",
+        None,
+        {
+            "item_id": item.id,
+            "quantita": quantita_valore,
+            "cantiere_id": cantiere_id,
+            "note": (note or "").strip() or None,
+        },
+    )
     db.commit()
 
     return RedirectResponse(
@@ -1774,6 +1935,17 @@ def manager_magazzino_richiesta_approva(
     richiesta.letto_da_richiedente = False
 
     db.add(richiesta)
+    _log_audit(
+        db,
+        current_user,
+        "richiesta_approvata",
+        "magazzino_richiesta",
+        richiesta.id,
+        {
+            "risposta_manager": richiesta.risposta_manager,
+            "righe": len(richiesta.righe),
+        },
+    )
     db.commit()
 
     return RedirectResponse(
@@ -1855,12 +2027,36 @@ def manager_magazzino_richiesta_evadi(
                 riferimento_richiesta_id=richiesta.id,
             )
             db.add(movimento)
+            _log_audit(
+                db,
+                current_user,
+                "movimento_scarico",
+                "magazzino_movimento",
+                None,
+                {
+                    "item_id": riga.item.id,
+                    "quantita": riga.quantita_richiesta,
+                    "cantiere_id": richiesta.cantiere_id,
+                    "richiesta_id": richiesta.id,
+                },
+            )
 
         richiesta.stato = MagazzinoRichiestaStatusEnum.evasa
         richiesta.gestito_da_user_id = current_user.id
         richiesta.gestito_at = datetime.utcnow()
         richiesta.letto_da_richiedente = False
         db.add(richiesta)
+        _log_audit(
+            db,
+            current_user,
+            "richiesta_evasa",
+            "magazzino_richiesta",
+            richiesta.id,
+            {
+                "righe": len(richiesta.righe),
+                "cantiere_id": richiesta.cantiere_id,
+            },
+        )
 
         db.commit()
     except HTTPException as exc:
@@ -1923,6 +2119,14 @@ def manager_magazzino_richiesta_rifiuta(
     richiesta.letto_da_richiedente = False
 
     db.add(richiesta)
+    _log_audit(
+        db,
+        current_user,
+        "richiesta_rifiutata",
+        "magazzino_richiesta",
+        richiesta.id,
+        {"risposta_manager": richiesta.risposta_manager},
+    )
     db.commit()
 
     return RedirectResponse(
