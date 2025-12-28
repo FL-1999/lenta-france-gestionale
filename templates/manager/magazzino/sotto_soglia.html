@@ -18,6 +18,15 @@
         </p>
     </div>
     <div class="header-actions">
+        <form method="post" action="{{ url_for('manager_magazzino_richiesta_draft_sotto_soglia') }}" style="display: inline;">
+            {% for entry in suggested_entries %}
+                <input type="hidden" name="item_id" value="{{ entry.item.id }}">
+                <input type="hidden" name="quantita" value="{{ entry.da_ordinare }}">
+            {% endfor %}
+            <button type="submit" class="btn btn-primary" {% if not suggested_entries %}disabled{% endif %}>
+                🧾 {% if lang == 'fr' %}Créer une demande{% else %}Crea richiesta{% endif %}
+            </button>
+        </form>
         <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
             ← {% if lang == 'fr' %}Retour au magasin{% else %}Torna al magazzino{% endif %}
         </a>

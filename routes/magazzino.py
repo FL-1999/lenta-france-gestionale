@@ -704,6 +704,11 @@ def manager_magazzino_sotto_soglia(
                 da_ordinare=da_ordinare,
             )
         )
+    suggested_entries = [
+        entry
+        for entry in items_with_order
+        if entry.da_ordinare is not None and entry.da_ordinare > 0
+    ]
 
     return templates.TemplateResponse(
         "manager/magazzino/sotto_soglia.html",
@@ -712,7 +717,73 @@ def manager_magazzino_sotto_soglia(
             "user": current_user,
             "items": items_with_order,
             "items_count": len(items_with_order),
+            "suggested_entries": suggested_entries,
         },
+    )
+
+
+@router.post(
+    "/manager/magazzino/richieste/bozza-sotto-soglia",
+    response_class=HTMLResponse,
+    name="manager_magazzino_richiesta_draft_sotto_soglia",
+)
+def manager_magazzino_richiesta_draft_sotto_soglia(
+    request: Request,
+    item_id: list[str] = Form([]),
+    quantita: list[str] = Form([]),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+
+    righe_map: dict[int, float] = {}
+    for raw_item_id, raw_quantita in zip(item_id, quantita):
+        if not raw_item_id and not raw_quantita:
+            continue
+        try:
+            parsed_item_id = int(raw_item_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Item non valido")
+        parsed_quantita = _parse_float(raw_quantita)
+        if parsed_quantita is None or parsed_quantita <= 0:
+            raise HTTPException(status_code=400, detail="Quantità non valida")
+
+        righe_map[parsed_item_id] = righe_map.get(parsed_item_id, 0.0) + parsed_quantita
+
+    if not righe_map:
+        raise HTTPException(status_code=400, detail="Nessuna riga valida")
+
+    items = (
+        db.query(MagazzinoItem)
+        .filter(MagazzinoItem.id.in_(righe_map.keys()))
+        .all()
+    )
+    items_by_id = {item.id: item for item in items}
+    for item_id_value in righe_map:
+        item = items_by_id.get(item_id_value)
+        if not item or not item.attivo:
+            raise HTTPException(status_code=400, detail="Item non disponibile")
+
+    richiesta = MagazzinoRichiesta(
+        richiesto_da_user_id=current_user.id,
+    )
+    db.add(richiesta)
+    db.flush()
+
+    for item_id_value, quantita_value in righe_map.items():
+        db.add(
+            MagazzinoRichiestaRiga(
+                richiesta_id=richiesta.id,
+                item_id=item_id_value,
+                quantita_richiesta=quantita_value,
+            )
+        )
+
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_richiesta_detail", richiesta_id=richiesta.id),
+        status_code=303,
     )
 
 
