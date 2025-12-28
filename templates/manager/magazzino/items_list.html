@@ -147,16 +147,16 @@
             </div>
             <div class="magazzino-items-grid">
                 {% for item in category_items %}
-                    {% set non_disponibile = (not item.attivo) or (item.quantita_disponibile is not none and item.quantita_disponibile <= 0) %}
-                    {% set sotto_soglia = (not non_disponibile) and (item.soglia_minima is not none) and (item.quantita_disponibile is not none) and (item.quantita_disponibile < item.soglia_minima) %}
+                    {% set esaurito = (item.quantita_disponibile is not none) and (item.quantita_disponibile <= 0) %}
+                    {% set sotto_soglia = (not esaurito) and (item.soglia_minima is not none) and (item.quantita_disponibile is not none) and (item.quantita_disponibile <= item.soglia_minima) %}
                     <div class="card magazzino-item-card">
                         <div class="card-body">
                             <div class="magazzino-item-header">
                                 <h3>{{ item.nome }}</h3>
-                                {% if non_disponibile %}
-                                    <span class="badge badge-muted">{% if lang == 'fr' %}Indisponible{% else %}Non disponibile{% endif %}</span>
+                                {% if esaurito %}
+                                    <span class="badge badge-danger">{% if lang == 'fr' %}Épuisé{% else %}Esaurito{% endif %}</span>
                                 {% elif sotto_soglia %}
-                                    <span class="badge badge-danger">{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
+                                    <span class="badge badge-warning">{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
                                 {% else %}
                                     <span class="badge badge-success">OK</span>
                                 {% endif %}
@@ -167,7 +167,7 @@
                             </p>
                             <p class="magazzino-item-desc">{{ item.descrizione or '—' }}</p>
                             <div class="magazzino-item-stats">
-                                <div>
+                                <div class="magazzino-item-quantity">
                                     <span class="label">{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</span>
                                     <span class="kpi-value">
                                         {% if item.quantita_disponibile is not none %}

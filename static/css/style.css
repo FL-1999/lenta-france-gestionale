@@ -49,6 +49,7 @@
     /* BADGES */
     --color-badge-success-bg: #16a34a;
     --color-badge-danger-bg: #dc2626;
+    --color-badge-warning-bg: #f59e0b;
     --color-badge-muted-bg: #64748b;
     --color-badge-secondary-bg: #475569;
     --color-badge-text: #f9fafb;
@@ -149,6 +150,7 @@
     /* BADGES */
     --color-badge-success-bg: #16a34a;
     --color-badge-danger-bg: #dc2626;
+    --color-badge-warning-bg: #f59e0b;
     --color-badge-muted-bg: #94a3b8;
     --color-badge-secondary-bg: #64748b;
     --color-badge-text: #f9fafb;
@@ -595,6 +597,11 @@ body {
     color: var(--color-badge-text);
 }
 
+.badge-warning {
+    background: var(--color-badge-warning-bg);
+    color: var(--color-badge-text);
+}
+
 .badge-muted {
     background: var(--color-badge-muted-bg);
     color: var(--color-badge-text);
@@ -991,6 +998,11 @@ body {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
+}
+
+.magazzino-item-quantity .kpi-value {
+    font-size: 2.2rem;
+    line-height: 1.1;
 }
 
 .magazzino-item-stats .label {
