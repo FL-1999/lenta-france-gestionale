@@ -118,7 +118,7 @@
 {% endif %}
 
 {% for section in categorie_sections %}
-    {% set category_items = section.items %}
+    {% set category_items = section["items"] %}
     {% if category_items %}
         <section class="magazzino-category">
             <div class="magazzino-category-header" style="display: flex; flex-direction: column; gap: var(--space-2);">
