@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import csv
+import io
 from datetime import date, datetime, time
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
@@ -651,6 +653,7 @@ def manager_magazzino_movimenti(
     tipo: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    export: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -692,6 +695,50 @@ def manager_magazzino_movimenti(
         )
 
     movimenti = query.order_by(MagazzinoMovimento.created_at.desc()).all()
+    if export == "csv":
+        output = io.StringIO(newline="")
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                "Data",
+                "Codice articolo",
+                "Nome articolo",
+                "Tipo",
+                "Quantità",
+                "Cantiere",
+                "Utente",
+                "Note",
+                "Richiesta",
+            ]
+        )
+        for movimento in movimenti:
+            created_at = (
+                movimento.created_at.strftime("%Y-%m-%d %H:%M")
+                if movimento.created_at
+                else ""
+            )
+            item_code = movimento.item.codice if movimento.item else ""
+            item_name = movimento.item.nome if movimento.item else ""
+            user_label = ""
+            if movimento.creato_da_user:
+                user_label = movimento.creato_da_user.full_name or movimento.creato_da_user.email
+            writer.writerow(
+                [
+                    created_at,
+                    item_code or "",
+                    item_name or "",
+                    movimento.tipo.value if movimento.tipo else "",
+                    movimento.quantita,
+                    movimento.cantiere.name if movimento.cantiere else "",
+                    user_label or "",
+                    movimento.note or "",
+                    movimento.riferimento_richiesta_id or "",
+                ]
+            )
+        filename = f"movimenti_magazzino_{datetime.now().strftime('%Y%m%d')}.csv"
+        response = Response(output.getvalue(), media_type="text/csv; charset=utf-8")
+        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
     summary_query = db.query(
         Site,
@@ -767,6 +814,7 @@ def manager_magazzino_report_consumi(
     cantiere_id: int | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    export: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -813,6 +861,17 @@ def manager_magazzino_report_consumi(
         .order_by(func.sum(MagazzinoMovimento.quantita).desc(), MagazzinoItem.nome.asc())
         .all()
     )
+
+    if export == "csv":
+        output = io.StringIO(newline="")
+        writer = csv.writer(output)
+        writer.writerow(["Codice", "Nome", "Totale scaricato"])
+        for codice, nome, totale in items:
+            writer.writerow([codice or "", nome or "", totale])
+        filename = f"report_consumi_{cantiere_id}_{datetime.now().strftime('%Y%m%d')}.csv"
+        response = Response(output.getvalue(), media_type="text/csv; charset=utf-8")
+        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
     return templates.TemplateResponse(
         "manager/magazzino/report_consumi.html",
