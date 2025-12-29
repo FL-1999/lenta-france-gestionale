@@ -358,6 +358,7 @@ class MagazzinoItem(Base, TimestampMixin):
     quantita_disponibile = Column(Float, nullable=False, default=0.0)
     soglia_minima = Column(Float, nullable=True)
     attivo = Column(Boolean, default=True, nullable=False)
+    preferito = Column(Boolean, default=False, nullable=False)
 
     categoria = relationship("MagazzinoCategoria")
     righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")

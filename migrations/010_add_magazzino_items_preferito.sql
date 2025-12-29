@@ -1,0 +1,2 @@
+ALTER TABLE magazzino_items
+ADD COLUMN preferito BOOLEAN NOT NULL DEFAULT FALSE;

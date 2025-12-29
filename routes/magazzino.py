@@ -387,7 +387,9 @@ def capo_magazzino_list(
         .order_by(
             MagazzinoCategoria.ordine.asc(),
             MagazzinoCategoria.nome.asc(),
+            MagazzinoItem.preferito.desc(),
             MagazzinoItem.nome.asc(),
+            MagazzinoItem.codice.asc(),
         )
         .all()
     )
@@ -685,7 +687,9 @@ def manager_magazzino_list(
         .order_by(
             MagazzinoCategoria.ordine.asc(),
             MagazzinoCategoria.nome.asc(),
+            MagazzinoItem.preferito.desc(),
             MagazzinoItem.nome.asc(),
+            MagazzinoItem.codice.asc(),
         )
         .all()
     )
@@ -1832,6 +1836,41 @@ def manager_magazzino_update(
     )
     db.commit()
 
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/{item_id}/preferito",
+    response_class=HTMLResponse,
+    name="manager_magazzino_preferito_toggle",
+)
+def manager_magazzino_preferito_toggle(
+    item_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item:
+        return RedirectResponse(
+            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
+            status_code=303,
+        )
+    item.preferito = not item.preferito
+    db.add(item)
+    _log_audit(
+        db,
+        current_user,
+        "magazzino_item_preferito",
+        "magazzino_item",
+        item.id,
+        {"preferito": item.preferito},
+    )
+    db.commit()
     return RedirectResponse(
         url=request.url_for("manager_magazzino_list"),
         status_code=303,
