@@ -247,6 +247,81 @@ form textarea {
     margin-top: var(--space-5);
 }
 
+/* Scorciatoie dashboard manager */
+.dashboard-shortcuts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.shortcut-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-4);
+}
+
+.card.shortcut-card {
+    position: relative;
+    overflow: hidden;
+    padding: var(--space-5);
+}
+
+.shortcut-card-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.shortcut-body {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.shortcut-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.shortcut-subtitle {
+    color: var(--testo-secondario);
+}
+
+.shortcut-links,
+.shortcut-quick-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.shortcut-quick-label {
+    font-size: 0.85rem;
+    color: var(--testo-secondario);
+}
+
+.shortcut-link {
+    position: relative;
+    z-index: 2;
+}
+
+.shortcut-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 3;
+    background: #e11d48;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    min-width: 2rem;
+    text-align: center;
+    box-shadow: 0 6px 14px rgba(225, 29, 72, 0.35);
+}
+
 /* Card leggermente più “importanti” ma meno affollate dentro */
 .card.module-card {
     padding: var(--space-5);
