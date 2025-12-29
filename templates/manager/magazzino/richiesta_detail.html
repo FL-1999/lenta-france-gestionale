@@ -10,6 +10,7 @@
     'IN_ATTESA': 'badge-muted',
     'APPROVATA': 'badge-success',
     'RIFIUTATA': 'badge-danger',
+    'PARZIALE': 'badge-warning',
     'EVASA': 'badge-secondary'
 } %}
 {% set priorita_labels = {
@@ -100,34 +101,48 @@
     </div>
 </div>
 
-<div class="card table-card">
-    <div class="card-body">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
-                    <th class="text-right">{% if lang == 'fr' %}Quantité demandée{% else %}Quantità richiesta{% endif %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for riga in richiesta.righe %}
+<form method="post" action="{{ url_for('manager_magazzino_richiesta_approva', richiesta_id=richiesta.id) }}">
+    <div class="card table-card">
+        <div class="card-body">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>{{ riga.item.nome }}</td>
-                        <td class="text-right">{{ riga.quantita_richiesta }}</td>
+                        <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Quantité demandée{% else %}Quantità richiesta{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Quantité livrée{% else %}Quantità evasa{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Quantité restante{% else %}Quantità residua{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}À livrer{% else %}Da evadere{% endif %}</th>
                     </tr>
-                {% else %}
-                    <tr class="table-empty">
-                        <td colspan="2">—</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for riga in richiesta.righe %}
+                        {% set quantita_evasa = riga.quantita_evasa or 0 %}
+                        {% set quantita_residua = riga.quantita_richiesta - quantita_evasa %}
+                        <tr>
+                            <td>{{ riga.item.nome }}</td>
+                            <td class="text-right">{{ riga.quantita_richiesta }}</td>
+                            <td class="text-right">{{ quantita_evasa }}</td>
+                            <td class="text-right">{{ quantita_residua }}</td>
+                            <td class="text-right">
+                                {% if richiesta.stato and richiesta.stato.value in ['APPROVATA', 'PARZIALE'] %}
+                                    <input type="number" name="quantita_da_evadere_{{ riga.id }}" min="0" step="0.01" max="{{ quantita_residua }}" value="{{ quantita_residua }}" style="max-width: 120px;">
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr class="table-empty">
+                            <td colspan="5">—</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 
-<div class="card" style="margin-top: 16px;">
-    <div class="card-body">
-        <form method="post" action="{{ url_for('manager_magazzino_richiesta_approva', richiesta_id=richiesta.id) }}">
+    <div class="card" style="margin-top: 16px;">
+        <div class="card-body">
             <div class="form-field">
                 <label>{% if lang == 'fr' %}Réponse du manager{% else %}Risposta del manager{% endif %}</label>
                 <textarea name="risposta_manager" placeholder="{% if lang == 'fr' %}Message pour l'équipe{% else %}Messaggio per la squadra{% endif %}">{{ richiesta.risposta_manager or '' }}</textarea>
@@ -139,13 +154,13 @@
                 <button type="submit" class="btn btn-danger" formaction="{{ url_for('manager_magazzino_richiesta_rifiuta', richiesta_id=richiesta.id) }}">
                     ❌ {% if lang == 'fr' %}Refuser{% else %}Rifiuta{% endif %}
                 </button>
-                {% if richiesta.stato and richiesta.stato.value == 'APPROVATA' %}
+                {% if richiesta.stato and richiesta.stato.value in ['APPROVATA', 'PARZIALE'] %}
                     <button type="submit" class="btn btn-secondary" formaction="{{ url_for('manager_magazzino_richiesta_evadi', richiesta_id=richiesta.id) }}">
                         ✅ {% if lang == 'fr' %}Livrer / Remettre{% else %}Evadi / Consegna{% endif %}
                     </button>
                 {% endif %}
             </div>
-        </form>
+        </div>
     </div>
-</div>
+</form>
 {% endblock %}

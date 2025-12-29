@@ -10,6 +10,7 @@
     'IN_ATTESA': 'badge-muted',
     'APPROVATA': 'badge-success',
     'RIFIUTATA': 'badge-danger',
+    'PARZIALE': 'badge-warning',
     'EVASA': 'badge-secondary'
 } %}
 {% set priorita_labels = {
@@ -102,7 +103,7 @@
                     {% set stato_label = richiesta.stato.value if richiesta.stato else '—' %}
                     {% set badge_class = stato_class_map.get(stato_label, 'badge-muted') %}
                     {% set priorita_value = richiesta.priorita.value if richiesta.priorita else '—' %}
-                    {% set is_overdue = richiesta.data_necessaria and oggi and richiesta.data_necessaria < oggi and stato_label in ['IN_ATTESA', 'APPROVATA'] %}
+                    {% set is_overdue = richiesta.data_necessaria and oggi and richiesta.data_necessaria < oggi and stato_label in ['IN_ATTESA', 'APPROVATA', 'PARZIALE'] %}
                     <tr{% if is_overdue %} class="table-row-overdue"{% endif %}>
                         <td>
                             <span class="badge {{ badge_class }}">{{ stato_label }}</span>
