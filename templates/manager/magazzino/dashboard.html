@@ -1,0 +1,110 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Tableau de bord Magazzino{% else %}Dashboard Magazzino{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">📦 {% if lang == 'fr' %}Tableau de bord Magazzino{% else %}Dashboard Magazzino{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Vue synthétique des stocks et des consommations.
+            {% else %}
+                Vista sintetica di stock e consumi.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            <span>{% if lang == 'fr' %}Seuils d'alerte{% else %}Soglie di allerta{% endif %}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+            <div>
+                <p class="muted" style="margin: 0 0 0.35rem 0;">
+                    {% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}
+                </p>
+                <strong>{{ sotto_soglia_count }}</strong>
+            </div>
+            <div>
+                <p class="muted" style="margin: 0 0 0.35rem 0;">
+                    {% if lang == 'fr' %}Articles épuisés{% else %}Articoli esauriti{% endif %}
+                </p>
+                <strong>{{ esauriti_count }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            <span>{% if lang == 'fr' %}Top 10 sorties (30 derniers jours){% else %}Top 10 scarichi (ultimi 30 giorni){% endif %}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if top_consumi %}
+                        {% for item in top_consumi %}
+                            <tr>
+                                <td>{{ item.codice or '—' }}</td>
+                                <td>{{ item.nome }}</td>
+                                <td>{{ item.totale }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="3" class="muted">
+                                {% if lang == 'fr' %}Aucune sortie sur la période.{% else %}Nessuno scarico nel periodo.{% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <span>{% if lang == 'fr' %}Liens rapides{% else %}Link rapidi{% endif %}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+            <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_sotto_soglia') }}">
+                {% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}
+            </a>
+            <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_movimenti') }}">
+                {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
+            </a>
+            {% if report_cantiere %}
+                <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_report_consumi') }}?cantiere_id={{ report_cantiere.id }}">
+                    {% if lang == 'fr' %}Rapport consommations{% else %}Report consumi{% endif %}
+                </a>
+            {% else %}
+                <span class="btn btn-secondary" style="opacity: 0.6; cursor: not-allowed;">
+                    {% if lang == 'fr' %}Rapport consommations{% else %}Report consumi{% endif %}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
