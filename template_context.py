@@ -30,6 +30,25 @@ def get_numero_richieste_nuove(db) -> int:
     return int(richieste_nuove or 0)
 
 
+def get_cached_nuove_richieste_count(request: Request, db=None) -> int:
+    cached = getattr(request.state, "nuove_richieste_count", None)
+    if isinstance(cached, int):
+        return cached
+
+    close_db = False
+    if db is None:
+        db = SessionLocal()
+        close_db = True
+    try:
+        count = get_numero_richieste_nuove(db)
+        count = int(count or 0)
+        request.state.nuove_richieste_count = count
+        return count
+    finally:
+        if close_db:
+            db.close()
+
+
 def render_template(
     templates,
     request: Request,
@@ -43,15 +62,9 @@ def render_template(
     template_context.setdefault("request", request)
     template_context.setdefault("user", user)
 
-    close_db = False
-    if db is None:
-        db = SessionLocal()
-        close_db = True
-    try:
-        template_context["nuove_richieste_count"] = get_numero_richieste_nuove(db)
-    finally:
-        if close_db:
-            db.close()
+    template_context["nuove_richieste_count"] = get_cached_nuove_richieste_count(
+        request, db
+    )
 
     return templates.TemplateResponse(template_name, template_context, **response_kwargs)
 
@@ -68,7 +81,7 @@ def manager_badge_counts(request: Request, user: User | None = None) -> dict[str
 
     db = SessionLocal()
     try:
-        pending_requests = get_numero_richieste_nuove(db)
+        pending_requests = get_cached_nuove_richieste_count(request, db)
         low_stock = (
             db.query(func.count(MagazzinoItem.id))
             .filter(
