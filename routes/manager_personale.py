@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 from auth import get_current_active_user_html
 from database import get_session
 from models import Personale, RoleEnum, User
-from template_context import register_manager_badges
+from template_context import register_manager_badges, render_template
 
 
 templates = Jinja2Templates(directory="templates")
@@ -38,14 +38,16 @@ def manager_personale_list(
         select(Personale).order_by(Personale.cognome, Personale.nome)
     ).all()
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/personale/personale_list.html",
         {
-            "request": request,
             "lang": lang,
             "personale": personale,
-            "user": current_user,
         },
+        session,
+        current_user,
     )
 
 
@@ -60,13 +62,15 @@ def manager_personale_new(
 ):
     _ensure_manager(current_user)
     lang = request.cookies.get("lang", "it")
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/personale/personale_new.html",
         {
-            "request": request,
             "lang": lang,
-            "user": current_user,
         },
+        None,
+        current_user,
     )
 
 
@@ -126,14 +130,16 @@ def manager_personale_edit(
             request.url_for("manager_personale_list"), status_code=303
         )
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/personale/personale_edit.html",
         {
-            "request": request,
             "lang": lang,
             "personale": personale,
-            "user": current_user,
         },
+        session,
+        current_user,
     )
 
 
