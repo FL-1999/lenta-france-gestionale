@@ -39,30 +39,14 @@
     </div>
 </div>
 
-{% set ok = request.query_params.get('ok') %}
-{% set err = request.query_params.get('err') %}
-{% if ok %}
+{% if success_message %}
     <div class="alert alert-success">
-        {% if ok == 'carico' %}
-            {% if lang == 'fr' %}Chargement enregistré avec succès.{% else %}Carico registrato con successo.{% endif %}
-        {% elif ok == 'scarico' %}
-            {% if lang == 'fr' %}Déchargement enregistré avec succès.{% else %}Scarico registrato con successo.{% endif %}
-        {% else %}
-            {% if lang == 'fr' %}Opération terminée avec succès.{% else %}Operazione completata con successo.{% endif %}
-        {% endif %}
+        {{ success_message }}
     </div>
 {% endif %}
-{% if err %}
+{% if error_message %}
     <div class="alert alert-danger">
-        {% if err == 'item_non_trovato' %}
-            {% if lang == 'fr' %}Article introuvable.{% else %}Articolo non trovato.{% endif %}
-        {% elif err == 'quantita_non_valida' %}
-            {% if lang == 'fr' %}Quantité non valide.{% else %}Quantità non valida.{% endif %}
-        {% elif err == 'quantita_insufficiente' %}
-            {% if lang == 'fr' %}Quantité insuffisante en stock.{% else %}Quantità insufficiente in magazzino.{% endif %}
-        {% else %}
-            {% if lang == 'fr' %}Erreur lors de l'opération.{% else %}Errore durante l'operazione.{% endif %}
-        {% endif %}
+        {{ error_message }}
     </div>
 {% endif %}
 
@@ -221,7 +205,7 @@
                             </div>
                             <div style="display: grid; gap: var(--space-2);">
                                 <details>
-                                    <summary class="btn btn-primary btn-sm">➕ {% if lang == 'fr' %}Chargement rapide{% else %}Carico rapido{% endif %}</summary>
+                                    <summary class="btn btn-primary btn-sm">➕ {% if lang == 'fr' %}Chargement rapide +N{% else %}Carico rapido +N{% endif %}</summary>
                                     <form method="post" action="{{ url_for('manager_magazzino_carico_rapido', item_id=item.id) }}" style="margin-top: 0.75rem;">
                                         <div class="form-grid-2">
                                             <div class="form-field">
@@ -241,7 +225,7 @@
                                     </form>
                                 </details>
                                 <details>
-                                    <summary class="btn btn-secondary btn-sm">➖ {% if lang == 'fr' %}Déstockage rapide{% else %}Scarico rapido{% endif %}</summary>
+                                    <summary class="btn btn-secondary btn-sm">➖ {% if lang == 'fr' %}Déstockage rapide -N{% else %}Scarico rapido -N{% endif %}</summary>
                                     <form method="post" action="{{ url_for('manager_magazzino_scarico_rapido', item_id=item.id) }}" style="margin-top: 0.75rem;">
                                         <div class="form-grid-2">
                                             <div class="form-field">

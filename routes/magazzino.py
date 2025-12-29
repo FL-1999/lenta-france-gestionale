@@ -645,6 +645,49 @@ def manager_magazzino_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    lang = request.cookies.get("lang", "it")
+    ok = request.query_params.get("ok")
+    err = request.query_params.get("err")
+    success_message = None
+    error_message = None
+    if ok == "carico":
+        success_message = (
+            "Chargement enregistré avec succès."
+            if lang == "fr"
+            else "Carico registrato con successo."
+        )
+    elif ok == "scarico":
+        success_message = (
+            "Déchargement enregistré avec succès."
+            if lang == "fr"
+            else "Scarico registrato con successo."
+        )
+    elif ok:
+        success_message = (
+            "Opération terminée avec succès."
+            if lang == "fr"
+            else "Operazione completata con successo."
+        )
+    if err == "item_non_trovato":
+        error_message = (
+            "Article introuvable." if lang == "fr" else "Articolo non trovato."
+        )
+    elif err == "quantita_non_valida":
+        error_message = (
+            "Quantité non valide." if lang == "fr" else "Quantità non valida."
+        )
+    elif err == "quantita_insufficiente":
+        error_message = (
+            "Quantité insuffisante en stock."
+            if lang == "fr"
+            else "Quantità insufficiente in magazzino."
+        )
+    elif err:
+        error_message = (
+            "Erreur lors de l'opération."
+            if lang == "fr"
+            else "Errore durante l'operazione."
+        )
     categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
         db,
         include_inactive=False,
@@ -731,6 +774,8 @@ def manager_magazzino_list(
             "color_options": CATEGORIA_COLOR_OPTIONS,
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+            "success_message": success_message,
+            "error_message": error_message,
         },
         db,
         current_user,
@@ -2070,32 +2115,39 @@ def manager_magazzino_scarico(
             url=f"{request.url_for('manager_magazzino_list')}?err=quantita_insufficiente",
             status_code=303,
         )
-    item.quantita_disponibile = quantita_attuale - quantita_valore
+    try:
+        item.quantita_disponibile = quantita_attuale - quantita_valore
 
-    db.add(item)
-    movimento = MagazzinoMovimento(
-        item_id=item.id,
-        tipo=MagazzinoMovimentoTipoEnum.scarico,
-        quantita=quantita_valore,
-        cantiere_id=cantiere_id,
-        creato_da_user_id=current_user.id,
-        note=(note or "").strip() or None,
-    )
-    db.add(movimento)
-    _log_audit(
-        db,
-        current_user,
-        "movimento_scarico",
-        "magazzino_movimento",
-        None,
-        {
-            "item_id": item.id,
-            "quantita": quantita_valore,
-            "cantiere_id": cantiere_id,
-            "note": (note or "").strip() or None,
-        },
-    )
-    db.commit()
+        db.add(item)
+        movimento = MagazzinoMovimento(
+            item_id=item.id,
+            tipo=MagazzinoMovimentoTipoEnum.scarico,
+            quantita=quantita_valore,
+            cantiere_id=cantiere_id,
+            creato_da_user_id=current_user.id,
+            note=(note or "").strip() or None,
+        )
+        db.add(movimento)
+        _log_audit(
+            db,
+            current_user,
+            "movimento_scarico",
+            "magazzino_movimento",
+            None,
+            {
+                "item_id": item.id,
+                "quantita": quantita_valore,
+                "cantiere_id": cantiere_id,
+                "note": (note or "").strip() or None,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse(
+            url=f"{request.url_for('manager_magazzino_list')}?err=operazione_fallita",
+            status_code=303,
+        )
 
     return RedirectResponse(
         url=f"{request.url_for('manager_magazzino_list')}?ok=scarico",
@@ -2131,29 +2183,36 @@ def manager_magazzino_carico_rapido(
             status_code=303,
         )
 
-    item.quantita_disponibile = (item.quantita_disponibile or 0.0) + quantita_valore
-    db.add(item)
-    movimento = MagazzinoMovimento(
-        item_id=item.id,
-        tipo=MagazzinoMovimentoTipoEnum.carico,
-        quantita=quantita_valore,
-        creato_da_user_id=current_user.id,
-        note=(note or "").strip() or None,
-    )
-    db.add(movimento)
-    _log_audit(
-        db,
-        current_user,
-        "movimento_carico",
-        "magazzino_movimento",
-        None,
-        {
-            "item_id": item.id,
-            "quantita": quantita_valore,
-            "note": (note or "").strip() or None,
-        },
-    )
-    db.commit()
+    try:
+        item.quantita_disponibile = (item.quantita_disponibile or 0.0) + quantita_valore
+        db.add(item)
+        movimento = MagazzinoMovimento(
+            item_id=item.id,
+            tipo=MagazzinoMovimentoTipoEnum.carico,
+            quantita=quantita_valore,
+            creato_da_user_id=current_user.id,
+            note=(note or "").strip() or None,
+        )
+        db.add(movimento)
+        _log_audit(
+            db,
+            current_user,
+            "movimento_carico",
+            "magazzino_movimento",
+            None,
+            {
+                "item_id": item.id,
+                "quantita": quantita_valore,
+                "note": (note or "").strip() or None,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse(
+            url=f"{request.url_for('manager_magazzino_list')}?err=operazione_fallita",
+            status_code=303,
+        )
 
     return RedirectResponse(
         url=f"{request.url_for('manager_magazzino_list')}?ok=carico",
@@ -2197,31 +2256,38 @@ def manager_magazzino_scarico_rapido(
             status_code=303,
         )
 
-    item.quantita_disponibile = quantita_attuale - quantita_valore
-    db.add(item)
-    movimento = MagazzinoMovimento(
-        item_id=item.id,
-        tipo=MagazzinoMovimentoTipoEnum.scarico,
-        quantita=quantita_valore,
-        cantiere_id=cantiere_id,
-        creato_da_user_id=current_user.id,
-        note=(note or "").strip() or None,
-    )
-    db.add(movimento)
-    _log_audit(
-        db,
-        current_user,
-        "movimento_scarico",
-        "magazzino_movimento",
-        None,
-        {
-            "item_id": item.id,
-            "quantita": quantita_valore,
-            "cantiere_id": cantiere_id,
-            "note": (note or "").strip() or None,
-        },
-    )
-    db.commit()
+    try:
+        item.quantita_disponibile = quantita_attuale - quantita_valore
+        db.add(item)
+        movimento = MagazzinoMovimento(
+            item_id=item.id,
+            tipo=MagazzinoMovimentoTipoEnum.scarico,
+            quantita=quantita_valore,
+            cantiere_id=cantiere_id,
+            creato_da_user_id=current_user.id,
+            note=(note or "").strip() or None,
+        )
+        db.add(movimento)
+        _log_audit(
+            db,
+            current_user,
+            "movimento_scarico",
+            "magazzino_movimento",
+            None,
+            {
+                "item_id": item.id,
+                "quantita": quantita_valore,
+                "cantiere_id": cantiere_id,
+                "note": (note or "").strip() or None,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse(
+            url=f"{request.url_for('manager_magazzino_list')}?err=operazione_fallita",
+            status_code=303,
+        )
 
     return RedirectResponse(
         url=f"{request.url_for('manager_magazzino_list')}?ok=scarico",
