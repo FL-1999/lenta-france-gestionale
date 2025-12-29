@@ -1842,6 +1842,164 @@ def manager_magazzino_update(
     )
 
 
+@router.get(
+    "/manager/magazzino/items/{item_id}/duplica",
+    response_class=HTMLResponse,
+    name="manager_magazzino_duplicate",
+)
+def manager_magazzino_duplicate(
+    item_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    item = (
+        db.query(MagazzinoItem)
+        .options(joinedload(MagazzinoItem.categoria))
+        .filter(MagazzinoItem.id == item_id)
+        .first()
+    )
+    if not item:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/item_duplicate.html",
+        {
+            "request": request,
+            "user": current_user,
+            "item": item,
+            "error_message": None,
+            "title": "Duplica articolo",
+        },
+        db,
+        current_user,
+    )
+
+
+@router.post(
+    "/manager/magazzino/items/{item_id}/duplica",
+    response_class=HTMLResponse,
+    name="manager_magazzino_duplicate_create",
+)
+def manager_magazzino_duplicate_create(
+    item_id: int,
+    request: Request,
+    codice: str = Form(...),
+    quantita_iniziale: str | None = Form(""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    item = (
+        db.query(MagazzinoItem)
+        .options(joinedload(MagazzinoItem.categoria))
+        .filter(MagazzinoItem.id == item_id)
+        .first()
+    )
+    if not item:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list"),
+            status_code=303,
+        )
+    codice_value = codice.strip()
+    if not codice_value:
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/item_duplicate.html",
+            {
+                "request": request,
+                "user": current_user,
+                "item": item,
+                "error_message": "Il codice articolo è obbligatorio.",
+                "title": "Duplica articolo",
+            },
+            db,
+            current_user,
+        )
+    existing = (
+        db.query(MagazzinoItem)
+        .filter(func.lower(MagazzinoItem.codice) == codice_value.lower())
+        .first()
+    )
+    if existing:
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/item_duplicate.html",
+            {
+                "request": request,
+                "user": current_user,
+                "item": item,
+                "error_message": "Esiste già un articolo con questo codice.",
+                "title": "Duplica articolo",
+            },
+            db,
+            current_user,
+        )
+    quantita_value = _parse_float(quantita_iniziale) or 0.0
+    nuovo_item = MagazzinoItem(
+        nome=item.nome,
+        codice=codice_value,
+        descrizione=item.descrizione,
+        unita_misura=item.unita_misura,
+        categoria_id=item.categoria_id,
+        quantita_disponibile=quantita_value,
+        soglia_minima=item.soglia_minima,
+        attivo=item.attivo,
+    )
+    db.add(nuovo_item)
+    db.flush()
+
+    _log_audit(
+        db,
+        current_user,
+        "item_duplicato",
+        "magazzino_item",
+        nuovo_item.id,
+        {
+            "item_origine_id": item.id,
+            "nome": nuovo_item.nome,
+            "codice": nuovo_item.codice,
+            "quantita_iniziale": nuovo_item.quantita_disponibile,
+            "categoria_id": nuovo_item.categoria_id,
+        },
+    )
+
+    if nuovo_item.quantita_disponibile and nuovo_item.quantita_disponibile > 0:
+        movimento = MagazzinoMovimento(
+            item_id=nuovo_item.id,
+            tipo=MagazzinoMovimentoTipoEnum.carico,
+            quantita=nuovo_item.quantita_disponibile,
+            creato_da_user_id=current_user.id,
+            note="Carico iniziale",
+        )
+        db.add(movimento)
+        _log_audit(
+            db,
+            current_user,
+            "movimento_carico",
+            "magazzino_movimento",
+            None,
+            {
+                "item_id": nuovo_item.id,
+                "quantita": nuovo_item.quantita_disponibile,
+                "note": "Carico iniziale",
+            },
+        )
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_list"),
+        status_code=303,
+    )
+
+
 @router.post(
     "/manager/magazzino/{item_id}/preferito",
     response_class=HTMLResponse,
