@@ -4,6 +4,7 @@ import csv
 import io
 import json
 from datetime import date, datetime, time
+from math import ceil
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -46,6 +47,8 @@ CATEGORIA_COLOR_MAP = {
 CATEGORIA_COLOR_OPTIONS = list(CATEGORIA_COLOR_MAP.keys())
 MAX_CATEGORIA_ICON_LENGTH = 32
 MAX_CATEGORIA_COLOR_LENGTH = 20
+DEFAULT_PER_PAGE = 25
+MAX_PER_PAGE = 100
 
 
 def ensure_caposquadra_or_manager(user: User) -> None:
@@ -86,6 +89,12 @@ def _parse_categoria_id(value: str | None) -> int | None:
         return int(value)
     except ValueError:
         return None
+
+
+def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
+    page = max(1, page)
+    per_page = max(1, min(per_page, MAX_PER_PAGE))
+    return page, per_page
 
 
 def _log_audit(
@@ -410,11 +419,14 @@ def capo_magazzino_list(
 )
 def capo_magazzino_richieste(
     request: Request,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_caposquadra_or_manager(current_user)
-    richieste = (
+    page, per_page = _normalize_pagination(page, per_page)
+    query = (
         db.query(MagazzinoRichiesta)
         .options(
             selectinload(MagazzinoRichiesta.righe).selectinload(
@@ -425,8 +437,10 @@ def capo_magazzino_richieste(
         )
         .filter(MagazzinoRichiesta.richiesto_da_user_id == current_user.id)
         .order_by(MagazzinoRichiesta.created_at.desc())
-        .all()
     )
+    total_count = query.count()
+    total_pages = max(1, ceil(total_count / per_page))
+    richieste = query.offset((page - 1) * per_page).limit(per_page).all()
     unread_ids = [
         richiesta.id
         for richiesta in richieste
@@ -449,6 +463,9 @@ def capo_magazzino_richieste(
             "user": current_user,
             "richieste": richieste,
             "unread_ids": set(unread_ids),
+            "page": page,
+            "total_pages": total_pages,
+            "total_count": total_count,
         },
         db,
         current_user,
@@ -829,11 +846,14 @@ def manager_magazzino_movimenti(
     date_from: str | None = None,
     date_to: str | None = None,
     export: str | None = None,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
 
+    page, per_page = _normalize_pagination(page, per_page)
     parsed_from = _parse_date(date_from)
     parsed_to = _parse_date(date_to)
 
@@ -869,7 +889,12 @@ def manager_magazzino_movimenti(
             MagazzinoMovimento.created_at <= datetime.combine(parsed_to, time.max)
         )
 
-    movimenti = query.order_by(MagazzinoMovimento.created_at.desc()).all()
+    total_count = query.count()
+    total_pages = max(1, ceil(total_count / per_page))
+    movimenti_query = query.order_by(MagazzinoMovimento.created_at.desc())
+    if export != "csv":
+        movimenti_query = movimenti_query.offset((page - 1) * per_page).limit(per_page)
+    movimenti = movimenti_query.all()
     if export == "csv":
         output = io.StringIO(newline="")
         writer = csv.writer(output)
@@ -977,6 +1002,9 @@ def manager_magazzino_movimenti(
             },
             "totals": totals,
             "has_period_filter": bool(parsed_from or parsed_to),
+            "page": page,
+            "total_pages": total_pages,
+            "total_count": total_count,
         },
         db,
         current_user,
@@ -2014,11 +2042,14 @@ def manager_magazzino_delete(
 def manager_magazzino_richieste(
     request: Request,
     stato: str | None = None,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
 
+    page, per_page = _normalize_pagination(page, per_page)
     stato_filtro = None
     if stato and stato.lower() != "tutte":
         stato_filtro = _parse_status(stato) or MagazzinoRichiestaStatusEnum.in_attesa
@@ -2033,7 +2064,14 @@ def manager_magazzino_richieste(
     if stato_filtro:
         query = query.filter(MagazzinoRichiesta.stato == stato_filtro)
 
-    richieste = query.order_by(MagazzinoRichiesta.created_at.desc()).all()
+    total_count = query.count()
+    total_pages = max(1, ceil(total_count / per_page))
+    richieste = (
+        query.order_by(MagazzinoRichiesta.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
 
     return render_template(
         templates,
@@ -2045,6 +2083,9 @@ def manager_magazzino_richieste(
             "richieste": richieste,
             "stato_filtro": stato_filtro,
             "stati": list(MagazzinoRichiestaStatusEnum),
+            "page": page,
+            "total_pages": total_pages,
+            "total_count": total_count,
         },
         db,
         current_user,

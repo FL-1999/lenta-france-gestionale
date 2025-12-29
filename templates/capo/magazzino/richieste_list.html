@@ -110,6 +110,25 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% if richieste and richieste|length > 0 %}
+            <div class="card-actions" style="justify-content: space-between; align-items: center; margin-top: var(--space-3);">
+                <div class="text-muted">
+                    {% if lang == 'fr' %}
+                        Page {{ page }} sur {{ total_pages }}
+                    {% else %}
+                        Pagina {{ page }} di {{ total_pages }}
+                    {% endif %}
+                </div>
+                <div class="table-actions">
+                    {% if page > 1 %}
+                        <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page-1) }}">&laquo; {% if lang == 'fr' %}Précédent{% else %}Precedente{% endif %}</a>
+                    {% endif %}
+                    {% if page < total_pages %}
+                        <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page+1) }}">{% if lang == 'fr' %}Suivant{% else %}Successiva{% endif %} &raquo;</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
