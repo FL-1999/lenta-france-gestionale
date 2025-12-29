@@ -255,6 +255,21 @@ body {
     gap: 0.35rem;
 }
 
+.nav-card {
+    margin-left: var(--space-3);
+    padding: 2px;
+    border-radius: 12px;
+    background: rgba(148, 163, 184, 0.16);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.nav-link--card {
+    margin-left: 0;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.35);
+}
+
 .nav-link:hover {
     color: var(--color-nav-text-hover);
 }

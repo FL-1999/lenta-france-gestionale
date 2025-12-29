@@ -78,24 +78,26 @@
 
             {% if user and (user.role.value == 'admin' or user.is_magazzino_manager) %}
                 {% set manager_badges = manager_badge_counts(request, user) %}
-                <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link">
-                    📦
-                    {% if lang == 'fr' %}
-                        Magasin
-                    {% else %}
-                        Magazzino
-                    {% endif %}
-                    {% if nuove_richieste_count and nuove_richieste_count > 0 %}
-                        <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
-                            {{ nuove_richieste_count }}
-                        </span>
-                    {% endif %}
-                    {% if manager_badges.low_stock %}
-                        <span class="nav-badge nav-badge--alert" title="{% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}">
-                            {{ manager_badges.low_stock }}
-                        </span>
-                    {% endif %}
-                </a>
+                <div class="nav-card">
+                    <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link nav-link--card">
+                        📦
+                        {% if lang == 'fr' %}
+                            Magasin
+                        {% else %}
+                            Magazzino
+                        {% endif %}
+                        {% if nuove_richieste_count and nuove_richieste_count > 0 %}
+                            <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
+                                {{ '99+' if nuove_richieste_count > 99 else nuove_richieste_count }}
+                            </span>
+                        {% endif %}
+                        {% if manager_badges.low_stock %}
+                            <span class="nav-badge nav-badge--alert" title="{% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}">
+                                {{ manager_badges.low_stock }}
+                            </span>
+                        {% endif %}
+                    </a>
+                </div>
             {% endif %}
 
             <!-- Lasciamo i veicoli per dopo, quando avremo le route pronte -->
