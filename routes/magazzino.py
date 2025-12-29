@@ -2105,6 +2105,7 @@ def manager_magazzino_richieste(
             "richieste": richieste,
             "stato_filtro": stato_filtro,
             "stati": list(MagazzinoRichiestaStatusEnum),
+            "oggi": date.today(),
             "page": page,
             "total_pages": total_pages,
             "total_count": total_count,

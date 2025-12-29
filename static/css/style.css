@@ -852,6 +852,16 @@ body {
     background: rgba(99, 102, 241, 0.10);
 }
 
+.data-table tbody tr.table-row-overdue,
+.table tbody tr.table-row-overdue {
+    background: rgba(245, 158, 11, 0.18);
+}
+
+.data-table tbody tr.table-row-overdue:hover,
+.table tbody tr.table-row-overdue:hover {
+    background: rgba(245, 158, 11, 0.28);
+}
+
 .table-actions-col {
     text-align: right;
     width: 1%;
