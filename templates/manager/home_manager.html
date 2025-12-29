@@ -49,6 +49,64 @@
         </div>
     </div>
 
+    {% set nuove_richieste = nuove_richieste_count|default(0) %}
+    {% set badge_text = '99+' if nuove_richieste > 99 else nuove_richieste %}
+
+    <div class="dashboard-shortcuts">
+        <div class="section-header">
+            <h2>{% if lang == 'fr' %}Raccourcis{% else %}Scorciatoie{% endif %}</h2>
+            <p>
+                {% if lang == 'fr' %}
+                    Accès rapide aux fonctionnalités clés du Magazzino.
+                {% else %}
+                    Accesso rapido alle funzioni principali del Magazzino.
+                {% endif %}
+            </p>
+        </div>
+        <div class="shortcut-grid">
+            <div class="card shortcut-card">
+                <a class="shortcut-card-link" href="/manager/magazzino" aria-label="Apri Magazzino"></a>
+                {% if nuove_richieste > 0 %}
+                    <span class="shortcut-badge">{{ badge_text }}</span>
+                {% endif %}
+                <div class="shortcut-body">
+                    <div class="shortcut-title">📦 Magazzino</div>
+                    <div class="shortcut-subtitle">
+                        {% if lang == 'fr' %}
+                            Gérez les articles et les demandes.
+                        {% else %}
+                            Gestisci articoli e richieste.
+                        {% endif %}
+                    </div>
+                    {% if nuove_richieste > 0 %}
+                        <div class="shortcut-line">
+                            {% if lang == 'fr' %}Nouvelles demandes{% else %}Richieste nuove{% endif %}: {{ nuove_richieste }}
+                        </div>
+                    {% endif %}
+                    <div class="shortcut-links">
+                        <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_list') }}">
+                            {% if lang == 'fr' %}Ouvrir Magazzino{% else %}Apri Magazzino{% endif %}
+                        </a>
+                        <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_richieste') }}">
+                            {% if lang == 'fr' %}Ouvrir demandes{% else %}Apri Richieste{% endif %}
+                        </a>
+                    </div>
+                    <div class="shortcut-quick-links">
+                        <span class="shortcut-quick-label">
+                            {% if lang == 'fr' %}Liens rapides:{% else %}Link rapidi:{% endif %}
+                        </span>
+                        <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_richieste') }}">
+                            {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
+                        </a>
+                        <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_movimenti') }}">
+                            {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% set rapportini_totali = reports_count|default(rapportini_count|default('—')) %}
     {% set cantieri_totali = sites_count|default(cantieri_count|default('—')) %}
     {% set macchinari_totali = macchinari_count|default(machines_count|default('—')) %}
