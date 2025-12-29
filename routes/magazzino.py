@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from math import ceil
 from types import SimpleNamespace
 
@@ -626,6 +626,78 @@ def capo_magazzino_richiesta_create(
     return RedirectResponse(
         url=request.url_for("capo_magazzino_richieste"),
         status_code=303,
+    )
+
+
+@router.get(
+    "/manager/magazzino/dashboard",
+    response_class=HTMLResponse,
+    name="manager_magazzino_dashboard",
+)
+def manager_magazzino_dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+
+    sotto_soglia_count = (
+        db.query(func.count(MagazzinoItem.id))
+        .filter(
+            MagazzinoItem.attivo.is_(True),
+            MagazzinoItem.soglia_minima.isnot(None),
+            MagazzinoItem.quantita_disponibile <= MagazzinoItem.soglia_minima,
+        )
+        .scalar()
+        or 0
+    )
+    esauriti_count = (
+        db.query(func.count(MagazzinoItem.id))
+        .filter(
+            MagazzinoItem.attivo.is_(True),
+            MagazzinoItem.quantita_disponibile <= 0,
+        )
+        .scalar()
+        or 0
+    )
+    since_date = datetime.now() - timedelta(days=30)
+    top_consumi_rows = (
+        db.query(
+            MagazzinoItem.codice,
+            MagazzinoItem.nome,
+            func.coalesce(func.sum(MagazzinoMovimento.quantita), 0.0).label("totale"),
+        )
+        .join(MagazzinoMovimento, MagazzinoMovimento.item_id == MagazzinoItem.id)
+        .filter(
+            MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum.scarico,
+            MagazzinoMovimento.created_at >= since_date,
+        )
+        .group_by(MagazzinoItem.id)
+        .order_by(func.sum(MagazzinoMovimento.quantita).desc(), MagazzinoItem.nome.asc())
+        .limit(10)
+        .all()
+    )
+    top_consumi = [
+        SimpleNamespace(codice=codice, nome=nome, totale=totale)
+        for codice, nome, totale in top_consumi_rows
+    ]
+    report_cantiere = (
+        db.query(Site).filter(Site.is_active.is_(True)).order_by(Site.name.asc()).first()
+    )
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/dashboard.html",
+        {
+            "request": request,
+            "user": current_user,
+            "sotto_soglia_count": sotto_soglia_count,
+            "esauriti_count": esauriti_count,
+            "top_consumi": top_consumi,
+            "report_cantiere": report_cantiere,
+        },
+        db,
+        current_user,
     )
 
 
