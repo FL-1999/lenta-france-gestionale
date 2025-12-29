@@ -9,7 +9,7 @@ from auth import get_current_active_user_html
 from database import get_db
 from models import RoleEnum, User, Personale
 from models.veicoli import Veicolo
-from template_context import register_manager_badges
+from template_context import register_manager_badges, render_template
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
@@ -58,13 +58,15 @@ def manager_veicoli_list(
         .order_by(Veicolo.marca.asc(), Veicolo.modello.asc(), Veicolo.targa.asc())
         .all()
     )
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/veicoli/veicoli_list.html",
         {
-            "request": request,
-            "user": current_user,
             "veicoli": veicoli,
         },
+        db,
+        current_user,
     )
 
 
@@ -87,13 +89,15 @@ def manager_veicoli_new(
         .order_by(Personale.cognome.asc(), Personale.nome.asc())
         .all()
     )
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/veicoli/veicoli_new.html",
         {
-            "request": request,
-            "user": current_user,
             "personale_list": personale_list,
         },
+        db,
+        current_user,
     )
 
 
@@ -171,14 +175,16 @@ def manager_veicoli_edit(
         .all()
     )
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/veicoli/veicoli_edit.html",
         {
-            "request": request,
-            "user": current_user,
             "veicolo": veicolo,
             "personale_list": personale_list,
         },
+        db,
+        current_user,
     )
 
 

@@ -30,6 +30,32 @@ def get_numero_richieste_nuove(db) -> int:
     return int(richieste_nuove or 0)
 
 
+def render_template(
+    templates,
+    request: Request,
+    template_name: str,
+    context: dict | None,
+    db,
+    user: User | None,
+    **response_kwargs,
+):
+    template_context = dict(context or {})
+    template_context.setdefault("request", request)
+    template_context.setdefault("user", user)
+
+    close_db = False
+    if db is None:
+        db = SessionLocal()
+        close_db = True
+    try:
+        template_context["nuove_richieste_count"] = get_numero_richieste_nuove(db)
+    finally:
+        if close_db:
+            db.close()
+
+    return templates.TemplateResponse(template_name, template_context, **response_kwargs)
+
+
 def manager_badge_counts(request: Request, user: User | None = None) -> dict[str, int]:
     cached = getattr(request.state, "manager_badge_counts", None)
     if isinstance(cached, dict):

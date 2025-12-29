@@ -27,7 +27,7 @@ from models import (
     Site,
     User,
 )
-from template_context import register_manager_badges
+from template_context import register_manager_badges, render_template
 
 
 templates = Jinja2Templates(directory="templates")
@@ -380,7 +380,9 @@ def capo_magazzino_list(
         "sotto_soglia": sotto_soglia == 1,
         "esauriti": esauriti == 1,
     }
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "capo/magazzino/items_list.html",
         {
             "request": request,
@@ -392,6 +394,8 @@ def capo_magazzino_list(
             "items_count": len(items),
             "filters": filters,
         },
+        db,
+        current_user,
     )
 
 
@@ -430,7 +434,9 @@ def capo_magazzino_richieste(
             synchronize_session=False,
         )
         db.commit()
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "capo/magazzino/richieste_list.html",
         {
             "request": request,
@@ -438,6 +444,8 @@ def capo_magazzino_richieste(
             "richieste": richieste,
             "unread_ids": set(unread_ids),
         },
+        db,
+        current_user,
     )
 
 
@@ -497,9 +505,13 @@ def capo_magazzino_richiesta_new(
         .order_by(MagazzinoItem.nome.asc())
         .all()
     )
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "capo/magazzino/richieste_new.html",
         {"request": request, "user": current_user, "items": items},
+        db,
+        current_user,
     )
 
 
@@ -652,7 +664,9 @@ def manager_magazzino_list(
         "sotto_soglia": sotto_soglia == 1,
         "esauriti": esauriti == 1,
     }
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/items_list.html",
         {
             "request": request,
@@ -669,6 +683,8 @@ def manager_magazzino_list(
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
         },
+        db,
+        current_user,
     )
 
 
@@ -712,7 +728,9 @@ def manager_magazzino_sotto_soglia(
         if entry.da_ordinare is not None and entry.da_ordinare > 0
     ]
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/sotto_soglia.html",
         {
             "request": request,
@@ -721,6 +739,8 @@ def manager_magazzino_sotto_soglia(
             "items_count": len(items_with_order),
             "suggested_entries": suggested_entries,
         },
+        db,
+        current_user,
     )
 
 
@@ -930,7 +950,9 @@ def manager_magazzino_movimenti(
     cantieri = db.query(Site).order_by(Site.name.asc()).all()
     items = db.query(MagazzinoItem).order_by(MagazzinoItem.nome.asc()).all()
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/movimenti_list.html",
         {
             "request": request,
@@ -950,6 +972,8 @@ def manager_magazzino_movimenti(
             "totals": totals,
             "has_period_filter": bool(parsed_from or parsed_to),
         },
+        db,
+        current_user,
     )
 
 
@@ -1022,7 +1046,9 @@ def manager_magazzino_report_consumi(
         response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/report_consumi.html",
         {
             "request": request,
@@ -1034,6 +1060,8 @@ def manager_magazzino_report_consumi(
             "total_quantity": total_quantity,
             "items": items,
         },
+        db,
+        current_user,
     )
 
 
@@ -1056,7 +1084,9 @@ def manager_magazzino_categorie_list(
     active_ids = [categoria.id for categoria in categorie if categoria.attiva]
     first_active_id = active_ids[0] if active_ids else None
     last_active_id = active_ids[-1] if active_ids else None
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/categorie_list.html",
         {
             "request": request,
@@ -1065,6 +1095,8 @@ def manager_magazzino_categorie_list(
             "first_active_id": first_active_id,
             "last_active_id": last_active_id,
         },
+        db,
+        current_user,
     )
 
 
@@ -1078,7 +1110,9 @@ def manager_magazzino_categorie_new(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/categorie_form.html",
         {
             "request": request,
@@ -1090,6 +1124,8 @@ def manager_magazzino_categorie_new(
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
         },
+        None,
+        current_user,
     )
 
 
@@ -1111,7 +1147,9 @@ def manager_magazzino_categorie_create(
     ensure_magazzino_manager(current_user)
     nome_value = nome.strip()
     if not nome_value:
-        return templates.TemplateResponse(
+        return render_template(
+            templates,
+            request,
             "manager/magazzino/categorie_form.html",
             {
                 "request": request,
@@ -1124,6 +1162,8 @@ def manager_magazzino_categorie_create(
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
+            db,
+            current_user,
         )
     existing = (
         db.query(MagazzinoCategoria)
@@ -1131,7 +1171,9 @@ def manager_magazzino_categorie_create(
         .first()
     )
     if existing:
-        return templates.TemplateResponse(
+        return render_template(
+            templates,
+            request,
             "manager/magazzino/categorie_form.html",
             {
                 "request": request,
@@ -1144,6 +1186,8 @@ def manager_magazzino_categorie_create(
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
+            db,
+            current_user,
         )
     try:
         ordine_value = int(ordine or 0)
@@ -1159,7 +1203,9 @@ def manager_magazzino_categorie_create(
             icon=icon,
             color=color,
         )
-        return templates.TemplateResponse(
+        return render_template(
+            templates,
+            request,
             "manager/magazzino/categorie_form.html",
             {
                 "request": request,
@@ -1172,6 +1218,8 @@ def manager_magazzino_categorie_create(
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
+            db,
+            current_user,
         )
     base_slug = _slugify(nome_value)
     slug = _ensure_unique_slug(db, base_slug)
@@ -1228,7 +1276,9 @@ def manager_magazzino_categorie_edit(
             url=request.url_for("manager_magazzino_categorie_list"),
             status_code=303,
         )
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/categorie_form.html",
         {
             "request": request,
@@ -1240,6 +1290,8 @@ def manager_magazzino_categorie_edit(
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
         },
+        db,
+        current_user,
     )
 
 
@@ -1272,7 +1324,9 @@ def manager_magazzino_categorie_update(
         )
     nome_value = nome.strip()
     if not nome_value:
-        return templates.TemplateResponse(
+        return render_template(
+            templates,
+            request,
             "manager/magazzino/categorie_form.html",
             {
                 "request": request,
@@ -1285,6 +1339,8 @@ def manager_magazzino_categorie_update(
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
+            db,
+            current_user,
         )
     existing = (
         db.query(MagazzinoCategoria)
@@ -1295,7 +1351,9 @@ def manager_magazzino_categorie_update(
         .first()
     )
     if existing:
-        return templates.TemplateResponse(
+        return render_template(
+            templates,
+            request,
             "manager/magazzino/categorie_form.html",
             {
                 "request": request,
@@ -1308,6 +1366,8 @@ def manager_magazzino_categorie_update(
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
+            db,
+            current_user,
         )
     try:
         ordine_value = int(ordine or 0)
@@ -1318,7 +1378,9 @@ def manager_magazzino_categorie_update(
     except ValueError as exc:
         categoria.icon = icon
         categoria.color = color
-        return templates.TemplateResponse(
+        return render_template(
+            templates,
+            request,
             "manager/magazzino/categorie_form.html",
             {
                 "request": request,
@@ -1331,6 +1393,8 @@ def manager_magazzino_categorie_update(
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             },
+            db,
+            current_user,
         )
     if categoria.nome != nome_value:
         base_slug = _slugify(nome_value)
@@ -1487,7 +1551,9 @@ def manager_magazzino_new(
     valid_ids = {categoria.id for categoria in categorie if categoria.id is not None}
     if parsed_categoria_id not in valid_ids:
         parsed_categoria_id = fallback_categoria_id
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/item_new.html",
         {
             "request": request,
@@ -1499,6 +1565,8 @@ def manager_magazzino_new(
             "form_action": "manager_magazzino_create",
             "title": "Nuovo articolo",
         },
+        db,
+        current_user,
     )
 
 
@@ -1600,7 +1668,9 @@ def manager_magazzino_edit(
         include_fallback=False,
     )
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/item_edit.html",
         {
             "request": request,
@@ -1612,6 +1682,8 @@ def manager_magazzino_edit(
             "form_action": "manager_magazzino_update",
             "title": "Modifica articolo",
         },
+        db,
+        current_user,
     )
 
 
@@ -1956,7 +2028,9 @@ def manager_magazzino_richieste(
 
     richieste = query.order_by(MagazzinoRichiesta.created_at.desc()).all()
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/richieste_list.html",
         {
             "request": request,
@@ -1965,6 +2039,8 @@ def manager_magazzino_richieste(
             "stato_filtro": stato_filtro,
             "stati": list(MagazzinoRichiestaStatusEnum),
         },
+        db,
+        current_user,
     )
 
 
@@ -1998,9 +2074,13 @@ def manager_magazzino_richiesta_detail(
             status_code=303,
         )
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/magazzino/richiesta_detail.html",
         {"request": request, "user": current_user, "richiesta": richiesta},
+        db,
+        current_user,
     )
 
 
@@ -2183,7 +2263,9 @@ def manager_magazzino_richiesta_evadi(
         db.commit()
     except HTTPException as exc:
         db.rollback()
-        return templates.TemplateResponse(
+        return render_template(
+            templates,
+            request,
             "manager/magazzino/richiesta_detail.html",
             {
                 "request": request,
@@ -2191,11 +2273,15 @@ def manager_magazzino_richiesta_evadi(
                 "richiesta": richiesta,
                 "error_message": exc.detail,
             },
+            db,
+            current_user,
             status_code=exc.status_code,
         )
     except Exception:
         db.rollback()
-        return templates.TemplateResponse(
+        return render_template(
+            templates,
+            request,
             "manager/magazzino/richiesta_detail.html",
             {
                 "request": request,
@@ -2203,6 +2289,8 @@ def manager_magazzino_richiesta_evadi(
                 "richiesta": richiesta,
                 "error_message": "Errore durante l'evasione della richiesta.",
             },
+            db,
+            current_user,
             status_code=500,
         )
 

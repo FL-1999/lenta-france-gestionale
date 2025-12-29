@@ -280,11 +280,12 @@ body {
     height: 18px;
     padding: 0 6px;
     border-radius: 999px;
-    background: #dc2626;
-    color: #ffffff;
-    font-size: 0.7rem;
+    background: #ef4444;
+    color: #fff;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1;
+    margin-left: 8px;
 }
 
 .nav-badge--pending {

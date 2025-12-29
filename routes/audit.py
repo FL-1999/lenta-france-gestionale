@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user_html
 from database import get_db
 from models import AuditLog, RoleEnum, User
-from template_context import register_manager_badges
+from template_context import register_manager_badges, render_template
 
 
 templates = Jinja2Templates(directory="templates")
@@ -72,11 +72,11 @@ def manager_audit_list(
         if row[0]
     ]
 
-    return templates.TemplateResponse(
+    return render_template(
+        templates,
+        request,
         "manager/audit_list.html",
         {
-            "request": request,
-            "user": current_user,
             "logs": logs,
             "utenti": utenti,
             "azioni": azioni,
@@ -87,4 +87,6 @@ def manager_audit_list(
                 "date_to": date_to or "",
             },
         },
+        db,
+        current_user,
     )

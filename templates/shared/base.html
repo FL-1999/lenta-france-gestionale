@@ -78,7 +78,6 @@
 
             {% if user and (user.role.value == 'admin' or user.is_magazzino_manager) %}
                 {% set manager_badges = manager_badge_counts(request, user) %}
-                {% set nuove_richieste_count = manager_badges.nuove_richieste_count %}
                 <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link">
                     📦
                     {% if lang == 'fr' %}
@@ -86,7 +85,7 @@
                     {% else %}
                         Magazzino
                     {% endif %}
-                    {% if nuove_richieste_count > 0 %}
+                    {% if nuove_richieste_count and nuove_richieste_count > 0 %}
                         <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
                             {{ nuove_richieste_count }}
                         </span>
