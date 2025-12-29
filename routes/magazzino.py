@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from auth import get_current_active_user_html
 from database import get_db
@@ -328,7 +328,11 @@ def capo_magazzino_list(
         include_inactive=False,
         include_fallback=True,
     )
-    query = db.query(MagazzinoItem).filter(MagazzinoItem.attivo.is_(True))
+    query = (
+        db.query(MagazzinoItem)
+        .options(selectinload(MagazzinoItem.categoria))
+        .filter(MagazzinoItem.attivo.is_(True))
+    )
     q_value = (q or "").strip()
     if q_value:
         like_pattern = f"%{q_value}%"
@@ -413,9 +417,11 @@ def capo_magazzino_richieste(
     richieste = (
         db.query(MagazzinoRichiesta)
         .options(
-            joinedload(MagazzinoRichiesta.righe).joinedload(
+            selectinload(MagazzinoRichiesta.righe).selectinload(
                 MagazzinoRichiestaRiga.item
-            )
+            ),
+            joinedload(MagazzinoRichiesta.cantiere),
+            joinedload(MagazzinoRichiesta.gestito_da),
         )
         .filter(MagazzinoRichiesta.richiesto_da_user_id == current_user.id)
         .order_by(MagazzinoRichiesta.created_at.desc())
@@ -603,7 +609,7 @@ def manager_magazzino_list(
         include_inactive=False,
         include_fallback=True,
     )
-    query = db.query(MagazzinoItem)
+    query = db.query(MagazzinoItem).options(selectinload(MagazzinoItem.categoria))
     q_value = (q or "").strip()
     if q_value:
         like_pattern = f"%{q_value}%"
@@ -2020,8 +2026,9 @@ def manager_magazzino_richieste(
         stato_filtro = MagazzinoRichiestaStatusEnum.in_attesa
 
     query = db.query(MagazzinoRichiesta).options(
-        joinedload(MagazzinoRichiesta.righe).joinedload(MagazzinoRichiestaRiga.item),
+        selectinload(MagazzinoRichiesta.righe).selectinload(MagazzinoRichiestaRiga.item),
         joinedload(MagazzinoRichiesta.richiesto_da),
+        joinedload(MagazzinoRichiesta.cantiere),
     )
     if stato_filtro:
         query = query.filter(MagazzinoRichiesta.stato == stato_filtro)
@@ -2059,11 +2066,12 @@ def manager_magazzino_richiesta_detail(
     richiesta = (
         db.query(MagazzinoRichiesta)
         .options(
-            joinedload(MagazzinoRichiesta.righe).joinedload(
+            selectinload(MagazzinoRichiesta.righe).selectinload(
                 MagazzinoRichiestaRiga.item
             ),
             joinedload(MagazzinoRichiesta.richiesto_da),
             joinedload(MagazzinoRichiesta.gestito_da),
+            joinedload(MagazzinoRichiesta.cantiere),
         )
         .filter(MagazzinoRichiesta.id == richiesta_id)
         .first()
