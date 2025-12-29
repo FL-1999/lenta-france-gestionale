@@ -182,7 +182,14 @@
                     <div class="card magazzino-item-card">
                         <div class="card-body">
                             <div class="magazzino-item-header">
-                                <h3>{{ item.nome }}</h3>
+                                <div style="display: flex; align-items: center; gap: var(--space-2);">
+                                    <form method="post" action="{{ url_for('manager_magazzino_preferito_toggle', item_id=item.id) }}" style="margin: 0;">
+                                        <button type="submit" class="btn btn-secondary btn-sm" aria-label="{% if item.preferito %}{% if lang == 'fr' %}Retirer des favoris{% else %}Rimuovi dai preferiti{% endif %}{% else %}{% if lang == 'fr' %}Ajouter aux favoris{% else %}Aggiungi ai preferiti{% endif %}{% endif %}">
+                                            {% if item.preferito %}★{% else %}☆{% endif %}
+                                        </button>
+                                    </form>
+                                    <h3>{{ item.nome }}</h3>
+                                </div>
                                 {% if esaurito %}
                                     <span class="badge badge-danger">{% if lang == 'fr' %}Épuisé{% else %}Esaurito{% endif %}</span>
                                 {% elif sotto_soglia %}
