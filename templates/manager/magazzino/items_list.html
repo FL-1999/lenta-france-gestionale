@@ -271,6 +271,9 @@
                                 </details>
                             </div>
                             <div class="card-actions">
+                                <a href="{{ url_for('manager_magazzino_duplicate', item_id=item.id) }}" class="btn btn-secondary btn-sm">
+                                    📄 {% if lang == 'fr' %}Dupliquer{% else %}Duplica{% endif %}
+                                </a>
                                 <a href="{{ url_for('manager_magazzino_edit', item_id=item.id) }}" class="btn btn-secondary btn-sm">
                                     ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                                 </a>

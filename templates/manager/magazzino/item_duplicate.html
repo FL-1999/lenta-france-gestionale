@@ -1,0 +1,80 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Dupliquer article{% else %}Duplica articolo{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">
+            📦
+            {% if lang == 'fr' %}Dupliquer article{% else %}Duplica articolo{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Définissez le nouveau code et la quantité initiale.
+            {% else %}
+                Imposta il nuovo codice e la quantità iniziale.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: var(--space-3);">
+    <div class="card-body">
+        <div style="font-weight: 600; margin-bottom: var(--space-2);">
+            {% if lang == 'fr' %}Article source{% else %}Articolo sorgente{% endif %}
+        </div>
+        <div style="display: grid; gap: var(--space-1); font-size: 0.95rem;">
+            <div><strong>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}:</strong> {{ item.nome }}</div>
+            <div><strong>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}:</strong> {{ item.descrizione or '—' }}</div>
+            <div><strong>{% if lang == 'fr' %}Seuil minimum{% else %}Soglia minima{% endif %}:</strong> {{ item.soglia_minima if item.soglia_minima is not none else '—' }}</div>
+            <div>
+                <strong>{% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}:</strong>
+                {% if item.categoria %}
+                    {{ item.categoria.nome }}
+                {% else %}
+                    {% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('manager_magazzino_duplicate_create', item_id=item.id) }}">
+    <div class="card large-form-card">
+        <div class="card-body">
+            {% if error_message %}
+                <div class="form-error">{{ error_message }}</div>
+            {% endif %}
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Code article{% else %}Codice articolo{% endif %}*</label>
+                    <input type="text" name="codice" required>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Quantité initiale{% else %}Quantità iniziale{% endif %}</label>
+                    <input type="number" name="quantita_iniziale" step="0.01" min="0">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if lang == 'fr' %}Dupliquer{% else %}Duplica{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
