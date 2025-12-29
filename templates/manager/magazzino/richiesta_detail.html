@@ -12,6 +12,11 @@
     'RIFIUTATA': 'badge-danger',
     'EVASA': 'badge-secondary'
 } %}
+{% set priorita_labels = {
+    'LOW': 'Basse' if lang == 'fr' else 'Bassa',
+    'MED': 'Moyenne' if lang == 'fr' else 'Media',
+    'HIGH': 'Haute' if lang == 'fr' else 'Alta'
+} %}
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
@@ -62,6 +67,7 @@
     <div class="card-body">
         {% set stato_label = richiesta.stato.value if richiesta.stato else '—' %}
         {% set badge_class = stato_class_map.get(stato_label, 'badge-muted') %}
+        {% set priorita_value = richiesta.priorita.value if richiesta.priorita else '—' %}
         <div class="form-grid-2">
             <div>
                 <strong>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}:</strong>
@@ -70,6 +76,14 @@
             <div>
                 <strong>{% if lang == 'fr' %}Date{% else %}Data{% endif %}:</strong>
                 {{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Priorité{% else %}Priorità{% endif %}:</strong>
+                {{ priorita_labels.get(priorita_value, priorita_value) }}
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Date nécessaire{% else %}Data necessaria{% endif %}:</strong>
+                {{ richiesta.data_necessaria.strftime('%d/%m/%Y') if richiesta.data_necessaria else '—' }}
             </div>
             <div>
                 <strong>{% if lang == 'fr' %}Gestionnaire{% else %}Gestito da{% endif %}:</strong>

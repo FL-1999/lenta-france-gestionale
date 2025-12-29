@@ -12,6 +12,11 @@
     'RIFIUTATA': 'badge-danger',
     'EVASA': 'badge-secondary'
 } %}
+{% set priorita_labels = {
+    'LOW': 'Basse' if lang == 'fr' else 'Bassa',
+    'MED': 'Moyenne' if lang == 'fr' else 'Media',
+    'HIGH': 'Haute' if lang == 'fr' else 'Alta'
+} %}
 <div class="page-header">
     <div class="page-header-main">
         <h1 class="page-title">🧾 {% if lang == 'fr' %}Demandes magasin{% else %}Richieste magazzino{% endif %}</h1>
@@ -84,9 +89,11 @@
             <thead>
                 <tr>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Priorité{% else %}Priorità{% endif %}</th>
                     <th>{% if lang == 'fr' %}Chef{% else %}Capo{% endif %}</th>
                     <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
                     <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Date nécessaire{% else %}Data necessaria{% endif %}</th>
                     <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                 </tr>
             </thead>
@@ -94,13 +101,16 @@
                 {% for richiesta in richieste %}
                     {% set stato_label = richiesta.stato.value if richiesta.stato else '—' %}
                     {% set badge_class = stato_class_map.get(stato_label, 'badge-muted') %}
+                    {% set priorita_value = richiesta.priorita.value if richiesta.priorita else '—' %}
                     <tr>
                         <td>
                             <span class="badge {{ badge_class }}">{{ stato_label }}</span>
                         </td>
+                        <td>{{ priorita_labels.get(priorita_value, priorita_value) }}</td>
                         <td>{{ richiesta.richiesto_da.full_name or richiesta.richiesto_da.email }}</td>
                         <td>{{ richiesta.cantiere.name if richiesta.cantiere else '—' }}</td>
                         <td>{{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}</td>
+                        <td>{{ richiesta.data_necessaria.strftime('%d/%m/%Y') if richiesta.data_necessaria else '—' }}</td>
                         <td class="table-actions">
                             <a href="{{ url_for('manager_magazzino_richiesta_detail', richiesta_id=richiesta.id) }}" class="btn btn-secondary btn-sm">
                                 🔍 {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
@@ -109,7 +119,7 @@
                     </tr>
                 {% else %}
                     <tr class="table-empty">
-                        <td colspan="5">
+                        <td colspan="7">
                             {% if lang == 'fr' %}
                                 Aucune demande trouvée.
                             {% else %}
