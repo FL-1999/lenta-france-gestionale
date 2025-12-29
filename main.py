@@ -38,7 +38,7 @@ from models import (
 )
 from routers import users, sites, machines, reports, fiches
 from routes import manager_personale, manager_veicoli, magazzino, audit
-from template_context import register_manager_badges
+from template_context import register_manager_badges, render_template
 
 
 # -------------------------------------------------
@@ -483,21 +483,23 @@ def manager_dashboard(
             {"status": key, "count": value}
             for key, value in reports_by_status_counts.items()
         ]
+        response = render_template(
+            templates,
+            request,
+            "manager/home_manager.html",
+            {
+                "user_role": "manager",
+                "reports": reports_list,
+                "chart_reports_last_30_days": jsonable_encoder(reports_last_30_days),
+                "chart_hours_per_site_30_days": jsonable_encoder(hours_per_site_30_days),
+                "chart_reports_by_status": jsonable_encoder(reports_by_status),
+            },
+            db,
+            current_user,
+        )
     finally:
         db.close()
-
-    return templates.TemplateResponse(
-        "manager/home_manager.html",
-        {
-            "request": request,
-            "user": current_user,
-            "user_role": "manager",
-            "reports": reports_list,
-            "chart_reports_last_30_days": jsonable_encoder(reports_last_30_days),
-            "chart_hours_per_site_30_days": jsonable_encoder(hours_per_site_30_days),
-            "chart_reports_by_status": jsonable_encoder(reports_by_status),
-        },
-    )
+    return response
 
 
 @app.get(
