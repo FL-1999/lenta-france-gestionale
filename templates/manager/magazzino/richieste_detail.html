@@ -10,6 +10,7 @@
     'IN_ATTESA': 'badge-muted',
     'APPROVATA': 'badge-success',
     'RIFIUTATA': 'badge-danger',
+    'PARZIALE': 'badge-warning',
     'EVASA': 'badge-secondary'
 } %}
 {% set priorita_labels = {
@@ -80,17 +81,23 @@
                 <tr>
                     <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
                     <th class="text-right">{% if lang == 'fr' %}Quantité demandée{% else %}Quantità richiesta{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Quantité livrée{% else %}Quantità evasa{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Quantité restante{% else %}Quantità residua{% endif %}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for riga in richiesta.righe %}
+                    {% set quantita_evasa = riga.quantita_evasa or 0 %}
+                    {% set quantita_residua = riga.quantita_richiesta - quantita_evasa %}
                     <tr>
                         <td>{{ riga.item.nome }}</td>
                         <td class="text-right">{{ riga.quantita_richiesta }}</td>
+                        <td class="text-right">{{ quantita_evasa }}</td>
+                        <td class="text-right">{{ quantita_residua }}</td>
                     </tr>
                 {% else %}
                     <tr class="table-empty">
-                        <td colspan="2">—</td>
+                        <td colspan="4">—</td>
                     </tr>
                 {% endfor %}
             </tbody>

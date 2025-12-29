@@ -58,6 +58,7 @@ class MagazzinoRichiestaStatusEnum(PyEnum):
     in_attesa = "IN_ATTESA"
     approvata = "APPROVATA"
     rifiutata = "RIFIUTATA"
+    parziale = "PARZIALE"
     evasa = "EVASA"
 
 
@@ -414,6 +415,7 @@ class MagazzinoRichiestaRiga(Base):
     richiesta_id = Column(Integer, ForeignKey("magazzino_richieste.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=False)
     quantita_richiesta = Column(Float, nullable=False)
+    quantita_evasa = Column(Float, nullable=False, default=0.0)
 
     richiesta = relationship("MagazzinoRichiesta", back_populates="righe")
     item = relationship("MagazzinoItem", back_populates="righe_richiesta")

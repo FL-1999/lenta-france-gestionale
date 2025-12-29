@@ -2232,7 +2232,7 @@ def manager_magazzino_richiesta_approva(
     response_class=HTMLResponse,
     name="manager_magazzino_richiesta_evadi",
 )
-def manager_magazzino_richiesta_evadi(
+async def manager_magazzino_richiesta_evadi(
     richiesta_id: int,
     request: Request,
     db: Session = Depends(get_db),
@@ -2255,7 +2255,10 @@ def manager_magazzino_richiesta_evadi(
             status_code=303,
         )
 
-    if richiesta.stato != MagazzinoRichiestaStatusEnum.approvata:
+    if richiesta.stato not in (
+        MagazzinoRichiestaStatusEnum.approvata,
+        MagazzinoRichiestaStatusEnum.parziale,
+    ):
         return RedirectResponse(
             url=(
                 request.url_for(
@@ -2267,6 +2270,10 @@ def manager_magazzino_richiesta_evadi(
         )
 
     try:
+        form_data = await request.form()
+        righe_quantita = {}
+        item_totals: dict[int, float] = {}
+
         for riga in richiesta.righe:
             if riga.quantita_richiesta is None or riga.quantita_richiesta <= 0:
                 raise HTTPException(
@@ -2274,28 +2281,75 @@ def manager_magazzino_richiesta_evadi(
                 )
             if riga.item is None or not riga.item.attivo:
                 raise HTTPException(status_code=400, detail="Item non disponibile")
-            quantita_disponibile = riga.item.quantita_disponibile or 0.0
-            if quantita_disponibile < riga.quantita_richiesta:
+
+            quantita_evasa = riga.quantita_evasa or 0.0
+            residua = max(0.0, riga.quantita_richiesta - quantita_evasa)
+            raw_value = form_data.get(f"quantita_da_evadere_{riga.id}")
+            if raw_value not in (None, ""):
+                quantita_da_evadere = _parse_float(str(raw_value))
+                if quantita_da_evadere is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Quantità da evadere non valida per {riga.item.nome}",
+                    )
+            else:
+                quantita_da_evadere = residua
+
+            if quantita_da_evadere < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Quantità da evadere non valida per {riga.item.nome}",
+                )
+            if quantita_da_evadere > residua:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Quantità da evadere superiore al residuo per "
+                        f"{riga.item.nome} (residuo {residua})"
+                    ),
+                )
+
+            righe_quantita[riga.id] = quantita_da_evadere
+            if quantita_da_evadere > 0:
+                item_totals[riga.item.id] = item_totals.get(riga.item.id, 0.0) + quantita_da_evadere
+
+        for item_id, totale in item_totals.items():
+            item = next(
+                (riga.item for riga in richiesta.righe if riga.item and riga.item.id == item_id),
+                None,
+            )
+            quantita_disponibile = item.quantita_disponibile if item else 0.0
+            if quantita_disponibile < totale:
                 raise HTTPException(
                     status_code=400,
                     detail=(
                         "Quantità insufficiente per "
-                        f"{riga.item.nome} (disponibile "
+                        f"{item.nome if item else 'item'} (disponibile "
                         f"{quantita_disponibile}, "
-                        f"richiesta {riga.quantita_richiesta})"
+                        f"richiesta {totale})"
                     ),
                 )
 
+        if not any(quantita > 0 for quantita in righe_quantita.values()):
+            raise HTTPException(
+                status_code=400, detail="Nessuna quantità da evadere"
+            )
+
         for riga in richiesta.righe:
+            quantita_da_evadere = righe_quantita.get(riga.id, 0.0)
+            if quantita_da_evadere <= 0:
+                continue
             quantita_disponibile = riga.item.quantita_disponibile or 0.0
             riga.item.quantita_disponibile = (
-                quantita_disponibile - riga.quantita_richiesta
+                quantita_disponibile - quantita_da_evadere
             )
+            riga.quantita_evasa = (riga.quantita_evasa or 0.0) + quantita_da_evadere
             db.add(riga.item)
+            db.add(riga)
             movimento = MagazzinoMovimento(
                 item_id=riga.item.id,
                 tipo=MagazzinoMovimentoTipoEnum.scarico,
-                quantita=riga.quantita_richiesta,
+                quantita=quantita_da_evadere,
                 cantiere_id=richiesta.cantiere_id,
                 creato_da_user_id=current_user.id,
                 riferimento_richiesta_id=richiesta.id,
@@ -2309,13 +2363,26 @@ def manager_magazzino_richiesta_evadi(
                 None,
                 {
                     "item_id": riga.item.id,
-                    "quantita": riga.quantita_richiesta,
+                    "quantita": quantita_da_evadere,
                     "cantiere_id": richiesta.cantiere_id,
                     "richiesta_id": richiesta.id,
                 },
             )
 
-        richiesta.stato = MagazzinoRichiestaStatusEnum.evasa
+        tutte_evase = all(
+            (riga.quantita_evasa or 0.0) >= riga.quantita_richiesta
+            for riga in richiesta.righe
+        )
+        almeno_una_evasa = any(
+            (riga.quantita_evasa or 0.0) > 0 for riga in richiesta.righe
+        )
+
+        if tutte_evase:
+            richiesta.stato = MagazzinoRichiestaStatusEnum.evasa
+            audit_action = "richiesta_evasa"
+        elif almeno_una_evasa:
+            richiesta.stato = MagazzinoRichiestaStatusEnum.parziale
+            audit_action = "richiesta_evasa_parziale"
         richiesta.gestito_da_user_id = current_user.id
         richiesta.gestito_at = datetime.utcnow()
         richiesta.letto_da_richiedente = False
@@ -2323,7 +2390,7 @@ def manager_magazzino_richiesta_evadi(
         _log_audit(
             db,
             current_user,
-            "richiesta_evasa",
+            audit_action,
             "magazzino_richiesta",
             richiesta.id,
             {
