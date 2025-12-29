@@ -1,5 +1,10 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
+{% set priorita_labels = {
+    'LOW': 'Basse' if lang == 'fr' else 'Bassa',
+    'MED': 'Moyenne' if lang == 'fr' else 'Media',
+    'HIGH': 'Haute' if lang == 'fr' else 'Alta'
+} %}
 
 {% block title %}
     {% if lang == 'fr' %}Nouvelle demande – Magasin{% else %}Nuova richiesta – Magazzino{% endif %}
@@ -69,6 +74,22 @@
 
     <div class="card large-form-card" style="margin-top: 16px;">
         <div class="card-body">
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Priorité{% else %}Priorità{% endif %}</label>
+                    <select name="priorita">
+                        {% for priorita in priorita_options %}
+                            <option value="{{ priorita.value }}" {% if priorita.value == 'MED' %}selected{% endif %}>
+                                {{ priorita_labels.get(priorita.value, priorita.value) }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Date nécessaire{% else %}Data necessaria{% endif %}</label>
+                    <input type="date" name="data_necessaria">
+                </div>
+            </div>
             <div class="form-field">
                 <label>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
                 <textarea name="note" placeholder="{% if lang == 'fr' %}Informations supplémentaires{% else %}Indicazioni aggiuntive{% endif %}"></textarea>

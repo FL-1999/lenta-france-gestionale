@@ -61,6 +61,12 @@ class MagazzinoRichiestaStatusEnum(PyEnum):
     evasa = "EVASA"
 
 
+class MagazzinoRichiestaPrioritaEnum(PyEnum):
+    low = "LOW"
+    med = "MED"
+    high = "HIGH"
+
+
 class MagazzinoMovimentoTipoEnum(PyEnum):
     scarico = "scarico"
     carico = "carico"
@@ -366,6 +372,11 @@ class MagazzinoRichiesta(Base, TimestampMixin):
     __tablename__ = "magazzino_richieste"
 
     id = Column(Integer, primary_key=True, index=True)
+    priorita = Column(
+        Enum(MagazzinoRichiestaPrioritaEnum),
+        nullable=False,
+        default=MagazzinoRichiestaPrioritaEnum.med,
+    )
     stato = Column(
         Enum(MagazzinoRichiestaStatusEnum),
         nullable=False,
@@ -375,6 +386,7 @@ class MagazzinoRichiesta(Base, TimestampMixin):
     richiesto_da_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
     note = Column(Text, nullable=True)
+    data_necessaria = Column(Date, nullable=True)
 
     risposta_manager = Column(Text, nullable=True)
     gestito_da_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)

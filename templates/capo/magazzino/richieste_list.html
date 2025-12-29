@@ -12,6 +12,11 @@
     'RIFIUTATA': 'badge-danger',
     'EVASA': 'badge-secondary'
 } %}
+{% set priorita_labels = {
+    'LOW': 'Basse' if lang == 'fr' else 'Bassa',
+    'MED': 'Moyenne' if lang == 'fr' else 'Media',
+    'HIGH': 'Haute' if lang == 'fr' else 'Alta'
+} %}
 <div class="page-header">
     <div class="page-header-main">
         <h1 class="page-title">🧾 {% if lang == 'fr' %}Mes demandes{% else %}Le mie richieste{% endif %}</h1>
@@ -60,6 +65,8 @@
             <thead>
                 <tr>
                     <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Priorité{% else %}Priorità{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Date nécessaire{% else %}Data necessaria{% endif %}</th>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
                     <th>{% if lang == 'fr' %}Réponse{% else %}Risposta{% endif %}</th>
                 </tr>
@@ -68,8 +75,11 @@
                 {% for richiesta in richieste %}
                     {% set stato_label = richiesta.stato.value if richiesta.stato else '—' %}
                     {% set badge_class = stato_class_map.get(stato_label, 'badge-muted') %}
+                    {% set priorita_value = richiesta.priorita.value if richiesta.priorita else '—' %}
                     <tr>
                         <td>{{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}</td>
+                        <td>{{ priorita_labels.get(priorita_value, priorita_value) }}</td>
+                        <td>{{ richiesta.data_necessaria.strftime('%d/%m/%Y') if richiesta.data_necessaria else '—' }}</td>
                         <td>
                             <span class="badge {{ badge_class }}">
                                 {{ stato_label }}
@@ -99,7 +109,7 @@
                     </tr>
                 {% else %}
                     <tr class="table-empty">
-                        <td colspan="3">
+                        <td colspan="5">
                             {% if lang == 'fr' %}
                                 Aucune demande enregistrée.
                             {% else %}

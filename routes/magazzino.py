@@ -22,6 +22,7 @@ from models import (
     MagazzinoMovimentoTipoEnum,
     MagazzinoRichiesta,
     MagazzinoRichiestaRiga,
+    MagazzinoRichiestaPrioritaEnum,
     MagazzinoRichiestaStatusEnum,
     AuditLog,
     RoleEnum,
@@ -184,6 +185,16 @@ def _parse_date(value: str | None) -> date | None:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
         return None
+
+
+def _parse_priorita(value: str | None) -> MagazzinoRichiestaPrioritaEnum | None:
+    if not value:
+        return None
+    normalized = value.strip().upper()
+    for priorita in MagazzinoRichiestaPrioritaEnum:
+        if priorita.value == normalized:
+            return priorita
+    return None
 
 
 def _group_items_by_categoria(
@@ -532,7 +543,12 @@ def capo_magazzino_richiesta_new(
         templates,
         request,
         "capo/magazzino/richieste_new.html",
-        {"request": request, "user": current_user, "items": items},
+        {
+            "request": request,
+            "user": current_user,
+            "items": items,
+            "priorita_options": list(MagazzinoRichiestaPrioritaEnum),
+        },
         db,
         current_user,
     )
@@ -548,6 +564,8 @@ def capo_magazzino_richiesta_create(
     item_id: list[str] = Form(...),
     quantita: list[str] = Form(...),
     note: str = Form(""),
+    priorita: str = Form("MED"),
+    data_necessaria: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -581,9 +599,13 @@ def capo_magazzino_richiesta_create(
         if not item or not item.attivo:
             raise HTTPException(status_code=400, detail="Item non disponibile")
 
+    parsed_priorita = _parse_priorita(priorita) or MagazzinoRichiestaPrioritaEnum.med
+    parsed_data_necessaria = _parse_date(data_necessaria)
     richiesta = MagazzinoRichiesta(
         richiesto_da_user_id=current_user.id,
         note=note.strip() or None,
+        priorita=parsed_priorita,
+        data_necessaria=parsed_data_necessaria,
     )
     db.add(richiesta)
     db.flush()
