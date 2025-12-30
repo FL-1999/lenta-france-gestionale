@@ -35,7 +35,7 @@ def _parse_date(value: str | None) -> date | None:
 @router.get("/manager/audit", response_class=HTMLResponse, name="manager_audit_list")
 def manager_audit_list(
     request: Request,
-    azione: str | None = None,
+    action: str | None = None,
     user_id: int | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
@@ -48,8 +48,8 @@ def manager_audit_list(
     parsed_to = _parse_date(date_to)
 
     query = db.query(AuditLog).options(joinedload(AuditLog.user))
-    if azione:
-        query = query.filter(AuditLog.azione == azione)
+    if action:
+        query = query.filter(AuditLog.action == action)
     if user_id:
         query = query.filter(AuditLog.user_id == user_id)
     if parsed_from:
@@ -65,9 +65,9 @@ def manager_audit_list(
     utenti = db.query(User).order_by(User.full_name.asc(), User.email.asc()).all()
     azioni = [
         row[0]
-        for row in db.query(AuditLog.azione)
+        for row in db.query(AuditLog.action)
         .distinct()
-        .order_by(AuditLog.azione.asc())
+        .order_by(AuditLog.action.asc())
         .all()
         if row[0]
     ]
@@ -81,7 +81,7 @@ def manager_audit_list(
             "utenti": utenti,
             "azioni": azioni,
             "filtri": {
-                "azione": azione or "",
+                "action": action or "",
                 "user_id": user_id or "",
                 "date_from": date_from or "",
                 "date_to": date_to or "",

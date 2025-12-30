@@ -130,17 +130,17 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    azione = Column(String(255), nullable=False)
-    entita = Column(String(255), nullable=False)
-    entita_id = Column(Integer, nullable=True)
-    dettagli = Column(Text, nullable=True)
+    action = Column(String(255), nullable=False)
+    entity = Column(String(255), nullable=False)
+    entity_id = Column(Integer, nullable=True)
+    details = Column(Text, nullable=True)
 
     user = relationship("User")
 
     def __repr__(self) -> str:
         return (
             "<AuditLog "
-            f"id={self.id} azione={self.azione} entita={self.entita} entita_id={self.entita_id}>"
+            f"id={self.id} action={self.action} entity={self.entity} entity_id={self.entity_id}>"
         )
 
 
