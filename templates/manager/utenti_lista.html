@@ -13,6 +13,9 @@
     </div>
     <div class="actions">
         <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ Nuovo utente</a>
+        {% if user and user.role and user.role.value == 'admin' %}
+        <a href="/admin/permessi-magazzino" class="btn btn-secondary">📦 Permessi magazzino</a>
+        {% endif %}
     </div>
 </div>
 
