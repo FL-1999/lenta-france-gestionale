@@ -22,11 +22,11 @@
 <section class="card" style="margin-bottom: var(--space-4);">
     <form method="get" class="form-grid" style="gap: var(--space-3);">
         <div class="form-group">
-            <label for="azione">{% if lang == 'fr' %}Action{% else %}Azione{% endif %}</label>
-            <select id="azione" name="azione" class="form-control">
+            <label for="action">{% if lang == 'fr' %}Action{% else %}Azione{% endif %}</label>
+            <select id="action" name="action" class="form-control">
                 <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
                 {% for voce in azioni %}
-                    <option value="{{ voce }}" {% if filtri.azione == voce %}selected{% endif %}>{{ voce }}</option>
+                    <option value="{{ voce }}" {% if filtri.action == voce %}selected{% endif %}>{{ voce }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -80,10 +80,10 @@
                         <tr>
                             <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '' }}</td>
                             <td>{{ log.user.full_name or log.user.email if log.user else '—' }}</td>
-                            <td>{{ log.azione }}</td>
-                            <td>{{ log.entita }}</td>
-                            <td>{{ log.entita_id or '—' }}</td>
-                            <td>{{ log.dettagli or '—' }}</td>
+                            <td>{{ log.action }}</td>
+                            <td>{{ log.entity }}</td>
+                            <td>{{ log.entity_id or '—' }}</td>
+                            <td>{{ log.details or '—' }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

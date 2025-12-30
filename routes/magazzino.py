@@ -101,19 +101,19 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
 def _log_audit(
     db: Session,
     user: User,
-    azione: str,
-    entita: str,
-    entita_id: int | None,
-    dettagli: dict | None = None,
+    action: str,
+    entity: str,
+    entity_id: int | None,
+    details: dict | None = None,
 ) -> None:
-    payload = json.dumps(dettagli, ensure_ascii=False) if dettagli else None
+    payload = json.dumps(details, ensure_ascii=False) if details else None
     db.add(
         AuditLog(
             user_id=user.id if user else None,
-            azione=azione,
-            entita=entita,
-            entita_id=entita_id,
-            dettagli=payload,
+            action=action,
+            entity=entity,
+            entity_id=entity_id,
+            details=payload,
         )
     )
 
@@ -511,8 +511,8 @@ def capo_magazzino_richiesta_letto(
         _log_audit(
             db,
             current_user,
-            "richiesta_consegnata",
-            "magazzino_richiesta",
+            "RICHIESTA_CONSEGNATA",
+            "MagazzinoRichiesta",
             richiesta.id,
             {"stato": richiesta.stato.value if richiesta.stato else None},
         )
@@ -1413,8 +1413,8 @@ def manager_magazzino_categorie_create(
     _log_audit(
         db,
         current_user,
-        "categoria_creata",
-        "magazzino_categoria",
+        "CATEGORIA_CREATE",
+        "MagazzinoCategoria",
         categoria.id,
         {
             "nome": categoria.nome,
@@ -1585,8 +1585,8 @@ def manager_magazzino_categorie_update(
     _log_audit(
         db,
         current_user,
-        "categoria_modificata",
-        "magazzino_categoria",
+        "CATEGORIA_EDIT",
+        "MagazzinoCategoria",
         categoria.id,
         {
             "nome": categoria.nome,
@@ -1650,6 +1650,17 @@ def manager_magazzino_categorie_toggle(
     if categoria:
         categoria.attiva = not categoria.attiva
         db.add(categoria)
+        _log_audit(
+            db,
+            current_user,
+            "CATEGORIA_TOGGLE",
+            "MagazzinoCategoria",
+            categoria.id,
+            {
+                "nome": categoria.nome,
+                "attiva": categoria.attiva,
+            },
+        )
         db.commit()
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
@@ -1781,8 +1792,8 @@ def manager_magazzino_create(
     _log_audit(
         db,
         current_user,
-        "item_creato",
-        "magazzino_item",
+        "ITEM_CREATE",
+        "MagazzinoItem",
         item.id,
         {
             "nome": item.nome,
@@ -1801,14 +1812,16 @@ def manager_magazzino_create(
             note="Carico iniziale",
         )
         db.add(movimento)
+        db.flush()
         _log_audit(
             db,
             current_user,
-            "movimento_carico",
-            "magazzino_movimento",
-            None,
+            "STOCK_CARICO",
+            "MagazzinoMovimento",
+            movimento.id,
             {
                 "item_id": item.id,
+                "codice": item.codice,
                 "quantita": item.quantita_disponibile,
                 "note": "Carico iniziale",
             },
@@ -1913,13 +1926,15 @@ def manager_magazzino_update(
             note="Rettifica quantità",
         )
         db.add(movimento)
+        db.flush()
         _log_audit(
             db,
             current_user,
-            "rettifica_magazzino",
-            "magazzino_item",
+            "STOCK_RETTIFICA",
+            "MagazzinoItem",
             item.id,
             {
+                "codice": item.codice,
                 "quantita_precedente": quantita_precedente,
                 "quantita_nuova": item.quantita_disponibile,
                 "differenza": differenza,
@@ -1928,11 +1943,12 @@ def manager_magazzino_update(
         _log_audit(
             db,
             current_user,
-            "movimento_rettifica",
-            "magazzino_movimento",
-            None,
+            "STOCK_RETTIFICA",
+            "MagazzinoMovimento",
+            movimento.id,
             {
                 "item_id": item.id,
+                "codice": item.codice,
                 "quantita": abs(differenza),
                 "note": "Rettifica quantità",
             },
@@ -1940,8 +1956,8 @@ def manager_magazzino_update(
     _log_audit(
         db,
         current_user,
-        "item_modificato",
-        "magazzino_item",
+        "ITEM_EDIT",
+        "MagazzinoItem",
         item.id,
         {
             "nome": item.nome,
@@ -2076,8 +2092,8 @@ def manager_magazzino_duplicate_create(
     _log_audit(
         db,
         current_user,
-        "item_duplicato",
-        "magazzino_item",
+        "ITEM_DUPLICATE",
+        "MagazzinoItem",
         nuovo_item.id,
         {
             "item_origine_id": item.id,
@@ -2097,14 +2113,16 @@ def manager_magazzino_duplicate_create(
             note="Carico iniziale",
         )
         db.add(movimento)
+        db.flush()
         _log_audit(
             db,
             current_user,
-            "movimento_carico",
-            "magazzino_movimento",
-            None,
+            "STOCK_CARICO",
+            "MagazzinoMovimento",
+            movimento.id,
             {
                 "item_id": nuovo_item.id,
+                "codice": nuovo_item.codice,
                 "quantita": nuovo_item.quantita_disponibile,
                 "note": "Carico iniziale",
             },
@@ -2140,8 +2158,8 @@ def manager_magazzino_preferito_toggle(
     _log_audit(
         db,
         current_user,
-        "magazzino_item_preferito",
-        "magazzino_item",
+        "ITEM_TOGGLE_PREFERITO",
+        "MagazzinoItem",
         item.id,
         {"preferito": item.preferito},
     )
@@ -2200,14 +2218,16 @@ def manager_magazzino_scarico(
             note=(note or "").strip() or None,
         )
         db.add(movimento)
+        db.flush()
         _log_audit(
             db,
             current_user,
-            "movimento_scarico",
-            "magazzino_movimento",
-            None,
+            "STOCK_SCARICO",
+            "MagazzinoMovimento",
+            movimento.id,
             {
                 "item_id": item.id,
+                "codice": item.codice,
                 "quantita": quantita_valore,
                 "cantiere_id": cantiere_id,
                 "note": (note or "").strip() or None,
@@ -2266,14 +2286,16 @@ def manager_magazzino_carico_rapido(
             note=(note or "").strip() or None,
         )
         db.add(movimento)
+        db.flush()
         _log_audit(
             db,
             current_user,
-            "movimento_carico",
-            "magazzino_movimento",
-            None,
+            "STOCK_CARICO",
+            "MagazzinoMovimento",
+            movimento.id,
             {
                 "item_id": item.id,
+                "codice": item.codice,
                 "quantita": quantita_valore,
                 "note": (note or "").strip() or None,
             },
@@ -2340,14 +2362,16 @@ def manager_magazzino_scarico_rapido(
             note=(note or "").strip() or None,
         )
         db.add(movimento)
+        db.flush()
         _log_audit(
             db,
             current_user,
-            "movimento_scarico",
-            "magazzino_movimento",
-            None,
+            "STOCK_SCARICO",
+            "MagazzinoMovimento",
+            movimento.id,
             {
                 "item_id": item.id,
+                "codice": item.codice,
                 "quantita": quantita_valore,
                 "cantiere_id": cantiere_id,
                 "note": (note or "").strip() or None,
@@ -2544,8 +2568,8 @@ def manager_magazzino_richiesta_approva(
     _log_audit(
         db,
         current_user,
-        "richiesta_approvata",
-        "magazzino_richiesta",
+        "RICHIESTA_APPROVATA",
+        "MagazzinoRichiesta",
         richiesta.id,
         {
             "risposta_manager": richiesta.risposta_manager,
@@ -2690,14 +2714,16 @@ async def manager_magazzino_richiesta_evadi(
                 riferimento_richiesta_id=richiesta.id,
             )
             db.add(movimento)
+            db.flush()
             _log_audit(
                 db,
                 current_user,
-                "movimento_scarico",
-                "magazzino_movimento",
-                None,
+                "STOCK_SCARICO",
+                "MagazzinoMovimento",
+                movimento.id,
                 {
                     "item_id": riga.item.id,
+                    "codice": riga.item.codice,
                     "quantita": quantita_da_evadere,
                     "cantiere_id": richiesta.cantiere_id,
                     "richiesta_id": richiesta.id,
@@ -2714,10 +2740,10 @@ async def manager_magazzino_richiesta_evadi(
 
         if tutte_evase:
             richiesta.stato = MagazzinoRichiestaStatusEnum.evasa
-            audit_action = "richiesta_evasa"
+            audit_action = "RICHIESTA_EVASA"
         elif almeno_una_evasa:
             richiesta.stato = MagazzinoRichiestaStatusEnum.parziale
-            audit_action = "richiesta_evasa_parziale"
+            audit_action = "RICHIESTA_EVASA_PARZIALE"
         richiesta.gestito_da_user_id = current_user.id
         richiesta.gestito_at = datetime.utcnow()
         richiesta.letto_da_richiedente = False
@@ -2726,7 +2752,7 @@ async def manager_magazzino_richiesta_evadi(
             db,
             current_user,
             audit_action,
-            "magazzino_richiesta",
+            "MagazzinoRichiesta",
             richiesta.id,
             {
                 "righe": len(richiesta.righe),
@@ -2806,8 +2832,8 @@ def manager_magazzino_richiesta_rifiuta(
     _log_audit(
         db,
         current_user,
-        "richiesta_rifiutata",
-        "magazzino_richiesta",
+        "RICHIESTA_RIFIUTATA",
+        "MagazzinoRichiesta",
         richiesta.id,
         {"risposta_manager": richiesta.risposta_manager},
     )
