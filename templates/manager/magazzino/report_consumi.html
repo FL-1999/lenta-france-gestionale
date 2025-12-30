@@ -34,6 +34,48 @@
 <div class="card" style="margin-bottom: 1.5rem;">
     <div class="card-header">
         <div class="card-title">
+            <span>{% if lang == 'fr' %}Filtres{% else %}Filtri{% endif %}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="get" action="{{ url_for('manager_magazzino_report_consumi') }}" class="form-grid">
+            <input type="hidden" name="cantiere_id" value="{{ cantiere.id }}" />
+            <div class="form-field">
+                <label for="date_from">{% if lang == 'fr' %}Du{% else %}Dal{% endif %}</label>
+                <input
+                    id="date_from"
+                    type="date"
+                    name="date_from"
+                    value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}"
+                />
+            </div>
+            <div class="form-field">
+                <label for="date_to">{% if lang == 'fr' %}Au{% else %}Al{% endif %}</label>
+                <input
+                    id="date_to"
+                    type="date"
+                    name="date_to"
+                    value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}"
+                />
+            </div>
+            <div class="form-actions" style="align-self: end;">
+                <button class="btn btn-primary" type="submit">
+                    {% if lang == 'fr' %}Appliquer{% else %}Applica{% endif %}
+                </button>
+                <a
+                    class="btn btn-secondary"
+                    href="{{ url_for('manager_magazzino_report_consumi', cantiere_id=cantiere.id, date_from=date_from.strftime('%Y-%m-%d') if date_from else '', date_to=date_to.strftime('%Y-%m-%d') if date_to else '', export='csv') }}"
+                >
+                    {% if lang == 'fr' %}Exporter CSV{% else %}Esporta CSV{% endif %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
             <span>{% if lang == 'fr' %}Totaux{% else %}Totali{% endif %}</span>
         </div>
     </div>
