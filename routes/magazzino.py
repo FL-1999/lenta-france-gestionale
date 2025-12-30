@@ -721,7 +721,6 @@ def manager_magazzino_list(
     ok = request.query_params.get("ok")
     err = request.query_params.get("err")
     success_message = None
-    error_message = None
     if ok == "carico":
         success_message = (
             "Chargement enregistré avec succès."
@@ -740,26 +739,54 @@ def manager_magazzino_list(
             if lang == "fr"
             else "Operazione completata con successo."
         )
-    if err == "item_non_trovato":
-        error_message = (
-            "Article introuvable." if lang == "fr" else "Articolo non trovato."
-        )
-    elif err == "quantita_non_valida":
-        error_message = (
-            "Quantité non valide." if lang == "fr" else "Quantità non valida."
-        )
-    elif err == "quantita_insufficiente":
-        error_message = (
+    error_message = _magazzino_error_message(lang, err) if err else None
+    return _render_magazzino_items_list(
+        request,
+        db,
+        current_user,
+        q=q,
+        categoria=categoria,
+        attivi=attivi,
+        sotto_soglia=sotto_soglia,
+        esauriti=esauriti,
+        success_message=success_message,
+        error_message=error_message,
+    )
+
+
+def _magazzino_error_message(lang: str, err_code: str | None) -> str | None:
+    if err_code == "item_non_trovato":
+        return "Article introuvable." if lang == "fr" else "Articolo non trovato."
+    if err_code == "quantita_non_valida":
+        return "Quantité non valide." if lang == "fr" else "Quantità non valida."
+    if err_code == "quantita_insufficiente":
+        return (
             "Quantité insuffisante en stock."
             if lang == "fr"
             else "Quantità insufficiente in magazzino."
         )
-    elif err:
-        error_message = (
+    if err_code:
+        return (
             "Erreur lors de l'opération."
             if lang == "fr"
             else "Errore durante l'operazione."
         )
+    return None
+
+
+def _render_magazzino_items_list(
+    request: Request,
+    db: Session,
+    current_user: User,
+    *,
+    q: str | None = None,
+    categoria: str | None = None,
+    attivi: int | None = None,
+    sotto_soglia: int | None = None,
+    esauriti: int | None = None,
+    success_message: str | None = None,
+    error_message: str | None = None,
+):
     categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
         db,
         include_inactive=False,
@@ -2185,27 +2212,20 @@ def manager_magazzino_scarico(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
-    if not item:
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
-            status_code=303,
-        )
-
-    quantita_valore = _parse_float(quantita)
-    if not quantita_valore or quantita_valore <= 0:
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_non_valida",
-            status_code=303,
-        )
-
-    quantita_attuale = item.quantita_disponibile or 0.0
-    if quantita_valore > quantita_attuale:
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_insufficiente",
-            status_code=303,
-        )
+    lang = request.cookies.get("lang", "it")
     try:
+        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+        if not item:
+            raise ValueError(_magazzino_error_message(lang, "item_non_trovato"))
+
+        quantita_valore = _parse_float(quantita)
+        if not quantita_valore or quantita_valore <= 0:
+            raise ValueError(_magazzino_error_message(lang, "quantita_non_valida"))
+
+        quantita_attuale = item.quantita_disponibile or 0.0
+        if quantita_valore > quantita_attuale:
+            raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
+
         item.quantita_disponibile = quantita_attuale - quantita_valore
 
         db.add(item)
@@ -2234,11 +2254,21 @@ def manager_magazzino_scarico(
             },
         )
         db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return _render_magazzino_items_list(
+            request,
+            db,
+            current_user,
+            error_message=str(exc),
+        )
     except Exception:
         db.rollback()
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=operazione_fallita",
-            status_code=303,
+        return _render_magazzino_items_list(
+            request,
+            db,
+            current_user,
+            error_message=_magazzino_error_message(lang, "operazione_fallita"),
         )
 
     return RedirectResponse(
@@ -2329,28 +2359,20 @@ def manager_magazzino_scarico_rapido(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
-    if not item:
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
-            status_code=303,
-        )
-
-    quantita_valore = _parse_float(quantita)
-    if not quantita_valore or quantita_valore <= 0:
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_non_valida",
-            status_code=303,
-        )
-
-    quantita_attuale = item.quantita_disponibile or 0.0
-    if quantita_valore > quantita_attuale:
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_insufficiente",
-            status_code=303,
-        )
-
+    lang = request.cookies.get("lang", "it")
     try:
+        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+        if not item:
+            raise ValueError(_magazzino_error_message(lang, "item_non_trovato"))
+
+        quantita_valore = _parse_float(quantita)
+        if not quantita_valore or quantita_valore <= 0:
+            raise ValueError(_magazzino_error_message(lang, "quantita_non_valida"))
+
+        quantita_attuale = item.quantita_disponibile or 0.0
+        if quantita_valore > quantita_attuale:
+            raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
+
         item.quantita_disponibile = quantita_attuale - quantita_valore
         db.add(item)
         movimento = MagazzinoMovimento(
@@ -2378,11 +2400,21 @@ def manager_magazzino_scarico_rapido(
             },
         )
         db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return _render_magazzino_items_list(
+            request,
+            db,
+            current_user,
+            error_message=str(exc),
+        )
     except Exception:
         db.rollback()
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=operazione_fallita",
-            status_code=303,
+        return _render_magazzino_items_list(
+            request,
+            db,
+            current_user,
+            error_message=_magazzino_error_message(lang, "operazione_fallita"),
         )
 
     return RedirectResponse(
@@ -2699,6 +2731,16 @@ async def manager_magazzino_richiesta_evadi(
             if quantita_da_evadere <= 0:
                 continue
             quantita_disponibile = riga.item.quantita_disponibile or 0.0
+            if quantita_disponibile < quantita_da_evadere:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Quantità insufficiente per "
+                        f"{riga.item.nome} (disponibile "
+                        f"{quantita_disponibile}, "
+                        f"richiesta {quantita_da_evadere})"
+                    ),
+                )
             riga.item.quantita_disponibile = (
                 quantita_disponibile - quantita_da_evadere
             )
