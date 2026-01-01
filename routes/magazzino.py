@@ -660,6 +660,12 @@ def manager_magazzino_dashboard(
         .scalar()
         or 0
     )
+    richieste_nuove_count = (
+        db.query(func.count(MagazzinoRichiesta.id))
+        .filter(MagazzinoRichiesta.stato == MagazzinoRichiestaStatusEnum.in_attesa)
+        .scalar()
+        or 0
+    )
     since_date = datetime.now() - timedelta(days=30)
     top_consumi_rows = (
         db.query(
@@ -681,9 +687,6 @@ def manager_magazzino_dashboard(
         SimpleNamespace(codice=codice, nome=nome, totale=totale)
         for codice, nome, totale in top_consumi_rows
     ]
-    report_cantiere = (
-        db.query(Site).filter(Site.is_active.is_(True)).order_by(Site.name.asc()).first()
-    )
     return render_template(
         templates,
         request,
@@ -693,8 +696,8 @@ def manager_magazzino_dashboard(
             "user": current_user,
             "sotto_soglia_count": sotto_soglia_count,
             "esauriti_count": esauriti_count,
+            "richieste_nuove_count": richieste_nuove_count,
             "top_consumi": top_consumi,
-            "report_cantiere": report_cantiere,
         },
         db,
         current_user,

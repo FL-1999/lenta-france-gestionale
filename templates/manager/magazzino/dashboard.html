@@ -19,25 +19,41 @@
     </div>
 </div>
 
-<div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-header">
-        <div class="card-title">
-            <span>{% if lang == 'fr' %}Seuils d'alerte{% else %}Soglie di allerta{% endif %}</span>
+<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+    <div class="card" style="flex: 1 1 220px;">
+        <div class="card-body">
+            <p class="muted" style="margin: 0 0 0.35rem 0;">
+                {% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}
+            </p>
+            <div style="font-size: 2rem; font-weight: 700;">
+                {{ sotto_soglia_count }}
+            </div>
         </div>
     </div>
-    <div class="card-body">
-        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
-            <div>
-                <p class="muted" style="margin: 0 0 0.35rem 0;">
-                    {% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}
-                </p>
-                <strong>{{ sotto_soglia_count }}</strong>
+    <div class="card" style="flex: 1 1 220px;">
+        <div class="card-body">
+            <p class="muted" style="margin: 0 0 0.35rem 0;">
+                {% if lang == 'fr' %}Articles épuisés{% else %}Articoli esauriti{% endif %}
+            </p>
+            <div style="font-size: 2rem; font-weight: 700;">
+                {{ esauriti_count }}
             </div>
-            <div>
-                <p class="muted" style="margin: 0 0 0.35rem 0;">
-                    {% if lang == 'fr' %}Articles épuisés{% else %}Articoli esauriti{% endif %}
+        </div>
+    </div>
+    <div class="card" style="flex: 1 1 220px;">
+        <div class="card-body">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <p class="muted" style="margin: 0;">
+                    {% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}
                 </p>
-                <strong>{{ esauriti_count }}</strong>
+                {% if richieste_nuove_count > 0 %}
+                    <span style="background: #ef4444; color: #fff; border-radius: 999px; padding: 0.1rem 0.5rem; font-size: 0.75rem;">
+                        {{ richieste_nuove_count }}
+                    </span>
+                {% endif %}
+            </div>
+            <div style="font-size: 2rem; font-weight: 700;">
+                {{ richieste_nuove_count }}
             </div>
         </div>
     </div>
@@ -56,7 +72,7 @@
                     <tr>
                         <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
                         <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Quantité{% else %}Totale scaricato{% endif %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -71,7 +87,7 @@
                     {% else %}
                         <tr>
                             <td colspan="3" class="muted">
-                                {% if lang == 'fr' %}Aucune sortie sur la période.{% else %}Nessuno scarico nel periodo.{% endif %}
+                                {% if lang == 'fr' %}Aucune donnée.{% else %}Nessun dato.{% endif %}
                             </td>
                         </tr>
                     {% endif %}
@@ -89,21 +105,18 @@
     </div>
     <div class="card-body">
         <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+            <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_list') }}">
+                {% if lang == 'fr' %}Liste{% else %}Lista{% endif %}
+            </a>
             <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_sotto_soglia') }}">
                 {% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}
             </a>
             <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_movimenti') }}">
                 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
             </a>
-            {% if report_cantiere %}
-                <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_report_consumi') }}?cantiere_id={{ report_cantiere.id }}">
-                    {% if lang == 'fr' %}Rapport consommations{% else %}Report consumi{% endif %}
-                </a>
-            {% else %}
-                <span class="btn btn-secondary" style="opacity: 0.6; cursor: not-allowed;">
-                    {% if lang == 'fr' %}Rapport consommations{% else %}Report consumi{% endif %}
-                </span>
-            {% endif %}
+            <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_richieste') }}">
+                {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
+            </a>
         </div>
     </div>
 </div>
