@@ -37,12 +37,21 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="address">Indirizzo</label>
-            <input type="text" id="address" name="address" class="form-control" value="{{ site.address if site else '' }}">
+            <label class="form-label" for="cantiere_address">Indirizzo</label>
+            <input id="cantiere_address"
+                   name="address"
+                   type="text"
+                   class="form-control"
+                   placeholder="Inizia a scrivere l’indirizzo…"
+                   autocomplete="off"
+                   value="{{ site.address if site else '' }}">
+            {% if not google_maps_api_key %}
+              <small class="form-text text-muted">Autocomplete disattivato (manca API key)</small>
+            {% endif %}
           </div>
-          <input type="hidden" id="lat" name="lat" value="{{ site.lat if site and site.lat is not none else '' }}">
-          <input type="hidden" id="lng" name="lng" value="{{ site.lng if site and site.lng is not none else '' }}">
-          <input type="hidden" id="place_id" name="place_id" value="{{ site.place_id if site else '' }}">
+          <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
+          <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
+          <input id="cantiere_lng" name="lng" type="hidden" value="{{ site.lng if site and site.lng is not none else '' }}">
 
           <div class="form-group">
             <label class="form-label" for="city">Città</label>
@@ -162,5 +171,59 @@
       </div>
     </div>
   </div>
+{% endif %}
+
+{% if google_maps_api_key %}
+  <script>
+    function initCantiereAutocomplete() {
+      const addressInput = document.getElementById("cantiere_address");
+      const placeIdInput = document.getElementById("cantiere_place_id");
+      const latInput = document.getElementById("cantiere_lat");
+      const lngInput = document.getElementById("cantiere_lng");
+
+      if (!addressInput || !placeIdInput || !latInput || !lngInput) {
+        return;
+      }
+
+      let lastSelectedAddress = addressInput.value || "";
+      let ignoreInputEvent = false;
+
+      const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+        fields: ["place_id", "geometry", "formatted_address", "address_components"],
+      });
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (!place || !place.geometry || !place.geometry.location) {
+          return;
+        }
+
+        ignoreInputEvent = true;
+        const formattedAddress = place.formatted_address || addressInput.value;
+        addressInput.value = formattedAddress;
+        lastSelectedAddress = formattedAddress;
+        placeIdInput.value = place.place_id || "";
+        latInput.value = place.geometry.location.lat();
+        lngInput.value = place.geometry.location.lng();
+        window.setTimeout(() => {
+          ignoreInputEvent = false;
+        }, 0);
+      });
+
+      addressInput.addEventListener("input", () => {
+        if (ignoreInputEvent) {
+          return;
+        }
+        if (addressInput.value !== lastSelectedAddress) {
+          lastSelectedAddress = addressInput.value;
+          placeIdInput.value = "";
+          latInput.value = "";
+          lngInput.value = "";
+        }
+      });
+    }
+  </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initCantiereAutocomplete"
+          async defer></script>
 {% endif %}
 {% endblock %}

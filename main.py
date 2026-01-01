@@ -1256,6 +1256,7 @@ def manager_cantiere_nuovo_get(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     site_status_values = [status.name for status in SiteStatusEnum]
+    google_maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY")
     db = SessionLocal()
     try:
         capisquadra = (
@@ -1277,6 +1278,7 @@ def manager_cantiere_nuovo_get(
             "site": None,
             "site_status_values": site_status_values,
             "capisquadra": capisquadra,
+            "google_maps_api_key": google_maps_api_key,
         },
     )
 
@@ -1384,6 +1386,7 @@ def manager_cantiere_modifica_get(
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
+    google_maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY")
     db = SessionLocal()
     try:
         site = db.query(Site).filter(Site.id == site_id).first()
@@ -1424,6 +1427,7 @@ def manager_cantiere_modifica_get(
             "site_status_values": site_status_values,
             "scarichi_recenti": scarichi_recenti,
             "capisquadra": capisquadra,
+            "google_maps_api_key": google_maps_api_key,
         },
     )
 
