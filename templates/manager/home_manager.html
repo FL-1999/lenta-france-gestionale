@@ -554,7 +554,7 @@
         </div>
         <div class="card-body">
             {% if google_maps_api_key %}
-                <div id="cantieri-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
+                <div id="manager-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
             {% else %}
                 <div class="map-disabled-message">
                     {% if lang == 'fr' %}
@@ -581,7 +581,7 @@
         const cantieriMapData = {{ cantieri_map_data | tojson | safe }};
 
         function initMap() {
-            const mapElement = document.getElementById("cantieri-map");
+            const mapElement = document.getElementById("manager-map");
             if (!mapElement) {
                 return;
             }
@@ -599,18 +599,18 @@
                 const marker = new google.maps.Marker({
                     position,
                     map,
-                    title: site.nome
+                    title: site.name
                 });
                 bounds.extend(position);
 
                 const detailUrl = detailUrlTemplate.replace("__SITE_ID__", site.id);
                 const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${site.lat},${site.lng}`;
-                const indirizzo = site.indirizzo
-                    ? `<div class="map-infowindow-address">${site.indirizzo}</div>`
+                const indirizzo = site.address
+                    ? `<div class="map-infowindow-address">${site.address}</div>`
                     : "";
                 const content = `
                     <div class="map-infowindow">
-                        <div class="map-infowindow-title">${site.nome}</div>
+                        <div class="map-infowindow-title">${site.name}</div>
                         ${indirizzo}
                         <div class="map-infowindow-actions">
                             <a href="${detailUrl}" class="btn btn-sm btn-secondary">Apri scheda</a>
