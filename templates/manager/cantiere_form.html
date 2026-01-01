@@ -98,6 +98,17 @@
 
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Salva</button>
+          {% if site and site.lat and site.lng %}
+            <a class="btn btn-primary" target="_blank" rel="noopener"
+               href="https://www.google.com/maps/dir/?api=1&destination={{ site.lat }},{{ site.lng }}">
+              🧭 Portami lì
+            </a>
+          {% elif site and (site.address or site.indirizzo) %}
+            <a class="btn btn-primary" target="_blank" rel="noopener"
+               href="https://www.google.com/maps/dir/?api=1&destination={{ (site.address or site.indirizzo) | urlencode }}">
+              🧭 Portami lì
+            </a>
+          {% endif %}
           <a href="/manager/cantieri" class="btn btn-secondary">Annulla</a>
         </div>
       </form>
