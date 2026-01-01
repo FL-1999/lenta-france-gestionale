@@ -159,6 +159,8 @@ class Site(Base, TimestampMixin):
     address = Column(String(255), nullable=True)
     city = Column(String(100), nullable=True)
     country = Column(String(100), nullable=True, default="France")
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
 
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)

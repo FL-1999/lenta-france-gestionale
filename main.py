@@ -438,6 +438,25 @@ def manager_dashboard(
     """
     db = SessionLocal()
     try:
+        sites_with_coords = (
+            db.query(Site)
+            .filter(Site.lat.isnot(None), Site.lng.isnot(None))
+            .order_by(Site.name)
+            .all()
+        )
+        sites_map_data = []
+        for site in sites_with_coords:
+            address_parts = [part for part in [site.address, site.city, site.country] if part]
+            sites_map_data.append(
+                {
+                    "id": site.id,
+                    "nome": site.name,
+                    "lat": site.lat,
+                    "lng": site.lng,
+                    "indirizzo": ", ".join(address_parts),
+                }
+            )
+
         reports_list = (
             db.query(Report)
             .options(joinedload(Report.site))
@@ -493,6 +512,8 @@ def manager_dashboard(
                 "chart_reports_last_30_days": jsonable_encoder(reports_last_30_days),
                 "chart_hours_per_site_30_days": jsonable_encoder(hours_per_site_30_days),
                 "chart_reports_by_status": jsonable_encoder(reports_by_status),
+                "cantieri_map_data": jsonable_encoder(sites_map_data),
+                "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
             },
             db,
             current_user,
