@@ -1349,6 +1349,7 @@ def manager_magazzino_categorie_create(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    lang = request.cookies.get("lang", "it")
     nome_value = nome.strip()
     if not nome_value:
         return render_template(
@@ -1427,31 +1428,52 @@ def manager_magazzino_categorie_create(
         )
     base_slug = _slugify(nome_value)
     slug = _ensure_unique_slug(db, base_slug)
-    categoria = MagazzinoCategoria(
-        nome=nome_value,
-        slug=slug,
-        ordine=ordine_value,
-        attiva=attiva,
-        icon=icon_value or DEFAULT_CATEGORIA_ICON,
-        color=color_value or DEFAULT_CATEGORIA_COLOR,
-    )
-    db.add(categoria)
-    db.flush()
-    _log_audit(
-        db,
-        current_user,
-        "CATEGORIA_CREATE",
-        "MagazzinoCategoria",
-        categoria.id,
-        {
-            "nome": categoria.nome,
-            "ordine": categoria.ordine,
-            "attiva": categoria.attiva,
-            "icon": categoria.icon,
-            "color": categoria.color,
-        },
-    )
-    db.commit()
+    try:
+        categoria = MagazzinoCategoria(
+            nome=nome_value,
+            slug=slug,
+            ordine=ordine_value,
+            attiva=attiva,
+            icon=icon_value or DEFAULT_CATEGORIA_ICON,
+            color=color_value or DEFAULT_CATEGORIA_COLOR,
+        )
+        db.add(categoria)
+        db.flush()
+        _log_audit(
+            db,
+            current_user,
+            "CATEGORIA_CREATE",
+            "MagazzinoCategoria",
+            categoria.id,
+            {
+                "nome": categoria.nome,
+                "ordine": categoria.ordine,
+                "attiva": categoria.attiva,
+                "icon": categoria.icon,
+                "color": categoria.color,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/categorie_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "categoria": None,
+                "form_action": "manager_magazzino_categorie_create",
+                "title": "Nuova macro categoria",
+                "error_message": _magazzino_error_message(lang, "operazione_fallita"),
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+            },
+            db,
+            current_user,
+        )
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
         status_code=303,
@@ -1516,6 +1538,7 @@ def manager_magazzino_categorie_update(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    lang = request.cookies.get("lang", "it")
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id)
@@ -1608,22 +1631,43 @@ def manager_magazzino_categorie_update(
     categoria.attiva = attiva
     categoria.icon = icon_value or DEFAULT_CATEGORIA_ICON
     categoria.color = color_value or DEFAULT_CATEGORIA_COLOR
-    db.add(categoria)
-    _log_audit(
-        db,
-        current_user,
-        "CATEGORIA_EDIT",
-        "MagazzinoCategoria",
-        categoria.id,
-        {
-            "nome": categoria.nome,
-            "ordine": categoria.ordine,
-            "attiva": categoria.attiva,
-            "icon": categoria.icon,
-            "color": categoria.color,
-        },
-    )
-    db.commit()
+    try:
+        db.add(categoria)
+        _log_audit(
+            db,
+            current_user,
+            "CATEGORIA_EDIT",
+            "MagazzinoCategoria",
+            categoria.id,
+            {
+                "nome": categoria.nome,
+                "ordine": categoria.ordine,
+                "attiva": categoria.attiva,
+                "icon": categoria.icon,
+                "color": categoria.color,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/categorie_form.html",
+            {
+                "request": request,
+                "user": current_user,
+                "categoria": categoria,
+                "form_action": "manager_magazzino_categorie_update",
+                "title": "Modifica macro categoria",
+                "error_message": _magazzino_error_message(lang, "operazione_fallita"),
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+            },
+            db,
+            current_user,
+        )
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
         status_code=303,
@@ -1923,6 +1967,7 @@ def manager_magazzino_update(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    lang = request.cookies.get("lang", "it")
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         return RedirectResponse(
@@ -1930,71 +1975,125 @@ def manager_magazzino_update(
             status_code=303,
         )
 
-    quantita_precedente = item.quantita_disponibile or 0.0
+    try:
+        quantita_precedente = item.quantita_disponibile or 0.0
+        nuova_quantita = _parse_float(quantita_disponibile) or 0.0
+        if nuova_quantita < 0:
+            raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
-    item.nome = nome.strip()
-    item.codice = codice.strip()
-    item.descrizione = (descrizione or "").strip() or None
-    item.categoria_id = _parse_categoria_id(categoria_id)
-    item.quantita_disponibile = _parse_float(quantita_disponibile) or 0.0
-    item.soglia_minima = _parse_float(soglia_minima)
-    item.attivo = attivo
+        item.nome = nome.strip()
+        item.codice = codice.strip()
+        item.descrizione = (descrizione or "").strip() or None
+        item.categoria_id = _parse_categoria_id(categoria_id)
+        item.quantita_disponibile = nuova_quantita
+        item.soglia_minima = _parse_float(soglia_minima)
+        item.attivo = attivo
 
-    db.add(item)
-    differenza = (item.quantita_disponibile or 0.0) - quantita_precedente
-    if abs(differenza) > 0:
-        movimento = MagazzinoMovimento(
-            item_id=item.id,
-            tipo=MagazzinoMovimentoTipoEnum.carico
-            if differenza > 0
-            else MagazzinoMovimentoTipoEnum.scarico,
-            quantita=abs(differenza),
-            creato_da_user_id=current_user.id,
-            note="Rettifica quantità",
-        )
-        db.add(movimento)
-        db.flush()
+        db.add(item)
+        differenza = (item.quantita_disponibile or 0.0) - quantita_precedente
+        if abs(differenza) > 0:
+            movimento = MagazzinoMovimento(
+                item_id=item.id,
+                tipo=MagazzinoMovimentoTipoEnum.carico
+                if differenza > 0
+                else MagazzinoMovimentoTipoEnum.scarico,
+                quantita=abs(differenza),
+                creato_da_user_id=current_user.id,
+                note="Rettifica quantità",
+            )
+            db.add(movimento)
+            db.flush()
+            _log_audit(
+                db,
+                current_user,
+                "STOCK_RETTIFICA",
+                "MagazzinoItem",
+                item.id,
+                {
+                    "codice": item.codice,
+                    "quantita_precedente": quantita_precedente,
+                    "quantita_nuova": item.quantita_disponibile,
+                    "differenza": differenza,
+                },
+            )
+            _log_audit(
+                db,
+                current_user,
+                "STOCK_RETTIFICA",
+                "MagazzinoMovimento",
+                movimento.id,
+                {
+                    "item_id": item.id,
+                    "codice": item.codice,
+                    "quantita": abs(differenza),
+                    "note": "Rettifica quantità",
+                },
+            )
         _log_audit(
             db,
             current_user,
-            "STOCK_RETTIFICA",
+            "ITEM_EDIT",
             "MagazzinoItem",
             item.id,
             {
+                "nome": item.nome,
                 "codice": item.codice,
-                "quantita_precedente": quantita_precedente,
-                "quantita_nuova": item.quantita_disponibile,
-                "differenza": differenza,
+                "quantita": item.quantita_disponibile,
+                "categoria_id": item.categoria_id,
+                "attivo": item.attivo,
             },
         )
-        _log_audit(
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
+            db,
+            include_inactive=False,
+            include_fallback=False,
+        )
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/item_edit.html",
+            {
+                "request": request,
+                "user": current_user,
+                "item": item,
+                "categorie": categorie,
+                "fallback_categoria": fallback_categoria,
+                "default_categoria_id": fallback_categoria_id,
+                "form_action": "manager_magazzino_update",
+                "title": "Modifica articolo",
+                "error_message": str(exc),
+            },
             db,
             current_user,
-            "STOCK_RETTIFICA",
-            "MagazzinoMovimento",
-            movimento.id,
-            {
-                "item_id": item.id,
-                "codice": item.codice,
-                "quantita": abs(differenza),
-                "note": "Rettifica quantità",
-            },
         )
-    _log_audit(
-        db,
-        current_user,
-        "ITEM_EDIT",
-        "MagazzinoItem",
-        item.id,
-        {
-            "nome": item.nome,
-            "codice": item.codice,
-            "quantita": item.quantita_disponibile,
-            "categoria_id": item.categoria_id,
-            "attivo": item.attivo,
-        },
-    )
-    db.commit()
+    except Exception:
+        db.rollback()
+        categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
+            db,
+            include_inactive=False,
+            include_fallback=False,
+        )
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/item_edit.html",
+            {
+                "request": request,
+                "user": current_user,
+                "item": item,
+                "categorie": categorie,
+                "fallback_categoria": fallback_categoria,
+                "default_categoria_id": fallback_categoria_id,
+                "form_action": "manager_magazzino_update",
+                "title": "Modifica articolo",
+                "error_message": _magazzino_error_message(lang, "operazione_fallita"),
+            },
+            db,
+            current_user,
+        )
 
     return RedirectResponse(
         url=request.url_for("manager_magazzino_list"),
@@ -2291,21 +2390,16 @@ def manager_magazzino_carico_rapido(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
-    if not item:
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
-            status_code=303,
-        )
-
-    quantita_valore = _parse_float(quantita)
-    if not quantita_valore or quantita_valore <= 0:
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=quantita_non_valida",
-            status_code=303,
-        )
-
+    lang = request.cookies.get("lang", "it")
     try:
+        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+        if not item:
+            raise ValueError(_magazzino_error_message(lang, "item_non_trovato"))
+
+        quantita_valore = _parse_float(quantita)
+        if not quantita_valore or quantita_valore <= 0:
+            raise ValueError(_magazzino_error_message(lang, "quantita_non_valida"))
+
         item.quantita_disponibile = (item.quantita_disponibile or 0.0) + quantita_valore
         db.add(item)
         movimento = MagazzinoMovimento(
@@ -2331,11 +2425,21 @@ def manager_magazzino_carico_rapido(
             },
         )
         db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return _render_magazzino_items_list(
+            request,
+            db,
+            current_user,
+            error_message=str(exc),
+        )
     except Exception:
         db.rollback()
-        return RedirectResponse(
-            url=f"{request.url_for('manager_magazzino_list')}?err=operazione_fallita",
-            status_code=303,
+        return _render_magazzino_items_list(
+            request,
+            db,
+            current_user,
+            error_message=_magazzino_error_message(lang, "operazione_fallita"),
         )
 
     return RedirectResponse(
@@ -2560,6 +2664,7 @@ def manager_magazzino_richiesta_approva(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    lang = request.cookies.get("lang", "it")
     richiesta = (
         db.query(MagazzinoRichiesta)
         .options(
@@ -2576,39 +2681,62 @@ def manager_magazzino_richiesta_approva(
             status_code=303,
         )
 
-    for riga in richiesta.righe:
-        if riga.item is None:
-            raise HTTPException(status_code=400, detail="Item non disponibile")
-        if riga.item.quantita_disponibile < riga.quantita_richiesta:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Quantità insufficiente per "
-                    f"{riga.item.nome} (disponibile "
-                    f"{riga.item.quantita_disponibile}, "
-                    f"richiesta {riga.quantita_richiesta})"
-                ),
-            )
+    try:
+        for riga in richiesta.righe:
+            if riga.item is None:
+                raise ValueError("Item non disponibile")
+            if riga.item.quantita_disponibile < riga.quantita_richiesta:
+                raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
-    richiesta.stato = MagazzinoRichiestaStatusEnum.approvata
-    richiesta.risposta_manager = (risposta_manager or "").strip() or None
-    richiesta.gestito_da_user_id = current_user.id
-    richiesta.gestito_at = datetime.utcnow()
-    richiesta.letto_da_richiedente = False
+        richiesta.stato = MagazzinoRichiestaStatusEnum.approvata
+        richiesta.risposta_manager = (risposta_manager or "").strip() or None
+        richiesta.gestito_da_user_id = current_user.id
+        richiesta.gestito_at = datetime.utcnow()
+        richiesta.letto_da_richiedente = False
 
-    db.add(richiesta)
-    _log_audit(
-        db,
-        current_user,
-        "RICHIESTA_APPROVATA",
-        "MagazzinoRichiesta",
-        richiesta.id,
-        {
-            "risposta_manager": richiesta.risposta_manager,
-            "righe": len(richiesta.righe),
-        },
-    )
-    db.commit()
+        db.add(richiesta)
+        _log_audit(
+            db,
+            current_user,
+            "RICHIESTA_APPROVATA",
+            "MagazzinoRichiesta",
+            richiesta.id,
+            {
+                "risposta_manager": richiesta.risposta_manager,
+                "righe": len(richiesta.righe),
+            },
+        )
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/richiesta_detail.html",
+            {
+                "request": request,
+                "user": current_user,
+                "richiesta": richiesta,
+                "error_message": str(exc),
+            },
+            db,
+            current_user,
+        )
+    except Exception:
+        db.rollback()
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/richiesta_detail.html",
+            {
+                "request": request,
+                "user": current_user,
+                "richiesta": richiesta,
+                "error_message": _magazzino_error_message(lang, "operazione_fallita"),
+            },
+            db,
+            current_user,
+        )
 
     return RedirectResponse(
         url=request.url_for(
@@ -2630,6 +2758,7 @@ async def manager_magazzino_richiesta_evadi(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    lang = request.cookies.get("lang", "it")
     richiesta = (
         db.query(MagazzinoRichiesta)
         .options(
@@ -2711,15 +2840,7 @@ async def manager_magazzino_richiesta_evadi(
             )
             quantita_disponibile = item.quantita_disponibile if item else 0.0
             if quantita_disponibile < totale:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "Quantità insufficiente per "
-                        f"{item.nome if item else 'item'} (disponibile "
-                        f"{quantita_disponibile}, "
-                        f"richiesta {totale})"
-                    ),
-                )
+                raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
         if not any(quantita > 0 for quantita in righe_quantita.values()):
             raise HTTPException(
@@ -2732,15 +2853,7 @@ async def manager_magazzino_richiesta_evadi(
                 continue
             quantita_disponibile = riga.item.quantita_disponibile or 0.0
             if quantita_disponibile < quantita_da_evadere:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "Quantità insufficiente per "
-                        f"{riga.item.nome} (disponibile "
-                        f"{quantita_disponibile}, "
-                        f"richiesta {quantita_da_evadere})"
-                    ),
-                )
+                raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
             riga.item.quantita_disponibile = (
                 quantita_disponibile - quantita_da_evadere
             )
@@ -2819,6 +2932,22 @@ async def manager_magazzino_richiesta_evadi(
             current_user,
             status_code=exc.status_code,
         )
+    except ValueError as exc:
+        db.rollback()
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/richiesta_detail.html",
+            {
+                "request": request,
+                "user": current_user,
+                "richiesta": richiesta,
+                "error_message": str(exc),
+            },
+            db,
+            current_user,
+            status_code=400,
+        )
     except Exception:
         db.rollback()
         return render_template(
@@ -2857,6 +2986,7 @@ def manager_magazzino_richiesta_rifiuta(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    lang = request.cookies.get("lang", "it")
     richiesta = db.query(MagazzinoRichiesta).filter(MagazzinoRichiesta.id == richiesta_id).first()
     if not richiesta:
         return RedirectResponse(
@@ -2864,22 +2994,38 @@ def manager_magazzino_richiesta_rifiuta(
             status_code=303,
         )
 
-    richiesta.stato = MagazzinoRichiestaStatusEnum.rifiutata
-    richiesta.risposta_manager = (risposta_manager or "").strip() or None
-    richiesta.gestito_da_user_id = current_user.id
-    richiesta.gestito_at = datetime.utcnow()
-    richiesta.letto_da_richiedente = False
+    try:
+        richiesta.stato = MagazzinoRichiestaStatusEnum.rifiutata
+        richiesta.risposta_manager = (risposta_manager or "").strip() or None
+        richiesta.gestito_da_user_id = current_user.id
+        richiesta.gestito_at = datetime.utcnow()
+        richiesta.letto_da_richiedente = False
 
-    db.add(richiesta)
-    _log_audit(
-        db,
-        current_user,
-        "RICHIESTA_RIFIUTATA",
-        "MagazzinoRichiesta",
-        richiesta.id,
-        {"risposta_manager": richiesta.risposta_manager},
-    )
-    db.commit()
+        db.add(richiesta)
+        _log_audit(
+            db,
+            current_user,
+            "RICHIESTA_RIFIUTATA",
+            "MagazzinoRichiesta",
+            richiesta.id,
+            {"risposta_manager": richiesta.risposta_manager},
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/richiesta_detail.html",
+            {
+                "request": request,
+                "user": current_user,
+                "richiesta": richiesta,
+                "error_message": _magazzino_error_message(lang, "operazione_fallita"),
+            },
+            db,
+            current_user,
+        )
 
     return RedirectResponse(
         url=request.url_for(
