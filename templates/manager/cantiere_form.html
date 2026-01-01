@@ -40,6 +40,9 @@
             <label class="form-label" for="address">Indirizzo</label>
             <input type="text" id="address" name="address" class="form-control" value="{{ site.address if site else '' }}">
           </div>
+          <input type="hidden" id="lat" name="lat" value="{{ site.lat if site and site.lat is not none else '' }}">
+          <input type="hidden" id="lng" name="lng" value="{{ site.lng if site and site.lng is not none else '' }}">
+          <input type="hidden" id="place_id" name="place_id" value="{{ site.place_id if site else '' }}">
 
           <div class="form-group">
             <label class="form-label" for="city">Città</label>
