@@ -539,6 +539,33 @@
             </div>
         </div>
     </div>
+
+    <div class="card dashboard-map-card">
+        <div class="card-header">
+            <div class="card-title">
+                <div class="card-icon card-icon--sites" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
+                        <path d="M10 20v-5h4v5" stroke-linecap="round" />
+                    </svg>
+                </div>
+                <span>{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}</span>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if google_maps_api_key %}
+                <div id="cantieri-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
+            {% else %}
+                <div class="map-disabled-message">
+                    {% if lang == 'fr' %}
+                        Carte désactivée (GOOGLE_MAPS_API_KEY manquant)
+                    {% else %}
+                        Mappa disattivata (manca GOOGLE_MAPS_API_KEY)
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -549,5 +576,64 @@
         reportsByStatus: {{ chart_reports_by_status | tojson | safe }}
     };
 </script>
+{% if google_maps_api_key %}
+    <script>
+        const cantieriMapData = {{ cantieri_map_data | tojson | safe }};
+
+        function initMap() {
+            const mapElement = document.getElementById("cantieri-map");
+            if (!mapElement) {
+                return;
+            }
+
+            const map = new google.maps.Map(mapElement, {
+                mapTypeControl: false,
+                fullscreenControl: false
+            });
+            const bounds = new google.maps.LatLngBounds();
+            const infoWindow = new google.maps.InfoWindow();
+            const detailUrlTemplate = "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}";
+
+            cantieriMapData.forEach((site) => {
+                const position = { lat: site.lat, lng: site.lng };
+                const marker = new google.maps.Marker({
+                    position,
+                    map,
+                    title: site.nome
+                });
+                bounds.extend(position);
+
+                const detailUrl = detailUrlTemplate.replace("__SITE_ID__", site.id);
+                const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${site.lat},${site.lng}`;
+                const indirizzo = site.indirizzo
+                    ? `<div class="map-infowindow-address">${site.indirizzo}</div>`
+                    : "";
+                const content = `
+                    <div class="map-infowindow">
+                        <div class="map-infowindow-title">${site.nome}</div>
+                        ${indirizzo}
+                        <div class="map-infowindow-actions">
+                            <a href="${detailUrl}" class="btn btn-sm btn-secondary">Apri scheda</a>
+                            <a href="${directionsUrl}" class="btn btn-sm btn-primary" target="_blank" rel="noopener">Portami lì</a>
+                        </div>
+                    </div>
+                `;
+
+                marker.addListener("click", () => {
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+            });
+
+            if (cantieriMapData.length > 0) {
+                map.fitBounds(bounds);
+            } else {
+                map.setCenter({ lat: 46.2276, lng: 2.2137 });
+                map.setZoom(6);
+            }
+        }
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap"></script>
+{% endif %}
 <script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
 {% endblock %}

@@ -154,14 +154,14 @@ class Site(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
 
     name = Column(String(255), nullable=False)
-    code = Column(String(50), unique=True, index=True, nullable=True)
+code = Column(String(50), unique=True, index=True, nullable=True)
+address = Column(String(255), nullable=True)
+place_id = Column(String(255), nullable=True)
+city = Column(String(100), nullable=True)
+country = Column(String(100), nullable=True, default="France")
+lat = Column(Float, nullable=True)
+lng = Column(Float, nullable=True)
 
-    address = Column(String(255), nullable=True)
-    lat = Column(Float, nullable=True)
-    lng = Column(Float, nullable=True)
-    place_id = Column(String(255), nullable=True)
-    city = Column(String(100), nullable=True)
-    country = Column(String(100), nullable=True, default="France")
 
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)

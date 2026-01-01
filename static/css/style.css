@@ -1037,6 +1037,42 @@ body {
     margin-top: 1.5rem;
 }
 
+.dashboard-map-card {
+    margin-top: 1.5rem;
+}
+
+.cantieri-map {
+    width: 100%;
+    height: 420px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.map-disabled-message {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.map-infowindow-title {
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+.map-infowindow-address {
+    color: #475569;
+    font-size: 0.9rem;
+    margin-bottom: 0.6rem;
+}
+
+.map-infowindow-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 .dashboard-kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
