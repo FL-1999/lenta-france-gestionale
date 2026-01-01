@@ -1266,6 +1266,9 @@ def manager_cantiere_nuovo_post(
     name: str = Form(...),
     code: str = Form(...),
     address: str | None = Form(None),
+    lat: str | None = Form(None),
+    lng: str | None = Form(None),
+    place_id: str | None = Form(None),
     city: str | None = Form(None),
     country: str | None = Form(None),
     start_date: str | None = Form(None),
@@ -1297,8 +1300,18 @@ def manager_cantiere_nuovo_post(
         except ValueError:
             return None
 
+    def parse_coordinate(value: str | None) -> float | None:
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
     start_date_parsed = parse_date(start_date)
     end_date_parsed = parse_date(end_date)
+    lat_value = parse_coordinate(lat)
+    lng_value = parse_coordinate(lng)
 
     if status not in SiteStatusEnum.__members__:
         raise HTTPException(status_code=400, detail="Stato non valido")
@@ -1322,6 +1335,9 @@ def manager_cantiere_nuovo_post(
             name=name,
             code=code,
             address=address,
+            lat=lat_value,
+            lng=lng_value,
+            place_id=place_id or None,
             city=city,
             country=country,
             start_date=start_date_parsed,
@@ -1398,6 +1414,9 @@ def manager_cantiere_modifica_post(
     name: str = Form(...),
     code: str = Form(...),
     address: str | None = Form(None),
+    lat: str | None = Form(None),
+    lng: str | None = Form(None),
+    place_id: str | None = Form(None),
     city: str | None = Form(None),
     country: str | None = Form(None),
     start_date: str | None = Form(None),
@@ -1429,8 +1448,18 @@ def manager_cantiere_modifica_post(
         except ValueError:
             return None
 
+    def parse_coordinate(value: str | None) -> float | None:
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
     start_date_parsed = parse_date(start_date)
     end_date_parsed = parse_date(end_date)
+    lat_value = parse_coordinate(lat)
+    lng_value = parse_coordinate(lng)
 
     if status not in SiteStatusEnum.__members__:
         raise HTTPException(status_code=400, detail="Stato non valido")
@@ -1457,6 +1486,9 @@ def manager_cantiere_modifica_post(
         site.name = name
         site.code = code
         site.address = address
+        site.lat = lat_value
+        site.lng = lng_value
+        site.place_id = place_id or None
         site.city = city
         site.country = country
         site.start_date = start_date_parsed

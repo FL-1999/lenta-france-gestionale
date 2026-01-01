@@ -157,6 +157,9 @@ class Site(Base, TimestampMixin):
     code = Column(String(50), unique=True, index=True, nullable=True)
 
     address = Column(String(255), nullable=True)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    place_id = Column(String(255), nullable=True)
     city = Column(String(100), nullable=True)
     country = Column(String(100), nullable=True, default="France")
 
