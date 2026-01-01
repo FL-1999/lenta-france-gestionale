@@ -1900,7 +1900,7 @@ def manager_magazzino_create(
     db.commit()
 
     return RedirectResponse(
-        url=request.url_for("manager_magazzino_list"),
+        url=f"{request.url_for('manager_magazzino_list')}?ok=duplicato",
         status_code=303,
     )
 
@@ -2211,6 +2211,7 @@ def manager_magazzino_duplicate_create(
         quantita_disponibile=quantita_value,
         soglia_minima=item.soglia_minima,
         attivo=item.attivo,
+        preferito=False,
     )
     db.add(nuovo_item)
     db.flush()
@@ -2262,7 +2263,7 @@ def manager_magazzino_duplicate_create(
 
 
 @router.post(
-    "/manager/magazzino/{item_id}/preferito",
+    "/manager/magazzino/items/{item_id}/preferito-toggle",
     response_class=HTMLResponse,
     name="manager_magazzino_preferito_toggle",
 )
@@ -2377,7 +2378,7 @@ def manager_magazzino_scarico(
 
 
 @router.post(
-    "/manager/magazzino/items/{item_id}/carico",
+    "/manager/magazzino/items/{item_id}/carico-rapido",
     response_class=HTMLResponse,
     name="manager_magazzino_carico_rapido",
 )
