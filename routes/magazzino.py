@@ -911,7 +911,7 @@ def manager_magazzino_sotto_soglia(
         if item.soglia_minima is None or item.quantita_disponibile is None:
             da_ordinare = None
         else:
-            da_ordinare = max(item.soglia_minima - item.quantita_disponibile, 0)
+            da_ordinare = max(item.soglia_minima - item.quantita_disponibile, 1)
         items_with_order.append(
             SimpleNamespace(
                 item=item,
@@ -937,6 +937,65 @@ def manager_magazzino_sotto_soglia(
         },
         db,
         current_user,
+    )
+
+
+@router.post(
+    "/manager/magazzino/sotto-soglia/crea-richiesta",
+    response_class=HTMLResponse,
+    name="manager_magazzino_sotto_soglia_crea_richiesta",
+)
+def manager_magazzino_sotto_soglia_crea_richiesta(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+
+    items = (
+        db.query(MagazzinoItem)
+        .filter(
+            MagazzinoItem.attivo.is_(True),
+            MagazzinoItem.soglia_minima.isnot(None),
+            MagazzinoItem.quantita_disponibile <= MagazzinoItem.soglia_minima,
+        )
+        .order_by(MagazzinoItem.nome.asc())
+        .all()
+    )
+    if not items:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_sotto_soglia"),
+            status_code=303,
+        )
+
+    richiesta = MagazzinoRichiesta(
+        richiesto_da_user_id=current_user.id,
+        stato=MagazzinoRichiestaStatusEnum.in_attesa,
+        note="Auto-generata da sotto soglia",
+    )
+    db.add(richiesta)
+    db.flush()
+
+    for item in items:
+        if item.soglia_minima is None or item.quantita_disponibile is None:
+            continue
+        quantita_richiesta = max(item.soglia_minima - item.quantita_disponibile, 1)
+        db.add(
+            MagazzinoRichiestaRiga(
+                richiesta_id=richiesta.id,
+                item_id=item.id,
+                quantita_richiesta=quantita_richiesta,
+            )
+        )
+
+    db.commit()
+
+    return RedirectResponse(
+        url=(
+            f"{request.url_for('manager_magazzino_richiesta_detail', richiesta_id=richiesta.id)}"
+            "?ok=creata"
+        ),
+        status_code=303,
     )
 
 
