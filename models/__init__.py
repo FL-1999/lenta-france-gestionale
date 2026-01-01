@@ -148,27 +148,23 @@ class AuditLog(Base):
 # MODELLO CANTIERE (SITE)
 # ============================================================
 
-class Site(Base, TimestampMixin):
+class Site(Base):
     __tablename__ = "sites"
 
     id = Column(Integer, primary_key=True, index=True)
-
     name = Column(String(255), nullable=False)
-code = Column(String(50), unique=True, index=True, nullable=True)
-address = Column(String(255), nullable=True)
-place_id = Column(String(255), nullable=True)
-city = Column(String(100), nullable=True)
-country = Column(String(100), nullable=True, default="France")
-lat = Column(Float, nullable=True)
-lng = Column(Float, nullable=True)
-
-
+    code = Column(String(50), unique=True, index=True, nullable=True)
+    address = Column(String(255), nullable=True)
+    place_id = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True, default="France")
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
-
     status = Column(Enum(SiteStatusEnum), nullable=False, default=SiteStatusEnum.aperto)
-
     is_active = Column(Boolean, default=True, nullable=False)
+
     caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     caposquadra = relationship("User", back_populates="assigned_sites")
 
@@ -179,6 +175,7 @@ lng = Column(Float, nullable=True)
 
     def __repr__(self) -> str:
         return f"<Site id={self.id} code={self.code} name={self.name}>"
+
 
 
 # ============================================================
@@ -474,3 +471,4 @@ class Personale(SQLModel, table=True):
 
 # Import dei modelli specifici
 from .veicoli import Veicolo
+
