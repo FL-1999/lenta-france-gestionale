@@ -4,7 +4,7 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import User, RoleEnum
+from models import Site, User, RoleEnum
 from auth import SECRET_KEY, ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -51,3 +51,22 @@ def require_caposquadra_or_above(current_user: User = Depends(get_current_user))
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
         raise HTTPException(status_code=403, detail="Ruolo non autorizzato")
     return current_user
+
+
+def scope_sites_query(query, current_user: User):
+    if current_user.role == RoleEnum.caposquadra:
+        return query.filter(Site.caposquadra_id == current_user.id)
+    return query
+
+
+def get_site_for_user(db: Session, site_id: int, current_user: User) -> Site:
+    query = db.query(Site).filter(Site.id == site_id)
+    query = scope_sites_query(query, current_user)
+    site = query.first()
+    if site:
+        return site
+    if current_user.role == RoleEnum.caposquadra:
+        exists = db.query(Site.id).filter(Site.id == site_id).first()
+        if exists:
+            raise HTTPException(status_code=403, detail="Cantiere non assegnato")
+    raise HTTPException(status_code=404, detail="Cantiere non trovato")
