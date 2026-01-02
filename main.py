@@ -1259,6 +1259,38 @@ def manager_cantieri(
     )
 
 
+@app.get("/manager/sites/{site_id}", response_class=HTMLResponse, name="manager_site_detail")
+def manager_site_detail(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = (
+            db.query(Site)
+            .options(joinedload(Site.caposquadra))
+            .filter(Site.id == site_id)
+            .first()
+        )
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/site_detail.html",
+        {
+            "request": request,
+            "user": current_user,
+            "site": site,
+        },
+    )
+
+
 @app.get("/manager/cantieri/nuovo", response_class=HTMLResponse)
 def manager_cantiere_nuovo_get(
     request: Request,
@@ -1585,6 +1617,27 @@ def capo_dashboard(
             .scalar()
             or 0
         )
+
+        assigned_sites_with_coords = (
+            db.query(Site)
+            .filter(Site.caposquadra_id == current_user.id)
+            .filter(Site.is_active.is_(True))
+            .filter(Site.lat.isnot(None), Site.lng.isnot(None))
+            .order_by(Site.name)
+            .all()
+        )
+        sites_map_data = []
+        for site in assigned_sites_with_coords:
+            address_parts = [part for part in [site.address, site.city, site.country] if part]
+            sites_map_data.append(
+                {
+                    "id": site.id,
+                    "nome": site.name,
+                    "lat": site.lat,
+                    "lng": site.lng,
+                    "indirizzo": ", ".join(address_parts),
+                }
+            )
     finally:
         db.close()
 
@@ -1598,6 +1651,37 @@ def capo_dashboard(
             "kpi_hours_this_week": kpi_hours_this_week,
             "kpi_assigned_sites": kpi_assigned_sites,
             "kpi_open_reports": kpi_open_reports,
+            "cantieri_map_data": jsonable_encoder(sites_map_data),
+            "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
+        },
+    )
+
+
+@app.get("/capo/sites/{site_id}", response_class=HTMLResponse, name="capo_site_detail")
+def capo_site_detail(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        if site.caposquadra_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "capo/site_detail.html",
+        {
+            "request": request,
+            "user": current_user,
+            "site": site,
         },
     )
 

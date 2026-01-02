@@ -599,139 +599,24 @@
     };
 </script>
 {% if google_maps_api_key %}
+    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
     <script>
-        const cantieriMapData = {{ cantieri_map_data | tojson | safe }};
 
-        function initMap() {
-            const mapElement = document.getElementById("manager-map");
-            if (!mapElement) {
-                return;
-            }
 
-            const map = new google.maps.Map(mapElement, {
-                mapTypeControl: false,
-                fullscreenControl: false
-            });
-            const infoWindow = new google.maps.InfoWindow();
-            const detailUrlTemplate = "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}";
-            const markers = [];
+<script>
+  window.cantieriMapConfig = {
+    elementId: "cantieri-map",
+    sites: {{ cantieri_map_data | tojson | safe }},
+    detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
+    coloredMarkers: true,
+    clustering: true,
+    filters: true
+  };
+</script>
 
-            const statusSelect = document.getElementById("map-filter-status");
-            const caposquadraSelect = document.getElementById("map-filter-caposquadra");
-            const activeSelect = document.getElementById("map-filter-active");
-
-            const uniqueStatuses = new Map();
-            const uniqueCaposquadra = new Map();
-
-            cantieriMapData.forEach((site) => {
-                if (site.status && !uniqueStatuses.has(site.status)) {
-                    uniqueStatuses.set(site.status, site.status);
-                }
-                if (site.caposquadra_id && !uniqueCaposquadra.has(site.caposquadra_id)) {
-                    uniqueCaposquadra.set(site.caposquadra_id, site.caposquadra_name || `#${site.caposquadra_id}`);
-                }
-            });
-
-            const appendOptions = (select, options) => {
-                if (!select) {
-                    return;
-                }
-                options.forEach(([value, label]) => {
-                    const option = document.createElement("option");
-                    option.value = value;
-                    option.textContent = label;
-                    select.append(option);
-                });
-            };
-
-            appendOptions(
-                statusSelect,
-                Array.from(uniqueStatuses.entries()).sort((a, b) => a[1].localeCompare(b[1]))
-            );
-            appendOptions(
-                caposquadraSelect,
-                Array.from(uniqueCaposquadra.entries()).sort((a, b) => a[1].localeCompare(b[1]))
-            );
-
-            cantieriMapData.forEach((site) => {
-                const position = { lat: site.lat, lng: site.lng };
-                const marker = new google.maps.Marker({
-                    position,
-                    map,
-                    title: site.name
-                });
-                markers.push({ marker, site });
-
-                const detailUrl = detailUrlTemplate.replace("__SITE_ID__", site.id);
-                const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${site.lat},${site.lng}`;
-                const indirizzo = site.address
-                    ? `<div class="map-infowindow-address">${site.address}</div>`
-                    : "";
-                const content = `
-                    <div class="map-infowindow">
-                        <div class="map-infowindow-title">${site.name}</div>
-                        ${indirizzo}
-                        <div class="map-infowindow-actions">
-                            <a href="${detailUrl}" class="btn btn-sm btn-secondary">Apri scheda</a>
-                            <a href="${directionsUrl}" class="btn btn-sm btn-primary" target="_blank" rel="noopener">Portami lì</a>
-                        </div>
-                    </div>
-                `;
-
-                marker.addListener("click", () => {
-                    infoWindow.setContent(content);
-                    infoWindow.open(map, marker);
-                });
-            });
-
-            const updateMapBounds = () => {
-                const bounds = new google.maps.LatLngBounds();
-                let visibleCount = 0;
-
-                markers.forEach(({ marker }) => {
-                    if (marker.getVisible()) {
-                        bounds.extend(marker.getPosition());
-                        visibleCount += 1;
-                    }
-                });
-
-                if (visibleCount > 0) {
-                    map.fitBounds(bounds);
-                    if (visibleCount === 1) {
-                        map.setZoom(12);
-                    }
-                } else {
-                    map.setCenter({ lat: 46.2276, lng: 2.2137 });
-                    map.setZoom(6);
-                }
-            };
-
-            const applyFilters = () => {
-                const selectedStatus = statusSelect?.value || "";
-                const selectedCapo = caposquadraSelect?.value || "";
-                const selectedActive = activeSelect?.value || "";
-
-                markers.forEach(({ marker, site }) => {
-                    const matchesStatus = !selectedStatus || site.status === selectedStatus;
-                    const matchesCapo =
-                        !selectedCapo || String(site.caposquadra_id || "") === selectedCapo;
-                    const matchesActive =
-                        selectedActive === "" || String(Boolean(site.is_active)) === selectedActive;
-                    const isVisible = matchesStatus && matchesCapo && matchesActive;
-                    marker.setVisible(isVisible);
-                });
-
-                updateMapBounds();
-            };
-
-            [statusSelect, caposquadraSelect, activeSelect].forEach((select) => {
-                select?.addEventListener("change", applyFilters);
-            });
-
-            applyFilters();
-        }
     </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap"></script>
+    <script src="{{ url_for('static', path='/js/cantieri_map.js') }}"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initCantieriMap"></script>
 {% endif %}
 <script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
 {% endblock %}
