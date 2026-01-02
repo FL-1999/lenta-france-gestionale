@@ -18,25 +18,28 @@
 
   const isCoordinateSet = (value) => parseCoordinate(value) !== null;
 
+  const GUIDE_MESSAGE =
+    "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione.";
+
   const setVerificationStatus = (
     statusElement,
     alertElement,
     confirmWrapper,
     confirmCheckbox,
     isVerified,
-    alertMessage = ""
+    alertMessage = "",
+    showGuide = true
   ) => {
     if (statusElement) {
       statusElement.textContent = isVerified ? "Verificato ✅" : "Non verificato ⚠️";
+      statusElement.classList.toggle("badge-success", isVerified);
+      statusElement.classList.toggle("badge-danger", !isVerified);
     }
     if (alertElement) {
-      if (alertMessage) {
-        alertElement.textContent = alertMessage;
-        alertElement.style.display = "block";
-      } else {
-        alertElement.textContent = "";
-        alertElement.style.display = "none";
-      }
+      const message =
+        showGuide && !isVerified ? alertMessage || GUIDE_MESSAGE : alertMessage || "";
+      alertElement.textContent = message;
+      alertElement.style.display = message ? "block" : "none";
     }
     if (confirmWrapper && confirmCheckbox) {
       if (isVerified) {
@@ -118,7 +121,16 @@
       visible: hasCoordinates,
     });
     mapElement.dataset.mapInitialized = "true";
-    setVerificationStatus(statusElement, alertElement, confirmWrapper, confirmCheckbox, hasCoordinates);
+setVerificationStatus(
+  statusElement,
+  alertElement,
+  confirmWrapper,
+  confirmCheckbox,
+  hasCoordinates,
+  "",
+  addressInput.value.trim() !== ""
+);
+
 
     const setPosition = (lat, lng, shouldCenter = true) => {
       const position = { lat, lng };
@@ -186,7 +198,15 @@
       latInput.value = "";
       lngInput.value = "";
       hideMarker(marker);
-      setVerificationStatus(statusElement, alertElement, confirmWrapper, confirmCheckbox, false);
+      setVerificationStatus(
+        statusElement,
+        alertElement,
+        confirmWrapper,
+        confirmCheckbox,
+        false,
+        "",
+        addressInput.value.trim() !== ""
+      );
       if (confirmWrapper) {
         confirmWrapper.style.display = isEditMode && addressInput.value.trim() !== "" ? "flex" : "none";
       }
@@ -239,29 +259,31 @@
       });
     }
 
-    // --- Validazione submit: coordinate mancanti ---
+// --- Validazione submit: indirizzo senza coordinate ---
+
     if (form) {
       form.addEventListener("submit", (event) => {
         const hasLat = isCoordinateSet(latInput.value);
         const hasLng = isCoordinateSet(lngInput.value);
-        const hasCoordinates = hasLat && hasLng;
-        const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
+const hasAddress = addressInput.value.trim() !== "";
+const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
 
-        if (!hasCoordinates) {
+if (hasAddress && (!hasLat || !hasLng)) {
+
           if (isEditMode && confirmAllowed) {
             return;
           }
           event.preventDefault();
-          const message = isEditMode
-            ? "Coordinate mancanti: se vuoi salvare comunque, conferma la casella."
-            : "Per creare il cantiere devi impostare la posizione sulla mappa o selezionare un indirizzo.";
+
           setVerificationStatus(
             statusElement,
             alertElement,
             confirmWrapper,
             confirmCheckbox,
             false,
-            message
+"",
+true
+
           );
           if (confirmWrapper && isEditMode) {
             confirmWrapper.style.display = "flex";
