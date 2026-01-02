@@ -1070,6 +1070,10 @@ body {
     overflow: hidden;
 }
 
+.pac-container {
+    z-index: 99999 !important;
+}
+
 .map-disabled-message {
     padding: 1rem;
     border-radius: var(--radius-md);

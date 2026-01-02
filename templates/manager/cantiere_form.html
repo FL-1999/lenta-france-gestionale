@@ -48,18 +48,16 @@
             {% if not google_maps_api_key %}
               <small class="form-text text-muted">Autocomplete disattivato (manca API key)</small>
             {% endif %}
-            <div id="cantiere-pick-map" style="height: 320px;"></div>
-            {% if not google_maps_api_key %}
-              <small class="form-text text-muted">Mappa non disponibile (manca API key)</small>
-            {% endif %}
           </div>
-          {% if google_maps_api_key %}
           <div class="form-group" style="grid-column: 1 / -1;">
             <label class="form-label">Posizione su mappa</label>
-            <div id="cantiere-map" class="cantieri-map" aria-label="Mappa posizione cantiere"></div>
-            <small class="form-text text-muted">Clicca sulla mappa o trascina il marker per impostare l’indirizzo.</small>
+            <div id="cantiere-pick-map" style="height: 320px;" aria-label="Mappa posizione cantiere"></div>
+            {% if not google_maps_api_key %}
+              <small class="form-text text-muted">Mappa non disponibile (manca API key)</small>
+            {% else %}
+              <small class="form-text text-muted">Clicca sulla mappa o trascina il marker per impostare la posizione.</small>
+            {% endif %}
           </div>
-          {% endif %}
           <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
           <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
           <input id="cantiere_lng" name="lng" type="hidden" value="{{ site.lng if site and site.lng is not none else '' }}">
@@ -184,177 +182,9 @@
   </div>
 {% endif %}
 
+<script src="{{ url_for('static', path='/js/cantiere-form-map.js') }}"></script>
 {% if google_maps_api_key %}
-  <script>
-    function initCantiereAutocomplete() {
-      const addressInput = document.getElementById("cantiere_address");
-      const placeIdInput = document.getElementById("cantiere_place_id");
-      const latInput = document.getElementById("cantiere_lat");
-      const lngInput = document.getElementById("cantiere_lng");
-      const mapElement = document.getElementById("cantiere-pick-map");
-
-      if (!addressInput || !placeIdInput || !latInput || !lngInput || !mapElement) {
-        return;
-      }
-
-      let lastSelectedAddress = addressInput.value || "";
-      let ignoreInputEvent = false;
-      const mapElement = document.getElementById("cantiere-map");
-      const geocoder = google.maps.Geocoder ? new google.maps.Geocoder() : null;
-      let map = null;
-      let marker = null;
-
-      const updateAddressFromLatLng = (lat, lng) => {
-        if (!geocoder || !geocoder.geocode) {
-          return;
-        }
-
-        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-          if (status !== "OK" || !results || !results[0] || !results[0].formatted_address) {
-            return;
-          }
-
-          ignoreInputEvent = true;
-          addressInput.value = results[0].formatted_address;
-          lastSelectedAddress = results[0].formatted_address;
-          placeIdInput.value = "";
-          window.setTimeout(() => {
-            ignoreInputEvent = false;
-          }, 0);
-        });
-      };
-
-      const updateLatLng = (lat, lng, shouldGeocode = false) => {
-        latInput.value = lat;
-        lngInput.value = lng;
-        if (shouldGeocode) {
-          updateAddressFromLatLng(lat, lng);
-        }
-      };
-
-      const latValue = parseFloat(latInput.value);
-      const lngValue = parseFloat(lngInput.value);
-      const hasCoordinates = !Number.isNaN(latValue) && !Number.isNaN(lngValue);
-      const defaultCenter = hasCoordinates
-        ? { lat: latValue, lng: lngValue }
-        : { lat: 46.2276, lng: 2.2137 };
-
-      const map = new google.maps.Map(mapElement, {
-        center: defaultCenter,
-        zoom: hasCoordinates ? 14 : 6,
-      });
-
-      const marker = new google.maps.Marker({
-        map,
-        position: hasCoordinates ? defaultCenter : null,
-        draggable: true,
-        visible: hasCoordinates,
-      });
-
-      const updatePosition = (latLng) => {
-        if (!latLng) {
-          return;
-        }
-        marker.setPosition(latLng);
-        marker.setVisible(true);
-        latInput.value = latLng.lat();
-        lngInput.value = latLng.lng();
-      };
-
-      map.addListener("click", (event) => {
-        updatePosition(event.latLng);
-      });
-
-      marker.addListener("dragend", (event) => {
-        updatePosition(event.latLng);
-      });
-
-      const autocomplete = new google.maps.places.Autocomplete(addressInput, {
-        fields: ["place_id", "geometry", "formatted_address", "address_components"],
-      });
-
-      autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        if (!place || !place.geometry || !place.geometry.location) {
-          return;
-        }
-
-        ignoreInputEvent = true;
-        const formattedAddress = place.formatted_address || addressInput.value;
-        addressInput.value = formattedAddress;
-        lastSelectedAddress = formattedAddress;
-        placeIdInput.value = place.place_id || "";
-const loc = place.geometry.location; // Google LatLng
-
-updatePosition(loc);            // deve aggiornare lat/lng + marker + map
-map.setCenter(loc);
-map.setZoom(15);
-
-        }
-        window.setTimeout(() => {
-          ignoreInputEvent = false;
-        }, 0);
-      });
-
-      addressInput.addEventListener("input", () => {
-        if (ignoreInputEvent) {
-          return;
-        }
-        if (addressInput.value !== lastSelectedAddress) {
-          lastSelectedAddress = addressInput.value;
-          placeIdInput.value = "";
-          latInput.value = "";
-          lngInput.value = "";
-          marker.setVisible(false);
-        }
-      });
-
-      if (mapElement) {
-        const currentLat = parseFloat(latInput.value);
-        const currentLng = parseFloat(lngInput.value);
-        const hasCoords = Number.isFinite(currentLat) && Number.isFinite(currentLng);
-        const defaultCenter = { lat: 46.2276, lng: 2.2137 };
-        const initialCenter = hasCoords ? { lat: currentLat, lng: currentLng } : defaultCenter;
-
-        map = new google.maps.Map(mapElement, {
-          center: initialCenter,
-          zoom: hasCoords ? 15 : 6,
-          mapTypeControl: false,
-          streetViewControl: false,
-        });
-
-        marker = new google.maps.Marker({
-          map,
-          position: initialCenter,
-          draggable: true,
-          visible: hasCoords,
-        });
-
-        map.addListener("click", (event) => {
-          if (!event || !event.latLng) {
-            return;
-          }
-          const lat = event.latLng.lat();
-          const lng = event.latLng.lng();
-          marker.setPosition({ lat, lng });
-          marker.setVisible(true);
-          placeIdInput.value = "";
-          updateLatLng(lat, lng, true);
-        });
-
-        marker.addListener("dragend", (event) => {
-          if (!event || !event.latLng) {
-            return;
-          }
-          const lat = event.latLng.lat();
-          const lng = event.latLng.lng();
-          placeIdInput.value = "";
-          updateLatLng(lat, lng, true);
-        });
-      }
-    }
-  </script>
-  <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initCantiereAutocomplete"
+  <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initCantiereFormMap"
           async defer></script>
 {% endif %}
 {% endblock %}
