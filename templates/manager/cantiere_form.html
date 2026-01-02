@@ -49,6 +49,13 @@
               <small class="form-text text-muted">Autocomplete disattivato (manca API key)</small>
             {% endif %}
           </div>
+          {% if google_maps_api_key %}
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">Posizione su mappa</label>
+            <div id="cantiere-map" class="cantieri-map" aria-label="Mappa posizione cantiere"></div>
+            <small class="form-text text-muted">Clicca sulla mappa o trascina il marker per impostare l’indirizzo.</small>
+          </div>
+          {% endif %}
           <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
           <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
           <input id="cantiere_lng" name="lng" type="hidden" value="{{ site.lng if site and site.lng is not none else '' }}">
@@ -187,6 +194,38 @@
 
       let lastSelectedAddress = addressInput.value || "";
       let ignoreInputEvent = false;
+      const mapElement = document.getElementById("cantiere-map");
+      const geocoder = google.maps.Geocoder ? new google.maps.Geocoder() : null;
+      let map = null;
+      let marker = null;
+
+      const updateAddressFromLatLng = (lat, lng) => {
+        if (!geocoder || !geocoder.geocode) {
+          return;
+        }
+
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status !== "OK" || !results || !results[0] || !results[0].formatted_address) {
+            return;
+          }
+
+          ignoreInputEvent = true;
+          addressInput.value = results[0].formatted_address;
+          lastSelectedAddress = results[0].formatted_address;
+          placeIdInput.value = "";
+          window.setTimeout(() => {
+            ignoreInputEvent = false;
+          }, 0);
+        });
+      };
+
+      const updateLatLng = (lat, lng, shouldGeocode = false) => {
+        latInput.value = lat;
+        lngInput.value = lng;
+        if (shouldGeocode) {
+          updateAddressFromLatLng(lat, lng);
+        }
+      };
 
       const autocomplete = new google.maps.places.Autocomplete(addressInput, {
         fields: ["place_id", "geometry", "formatted_address", "address_components"],
@@ -203,8 +242,16 @@
         addressInput.value = formattedAddress;
         lastSelectedAddress = formattedAddress;
         placeIdInput.value = place.place_id || "";
-        latInput.value = place.geometry.location.lat();
-        lngInput.value = place.geometry.location.lng();
+        const selectedLat = place.geometry.location.lat();
+        const selectedLng = place.geometry.location.lng();
+        updateLatLng(selectedLat, selectedLng);
+        if (map && marker) {
+          const position = { lat: selectedLat, lng: selectedLng };
+          marker.setPosition(position);
+          marker.setVisible(true);
+          map.setCenter(position);
+          map.setZoom(15);
+        }
         window.setTimeout(() => {
           ignoreInputEvent = false;
         }, 0);
@@ -221,6 +268,50 @@
           lngInput.value = "";
         }
       });
+
+      if (mapElement) {
+        const currentLat = parseFloat(latInput.value);
+        const currentLng = parseFloat(lngInput.value);
+        const hasCoords = Number.isFinite(currentLat) && Number.isFinite(currentLng);
+        const defaultCenter = { lat: 46.2276, lng: 2.2137 };
+        const initialCenter = hasCoords ? { lat: currentLat, lng: currentLng } : defaultCenter;
+
+        map = new google.maps.Map(mapElement, {
+          center: initialCenter,
+          zoom: hasCoords ? 15 : 6,
+          mapTypeControl: false,
+          streetViewControl: false,
+        });
+
+        marker = new google.maps.Marker({
+          map,
+          position: initialCenter,
+          draggable: true,
+          visible: hasCoords,
+        });
+
+        map.addListener("click", (event) => {
+          if (!event || !event.latLng) {
+            return;
+          }
+          const lat = event.latLng.lat();
+          const lng = event.latLng.lng();
+          marker.setPosition({ lat, lng });
+          marker.setVisible(true);
+          placeIdInput.value = "";
+          updateLatLng(lat, lng, true);
+        });
+
+        marker.addListener("dragend", (event) => {
+          if (!event || !event.latLng) {
+            return;
+          }
+          const lat = event.latLng.lat();
+          const lng = event.latLng.lng();
+          placeIdInput.value = "";
+          updateLatLng(lat, lng, true);
+        });
+      }
     }
   </script>
   <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initCantiereAutocomplete"
