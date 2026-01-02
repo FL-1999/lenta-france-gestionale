@@ -582,9 +582,10 @@
   window.cantieriMapConfig = {
     elementId: "cantieri-map",
     sites: {{ cantieri_map_data | tojson | safe }},
-    detailUrlTemplate: "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}"
+    detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}"
   };
 </script>
+
 
     </script>
     <script src="{{ url_for('static', path='/js/cantieri_map.js') }}"></script>
