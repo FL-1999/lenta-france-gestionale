@@ -592,7 +592,7 @@
             });
             const bounds = new google.maps.LatLngBounds();
             const infoWindow = new google.maps.InfoWindow();
-            const detailUrlTemplate = "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}";
+            const detailUrlTemplate = "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}";
 
             cantieriMapData.forEach((site) => {
                 const position = { lat: site.lat, lng: site.lng };
@@ -620,6 +620,10 @@
                 `;
 
                 marker.addListener("click", () => {
+                    window.location.href = detailUrl;
+                });
+
+                marker.addListener("mouseover", () => {
                     infoWindow.setContent(content);
                     infoWindow.open(map, marker);
                 });
