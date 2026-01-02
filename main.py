@@ -448,20 +448,7 @@ def manager_dashboard(
             .order_by(Site.name)
             .all()
         )
-        sites_map_data = []
-        for site in sites_with_coords:
-            address_parts = [part for part in [site.address, site.city, site.country] if part]
-            status_value = site.status.value if site.status else None
-            sites_map_data.append(
-                {
-                    "id": site.id,
-                    "name": site.name,
-                    "lat": site.lat,
-                    "lng": site.lng,
-                    "address": ", ".join(address_parts),
-                    "status": status_value,
-                }
-            )
+        sites_map_data = _build_sites_map_data(sites_with_coords)
 
         reports_list = (
             db.query(Report)
@@ -527,6 +514,24 @@ def manager_dashboard(
     finally:
         db.close()
     return response
+
+
+def _build_sites_map_data(sites: list[Site]) -> list[dict[str, object]]:
+    sites_map_data = []
+    for site in sites:
+        address_parts = [part for part in [site.address, site.city, site.country] if part]
+        status_value = site.status.value if site.status else None
+        sites_map_data.append(
+            {
+                "id": site.id,
+                "name": site.name,
+                "lat": site.lat,
+                "lng": site.lng,
+                "address": ", ".join(address_parts),
+                "status": status_value,
+            }
+        )
+    return sites_map_data
 
 
 @app.get(
@@ -1548,6 +1553,19 @@ def capo_dashboard(
 
     db = SessionLocal()
     try:
+        assigned_sites_with_coords = (
+            db.query(Site)
+            .filter(
+                Site.caposquadra_id == current_user.id,
+                Site.is_active.is_(True),
+                Site.lat.isnot(None),
+                Site.lng.isnot(None),
+            )
+            .order_by(Site.name)
+            .all()
+        )
+        assigned_sites_map_data = _build_sites_map_data(assigned_sites_with_coords)
+
         kpi_reports_today = (
             db.query(func.count(Report.id))
             .filter(Report.created_by_id == current_user.id)
@@ -1592,6 +1610,8 @@ def capo_dashboard(
             "kpi_hours_this_week": kpi_hours_this_week,
             "kpi_assigned_sites": kpi_assigned_sites,
             "kpi_open_reports": kpi_open_reports,
+            "cantieri_map_data": jsonable_encoder(assigned_sites_map_data),
+            "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
         },
     )
 
