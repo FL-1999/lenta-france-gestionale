@@ -12,15 +12,14 @@ window.initMap = function initMap() {
     const sites = Array.isArray(config.sites) ? config.sites : [];
     const map = new google.maps.Map(mapElement, {
         mapTypeControl: false,
-        fullscreenControl: false,
-        ...(config.mapOptions || {})
+        fullscreenControl: false
     });
     const bounds = new google.maps.LatLngBounds();
     const infoWindow = new google.maps.InfoWindow();
     const markers = [];
     let hasMarkers = false;
-    const defaultCenter = config.emptyMapCenter || { lat: 46.2276, lng: 2.2137 };
-    const defaultZoom = config.emptyMapZoom || 6;
+    const defaultCenter = { lat: 46.2276, lng: 2.2137 };
+    const defaultZoom = 6;
 
     const statusColors = {
         aperto: "green",
