@@ -440,20 +440,26 @@ def manager_dashboard(
     try:
         sites_with_coords = (
             db.query(Site)
-            .filter(Site.lat.isnot(None), Site.lng.isnot(None))
+            .filter(
+                Site.lat.isnot(None),
+                Site.lng.isnot(None),
+                Site.is_active.is_(True),
+            )
             .order_by(Site.name)
             .all()
         )
         sites_map_data = []
         for site in sites_with_coords:
             address_parts = [part for part in [site.address, site.city, site.country] if part]
+            status_value = site.status.value if site.status else None
             sites_map_data.append(
                 {
                     "id": site.id,
-                    "nome": site.name,
+                    "name": site.name,
                     "lat": site.lat,
                     "lng": site.lng,
-                    "indirizzo": ", ".join(address_parts),
+                    "address": ", ".join(address_parts),
+                    "status": status_value,
                 }
             )
 

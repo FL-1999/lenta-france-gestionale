@@ -554,7 +554,7 @@
         </div>
         <div class="card-body">
             {% if google_maps_api_key %}
-                <div id="cantieri-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
+                <div id="manager-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
             {% else %}
                 <div class="map-disabled-message">
                     {% if lang == 'fr' %}
@@ -578,11 +578,14 @@
 </script>
 {% if google_maps_api_key %}
     <script>
-        window.cantieriMapConfig = {
-            elementId: "cantieri-map",
-            sites: {{ cantieri_map_data | tojson | safe }},
-            detailUrlTemplate: "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}"
-        };
+<script>
+  window.cantieriMapConfig = {
+    elementId: "cantieri-map",
+    sites: {{ cantieri_map_data | tojson | safe }},
+    detailUrlTemplate: "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}"
+  };
+</script>
+
     </script>
     <script src="{{ url_for('static', path='/js/cantieri_map.js') }}"></script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initCantieriMap"></script>
