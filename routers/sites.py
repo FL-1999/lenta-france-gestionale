@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import Site
 from schemas import SiteCreate, SiteRead
-from deps import require_manager_or_admin, require_caposquadra_or_above
+from deps import (
+    require_manager_or_admin,
+    require_caposquadra_or_above,
+    scope_sites_query,
+    get_site_for_user,
+)
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
@@ -33,7 +38,9 @@ def list_sites(
     db: Session = Depends(get_db),
     user=Depends(require_caposquadra_or_above),
 ):
-    return db.query(Site).all()
+    query = db.query(Site)
+    query = scope_sites_query(query, user)
+    return query.all()
 
 
 @router.get("/{site_id}", response_model=SiteRead)
@@ -42,7 +49,4 @@ def get_site(
     db: Session = Depends(get_db),
     user=Depends(require_caposquadra_or_above),
 ):
-    site = db.query(Site).filter(Site.id == site_id).first()
-    if not site:
-        raise HTTPException(status_code=404, detail="Cantiere non trovato")
-    return site
+    return get_site_for_user(db, site_id, user)
