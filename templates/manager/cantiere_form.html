@@ -48,6 +48,10 @@
             {% if not google_maps_api_key %}
               <small class="form-text text-muted">Autocomplete disattivato (manca API key)</small>
             {% endif %}
+            <div id="cantiere-pick-map" style="height: 320px;"></div>
+            {% if not google_maps_api_key %}
+              <small class="form-text text-muted">Mappa non disponibile (manca API key)</small>
+            {% endif %}
           </div>
           <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
           <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
@@ -180,13 +184,51 @@
       const placeIdInput = document.getElementById("cantiere_place_id");
       const latInput = document.getElementById("cantiere_lat");
       const lngInput = document.getElementById("cantiere_lng");
+      const mapElement = document.getElementById("cantiere-pick-map");
 
-      if (!addressInput || !placeIdInput || !latInput || !lngInput) {
+      if (!addressInput || !placeIdInput || !latInput || !lngInput || !mapElement) {
         return;
       }
 
       let lastSelectedAddress = addressInput.value || "";
       let ignoreInputEvent = false;
+
+      const latValue = parseFloat(latInput.value);
+      const lngValue = parseFloat(lngInput.value);
+      const hasCoordinates = !Number.isNaN(latValue) && !Number.isNaN(lngValue);
+      const defaultCenter = hasCoordinates
+        ? { lat: latValue, lng: lngValue }
+        : { lat: 46.2276, lng: 2.2137 };
+
+      const map = new google.maps.Map(mapElement, {
+        center: defaultCenter,
+        zoom: hasCoordinates ? 14 : 6,
+      });
+
+      const marker = new google.maps.Marker({
+        map,
+        position: hasCoordinates ? defaultCenter : null,
+        draggable: true,
+        visible: hasCoordinates,
+      });
+
+      const updatePosition = (latLng) => {
+        if (!latLng) {
+          return;
+        }
+        marker.setPosition(latLng);
+        marker.setVisible(true);
+        latInput.value = latLng.lat();
+        lngInput.value = latLng.lng();
+      };
+
+      map.addListener("click", (event) => {
+        updatePosition(event.latLng);
+      });
+
+      marker.addListener("dragend", (event) => {
+        updatePosition(event.latLng);
+      });
 
       const autocomplete = new google.maps.places.Autocomplete(addressInput, {
         fields: ["place_id", "geometry", "formatted_address", "address_components"],
@@ -203,8 +245,11 @@
         addressInput.value = formattedAddress;
         lastSelectedAddress = formattedAddress;
         placeIdInput.value = place.place_id || "";
-        latInput.value = place.geometry.location.lat();
-        lngInput.value = place.geometry.location.lng();
+        updatePosition(place.geometry.location);
+        map.setCenter(place.geometry.location);
+        if (!hasCoordinates) {
+          map.setZoom(14);
+        }
         window.setTimeout(() => {
           ignoreInputEvent = false;
         }, 0);
@@ -219,6 +264,7 @@
           placeIdInput.value = "";
           latInput.value = "";
           lngInput.value = "";
+          marker.setVisible(false);
         }
       });
     }
