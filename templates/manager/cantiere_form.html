@@ -47,7 +47,24 @@
                    placeholder="Inizia a scrivere l’indirizzo…"
                    autocomplete="off"
                    value="{{ site.address if site else '' }}">
-            <small class="form-text text-muted">Scegli dai suggerimenti per avere indirizzo verificato.</small>
+<small class="form-text text-muted">
+  Scegli dai suggerimenti per avere indirizzo verificato.
+</small>
+
+<div class="form-text" style="margin-top: 0.35rem;">
+  <span id="cantiere-address-status"
+        class="badge address-status-badge {% if has_coordinates %}badge-success{% else %}badge-danger{% endif %}">
+    {% if has_coordinates %}Verificato ✅{% else %}Non verificato ⚠️{% endif %}
+  </span>
+</div>
+
+<div id="cantiere-address-alert"
+     class="alert alert-warning"
+     role="alert"
+     style="margin-top: 0.5rem; {% if has_address and not has_coordinates %}display:block;{% else %}display:none;{% endif %}">
+  Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione.
+</div>
+
           </div>
           {% if not google_maps_api_key %}
             <div class="form-group" style="grid-column: 1 / -1;">
@@ -62,19 +79,23 @@
             {% if google_maps_api_key %}
               <small class="form-text text-muted">Clicca sulla mappa o trascina il pin.</small>
             {% endif %}
+            <div id="cantiere-address-status" class="form-text text-muted" aria-live="polite"></div>
+            <div id="cantiere-address-alert" class="alert alert-warning" role="alert" style="display: none;"></div>
           </div>
-          <div id="cantiere-unverified-confirm-wrapper"
-               class="form-group form-group-inline"
-               style="grid-column: 1 / -1; {% if mode == 'edit' and has_address and not has_coordinates %}display:flex;{% else %}display:none;{% endif %}">
-            <input type="checkbox"
-                   id="cantiere-unverified-confirm"
-                   name="confirm_unverified"
-                   class="form-control"
-                   value="1">
-            <label class="form-label" for="cantiere-unverified-confirm">
-              Confermo di salvare senza coordinate.
-            </label>
-          </div>
+          {% if mode == "edit" %}
+            <div id="cantiere-unverified-confirm-wrapper"
+                 class="form-group form-group-inline"
+                 style="grid-column: 1 / -1; {% if has_address and not has_coordinates %}display:flex;{% else %}display:none;{% endif %}">
+              <input type="checkbox"
+                     id="cantiere-unverified-confirm"
+                     name="confirm_unverified"
+                     class="form-control"
+                     value="1">
+              <label class="form-label" for="cantiere-unverified-confirm">
+                Confermo di salvare senza coordinate.
+              </label>
+            </div>
+          {% endif %}
           <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
           <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
           <input id="cantiere_lng" name="lng" type="hidden" value="{{ site.lng if site and site.lng is not none else '' }}">

@@ -671,6 +671,20 @@ body {
     color: var(--color-badge-text);
 }
 
+.address-status-badge {
+    letter-spacing: 0.01em;
+}
+
+.address-status-badge.badge-success {
+    background: var(--color-badge-success-bg);
+    color: var(--color-badge-text);
+}
+
+.address-status-badge.badge-danger {
+    background: var(--color-badge-danger-bg);
+    color: var(--color-badge-text);
+}
+
 .card-icon,
 .page-icon {
     width: 32px;

@@ -18,25 +18,28 @@
 
   const isCoordinateSet = (value) => parseCoordinate(value) !== null;
 
+  const GUIDE_MESSAGE =
+    "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione.";
+
   const setVerificationStatus = (
     statusElement,
     alertElement,
     confirmWrapper,
     confirmCheckbox,
     isVerified,
-    alertMessage = ""
+    alertMessage = "",
+    showGuide = true
   ) => {
     if (statusElement) {
       statusElement.textContent = isVerified ? "Verificato ✅" : "Non verificato ⚠️";
+      statusElement.classList.toggle("badge-success", isVerified);
+      statusElement.classList.toggle("badge-danger", !isVerified);
     }
     if (alertElement) {
-      if (alertMessage) {
-        alertElement.textContent = alertMessage;
-        alertElement.style.display = "block";
-      } else {
-        alertElement.textContent = "";
-        alertElement.style.display = "none";
-      }
+      const message =
+        showGuide && !isVerified ? alertMessage || GUIDE_MESSAGE : alertMessage || "";
+      alertElement.textContent = message;
+      alertElement.style.display = message ? "block" : "none";
     }
     if (confirmWrapper && confirmCheckbox) {
       if (isVerified) {
@@ -73,14 +76,14 @@
     const latInput = document.getElementById("cantiere_lat");
     const lngInput = document.getElementById("cantiere_lng");
     const mapElement = document.getElementById("cantiere-pick-map");
-const geocodeButton = document.getElementById("btn-geocode-address");
+    const geocodeButton = document.getElementById("btn-geocode-address");
 
-const statusElement = document.getElementById("cantiere-address-status");
-const alertElement = document.getElementById("cantiere-address-alert");
-const confirmWrapper = document.getElementById("cantiere-unverified-confirm-wrapper");
-const confirmCheckbox = document.getElementById("cantiere-unverified-confirm");
-const form = addressInput ? addressInput.closest("form") : null;
-const isEditMode = form && form.dataset.mode === "edit";
+    const statusElement = document.getElementById("cantiere-address-status");
+    const alertElement = document.getElementById("cantiere-address-alert");
+    const confirmWrapper = document.getElementById("cantiere-unverified-confirm-wrapper");
+    const confirmCheckbox = document.getElementById("cantiere-unverified-confirm");
+    const form = addressInput ? addressInput.closest("form") : null;
+    const isEditMode = form && form.dataset.mode === "edit";
 
     if (!addressInput || !placeIdInput || !latInput || !lngInput || !mapElement) {
       return;
@@ -118,6 +121,16 @@ const isEditMode = form && form.dataset.mode === "edit";
       visible: hasCoordinates,
     });
     mapElement.dataset.mapInitialized = "true";
+setVerificationStatus(
+  statusElement,
+  alertElement,
+  confirmWrapper,
+  confirmCheckbox,
+  hasCoordinates,
+  "",
+  addressInput.value.trim() !== ""
+);
+
 
     const setPosition = (lat, lng, shouldCenter = true) => {
       const position = { lat, lng };
@@ -185,7 +198,15 @@ const isEditMode = form && form.dataset.mode === "edit";
       latInput.value = "";
       lngInput.value = "";
       hideMarker(marker);
-      setVerificationStatus(statusElement, alertElement, confirmWrapper, confirmCheckbox, false);
+      setVerificationStatus(
+        statusElement,
+        alertElement,
+        confirmWrapper,
+        confirmCheckbox,
+        false,
+        "",
+        addressInput.value.trim() !== ""
+      );
       if (confirmWrapper) {
         confirmWrapper.style.display = isEditMode && addressInput.value.trim() !== "" ? "flex" : "none";
       }
@@ -201,70 +222,75 @@ const isEditMode = form && form.dataset.mode === "edit";
       }
     });
 
-// --- Bottone "Centra su indirizzo" ---
-const showGeocodeError = () => {
-  window.alert("Impossibile centrare: seleziona dai suggerimenti o usa la mappa.");
-};
+    // --- Bottone "Centra su indirizzo" ---
+    const showGeocodeError = () => {
+      window.alert("Impossibile centrare: seleziona dai suggerimenti o usa la mappa.");
+    };
 
-if (geocodeButton) {
-  geocodeButton.addEventListener("click", () => {
-    if (!window.google?.maps?.Geocoder) {
-      showGeocodeError();
-      return;
+    if (geocodeButton) {
+      geocodeButton.addEventListener("click", () => {
+        if (!window.google?.maps?.Geocoder) {
+          showGeocodeError();
+          return;
+        }
+        const address = addressInput.value.trim();
+        if (!address) {
+          showGeocodeError();
+          return;
+        }
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address }, (results, status) => {
+          if (
+            status === "OK" &&
+            results &&
+            results[0] &&
+            results[0].geometry &&
+            results[0].geometry.location
+          ) {
+            const location = results[0].geometry.location;
+            placeIdInput.value = results[0].place_id || "";
+            lastSelectedAddress = addressInput.value;
+            setPosition(location.lat(), location.lng(), true);
+            map.setZoom(FOCUSED_ZOOM);
+            return;
+          }
+          showGeocodeError();
+        });
+      });
     }
-    const address = addressInput.value.trim();
-    if (!address) {
-      showGeocodeError();
-      return;
-    }
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address }, (results, status) => {
-      if (
-        status === "OK" &&
-        results &&
-        results[0] &&
-        results[0].geometry &&
-        results[0].geometry.location
-      ) {
-        const location = results[0].geometry.location;
-        placeIdInput.value = results[0].place_id || "";
-        lastSelectedAddress = addressInput.value;
-        setPosition(location.lat(), location.lng(), true);
-        map.setZoom(FOCUSED_ZOOM);
-        return;
-      }
-      showGeocodeError();
-    });
-  });
-}
 
 // --- Validazione submit: indirizzo senza coordinate ---
-if (form) {
-  form.addEventListener("submit", (event) => {
-    const hasLat = isCoordinateSet(latInput.value);
-    const hasLng = isCoordinateSet(lngInput.value);
-    const hasAddress = addressInput.value.trim() !== "";
-    const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
 
-    if (hasAddress && (!hasLat || !hasLng)) {
-      if (isEditMode && confirmAllowed) {
-        return;
-      }
-      event.preventDefault();
-      setVerificationStatus(
-        statusElement,
-        alertElement,
-        confirmWrapper,
-        confirmCheckbox,
-        false,
-        "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione."
-      );
-      if (confirmWrapper && isEditMode) {
-        confirmWrapper.style.display = "flex";
-      }
+    if (form) {
+      form.addEventListener("submit", (event) => {
+        const hasLat = isCoordinateSet(latInput.value);
+        const hasLng = isCoordinateSet(lngInput.value);
+const hasAddress = addressInput.value.trim() !== "";
+const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
+
+if (hasAddress && (!hasLat || !hasLng)) {
+
+          if (isEditMode && confirmAllowed) {
+            return;
+          }
+          event.preventDefault();
+
+          setVerificationStatus(
+            statusElement,
+            alertElement,
+            confirmWrapper,
+            confirmCheckbox,
+            false,
+"",
+true
+
+          );
+          if (confirmWrapper && isEditMode) {
+            confirmWrapper.style.display = "flex";
+          }
+        }
+      });
     }
-  });
-}
 
   };
 
