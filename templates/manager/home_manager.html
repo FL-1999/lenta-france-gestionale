@@ -579,69 +579,21 @@
 {% if google_maps_api_key %}
     <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
     <script>
-        const cantieriMapData = {{ cantieri_map_data | tojson | safe }};
 
-        function initMap() {
-            const mapElement = document.getElementById("manager-map");
-            if (!mapElement) {
-                return;
-            }
 
-            const map = new google.maps.Map(mapElement, {
-                mapTypeControl: false,
-                fullscreenControl: false
-            });
-            const bounds = new google.maps.LatLngBounds();
-            const infoWindow = new google.maps.InfoWindow();
-            const detailUrlTemplate = "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}";
+<script>
+  window.cantieriMapConfig = {
+    elementId: "cantieri-map",
+    sites: {{ cantieri_map_data | tojson | safe }},
+    detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
+    coloredMarkers: true,
+    clustering: true
+  };
+</script>
 
-            const markers = cantieriMapData.map((site) => {
-                const position = { lat: site.lat, lng: site.lng };
-                const marker = new google.maps.Marker({
-                    position,
-                    title: site.name
-                });
-                bounds.extend(position);
-
-                const detailUrl = detailUrlTemplate.replace("__SITE_ID__", site.id);
-                const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${site.lat},${site.lng}`;
-                const indirizzo = site.address
-                    ? `<div class="map-infowindow-address">${site.address}</div>`
-                    : "";
-                const content = `
-                    <div class="map-infowindow">
-                        <div class="map-infowindow-title">${site.name}</div>
-                        ${indirizzo}
-                        <div class="map-infowindow-actions">
-                            <a href="${detailUrl}" class="btn btn-sm btn-secondary">Apri scheda</a>
-                            <a href="${directionsUrl}" class="btn btn-sm btn-primary" target="_blank" rel="noopener">Portami lì</a>
-                        </div>
-                    </div>
-                `;
-
-                marker.addListener("click", () => {
-                    infoWindow.setContent(content);
-                    infoWindow.open(map, marker);
-                });
-
-                return marker;
-            });
-
-            if (markers.length > 0 && window.markerClusterer?.MarkerClusterer) {
-                new markerClusterer.MarkerClusterer({ map, markers });
-            } else {
-                markers.forEach((marker) => marker.setMap(map));
-            }
-
-            if (cantieriMapData.length > 0) {
-                map.fitBounds(bounds);
-            } else {
-                map.setCenter({ lat: 46.2276, lng: 2.2137 });
-                map.setZoom(6);
-            }
-        }
     </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap"></script>
+    <script src="{{ url_for('static', path='/js/cantieri_map.js') }}"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initCantieriMap"></script>
 {% endif %}
 <script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
 {% endblock %}

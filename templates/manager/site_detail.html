@@ -1,0 +1,66 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Détail chantier – Manager – Lenta France{% else %}Scheda cantiere – Manager – Lenta France{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}Gestion des chantiers{% else %}Gestione cantieri{% endif %}
+        </p>
+        <h1 class="page-title">
+            <span class="page-icon page-icon--sites" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
+                    <path d="M10 20v-5h4v5" stroke-linecap="round" />
+                </svg>
+            </span>
+            {{ site.name }}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Informations principales du chantier et état actuel.
+            {% else %}
+                Informazioni principali del cantiere e stato attuale.
+            {% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_cantiere_modifica_get', site_id=site.id) }}" class="btn btn-primary">
+            {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+        </a>
+        <a href="{{ url_for('manager_cantieri') }}" class="btn btn-secondary">
+            {% if lang == 'fr' %}Retour{% else %}Torna ai cantieri{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p><strong>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}:</strong> {{ site.code or '—' }}</p>
+        <p><strong>{% if lang == 'fr' %}Adresse{% else %}Indirizzo{% endif %}:</strong> {{ site.address or '—' }}</p>
+        <p><strong>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}:</strong> {{ site.city or '—' }}</p>
+        <p><strong>{% if lang == 'fr' %}Pays{% else %}Paese{% endif %}:</strong> {{ site.country or '—' }}</p>
+        <p><strong>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}:</strong> {{ site.status.value if site.status else '—' }}</p>
+        <p><strong>{% if lang == 'fr' %}Début{% else %}Inizio{% endif %}:</strong> {{ site.start_date.strftime("%d/%m/%Y") if site.start_date else '—' }}</p>
+        <p><strong>{% if lang == 'fr' %}Fin{% else %}Fine{% endif %}:</strong> {{ site.end_date.strftime("%d/%m/%Y") if site.end_date else '—' }}</p>
+        <p><strong>{% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}:</strong>
+            {% if site.caposquadra %}
+                {{ site.caposquadra.full_name or site.caposquadra.email }}
+            {% else %}
+                —
+            {% endif %}
+        </p>
+        <p><strong>{% if lang == 'fr' %}Coordonnées{% else %}Coordinate{% endif %}:</strong>
+            {% if site.lat is not none and site.lng is not none %}
+                {{ site.lat }}, {{ site.lng }}
+            {% else %}
+                —
+            {% endif %}
+        </p>
+    </div>
+</div>
+{% endblock %}
