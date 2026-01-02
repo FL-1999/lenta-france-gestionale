@@ -582,9 +582,11 @@
   window.cantieriMapConfig = {
     elementId: "cantieri-map",
     sites: {{ cantieri_map_data | tojson | safe }},
-    detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}"
+    detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
+    coloredMarkers: true
   };
 </script>
+
 
 
     </script>
