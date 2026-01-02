@@ -440,10 +440,10 @@ def manager_dashboard(
     try:
         sites_with_coords = (
             db.query(Site)
+            .options(joinedload(Site.caposquadra))
             .filter(
                 Site.lat.isnot(None),
                 Site.lng.isnot(None),
-                Site.is_active.is_(True),
             )
             .order_by(Site.name)
             .all()
@@ -452,6 +452,9 @@ def manager_dashboard(
         for site in sites_with_coords:
             address_parts = [part for part in [site.address, site.city, site.country] if part]
             status_value = site.status.value if site.status else None
+            caposquadra_name = None
+            if site.caposquadra:
+                caposquadra_name = site.caposquadra.full_name or site.caposquadra.email
             sites_map_data.append(
                 {
                     "id": site.id,
@@ -460,6 +463,9 @@ def manager_dashboard(
                     "lng": site.lng,
                     "address": ", ".join(address_parts),
                     "status": status_value,
+                    "caposquadra_id": site.caposquadra_id,
+                    "caposquadra_name": caposquadra_name,
+                    "is_active": site.is_active,
                 }
             )
 
