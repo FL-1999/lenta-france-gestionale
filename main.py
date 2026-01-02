@@ -1343,6 +1343,7 @@ def manager_cantiere_nuovo_post(
     lat: str | None = Form(None),
     lng: str | None = Form(None),
     place_id: str | None = Form(None),
+    confirm_unverified: str | None = Form(None),
     city: str | None = Form(None),
     country: str | None = Form(None),
     start_date: str | None = Form(None),
@@ -1386,10 +1387,20 @@ def manager_cantiere_nuovo_post(
     end_date_parsed = parse_date(end_date)
     lat_value = parse_coordinate(lat)
     lng_value = parse_coordinate(lng)
+    has_address = bool(address and address.strip())
 
     if status not in SiteStatusEnum.__members__:
         raise HTTPException(status_code=400, detail="Stato non valido")
     status_value = SiteStatusEnum[status]
+
+    if has_address and (lat_value is None or lng_value is None):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per "
+                "impostare la posizione."
+            ),
+        )
 
     db = SessionLocal()
     try:
@@ -1493,6 +1504,7 @@ def manager_cantiere_modifica_post(
     lat: str | None = Form(None),
     lng: str | None = Form(None),
     place_id: str | None = Form(None),
+    confirm_unverified: str | None = Form(None),
     city: str | None = Form(None),
     country: str | None = Form(None),
     start_date: str | None = Form(None),
@@ -1536,10 +1548,24 @@ def manager_cantiere_modifica_post(
     end_date_parsed = parse_date(end_date)
     lat_value = parse_coordinate(lat)
     lng_value = parse_coordinate(lng)
+    has_address = bool(address and address.strip())
 
     if status not in SiteStatusEnum.__members__:
         raise HTTPException(status_code=400, detail="Stato non valido")
     status_value = SiteStatusEnum[status]
+
+    if (
+        has_address
+        and (lat_value is None or lng_value is None)
+        and confirm_unverified is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per "
+                "impostare la posizione, oppure conferma per salvare senza coordinate."
+            ),
+        )
 
     db = SessionLocal()
     try:
