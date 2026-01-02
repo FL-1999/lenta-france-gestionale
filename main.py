@@ -522,6 +522,9 @@ def _build_sites_map_data(sites: list[Site]) -> list[dict[str, object]]:
     for site in sites:
         address_parts = [part for part in [site.address, site.city, site.country] if part]
         status_value = site.status.value if site.status else None
+        caposquadra_name = None
+        if "caposquadra" in site.__dict__ and site.caposquadra:
+            caposquadra_name = site.caposquadra.full_name or site.caposquadra.email
         sites_map_data.append(
             {
                 "id": site.id,
@@ -530,6 +533,9 @@ def _build_sites_map_data(sites: list[Site]) -> list[dict[str, object]]:
                 "lng": site.lng,
                 "address": ", ".join(address_parts),
                 "status": status_value,
+                "is_active": site.is_active,
+                "caposquadra_id": site.caposquadra_id,
+                "caposquadra_name": caposquadra_name,
             }
         )
     return sites_map_data
