@@ -1445,7 +1445,7 @@ def manager_cantiere_modifica_get(
     site_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     google_maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY")
@@ -1454,6 +1454,8 @@ def manager_cantiere_modifica_get(
         site = db.query(Site).filter(Site.id == site_id).first()
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        if current_user.role == RoleEnum.caposquadra and site.caposquadra_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Permessi insufficienti")
         site_status_values = [status.name for status in SiteStatusEnum]
         capisquadra = (
             db.query(User)
@@ -1514,8 +1516,10 @@ def manager_cantiere_modifica_post(
     caposquadra_id: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    is_caposquadra = current_user.role == RoleEnum.caposquadra
 
     if not name or not code:
         raise HTTPException(status_code=400, detail="Nome e codice sono obbligatori")
@@ -1554,24 +1558,33 @@ def manager_cantiere_modifica_post(
         raise HTTPException(status_code=400, detail="Stato non valido")
     status_value = SiteStatusEnum[status]
 
-    if (
-        has_address
-        and (lat_value is None or lng_value is None)
-        and confirm_unverified is None
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per "
-                "impostare la posizione, oppure conferma per salvare senza coordinate."
-            ),
-        )
+    if not is_caposquadra:
+        if (
+            has_address
+            and (lat_value is None or lng_value is None)
+            and confirm_unverified is None
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per "
+                    "impostare la posizione, oppure conferma per salvare senza coordinate."
+                ),
+            )
 
     db = SessionLocal()
     try:
         site = db.query(Site).filter(Site.id == site_id).first()
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        if is_caposquadra and site.caposquadra_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+        if is_caposquadra:
+            address = site.address
+            lat_value = site.lat
+            lng_value = site.lng
+            place_id = site.place_id
 
         parsed_capo_id = parse_caposquadra(caposquadra_id)
         if parsed_capo_id is not None:
