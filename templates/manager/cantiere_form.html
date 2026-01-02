@@ -45,6 +45,11 @@
                    placeholder="Inizia a scrivere l’indirizzo…"
                    autocomplete="off"
                    value="{{ site.address if site else '' }}">
+            <div class="mt-2">
+              <button type="button" id="btn-geocode-address" class="btn btn-sm btn-outline-secondary">
+                Centra su indirizzo
+              </button>
+            </div>
             {% if not google_maps_api_key %}
               <small class="form-text text-muted">Autocomplete disattivato (manca API key)</small>
             {% endif %}

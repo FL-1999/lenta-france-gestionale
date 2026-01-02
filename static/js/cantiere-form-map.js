@@ -33,6 +33,7 @@
     const latInput = document.getElementById("cantiere_lat");
     const lngInput = document.getElementById("cantiere_lng");
     const mapElement = document.getElementById("cantiere-pick-map");
+    const geocodeButton = document.getElementById("btn-geocode-address");
 
     if (!addressInput || !placeIdInput || !latInput || !lngInput || !mapElement) {
       return;
@@ -127,5 +128,44 @@
         hideMarker(marker);
       }
     });
+
+    const showGeocodeError = () => {
+      window.alert("Impossibile centrare: seleziona dai suggerimenti o usa la mappa.");
+    };
+
+    if (geocodeButton) {
+      geocodeButton.addEventListener("click", () => {
+        if (!window.google?.maps?.Geocoder) {
+          showGeocodeError();
+          return;
+        }
+
+        const address = addressInput.value.trim();
+        if (!address) {
+          showGeocodeError();
+          return;
+        }
+
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address }, (results, status) => {
+          if (
+            status === "OK"
+            && results
+            && results[0]
+            && results[0].geometry
+            && results[0].geometry.location
+          ) {
+            const location = results[0].geometry.location;
+            placeIdInput.value = results[0].place_id || "";
+            lastSelectedAddress = addressInput.value;
+            setPosition(location.lat(), location.lng(), true);
+            map.setZoom(FOCUSED_ZOOM);
+            return;
+          }
+
+          showGeocodeError();
+        });
+      });
+    }
   };
 })();
