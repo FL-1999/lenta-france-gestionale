@@ -170,33 +170,6 @@
         </div>
     </div>
 
-    <div class="card dashboard-map-card">
-        <div class="card-header">
-            <div class="card-title">
-                <div class="card-icon card-icon--sites" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
-                        <path d="M10 20v-5h4v5" stroke-linecap="round" />
-                    </svg>
-                </div>
-                <span>{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}</span>
-            </div>
-        </div>
-        <div class="card-body">
-            {% if google_maps_api_key %}
-                <div id="capo-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
-            {% else %}
-                <div class="map-disabled-message">
-                    {% if lang == 'fr' %}
-                        Carte désactivée (GOOGLE_MAPS_API_KEY manquant)
-                    {% else %}
-                        Mappa disattivata (manca GOOGLE_MAPS_API_KEY)
-                    {% endif %}
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
     <div class="dashboard-modules-grid">
         <div class="card module-card">
             <div class="card-header">
@@ -383,7 +356,7 @@
         </div>
         <div class="card-body">
             {% if google_maps_api_key %}
-                <div id="capo-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
+                <div id="cantieri-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
             {% else %}
                 <div class="map-disabled-message">
                     {% if lang == 'fr' %}
@@ -399,7 +372,7 @@
 {% if google_maps_api_key %}
 <script>
   window.cantieriMapConfig = {
-    elementId: "capo-map",
+    elementId: "cantieri-map",
     sites: {{ cantieri_map_data | tojson | safe }},
     detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
     coloredMarkers: true,
