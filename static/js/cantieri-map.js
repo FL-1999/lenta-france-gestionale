@@ -35,10 +35,12 @@ window.initMap = function initMap() {
     const defaultCenter = { lat: 46.2276, lng: 2.2137 };
     const defaultZoom = 6;
 
-    const statusColors = {
-        aperto: "green",
-        chiuso: "red",
-        pianificato: "yellow"
+    const statusIconUrls = {
+        aperto: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
+        attivo: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
+        sospeso: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+        critico: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+        chiuso: "https://maps.google.com/mapfiles/ms/icons/grey-dot.png"
     };
 
     const getMarkerIcon = (site) => {
@@ -46,10 +48,11 @@ window.initMap = function initMap() {
             return null;
         }
         const statusKey = (site.status || "").toLowerCase();
-        const color = statusColors[statusKey] || "blue";
-        return {
-            url: `https://maps.google.com/mapfiles/ms/icons/${color}-dot.png`
-        };
+        const iconUrl = statusIconUrls[statusKey];
+        if (!iconUrl) {
+            return null;
+        }
+        return { url: iconUrl };
     };
 
     const buildInfoWindowContent = (site, detailUrl) => {
