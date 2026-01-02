@@ -19,6 +19,8 @@ window.initMap = function initMap() {
     const infoWindow = new google.maps.InfoWindow();
     const markers = [];
     let hasMarkers = false;
+    const defaultCenter = config.emptyMapCenter || { lat: 46.2276, lng: 2.2137 };
+    const defaultZoom = config.emptyMapZoom || 6;
 
     const statusColors = {
         aperto: "green",
@@ -99,8 +101,8 @@ window.initMap = function initMap() {
     if (hasMarkers) {
         map.fitBounds(bounds);
     } else {
-        map.setCenter(config.emptyMapCenter || { lat: 46.2276, lng: 2.2137 });
-        map.setZoom(config.emptyMapZoom || 6);
+        map.setCenter(defaultCenter);
+        map.setZoom(defaultZoom);
     }
 
     let markerCluster = null;
@@ -135,48 +137,82 @@ window.initMap = function initMap() {
             });
         };
 
-        populateOptions(
-            statusSelect,
-            sites.map((site) => site.status).filter(Boolean)
+        const uniqueStatusValues = Array.from(
+            new Set(sites.map((site) => site.status).filter(Boolean))
         );
-        populateOptions(
-            caposquadraSelect,
-            sites.map((site) => site.caposquadra_name).filter(Boolean)
-        );
+        populateOptions(statusSelect, uniqueStatusValues);
+
+        if (caposquadraSelect) {
+            const caposquadraOptions = new Map();
+            sites.forEach((site) => {
+                if (!site.caposquadra_id) {
+                    return;
+                }
+                const label = site.caposquadra_name || String(site.caposquadra_id);
+                if (!caposquadraOptions.has(String(site.caposquadra_id))) {
+                    caposquadraOptions.set(String(site.caposquadra_id), label);
+                }
+            });
+            const sortedCaposquadra = Array.from(caposquadraOptions.entries()).sort(
+                (a, b) => a[1].localeCompare(b[1])
+            );
+            sortedCaposquadra.forEach(([value, label]) => {
+                if (Array.from(caposquadraSelect.options).some((option) => option.value === value)) {
+                    return;
+                }
+                const option = document.createElement("option");
+                option.value = value;
+                option.textContent = label;
+                caposquadraSelect.appendChild(option);
+            });
+        }
 
         const applyFilters = () => {
             const statusValue = statusSelect ? statusSelect.value : "";
             const caposquadraValue = caposquadraSelect ? caposquadraSelect.value : "";
             const activeValue = activeSelect ? activeSelect.value : "";
 
-            const filteredMarkers = markers.filter(({ site }) => {
+            let visibleCount = 0;
+            const visibleBounds = new google.maps.LatLngBounds();
+
+            markers.forEach(({ marker, site }) => {
+                let isVisible = true;
                 if (statusValue && site.status !== statusValue) {
-                    return false;
+                    isVisible = false;
                 }
-                if (caposquadraValue && site.caposquadra_name !== caposquadraValue) {
-                    return false;
+                if (caposquadraValue && String(site.caposquadra_id || "") !== caposquadraValue) {
+                    isVisible = false;
                 }
                 if (activeValue) {
                     const isActive = Boolean(site.is_active);
                     if (activeValue === "true" && !isActive) {
-                        return false;
+                        isVisible = false;
                     }
                     if (activeValue === "false" && isActive) {
-                        return false;
+                        isVisible = false;
                     }
                 }
-                return true;
+                marker.setVisible(isVisible);
+                if (isVisible) {
+                    visibleCount += 1;
+                    const position = marker.getPosition();
+                    if (position) {
+                        visibleBounds.extend(position);
+                    }
+                }
             });
 
             if (markerCluster) {
-                markerCluster.clearMarkers();
-                markerCluster.addMarkers(filteredMarkers.map((entry) => entry.marker));
                 if (typeof markerCluster.render === "function") {
                     markerCluster.render();
                 }
+            }
+
+            if (visibleCount > 0) {
+                map.fitBounds(visibleBounds);
             } else {
-                markers.forEach(({ marker }) => marker.setMap(null));
-                filteredMarkers.forEach(({ marker }) => marker.setMap(map));
+                map.setCenter(defaultCenter);
+                map.setZoom(defaultZoom);
             }
         };
 
