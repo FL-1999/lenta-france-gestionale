@@ -1041,6 +1041,28 @@ body {
     margin-top: 1.5rem;
 }
 
+.map-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: flex-end;
+}
+
+.map-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 180px;
+}
+
+.map-filter-label {
+    font-weight: 600;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.01em;
+}
+
 .cantieri-map {
     width: 100%;
     height: 420px;

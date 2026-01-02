@@ -554,6 +554,28 @@
         </div>
         <div class="card-body">
             {% if google_maps_api_key %}
+                <div class="map-filters" aria-label="{% if lang == 'fr' %}Filtres carte{% else %}Filtri mappa{% endif %}">
+                    <label class="map-filter">
+                        <span class="map-filter-label">{% if lang == 'fr' %}Statut{% else %}Stato cantiere{% endif %}</span>
+                        <select id="map-filter-status" class="form-select">
+                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                        </select>
+                    </label>
+                    <label class="map-filter">
+                        <span class="map-filter-label">{% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}</span>
+                        <select id="map-filter-caposquadra" class="form-select">
+                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                        </select>
+                    </label>
+                    <label class="map-filter">
+                        <span class="map-filter-label">{% if lang == 'fr' %}Actifs{% else %}Attivi{% endif %}</span>
+                        <select id="map-filter-active" class="form-select">
+                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                            <option value="true">{% if lang == 'fr' %}Actifs{% else %}Attivi{% endif %}</option>
+                            <option value="false">{% if lang == 'fr' %}Inactifs{% else %}Non attivi{% endif %}</option>
+                        </select>
+                    </label>
+                </div>
                 <div id="manager-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
             {% else %}
                 <div class="map-disabled-message">
@@ -587,7 +609,8 @@
     sites: {{ cantieri_map_data | tojson | safe }},
     detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
     coloredMarkers: true,
-    clustering: true
+    clustering: true,
+    filters: true
   };
 </script>
 
