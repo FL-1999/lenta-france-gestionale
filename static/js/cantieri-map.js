@@ -70,15 +70,14 @@ window.initMap = function initMap() {
             title: site.name,
             icon: getMarkerIcon(site) || undefined
         });
-        const detailUrl = site.detail_url
-            || (config.detailUrlTemplate
-                ? config.detailUrlTemplate.replace("__SITE_ID__", site.id)
-                : "");
+        const detailUrl = config.detailUrlTemplate
+            ? config.detailUrlTemplate.replace("__SITE_ID__", site.id)
+            : "";
         const infoContent = buildInfoWindowContent(site, detailUrl);
 
         marker.addListener("click", () => {
             if (detailUrl) {
-                window.location.assign(detailUrl);
+                window.location.href = detailUrl;
             }
         });
 
