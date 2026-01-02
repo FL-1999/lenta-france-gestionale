@@ -599,20 +599,6 @@
     };
 </script>
 {% if google_maps_api_key %}
-    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
-    <script>
-
-
-<script>
-  window.cantieriMapConfig = {
-    elementId: "cantieri-map",
-    sites: {{ cantieri_map_data | tojson | safe }},
-    detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
-    coloredMarkers: true,
-    clustering: true,
-    filters: true
-  };
-</script>
 
     </script>
     <script src="{{ url_for('static', path='/js/cantieri_map.js') }}"></script>

@@ -448,26 +448,17 @@ def manager_dashboard(
             .order_by(Site.name)
             .all()
         )
-        sites_map_data = []
-        for site in sites_with_coords:
-            address_parts = [part for part in [site.address, site.city, site.country] if part]
-            status_value = site.status.value if site.status else None
-            caposquadra_name = None
-            if site.caposquadra:
-                caposquadra_name = site.caposquadra.full_name or site.caposquadra.email
-            sites_map_data.append(
-                {
-                    "id": site.id,
-                    "name": site.name,
-                    "lat": site.lat,
-                    "lng": site.lng,
-                    "address": ", ".join(address_parts),
-                    "status": status_value,
-                    "caposquadra_id": site.caposquadra_id,
-                    "caposquadra_name": caposquadra_name,
-                    "is_active": site.is_active,
-                }
-            )
+<script>
+  window.cantieriMapConfig = {
+    elementId: "cantieri-map",
+    sites: {{ cantieri_map_data | tojson | safe }},
+    detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
+    coloredMarkers: true,
+    clustering: true,
+    filters: true
+  };
+</script>
+
 
         reports_list = (
             db.query(Report)
@@ -533,6 +524,24 @@ def manager_dashboard(
     finally:
         db.close()
     return response
+
+
+def _build_sites_map_data(sites: list[Site]) -> list[dict[str, object]]:
+    sites_map_data = []
+    for site in sites:
+        address_parts = [part for part in [site.address, site.city, site.country] if part]
+        status_value = site.status.value if site.status else None
+        sites_map_data.append(
+            {
+                "id": site.id,
+                "name": site.name,
+                "lat": site.lat,
+                "lng": site.lng,
+                "address": ", ".join(address_parts),
+                "status": status_value,
+            }
+        )
+    return sites_map_data
 
 
 @app.get(
@@ -1586,6 +1595,19 @@ def capo_dashboard(
 
     db = SessionLocal()
     try:
+        assigned_sites_with_coords = (
+            db.query(Site)
+            .filter(
+                Site.caposquadra_id == current_user.id,
+                Site.is_active.is_(True),
+                Site.lat.isnot(None),
+                Site.lng.isnot(None),
+            )
+            .order_by(Site.name)
+            .all()
+        )
+        assigned_sites_map_data = _build_sites_map_data(assigned_sites_with_coords)
+
         kpi_reports_today = (
             db.query(func.count(Report.id))
             .filter(Report.created_by_id == current_user.id)
@@ -1651,37 +1673,7 @@ def capo_dashboard(
             "kpi_hours_this_week": kpi_hours_this_week,
             "kpi_assigned_sites": kpi_assigned_sites,
             "kpi_open_reports": kpi_open_reports,
-            "cantieri_map_data": jsonable_encoder(sites_map_data),
-            "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
-        },
-    )
 
-
-@app.get("/capo/sites/{site_id}", response_class=HTMLResponse, name="capo_site_detail")
-def capo_site_detail(
-    request: Request,
-    site_id: int,
-    current_user: User = Depends(get_current_active_user_html),
-):
-    if current_user.role != RoleEnum.caposquadra:
-        raise HTTPException(status_code=403, detail="Permessi insufficienti")
-
-    db = SessionLocal()
-    try:
-        site = db.query(Site).filter(Site.id == site_id).first()
-        if not site:
-            raise HTTPException(status_code=404, detail="Cantiere non trovato")
-        if site.caposquadra_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Permessi insufficienti")
-    finally:
-        db.close()
-
-    return templates.TemplateResponse(
-        "capo/site_detail.html",
-        {
-            "request": request,
-            "user": current_user,
-            "site": site,
         },
     )
 
