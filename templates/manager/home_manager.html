@@ -577,6 +577,7 @@
     };
 </script>
 {% if google_maps_api_key %}
+    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
     <script>
         const cantieriMapData = {{ cantieri_map_data | tojson | safe }};
 
@@ -594,11 +595,10 @@
             const infoWindow = new google.maps.InfoWindow();
             const detailUrlTemplate = "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}";
 
-            cantieriMapData.forEach((site) => {
+            const markers = cantieriMapData.map((site) => {
                 const position = { lat: site.lat, lng: site.lng };
                 const marker = new google.maps.Marker({
                     position,
-                    map,
                     title: site.name
                 });
                 bounds.extend(position);
@@ -623,7 +623,15 @@
                     infoWindow.setContent(content);
                     infoWindow.open(map, marker);
                 });
+
+                return marker;
             });
+
+            if (markers.length > 0 && window.markerClusterer?.MarkerClusterer) {
+                new markerClusterer.MarkerClusterer({ map, markers });
+            } else {
+                markers.forEach((marker) => marker.setMap(map));
+            }
 
             if (cantieriMapData.length > 0) {
                 map.fitBounds(bounds);
