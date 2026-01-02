@@ -21,6 +21,7 @@ from auth import (
     get_current_active_user,
     get_current_active_user_html,
 )
+from deps import get_site_for_user, scope_sites_query
 from models import (
     User,
     RoleEnum,
@@ -1619,6 +1620,35 @@ def manager_cantiere_modifica_post(
     return RedirectResponse(url="/manager/cantieri", status_code=303)
 
 
+@app.get(
+    "/capo/cantieri/{site_id}",
+    response_class=HTMLResponse,
+    name="capo_site_detail",
+)
+def capo_site_detail(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = get_site_for_user(db, site_id, current_user)
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "capo/site_detail.html",
+        {
+            "request": request,
+            "user": current_user,
+            "site": site,
+        },
+    )
+
+
 @app.get("/capo/dashboard", response_class=HTMLResponse)
 def capo_dashboard(
     request: Request,
@@ -1632,17 +1662,13 @@ def capo_dashboard(
 
     db = SessionLocal()
     try:
-        assigned_sites_with_coords = (
-            db.query(Site)
-            .filter(
-                Site.caposquadra_id == current_user.id,
-                Site.is_active.is_(True),
-                Site.lat.isnot(None),
-                Site.lng.isnot(None),
-            )
-            .order_by(Site.name)
-            .all()
+        assigned_sites_query = db.query(Site).filter(
+            Site.is_active.is_(True),
+            Site.lat.isnot(None),
+            Site.lng.isnot(None),
         )
+        assigned_sites_query = scope_sites_query(assigned_sites_query, current_user)
+        assigned_sites_with_coords = assigned_sites_query.order_by(Site.name).all()
         assigned_sites_map_data = _build_sites_map_data(assigned_sites_with_coords)
 
         kpi_reports_today = (
