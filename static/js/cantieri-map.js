@@ -117,12 +117,36 @@ window.initMap = function initMap() {
         map.setZoom(defaultZoom);
     }
 
-    let markerCluster = null;
-    if (config.clustering && window.markerClusterer && window.markerClusterer.MarkerClusterer) {
-        markerCluster = new window.markerClusterer.MarkerClusterer({
+    const supportsClustering = Boolean(
+        config.clustering && window.markerClusterer && window.markerClusterer.MarkerClusterer
+    );
+    const buildClusterer = (clusterMarkers) => {
+        if (!supportsClustering) {
+            return null;
+        }
+        return new window.markerClusterer.MarkerClusterer({
             map,
-            markers: markers.map((entry) => entry.marker)
+            markers: clusterMarkers
         });
+    };
+    const resetClusterer = (clusterMarkers) => {
+        if (!supportsClustering) {
+            return;
+        }
+        if (markerCluster) {
+            if (typeof markerCluster.clearMarkers === "function") {
+                markerCluster.clearMarkers();
+            }
+            if (typeof markerCluster.setMap === "function") {
+                markerCluster.setMap(null);
+            }
+        }
+        markerCluster = buildClusterer(clusterMarkers);
+    };
+
+    let markerCluster = null;
+    if (supportsClustering) {
+        markerCluster = buildClusterer(markers.map((entry) => entry.marker));
     }
 
     if (config.filters) {
@@ -186,6 +210,7 @@ window.initMap = function initMap() {
 
             let visibleCount = 0;
             const visibleBounds = new google.maps.LatLngBounds();
+            const visibleMarkers = [];
 
             markers.forEach(({ marker, site }) => {
                 let isVisible = true;
@@ -207,6 +232,7 @@ window.initMap = function initMap() {
                 marker.setVisible(isVisible);
                 if (isVisible) {
                     visibleCount += 1;
+                    visibleMarkers.push(marker);
                     const position = marker.getPosition();
                     if (position) {
                         visibleBounds.extend(position);
@@ -214,11 +240,7 @@ window.initMap = function initMap() {
                 }
             });
 
-            if (markerCluster) {
-                if (typeof markerCluster.render === "function") {
-                    markerCluster.render();
-                }
-            }
+            resetClusterer(visibleMarkers);
 
             if (visibleCount > 0) {
                 map.fitBounds(visibleBounds);
