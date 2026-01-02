@@ -47,7 +47,7 @@
                    placeholder="Inizia a scrivere l’indirizzo…"
                    autocomplete="off"
                    value="{{ site.address if site else '' }}">
-
+            <small class="form-text text-muted">Scegli dai suggerimenti per avere indirizzo verificato.</small>
           </div>
           {% if not google_maps_api_key %}
             <div class="form-group" style="grid-column: 1 / -1;">
@@ -60,7 +60,7 @@
             <label class="form-label">Posizione su mappa</label>
             <div id="cantiere-pick-map" style="height: 320px;" aria-label="Mappa posizione cantiere"></div>
             {% if google_maps_api_key %}
-              <small class="form-text text-muted">Clicca sulla mappa o trascina il marker per impostare la posizione.</small>
+              <small class="form-text text-muted">Clicca sulla mappa o trascina il pin.</small>
             {% endif %}
           </div>
           <div id="cantiere-unverified-confirm-wrapper"
