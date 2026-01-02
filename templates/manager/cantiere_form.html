@@ -47,18 +47,23 @@
                    placeholder="Inizia a scrivere l’indirizzo…"
                    autocomplete="off"
                    value="{{ site.address if site else '' }}">
-            <div class="form-text" style="margin-top: 0.35rem;">
-              <span id="cantiere-address-status"
-                    class="badge address-status-badge {% if has_coordinates %}badge-success{% else %}badge-danger{% endif %}">
-                {% if has_coordinates %}Verificato ✅{% else %}Non verificato ⚠️{% endif %}
-              </span>
-            </div>
-            <div id="cantiere-address-alert"
-                 class="alert alert-warning"
-                 role="alert"
-                 style="margin-top: 0.5rem; {% if has_address and not has_coordinates %}display:block;{% else %}display:none;{% endif %}">
-              Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione.
-            </div>
+<small class="form-text text-muted">
+  Scegli dai suggerimenti per avere indirizzo verificato.
+</small>
+
+<div class="form-text" style="margin-top: 0.35rem;">
+  <span id="cantiere-address-status"
+        class="badge address-status-badge {% if has_coordinates %}badge-success{% else %}badge-danger{% endif %}">
+    {% if has_coordinates %}Verificato ✅{% else %}Non verificato ⚠️{% endif %}
+  </span>
+</div>
+
+<div id="cantiere-address-alert"
+     class="alert alert-warning"
+     role="alert"
+     style="margin-top: 0.5rem; {% if has_address and not has_coordinates %}display:block;{% else %}display:none;{% endif %}">
+  Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione.
+</div>
 
           </div>
           {% if not google_maps_api_key %}
@@ -72,7 +77,7 @@
             <label class="form-label">Posizione su mappa</label>
             <div id="cantiere-pick-map" style="height: 320px;" aria-label="Mappa posizione cantiere"></div>
             {% if google_maps_api_key %}
-              <small class="form-text text-muted">Clicca sulla mappa o trascina il marker per impostare la posizione.</small>
+              <small class="form-text text-muted">Clicca sulla mappa o trascina il pin.</small>
             {% endif %}
             <div id="cantiere-address-status" class="form-text text-muted" aria-live="polite"></div>
             <div id="cantiere-address-alert" class="alert alert-warning" role="alert" style="display: none;"></div>
