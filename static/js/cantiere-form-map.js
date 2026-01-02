@@ -121,15 +121,16 @@
       visible: hasCoordinates,
     });
     mapElement.dataset.mapInitialized = "true";
-    setVerificationStatus(
-      statusElement,
-      alertElement,
-      confirmWrapper,
-      confirmCheckbox,
-      hasCoordinates,
-      "",
-      addressInput.value.trim() !== ""
-    );
+setVerificationStatus(
+  statusElement,
+  alertElement,
+  confirmWrapper,
+  confirmCheckbox,
+  hasCoordinates,
+  "",
+  addressInput.value.trim() !== ""
+);
+
 
     const setPosition = (lat, lng, shouldCenter = true) => {
       const position = { lat, lng };
@@ -258,27 +259,31 @@
       });
     }
 
-    // --- Validazione submit: indirizzo senza coordinate ---
+// --- Validazione submit: indirizzo senza coordinate ---
+
     if (form) {
       form.addEventListener("submit", (event) => {
         const hasLat = isCoordinateSet(latInput.value);
         const hasLng = isCoordinateSet(lngInput.value);
-        const hasAddress = addressInput.value.trim() !== "";
-        const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
+const hasAddress = addressInput.value.trim() !== "";
+const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
 
-        if (hasAddress && (!hasLat || !hasLng)) {
+if (hasAddress && (!hasLat || !hasLng)) {
+
           if (isEditMode && confirmAllowed) {
             return;
           }
           event.preventDefault();
+
           setVerificationStatus(
             statusElement,
             alertElement,
             confirmWrapper,
             confirmCheckbox,
             false,
-            "",
-            true
+"",
+true
+
           );
           if (confirmWrapper && isEditMode) {
             confirmWrapper.style.display = "flex";
