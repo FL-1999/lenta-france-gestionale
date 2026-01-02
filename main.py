@@ -437,6 +437,7 @@ def manager_dashboard(
     Dashboard manager con accesso a cantieri, fiches, rapportini e macchinari.
     """
     db = SessionLocal()
+    sites_map_data: list[dict[str, object]] = []
     try:
         sites_with_coords = (
             db.query(Site)
