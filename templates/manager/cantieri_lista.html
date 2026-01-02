@@ -26,6 +26,7 @@
                     <th>Codice</th>
                     <th>Località</th>
                     <th>Stato</th>
+                    <th class="text-center">Mappa</th>
                     <th class="table-actions-col">Azioni</th>
                 </tr>
             </thead>
@@ -37,6 +38,16 @@
                     <td>{{ cantiere.codice or cantiere.code or '—' }}</td>
                     <td>{{ cantiere.localita or cantiere.citta or cantiere.city or '—' }}</td>
                     <td>{{ cantiere.stato or cantiere.status or '—' }}</td>
+                    <td class="text-center">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary btn-site-map"
+                                data-site-name="{{ cantiere.nome or cantiere.name or '' }}"
+                                data-lat="{{ cantiere.lat if cantiere.lat is not none else '' }}"
+                                data-lng="{{ cantiere.lng if cantiere.lng is not none else '' }}"
+                                data-address="{{ cantiere.address or cantiere.indirizzo or '' }}">
+                            📍
+                        </button>
+                    </td>
                     <td class="table-actions">
                         <a href="/manager/cantieri/{{ cantiere.id }}/modifica" class="btn btn-secondary btn-sm">
                             ✏️ Modifica
@@ -45,7 +56,7 @@
                 </tr>
                 {% else %}
                 <tr class="table-empty">
-                    <td colspan="5">
+                    <td colspan="6">
                         Nessun cantiere registrato al momento.
                     </td>
                 </tr>
@@ -58,4 +69,20 @@
 <div class="form-actions">
     <a href="/manager/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
 </div>
+
+<div class="modal" id="site-map-preview-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-site-map-close></div>
+    <div class="modal-content card">
+        <div class="card-body">
+            <div class="modal-header">
+                <h3 class="card-title" id="site-preview-title">📍 Mappa cantiere</h3>
+                <button type="button" class="btn btn-secondary btn-sm" data-site-map-close>✖</button>
+            </div>
+            <p id="site-preview-message" class="text-muted" style="display: none;">Posizione non impostata</p>
+            <div id="site-preview-map" style="height: 300px;"></div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', path='/js/site-map-preview.js') }}"></script>
 {% endblock %}

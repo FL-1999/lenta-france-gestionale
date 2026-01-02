@@ -24,7 +24,9 @@
       </div>
     </div>
     <div class="card-body">
-      <form method="post">
+      <form method="post" data-mode="{{ mode }}">
+        {% set has_coordinates = site and site.lat is not none and site.lng is not none %}
+        {% set has_address = site and (site.address or site.indirizzo) %}
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label" for="name">Nome*</label>
@@ -45,23 +47,33 @@
                    placeholder="Inizia a scrivere l’indirizzo…"
                    autocomplete="off"
                    value="{{ site.address if site else '' }}">
-            <div class="mt-2">
-              <button type="button" id="btn-geocode-address" class="btn btn-sm btn-outline-secondary">
-                Centra su indirizzo
-              </button>
-            </div>
-            {% if not google_maps_api_key %}
-              <small class="form-text text-muted">Autocomplete disattivato (manca API key)</small>
-            {% endif %}
+
           </div>
+          {% if not google_maps_api_key %}
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <div class="alert alert-warning" role="alert">
+                Mappa/Autocomplete non disponibili (manca configurazione).
+              </div>
+            </div>
+          {% endif %}
           <div class="form-group" style="grid-column: 1 / -1;">
             <label class="form-label">Posizione su mappa</label>
             <div id="cantiere-pick-map" style="height: 320px;" aria-label="Mappa posizione cantiere"></div>
-            {% if not google_maps_api_key %}
-              <small class="form-text text-muted">Mappa non disponibile (manca API key)</small>
-            {% else %}
+            {% if google_maps_api_key %}
               <small class="form-text text-muted">Clicca sulla mappa o trascina il marker per impostare la posizione.</small>
             {% endif %}
+          </div>
+          <div id="cantiere-unverified-confirm-wrapper"
+               class="form-group form-group-inline"
+               style="grid-column: 1 / -1; {% if mode == 'edit' and has_address and not has_coordinates %}display:flex;{% else %}display:none;{% endif %}">
+            <input type="checkbox"
+                   id="cantiere-unverified-confirm"
+                   name="confirm_unverified"
+                   class="form-control"
+                   value="1">
+            <label class="form-label" for="cantiere-unverified-confirm">
+              Confermo di salvare senza coordinate.
+            </label>
           </div>
           <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
           <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
