@@ -371,15 +371,14 @@
 </div>
 {% if google_maps_api_key %}
 {% set enable_clustering = true %}
-<script>
-  window.cantieriMapConfig = {
-    elementId: "cantieri-map",
-    sites: {{ cantieri_map_data | tojson | safe }},
-    detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
-    coloredMarkers: true,
-    clustering: {{ "true" if enable_clustering else "false" }},
-    filters: false
-  };
+<script type="application/json" id="cantieri-map-config">
+  {{ {
+    "sites": cantieri_map_data,
+    "detailUrlTemplate": url_for('manager_site_detail', site_id='__SITE_ID__'),
+    "coloredMarkers": true,
+    "clustering": enable_clustering,
+    "filters": false
+  } | tojson | safe }}
 </script>
 {% if enable_clustering %}
 <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>

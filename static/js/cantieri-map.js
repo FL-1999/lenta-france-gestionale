@@ -1,3 +1,17 @@
+const mapConfigElement = document.getElementById("cantieri-map-config");
+if (!window.cantieriMapConfig && mapConfigElement) {
+    try {
+        const parsedConfig = JSON.parse(mapConfigElement.textContent || "{}");
+        window.cantieriMapConfig = {
+            elementId: "cantieri-map",
+            ...parsedConfig,
+            elementId: parsedConfig.elementId || "cantieri-map"
+        };
+    } catch (error) {
+        window.cantieriMapConfig = { elementId: "cantieri-map" };
+    }
+}
+
 window.initMap = function initMap() {
     const config = window.cantieriMapConfig;
     if (!config) {
