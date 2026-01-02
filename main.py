@@ -1579,6 +1579,27 @@ def capo_dashboard(
             .scalar()
             or 0
         )
+
+        assigned_sites_with_coords = (
+            db.query(Site)
+            .filter(Site.caposquadra_id == current_user.id)
+            .filter(Site.is_active.is_(True))
+            .filter(Site.lat.isnot(None), Site.lng.isnot(None))
+            .order_by(Site.name)
+            .all()
+        )
+        sites_map_data = []
+        for site in assigned_sites_with_coords:
+            address_parts = [part for part in [site.address, site.city, site.country] if part]
+            sites_map_data.append(
+                {
+                    "id": site.id,
+                    "nome": site.name,
+                    "lat": site.lat,
+                    "lng": site.lng,
+                    "indirizzo": ", ".join(address_parts),
+                }
+            )
     finally:
         db.close()
 
@@ -1592,6 +1613,8 @@ def capo_dashboard(
             "kpi_hours_this_week": kpi_hours_this_week,
             "kpi_assigned_sites": kpi_assigned_sites,
             "kpi_open_reports": kpi_open_reports,
+            "cantieri_map_data": jsonable_encoder(sites_map_data),
+            "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
         },
     )
 
