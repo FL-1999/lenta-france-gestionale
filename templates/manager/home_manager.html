@@ -599,8 +599,16 @@
     };
 </script>
 {% if google_maps_api_key %}
-
-    </script>
+<script>
+    window.cantieriMapConfig = {
+        elementId: "manager-map",
+        sites: {{ cantieri_map_data | tojson | safe }},
+        detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
+        coloredMarkers: true,
+        clustering: true,
+        filters: true
+    };
+</script>
     <script src="{{ url_for('static', path='/js/cantieri_map.js') }}"></script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initCantieriMap"></script>
 {% endif %}
