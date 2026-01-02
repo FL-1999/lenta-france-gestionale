@@ -27,6 +27,16 @@
     marker.setVisible(true);
   };
 
+  const showFallback = (mapElement) => {
+    if (!mapElement || mapElement.dataset.mapInitialized === "true") {
+      return;
+    }
+    mapElement.dataset.mapFallback = "true";
+    mapElement.classList.add("map-disabled-message");
+    mapElement.textContent =
+      "Mappa non disponibile. Inserisci l’indirizzo e salva: potrai completare la posizione più tardi.";
+  };
+
   window.initCantiereFormMap = function initCantiereFormMap() {
     const addressInput = document.getElementById("cantiere_address");
     const placeIdInput = document.getElementById("cantiere_place_id");
@@ -39,7 +49,14 @@
     }
 
     if (!window.google || !window.google.maps) {
+      showFallback(mapElement);
       return;
+    }
+
+    if (mapElement.dataset.mapFallback === "true") {
+      mapElement.classList.remove("map-disabled-message");
+      mapElement.textContent = "";
+      delete mapElement.dataset.mapFallback;
     }
 
     const latValue = parseCoordinate(latInput.value);
@@ -62,6 +79,7 @@
       draggable: true,
       visible: hasCoordinates,
     });
+    mapElement.dataset.mapInitialized = "true";
 
     const setPosition = (lat, lng, shouldCenter = true) => {
       const position = { lat, lng };
@@ -128,4 +146,10 @@
       }
     });
   };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.google || !window.google.maps) {
+      showFallback(document.getElementById("cantiere-pick-map"));
+    }
+  });
 })();
