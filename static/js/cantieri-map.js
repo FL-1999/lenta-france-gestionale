@@ -73,22 +73,38 @@ window.initMap = function initMap() {
         `;
     };
 
+    const normalizeSite = (site) => ({
+        ...site,
+        id: site.id,
+        name: site.name || "",
+        address: site.address || "",
+        lat: Number(site.lat),
+        lng: Number(site.lng),
+        status: site.status || ""
+    });
+
+    const getDetailUrl = (siteId) => {
+        if (!config.detailUrlTemplate) {
+            return "";
+        }
+        return config.detailUrlTemplate.replace("__SITE_ID__", String(siteId));
+    };
+
     sites.forEach((site) => {
-        if (!site || site.lat == null || site.lng == null) {
+        const normalizedSite = normalizeSite(site || {});
+        if (!site || !Number.isFinite(normalizedSite.lat) || !Number.isFinite(normalizedSite.lng)) {
             return;
         }
 
-        const position = { lat: site.lat, lng: site.lng };
+        const position = { lat: normalizedSite.lat, lng: normalizedSite.lng };
         const marker = new google.maps.Marker({
             position,
             map,
-            title: site.name,
-            icon: getMarkerIcon(site) || undefined
+            title: normalizedSite.name,
+            icon: getMarkerIcon(normalizedSite) || undefined
         });
-        const detailUrl = config.detailUrlTemplate
-            ? config.detailUrlTemplate.replace("__SITE_ID__", site.id)
-            : "";
-        const infoContent = buildInfoWindowContent(site, detailUrl);
+        const detailUrl = getDetailUrl(normalizedSite.id);
+        const infoContent = buildInfoWindowContent(normalizedSite, detailUrl);
 
         marker.addListener("click", () => {
             if (detailUrl) {
@@ -105,7 +121,7 @@ window.initMap = function initMap() {
             infoWindow.close();
         });
 
-        markers.push({ marker, site });
+        markers.push({ marker, site: normalizedSite });
         bounds.extend(position);
         hasMarkers = true;
     });
