@@ -47,27 +47,19 @@
                    placeholder="Inizia a scrivere l’indirizzo…"
                    autocomplete="off"
                    value="{{ site.address if site else '' }}">
-            <div id="cantiere-address-alert"
-                 class="alert alert-warning"
-                 role="alert"
-                 style="{% if mode == 'edit' and has_address and not has_coordinates %}display:block;{% else %}display:none;{% endif %}">
-              {% if mode == "edit" and has_address and not has_coordinates %}
-                Indirizzo non verificato: seleziona un indirizzo dai suggerimenti o clicca sulla mappa, oppure conferma per salvare senza coordinate.
-              {% endif %}
-            </div>
-            <small id="cantiere-address-status" class="form-text text-muted">
-              {% if has_coordinates %}Verificato ✅{% else %}Non verificato ⚠️{% endif %}
-            </small>
-            {% if not google_maps_api_key %}
-              <small class="form-text text-muted">Autocomplete disattivato (manca API key)</small>
-            {% endif %}
+
           </div>
+          {% if not google_maps_api_key %}
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <div class="alert alert-warning" role="alert">
+                Mappa/Autocomplete non disponibili (manca configurazione).
+              </div>
+            </div>
+          {% endif %}
           <div class="form-group" style="grid-column: 1 / -1;">
             <label class="form-label">Posizione su mappa</label>
             <div id="cantiere-pick-map" style="height: 320px;" aria-label="Mappa posizione cantiere"></div>
-            {% if not google_maps_api_key %}
-              <small class="form-text text-muted">Mappa non disponibile (manca API key)</small>
-            {% else %}
+            {% if google_maps_api_key %}
               <small class="form-text text-muted">Clicca sulla mappa o trascina il marker per impostare la posizione.</small>
             {% endif %}
           </div>
