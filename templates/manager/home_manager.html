@@ -599,17 +599,20 @@
     };
 </script>
 {% if google_maps_api_key %}
+{% set enable_clustering = true %}
 <script>
     window.cantieriMapConfig = {
         elementId: "cantieri-map",
         sites: {{ cantieri_map_data | tojson | safe }},
         detailUrlTemplate: "{{ url_for('manager_site_detail', site_id='__SITE_ID__') }}",
         coloredMarkers: true,
-        clustering: true,
+        clustering: {{ "true" if enable_clustering else "false" }},
         filters: true
     };
 </script>
+    {% if enable_clustering %}
     <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+    {% endif %}
     <script src="{{ url_for('static', path='/js/cantieri-map.js') }}"></script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap"></script>
 {% endif %}
