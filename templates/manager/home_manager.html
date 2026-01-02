@@ -594,12 +594,23 @@
             const infoWindow = new google.maps.InfoWindow();
             const detailUrlTemplate = "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}";
 
+            const markerIconByStatus = {
+                aperto: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
+                attivo: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
+                chiuso: "https://maps.google.com/mapfiles/ms/icons/grey-dot.png",
+                sospeso: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+                critico: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+            };
+
             cantieriMapData.forEach((site) => {
                 const position = { lat: site.lat, lng: site.lng };
+                const statusKey = (site.status || "").toLowerCase();
+                const iconUrl = markerIconByStatus[statusKey];
                 const marker = new google.maps.Marker({
                     position,
                     map,
-                    title: site.name
+                    title: site.name,
+                    icon: iconUrl || undefined
                 });
                 bounds.extend(position);
 
