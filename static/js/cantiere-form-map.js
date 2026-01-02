@@ -121,15 +121,15 @@
       visible: hasCoordinates,
     });
     mapElement.dataset.mapInitialized = "true";
-setVerificationStatus(
-  statusElement,
-  alertElement,
-  confirmWrapper,
-  confirmCheckbox,
-  hasCoordinates,
-  "",
-  addressInput.value.trim() !== ""
-);
+    setVerificationStatus(
+      statusElement,
+      alertElement,
+      confirmWrapper,
+      confirmCheckbox,
+      hasCoordinates,
+      "",
+      addressInput.value.trim() !== ""
+    );
 
 
     const setPosition = (lat, lng, shouldCenter = true) => {
@@ -208,7 +208,8 @@ setVerificationStatus(
         addressInput.value.trim() !== ""
       );
       if (confirmWrapper) {
-        confirmWrapper.style.display = isEditMode && addressInput.value.trim() !== "" ? "flex" : "none";
+        confirmWrapper.style.display =
+          isEditMode && addressInput.value.trim() !== "" ? "flex" : "none";
       }
     };
 
@@ -259,35 +260,38 @@ setVerificationStatus(
       });
     }
 
-// --- Validazione submit: indirizzo senza coordinate ---
+    // --- Validazione submit: indirizzo senza coordinate ---
 
     if (form) {
       form.addEventListener("submit", (event) => {
+        if (!isEditMode) {
+          return;
+        }
         const hasLat = isCoordinateSet(latInput.value);
         const hasLng = isCoordinateSet(lngInput.value);
-const hasAddress = addressInput.value.trim() !== "";
-const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
+        const hasAddress = addressInput.value.trim() !== "";
+        if (!hasAddress || (hasLat && hasLng)) {
+          return;
+        }
 
-if (hasAddress && (!hasLat || !hasLng)) {
+        const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
+        if (confirmAllowed) {
+          return;
+        }
 
-          if (isEditMode && confirmAllowed) {
-            return;
-          }
-          event.preventDefault();
+        event.preventDefault();
 
-          setVerificationStatus(
-            statusElement,
-            alertElement,
-            confirmWrapper,
-            confirmCheckbox,
-            false,
-"",
-true
-
-          );
-          if (confirmWrapper && isEditMode) {
-            confirmWrapper.style.display = "flex";
-          }
+        setVerificationStatus(
+          statusElement,
+          alertElement,
+          confirmWrapper,
+          confirmCheckbox,
+          false,
+          "",
+          true
+        );
+        if (confirmWrapper) {
+          confirmWrapper.style.display = "flex";
         }
       });
     }
