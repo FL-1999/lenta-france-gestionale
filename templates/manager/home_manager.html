@@ -554,6 +554,28 @@
         </div>
         <div class="card-body">
             {% if google_maps_api_key %}
+                <div class="map-filters" aria-label="{% if lang == 'fr' %}Filtres carte{% else %}Filtri mappa{% endif %}">
+                    <label class="map-filter">
+                        <span class="map-filter-label">{% if lang == 'fr' %}Statut{% else %}Stato cantiere{% endif %}</span>
+                        <select id="map-filter-status" class="form-select">
+                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                        </select>
+                    </label>
+                    <label class="map-filter">
+                        <span class="map-filter-label">{% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}</span>
+                        <select id="map-filter-caposquadra" class="form-select">
+                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                        </select>
+                    </label>
+                    <label class="map-filter">
+                        <span class="map-filter-label">{% if lang == 'fr' %}Actifs{% else %}Attivi{% endif %}</span>
+                        <select id="map-filter-active" class="form-select">
+                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                            <option value="true">{% if lang == 'fr' %}Actifs{% else %}Attivi{% endif %}</option>
+                            <option value="false">{% if lang == 'fr' %}Inactifs{% else %}Non attivi{% endif %}</option>
+                        </select>
+                    </label>
+                </div>
                 <div id="manager-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
             {% else %}
                 <div class="map-disabled-message">
@@ -577,20 +599,10 @@
     };
 </script>
 {% if google_maps_api_key %}
-    <script src="{{ url_for('static', path='/js/cantieri-map.js') }}"></script>
-    <script>
-        const cantieriMapData = {{ cantieri_map_data | tojson | safe }};
-        const cantieriMapOptions = {
-            detailUrlTemplate: "{{ url_for('manager_cantiere_modifica_get', site_id='__SITE_ID__') }}",
-            detailLabel: "{% if lang == 'fr' %}Voir la fiche{% else %}Apri scheda{% endif %}",
-            directionsLabel: "{% if lang == 'fr' %}Itinéraire{% else %}Portami lì{% endif %}"
-        };
 
-        function initMap() {
-            initCantieriMap("manager-map", cantieriMapData, cantieriMapOptions);
-        }
     </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap"></script>
+    <script src="{{ url_for('static', path='/js/cantieri_map.js') }}"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initCantieriMap"></script>
 {% endif %}
 <script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
 {% endblock %}
