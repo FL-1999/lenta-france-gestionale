@@ -51,6 +51,7 @@
           <th>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</th>
           <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
           <th class="text-center">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
+          <th class="text-center">Mappa</th>
           <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
         </tr>
       </thead>
@@ -71,6 +72,16 @@
               {% if lang == 'fr' %}Non{% else %}No{% endif %}
             {% endif %}
           </td>
+          <td class="text-center">
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary btn-site-map"
+                    data-site-name="{{ s.name or s.nome or '' }}"
+                    data-lat="{{ s.lat if s.lat is not none else '' }}"
+                    data-lng="{{ s.lng if s.lng is not none else '' }}"
+                    data-address="{{ s.address or s.indirizzo or '' }}">
+              📍
+            </button>
+          </td>
           <td class="table-actions">
             <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
               ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
@@ -79,7 +90,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="table-empty">
+          <td colspan="8" class="table-empty">
             {% if lang == 'fr' %}
               Aucun chantier enregistré pour le moment.
             {% else %}
@@ -92,4 +103,20 @@
     </table>
   </div>
 </div>
+
+<div class="modal" id="site-map-preview-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-site-map-close></div>
+  <div class="modal-content card">
+    <div class="card-body">
+      <div class="modal-header">
+        <h3 class="card-title" id="site-preview-title">📍 Mappa cantiere</h3>
+        <button type="button" class="btn btn-secondary btn-sm" data-site-map-close>✖</button>
+      </div>
+      <p id="site-preview-message" class="text-muted" style="display: none;">Posizione non impostata</p>
+      <div id="site-preview-map" style="height: 300px;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', path='/js/site-map-preview.js') }}"></script>
 {% endblock %}
