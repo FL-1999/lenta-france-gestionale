@@ -11,6 +11,7 @@
                 <th>Nome</th>
                 <th>Cliente</th>
                 <th>Indirizzo</th>
+                <th>Mappa</th>
                 <th>Azioni</th>
             </tr>
         </thead>
@@ -20,10 +21,36 @@
                 <td>Cantiere esempio</td>
                 <td>Cliente demo</td>
                 <td>Parigi</td>
+                <td class="text-center">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary btn-site-map"
+                            data-site-name="Cantiere esempio"
+                            data-lat=""
+                            data-lng=""
+                            data-address="Parigi">
+                        📍
+                    </button>
+                </td>
                 <td><a href="#" class="btn">Dettagli</a></td>
             </tr>
         </tbody>
     </table>
 </div>
+
+<div class="modal" id="site-map-preview-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-site-map-close></div>
+    <div class="modal-content card">
+        <div class="card-body">
+            <div class="modal-header">
+                <h3 class="card-title" id="site-preview-title">📍 Mappa cantiere</h3>
+                <button type="button" class="btn btn-secondary btn-sm" data-site-map-close>✖</button>
+            </div>
+            <p id="site-preview-message" class="text-muted" style="display: none;">Posizione non impostata</p>
+            <div id="site-preview-map" style="height: 300px;"></div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', path='/js/site-map-preview.js') }}"></script>
 
 {% endblock %}
