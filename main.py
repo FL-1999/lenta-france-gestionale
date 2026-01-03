@@ -43,7 +43,7 @@ from models import (
 )
 from routers import users, sites, machines, reports, fiches
 from routes import manager_personale, manager_veicoli, magazzino, audit
-from template_context import register_manager_badges, render_template
+from template_context import register_manager_badges, register_static_helpers, render_template
 
 
 # -------------------------------------------------
@@ -126,12 +126,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_static_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        if "v" in request.query_params:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=86400"
+    return response
+
 # Static (CSS, immagini, JS)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static",
+)
 
 # Templates HTML (Jinja2)
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
+register_static_helpers(templates)
 
 
 # -------------------------------------------------

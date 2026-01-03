@@ -641,9 +641,10 @@
     {% if enable_clustering %}
     <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
     {% endif %}
-    <script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/cantieri-map.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/cantieri-map-modal.js') }}"></script>
+<script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
+<script src="{{ url_for('static', path='/js/cantieri-map.js') }}"></script>
+<script src="{{ url_for('static', path='/js/cantieri-map-modal.js') }}"></script>
+
 {% endif %}
-<script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
+<script src="{{ static_url(request, 'js/manager_dashboard_charts.js') }}"></script>
 {% endblock %}
