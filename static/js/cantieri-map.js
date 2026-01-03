@@ -276,4 +276,13 @@ window.initMap = function initMap() {
             select.addEventListener("change", applyFilters);
         });
     }
+
+    window.cantieriMapState = {
+        map,
+        mapElement,
+        config,
+        defaultCenter,
+        defaultZoom,
+        hasMarkers
+    };
 };
