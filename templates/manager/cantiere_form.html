@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-{% if mode == "create" %}Nuovo cantiere{% else %}Modifica cantiere{% endif %}
+{{ "Nuovo cantiere" if mode == "create" else "Modifica cantiere" }}
 {% endblock %}
 
 {% block content %}
@@ -10,7 +10,7 @@
     <p class="eyebrow">Area Manager</p>
     <h1 class="page-title">
       <span class="page-icon page-icon--sites" aria-hidden="true"></span>
-      {% if mode == "create" %}Nuovo cantiere{% else %}Modifica cantiere{% endif %}
+      {{ "Nuovo cantiere" if mode == "create" else "Modifica cantiere" }}
     </h1>
     <p class="subtitle">
       Compila i dettagli del cantiere per gestire attività e pianificazione.
