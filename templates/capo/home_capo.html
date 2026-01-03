@@ -374,7 +374,7 @@
 <script type="application/json" id="cantieri-map-config">
   {{ {
     "sites": cantieri_map_data,
-    "detailUrlTemplate": url_for('capo_site_detail', site_id='__SITE_ID__') | string,
+    "detailUrlTemplate": detail_url_template,
     "coloredMarkers": true,
     "clustering": enable_clustering,
     "filters": false

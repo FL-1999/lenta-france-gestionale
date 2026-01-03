@@ -440,6 +440,9 @@ def manager_dashboard(
     db = SessionLocal()
     sites_map_data: list[dict[str, object]] = []
     try:
+        detail_url_template = str(
+            request.url_for("manager_site_detail", site_id="__SITE_ID__")
+        )
         sites_with_coords = (
             db.query(Site)
             .options(joinedload(Site.caposquadra))
@@ -509,6 +512,7 @@ def manager_dashboard(
                 "chart_hours_per_site_30_days": jsonable_encoder(hours_per_site_30_days),
                 "chart_reports_by_status": jsonable_encoder(reports_by_status),
                 "cantieri_map_data": jsonable_encoder(sites_map_data),
+                "detail_url_template": detail_url_template,
                 "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
             },
             db,
@@ -529,15 +533,19 @@ def _build_sites_map_data(sites: list[Site]) -> list[dict[str, object]]:
             caposquadra_name = site.caposquadra.full_name or site.caposquadra.email
         sites_map_data.append(
             {
-                "id": site.id,
-                "name": site.name,
-                "lat": site.lat,
-                "lng": site.lng,
-                "address": ", ".join(address_parts),
-                "status": status_value,
-                "is_active": site.is_active,
-                "caposquadra_id": site.caposquadra_id,
-                "caposquadra_name": caposquadra_name,
+                "id": int(site.id) if site.id is not None else None,
+                "name": str(site.name) if site.name is not None else "",
+                "lat": float(site.lat) if site.lat is not None else None,
+                "lng": float(site.lng) if site.lng is not None else None,
+                "address": ", ".join(str(part) for part in address_parts),
+                "status": str(status_value) if status_value is not None else None,
+                "is_active": site.is_active if site.is_active is not None else None,
+                "caposquadra_id": (
+                    int(site.caposquadra_id) if site.caposquadra_id is not None else None
+                ),
+                "caposquadra_name": (
+                    str(caposquadra_name) if caposquadra_name is not None else None
+                ),
             }
         )
     return sites_map_data
@@ -1717,6 +1725,9 @@ def capo_dashboard(
             "kpi_assigned_sites": kpi_assigned_sites,
             "kpi_open_reports": kpi_open_reports,
             "cantieri_map_data": jsonable_encoder(assigned_sites_map_data),
+            "detail_url_template": str(
+                request.url_for("capo_site_detail", site_id="__SITE_ID__")
+            ),
             "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
         },
     )
