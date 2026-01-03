@@ -286,3 +286,52 @@ window.initMap = function initMap() {
         hasMarkers
     };
 };
+
+const setupCantieriMapLazyLoad = () => {
+    const config = window.cantieriMapConfig;
+    if (!config) {
+        return;
+    }
+
+    const mapElement = document.getElementById(config.elementId || "cantieri-map");
+    if (!mapElement) {
+        return;
+    }
+
+    const triggerLoad = () => {
+        if (window.google?.maps) {
+            if (typeof window.initMap === "function") {
+                window.initMap();
+            }
+            return;
+        }
+        if (typeof window.loadGoogleMapsScriptOnce === "function") {
+            window.loadGoogleMapsScriptOnce("initMap");
+        } else if (typeof window.initMap === "function") {
+            window.initMap();
+        }
+    };
+
+    if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const isVisible = entries.some((entry) => entry.isIntersecting);
+                if (!isVisible) {
+                    return;
+                }
+                observer.disconnect();
+                triggerLoad();
+            },
+            { rootMargin: "0px 0px 200px 0px" }
+        );
+        observer.observe(mapElement);
+    } else {
+        triggerLoad();
+    }
+};
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupCantieriMapLazyLoad);
+} else {
+    setupCantieriMapLazyLoad();
+}

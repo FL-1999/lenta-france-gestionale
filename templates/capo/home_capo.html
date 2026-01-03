@@ -365,7 +365,10 @@
                     </button>
                 </div>
                 <div id="cantieri-map-wrapper" class="cantieri-map-wrapper">
-                    <div id="cantieri-map" class="cantieri-map cantieri-map--preview" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
+                    <div id="cantieri-map"
+                         class="cantieri-map cantieri-map--preview"
+                         aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"
+                         data-google-maps-api-key="{{ google_maps_api_key }}"></div>
                 </div>
             {% else %}
                 <div class="map-disabled-message">
@@ -408,8 +411,8 @@
 {% if enable_clustering %}
 <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 {% endif %}
+<script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
 <script src="{{ url_for('static', path='/js/cantieri-map.js') }}"></script>
 <script src="{{ url_for('static', path='/js/cantieri-map-modal.js') }}"></script>
-<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap"></script>
 {% endif %}
 {% endblock %}
