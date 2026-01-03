@@ -8,7 +8,7 @@ from deps import (
     require_manager_or_admin,
     require_caposquadra_or_above,
     scope_sites_query,
-    get_site_for_user,
+    get_authorized_site,
 )
 
 router = APIRouter(prefix="/sites", tags=["sites"])
@@ -45,8 +45,6 @@ def list_sites(
 
 @router.get("/{site_id}", response_model=SiteRead)
 def get_site(
-    site_id: int,
-    db: Session = Depends(get_db),
-    user=Depends(require_caposquadra_or_above),
+    site: Site = Depends(get_authorized_site),
 ):
-    return get_site_for_user(db, site_id, user)
+    return site
