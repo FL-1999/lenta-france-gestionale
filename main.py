@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from jose import JWTError, jwt
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from sqlmodel import SQLModel
@@ -20,6 +21,9 @@ from auth import (
     create_access_token,
     get_current_active_user,
     get_current_active_user_html,
+    get_user_by_email,
+    SECRET_KEY,
+    ALGORITHM,
 )
 from deps import get_site_for_user, scope_sites_query
 from models import (
@@ -156,6 +160,33 @@ def get_lang_from_request(request: Request) -> str:
         return lang
     return "it"
 
+def _get_user_from_cookie(request: Request) -> User | None:
+    cookie_token = request.cookies.get("access_token")
+    if not cookie_token:
+        return None
+
+    token = cookie_token
+    if token.startswith("Bearer "):
+        token = token[len("Bearer ") :]
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None
+
+    email = payload.get("sub")
+    if not email:
+        return None
+
+    db = SessionLocal()
+    try:
+        user = get_user_by_email(db, email=email)
+        if user and getattr(user, "is_active", True):
+            return user
+    finally:
+        db.close()
+    return None
+
 
 @app.get("/", response_class=HTMLResponse)
 def homepage(request: Request):
@@ -163,12 +194,38 @@ def homepage(request: Request):
     Homepage con selezione lingua, login e accesso dashboard.
     Usa il template 'home.html'.
     """
+    current_user = _get_user_from_cookie(request)
+    if current_user:
+        destination = (
+            "/manager/dashboard"
+            if current_user.role in (RoleEnum.admin, RoleEnum.manager)
+            else "/capo/dashboard"
+        )
+        return RedirectResponse(url=destination, status_code=303)
+
     lang = get_lang_from_request(request)
     return templates.TemplateResponse(
         "home.html",
         {
             "request": request,
             "lang": lang,
+        },
+    )
+
+@app.get("/offline", response_class=HTMLResponse)
+def offline(request: Request):
+    """
+    Pagina di fallback per modalità offline (PWA).
+    """
+    lang = get_lang_from_request(request)
+    return templates.TemplateResponse(
+        "offline.html",
+        {
+            "request": request,
+            "lang": lang,
+            "title": "Sei offline",
+            "user": None,
+            "nuove_richieste_count": 0,
         },
     )
 
@@ -438,6 +495,12 @@ def login_api(
         max_age=60 * 60,  # 1 ora
         path="/",
     )
+    return response
+
+@app.get("/logout")
+def logout() -> RedirectResponse:
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie(key="access_token", path="/")
     return response
 
 

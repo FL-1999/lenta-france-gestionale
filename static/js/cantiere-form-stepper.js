@@ -58,9 +58,26 @@
     }
   };
 
+  const loadMapIfNeeded = () => {
+    const currentStep = steps[currentIndex];
+    if (!currentStep || currentStep.dataset.step !== "2") {
+      return;
+    }
+    const mapElement = document.getElementById("cantiere-pick-map");
+    if (!mapElement || !mapElement.dataset.googleMapsApiKey) {
+      return;
+    }
+    if (typeof window.loadGoogleMapsScriptOnce === "function") {
+      window.loadGoogleMapsScriptOnce("initCantiereFormMap", ["places"]);
+    } else if (typeof window.initCantiereFormMap === "function") {
+      window.initCantiereFormMap();
+    }
+  };
+
   const updateStepper = () => {
     if (!isMobile()) {
       ensureAllVisible();
+      loadMapIfNeeded();
       return;
     }
 
@@ -83,6 +100,7 @@
 
     const currentStep = steps[currentIndex];
     if (currentStep && currentStep.dataset.step === "2") {
+      loadMapIfNeeded();
       refreshMap();
     }
   };

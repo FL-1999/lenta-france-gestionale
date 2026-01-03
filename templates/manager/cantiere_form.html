@@ -151,7 +151,10 @@
             {% if not is_capo %}
               <div class="form-group" style="grid-column: 1 / -1;">
                 <label class="form-label">Posizione su mappa</label>
-                <div id="cantiere-pick-map" style="height: 320px;" aria-label="Mappa posizione cantiere"></div>
+                <div id="cantiere-pick-map"
+                     style="height: 320px;"
+                     aria-label="Mappa posizione cantiere"
+                     {% if google_maps_api_key %}data-google-maps-api-key="{{ google_maps_api_key }}"{% endif %}></div>
                 {% if google_maps_api_key %}
                   <small class="form-text text-muted">Clicca sulla mappa o trascina il pin.</small>
                 {% endif %}
@@ -290,12 +293,9 @@
   </div>
 {% endif %}
 
-  <script src="{{ static_url(request, 'js/cantiere-form-stepper.js') }}"></script>
-{% if not is_capo %}
-  <script src="{{ static_url(request, 'js/cantiere-form-map.js') }}"></script>
-  {% if google_maps_api_key %}
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initCantiereFormMap"
-            async defer></script>
-  {% endif %}
+<script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
+<script src="{{ url_for('static', path='/js/cantieri-map.js') }}"></script>
+<script src="{{ url_for('static', path='/js/cantieri-map-modal.js') }}"></script>
+
 {% endif %}
 {% endblock %}
