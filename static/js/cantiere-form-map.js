@@ -3,6 +3,10 @@
   const DEFAULT_ZOOM = 6;
   const FOCUSED_ZOOM = 15;
 
+  let mapInstance = null;
+  let markerInstance = null;
+  let mapCenter = DEFAULT_CENTER;
+
   const parseCoordinate = (value) => {
     if (value === null || value === undefined || value === "") {
       return null;
@@ -120,6 +124,9 @@
       draggable: true,
       visible: hasCoordinates,
     });
+    mapInstance = map;
+    markerInstance = marker;
+    mapCenter = initialCenter;
     mapElement.dataset.mapInitialized = "true";
     setVerificationStatus(
       statusElement,
@@ -140,6 +147,7 @@
       if (shouldCenter) {
         map.setCenter(position);
       }
+      mapCenter = position;
     };
 
     map.addListener("click", (event) => {
@@ -163,6 +171,13 @@
       if (confirmWrapper && confirmCheckbox) {
         confirmWrapper.style.display = "none";
         confirmCheckbox.checked = false;
+      }
+    });
+
+    map.addListener("idle", () => {
+      const center = map.getCenter();
+      if (center) {
+        mapCenter = { lat: center.lat(), lng: center.lng() };
       }
     });
 
@@ -296,6 +311,20 @@
       });
     }
 
+  };
+
+  window.refreshCantiereFormMap = function refreshCantiereFormMap() {
+    if (!mapInstance || !window.google || !window.google.maps) {
+      return;
+    }
+    window.google.maps.event.trigger(mapInstance, "resize");
+    const markerPosition =
+      markerInstance && markerInstance.getVisible() ? markerInstance.getPosition() : null;
+    if (markerPosition) {
+      mapInstance.setCenter(markerPosition);
+    } else if (mapCenter) {
+      mapInstance.setCenter(mapCenter);
+    }
   };
 
   document.addEventListener("DOMContentLoaded", () => {

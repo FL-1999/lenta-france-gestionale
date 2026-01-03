@@ -554,29 +554,39 @@
         </div>
         <div class="card-body">
             {% if google_maps_api_key %}
-                <div class="map-filters" aria-label="{% if lang == 'fr' %}Filtres carte{% else %}Filtri mappa{% endif %}">
-                    <label class="map-filter">
-                        <span class="map-filter-label">{% if lang == 'fr' %}Statut{% else %}Stato cantiere{% endif %}</span>
-                        <select id="map-filter-status" class="form-select">
-                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
-                        </select>
-                    </label>
-                    <label class="map-filter">
-                        <span class="map-filter-label">{% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}</span>
-                        <select id="map-filter-caposquadra" class="form-select">
-                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
-                        </select>
-                    </label>
-                    <label class="map-filter">
-                        <span class="map-filter-label">{% if lang == 'fr' %}Actifs{% else %}Attivi{% endif %}</span>
-                        <select id="map-filter-active" class="form-select">
-                            <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
-                            <option value="true">{% if lang == 'fr' %}Actifs uniquement{% else %}Solo attivi{% endif %}</option>
-                            <option value="false">{% if lang == 'fr' %}Inactifs uniquement{% else %}Solo non attivi{% endif %}</option>
-                        </select>
-                    </label>
+                <div class="map-preview-actions">
+                    <button type="button" class="btn btn-primary" data-cantieri-map-open>
+                        {% if lang == 'fr' %}Ouvrir la carte{% else %}Apri mappa{% endif %}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-cantieri-map-external>
+                        {% if lang == 'fr' %}Ouvrir dans Google Maps{% else %}Apri in Google Maps{% endif %}
+                    </button>
                 </div>
-                <div id="cantieri-map" class="cantieri-map" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
+                <div id="cantieri-map-wrapper" class="cantieri-map-wrapper">
+                    <div class="map-filters" aria-label="{% if lang == 'fr' %}Filtres carte{% else %}Filtri mappa{% endif %}">
+                        <label class="map-filter">
+                            <span class="map-filter-label">{% if lang == 'fr' %}Statut{% else %}Stato cantiere{% endif %}</span>
+                            <select id="map-filter-status" class="form-select">
+                                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                            </select>
+                        </label>
+                        <label class="map-filter">
+                            <span class="map-filter-label">{% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}</span>
+                            <select id="map-filter-caposquadra" class="form-select">
+                                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                            </select>
+                        </label>
+                        <label class="map-filter">
+                            <span class="map-filter-label">{% if lang == 'fr' %}Actifs{% else %}Attivi{% endif %}</span>
+                            <select id="map-filter-active" class="form-select">
+                                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                                <option value="true">{% if lang == 'fr' %}Actifs uniquement{% else %}Solo attivi{% endif %}</option>
+                                <option value="false">{% if lang == 'fr' %}Inactifs uniquement{% else %}Solo non attivi{% endif %}</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="cantieri-map" class="cantieri-map cantieri-map--preview" aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"></div>
+                </div>
             {% else %}
                 <div class="map-disabled-message">
                     {% if lang == 'fr' %}
@@ -587,6 +597,22 @@
                 </div>
             {% endif %}
         </div>
+    </div>
+</div>
+
+<div class="map-modal" id="cantieri-map-modal" aria-hidden="true">
+    <div class="map-modal__backdrop" data-cantieri-map-close></div>
+    <div class="map-modal__panel" role="dialog" aria-modal="true">
+        <div class="map-modal__header">
+            <div class="map-modal__title">{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}</div>
+            <div class="map-modal__actions">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-cantieri-map-external>
+                    {% if lang == 'fr' %}Ouvrir dans Google Maps{% else %}Apri in Google Maps{% endif %}
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-cantieri-map-close>✖</button>
+            </div>
+        </div>
+        <div id="cantieri-map-modal-body" class="map-modal__body"></div>
     </div>
 </div>
 
@@ -613,6 +639,7 @@
     <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
     {% endif %}
     <script src="{{ url_for('static', path='/js/cantieri-map.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/cantieri-map-modal.js') }}"></script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap"></script>
 {% endif %}
 <script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
