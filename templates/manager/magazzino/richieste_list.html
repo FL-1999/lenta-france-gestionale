@@ -84,8 +84,21 @@
     </div>
 </div>
 
+<div class="list-search-sticky">
+    <div class="list-search-inner">
+        <label class="form-label" for="list-search">
+            {% if lang == 'fr' %}Rechercher une demande{% else %}Cerca richiesta{% endif %}
+        </label>
+        <input
+            type="search"
+            id="list-search"
+            class="form-control"
+            placeholder="{% if lang == 'fr' %}Chef, chantier, statut...{% else %}Capo, cantiere, stato...{% endif %}">
+    </div>
+</div>
+
 <div class="card table-card">
-    <div class="card-body">
+    <div class="card-body list-table">
         <table class="data-table">
             <thead>
                 <tr>
@@ -104,7 +117,7 @@
                     {% set badge_class = stato_class_map.get(stato_label, 'badge-muted') %}
                     {% set priorita_value = richiesta.priorita.value if richiesta.priorita else '—' %}
                     {% set is_overdue = richiesta.data_necessaria and oggi and richiesta.data_necessaria < oggi and stato_label in ['IN_ATTESA', 'APPROVATA', 'PARZIALE'] %}
-                    <tr{% if is_overdue %} class="table-row-overdue"{% endif %}>
+                    <tr{% if is_overdue %} class="table-row-overdue"{% endif %} data-list-item>
                         <td>
                             <span class="badge {{ badge_class }}">{{ stato_label }}</span>
                             {% if is_overdue %}
@@ -156,4 +169,63 @@
         {% endif %}
     </div>
 </div>
+
+<div class="list-cards">
+    {% for richiesta in richieste %}
+        {% set stato_label = richiesta.stato.value if richiesta.stato else '—' %}
+        {% set badge_class = stato_class_map.get(stato_label, 'badge-muted') %}
+        {% set priorita_value = richiesta.priorita.value if richiesta.priorita else '—' %}
+        {% set is_overdue = richiesta.data_necessaria and oggi and richiesta.data_necessaria < oggi and stato_label in ['IN_ATTESA', 'APPROVATA', 'PARZIALE'] %}
+        <article class="card list-card{% if is_overdue %} table-row-overdue{% endif %}" data-list-item>
+            <div class="card-body">
+                <div class="list-card-header">
+                    <div style="display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center;">
+                        <span class="badge {{ badge_class }}">{{ stato_label }}</span>
+                        {% if is_overdue %}
+                            <span class="badge badge-warning">{% if lang == 'fr' %}EN RETARD{% else %}IN RITARDO{% endif %}</span>
+                        {% endif %}
+                    </div>
+                    <span class="badge badge-secondary">
+                        {{ priorita_labels.get(priorita_value, priorita_value) }}
+                    </span>
+                </div>
+                <div class="list-card-meta">
+                    <div>
+                        <span class="label">{% if lang == 'fr' %}Chef{% else %}Capo{% endif %}</span>
+                        <span class="value">{{ richiesta.richiesto_da.full_name or richiesta.richiesto_da.email }}</span>
+                    </div>
+                    <div>
+                        <span class="label">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</span>
+                        <span class="value">{{ richiesta.cantiere.name if richiesta.cantiere else '—' }}</span>
+                    </div>
+                    <div>
+                        <span class="label">{% if lang == 'fr' %}Date{% else %}Data{% endif %}</span>
+                        <span class="value">{{ richiesta.created_at.strftime('%d/%m/%Y') if richiesta.created_at else '—' }}</span>
+                    </div>
+                    <div>
+                        <span class="label">{% if lang == 'fr' %}Date nécessaire{% else %}Data necessaria{% endif %}</span>
+                        <span class="value">{{ richiesta.data_necessaria.strftime('%d/%m/%Y') if richiesta.data_necessaria else '—' }}</span>
+                    </div>
+                </div>
+                <div class="list-card-actions">
+                    <a href="{{ url_for('manager_magazzino_richiesta_detail', richiesta_id=richiesta.id) }}" class="btn btn-secondary btn-sm">
+                        🔍 {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
+                    </a>
+                </div>
+            </div>
+        </article>
+    {% else %}
+        <div class="card list-card">
+            <div class="card-body table-empty">
+                {% if lang == 'fr' %}
+                    Aucune demande trouvée.
+                {% else %}
+                    Nessuna richiesta trovata.
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<script src="{{ url_for('static', path='/js/list-search.js') }}"></script>
 {% endblock %}

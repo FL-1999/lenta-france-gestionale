@@ -994,6 +994,81 @@ body {
     background: rgba(148, 163, 184, 0.06);
 }
 
+.list-search-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: var(--space-2) 0;
+    background: var(--color-bg-elevated);
+    border-bottom: 1px solid var(--color-border-soft);
+    margin-bottom: var(--space-3);
+}
+
+.list-search-inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.list-table {
+    display: block;
+}
+
+.list-cards {
+    display: none;
+    gap: var(--space-3);
+}
+
+.list-card {
+    border: 1px solid var(--color-border-soft);
+}
+
+.list-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.list-card-meta {
+    display: grid;
+    gap: var(--space-2);
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+}
+
+.list-card-meta .label {
+    font-weight: 600;
+    color: var(--color-text-main);
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.list-card-meta .value {
+    color: var(--color-text-main);
+    font-weight: 500;
+}
+
+.list-card-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-top: var(--space-3);
+}
+
+@media (max-width: 768px) {
+    .list-table {
+        display: none;
+    }
+
+    .list-cards {
+        display: grid;
+    }
+}
+
 .table-empty:hover {
     transform: none;
     box-shadow: none;
