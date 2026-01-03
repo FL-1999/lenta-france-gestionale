@@ -17,6 +17,21 @@
 
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
+    {% set current_path = request.url.path %}
+    {% set section = request.query_params.get('section') %}
+    {% set is_manager = user and (user.role.value == 'admin' or user.role.value == 'manager') %}
+    {% set is_capo = user and user.role.value == 'caposquadra' %}
+    {% set home_path = "/manager/dashboard" if is_manager else "/capo/dashboard" %}
+    {% set cantieri_path = "/manager/cantieri" if is_manager else "/capo/dashboard?section=cantieri" %}
+    {% set report_path = "/manager/rapportini" if is_manager else "/capo/rapportini/nuovo" %}
+    {% set profile_path = "/manager/utenti" if is_manager else "/capo/dashboard?section=profilo" %}
+    {% set magazzino_path = "/manager/magazzino" if is_manager else "/capo/magazzino" %}
+    {% set show_magazzino = user and (user.role.value == 'admin' or user.is_magazzino_manager or is_capo) %}
+    {% set is_home_active = current_path == home_path and not section %}
+    {% set is_cantieri_active = current_path.startswith('/manager/cantieri') or (section == 'cantieri') or current_path.startswith('/capo/cantieri') %}
+    {% set is_magazzino_active = current_path.startswith('/manager/magazzino') or current_path.startswith('/capo/magazzino') %}
+    {% set is_report_active = current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') %}
+    {% set is_profile_active = current_path.startswith('/manager/utenti') or (section == 'profilo') %}
 
     <!-- NAVBAR -->
     <nav class="navbar">
@@ -99,10 +114,38 @@
     </nav>
 
     <!-- CONTENUTO -->
-    <main class="container">
+    <main class="container main-content">
         {% block content %}
         {% endblock %}
     </main>
+    {% if user %}
+        <nav class="bottom-nav" aria-label="{% if lang == 'fr' %}Navigation principale{% else %}Navigazione principale{% endif %}">
+            <a href="{{ home_path }}" class="bottom-nav__link {% if is_home_active %}bottom-nav__link--active{% endif %}">
+                <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
+                <span class="bottom-nav__label">{% if lang == 'fr' %}Accueil{% else %}Home{% endif %}</span>
+            </a>
+            {% if is_manager or is_capo %}
+                <a href="{{ cantieri_path }}" class="bottom-nav__link {% if is_cantieri_active %}bottom-nav__link--active{% endif %}">
+                    <span class="bottom-nav__icon" aria-hidden="true">🏗️</span>
+                    <span class="bottom-nav__label">{% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}</span>
+                </a>
+            {% endif %}
+            {% if show_magazzino %}
+                <a href="{{ magazzino_path }}" class="bottom-nav__link {% if is_magazzino_active %}bottom-nav__link--active{% endif %}">
+                    <span class="bottom-nav__icon" aria-hidden="true">📦</span>
+                    <span class="bottom-nav__label">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</span>
+                </a>
+            {% endif %}
+            <a href="{{ report_path }}" class="bottom-nav__link {% if is_report_active %}bottom-nav__link--active{% endif %}">
+                <span class="bottom-nav__icon" aria-hidden="true">📊</span>
+                <span class="bottom-nav__label">{% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</span>
+            </a>
+            <a href="{{ profile_path }}" class="bottom-nav__link {% if is_profile_active %}bottom-nav__link--active{% endif %}">
+                <span class="bottom-nav__icon" aria-hidden="true">👤</span>
+                <span class="bottom-nav__label">{% if lang == 'fr' %}Profil{% else %}Profilo{% endif %}</span>
+            </a>
+        </nav>
+    {% endif %}
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
 </body>
 </html>

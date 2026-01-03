@@ -378,6 +378,101 @@ body {
     padding: var(--space-6);
 }
 
+.main-content {
+    min-height: calc(100vh - 60px);
+}
+
+.bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--color-bg-navbar);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--color-border-soft);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    display: none;
+    justify-content: space-around;
+    gap: 6px;
+    z-index: 100;
+}
+
+.bottom-nav__link {
+    text-decoration: none;
+    color: var(--color-nav-text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    line-height: 1;
+    transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.bottom-nav__icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.bottom-nav__link--active {
+    background: rgba(129, 140, 248, 0.18);
+    color: var(--color-nav-text-hover);
+    box-shadow: 0 0 12px rgba(129, 140, 248, 0.4);
+}
+
+:root[data-theme="light"] .bottom-nav__link--active {
+    background: rgba(180, 131, 82, 0.18);
+    box-shadow: 0 0 12px rgba(180, 131, 82, 0.35);
+}
+
+.bottom-nav__link:active {
+    transform: scale(0.98);
+}
+
+@media (max-width: 767px) {
+    .navbar {
+        height: 52px;
+        padding: 0 var(--space-4);
+    }
+
+    .logo {
+        height: 28px;
+        margin-right: var(--space-2);
+    }
+
+    .brand {
+        font-size: 0.95rem;
+    }
+
+    .nav-right .nav-link,
+    .nav-right .nav-card {
+        display: none;
+    }
+
+    .nav-right {
+        gap: var(--space-2);
+    }
+
+    .container {
+        padding: var(--space-5);
+    }
+
+    .main-content {
+        padding-bottom: calc(var(--space-6) + 72px + env(safe-area-inset-bottom));
+    }
+
+    .bottom-nav {
+        display: flex;
+    }
+}
+
 .page-header {
     display: flex;
     align-items: flex-start;
