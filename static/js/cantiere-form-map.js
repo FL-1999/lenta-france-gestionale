@@ -74,6 +74,11 @@
       "Mappa non disponibile. Inserisci l’indirizzo e salva: potrai completare la posizione più tardi.";
   };
 
+  const hasApiKey = () => {
+    const mapElement = document.getElementById("cantiere-pick-map");
+    return Boolean(mapElement && mapElement.dataset.googleMapsApiKey);
+  };
+
   window.initCantiereFormMap = function initCantiereFormMap() {
     const addressInput = document.getElementById("cantiere_address");
     const placeIdInput = document.getElementById("cantiere_place_id");
@@ -328,6 +333,10 @@
   };
 
   document.addEventListener("DOMContentLoaded", () => {
+    if (!hasApiKey()) {
+      showFallback(document.getElementById("cantiere-pick-map"));
+      return;
+    }
     if (!window.google || !window.google.maps) {
       showFallback(document.getElementById("cantiere-pick-map"));
     }
