@@ -156,6 +156,23 @@ def homepage(request: Request):
         },
     )
 
+@app.get("/offline", response_class=HTMLResponse)
+def offline(request: Request):
+    """
+    Pagina di fallback per modalità offline (PWA).
+    """
+    lang = get_lang_from_request(request)
+    return templates.TemplateResponse(
+        "offline.html",
+        {
+            "request": request,
+            "lang": lang,
+            "title": "Sei offline",
+            "user": None,
+            "nuove_richieste_count": 0,
+        },
+    )
+
 
 @app.get("/set-lang")
 def set_lang(lang: str = "it"):
