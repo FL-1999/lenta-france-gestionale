@@ -10,9 +10,17 @@
         {% endif %}
     </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1120" />
+<!-- PWA / Mobile -->
+<link rel="manifest" href="/static/manifest.webmanifest" />
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Lenta France" />
+<link rel="apple-touch-icon" href="/static/img/logo.png" />
 
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="{{ static_url(request, 'css/style.css') }}" />
 </head>
 
 <body>
@@ -36,7 +44,7 @@
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="nav-left">
-             <img src="{{ url_for('static', path='img/logo.png') }}" class="logo" alt="Logo Lenta France" />
+             <img src="{{ static_url(request, 'img/logo.png') }}" class="logo" alt="Logo Lenta France" />
             <span class="brand">
                 {% if lang == 'fr' %}
                     Lenta France Logiciel
@@ -146,6 +154,6 @@
             </a>
         </nav>
     {% endif %}
-    <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
+    <script src="{{ static_url(request, 'js/theme_switcher.js') }}"></script>
 </body>
 </html>

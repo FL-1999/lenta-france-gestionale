@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import Request
 from sqlalchemy import func
 
@@ -105,3 +107,22 @@ def manager_badge_counts(request: Request, user: User | None = None) -> dict[str
 
 def register_manager_badges(templates) -> None:
     templates.env.globals.setdefault("manager_badge_counts", manager_badge_counts)
+
+
+def static_url(request: Request, path: str) -> str:
+    normalized_path = path.lstrip("/")
+    static_path = Path("static") / normalized_path
+    version = None
+    try:
+        version = int(static_path.stat().st_mtime)
+    except FileNotFoundError:
+        version = None
+
+    url = request.url_for("static", path=normalized_path)
+    if version is None:
+        return str(url)
+    return f"{url}?v={version}"
+
+
+def register_static_helpers(templates) -> None:
+    templates.env.globals.setdefault("static_url", static_url)

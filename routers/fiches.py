@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user
 from database import get_db
-from models import Fiche, FicheTypeEnum, Site, Machine, User
+from deps import get_site_for_user
+from models import Fiche, FicheTypeEnum, RoleEnum, Site, Machine, User
 from schemas import FicheCreate, FicheRead, FicheListItem
 
 router = APIRouter(prefix="/fiches", tags=["fiches"])
@@ -27,7 +28,11 @@ def list_fiches(
         query = query.filter(Fiche.date >= from_date)
     if to_date:
         query = query.filter(Fiche.date <= to_date)
+    if current_user.role == RoleEnum.caposquadra:
+        query = query.filter(Site.caposquadra_id == current_user.id)
     if site_id:
+        if current_user.role == RoleEnum.caposquadra:
+            get_site_for_user(db, site_id, current_user)
         query = query.filter(Fiche.site_id == site_id)
     if fiche_type:
         query = query.filter(Fiche.fiche_type == fiche_type)
@@ -77,6 +82,8 @@ def get_fiche_detail(
 
     if not fiche:
         raise HTTPException(status_code=404, detail="Fiche non trovata")
+    if current_user.role == RoleEnum.caposquadra:
+        get_site_for_user(db, fiche.site_id, current_user)
 
     return FicheRead(
         id=fiche.id,
@@ -110,9 +117,7 @@ def create_fiche(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    site = db.query(Site).filter(Site.id == fiche_in.site_id).first()
-    if not site:
-        raise HTTPException(status_code=404, detail="Cantiere non trovato")
+    site = get_site_for_user(db, fiche_in.site_id, current_user)
 
     machine = None
     if fiche_in.machine_id is not None:

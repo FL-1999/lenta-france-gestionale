@@ -70,3 +70,11 @@ def get_site_for_user(db: Session, site_id: int, current_user: User) -> Site:
         if exists:
             raise HTTPException(status_code=403, detail="Cantiere non assegnato")
     raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+
+def get_authorized_site(
+    site_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_caposquadra_or_above),
+) -> Site:
+    return get_site_for_user(db, site_id, current_user)
