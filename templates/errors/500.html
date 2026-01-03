@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% if lang == 'fr' %}
+    {% set title = "Erreur serveur – Lenta France" %}
+{% else %}
+    {% set title = "Errore server – Lenta France" %}
+{% endif %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">500 · {% if lang == 'fr' %}Erreur serveur{% else %}Errore server{% endif %}</h1>
+    <p class="page-subtitle">
+        {% if lang == 'fr' %}
+            Une erreur inattendue s'est produite. Réessayez plus tard.
+        {% else %}
+            Si è verificato un errore imprevisto. Riprova più tardi.
+        {% endif %}
+    </p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p>
+            {% if lang == 'fr' %}
+                Si le problème persiste, envoyez ce code à l'assistance.
+            {% else %}
+                Se il problema persiste, comunica questo codice all'assistenza.
+            {% endif %}
+        </p>
+        <div class="button-row">
+            <a href="/" class="btn btn-primary">🏠 {% if lang == 'fr' %}Accueil{% else %}Home{% endif %}</a>
+            <a href="javascript:history.back()" class="btn btn-secondary">↩️ {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+        </div>
+        <p class="text-muted">Request ID: {{ request_id }}</p>
+    </div>
+</div>
+{% endblock %}
