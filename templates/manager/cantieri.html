@@ -35,13 +35,28 @@
   </div>
 </div>
 
+{% set sites_list = sites | default([]) %}
+
+<div class="list-search-sticky">
+  <div class="list-search-inner">
+    <label class="form-label" for="list-search">
+      {% if lang == 'fr' %}Rechercher un chantier{% else %}Cerca cantiere{% endif %}
+    </label>
+    <input
+      type="search"
+      id="list-search"
+      class="form-control"
+      placeholder="{% if lang == 'fr' %}Nom, code, ville...{% else %}Nome, codice, città...{% endif %}">
+  </div>
+</div>
+
 <div class="card table-card">
   <div class="card-header">
     <div class="card-title">
       🏗️ {% if lang == 'fr' %}Liste des chantiers{% else %}Elenco cantieri{% endif %}
     </div>
   </div>
-  <div class="card-body">
+  <div class="card-body list-table">
     <table class="data-table">
       <thead>
         <tr>
@@ -56,10 +71,9 @@
         </tr>
       </thead>
       <tbody>
-        {% set sites_list = sites | default([]) %}
         {% for s in sites_list %}
         {% set caposquadra = site_caposquadra_map.get(s.id) if site_caposquadra_map else None %}
-        <tr>
+        <tr data-list-item>
           <td><strong>{{ s.name or s.nome or "-" }}</strong></td>
           <td>{{ s.code or "-" }}</td>
           <td>{{ s.city or s.location or "-" }}</td>
@@ -104,6 +118,69 @@
   </div>
 </div>
 
+<div class="list-cards">
+  {% for s in sites_list %}
+    {% set caposquadra = site_caposquadra_map.get(s.id) if site_caposquadra_map else None %}
+    <article class="card list-card" data-list-item>
+      <div class="card-body">
+        <div class="list-card-header">
+          <h3>{{ s.name or s.nome or "-" }}</h3>
+          <span class="badge badge-secondary">
+            {{ s.status.value if s.status else "-" }}
+          </span>
+        </div>
+        <div class="list-card-meta">
+          <div>
+            <span class="label">{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</span>
+            <span class="value">{{ s.code or "-" }}</span>
+          </div>
+          <div>
+            <span class="label">{% if lang == 'fr' %}Ville{% else %}Città{% endif %}</span>
+            <span class="value">{{ s.city or s.location or "-" }}</span>
+          </div>
+          <div>
+            <span class="label">{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</span>
+            <span class="value">{{ caposquadra.full_name if caposquadra and caposquadra.full_name else "—" }}</span>
+          </div>
+          <div>
+            <span class="label">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+            <span class="value">
+              {% if s.is_active %}
+                {% if lang == 'fr' %}Oui{% else %}Sì{% endif %}
+              {% else %}
+                {% if lang == 'fr' %}Non{% else %}No{% endif %}
+              {% endif %}
+            </span>
+          </div>
+        </div>
+        <div class="list-card-actions">
+          <button type="button"
+                  class="btn btn-sm btn-outline-secondary btn-site-map"
+                  data-site-name="{{ s.name or s.nome or '' }}"
+                  data-lat="{{ s.lat if s.lat is not none else '' }}"
+                  data-lng="{{ s.lng if s.lng is not none else '' }}"
+                  data-address="{{ s.address or s.indirizzo or '' }}">
+            📍 {% if lang == 'fr' %}Carte{% else %}Mappa{% endif %}
+          </button>
+          <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
+            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+          </a>
+        </div>
+      </div>
+    </article>
+  {% else %}
+    <div class="card list-card">
+      <div class="card-body table-empty">
+        {% if lang == 'fr' %}
+          Aucun chantier enregistré pour le moment.
+        {% else %}
+          Nessun cantiere presente al momento.
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
 <div class="modal" id="site-map-preview-modal" aria-hidden="true">
   <div class="modal-backdrop" data-site-map-close></div>
   <div class="modal-content card">
@@ -118,5 +195,6 @@
   </div>
 </div>
 
+<script src="{{ url_for('static', path='/js/list-search.js') }}"></script>
 <script src="{{ url_for('static', path='/js/site-map-preview.js') }}"></script>
 {% endblock %}
