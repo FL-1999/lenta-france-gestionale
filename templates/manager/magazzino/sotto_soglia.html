@@ -148,5 +148,5 @@
     {% endif %}
 </div>
 
-<script src="{{ url_for('static', path='/js/list-search.js') }}"></script>
+<script src="{{ static_url(request, 'js/list-search.js') }}"></script>
 {% endblock %}
