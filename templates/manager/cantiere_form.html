@@ -28,6 +28,10 @@
       <form method="post" data-mode="{{ mode }}">
         {% set has_coordinates = site and site.lat is not none and site.lng is not none %}
         {% set has_address = site and (site.address or site.indirizzo) %}
+        {% set address_status_class = 'badge-success' if has_coordinates else 'badge-danger' %}
+        {% set address_status_label = 'Verificato ✅' if has_coordinates else 'Non verificato ⚠️' %}
+        {% set address_alert_style = 'display:block;' if has_address and not has_coordinates else 'display:none;' %}
+        {% set address_confirm_style = 'display:flex;' if has_address and not has_coordinates else 'display:none;' %}
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label" for="name">Nome*</label>
@@ -56,15 +60,15 @@
 
               <div class="form-text" style="margin-top: 0.35rem;">
                 <span id="cantiere-address-status"
-                      class="badge address-status-badge {% if has_coordinates %}badge-success{% else %}badge-danger{% endif %}">
-                  {% if has_coordinates %}Verificato ✅{% else %}Non verificato ⚠️{% endif %}
+                      class="badge address-status-badge {{ address_status_class }}">
+                  {{ address_status_label }}
                 </span>
               </div>
 
               <div id="cantiere-address-alert"
                    class="alert alert-warning"
                    role="alert"
-                   style="margin-top: 0.5rem; {% if has_address and not has_coordinates %}display:block;{% else %}display:none;{% endif %}">
+                   style="margin-top: 0.5rem; {{ address_alert_style }}">
                 Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione.
               </div>
             {% else %}
@@ -116,7 +120,7 @@
             {% if mode == "edit" %}
               <div id="cantiere-unverified-confirm-wrapper"
                    class="form-group form-group-inline"
-                   style="grid-column: 1 / -1; {% if has_address and not has_coordinates %}display:flex;{% else %}display:none;{% endif %}">
+                   style="grid-column: 1 / -1; {{ address_confirm_style }}">
                 <input type="checkbox"
                        id="cantiere-unverified-confirm"
                        name="confirm_unverified"
