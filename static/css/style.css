@@ -1703,10 +1703,106 @@ body {
     row-gap: 1.8rem;
 }
 
+.cantiere-stepper {
+    display: none;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+}
+
+.cantiere-stepper-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: rgba(15, 23, 42, 0.35);
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.cantiere-stepper-item.is-active {
+    color: var(--color-text-strong);
+    background: rgba(99, 102, 241, 0.18);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3);
+}
+
+.cantiere-stepper-item.is-complete {
+    color: var(--color-text-strong);
+}
+
+.cantiere-stepper-index {
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.25);
+    color: var(--color-text-main);
+}
+
+.cantiere-stepper-item.is-active .cantiere-stepper-index {
+    background: var(--color-accent);
+    color: var(--color-btn-primary-text);
+}
+
+.cantiere-step {
+    display: block;
+}
+
+.cantiere-mobile-actions {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 0.5rem;
+    border-top: 1px solid var(--color-border-soft);
+    background: var(--color-bg-card);
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+}
+
+.cantiere-mobile-actions__nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    justify-content: center;
+}
+
 @media (max-width: 768px) {
     .form-grid {
         grid-template-columns: minmax(0, 1fr);
         row-gap: 1.6rem;
+    }
+
+    .cantiere-stepper {
+        display: flex;
+    }
+
+    .cantiere-step {
+        display: none;
+    }
+
+    .cantiere-step.is-active {
+        display: block;
+    }
+
+    .cantiere-form {
+        padding-bottom: 4.5rem;
+    }
+
+    .form-actions {
+        display: none;
+    }
+
+    .cantiere-mobile-actions {
+        display: flex;
     }
 }
 

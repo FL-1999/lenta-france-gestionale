@@ -25,167 +25,201 @@
     </div>
     <div class="card-body">
       {% set is_capo = user and user.role and user.role.value == 'caposquadra' %}
-      <form method="post" data-mode="{{ mode }}">
+      <form method="post" data-mode="{{ mode }}" class="cantiere-form">
         {% set has_coordinates = site and site.lat is not none and site.lng is not none %}
         {% set has_address = site and (site.address or site.indirizzo) %}
         {% set address_status_class = 'badge-success' if has_coordinates else 'badge-danger' %}
         {% set address_status_label = 'Verificato ✅' if has_coordinates else 'Non verificato ⚠️' %}
         {% set address_alert_style = 'display:block;' if has_address and not has_coordinates else 'display:none;' %}
         {% set address_confirm_style = 'display:flex;' if has_address and not has_coordinates else 'display:none;' %}
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label" for="name">Nome*</label>
-            <input type="text" id="name" name="name" class="form-control" value="{{ site.name if site else '' }}" required>
+        <div class="cantiere-stepper" data-cantiere-stepper>
+          <div class="cantiere-stepper-item is-active" data-step-index="0">
+            <span class="cantiere-stepper-index">1</span>
+            <span class="cantiere-stepper-label">Dati base</span>
           </div>
-
-          <div class="form-group">
-            <label class="form-label" for="code">Codice*</label>
-            <input type="text" id="code" name="code" class="form-control" value="{{ site.code if site else '' }}" required>
+          <div class="cantiere-stepper-item" data-step-index="1">
+            <span class="cantiere-stepper-index">2</span>
+            <span class="cantiere-stepper-label">Indirizzo + mappa</span>
           </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cantiere_address">Indirizzo</label>
-            <input id="cantiere_address"
-                   name="address"
-                   type="text"
-                   class="form-control"
-                   {% if is_capo %}readonly{% endif %}
-                   placeholder="Inizia a scrivere l’indirizzo…"
-                   autocomplete="off"
-                   value="{{ site.address if site else '' }}">
-            {% if not is_capo %}
-              <small class="form-text text-muted">
-                Scegli dai suggerimenti per avere indirizzo verificato.
-              </small>
-
-              <div class="form-text" style="margin-top: 0.35rem;">
-                <span id="cantiere-address-status"
-                      class="badge address-status-badge {{ address_status_class }}">
-                  {{ address_status_label }}
-                </span>
-              </div>
-
-              <div id="cantiere-address-alert"
-                   class="alert alert-warning"
-                   role="alert"
-                   style="margin-top: 0.5rem; {{ address_alert_style }}">
-                Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione.
-              </div>
-            {% else %}
-              <small class="form-text text-muted">
-                Indirizzo in sola visualizzazione.
-              </small>
-            {% endif %}
-
+          <div class="cantiere-stepper-item" data-step-index="2">
+            <span class="cantiere-stepper-index">3</span>
+            <span class="cantiere-stepper-label">Assegnazione / stato</span>
           </div>
-          {% if is_capo %}
+        </div>
+
+        <div class="cantiere-step is-active" data-step="1">
+          <div class="form-grid">
             <div class="form-group">
-              <label class="form-label" for="cantiere_lat">Latitudine</label>
-              <input id="cantiere_lat"
-                     name="lat"
-                     type="text"
-                     class="form-control"
-                     readonly
-                     value="{{ site.lat if site and site.lat is not none else '' }}">
+              <label class="form-label" for="name">Nome*</label>
+              <input type="text" id="name" name="name" class="form-control" value="{{ site.name if site else '' }}" required>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="cantiere_lng">Longitudine</label>
-              <input id="cantiere_lng"
-                     name="lng"
+              <label class="form-label" for="code">Codice*</label>
+              <input type="text" id="code" name="code" class="form-control" value="{{ site.code if site else '' }}" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="city">Città</label>
+              <input type="text" id="city" name="city" class="form-control" value="{{ site.city if site else '' }}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="country">Nazione</label>
+              <input type="text" id="country" name="country" class="form-control" value="{{ site.country if site else '' }}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="start_date">Data inizio</label>
+              <input type="date" id="start_date" name="start_date" class="form-control"
+                     value="{{ site.start_date.isoformat() if site and site.start_date else '' }}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="end_date">Data fine</label>
+              <input type="date" id="end_date" name="end_date" class="form-control"
+                     value="{{ site.end_date.isoformat() if site and site.end_date else '' }}">
+            </div>
+          </div>
+        </div>
+
+        <div class="cantiere-step" data-step="2">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="cantiere_address">Indirizzo</label>
+              <input id="cantiere_address"
+                     name="address"
                      type="text"
                      class="form-control"
-                     readonly
-                     value="{{ site.lng if site and site.lng is not none else '' }}">
-            </div>
-          {% endif %}
-          {% if not is_capo and not google_maps_api_key %}
-            <div class="form-group" style="grid-column: 1 / -1;">
-              <div class="alert alert-warning" role="alert">
-                Mappa/Autocomplete non disponibili (manca configurazione).
-              </div>
-            </div>
-          {% endif %}
-          {% if not is_capo %}
-            <div class="form-group" style="grid-column: 1 / -1;">
-              <label class="form-label">Posizione su mappa</label>
-              <div id="cantiere-pick-map" style="height: 320px;" aria-label="Mappa posizione cantiere"></div>
-              {% if google_maps_api_key %}
-                <small class="form-text text-muted">Clicca sulla mappa o trascina il pin.</small>
+                     {% if is_capo %}readonly{% endif %}
+                     placeholder="Inizia a scrivere l’indirizzo…"
+                     autocomplete="off"
+                     value="{{ site.address if site else '' }}">
+              {% if not is_capo %}
+                <small class="form-text text-muted">
+                  Scegli dai suggerimenti per avere indirizzo verificato.
+                </small>
+
+                <div class="form-text" style="margin-top: 0.35rem;">
+                  <span id="cantiere-address-status"
+                        class="badge address-status-badge {{ address_status_class }}">
+                    {{ address_status_label }}
+                  </span>
+                </div>
+
+                <div id="cantiere-address-alert"
+                     class="alert alert-warning"
+                     role="alert"
+                     style="margin-top: 0.5rem; {{ address_alert_style }}">
+                  Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione.
+                </div>
+              {% else %}
+                <small class="form-text text-muted">
+                  Indirizzo in sola visualizzazione.
+                </small>
               {% endif %}
-              <div id="cantiere-address-status" class="form-text text-muted" aria-live="polite"></div>
-              <div id="cantiere-address-alert" class="alert alert-warning" role="alert" style="display: none;"></div>
-            </div>
 
-            {% if mode == "edit" %}
-              <div id="cantiere-unverified-confirm-wrapper"
-                   class="form-group form-group-inline"
-                   style="grid-column: 1 / -1; {{ address_confirm_style }}">
-                <input type="checkbox"
-                       id="cantiere-unverified-confirm"
-                       name="confirm_unverified"
+            </div>
+            {% if is_capo %}
+              <div class="form-group">
+                <label class="form-label" for="cantiere_lat">Latitudine</label>
+                <input id="cantiere_lat"
+                       name="lat"
+                       type="text"
                        class="form-control"
-                       value="1">
-                <label class="form-label" for="cantiere-unverified-confirm">
-                  Confermo salvataggio senza coordinate.
-                </label>
+                       readonly
+                       value="{{ site.lat if site and site.lat is not none else '' }}">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="cantiere_lng">Longitudine</label>
+                <input id="cantiere_lng"
+                       name="lng"
+                       type="text"
+                       class="form-control"
+                       readonly
+                       value="{{ site.lng if site and site.lng is not none else '' }}">
               </div>
             {% endif %}
-            <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
-            <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
-            <input id="cantiere_lng" name="lng" type="hidden" value="{{ site.lng if site and site.lng is not none else '' }}">
-          {% endif %}
+            {% if not is_capo and not google_maps_api_key %}
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <div class="alert alert-warning" role="alert">
+                  Mappa/Autocomplete non disponibili (manca configurazione).
+                </div>
+              </div>
+            {% endif %}
+            {% if not is_capo %}
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label class="form-label">Posizione su mappa</label>
+                <div id="cantiere-pick-map" style="height: 320px;" aria-label="Mappa posizione cantiere"></div>
+                {% if google_maps_api_key %}
+                  <small class="form-text text-muted">Clicca sulla mappa o trascina il pin.</small>
+                {% endif %}
+                <div id="cantiere-address-status" class="form-text text-muted" aria-live="polite"></div>
+                <div id="cantiere-address-alert" class="alert alert-warning" role="alert" style="display: none;"></div>
+              </div>
 
-          <div class="form-group">
-            <label class="form-label" for="city">Città</label>
-            <input type="text" id="city" name="city" class="form-control" value="{{ site.city if site else '' }}">
+              {% if mode == "edit" %}
+                <div id="cantiere-unverified-confirm-wrapper"
+                     class="form-group form-group-inline"
+                     style="grid-column: 1 / -1; {{ address_confirm_style }}">
+                  <input type="checkbox"
+                         id="cantiere-unverified-confirm"
+                         name="confirm_unverified"
+                         class="form-control"
+                         value="1">
+                  <label class="form-label" for="cantiere-unverified-confirm">
+                    Confermo salvataggio senza coordinate.
+                  </label>
+                </div>
+              {% endif %}
+              <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
+              <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
+              <input id="cantiere_lng" name="lng" type="hidden" value="{{ site.lng if site and site.lng is not none else '' }}">
+            {% endif %}
           </div>
+        </div>
 
-          <div class="form-group">
-            <label class="form-label" for="country">Nazione</label>
-            <input type="text" id="country" name="country" class="form-control" value="{{ site.country if site else '' }}">
-          </div>
+        <div class="cantiere-step" data-step="3">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="status">Stato</label>
+              <select id="status" name="status" class="form-select" required>
+                {% for status in site_status_values %}
+                  <option value="{{ status }}" {% if site and (site.status.name == status or site.status.value == status) %}selected{% endif %}>
+                    {{ status }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label" for="start_date">Data inizio</label>
-            <input type="date" id="start_date" name="start_date" class="form-control"
-                   value="{{ site.start_date.isoformat() if site and site.start_date else '' }}">
-          </div>
+            <div class="form-group">
+              <label class="form-label" for="caposquadra_id">Caposquadra responsabile</label>
+              <select id="caposquadra_id" name="caposquadra_id" class="form-select">
+                {% set selected_capo = site.caposquadra_id if site else '' %}
+                <option value="" {% if not selected_capo %}selected{% endif %}>-</option>
+                {% for capo in capisquadra %}
+                  <option value="{{ capo.id }}" {% if selected_capo == capo.id %}selected{% endif %}>
+                    {{ capo.full_name or capo.email }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label" for="end_date">Data fine</label>
-            <input type="date" id="end_date" name="end_date" class="form-control"
-                   value="{{ site.end_date.isoformat() if site and site.end_date else '' }}">
+            <div class="form-group form-group-inline">
+              <input type="checkbox" id="is_active" name="is_active" class="form-control" {% if not site or site.is_active %}checked{% endif %}>
+              <label class="form-label" for="is_active">Cantiere attivo</label>
+            </div>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label class="form-label" for="status">Stato</label>
-            <select id="status" name="status" class="form-select" required>
-              {% for status in site_status_values %}
-                <option value="{{ status }}" {% if site and (site.status.name == status or site.status.value == status) %}selected{% endif %}>
-                  {{ status }}
-                </option>
-              {% endfor %}
-            </select>
+        <div class="cantiere-mobile-actions">
+          <a href="/manager/cantieri" class="btn btn-secondary">Annulla</a>
+          <div class="cantiere-mobile-actions__nav">
+            <button type="button" class="btn btn-secondary" data-step-action="prev">Indietro</button>
+            <button type="button" class="btn btn-primary" data-step-action="next">Avanti</button>
           </div>
-
-          <div class="form-group">
-            <label class="form-label" for="caposquadra_id">Caposquadra responsabile</label>
-            <select id="caposquadra_id" name="caposquadra_id" class="form-select">
-              {% set selected_capo = site.caposquadra_id if site else '' %}
-              <option value="" {% if not selected_capo %}selected{% endif %}>-</option>
-              {% for capo in capisquadra %}
-                <option value="{{ capo.id }}" {% if selected_capo == capo.id %}selected{% endif %}>
-                  {{ capo.full_name or capo.email }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="form-group form-group-inline">
-            <input type="checkbox" id="is_active" name="is_active" class="form-control" {% if not site or site.is_active %}checked{% endif %}>
-            <label class="form-label" for="is_active">Cantiere attivo</label>
-          </div>
+          <button type="submit" class="btn btn-primary">Salva</button>
         </div>
 
         <div class="form-actions">
@@ -256,6 +290,7 @@
   </div>
 {% endif %}
 
+  <script src="{{ url_for('static', path='/js/cantiere-form-stepper.js') }}"></script>
 {% if not is_capo %}
   <script src="{{ url_for('static', path='/js/cantiere-form-map.js') }}"></script>
   {% if google_maps_api_key %}
