@@ -1,13 +1,16 @@
+import logging
 import os
+import uuid
 from datetime import date, datetime, timedelta
 from typing import List
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from sqlmodel import SQLModel
@@ -40,6 +43,9 @@ from models import (
 from routers import users, sites, machines, reports, fiches
 from routes import manager_personale, manager_veicoli, magazzino, audit
 from template_context import register_manager_badges, render_template
+
+
+logger = logging.getLogger("lenta_france_gestionale.errors")
 
 
 # -------------------------------------------------
@@ -128,6 +134,82 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Templates HTML (Jinja2)
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
+
+
+# -------------------------------------------------
+# REQUEST ID + ERROR HANDLERS
+# -------------------------------------------------
+
+def _get_request_id(request: Request) -> str:
+    request_id = getattr(request.state, "request_id", None)
+    return request_id or "unknown"
+
+
+def _build_error_context(request: Request, status_code: int) -> dict:
+    return {
+        "request": request,
+        "status_code": status_code,
+        "request_id": _get_request_id(request),
+        "user": None,
+    }
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    request_id = _get_request_id(request)
+    status_code = exc.status_code
+    logger.warning(
+        "HTTP error %s %s -> %s (request_id=%s)",
+        request.method,
+        request.url.path,
+        status_code,
+        request_id,
+    )
+
+    if status_code == status.HTTP_403_FORBIDDEN:
+        response = templates.TemplateResponse(
+            "errors/403.html",
+            _build_error_context(request, status_code),
+            status_code=status_code,
+        )
+    elif status_code == status.HTTP_404_NOT_FOUND:
+        response = templates.TemplateResponse(
+            "errors/404.html",
+            _build_error_context(request, status_code),
+            status_code=status_code,
+        )
+    else:
+        response = JSONResponse(status_code=status_code, content={"detail": exc.detail})
+
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    request_id = _get_request_id(request)
+    logger.exception(
+        "Unhandled error %s %s (request_id=%s)",
+        request.method,
+        request.url.path,
+        request_id,
+    )
+    response = templates.TemplateResponse(
+        "errors/500.html",
+        _build_error_context(request, status.HTTP_500_INTERNAL_SERVER_ERROR),
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 # -------------------------------------------------
