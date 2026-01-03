@@ -200,6 +200,7 @@ body {
 }
 
 /* NAVBAR */
+/* TODO(mobile): introdurre una navbar compatta (hamburger/off-canvas) e badge ridotti per evitare overflow. */
 .navbar {
     height: 60px;
     background: var(--color-bg-navbar);
@@ -904,6 +905,7 @@ body {
     background: rgba(148, 163, 184, 0.06);
 }
 
+/* TODO(mobile): aggiungere scroll orizzontale e sticky header per tabelle larghe su schermi piccoli. */
 @media (max-width: 768px) {
     .table-card .card-body {
         padding: var(--space-3);
@@ -1084,6 +1086,7 @@ body {
     overflow: hidden;
 }
 
+/* TODO(mobile): ridurre altezza mappa e aggiungere stato "tap to expand" per evitare scroll bloccato. */
 .pac-container {
     z-index: 99999 !important;
 }
@@ -1282,6 +1285,7 @@ body {
     z-index: 1;
 }
 
+/* TODO(mobile): rendere i modali full-screen e gestire la chiusura con swipe/escape visibile. */
 .modal-header {
     display: flex;
     align-items: center;
