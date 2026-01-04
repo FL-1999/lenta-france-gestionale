@@ -8,8 +8,9 @@ from sqlmodel import Session, select
 
 from auth import get_current_active_user_html
 from database import get_session
-from models import Personale, RoleEnum, User
+from models import Personale, User
 from template_context import register_manager_badges, render_template
+from permissions import has_perm
 
 
 templates = Jinja2Templates(directory="templates")
@@ -18,7 +19,7 @@ router = APIRouter(tags=["manager-personale"])
 
 
 def _ensure_manager(user: User) -> None:
-    if user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
 
@@ -198,6 +199,8 @@ def manager_personale_delete(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+    if not has_perm(current_user, "records.delete"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     personale = session.get(Personale, personale_id)
     if personale:

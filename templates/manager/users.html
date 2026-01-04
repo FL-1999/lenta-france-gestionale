@@ -31,9 +31,11 @@
         </p>
     </div>
     <div class="page-actions">
+        {% if has_perm(user, 'users.manage') %}
         <a href="/manager/utenti/nuovo" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvel utilisateur{% else %}Nuovo utente{% endif %}
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -94,6 +96,7 @@
                         {% endif %}
                     </td>
                     <td class="table-actions">
+                        {% if has_perm(user, 'users.manage') %}
                         <a class="btn btn-secondary btn-sm" href="/manager/utenti/{{ u.id }}/modifica">
                             ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                         </a>
@@ -111,6 +114,7 @@
                             </button>
                             {% endif %}
                         </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}

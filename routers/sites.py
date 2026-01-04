@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -10,6 +10,7 @@ from deps import (
     scope_sites_query,
     get_authorized_site,
 )
+from permissions import has_perm
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
@@ -20,6 +21,8 @@ def create_site(
     db: Session = Depends(get_db),
     user=Depends(require_manager_or_admin),
 ):
+    if not has_perm(user, "sites.create"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
     site = Site(
         name=site_in.name,
         location=site_in.location,

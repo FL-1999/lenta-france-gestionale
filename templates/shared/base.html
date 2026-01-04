@@ -19,8 +19,9 @@
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
-    {% set is_manager = is_manager if is_manager is defined else (user and (user.role.value == 'admin' or user.role.value == 'manager')) %}
+    {% set is_manager = is_manager if is_manager is defined else (user and has_perm(user, 'manager.access')) %}
     {% set is_capo = is_capo if is_capo is defined else (user and user.role.value == 'caposquadra') %}
+    {% set can_manage_users = user and has_perm(user, 'users.manage') %}
     {% set is_authenticated = user is not none %}
     {% set home_path = "/" %}
     {% if is_manager %}
@@ -33,11 +34,11 @@
     {% set report_path = "/manager/rapportini" if is_manager else "/capo/rapportini/nuovo" %}
     {% set fiches_path = "/manager/fiches" %}
     {% set magazzino_path = "/manager/magazzino" if is_manager else "/capo/magazzino" %}
-    {% set profile_path = "/manager/utenti" if is_manager else "/capo/dashboard?section=profilo" %}
+    {% set profile_path = "/manager/utenti" if can_manage_users else ("/capo/dashboard?section=profilo" if is_capo else "/manager/dashboard") %}
     {% set show_magazzino = user and (is_manager or user.is_magazzino_manager or is_capo) %}
     {% set show_magazzino_card = user and (is_manager or user.is_magazzino_manager) %}
     {% set show_fiches = is_manager %}
-    {% set show_audit = user and (user.role.value == 'admin' or user.role.value == 'manager') %}
+    {% set show_audit = user and has_perm(user, 'manager.access') %}
     {% set show_personale = is_manager %}
     <!-- NAVBAR -->
     <nav class="navbar">
@@ -198,6 +199,7 @@
         {% set is_magazzino_active = current_path.startswith('/manager/magazzino') or current_path.startswith('/capo/magazzino') %}
         {% set is_report_active = current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') %}
         {% set is_profile_active = current_path.startswith('/manager/utenti') or (section == 'profilo') %}
+        {% set show_profile = can_manage_users or is_capo %}
         <nav class="bottom-nav" aria-label="{% if lang == 'fr' %}Navigation principale{% else %}Navigazione principale{% endif %}">
             <a href="{{ home_path }}" class="bottom-nav__link {% if is_home_active %}bottom-nav__link--active{% endif %}">
                 <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
@@ -219,10 +221,12 @@
                 <span class="bottom-nav__icon" aria-hidden="true">📊</span>
                 <span class="bottom-nav__label">{% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</span>
             </a>
-            <a href="{{ profile_path }}" class="bottom-nav__link {% if is_profile_active %}bottom-nav__link--active{% endif %}">
-                <span class="bottom-nav__icon" aria-hidden="true">👤</span>
-                <span class="bottom-nav__label">{% if lang == 'fr' %}Profil{% else %}Profilo{% endif %}</span>
-            </a>
+            {% if show_profile %}
+                <a href="{{ profile_path }}" class="bottom-nav__link {% if is_profile_active %}bottom-nav__link--active{% endif %}">
+                    <span class="bottom-nav__icon" aria-hidden="true">👤</span>
+                    <span class="bottom-nav__label">{% if lang == 'fr' %}Profil{% else %}Profilo{% endif %}</span>
+                </a>
+            {% endif %}
         </nav>
     {% endif %}
 

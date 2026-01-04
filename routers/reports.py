@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user, get_current_active_user_html
 from database import get_db
 from models import RoleEnum, Report, Site, User
+from permissions import has_perm
 from template_context import build_template_context, register_manager_badges
 
 router = APIRouter(
@@ -170,7 +171,7 @@ def manager_reports_list(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato")
 
     query = db.query(Report)
@@ -245,7 +246,7 @@ def manager_report_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato")
 
     report = (

@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import RoleEnum, User, Personale
+from models import User, Personale
 from models.veicoli import Veicolo
 from template_context import register_manager_badges, render_template
+from permissions import has_perm
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
@@ -17,7 +18,7 @@ router = APIRouter(tags=["manager-veicoli"])
 
 
 def _ensure_manager(user: User) -> None:
-    if user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
 
@@ -256,6 +257,8 @@ def manager_veicoli_delete(
     Eliminazione veicolo.
     """
     _ensure_manager(current_user)
+    if not has_perm(current_user, "records.delete"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
     veicolo = db.query(Veicolo).filter(Veicolo.id == veicolo_id).first()
     if veicolo:
         db.delete(veicolo)

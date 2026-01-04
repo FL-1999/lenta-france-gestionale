@@ -30,6 +30,7 @@ from models import (
     User,
 )
 from template_context import register_manager_badges, render_template
+from permissions import has_perm
 
 
 templates = Jinja2Templates(directory="templates")
@@ -2602,6 +2603,8 @@ def manager_magazzino_delete(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    if not has_perm(current_user, "records.delete"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if item:
         item.attivo = False
