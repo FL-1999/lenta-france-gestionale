@@ -14,9 +14,9 @@ router = APIRouter(
 )
 
 
-# ===========================
+# ---------------------------
 # SCHEMI Pydantic
-# ===========================
+# ---------------------------
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -40,9 +40,9 @@ class UserCreate(BaseModel):
     language: str | None = "it"
 
 
-# ===========================
+# ---------------------------
 # ENDPOINTS
-# ===========================
+# ---------------------------
 
 
 @router.get("/", response_model=List[UserOut])

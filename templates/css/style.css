@@ -474,9 +474,9 @@ form textarea {
     justify-content: flex-end;
     gap: 0.4rem;
 }
-/* =========================
+/* -------------------------
    TABLE UI (liste manager)
-   ========================= */
+   ------------------------- */
 
 .table-card {
   overflow-x: auto;
