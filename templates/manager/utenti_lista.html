@@ -12,7 +12,7 @@
         </p>
     </div>
     <div class="actions">
-        {% if has_perm(user, 'users.manage') %}
+        {% if has_perm(user, 'users.create') %}
         <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ Nuovo utente</a>
         {% endif %}
         {% if has_perm(user, 'settings.manage') %}
@@ -78,7 +78,7 @@
 
         if (!resp.ok) {
             if (resp.status === 401 || resp.status === 403) {
-                showError("Non hai i permessi per vedere la lista utenti (solo admin).");
+                showError("Non hai i permessi per vedere la lista utenti.");
             } else {
                 showError("Errore nel caricamento degli utenti. Codice: " + resp.status);
             }

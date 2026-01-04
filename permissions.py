@@ -11,6 +11,7 @@ MANAGER_PERMISSIONS: FrozenSet[str] = frozenset(
         "manager.access",
         "sites.create",
         "sites.update",
+        "users.read",
     }
 )
 
@@ -18,6 +19,10 @@ ADMIN_EXTRA_PERMISSIONS: FrozenSet[str] = frozenset(
     {
         "sites.delete",
         "users.manage",
+        "users.create",
+        "users.update",
+        "users.update_role",
+        "users.delete",
         "users.*",
         "settings.manage",
         "records.delete",
