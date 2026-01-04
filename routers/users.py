@@ -53,9 +53,9 @@ def list_users(
 ):
     """
     Restituisce la lista di tutti gli utenti.
-    Accesso consentito solo a admin (se vuoi puoi estendere a manager).
+    Accesso consentito agli utenti con permesso di lettura.
     """
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.read"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Non hai i permessi per vedere la lista utenti.",
@@ -75,7 +75,7 @@ def create_user(
     Crea un nuovo utente.
     Solo admin.
     """
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.create"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Non hai i permessi per creare nuovi utenti.",

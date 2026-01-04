@@ -31,7 +31,7 @@
         </p>
     </div>
     <div class="page-actions">
-        {% if has_perm(user, 'users.manage') %}
+        {% if has_perm(user, 'users.create') %}
         <a href="/manager/utenti/nuovo" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvel utilisateur{% else %}Nuovo utente{% endif %}
         </a>
@@ -96,13 +96,15 @@
                         {% endif %}
                     </td>
                     <td class="table-actions">
-                        {% if has_perm(user, 'users.manage') %}
+                        {% if has_perm(user, 'users.update') %}
                         <a class="btn btn-secondary btn-sm" href="/manager/utenti/{{ u.id }}/modifica">
                             ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                         </a>
                         <a class="btn btn-secondary btn-sm" href="/manager/utenti/{{ u.id }}/reset-password">
                             🔐 {% if lang == 'fr' %}Réinitialiser{% else %}Reset password{% endif %}
                         </a>
+                        {% endif %}
+                        {% if has_perm(user, 'users.delete') %}
                         <form method="post" action="/manager/utenti/{{ u.id }}/toggle-attivo" style="display:inline;">
                             {% if u.is_active %}
                             <button type="submit" class="btn btn-secondary btn-sm">

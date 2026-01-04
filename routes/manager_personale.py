@@ -33,7 +33,8 @@ def manager_personale_list(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    if not has_perm(current_user, "users.read"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
     lang = request.cookies.get("lang", "it")
     personale = session.exec(
         select(Personale).order_by(Personale.cognome, Personale.nome)

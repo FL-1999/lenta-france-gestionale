@@ -356,7 +356,7 @@
             </div>
         </div>
 
-        {% if has_perm(user, 'users.manage') %}
+        {% if has_perm(user, 'users.read') %}
         <!-- Utenti -->
         <div class="card module-card">
             <div class="card-header">
@@ -384,9 +384,11 @@
                     <a href="/manager/utenti" class="btn btn-secondary">
                         {% if lang == 'fr' %}Liste des utilisateurs{% else %}Lista utenti{% endif %}
                     </a>
+                    {% if has_perm(user, 'users.create') %}
                     <a href="/manager/utenti/nuovo" class="btn btn-primary">
                         ➕ {% if lang == 'fr' %}Nouvel utilisateur{% else %}Nuovo utente{% endif %}
                     </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

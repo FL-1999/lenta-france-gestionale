@@ -938,7 +938,7 @@ def manager_users(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.read"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1051,7 +1051,7 @@ async def manager_new_user_get(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.create"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1081,7 +1081,7 @@ async def manager_new_user_post(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.create"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1166,7 +1166,7 @@ async def manager_edit_user_get(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.update"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1205,7 +1205,7 @@ async def manager_edit_user_post(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.update"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1268,6 +1268,14 @@ async def manager_edit_user_post(
         if existing:
             return render_form("Esiste già un utente con questa email.", status_code=400)
 
+        if user_to_edit.role != role_enum and not has_perm(
+            current_user, "users.update_role"
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permessi insufficienti",
+            )
+
         user_to_edit.email = email
         user_to_edit.full_name = full_name or None
         user_to_edit.role = role_enum
@@ -1292,7 +1300,7 @@ async def manager_toggle_user_active(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.delete"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1333,7 +1341,7 @@ async def manager_reset_password_get(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.update"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1364,7 +1372,7 @@ async def manager_reset_password_post(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.manage"):
+    if not has_perm(current_user, "users.update"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",

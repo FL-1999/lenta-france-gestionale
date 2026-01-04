@@ -22,6 +22,7 @@
     {% set is_manager = is_manager if is_manager is defined else (user and has_perm(user, 'manager.access')) %}
     {% set is_capo = is_capo if is_capo is defined else (user and user.role.value == 'caposquadra') %}
     {% set can_manage_users = user and has_perm(user, 'users.manage') %}
+    {% set can_read_users = user and has_perm(user, 'users.read') %}
     {% set is_authenticated = user is not none %}
     {% set home_path = "/" %}
     {% if is_manager %}
@@ -40,6 +41,7 @@
     {% set show_fiches = is_manager %}
     {% set show_audit = user and has_perm(user, 'manager.access') %}
     {% set show_personale = is_manager %}
+    {% set show_users_link = is_manager and can_read_users %}
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="nav-left">
@@ -149,6 +151,16 @@
                             Personnel
                         {% else %}
                             Personale
+                        {% endif %}
+                    </a>
+                {% endif %}
+                {% if show_users_link %}
+                    <a href="/manager/utenti" class="nav-link">
+                        👤
+                        {% if lang == 'fr' %}
+                            Utilisateurs
+                        {% else %}
+                            Utenti
                         {% endif %}
                     </a>
                 {% endif %}
