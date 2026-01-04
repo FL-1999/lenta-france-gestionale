@@ -50,9 +50,11 @@ from routes import manager_personale, manager_veicoli, magazzino, audit
 from template_context import (
     build_template_context,
     register_manager_badges,
+    register_permission_helpers,
     register_static_helpers,
     render_template,
 )
+from permissions import has_perm
 
 
 logger = logging.getLogger("lenta_france_gestionale.errors")
@@ -160,6 +162,7 @@ app.mount(
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 register_static_helpers(templates)
+register_permission_helpers(templates)
 
 
 # -------------------------------------------------
@@ -286,7 +289,7 @@ def homepage(request: Request):
     if current_user:
         destination = (
             "/manager/dashboard"
-            if current_user.role in (RoleEnum.admin, RoleEnum.manager)
+            if has_perm(current_user, "manager.access")
             else "/capo/dashboard"
         )
         return RedirectResponse(url=destination, status_code=303)
@@ -573,7 +576,7 @@ def login_api(
 
     # Puoi salvare il token in un cookie HttpOnly (così il JS può recuperarlo)
     response = RedirectResponse(
-        url="/manager/dashboard" if user.role in (RoleEnum.admin, RoleEnum.manager) else "/capo/dashboard",
+        url="/manager/dashboard" if has_perm(user, "manager.access") else "/capo/dashboard",
         status_code=303,
     )
     response.set_cookie(
@@ -727,7 +730,7 @@ def manager_fiche_new_form(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
     sites, machines = _load_manager_form_collections()
@@ -774,7 +777,7 @@ async def manager_fiche_create(
     strato_a: List[float] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
     try:
@@ -935,7 +938,7 @@ def manager_users(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -967,12 +970,24 @@ def manager_users(
     )
 
 
+@app.get("/admin/users", response_class=JSONResponse)
+def admin_users(
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "users.manage"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permessi insufficienti",
+        )
+    return {"status": "ok"}
+
+
 @app.get("/admin/permessi-magazzino", response_class=HTMLResponse)
 def admin_magazzino_permissions(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role != RoleEnum.admin:
+    if not has_perm(current_user, "settings.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1000,7 +1015,7 @@ def admin_magazzino_permissions_toggle(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role != RoleEnum.admin:
+    if not has_perm(current_user, "settings.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1036,7 +1051,7 @@ async def manager_new_user_get(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1066,7 +1081,7 @@ async def manager_new_user_post(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1151,7 +1166,7 @@ async def manager_edit_user_get(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1190,7 +1205,7 @@ async def manager_edit_user_post(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1277,7 +1292,7 @@ async def manager_toggle_user_active(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1318,7 +1333,7 @@ async def manager_reset_password_get(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1349,7 +1364,7 @@ async def manager_reset_password_post(
     user_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1410,7 +1425,7 @@ def manager_cantieri(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     db = SessionLocal()
@@ -1448,7 +1463,7 @@ def manager_site_detail(
     site_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     db = SessionLocal()
@@ -1479,7 +1494,7 @@ def manager_cantiere_nuovo_get(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "sites.create"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     site_status_values = [status.name for status in SiteStatusEnum]
@@ -1529,7 +1544,7 @@ def manager_cantiere_nuovo_post(
     caposquadra_id: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "sites.create"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     if not name or not code:
@@ -1621,7 +1636,9 @@ def manager_cantiere_modifica_get(
     site_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
+    if current_user.role == RoleEnum.caposquadra:
+        pass
+    elif not has_perm(current_user, "sites.update"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     google_maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY")
@@ -1692,7 +1709,9 @@ def manager_cantiere_modifica_post(
     caposquadra_id: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
+    if current_user.role == RoleEnum.caposquadra:
+        pass
+    elif not has_perm(current_user, "sites.update"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     is_caposquadra = current_user.role == RoleEnum.caposquadra
@@ -2141,7 +2160,7 @@ def manager_fiches(
     fiche_type: str | None = None,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
     db = SessionLocal()
@@ -2216,7 +2235,7 @@ def manager_fiche_dettaglio(
     fiche_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
     db = SessionLocal()

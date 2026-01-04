@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import AuditLog, RoleEnum, User
+from models import AuditLog, User
 from template_context import register_manager_badges, render_template
+from permissions import has_perm
 
 
 templates = Jinja2Templates(directory="templates")
@@ -19,7 +20,7 @@ router = APIRouter(tags=["audit"])
 
 
 def _ensure_admin_or_manager(user: User) -> None:
-    if user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
 

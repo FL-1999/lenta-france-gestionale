@@ -60,6 +60,7 @@
                                href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
                                 ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                             </a>
+                            {% if has_perm(user, 'records.delete') %}
                             <form method="post"
                                   action="{{ url_for('manager_personale_delete', personale_id=p.id) }}">
                                 <button type="submit"
@@ -68,6 +69,7 @@
                                     🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
                                 </button>
                             </form>
+                            {% endif %}
                         </td>
                     </tr>
                 {% else %}

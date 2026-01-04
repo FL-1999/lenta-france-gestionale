@@ -13,13 +13,14 @@ from models import (
     RoleEnum,
     User,
 )
+from permissions import has_perm
 
 
 def _can_view_manager_badges(user: User | None) -> bool:
     if not user:
         return False
     return bool(
-        user.role in (RoleEnum.admin, RoleEnum.manager) or getattr(user, "is_magazzino_manager", False)
+        has_perm(user, "manager.access") or getattr(user, "is_magazzino_manager", False)
     )
 
 
@@ -76,10 +77,9 @@ def build_template_context(
     template_context = dict(context or {})
     template_context.setdefault("request", request)
     template_context.setdefault("user", user)
+    template_context.setdefault("has_perm", has_perm)
 
-    is_manager = bool(
-        user and user.role in (RoleEnum.admin, RoleEnum.manager)
-    )
+    is_manager = bool(user and has_perm(user, "manager.access"))
     is_capo = bool(user and user.role == RoleEnum.caposquadra)
     template_context.setdefault("is_manager", is_manager)
     template_context.setdefault("is_capo", is_capo)
@@ -122,6 +122,10 @@ def manager_badge_counts(request: Request, user: User | None = None) -> dict[str
 
 def register_manager_badges(templates) -> None:
     templates.env.globals.setdefault("manager_badge_counts", manager_badge_counts)
+
+
+def register_permission_helpers(templates) -> None:
+    templates.env.globals.setdefault("has_perm", has_perm)
 
 
 def static_url(request: Request, path: str) -> str:

@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import Machine, MachineTypeEnum, RoleEnum, Site
+from models import Machine, MachineTypeEnum, Site
 from schemas import MachineCreate, MachineRead
 from template_context import build_template_context, register_manager_badges
+from permissions import has_perm
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ MACHINE_STATUS_CHOICES = ["attivo", "manutenzione", "fuori_servizio"]
 
 
 def _require_manager_or_admin(user):
-    if user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
 

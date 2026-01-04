@@ -12,8 +12,10 @@
         </p>
     </div>
     <div class="actions">
+        {% if has_perm(user, 'users.manage') %}
         <a href="/manager/utenti/nuovo" class="btn btn-primary">➕ Nuovo utente</a>
-        {% if user and user.role and user.role.value == 'admin' %}
+        {% endif %}
+        {% if has_perm(user, 'settings.manage') %}
         <a href="/admin/permessi-magazzino" class="btn btn-secondary">📦 Permessi magazzino</a>
         {% endif %}
     </div>

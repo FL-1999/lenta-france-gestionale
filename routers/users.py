@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User, RoleEnum
+from permissions import has_perm
 from auth import get_current_active_user, hash_password
 
 router = APIRouter(
@@ -54,7 +55,7 @@ def list_users(
     Restituisce la lista di tutti gli utenti.
     Accesso consentito solo a admin (se vuoi puoi estendere a manager).
     """
-    if current_user.role != RoleEnum.admin:
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Non hai i permessi per vedere la lista utenti.",
@@ -74,7 +75,7 @@ def create_user(
     Crea un nuovo utente.
     Solo admin.
     """
-    if current_user.role != RoleEnum.admin:
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Non hai i permessi per creare nuovi utenti.",

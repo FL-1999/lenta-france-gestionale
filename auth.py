@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import RoleEnum, User
+from permissions import has_perm
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -140,7 +141,7 @@ async def get_current_active_user_html(
 async def get_current_manager_user(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> User:
-    if current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti per questa operazione",

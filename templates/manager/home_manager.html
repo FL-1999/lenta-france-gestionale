@@ -356,6 +356,7 @@
             </div>
         </div>
 
+        {% if has_perm(user, 'users.manage') %}
         <!-- Utenti -->
         <div class="card module-card">
             <div class="card-header">
@@ -389,6 +390,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- Personale -->
         <div class="card module-card">
