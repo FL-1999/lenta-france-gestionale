@@ -21,9 +21,9 @@ templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 
 
-# ===========================
+# ---------------------------
 # SCHEMI Pydantic (v2)
-# ===========================
+# ---------------------------
 
 class ReportBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -55,9 +55,9 @@ class ReportOut(ReportBase):
     created_by_role: Optional[str] = None
 
 
-# ===========================
+# ---------------------------
 # ENDPOINTS
-# ===========================
+# ---------------------------
 
 @router.post(
     "/reports", response_model=ReportOut, status_code=status.HTTP_201_CREATED
@@ -233,7 +233,7 @@ def manager_reports_list(
                 "created_by": created_by,
             },
             "sites": sites,
-            "capisquadra": capisquadra,
+            "caposquadra": capisquadra,
         },
     )
 
