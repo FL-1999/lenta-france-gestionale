@@ -20,7 +20,7 @@
 <link rel="apple-touch-icon" href="/static/img/logo.png" />
 
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ static_url(request, 'css/style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}" />
 </head>
 
 <body>
@@ -58,7 +58,7 @@
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="nav-left">
-             <img src="{{ static_url(request, 'img/logo.png') }}" class="logo" alt="Logo Lenta France" />
+             <img src="{{ url_for('static', path='/img/logo.png') }}" class="logo" alt="Logo Lenta France" />
             <span class="brand">
                 {% if lang == 'fr' %}
                     Lenta France Logiciel
@@ -236,6 +236,6 @@
             {% endif %}
         </nav>
     {% endif %}
-    <script src="{{ static_url(request, 'js/theme_switcher.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
 </body>
 </html>
