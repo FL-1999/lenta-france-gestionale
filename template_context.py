@@ -60,15 +60,30 @@ def render_template(
     user: User | None,
     **response_kwargs,
 ):
-    template_context = dict(context or {})
-    template_context.setdefault("request", request)
-    template_context.setdefault("user", user)
-
+    template_context = build_template_context(request, user, **(context or {}))
     template_context["nuove_richieste_count"] = get_cached_nuove_richieste_count(
         request, db
     )
 
     return templates.TemplateResponse(template_name, template_context, **response_kwargs)
+
+
+def build_template_context(
+    request: Request,
+    user: User | None,
+    **context: object,
+) -> dict:
+    template_context = dict(context or {})
+    template_context.setdefault("request", request)
+    template_context.setdefault("user", user)
+
+    is_manager = bool(
+        user and user.role in (RoleEnum.admin, RoleEnum.manager)
+    )
+    is_capo = bool(user and user.role == RoleEnum.caposquadra)
+    template_context.setdefault("is_manager", is_manager)
+    template_context.setdefault("is_capo", is_capo)
+    return template_context
 
 
 def manager_badge_counts(request: Request, user: User | None = None) -> dict[str, int]:

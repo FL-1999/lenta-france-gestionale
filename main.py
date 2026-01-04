@@ -47,7 +47,12 @@ from models import (
 )
 from routers import users, sites, machines, reports, fiches
 from routes import manager_personale, manager_veicoli, magazzino, audit
-from template_context import register_manager_badges, register_static_helpers, render_template
+from template_context import (
+    build_template_context,
+    register_manager_badges,
+    register_static_helpers,
+    render_template,
+)
 
 
 logger = logging.getLogger("lenta_france_gestionale.errors")
@@ -167,12 +172,12 @@ def _get_request_id(request: Request) -> str:
 
 
 def _build_error_context(request: Request, status_code: int) -> dict:
-    return {
-        "request": request,
-        "status_code": status_code,
-        "request_id": _get_request_id(request),
-        "user": None,
-    }
+    return build_template_context(
+        request,
+        None,
+        status_code=status_code,
+        request_id=_get_request_id(request),
+    )
 
 
 @app.middleware("http")
@@ -289,10 +294,11 @@ def homepage(request: Request):
     lang = get_lang_from_request(request)
     return templates.TemplateResponse(
         "home.html",
-        {
-            "request": request,
-            "lang": lang,
-        },
+        build_template_context(
+            request,
+            None,
+            lang=lang,
+        ),
     )
 
 @app.get("/offline", response_class=HTMLResponse)
@@ -303,13 +309,13 @@ def offline(request: Request):
     lang = get_lang_from_request(request)
     return templates.TemplateResponse(
         "offline.html",
-        {
-            "request": request,
-            "lang": lang,
-            "title": "Sei offline",
-            "user": None,
-            "nuove_richieste_count": 0,
-        },
+        build_template_context(
+            request,
+            None,
+            lang=lang,
+            title="Sei offline",
+            nuove_richieste_count=0,
+        ),
     )
 
 
@@ -530,9 +536,7 @@ def login_page(request: Request):
     """
     return templates.TemplateResponse(
         "login.html",
-        {
-            "request": request,
-        },
+        build_template_context(request, None),
     )
 
 
@@ -554,10 +558,11 @@ def login_api(
         # Torniamo la pagina di login con errore
         return templates.TemplateResponse(
             "login.html",
-            {
-                "request": request,
-                "login_error": "Email o password non corretti",
-            },
+            build_template_context(
+                request,
+                None,
+                login_error="Email o password non corretti",
+            ),
             status_code=400,
         )
     if hasattr(user, "is_active") and not user.is_active:
@@ -729,15 +734,15 @@ def manager_fiche_new_form(
 
     return templates.TemplateResponse(
         "manager/fiches_form.html",
-        {
-            "request": request,
-            "user": current_user,
-            "cantieri": sites,
-            "macchinari": machines,
-            "is_edit": False,
-            "form_data": _build_fiche_form_data(),
-            "error_message": None,
-        },
+        build_template_context(
+            request,
+            current_user,
+            cantieri=sites,
+            macchinari=machines,
+            is_edit=False,
+            form_data=_build_fiche_form_data(),
+            error_message=None,
+        ),
     )
 
 
@@ -870,15 +875,15 @@ async def manager_fiche_create(
         sites, machines = _load_manager_form_collections()
         return templates.TemplateResponse(
             "manager/fiches_form.html",
-            {
-                "request": request,
-                "user": current_user,
-                "cantieri": sites,
-                "macchinari": machines,
-                "is_edit": False,
-                "form_data": form_data,
-                "error_message": "Macchinario non valido",
-            },
+            build_template_context(
+                request,
+                current_user,
+                cantieri=sites,
+                macchinari=machines,
+                is_edit=False,
+                form_data=form_data,
+                error_message="Macchinario non valido",
+            ),
             status_code=400,
         )
     except HTTPException as exc:
@@ -908,15 +913,15 @@ async def manager_fiche_create(
         sites, machines = _load_manager_form_collections()
         return templates.TemplateResponse(
             "manager/fiches_form.html",
-            {
-                "request": request,
-                "user": current_user,
-                "cantieri": sites,
-                "macchinari": machines,
-                "is_edit": False,
-                "form_data": form_data,
-                "error_message": exc.detail,
-            },
+            build_template_context(
+                request,
+                current_user,
+                cantieri=sites,
+                macchinari=machines,
+                is_edit=False,
+                form_data=form_data,
+                error_message=exc.detail,
+            ),
             status_code=status_code,
         )
 
@@ -952,13 +957,13 @@ def manager_users(
 
     return templates.TemplateResponse(
         "manager/users.html",
-        {
-            "request": request,
-            "user": current_user,
-            "user_role": "manager",
-            "users": users_list,
-            "user_sites_map": user_sites_map,
-        },
+        build_template_context(
+            request,
+            current_user,
+            user_role="manager",
+            users=users_list,
+            user_sites_map=user_sites_map,
+        ),
     )
 
 
@@ -981,11 +986,11 @@ def admin_magazzino_permissions(
 
     return templates.TemplateResponse(
         "admin/permessi_magazzino.html",
-        {
-            "request": request,
-            "user": current_user,
-            "users": users_list,
-        },
+        build_template_context(
+            request,
+            current_user,
+            users=users_list,
+        ),
     )
 
 
@@ -1039,20 +1044,20 @@ async def manager_new_user_get(
 
     return templates.TemplateResponse(
         "manager/user_form.html",
-        {
-            "request": request,
-            "user": current_user,
-            "mode": "create",
-            "user_obj": None,
-            "user_id": None,
-            "role_choices": list(RoleEnum),
-            "language_choices": ["it", "fr"],
-            "error_message": None,
-            "form_email": "",
-            "form_full_name": "",
-            "form_role": "",
-            "form_language": "",
-        },
+        build_template_context(
+            request,
+            current_user,
+            mode="create",
+            user_obj=None,
+            user_id=None,
+            role_choices=list(RoleEnum),
+            language_choices=["it", "fr"],
+            error_message=None,
+            form_email="",
+            form_full_name="",
+            form_role="",
+            form_language="",
+        ),
     )
 
 
@@ -1078,20 +1083,20 @@ async def manager_new_user_post(
     def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
             "manager/user_form.html",
-            {
-                "request": request,
-                "user": current_user,
-                "mode": "create",
-                "user_obj": None,
-                "user_id": None,
-                "role_choices": list(RoleEnum),
-                "language_choices": ["it", "fr"],
-                "error_message": error_message,
-                "form_email": email,
-                "form_full_name": full_name,
-                "form_role": role_str,
-                "form_language": language or "",
-            },
+            build_template_context(
+                request,
+                current_user,
+                mode="create",
+                user_obj=None,
+                user_id=None,
+                role_choices=list(RoleEnum),
+                language_choices=["it", "fr"],
+                error_message=error_message,
+                form_email=email,
+                form_full_name=full_name,
+                form_role=role_str,
+                form_language=language or "",
+            ),
             status_code=status_code,
         )
 
@@ -1162,20 +1167,20 @@ async def manager_edit_user_get(
 
     return templates.TemplateResponse(
         "manager/user_form.html",
-        {
-            "request": request,
-            "user": current_user,
-            "mode": "edit",
-            "user_obj": user_to_edit,
-            "user_id": user_to_edit.id,
-            "role_choices": list(RoleEnum),
-            "language_choices": ["it", "fr"],
-            "error_message": None,
-            "form_email": user_to_edit.email,
-            "form_full_name": user_to_edit.full_name or "",
-            "form_role": user_to_edit.role.value if user_to_edit.role else "",
-            "form_language": user_to_edit.language or "",
-        },
+        build_template_context(
+            request,
+            current_user,
+            mode="edit",
+            user_obj=user_to_edit,
+            user_id=user_to_edit.id,
+            role_choices=list(RoleEnum),
+            language_choices=["it", "fr"],
+            error_message=None,
+            form_email=user_to_edit.email,
+            form_full_name=user_to_edit.full_name or "",
+            form_role=user_to_edit.role.value if user_to_edit.role else "",
+            form_language=user_to_edit.language or "",
+        ),
     )
 
 
@@ -1201,20 +1206,20 @@ async def manager_edit_user_post(
     def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
             "manager/user_form.html",
-            {
-                "request": request,
-                "user": current_user,
-                "mode": "edit",
-                "user_obj": user_obj,
-                "user_id": user_id,
-                "role_choices": list(RoleEnum),
-                "language_choices": ["it", "fr"],
-                "error_message": error_message,
-                "form_email": email,
-                "form_full_name": full_name,
-                "form_role": role_str,
-                "form_language": language or "",
-            },
+            build_template_context(
+                request,
+                current_user,
+                mode="edit",
+                user_obj=user_obj,
+                user_id=user_id,
+                role_choices=list(RoleEnum),
+                language_choices=["it", "fr"],
+                error_message=error_message,
+                form_email=email,
+                form_full_name=full_name,
+                form_role=role_str,
+                form_language=language or "",
+            ),
             status_code=status_code,
         )
 
@@ -1329,12 +1334,12 @@ async def manager_reset_password_get(
 
     return templates.TemplateResponse(
         "manager/user_reset_password.html",
-        {
-            "request": request,
-            "user": current_user,
-            "target_user": user_to_update,
-            "error_message": None,
-        },
+        build_template_context(
+            request,
+            current_user,
+            target_user=user_to_update,
+            error_message=None,
+        ),
     )
 
 
@@ -1358,12 +1363,12 @@ async def manager_reset_password_post(
     def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
             "manager/user_reset_password.html",
-            {
-                "request": request,
-                "user": current_user,
-                "target_user": target_user,
-                "error_message": error_message,
-            },
+            build_template_context(
+                request,
+                current_user,
+                target_user=target_user,
+                error_message=error_message,
+            ),
             status_code=status_code,
         )
 
@@ -1428,12 +1433,12 @@ def manager_cantieri(
 
     return templates.TemplateResponse(
         "manager/cantieri.html",
-        {
-            "request": request,
-            "sites": sites_list,
-            "user": current_user,
-            "site_caposquadra_map": site_caposquadra_map,
-        },
+        build_template_context(
+            request,
+            current_user,
+            sites=sites_list,
+            site_caposquadra_map=site_caposquadra_map,
+        ),
     )
 
 
@@ -1461,11 +1466,11 @@ def manager_site_detail(
 
     return templates.TemplateResponse(
         "manager/site_detail.html",
-        {
-            "request": request,
-            "user": current_user,
-            "site": site,
-        },
+        build_template_context(
+            request,
+            current_user,
+            site=site,
+        ),
     )
 
 
@@ -1493,15 +1498,15 @@ def manager_cantiere_nuovo_get(
 
     return templates.TemplateResponse(
         "manager/cantiere_form.html",
-        {
-            "request": request,
-            "user": current_user,
-            "mode": "create",
-            "site": None,
-            "site_status_values": site_status_values,
-            "capisquadra": capisquadra,
-            "google_maps_api_key": google_maps_api_key,
-        },
+        build_template_context(
+            request,
+            current_user,
+            mode="create",
+            site=None,
+            site_status_values=site_status_values,
+            capisquadra=capisquadra,
+            google_maps_api_key=google_maps_api_key,
+        ),
     )
 
 
@@ -1654,16 +1659,16 @@ def manager_cantiere_modifica_get(
 
     return templates.TemplateResponse(
         "manager/cantiere_form.html",
-        {
-            "request": request,
-            "user": current_user,
-            "mode": "edit",
-            "site": site,
-            "site_status_values": site_status_values,
-            "scarichi_recenti": scarichi_recenti,
-            "capisquadra": capisquadra,
-            "google_maps_api_key": google_maps_api_key,
-        },
+        build_template_context(
+            request,
+            current_user,
+            mode="edit",
+            site=site,
+            site_status_values=site_status_values,
+            scarichi_recenti=scarichi_recenti,
+            capisquadra=capisquadra,
+            google_maps_api_key=google_maps_api_key,
+        ),
     )
 
 
@@ -1811,11 +1816,11 @@ def capo_site_detail(
 
     return templates.TemplateResponse(
         "capo/site_detail.html",
-        {
-            "request": request,
-            "user": current_user,
-            "site": site,
-        },
+        build_template_context(
+            request,
+            current_user,
+            site=site,
+        ),
     )
 
 
@@ -1878,20 +1883,20 @@ def capo_dashboard(
 
     return templates.TemplateResponse(
         "capo/home_capo.html",
-        {
-            "request": request,
-            "user": current_user,
-            "user_role": "capo",
-            "kpi_reports_today": kpi_reports_today,
-            "kpi_hours_this_week": kpi_hours_this_week,
-            "kpi_assigned_sites": kpi_assigned_sites,
-            "kpi_open_reports": kpi_open_reports,
-            "cantieri_map_data": jsonable_encoder(assigned_sites_map_data),
-            "detail_url_template": str(
+        build_template_context(
+            request,
+            current_user,
+            user_role="capo",
+            kpi_reports_today=kpi_reports_today,
+            kpi_hours_this_week=kpi_hours_this_week,
+            kpi_assigned_sites=kpi_assigned_sites,
+            kpi_open_reports=kpi_open_reports,
+            cantieri_map_data=jsonable_encoder(assigned_sites_map_data),
+            detail_url_template=str(
                 request.url_for("capo_site_detail", site_id="__SITE_ID__")
             ),
-            "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
-        },
+            google_maps_api_key=os.getenv("GOOGLE_MAPS_API_KEY"),
+        ),
     )
 
 
@@ -1916,10 +1921,10 @@ def pagina_nuovo_rapportino_capo(
     """
     return templates.TemplateResponse(
         "capo_nuovo_rapportino.html",
-        {
-            "request": request,
-            "user": current_user,
-        },
+        build_template_context(
+            request,
+            current_user,
+        ),
     )
 
 
@@ -1935,14 +1940,14 @@ def capo_fiche_nuova_get(
 
     return templates.TemplateResponse(
         "capo/fiches_form.html",
-        {
-            "request": request,
-            "user": current_user,
-            "cantieri": sites,
-            "macchinari": machines,
-            "form_data": _build_fiche_form_data(),
-            "error_message": None,
-        },
+        build_template_context(
+            request,
+            current_user,
+            cantieri=sites,
+            macchinari=machines,
+            form_data=_build_fiche_form_data(),
+            error_message=None,
+        ),
     )
 
 
@@ -2072,14 +2077,14 @@ async def capo_fiche_nuova_post(
         sites, machines = _load_capo_form_collections(current_user)
         return templates.TemplateResponse(
             "capo/fiches_form.html",
-            {
-                "request": request,
-                "user": current_user,
-                "cantieri": sites,
-                "macchinari": machines,
-                "form_data": form_data,
-                "error_message": "Macchinario non valido",
-            },
+            build_template_context(
+                request,
+                current_user,
+                cantieri=sites,
+                macchinari=machines,
+                form_data=form_data,
+                error_message="Macchinario non valido",
+            ),
             status_code=400,
         )
     except HTTPException as exc:
@@ -2109,14 +2114,14 @@ async def capo_fiche_nuova_post(
         sites, machines = _load_capo_form_collections(current_user)
         return templates.TemplateResponse(
             "capo/fiches_form.html",
-            {
-                "request": request,
-                "user": current_user,
-                "cantieri": sites,
-                "macchinari": machines,
-                "form_data": form_data,
-                "error_message": exc.detail,
-            },
+            build_template_context(
+                request,
+                current_user,
+                cantieri=sites,
+                macchinari=machines,
+                form_data=form_data,
+                error_message=exc.detail,
+            ),
             status_code=status_code,
         )
 
@@ -2192,12 +2197,12 @@ def manager_fiches(
 
     return templates.TemplateResponse(
         "manager/fiches_list.html",
-        {
-            "request": request,
-            "user": current_user,
-            "fiches": fiches_list,
-            "total_fiches": len(fiches_list),
-        },
+        build_template_context(
+            request,
+            current_user,
+            fiches=fiches_list,
+            total_fiches=len(fiches_list),
+        ),
     )
 
 
@@ -2237,11 +2242,11 @@ def manager_fiche_dettaglio(
 
     return templates.TemplateResponse(
         "manager/fiches/fiche_detail.html",
-        {
-            "request": request,
-            "user": current_user,
-            "fiche": fiche,
-        },
+        build_template_context(
+            request,
+            current_user,
+            fiche=fiche,
+        ),
     )
 
 
