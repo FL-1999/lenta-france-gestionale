@@ -27,9 +27,14 @@
     {% set lang = request.cookies.get('lang', 'it') %}
     {% set current_path = request.url.path %}
     {% set section = request.query_params.get('section') %}
-    {% set is_manager = user and (user.role.value == 'admin' or user.role.value == 'manager') %}
-    {% set is_capo = user and user.role.value == 'caposquadra' %}
-    {% set home_path = "/manager/dashboard" if is_manager else "/capo/dashboard" %}
+    {% set is_manager = is_manager if is_manager is defined else (user and (user.role.value == 'admin' or user.role.value == 'manager')) %}
+    {% set is_capo = is_capo if is_capo is defined else (user and user.role.value == 'caposquadra') %}
+    {% set home_path = "/" %}
+    {% if is_manager %}
+        {% set home_path = "/manager/dashboard" %}
+    {% elif is_capo %}
+        {% set home_path = "/capo/dashboard" %}
+    {% endif %}
     {% set cantieri_path = "/manager/cantieri" if is_manager else "/capo/dashboard?section=cantieri" %}
     {% set report_path = "/manager/rapportini" if is_manager else "/capo/rapportini/nuovo" %}
     {% set profile_path = "/manager/utenti" if is_manager else "/capo/dashboard?section=profilo" %}
@@ -65,7 +70,7 @@
                     🇫🇷
                 </a>
             </div>
-            <a href="/" class="nav-link">
+            <a href="{{ home_path }}" class="nav-link">
                 🏠
                 {% if lang == 'fr' %}
                     Accueil
@@ -73,6 +78,41 @@
                     Home
                 {% endif %}
             </a>
+            {% if user and is_manager %}
+                <a href="/manager/cantieri" class="nav-link">
+                    🏗️
+                    {% if lang == 'fr' %}
+                        Chantiers
+                    {% else %}
+                        Cantieri
+                    {% endif %}
+                </a>
+                <a href="/manager/rapportini" class="nav-link">
+                    📊
+                    {% if lang == 'fr' %}
+                        Rapports
+                    {% else %}
+                        Rapportini
+                    {% endif %}
+                </a>
+            {% elif user and is_capo %}
+                <a href="/capo/dashboard?section=cantieri" class="nav-link">
+                    🏗️
+                    {% if lang == 'fr' %}
+                        Chantiers assignés
+                    {% else %}
+                        Cantieri assegnati
+                    {% endif %}
+                </a>
+                <a href="/capo/rapportini/nuovo" class="nav-link">
+                    📋
+                    {% if lang == 'fr' %}
+                        Rapports
+                    {% else %}
+                        Rapportini
+                    {% endif %}
+                </a>
+            {% endif %}
             {% if user and (user.role.value == 'admin' or user.is_magazzino_manager) %}
                 {% set manager_badges = manager_badge_counts(request, user) %}
                 <div class="nav-card">

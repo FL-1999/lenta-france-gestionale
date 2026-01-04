@@ -7,7 +7,7 @@ from auth import get_current_active_user_html
 from database import get_db
 from models import Machine, MachineTypeEnum, RoleEnum, Site
 from schemas import MachineCreate, MachineRead
-from template_context import register_manager_badges
+from template_context import build_template_context, register_manager_badges
 
 router = APIRouter()
 
@@ -108,15 +108,15 @@ def manager_machines_page(
 
     return templates.TemplateResponse(
         "manager/macchinari_list.html",
-        {
-            "request": request,
-            "user": current_user,
-            "user_role": "manager",
-            "machines": machines,
-            "kpi_total": kpi_total,
-            "kpi_active": kpi_active,
-            "kpi_oos": kpi_oos,
-        },
+        build_template_context(
+            request,
+            current_user,
+            user_role="manager",
+            machines=machines,
+            kpi_total=kpi_total,
+            kpi_active=kpi_active,
+            kpi_oos=kpi_oos,
+        ),
     )
 
 
@@ -135,15 +135,16 @@ def manager_machine_new_get(
 
     return templates.TemplateResponse(
         "manager/macchinari_form.html",
-        {
-            "request": request,
-            "current_user": current_user,
-            "is_edit": False,
-            "macchinario": None,
-            "machine_types": list(MachineTypeEnum),
-            "status_choices": MACHINE_STATUS_CHOICES,
-            "sites": sites,
-        },
+        build_template_context(
+            request,
+            current_user,
+            current_user=current_user,
+            is_edit=False,
+            macchinario=None,
+            machine_types=list(MachineTypeEnum),
+            status_choices=MACHINE_STATUS_CHOICES,
+            sites=sites,
+        ),
     )
 
 
@@ -209,11 +210,12 @@ def manager_machine_detail(
 
     return templates.TemplateResponse(
         "manager/macchinari_detail.html",
-        {
-            "request": request,
-            "macchinario": machine,
-            "current_user": current_user,
-        },
+        build_template_context(
+            request,
+            current_user,
+            macchinario=machine,
+            current_user=current_user,
+        ),
     )
 
 
@@ -234,15 +236,16 @@ def manager_machine_edit_get(
 
     return templates.TemplateResponse(
         "manager/macchinari_form.html",
-        {
-            "request": request,
-            "current_user": current_user,
-            "is_edit": True,
-            "macchinario": machine,
-            "machine_types": list(MachineTypeEnum),
-            "status_choices": MACHINE_STATUS_CHOICES,
-            "sites": sites,
-        },
+        build_template_context(
+            request,
+            current_user,
+            current_user=current_user,
+            is_edit=True,
+            macchinario=machine,
+            machine_types=list(MachineTypeEnum),
+            status_choices=MACHINE_STATUS_CHOICES,
+            sites=sites,
+        ),
     )
 
 
@@ -306,12 +309,13 @@ def manager_machine_assign_get(
 
     return templates.TemplateResponse(
         "manager/macchinario_assegna.html",
-        {
-            "request": request,
-            "current_user": current_user,
-            "machine": machine,
-            "sites": sites,
-        },
+        build_template_context(
+            request,
+            current_user,
+            current_user=current_user,
+            machine=machine,
+            sites=sites,
+        ),
     )
 
 

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user, get_current_active_user_html
 from database import get_db
 from models import RoleEnum, Report, Site, User
-from template_context import register_manager_badges
+from template_context import build_template_context, register_manager_badges
 
 router = APIRouter(
     prefix="",
@@ -219,22 +219,22 @@ def manager_reports_list(
 
     return templates.TemplateResponse(
         "manager/rapportini_list.html",
-        {
-            "request": request,
-            "user": current_user,
-            "user_role": "manager",
-            "reports": reports_page,
-            "page": page,
-            "total_pages": total_pages,
-            "filters": {
+        build_template_context(
+            request,
+            current_user,
+            user_role="manager",
+            reports=reports_page,
+            page=page,
+            total_pages=total_pages,
+            filters={
                 "start_date": start_date,
                 "end_date": end_date,
                 "site_id": site_id,
                 "created_by": created_by,
             },
-            "sites": sites,
-            "caposquadra": capisquadra,
-        },
+            sites=sites,
+            caposquadra=capisquadra,
+        ),
     )
 
 
@@ -260,10 +260,10 @@ def manager_report_detail(
 
     return templates.TemplateResponse(
         "manager/rapportino_detail.html",
-        {
-            "request": request,
-            "user": current_user,
-            "user_role": "manager",
-            "report": report,
-        },
+        build_template_context(
+            request,
+            current_user,
+            user_role="manager",
+            report=report,
+        ),
     )
