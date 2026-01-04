@@ -910,7 +910,8 @@ body {
 .data-table,
 .table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 0.94rem;
     color: var(--color-table-text);
     background: transparent;
@@ -974,9 +975,10 @@ body {
     background: rgba(245, 158, 11, 0.28);
 }
 
-.table-actions-col {
+.table-actions-col,
+.actions-col {
     text-align: right;
-    width: 1%;
+    width: 120px;
     white-space: nowrap;
 }
 
@@ -986,6 +988,19 @@ body {
     align-items: center;
     justify-content: flex-end;
     flex-wrap: wrap;
+    min-height: 32px;
+}
+
+.table-actions--empty {
+    opacity: 0.4;
+    justify-content: center;
+}
+
+.data-table tr th:last-child,
+.data-table tr td:last-child,
+.table tr th:last-child,
+.table tr td:last-child {
+    border-right: none;
 }
 
 .table-empty,

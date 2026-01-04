@@ -37,7 +37,7 @@
                     <th>Email</th>
                     <th>{% if lang == 'fr' %}Embauché le{% else %}Assunto il{% endif %}</th>
                     <th class="text-right">{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
-                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                    <th class="actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,20 +55,26 @@
                                 <span class="badge badge-muted">{% if lang == 'fr' %}Inactif{% else %}Inattivo{% endif %}</span>
                             {% endif %}
                         </td>
-                        <td class="table-actions">
-                            <a class="btn btn-secondary btn-sm"
-                               href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
-                                ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-                            </a>
-                            {% if has_perm(user, 'records.delete') %}
-                            <form method="post"
-                                  action="{{ url_for('manager_personale_delete', personale_id=p.id) }}">
-                                <button type="submit"
-                                        class="btn btn-danger btn-sm"
-                                        onclick="return confirm('{% if lang == 'fr' %}Supprimer cet enregistrement ?{% else %}Eliminare questa scheda?{% endif %}');">
-                                    🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
-                                </button>
-                            </form>
+                        <td class="actions-col">
+                            {% if p.id %}
+                                <div class="table-actions">
+                                    <a class="btn btn-secondary btn-sm"
+                                       href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
+                                        ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                                    </a>
+                                    {% if has_perm(user, 'records.delete') %}
+                                    <form method="post"
+                                          action="{{ url_for('manager_personale_delete', personale_id=p.id) }}">
+                                        <button type="submit"
+                                                class="btn btn-danger btn-sm"
+                                                onclick="return confirm('{% if lang == 'fr' %}Supprimer cet enregistrement ?{% else %}Eliminare questa scheda?{% endif %}');">
+                                            🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="table-actions table-actions--empty">—</div>
                             {% endif %}
                         </td>
                     </tr>
