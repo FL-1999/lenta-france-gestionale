@@ -8,3 +8,4 @@ passlib
 jinja2
 python-multipart
 sqlmodel
+pytest
