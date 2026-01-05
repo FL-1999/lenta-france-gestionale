@@ -214,7 +214,7 @@
                         Monitora l'avanzamento dei cantieri, gestisci dettagli e assegnazioni delle squadre.
                     {% endif %}
                 </p>
-                <div class="card-actions">
+                <div class="page-actions-row">
                     <a href="/manager/cantieri" class="btn btn-secondary">
                         {% if lang == 'fr' %}Liste des chantiers{% else %}Lista cantieri{% endif %}
                     </a>
@@ -247,7 +247,7 @@
                         Gestisci il parco macchinari, lo stato e le assegnazioni ai cantieri in corso.
                     {% endif %}
                 </p>
-                <div class="card-actions">
+                <div class="page-actions-row">
                     <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-secondary">
                         {% if lang == 'fr' %}Liste des machines{% else %}Lista macchinari{% endif %}
                     </a>
@@ -282,7 +282,7 @@
                         Gestisci i veicoli aziendali, targhe, chilometraggio e note.
                     {% endif %}
                 </p>
-                <div class="card-actions">
+                <div class="page-actions-row">
                     <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">
                         🚐 {% if lang == 'fr' %}Liste des véhicules{% else %}Lista veicoli{% endif %}
                     </a>
@@ -316,7 +316,7 @@
                         Consulta e filtra le fiches inserite dai capisquadra per avere una vista rapida delle attività.
                     {% endif %}
                 </p>
-                <div class="card-actions">
+                <div class="page-actions-row">
                     <a href="/manager/fiches" class="btn btn-secondary">
                         {% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}
                     </a>
@@ -380,7 +380,7 @@
                         Gestisci gli utenti, crea nuovi capisquadra e modifica i ruoli in base alle necessità operative.
                     {% endif %}
                 </p>
-                <div class="card-actions">
+                <div class="page-actions-row">
                     <a href="/manager/utenti" class="btn btn-secondary">
                         {% if lang == 'fr' %}Liste des utilisateurs{% else %}Lista utenti{% endif %}
                     </a>
@@ -417,7 +417,7 @@
                         Gestisci tutto il personale (operatori, capisquadra, ecc.).
                     {% endif %}
                 </p>
-                <div class="card-actions">
+                <div class="page-actions-row">
                     <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary">
                         📋 {% if lang == 'fr' %}Liste du personnel{% else %}Lista personale{% endif %}
                     </a>
