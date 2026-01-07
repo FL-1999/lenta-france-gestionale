@@ -64,9 +64,7 @@ def ensure_caposquadra_or_manager(user: User) -> None:
 
 
 def ensure_magazzino_manager(user: User) -> None:
-    if user.role == RoleEnum.admin:
-        return
-    if user.role == RoleEnum.manager and user.is_magazzino_manager:
+    if has_perm(user, "manager.access") or has_perm(user, "inventory.manage"):
         return
     raise HTTPException(status_code=403, detail="Permessi insufficienti")
 

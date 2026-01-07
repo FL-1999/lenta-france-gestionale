@@ -23,7 +23,9 @@ def _can_view_manager_badges(user: User | None) -> bool:
     if not user:
         return False
     return bool(
-        has_perm(user, "manager.access") or getattr(user, "is_magazzino_manager", False)
+        has_perm(user, "manager.access")
+        or has_perm(user, "inventory.read")
+        or getattr(user, "is_magazzino_manager", False)
     )
 
 

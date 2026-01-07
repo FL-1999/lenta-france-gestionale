@@ -589,9 +589,22 @@ def login_api(
     # Crea il token JWT (usa la stessa funzione di /auth/token)
     access_token = create_access_token(data={"sub": user.email})
 
+    if has_perm(user, "manager.access"):
+        redirect_url = "/manager/dashboard"
+    elif user.role == RoleEnum.caposquadra:
+        redirect_url = "/capo/dashboard"
+    elif has_perm(user, "inventory.read"):
+        redirect_url = "/manager/magazzino/dashboard"
+    elif has_perm(user, "reports.read_all"):
+        redirect_url = "/manager/rapportini"
+    elif has_perm(user, "users.read"):
+        redirect_url = "/manager/personale"
+    else:
+        redirect_url = "/"
+
     # Puoi salvare il token in un cookie HttpOnly (così il JS può recuperarlo)
     response = RedirectResponse(
-        url="/manager/dashboard" if has_perm(user, "manager.access") else "/capo/dashboard",
+        url=redirect_url,
         status_code=303,
     )
     response.set_cookie(
@@ -1043,7 +1056,10 @@ def manager_users(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.read"):
+    if not (
+        has_perm(current_user, "users.read")
+        and has_perm(current_user, "manager.access")
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
