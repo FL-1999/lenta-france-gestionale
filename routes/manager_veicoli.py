@@ -1,8 +1,11 @@
+import logging
+import time
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from auth import get_current_active_user_html
@@ -15,6 +18,16 @@ from permissions import has_perm
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 router = APIRouter(tags=["manager-veicoli"])
+DEFAULT_PER_PAGE = 50
+MAX_PER_PAGE = 100
+
+perf_logger = logging.getLogger("lenta_france_gestionale.performance")
+
+
+def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
+    page = max(1, page)
+    per_page = max(1, min(per_page, MAX_PER_PAGE))
+    return page, per_page
 
 
 def _ensure_manager(user: User) -> None:
@@ -47,6 +60,8 @@ def _parse_date(value: str | None) -> date | None:
 )
 def manager_veicoli_list(
     request: Request,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -54,10 +69,23 @@ def manager_veicoli_list(
     Lista veicoli aziendali.
     """
     _ensure_manager(current_user)
+    page, per_page = _normalize_pagination(page, per_page)
+    total_count = db.query(func.count(Veicolo.id)).scalar() or 0
+    query_started = time.monotonic()
     veicoli = (
         db.query(Veicolo)
         .order_by(Veicolo.marca.asc(), Veicolo.modello.asc(), Veicolo.targa.asc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
         .all()
+    )
+    perf_logger.debug(
+        "manager_veicoli_list rows=%s total=%s page=%s per_page=%s duration_ms=%.2f",
+        len(veicoli),
+        total_count,
+        page,
+        per_page,
+        (time.monotonic() - query_started) * 1000,
     )
     return render_template(
         templates,
@@ -65,6 +93,9 @@ def manager_veicoli_list(
         "manager/veicoli/veicoli_list.html",
         {
             "veicoli": veicoli,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": max(1, (total_count + per_page - 1) // per_page),
         },
         db,
         current_user,

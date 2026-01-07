@@ -1,7 +1,9 @@
 import logging
 import os
+import time
 import uuid
 from datetime import date, datetime, timedelta
+from math import ceil
 from typing import List
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException, status
@@ -13,8 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from jose import JWTError, jwt
 
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload
+from sqlalchemy import case, func
+from sqlalchemy.orm import joinedload, load_only
 from sqlmodel import SQLModel
 
 from database import Base, engine, SessionLocal, get_db
@@ -49,6 +51,8 @@ from routers import users, sites, machines, reports, fiches
 from routes import manager_personale, manager_veicoli, magazzino, audit
 from template_context import (
     build_template_context,
+    get_cached_role_choices,
+    get_cached_site_status_values,
     register_manager_badges,
     register_permission_helpers,
     register_static_helpers,
@@ -58,6 +62,16 @@ from permissions import has_perm
 
 
 logger = logging.getLogger("lenta_france_gestionale.errors")
+perf_logger = logging.getLogger("lenta_france_gestionale.performance")
+
+DEFAULT_PER_PAGE = 50
+MAX_PER_PAGE = 100
+
+
+def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
+    page = max(1, page)
+    per_page = max(1, min(per_page, MAX_PER_PAGE))
+    return page, per_page
 
 
 # -------------------------------------------------
@@ -613,9 +627,28 @@ def manager_dashboard(
         detail_url_template = str(
             request.url_for("manager_site_detail", site_id="__SITE_ID__")
         )
+        query_started = time.monotonic()
         sites_with_coords = (
             db.query(Site)
-            .options(joinedload(Site.caposquadra))
+            .options(
+                load_only(
+                    Site.id,
+                    Site.name,
+                    Site.address,
+                    Site.city,
+                    Site.country,
+                    Site.lat,
+                    Site.lng,
+                    Site.status,
+                    Site.is_active,
+                    Site.caposquadra_id,
+                ),
+                joinedload(Site.caposquadra).load_only(
+                    User.id,
+                    User.full_name,
+                    User.email,
+                ),
+            )
             .filter(
                 Site.lat.isnot(None),
                 Site.lng.isnot(None),
@@ -623,18 +656,38 @@ def manager_dashboard(
             .order_by(Site.name)
             .all()
         )
+        perf_logger.debug(
+            "manager_dashboard sites_map query rows=%s duration_ms=%.2f",
+            len(sites_with_coords),
+            (time.monotonic() - query_started) * 1000,
+        )
         sites_map_data = _build_sites_map_data(sites_with_coords)
-
-
+        query_started = time.monotonic()
         reports_list = (
             db.query(Report)
-            .options(joinedload(Report.site))
+            .options(
+                load_only(
+                    Report.id,
+                    Report.date,
+                    Report.total_hours,
+                    Report.site_id,
+                    Report.site_name_or_code,
+                ),
+                joinedload(Report.site).load_only(Site.id, Site.name),
+            )
             .order_by(Report.date.desc(), Report.id.desc())
+            .limit(50)
             .all()
+        )
+        perf_logger.debug(
+            "manager_dashboard reports_list rows=%s duration_ms=%.2f",
+            len(reports_list),
+            (time.monotonic() - query_started) * 1000,
         )
 
         start_date = date.today() - timedelta(days=30)
 
+        query_started = time.monotonic()
         reports_last_30_days_rows = (
             db.query(Report.date.label("report_date"), func.count(Report.id).label("count"))
             .filter(Report.date >= start_date)
@@ -642,11 +695,17 @@ def manager_dashboard(
             .order_by(Report.date)
             .all()
         )
+        perf_logger.debug(
+            "manager_dashboard reports_last_30_days rows=%s duration_ms=%.2f",
+            len(reports_last_30_days_rows),
+            (time.monotonic() - query_started) * 1000,
+        )
         reports_last_30_days = [
             {"date": row.report_date.isoformat(), "count": row.count}
             for row in reports_last_30_days_rows
         ]
 
+        query_started = time.monotonic()
         hours_per_site_rows = (
             db.query(
                 func.coalesce(Site.name, Report.site_name_or_code).label("site_name"),
@@ -658,19 +717,60 @@ def manager_dashboard(
             .order_by(func.sum(Report.total_hours).desc())
             .all()
         )
+        perf_logger.debug(
+            "manager_dashboard hours_per_site rows=%s duration_ms=%.2f",
+            len(hours_per_site_rows),
+            (time.monotonic() - query_started) * 1000,
+        )
         hours_per_site_30_days = [
             {"site_name": row.site_name or "Senza nome", "hours": float(row.hours or 0)}
             for row in hours_per_site_rows
         ]
 
+        query_started = time.monotonic()
+        reports_by_status_rows = (
+            db.query(
+                case(
+                    (func.coalesce(Report.total_hours, 0) > 0, "Chiusi"),
+                    else_="Aperti",
+                ).label("status"),
+                func.count(Report.id).label("count"),
+            )
+            .group_by("status")
+            .all()
+        )
+        perf_logger.debug(
+            "manager_dashboard reports_by_status rows=%s duration_ms=%.2f",
+            len(reports_by_status_rows),
+            (time.monotonic() - query_started) * 1000,
+        )
         reports_by_status_counts = {"Aperti": 0, "Chiusi": 0}
-        for report in reports_list:
-            status_key = "Chiusi" if (report.total_hours or 0) > 0 else "Aperti"
-            reports_by_status_counts[status_key] += 1
+        for row in reports_by_status_rows:
+            reports_by_status_counts[row.status] = int(row.count or 0)
         reports_by_status = [
             {"status": key, "count": value}
             for key, value in reports_by_status_counts.items()
         ]
+
+        query_started = time.monotonic()
+        reports_count = db.query(func.count(Report.id)).scalar() or 0
+        sites_count = (
+            db.query(func.count(Site.id))
+            .filter(Site.is_active.is_(True))
+            .scalar()
+            or 0
+        )
+        machines_count = db.query(func.count(Machine.id)).scalar() or 0
+        users_count = (
+            db.query(func.count(User.id))
+            .filter(User.role.in_([RoleEnum.manager, RoleEnum.caposquadra]))
+            .scalar()
+            or 0
+        )
+        perf_logger.debug(
+            "manager_dashboard kpi_counts duration_ms=%.2f",
+            (time.monotonic() - query_started) * 1000,
+        )
         response = render_template(
             templates,
             request,
@@ -678,6 +778,10 @@ def manager_dashboard(
             {
                 "user_role": "manager",
                 "reports": reports_list,
+                "reports_count": reports_count,
+                "sites_count": sites_count,
+                "machines_count": machines_count,
+                "users_count": users_count,
                 "chart_reports_last_30_days": jsonable_encoder(reports_last_30_days),
                 "chart_hours_per_site_30_days": jsonable_encoder(hours_per_site_30_days),
                 "chart_reports_by_status": jsonable_encoder(reports_by_status),
@@ -1065,7 +1169,7 @@ async def manager_new_user_get(
             mode="create",
             user_obj=None,
             user_id=None,
-            role_choices=list(RoleEnum),
+            role_choices=get_cached_role_choices(),
             language_choices=["it", "fr"],
             error_message=None,
             form_email="",
@@ -1104,7 +1208,7 @@ async def manager_new_user_post(
                 mode="create",
                 user_obj=None,
                 user_id=None,
-                role_choices=list(RoleEnum),
+                role_choices=get_cached_role_choices(),
                 language_choices=["it", "fr"],
                 error_message=error_message,
                 form_email=email,
@@ -1188,7 +1292,7 @@ async def manager_edit_user_get(
             mode="edit",
             user_obj=user_to_edit,
             user_id=user_to_edit.id,
-            role_choices=list(RoleEnum),
+            role_choices=get_cached_role_choices(),
             language_choices=["it", "fr"],
             error_message=None,
             form_email=user_to_edit.email,
@@ -1227,7 +1331,7 @@ async def manager_edit_user_post(
                 mode="edit",
                 user_obj=user_obj,
                 user_id=user_id,
-                role_choices=list(RoleEnum),
+                role_choices=get_cached_role_choices(),
                 language_choices=["it", "fr"],
                 error_message=error_message,
                 form_email=email,
@@ -1431,22 +1535,53 @@ async def manager_reset_password_post(
 @app.get("/manager/cantieri", response_class=HTMLResponse)
 def manager_cantieri(
     request: Request,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
+    page, per_page = _normalize_pagination(page, per_page)
     db = SessionLocal()
     try:
-        sites_list = (
+        query = (
             db.query(Site)
-            .options(joinedload(Site.caposquadra))
+            .options(
+                load_only(
+                    Site.id,
+                    Site.name,
+                    Site.code,
+                    Site.city,
+                    Site.status,
+                    Site.is_active,
+                    Site.lat,
+                    Site.lng,
+                    Site.address,
+                    Site.start_date,
+                ),
+                joinedload(Site.caposquadra).load_only(
+                    User.id,
+                    User.full_name,
+                    User.email,
+                ),
+            )
             .order_by(
                 Site.is_active.desc(),
                 Site.start_date.desc(),
                 Site.name,
             )
-            .all()
+        )
+        total_count = query.count()
+        query_started = time.monotonic()
+        sites_list = query.offset((page - 1) * per_page).limit(per_page).all()
+        perf_logger.debug(
+            "manager_cantieri rows=%s total=%s page=%s per_page=%s duration_ms=%.2f",
+            len(sites_list),
+            total_count,
+            page,
+            per_page,
+            (time.monotonic() - query_started) * 1000,
         )
         site_caposquadra_map = {
             site.id: site.caposquadra for site in sites_list
@@ -1461,6 +1596,9 @@ def manager_cantieri(
             current_user,
             sites=sites_list,
             site_caposquadra_map=site_caposquadra_map,
+            page=page,
+            per_page=per_page,
+            total_pages=max(1, ceil(total_count / per_page)),
         ),
     )
 
@@ -1505,7 +1643,7 @@ def manager_cantiere_nuovo_get(
     if not has_perm(current_user, "sites.create"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    site_status_values = [status.name for status in SiteStatusEnum]
+    site_status_values = get_cached_site_status_values()
     google_maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY")
     db = SessionLocal()
     try:
@@ -1657,7 +1795,7 @@ def manager_cantiere_modifica_get(
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
         if current_user.role == RoleEnum.caposquadra and site.caposquadra_id != current_user.id:
             raise HTTPException(status_code=403, detail="Permessi insufficienti")
-        site_status_values = [status.name for status in SiteStatusEnum]
+        site_status_values = get_cached_site_status_values()
         capisquadra = (
             db.query(User)
             .filter(User.role == RoleEnum.caposquadra)
@@ -1864,15 +2002,39 @@ def capo_dashboard(
 
     db = SessionLocal()
     try:
+        query_started = time.monotonic()
         assigned_sites_query = db.query(Site).filter(
             Site.is_active.is_(True),
             Site.lat.isnot(None),
             Site.lng.isnot(None),
         )
         assigned_sites_query = scope_sites_query(assigned_sites_query, current_user)
-        assigned_sites_with_coords = assigned_sites_query.order_by(Site.name).all()
+        assigned_sites_with_coords = (
+            assigned_sites_query.options(
+                load_only(
+                    Site.id,
+                    Site.name,
+                    Site.address,
+                    Site.city,
+                    Site.country,
+                    Site.lat,
+                    Site.lng,
+                    Site.status,
+                    Site.is_active,
+                    Site.caposquadra_id,
+                )
+            )
+            .order_by(Site.name)
+            .all()
+        )
+        perf_logger.debug(
+            "capo_dashboard assigned_sites rows=%s duration_ms=%.2f",
+            len(assigned_sites_with_coords),
+            (time.monotonic() - query_started) * 1000,
+        )
         assigned_sites_map_data = _build_sites_map_data(assigned_sites_with_coords)
 
+        query_started = time.monotonic()
         kpi_reports_today = (
             db.query(func.count(Report.id))
             .filter(Report.created_by_id == current_user.id)
@@ -1880,7 +2042,12 @@ def capo_dashboard(
             .scalar()
             or 0
         )
+        perf_logger.debug(
+            "capo_dashboard kpi_reports_today duration_ms=%.2f",
+            (time.monotonic() - query_started) * 1000,
+        )
 
+        query_started = time.monotonic()
         kpi_hours_this_week = (
             db.query(func.coalesce(func.sum(Report.total_hours), 0.0))
             .filter(Report.created_by_id == current_user.id)
@@ -1888,7 +2055,12 @@ def capo_dashboard(
             .scalar()
             or 0
         )
+        perf_logger.debug(
+            "capo_dashboard kpi_hours_this_week duration_ms=%.2f",
+            (time.monotonic() - query_started) * 1000,
+        )
 
+        query_started = time.monotonic()
         kpi_assigned_sites = (
             db.query(func.count(Site.id))
             .filter(Site.caposquadra_id == current_user.id)
@@ -1896,13 +2068,22 @@ def capo_dashboard(
             .scalar()
             or 0
         )
+        perf_logger.debug(
+            "capo_dashboard kpi_assigned_sites duration_ms=%.2f",
+            (time.monotonic() - query_started) * 1000,
+        )
 
+        query_started = time.monotonic()
         kpi_open_reports = (
             db.query(func.count(Report.id))
             .filter(Report.created_by_id == current_user.id)
             .filter(func.coalesce(Report.total_hours, 0) <= 0)
             .scalar()
             or 0
+        )
+        perf_logger.debug(
+            "capo_dashboard kpi_open_reports duration_ms=%.2f",
+            (time.monotonic() - query_started) * 1000,
         )
 
     finally:

@@ -1,7 +1,11 @@
+import logging
+import time
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Session, load_only
 
 from auth import get_current_active_user_html
 from database import get_db
@@ -16,6 +20,16 @@ templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 
 MACHINE_STATUS_CHOICES = ["attivo", "manutenzione", "fuori_servizio"]
+DEFAULT_PER_PAGE = 50
+MAX_PER_PAGE = 100
+
+perf_logger = logging.getLogger("lenta_france_gestionale.performance")
+
+
+def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
+    page = max(1, page)
+    per_page = max(1, min(per_page, MAX_PER_PAGE))
+    return page, per_page
 
 
 def _require_manager_or_admin(user):
@@ -90,21 +104,53 @@ def list_machines_api(
 def manager_machines_page(
     request: Request,
     current_user=Depends(get_current_active_user_html),
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
     db: Session = Depends(get_db),
 ):
     _require_manager_or_admin(current_user)
 
+    page, per_page = _normalize_pagination(page, per_page)
+    total_count = db.query(func.count(Machine.id)).scalar() or 0
+    query_started = time.monotonic()
     machines = (
         db.query(Machine)
-        .outerjoin(Site)
+        .options(
+            load_only(
+                Machine.id,
+                Machine.name,
+                Machine.code,
+                Machine.brand,
+                Machine.model_name,
+                Machine.status,
+            )
+        )
         .order_by(Machine.name.asc(), Machine.id.asc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
         .all()
     )
+    perf_logger.debug(
+        "manager_machines_list rows=%s total=%s page=%s per_page=%s duration_ms=%.2f",
+        len(machines),
+        total_count,
+        page,
+        per_page,
+        (time.monotonic() - query_started) * 1000,
+    )
 
-    kpi_total = len(machines)
-    kpi_active = len([m for m in machines if (m.status or "attivo") == "attivo"])
-    kpi_oos = len(
-        [m for m in machines if (m.status or "attivo") == "fuori_servizio"]
+    kpi_total = total_count
+    kpi_active = (
+        db.query(func.count(Machine.id))
+        .filter(func.coalesce(Machine.status, "attivo") == "attivo")
+        .scalar()
+        or 0
+    )
+    kpi_oos = (
+        db.query(func.count(Machine.id))
+        .filter(Machine.status == "fuori_servizio")
+        .scalar()
+        or 0
     )
 
     return templates.TemplateResponse(
@@ -117,6 +163,9 @@ def manager_machines_page(
             kpi_total=kpi_total,
             kpi_active=kpi_active,
             kpi_oos=kpi_oos,
+            page=page,
+            per_page=per_page,
+            total_pages=max(1, (total_count + per_page - 1) // per_page),
         ),
     )
 
