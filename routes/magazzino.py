@@ -35,6 +35,7 @@ from template_context import (
     render_template,
 )
 from permissions import has_perm
+from notifications import notify_magazzino_richiesta
 
 
 templates = Jinja2Templates(directory="templates")
@@ -633,6 +634,7 @@ def capo_magazzino_richiesta_create(
             )
         )
 
+    notify_magazzino_richiesta(db, richiesta, current_user)
     db.commit()
     _invalidate_magazzino_cache()
 

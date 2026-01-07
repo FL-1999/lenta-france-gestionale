@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user, get_current_active_user_html
 from database import get_db
 from models import RoleEnum, Report, Site, User
+from notifications import notify_new_report
 from permissions import has_perm
 from template_context import build_template_context, register_manager_badges
 
@@ -95,6 +96,8 @@ def create_report(
     )
 
     db.add(db_report)
+    db.flush()
+    notify_new_report(db, db_report, current_user)
     db.commit()
     db.refresh(db_report)
 

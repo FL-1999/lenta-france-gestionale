@@ -139,6 +139,21 @@
                         {% if is_manager %}Report{% else %}Rapportini{% endif %}
                     {% endif %}
                 </a>
+                <div class="nav-notifications" data-notifications data-endpoint="/api/notifications/poll" data-read-endpoint="/api/notifications/{id}/read" data-poll-interval="30000">
+                    <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
+                        🔔
+                        <span class="badge-notification is-hidden" data-notifications-badge></span>
+                    </button>
+                    <div class="notifications-panel" data-notifications-panel>
+                        <div class="notifications-panel__header">
+                            {% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}
+                        </div>
+                        <ul class="notifications-panel__list" data-notifications-list></ul>
+                        <div class="notifications-panel__empty is-hidden" data-notifications-empty>
+                            {% if lang == 'fr' %}Aucune notification{% else %}Nessuna notifica{% endif %}
+                        </div>
+                    </div>
+                </div>
                 {% if show_fiches %}
                     <a href="{{ fiches_path }}" class="nav-link">
                         🧾
@@ -249,5 +264,6 @@
         </nav>
     {% endif %}
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/notifications.js') }}"></script>
 </body>
 </html>
