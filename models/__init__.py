@@ -145,6 +145,31 @@ class AuditLog(Base):
 
 
 # ------------------------------------------------------------
+# MODELLO NOTIFICA
+# ------------------------------------------------------------
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    notification_type = Column(String(50), nullable=False)
+    message = Column(Text, nullable=False)
+    recipient_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    recipient_role = Column(Enum(RoleEnum), nullable=True)
+    target_url = Column(String(255), nullable=True)
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    recipient_user = relationship("User")
+
+    def __repr__(self) -> str:
+        return (
+            "<Notification "
+            f"id={self.id} type={self.notification_type} recipient_user_id={self.recipient_user_id}>"
+        )
+
+
+# ------------------------------------------------------------
 # MODELLO CANTIERE (SITE)
 # ------------------------------------------------------------
 

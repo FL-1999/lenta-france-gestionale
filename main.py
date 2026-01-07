@@ -47,7 +47,7 @@ from models import (
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
 )
-from routers import users, sites, machines, reports, fiches
+from routers import users, sites, machines, reports, fiches, notifications
 from routes import manager_personale, manager_veicoli, magazzino, audit
 from template_context import (
     build_template_context,
@@ -59,6 +59,7 @@ from template_context import (
     render_template,
 )
 from permissions import has_perm
+from notifications import notify_site_status_change
 
 
 logger = logging.getLogger("lenta_france_gestionale.errors")
@@ -1939,6 +1940,7 @@ def manager_cantiere_modifica_post(
             if not capo:
                 raise HTTPException(status_code=400, detail="Caposquadra non valido")
 
+        previous_status = site.status.value if site.status else None
         site.name = name
         site.code = code
         site.address = address
@@ -1952,6 +1954,16 @@ def manager_cantiere_modifica_post(
         site.status = status_value
         site.is_active = is_active is not None
         site.caposquadra_id = parsed_capo_id
+
+        new_status = site.status.value if site.status else None
+        if previous_status != new_status:
+            notify_site_status_change(
+                db,
+                site,
+                previous_status,
+                new_status,
+                current_user,
+            )
 
         db.commit()
     finally:
@@ -2468,6 +2480,7 @@ app.include_router(sites.router)      # /sites
 app.include_router(machines.router)   # /machines
 app.include_router(reports.router)    # /reports
 app.include_router(fiches.router)     # /fiches
+app.include_router(notifications.router)
 app.include_router(manager_personale.router)
 app.include_router(manager_veicoli.router)
 app.include_router(magazzino.router)
