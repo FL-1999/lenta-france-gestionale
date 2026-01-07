@@ -15,6 +15,25 @@ MANAGER_PERMISSIONS: FrozenSet[str] = frozenset(
     }
 )
 
+MAGAZZINO_PERMISSIONS: FrozenSet[str] = frozenset(
+    {
+        "inventory.read",
+        "inventory.manage",
+    }
+)
+
+CONTABILITA_PERMISSIONS: FrozenSet[str] = frozenset(
+    {
+        "reports.read_all",
+    }
+)
+
+HR_PERMISSIONS: FrozenSet[str] = frozenset(
+    {
+        "users.read",
+    }
+)
+
 ADMIN_EXTRA_PERMISSIONS: FrozenSet[str] = frozenset(
     {
         "sites.delete",
@@ -33,6 +52,9 @@ ROLE_PERMISSIONS: dict[RoleEnum, FrozenSet[str]] = {
     RoleEnum.caposquadra: frozenset(),
     RoleEnum.manager: MANAGER_PERMISSIONS,
     RoleEnum.admin: MANAGER_PERMISSIONS | ADMIN_EXTRA_PERMISSIONS,
+    RoleEnum.magazzino: MAGAZZINO_PERMISSIONS,
+    RoleEnum.contabilita: CONTABILITA_PERMISSIONS,
+    RoleEnum.hr: HR_PERMISSIONS,
 }
 
 

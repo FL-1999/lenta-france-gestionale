@@ -174,7 +174,7 @@ def manager_reports_list(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "manager.access"):
+    if not (has_perm(current_user, "manager.access") or has_perm(current_user, "reports.read_all")):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato")
 
     query = db.query(Report)
@@ -249,7 +249,7 @@ def manager_report_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "manager.access"):
+    if not (has_perm(current_user, "manager.access") or has_perm(current_user, "reports.read_all")):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato")
 
     report = (

@@ -55,7 +55,10 @@ def list_users(
     Restituisce la lista di tutti gli utenti.
     Accesso consentito agli utenti con permesso di lettura.
     """
-    if not has_perm(current_user, "users.read"):
+    if not (
+        has_perm(current_user, "users.read")
+        and has_perm(current_user, "manager.access")
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Non hai i permessi per vedere la lista utenti.",

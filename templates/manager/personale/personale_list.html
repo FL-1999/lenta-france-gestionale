@@ -19,20 +19,24 @@
             {% endif %}
         </p>
     </div>
-    <div class="header-actions">
-        <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
-            ➕ {% if lang == 'fr' %}Nouvel employé{% else %}Nuovo personale{% endif %}
-        </a>
-    </div>
+    {% if has_perm(user, 'manager.access') %}
+        <div class="header-actions">
+            <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
+                ➕ {% if lang == 'fr' %}Nouvel employé{% else %}Nuovo personale{% endif %}
+            </a>
+        </div>
+    {% endif %}
 </div>
 
 <div class="page-actions-sticky">
     <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary is-active">
         {% if lang == 'fr' %}Liste{% else %}Elenco{% endif %}
     </a>
-    <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
-        ➕ {% if lang == 'fr' %}Nouveau{% else %}Nuovo{% endif %}
-    </a>
+    {% if has_perm(user, 'manager.access') %}
+        <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouveau{% else %}Nuovo{% endif %}
+        </a>
+    {% endif %}
 </div>
 
 <div class="card table-card">
@@ -67,10 +71,12 @@
                         <td class="actions-col">
                             {% if p.id %}
                                 <div class="table-actions">
-                                    <a class="btn btn-secondary btn-sm"
-                                       href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
-                                        ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-                                    </a>
+                                    {% if has_perm(user, 'manager.access') %}
+                                        <a class="btn btn-secondary btn-sm"
+                                           href="{{ url_for('manager_personale_edit', personale_id=p.id) }}">
+                                            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                                        </a>
+                                    {% endif %}
                                     {% if has_perm(user, 'records.delete') %}
                                     <form method="post"
                                           action="{{ url_for('manager_personale_delete', personale_id=p.id) }}">
