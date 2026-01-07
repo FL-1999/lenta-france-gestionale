@@ -31,6 +31,9 @@ class RoleEnum(PyEnum):
     admin = "admin"
     manager = "manager"
     caposquadra = "caposquadra"
+    magazzino = "magazzino"
+    contabilita = "contabilita"
+    hr = "hr"
 
 
 # Questi tre servono perché vengono importati in schemas.py
