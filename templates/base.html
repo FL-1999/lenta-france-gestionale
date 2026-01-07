@@ -49,11 +49,9 @@
     {% endif %}
     {% set show_cantieri = is_manager %}
     {% set cantieri_path = "/manager/cantieri" %}
-    {% if is_capo %}
-        {% set report_path = "/capo/rapportini/nuovo" %}
-    {% else %}
-        {% set report_path = "/manager/rapportini" %}
-    {% endif %}
+    {% set report_path = "/manager/report" if is_manager else "/capo/rapportini/nuovo" %}
+
+
     {% set fiches_path = "/manager/fiches" %}
     {% set profile_path = "/manager/utenti" if can_manage_users else ("/capo/dashboard?section=profilo" if is_capo else "/manager/dashboard") %}
     {% if is_capo %}
@@ -69,7 +67,7 @@
     {% set is_home_active = current_path == home_path and not section %}
     {% set is_cantieri_active = current_path.startswith('/manager/cantieri') or (section == 'cantieri') or current_path.startswith('/capo/cantieri') %}
     {% set is_magazzino_active = current_path.startswith('/manager/magazzino') or current_path.startswith('/capo/magazzino') %}
-    {% set is_report_active = current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') %}
+    {% set is_report_active = current_path.startswith('/manager/report') or current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') %}
     {% set is_profile_active = current_path.startswith('/manager/utenti') or (section == 'profilo') %}
     {% set show_profile = can_manage_users or is_capo %}
     {% set show_users_link = is_manager and can_read_users %}
@@ -153,12 +151,13 @@
                     <a href="{{ report_path }}" class="nav-link">
                         📊
                         {% if lang == 'fr' %}
-                            Rapports
+                            {% if is_manager %}Rapports{% else %}Rapports journaliers{% endif %}
                         {% else %}
-                            Rapportini
+                            {% if is_manager %}Report{% else %}Rapportini{% endif %}
                         {% endif %}
                     </a>
                 {% endif %}
+
                 <div class="nav-notifications" data-notifications data-endpoint="/api/notifications/poll" data-read-endpoint="/api/notifications/{id}/read" data-poll-interval="30000">
                     <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
                         🔔
