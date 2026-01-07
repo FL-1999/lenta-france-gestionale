@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Reportistica – Manager{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">📊 Reportistica avanzata</h1>
+            <p class="subtitle">Consulta i report riepilogativi e scarica i dati in CSV.</p>
+        </div>
+        <div class="page-actions">
+            <a
+                href="{{ url_for('manager_reports_export', report_type=filters.report_type, date_from=filters.date_from, date_to=filters.date_to, preset=filters.preset) }}"
+                class="btn btn-secondary"
+            >
+                📤 Esporta CSV
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="form-grid" style="margin-bottom: var(--space-5);">
+        <div class="form-group">
+            <label for="preset">Periodo rapido</label>
+            <select id="preset" name="preset" class="form-select">
+                <option value="" {% if not filters.preset %}selected{% endif %}>Personalizzato</option>
+                {% for key, label in preset_options.items() %}
+                    <option value="{{ key }}" {% if filters.preset == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="date_from">Da</label>
+            <input type="date" id="date_from" name="date_from" class="form-control" value="{{ filters.date_from }}">
+        </div>
+        <div class="form-group">
+            <label for="date_to">A</label>
+            <input type="date" id="date_to" name="date_to" class="form-control" value="{{ filters.date_to }}">
+        </div>
+        <div class="form-group">
+            <label for="report_type">Tipo report</label>
+            <select id="report_type" name="report_type" class="form-select">
+                {% for key, label in report_types.items() %}
+                    <option value="{{ key }}" {% if report_type == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group form-grid--single">
+            <button type="submit" class="btn btn-primary">Aggiorna report</button>
+        </div>
+    </form>
+
+    {% if report_type == "cantieri" %}
+        <section class="card">
+            <h2 class="card-title">Report cantieri</h2>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Cantiere</th>
+                            <th>Codice</th>
+                            <th>Stato</th>
+                            <th>Ore totali</th>
+                            <th>N. rapportini</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            <tr>
+                                <td>{{ row.site_name }}</td>
+                                <td>{{ row.site_code or '-' }}</td>
+                                <td>{{ row.site_status }}</td>
+                                <td>{{ "%.1f"|format(row.total_hours) }}</td>
+                                <td>{{ row.reports_count }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="table-empty">Nessun dato disponibile per il periodo selezionato.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card" style="margin-top: var(--space-5);">
+            <h2 class="card-title">Ore per cantiere</h2>
+            <canvas id="reportCantieriChart"></canvas>
+        </section>
+    {% elif report_type == "caposquadra" %}
+        <section class="card">
+            <h2 class="card-title">Report caposquadra</h2>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Caposquadra</th>
+                            <th>Cantieri attivi</th>
+                            <th>Ore totali</th>
+                            <th>Rapportini inviati</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            <tr>
+                                <td>{{ row.capo_name }}</td>
+                                <td>{{ row.active_sites }}</td>
+                                <td>{{ "%.1f"|format(row.total_hours) }}</td>
+                                <td>{{ row.reports_count }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="table-empty">Nessun caposquadra trovato.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% else %}
+        <section class="card">
+            <h2 class="card-title">Report mezzi</h2>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Mezzo</th>
+                            <th>Codice</th>
+                            <th>Stato</th>
+                            <th>Giorni di utilizzo</th>
+                            <th>Fermi/manutenzioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            <tr>
+                                <td>{{ row.machine_name }}</td>
+                                <td>{{ row.machine_code }}</td>
+                                <td>{{ row.machine_status }}</td>
+                                <td>{{ row.usage_days }}</td>
+                                <td>{{ row.downtime_count }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="table-empty">Nessun mezzo trovato.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+</div>
+
+{% if report_type == "cantieri" %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const chartData = {{ chart_data | tojson | safe }};
+        const ctx = document.getElementById("reportCantieriChart");
+        if (ctx && chartData.length) {
+            new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: chartData.map(item => item.label),
+                    datasets: [{
+                        label: "Ore totali",
+                        data: chartData.map(item => item.value),
+                        backgroundColor: "rgba(59, 130, 246, 0.6)",
+                        borderColor: "rgba(59, 130, 246, 1)",
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+{% endif %}
+{% endblock %}
