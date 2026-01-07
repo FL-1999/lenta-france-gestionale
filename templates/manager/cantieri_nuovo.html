@@ -15,6 +15,15 @@
         </p>
     </div>
 
+    <div class="page-actions-sticky">
+        <a href="/manager/cantieri" class="btn btn-secondary">
+            Elenco
+        </a>
+        <a href="/manager/cantieri/nuovo" class="btn btn-primary is-active">
+            ➕ Nuovo
+        </a>
+    </div>
+
     <div class="card form-card">
         <div class="card-header">
             <div class="card-title">
@@ -22,32 +31,51 @@
             </div>
         </div>
         <div class="card-body">
-            <form method="post" action="#">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="nome">Nome cantiere</label>
-                        <input id="nome" name="nome" type="text" class="form-control" placeholder="Es. Cantiere Lyon" required />
-                    </div>
+            <form method="post" action="#" class="form-sticky-space" id="cantieri-form">
+                <nav class="form-step-nav" aria-label="Sezioni form cantiere">
+                    <a href="#cantiere-base">Dati base</a>
+                    <a href="#cantiere-location">Indirizzo</a>
+                    <a href="#cantiere-status">Stato</a>
+                </nav>
 
-                    <div class="form-group">
-                        <label class="form-label" for="codice">Codice</label>
-                        <input id="codice" name="codice" type="text" class="form-control" placeholder="Es. LY-001" />
-                    </div>
+                <section id="cantiere-base" class="form-section">
+                    <h2 class="section-title">Dati base</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="nome">Nome cantiere</label>
+                            <input id="nome" name="nome" type="text" class="form-control" placeholder="Es. Cantiere Lyon" required />
+                        </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="localita">Località</label>
-                        <input id="localita" name="localita" type="text" class="form-control" placeholder="Es. Lyon, Francia" />
+                        <div class="form-group">
+                            <label class="form-label" for="codice">Codice</label>
+                            <input id="codice" name="codice" type="text" class="form-control" placeholder="Es. LY-001" />
+                        </div>
                     </div>
+                </section>
 
-                    <div class="form-group">
-                        <label class="form-label" for="stato">Stato</label>
-                        <select id="stato" name="stato" class="form-select">
-                            <option value="attivo">Attivo</option>
-                            <option value="in_avvio">In avvio</option>
-                            <option value="chiuso">Chiuso</option>
-                        </select>
+                <section id="cantiere-location" class="form-section">
+                    <h2 class="section-title">Indirizzo</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="localita">Località</label>
+                            <input id="localita" name="localita" type="text" class="form-control" placeholder="Es. Lyon, Francia" />
+                        </div>
                     </div>
-                </div>
+                </section>
+
+                <section id="cantiere-status" class="form-section">
+                    <h2 class="section-title">Stato</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="stato">Stato</label>
+                            <select id="stato" name="stato" class="form-select">
+                                <option value="attivo">Attivo</option>
+                                <option value="in_avvio">In avvio</option>
+                                <option value="chiuso">Chiuso</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Salva (mock)</button>
@@ -56,5 +84,9 @@
             </form>
         </div>
     </div>
+</div>
+<div class="form-actions-sticky">
+    <a href="/manager/cantieri" class="btn btn-secondary">Annulla</a>
+    <button type="submit" form="cantieri-form" class="btn btn-primary">Salva (mock)</button>
 </div>
 {% endblock %}

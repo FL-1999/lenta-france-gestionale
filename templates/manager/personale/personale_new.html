@@ -17,43 +17,71 @@
     </p>
 </div>
 
+<div class="page-actions-sticky">
+    <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary">
+        {% if lang == 'fr' %}Liste{% else %}Elenco{% endif %}
+    </a>
+    <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary is-active">
+        ➕ {% if lang == 'fr' %}Nouveau{% else %}Nuovo{% endif %}
+    </a>
+</div>
+
 <div class="card">
     <div class="card-body">
-        <form method="post" action="{{ url_for('manager_personale_create') }}" class="form">
-            <div class="form-grid">
+        <form method="post" action="{{ url_for('manager_personale_create') }}" class="form form-sticky-space" id="personale-form">
+            <nav class="form-step-nav" aria-label="{% if lang == 'fr' %}Sections du formulaire{% else %}Sezioni del modulo{% endif %}">
+                <a href="#personale-base">{% if lang == 'fr' %}Données de base{% else %}Dati base{% endif %}</a>
+                <a href="#personale-contatti">{% if lang == 'fr' %}Contacts{% else %}Contatti{% endif %}</a>
+                <a href="#personale-note">{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</a>
+            </nav>
+
+            <section id="personale-base" class="form-section">
+                <h2 class="section-title">{% if lang == 'fr' %}Données de base{% else %}Dati base{% endif %}</h2>
+                <div class="form-grid">
+                    <label>
+                        {% if lang == 'fr' %}Prénom{% else %}Nome{% endif %}
+                        <input type="text" name="nome" required />
+                    </label>
+                    <label>
+                        {% if lang == 'fr' %}Nom{% else %}Cognome{% endif %}
+                        <input type="text" name="cognome" required />
+                    </label>
+                    <label>
+                        {% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}
+                        <input type="text" name="ruolo" />
+                    </label>
+                    <label class="checkbox-field">
+                        <input type="checkbox" name="attivo" value="true" checked />
+                        <span>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+                    </label>
+                </div>
+            </section>
+
+            <section id="personale-contatti" class="form-section">
+                <h2 class="section-title">{% if lang == 'fr' %}Contacts{% else %}Contatti{% endif %}</h2>
+                <div class="form-grid">
+                    <label>
+                        {% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}
+                        <input type="text" name="telefono" />
+                    </label>
+                    <label>
+                        Email
+                        <input type="email" name="email" />
+                    </label>
+                    <label>
+                        {% if lang == 'fr' %}Date d'embauche{% else %}Data assunzione{% endif %}
+                        <input type="date" name="data_assunzione" />
+                    </label>
+                </div>
+            </section>
+
+            <section id="personale-note" class="form-section">
+                <h2 class="section-title">{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</h2>
                 <label>
-                    {% if lang == 'fr' %}Prénom{% else %}Nome{% endif %}
-                    <input type="text" name="nome" required />
+                    {% if lang == 'fr' %}Notes{% else %}Note{% endif %}
+                    <textarea name="note" rows="4"></textarea>
                 </label>
-                <label>
-                    {% if lang == 'fr' %}Nom{% else %}Cognome{% endif %}
-                    <input type="text" name="cognome" required />
-                </label>
-                <label>
-                    {% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}
-                    <input type="text" name="ruolo" />
-                </label>
-                <label>
-                    {% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}
-                    <input type="text" name="telefono" />
-                </label>
-                <label>
-                    Email
-                    <input type="email" name="email" />
-                </label>
-                <label>
-                    {% if lang == 'fr' %}Date d'embauche{% else %}Data assunzione{% endif %}
-                    <input type="date" name="data_assunzione" />
-                </label>
-                <label class="checkbox-field">
-                    <input type="checkbox" name="attivo" value="true" checked />
-                    <span>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
-                </label>
-            </div>
-            <label>
-                {% if lang == 'fr' %}Notes{% else %}Note{% endif %}
-                <textarea name="note" rows="4"></textarea>
-            </label>
+            </section>
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
@@ -61,5 +89,13 @@
             </div>
         </form>
     </div>
+</div>
+<div class="form-actions-sticky">
+    <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary">
+        {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+    </a>
+    <button type="submit" form="personale-form" class="btn btn-primary">
+        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+    </button>
 </div>
 {% endblock %}
