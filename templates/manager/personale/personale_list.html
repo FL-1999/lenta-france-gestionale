@@ -26,6 +26,15 @@
     </div>
 </div>
 
+<div class="page-actions-sticky">
+    <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary is-active">
+        {% if lang == 'fr' %}Liste{% else %}Elenco{% endif %}
+    </a>
+    <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
+        ➕ {% if lang == 'fr' %}Nouveau{% else %}Nuovo{% endif %}
+    </a>
+</div>
+
 <div class="card table-card">
     <div class="card-body">
         <table class="data-table">

@@ -16,6 +16,11 @@
         </p>
     </div>
 
+    <div class="page-actions-sticky">
+        <a href="/capo/rapportini" class="btn btn-secondary">Elenco</a>
+        <a href="/capo/rapportini/nuovo" class="btn btn-primary is-active">➕ Nuovo</a>
+    </div>
+
     <div class="card form-card">
         <div class="card-header">
             <div class="card-title">
@@ -23,48 +28,65 @@
             </div>
         </div>
         <div class="card-body">
-            <form id="rapportino-form">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="data">Data</label>
-                        <input type="date" id="data" name="data" class="form-control" required />
-                    </div>
+            <form id="rapportino-form" class="form-sticky-space">
+                <nav class="form-step-nav" aria-label="Sezioni rapportino">
+                    <a href="#rapportino-base">Dati base</a>
+                    <a href="#rapportino-attivita">Attività</a>
+                    <a href="#rapportino-note">Note</a>
+                </nav>
 
-                    <div class="form-group">
-                        <label class="form-label" for="cantiere">Cantiere</label>
-                        <input type="text" id="cantiere" name="cantiere" class="form-control" required placeholder="Nome o codice cantiere" />
-                    </div>
+                <section id="rapportino-base" class="form-section">
+                    <h2 class="section-title">Dati base</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="data">Data</label>
+                            <input type="date" id="data" name="data" class="form-control" required />
+                        </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="ore_totali">Ore totali lavorate</label>
-                        <input type="number" id="ore_totali" name="ore_totali" class="form-control" min="0" step="0.5" required placeholder="es. 8" />
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label" for="cantiere">Cantiere</label>
+                            <input type="text" id="cantiere" name="cantiere" class="form-control" required placeholder="Nome o codice cantiere" />
+                        </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="numero_operai">Numero operai</label>
-                        <input type="number" id="numero_operai" name="numero_operai" class="form-control" min="0" required placeholder="es. 3" />
-                    </div>
-                </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ore_totali">Ore totali lavorate</label>
+                            <input type="number" id="ore_totali" name="ore_totali" class="form-control" min="0" step="0.5" required placeholder="es. 8" />
+                        </div>
 
-                <div class="form-group form-grid form-grid--single">
-                    <div class="form-group">
-                        <label class="form-label" for="macchinari">Macchinari utilizzati</label>
-                        <textarea id="macchinari" name="macchinari" class="form-textarea" rows="2"
-                                  placeholder="Es. Escavatore 20t, Minipala, Furgone..."></textarea>
+                        <div class="form-group">
+                            <label class="form-label" for="numero_operai">Numero operai</label>
+                            <input type="number" id="numero_operai" name="numero_operai" class="form-control" min="0" required placeholder="es. 3" />
+                        </div>
                     </div>
+                </section>
 
-                    <div class="form-group">
-                        <label class="form-label" for="attivita">Attività svolte</label>
-                        <textarea id="attivita" name="attivita" class="form-textarea" rows="4"
-                                  placeholder="Descrivi brevemente le attività eseguite in giornata."></textarea>
-                    </div>
+                <section id="rapportino-attivita" class="form-section">
+                    <h2 class="section-title">Attività</h2>
+                    <div class="form-group form-grid form-grid--single">
+                        <div class="form-group">
+                            <label class="form-label" for="macchinari">Macchinari utilizzati</label>
+                            <textarea id="macchinari" name="macchinari" class="form-textarea" rows="2"
+                                      placeholder="Es. Escavatore 20t, Minipala, Furgone..."></textarea>
+                        </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="note">Note aggiuntive</label>
-                        <textarea id="note" name="note" class="form-textarea" rows="3"
-                                  placeholder="Eventuali problemi, ritardi, materiali mancanti, ecc."></textarea>
+                        <div class="form-group">
+                            <label class="form-label" for="attivita">Attività svolte</label>
+                            <textarea id="attivita" name="attivita" class="form-textarea" rows="4"
+                                      placeholder="Descrivi brevemente le attività eseguite in giornata."></textarea>
+                        </div>
                     </div>
-                </div>
+                </section>
+
+                <section id="rapportino-note" class="form-section">
+                    <h2 class="section-title">Note</h2>
+                    <div class="form-group form-grid form-grid--single">
+                        <div class="form-group">
+                            <label class="form-label" for="note">Note aggiuntive</label>
+                            <textarea id="note" name="note" class="form-textarea" rows="3"
+                                      placeholder="Eventuali problemi, ritardi, materiali mancanti, ecc."></textarea>
+                        </div>
+                    </div>
+                </section>
 
                 <div id="rapportino-error" class="form-error" style="display:none;"></div>
                 <div id="rapportino-success" class="form-help" style="display:none;"></div>
@@ -76,6 +98,10 @@
             </form>
         </div>
     </div>
+</div>
+<div class="form-actions-sticky">
+    <a href="/capo/dashboard" class="btn btn-secondary">Annulla</a>
+    <button type="submit" form="rapportino-form" class="btn btn-primary">Salva</button>
 </div>
 
 <script>

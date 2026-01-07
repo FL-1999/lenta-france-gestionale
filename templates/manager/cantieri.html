@@ -35,6 +35,15 @@
   </div>
 </div>
 
+<div class="page-actions-sticky">
+  <a href="/manager/cantieri" class="btn btn-secondary is-active">
+    {% if lang == 'fr' %}Liste{% else %}Elenco{% endif %}
+  </a>
+  <a href="/manager/cantieri/nuovo" class="btn btn-primary">
+    ➕ {% if lang == 'fr' %}Nouveau{% else %}Nuovo{% endif %}
+  </a>
+</div>
+
 {% set sites_list = sites | default([]) %}
 
 <div class="list-search-sticky">
