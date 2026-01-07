@@ -142,4 +142,20 @@
     </div>
 </div>
 
+{% if total_pages and total_pages > 1 %}
+    <div class="pagination-row" style="margin-top: 1.5rem;">
+        <div class="pagination-meta">
+            {% if lang == 'fr' %}Page {{ page }} sur {{ total_pages }}{% else %}Pagina {{ page }} di {{ total_pages }}{% endif %}
+        </div>
+        <div class="pagination-actions">
+            {% if page > 1 %}
+                <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page-1, per_page=per_page) }}">&laquo; {% if lang == 'fr' %}Précédent{% else %}Precedente{% endif %}</a>
+            {% endif %}
+            {% if page < total_pages %}
+                <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page+1, per_page=per_page) }}">{% if lang == 'fr' %}Suivant{% else %}Successiva{% endif %} &raquo;</a>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
 {% endblock %}

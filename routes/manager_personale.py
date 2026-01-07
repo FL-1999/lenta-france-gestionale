@@ -1,3 +1,5 @@
+import logging
+import time
 from typing import Optional
 from datetime import date
 
@@ -5,6 +7,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
+from sqlalchemy import func
 
 from auth import get_current_active_user_html
 from database import get_session
@@ -16,6 +19,16 @@ from permissions import has_perm
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 router = APIRouter(tags=["manager-personale"])
+DEFAULT_PER_PAGE = 50
+MAX_PER_PAGE = 100
+
+perf_logger = logging.getLogger("lenta_france_gestionale.performance")
+
+
+def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
+    page = max(1, page)
+    per_page = max(1, min(per_page, MAX_PER_PAGE))
+    return page, per_page
 
 
 def _ensure_manager(user: User) -> None:
@@ -30,15 +43,31 @@ def _ensure_manager(user: User) -> None:
 )
 def manager_personale_list(
     request: Request,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "users.read"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     lang = request.cookies.get("lang", "it")
+    page, per_page = _normalize_pagination(page, per_page)
+    total_count = session.exec(select(func.count(Personale.id))).one()
+    query_started = time.monotonic()
     personale = session.exec(
-        select(Personale).order_by(Personale.cognome, Personale.nome)
+        select(Personale)
+        .order_by(Personale.cognome, Personale.nome)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     ).all()
+    perf_logger.debug(
+        "manager_personale_list rows=%s total=%s page=%s per_page=%s duration_ms=%.2f",
+        len(personale),
+        total_count,
+        page,
+        per_page,
+        (time.monotonic() - query_started) * 1000,
+    )
 
     return render_template(
         templates,
@@ -47,6 +76,9 @@ def manager_personale_list(
         {
             "lang": lang,
             "personale": personale,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": max(1, (total_count + per_page - 1) // per_page),
         },
         session,
         current_user,

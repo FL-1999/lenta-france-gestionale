@@ -29,7 +29,11 @@ from models import (
     Site,
     User,
 )
-from template_context import register_manager_badges, render_template
+from template_context import (
+    invalidate_manager_badges_cache,
+    register_manager_badges,
+    render_template,
+)
 from permissions import has_perm
 
 
@@ -64,6 +68,10 @@ def ensure_magazzino_manager(user: User) -> None:
     if user.role == RoleEnum.manager and user.is_magazzino_manager:
         return
     raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def _invalidate_magazzino_cache() -> None:
+    invalidate_manager_badges_cache()
 
 
 def _parse_float(value: str | None) -> float | None:
@@ -280,6 +288,7 @@ def _swap_categoria_order(
     db.add(categoria)
     db.add(other)
     db.commit()
+    _invalidate_magazzino_cache()
 
 
 def _order_categorie_for_display(
@@ -468,6 +477,7 @@ def capo_magazzino_richieste(
             synchronize_session=False,
         )
         db.commit()
+        _invalidate_magazzino_cache()
     return render_template(
         templates,
         request,
@@ -518,6 +528,7 @@ def capo_magazzino_richiesta_letto(
             {"stato": richiesta.stato.value if richiesta.stato else None},
         )
         db.commit()
+        _invalidate_magazzino_cache()
 
     return RedirectResponse(
         url=request.url_for("capo_magazzino_richieste"),
@@ -623,6 +634,7 @@ def capo_magazzino_richiesta_create(
         )
 
     db.commit()
+    _invalidate_magazzino_cache()
 
     return RedirectResponse(
         url=request.url_for("capo_magazzino_richieste"),
@@ -990,6 +1002,7 @@ def manager_magazzino_sotto_soglia_crea_richiesta(
         )
 
     db.commit()
+    _invalidate_magazzino_cache()
 
     return RedirectResponse(
         url=(
@@ -1058,6 +1071,7 @@ def manager_magazzino_richiesta_draft_sotto_soglia(
         )
 
     db.commit()
+    _invalidate_magazzino_cache()
 
     return RedirectResponse(
         url=request.url_for("manager_magazzino_richiesta_detail", richiesta_id=richiesta.id),
@@ -1517,6 +1531,7 @@ def manager_magazzino_categorie_create(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except Exception:
         db.rollback()
         return render_template(
@@ -1711,6 +1726,7 @@ def manager_magazzino_categorie_update(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except Exception:
         db.rollback()
         return render_template(
@@ -1758,6 +1774,7 @@ def manager_magazzino_categorie_disable(
         categoria.attiva = False
         db.add(categoria)
         db.commit()
+        _invalidate_magazzino_cache()
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
         status_code=303,
@@ -1796,6 +1813,7 @@ def manager_magazzino_categorie_toggle(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
         status_code=303,
@@ -1961,6 +1979,7 @@ def manager_magazzino_create(
             },
         )
     db.commit()
+    _invalidate_magazzino_cache()
 
     return RedirectResponse(
         url=f"{request.url_for('manager_magazzino_list')}?ok=duplicato",
@@ -2107,6 +2126,7 @@ def manager_magazzino_update(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except ValueError as exc:
         db.rollback()
         categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
@@ -2318,6 +2338,7 @@ def manager_magazzino_duplicate_create(
             },
         )
     db.commit()
+    _invalidate_magazzino_cache()
 
     return RedirectResponse(
         url=request.url_for("manager_magazzino_list"),
@@ -2354,6 +2375,7 @@ def manager_magazzino_preferito_toggle(
         {"preferito": item.preferito},
     )
     db.commit()
+    _invalidate_magazzino_cache()
     return RedirectResponse(
         url=request.url_for("manager_magazzino_list"),
         status_code=303,
@@ -2417,6 +2439,7 @@ def manager_magazzino_scarico(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except ValueError as exc:
         db.rollback()
         return _render_magazzino_items_list(
@@ -2489,6 +2512,7 @@ def manager_magazzino_carico_rapido(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except ValueError as exc:
         db.rollback()
         return _render_magazzino_items_list(
@@ -2568,6 +2592,7 @@ def manager_magazzino_scarico_rapido(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except ValueError as exc:
         db.rollback()
         return _render_magazzino_items_list(
@@ -2610,6 +2635,7 @@ def manager_magazzino_delete(
         item.attivo = False
         db.add(item)
         db.commit()
+        _invalidate_magazzino_cache()
 
     return RedirectResponse(
         url=request.url_for("manager_magazzino_list"),
@@ -2773,6 +2799,7 @@ def manager_magazzino_richiesta_approva(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except ValueError as exc:
         db.rollback()
         return render_template(
@@ -2982,6 +3009,7 @@ async def manager_magazzino_richiesta_evadi(
         )
 
         db.commit()
+        _invalidate_magazzino_cache()
     except HTTPException as exc:
         db.rollback()
         return render_template(
@@ -3077,6 +3105,7 @@ def manager_magazzino_richiesta_rifiuta(
             {"risposta_manager": richiesta.risposta_manager},
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except Exception:
         db.rollback()
         return render_template(
