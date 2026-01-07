@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import AuditLog, User
+from models import AuditLog, User, RoleEnum
 from template_context import register_manager_badges, render_template
 from permissions import has_perm
 
@@ -21,6 +21,11 @@ router = APIRouter(tags=["audit"])
 
 def _ensure_admin_or_manager(user: User) -> None:
     if not has_perm(user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def _ensure_admin(user: User) -> None:
+    if user.role != RoleEnum.admin:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
 
@@ -87,6 +92,70 @@ def manager_audit_list(
                 "date_from": date_from or "",
                 "date_to": date_to or "",
             },
+            "page_label": "manager",
+            "reset_url": request.url_for("manager_audit_list"),
+        },
+        db,
+        current_user,
+    )
+
+
+@router.get("/admin/audit", response_class=HTMLResponse, name="admin_audit_list")
+def admin_audit_list(
+    request: Request,
+    action: str | None = None,
+    user_id: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_admin(current_user)
+
+    parsed_from = _parse_date(date_from)
+    parsed_to = _parse_date(date_to)
+
+    query = db.query(AuditLog).options(joinedload(AuditLog.user))
+    if action:
+        query = query.filter(AuditLog.action == action)
+    if user_id:
+        query = query.filter(AuditLog.user_id == user_id)
+    if parsed_from:
+        query = query.filter(
+            AuditLog.created_at >= datetime.combine(parsed_from, time.min)
+        )
+    if parsed_to:
+        query = query.filter(
+            AuditLog.created_at <= datetime.combine(parsed_to, time.max)
+        )
+
+    logs = query.order_by(AuditLog.created_at.desc()).all()
+    utenti = db.query(User).order_by(User.full_name.asc(), User.email.asc()).all()
+    azioni = [
+        row[0]
+        for row in db.query(AuditLog.action)
+        .distinct()
+        .order_by(AuditLog.action.asc())
+        .all()
+        if row[0]
+    ]
+
+    return render_template(
+        templates,
+        request,
+        "manager/audit_list.html",
+        {
+            "logs": logs,
+            "utenti": utenti,
+            "azioni": azioni,
+            "filtri": {
+                "action": action or "",
+                "user_id": user_id or "",
+                "date_from": date_from or "",
+                "date_to": date_to or "",
+            },
+            "page_label": "admin",
+            "reset_url": request.url_for("admin_audit_list"),
         },
         db,
         current_user,

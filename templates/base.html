@@ -30,6 +30,7 @@
     {% set is_manager = is_manager if is_manager is defined else (user and has_perm(user, 'manager.access')) %}
     {% set is_capo = is_capo if is_capo is defined else (user and user.role.value == 'caposquadra') %}
     {% set can_manage_users = user and has_perm(user, 'users.manage') %}
+    {% set can_manage_settings = user and has_perm(user, 'settings.manage') %}
     {% set can_read_users = user and has_perm(user, 'users.read') %}
     {% set is_authenticated = user is not none %}
     {% set home_path = "/" %}
@@ -48,6 +49,8 @@
     {% set show_magazzino_card = user and (is_manager or user.is_magazzino_manager) %}
     {% set show_fiches = is_manager %}
     {% set show_audit = user and has_perm(user, 'manager.access') %}
+    {% set audit_path = url_for('admin_audit_list') if can_manage_settings else url_for('manager_audit_list') %}
+    {% set show_backup = can_manage_settings %}
     {% set show_personale = is_manager %}
     {% set is_home_active = current_path == home_path and not section %}
     {% set is_cantieri_active = current_path.startswith('/manager/cantieri') or (section == 'cantieri') or current_path.startswith('/capo/cantieri') %}
@@ -195,12 +198,22 @@
                     </a>
                 {% endif %}
                 {% if show_audit %}
-                    <a href="{{ url_for('manager_audit_list') }}" class="nav-link">
+                    <a href="{{ audit_path }}" class="nav-link">
                         🧾
                         {% if lang == 'fr' %}
                             Audit
                         {% else %}
                             Audit
+                        {% endif %}
+                    </a>
+                {% endif %}
+                {% if show_backup %}
+                    <a href="{{ url_for('admin_backup_export') }}" class="nav-link">
+                        🛡️
+                        {% if lang == 'fr' %}
+                            Backup & Export
+                        {% else %}
+                            Backup & Export
                         {% endif %}
                     </a>
                 {% endif %}

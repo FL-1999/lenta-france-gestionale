@@ -2,7 +2,11 @@
 {% set lang = request.cookies.get('lang', 'it') %}
 
 {% block title %}
-    {% if lang == 'fr' %}Journal d'audit – Manager{% else %}Audit – Manager{% endif %}
+    {% if page_label == 'admin' %}
+        {% if lang == 'fr' %}Journal d'audit – Admin{% else %}Audit – Admin{% endif %}
+    {% else %}
+        {% if lang == 'fr' %}Journal d'audit – Manager{% else %}Audit – Manager{% endif %}
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -54,7 +58,7 @@
             <button class="btn btn-primary" type="submit">
                 🔍 {% if lang == 'fr' %}Filtrer{% else %}Filtra{% endif %}
             </button>
-            <a href="{{ url_for('manager_audit_list') }}" class="btn btn-secondary">
+            <a href="{{ reset_url or url_for('manager_audit_list') }}" class="btn btn-secondary">
                 {% if lang == 'fr' %}Réinitialiser{% else %}Reset{% endif %}
             </a>
         </div>
@@ -70,7 +74,7 @@
                         <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
                         <th>{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</th>
                         <th>{% if lang == 'fr' %}Action{% else %}Azione{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Entité{% else %}Entità{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Cible{% else %}Target{% endif %}</th>
                         <th>ID</th>
                         <th>{% if lang == 'fr' %}Détails{% else %}Dettagli{% endif %}</th>
                     </tr>
@@ -81,9 +85,9 @@
                             <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '' }}</td>
                             <td>{{ log.user.full_name or log.user.email if log.user else '—' }}</td>
                             <td>{{ log.action }}</td>
-                            <td>{{ log.entity }}</td>
-                            <td>{{ log.entity_id or '—' }}</td>
-                            <td>{{ log.details or '—' }}</td>
+                            <td>{{ log.target_type }}</td>
+                            <td>{{ log.target_id or '—' }}</td>
+                            <td>{{ log.extra_data_text or '—' }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

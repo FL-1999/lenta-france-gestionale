@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 import io
-import json
 from datetime import date, datetime, time, timedelta
 from math import ceil
 from types import SimpleNamespace
@@ -24,11 +23,11 @@ from models import (
     MagazzinoRichiestaRiga,
     MagazzinoRichiestaPrioritaEnum,
     MagazzinoRichiestaStatusEnum,
-    AuditLog,
     RoleEnum,
     Site,
     User,
 )
+from audit_utils import log_audit_event
 from template_context import (
     invalidate_manager_badges_cache,
     register_manager_badges,
@@ -116,15 +115,13 @@ def _log_audit(
     entity_id: int | None,
     details: dict | None = None,
 ) -> None:
-    payload = json.dumps(details, ensure_ascii=False) if details else None
-    db.add(
-        AuditLog(
-            user_id=user.id if user else None,
-            action=action,
-            entity=entity,
-            entity_id=entity_id,
-            details=payload,
-        )
+    log_audit_event(
+        db,
+        user,
+        action,
+        entity,
+        entity_id,
+        details,
     )
 
 

@@ -1,0 +1,67 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Sauvegarde & Export – Admin{% else %}Backup & Export – Admin{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <h1 class="page-title">🛡️ {% if lang == 'fr' %}Sauvegarde & Export{% else %}Backup & Export{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Créez un export manuel et téléchargez les sauvegardes disponibles.
+            {% else %}
+                Avvia un export manuale e scarica i backup disponibili.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<section class="card" style="margin-bottom: var(--space-4);">
+    <form method="post" action="{{ url_for('admin_backup_export_run') }}">
+        <button class="btn btn-primary" type="submit">
+            💾 {% if lang == 'fr' %}Créer un backup{% else %}Crea backup{% endif %}
+        </button>
+    </form>
+</section>
+
+<section class="card">
+    <h2 style="margin-top: 0;">
+        {% if lang == 'fr' %}Backups disponibles{% else %}Backup disponibili{% endif %}
+    </h2>
+    {% if backups %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Fichier{% else %}File{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Taille{% else %}Dimensione{% endif %}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                        <tr>
+                            <td>{{ backup.name }}</td>
+                            <td>{{ backup.created_at.strftime('%Y-%m-%d %H:%M') if backup.created_at else '' }}</td>
+                            <td>{{ (backup.size_bytes / 1024) | round(1) }} KB</td>
+                            <td>
+                                <a class="btn btn-secondary" href="{{ url_for('admin_backup_export_download', filename=backup.name) }}">
+                                    ⬇️ {% if lang == 'fr' %}Télécharger{% else %}Scarica{% endif %}
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p style="margin: 0;">
+            {% if lang == 'fr' %}Aucun backup disponible pour le moment.{% else %}Nessun backup disponibile al momento.{% endif %}
+        </p>
+    {% endif %}
+</section>
+{% endblock %}

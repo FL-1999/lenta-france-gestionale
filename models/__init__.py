@@ -1,4 +1,5 @@
 from enum import Enum as PyEnum
+import json
 from typing import Optional
 from datetime import datetime, date
 
@@ -14,6 +15,7 @@ from sqlalchemy import (
     Enum,
     DateTime,
     CheckConstraint,
+    JSON,
 )
 from sqlalchemy.orm import relationship
 from sqlmodel import SQLModel, Field
@@ -131,16 +133,24 @@ class AuditLog(Base):
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     action = Column(String(255), nullable=False)
-    entity = Column(String(255), nullable=False)
-    entity_id = Column(Integer, nullable=True)
-    details = Column(Text, nullable=True)
+    target_type = Column("entity", String(255), nullable=False)
+    target_id = Column("entity_id", Integer, nullable=True)
+    extra_data = Column("details", JSON, nullable=True)
 
     user = relationship("User")
+
+    @property
+    def extra_data_text(self) -> str | None:
+        if self.extra_data is None:
+            return None
+        if isinstance(self.extra_data, str):
+            return self.extra_data
+        return json.dumps(self.extra_data, ensure_ascii=False)
 
     def __repr__(self) -> str:
         return (
             "<AuditLog "
-            f"id={self.id} action={self.action} entity={self.entity} entity_id={self.entity_id}>"
+            f"id={self.id} action={self.action} target_type={self.target_type} target_id={self.target_id}>"
         )
 
 

@@ -48,7 +48,7 @@ from models import (
     MagazzinoMovimentoTipoEnum,
 )
 from routers import users, sites, machines, reports, fiches, notifications
-from routes import manager_personale, manager_veicoli, magazzino, audit, reportistica
+from routes import manager_personale, manager_veicoli, magazzino, audit, reportistica, backup
 
 from template_context import (
     build_template_context,
@@ -61,7 +61,11 @@ from template_context import (
 )
 from permissions import has_perm
 from notifications import notify_site_status_change
+from audit_utils import log_audit_event
+from logging_config import configure_logging
 
+
+configure_logging()
 
 logger = logging.getLogger("lenta_france_gestionale.errors")
 perf_logger = logging.getLogger("lenta_france_gestionale.performance")
@@ -1136,6 +1140,17 @@ def admin_magazzino_permissions_toggle(
         user_to_toggle.is_magazzino_manager = not bool(
             user_to_toggle.is_magazzino_manager
         )
+        log_audit_event(
+            db,
+            current_user,
+            "SETTINGS_MAGAZZINO_PERMISSION",
+            "settings",
+            user_to_toggle.id,
+            {
+                "email": user_to_toggle.email,
+                "is_magazzino_manager": user_to_toggle.is_magazzino_manager,
+            },
+        )
         db.commit()
     except HTTPException:
         db.rollback()
@@ -1256,6 +1271,18 @@ async def manager_new_user_post(
             new_user.is_active = True
 
         db.add(new_user)
+        db.flush()
+        log_audit_event(
+            db,
+            current_user,
+            "USER_CREATED",
+            "user",
+            new_user.id,
+            {
+                "email": new_user.email,
+                "role": new_user.role.value if new_user.role else None,
+            },
+        )
         db.commit()
     except Exception:
         db.rollback()
@@ -1382,10 +1409,24 @@ async def manager_edit_user_post(
                 detail="Permessi insufficienti",
             )
 
+        previous_role = user_to_edit.role.value if user_to_edit.role else None
         user_to_edit.email = email
         user_to_edit.full_name = full_name or None
         user_to_edit.role = role_enum
         user_to_edit.language = language
+
+        log_audit_event(
+            db,
+            current_user,
+            "USER_ROLE_CHANGED" if previous_role != role_enum.value else "USER_UPDATED",
+            "user",
+            user_to_edit.id,
+            {
+                "email": user_to_edit.email,
+                "previous_role": previous_role,
+                "new_role": role_enum.value,
+            },
+        )
 
         db.commit()
     except HTTPException:
@@ -1425,6 +1466,17 @@ async def manager_toggle_user_active(
             )
 
         user_to_toggle.is_active = not bool(user_to_toggle.is_active)
+        log_audit_event(
+            db,
+            current_user,
+            "USER_STATUS_TOGGLED",
+            "user",
+            user_to_toggle.id,
+            {
+                "email": user_to_toggle.email,
+                "is_active": user_to_toggle.is_active,
+            },
+        )
         db.commit()
     except HTTPException:
         db.rollback()
@@ -1771,6 +1823,19 @@ def manager_cantiere_nuovo_post(
             caposquadra_id=parsed_capo_id,
         )
         db.add(new_site)
+        db.flush()
+        log_audit_event(
+            db,
+            current_user,
+            "SITE_CREATED",
+            "site",
+            new_site.id,
+            {
+                "name": new_site.name,
+                "code": new_site.code,
+                "status": new_site.status.value if new_site.status else None,
+            },
+        )
         db.commit()
     finally:
         db.close()
@@ -1966,6 +2031,19 @@ def manager_cantiere_modifica_post(
                 current_user,
             )
 
+        log_audit_event(
+            db,
+            current_user,
+            "SITE_UPDATED",
+            "site",
+            site.id,
+            {
+                "name": site.name,
+                "code": site.code,
+                "status": site.status.value if site.status else None,
+                "is_active": site.is_active,
+            },
+        )
         db.commit()
     finally:
         db.close()
@@ -2487,3 +2565,4 @@ app.include_router(manager_veicoli.router)
 app.include_router(magazzino.router)
 app.include_router(audit.router)
 app.include_router(reportistica.router)
+app.include_router(backup.router)
