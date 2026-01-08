@@ -29,6 +29,7 @@ from models import (
 )
 from audit_utils import log_audit_event
 from template_context import (
+    get_lang_from_request,
     invalidate_manager_badges_cache,
     register_manager_badges,
     render_template,
@@ -417,8 +418,6 @@ def capo_magazzino_list(
         request,
         "capo/magazzino/items_list.html",
         {
-            "request": request,
-            "user": current_user,
             "categorie": categorie_display,
             "categorie_sections": categorie_sections,
             "fallback_categoria": fallback_categoria,
@@ -479,8 +478,6 @@ def capo_magazzino_richieste(
         request,
         "capo/magazzino/richieste_list.html",
         {
-            "request": request,
-            "user": current_user,
             "richieste": richieste,
             "unread_ids": set(unread_ids),
             "page": page,
@@ -554,8 +551,6 @@ def capo_magazzino_richiesta_new(
         request,
         "capo/magazzino/richieste_new.html",
         {
-            "request": request,
-            "user": current_user,
             "items": items,
             "priorita_options": list(MagazzinoRichiestaPrioritaEnum),
         },
@@ -702,8 +697,6 @@ def manager_magazzino_dashboard(
         request,
         "manager/magazzino/dashboard.html",
         {
-            "request": request,
-            "user": current_user,
             "sotto_soglia_count": sotto_soglia_count,
             "esauriti_count": esauriti_count,
             "richieste_nuove_count": richieste_nuove_count,
@@ -730,7 +723,7 @@ def manager_magazzino_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     ok = request.query_params.get("ok")
     err = request.query_params.get("err")
     success_message = None
@@ -873,8 +866,6 @@ def _render_magazzino_items_list(
         request,
         "manager/magazzino/items_list.html",
         {
-            "request": request,
-            "user": current_user,
             "categorie": categorie_display,
             "categorie_sections": categorie_sections,
             "fallback_categoria": fallback_categoria,
@@ -939,8 +930,6 @@ def manager_magazzino_sotto_soglia(
         request,
         "manager/magazzino/sotto_soglia.html",
         {
-            "request": request,
-            "user": current_user,
             "items": items_with_order,
             "items_count": len(items_with_order),
             "suggested_entries": suggested_entries,
@@ -1230,8 +1219,6 @@ def manager_magazzino_movimenti(
         request,
         "manager/magazzino/movimenti_list.html",
         {
-            "request": request,
-            "user": current_user,
             "movimenti": movimenti,
             "cantieri": cantieri,
             "items": items,
@@ -1329,8 +1316,6 @@ def manager_magazzino_report_consumi(
         request,
         "manager/magazzino/report_consumi.html",
         {
-            "request": request,
-            "user": current_user,
             "cantiere": cantiere,
             "date_from": parsed_from,
             "date_to": parsed_to,
@@ -1367,8 +1352,6 @@ def manager_magazzino_categorie_list(
         request,
         "manager/magazzino/categorie_list.html",
         {
-            "request": request,
-            "user": current_user,
             "categorie": categorie,
             "first_active_id": first_active_id,
             "last_active_id": last_active_id,
@@ -1393,8 +1376,6 @@ def manager_magazzino_categorie_new(
         request,
         "manager/magazzino/categorie_form.html",
         {
-            "request": request,
-            "user": current_user,
             "categoria": None,
             "form_action": "manager_magazzino_categorie_create",
             "title": "Nuova macro categoria",
@@ -1423,7 +1404,7 @@ def manager_magazzino_categorie_create(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     nome_value = nome.strip()
     if not nome_value:
         return render_template(
@@ -1431,8 +1412,6 @@ def manager_magazzino_categorie_create(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "request": request,
-                "user": current_user,
                 "categoria": None,
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova macro categoria",
@@ -1455,8 +1434,6 @@ def manager_magazzino_categorie_create(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "request": request,
-                "user": current_user,
                 "categoria": None,
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova macro categoria",
@@ -1487,8 +1464,6 @@ def manager_magazzino_categorie_create(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "request": request,
-                "user": current_user,
                 "categoria": categoria_preview,
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova macro categoria",
@@ -1536,8 +1511,6 @@ def manager_magazzino_categorie_create(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "request": request,
-                "user": current_user,
                 "categoria": None,
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova macro categoria",
@@ -1582,8 +1555,6 @@ def manager_magazzino_categorie_edit(
         request,
         "manager/magazzino/categorie_form.html",
         {
-            "request": request,
-            "user": current_user,
             "categoria": categoria,
             "form_action": "manager_magazzino_categorie_update",
             "title": "Modifica macro categoria",
@@ -1613,7 +1584,7 @@ def manager_magazzino_categorie_update(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id)
@@ -1631,8 +1602,6 @@ def manager_magazzino_categorie_update(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "request": request,
-                "user": current_user,
                 "categoria": categoria,
                 "form_action": "manager_magazzino_categorie_update",
                 "title": "Modifica macro categoria",
@@ -1658,8 +1627,6 @@ def manager_magazzino_categorie_update(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "request": request,
-                "user": current_user,
                 "categoria": categoria,
                 "form_action": "manager_magazzino_categorie_update",
                 "title": "Modifica macro categoria",
@@ -1685,8 +1652,6 @@ def manager_magazzino_categorie_update(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "request": request,
-                "user": current_user,
                 "categoria": categoria,
                 "form_action": "manager_magazzino_categorie_update",
                 "title": "Modifica macro categoria",
@@ -1731,8 +1696,6 @@ def manager_magazzino_categorie_update(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "request": request,
-                "user": current_user,
                 "categoria": categoria,
                 "form_action": "manager_magazzino_categorie_update",
                 "title": "Modifica macro categoria",
@@ -1893,8 +1856,6 @@ def manager_magazzino_new(
         request,
         "manager/magazzino/item_new.html",
         {
-            "request": request,
-            "user": current_user,
             "item": None,
             "categorie": categorie,
             "fallback_categoria": fallback_categoria,
@@ -2013,8 +1974,6 @@ def manager_magazzino_edit(
         request,
         "manager/magazzino/item_edit.html",
         {
-            "request": request,
-            "user": current_user,
             "item": item,
             "categorie": categorie,
             "fallback_categoria": fallback_categoria,
@@ -2046,7 +2005,7 @@ def manager_magazzino_update(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         return RedirectResponse(
@@ -2136,8 +2095,6 @@ def manager_magazzino_update(
             request,
             "manager/magazzino/item_edit.html",
             {
-                "request": request,
-                "user": current_user,
                 "item": item,
                 "categorie": categorie,
                 "fallback_categoria": fallback_categoria,
@@ -2161,8 +2118,6 @@ def manager_magazzino_update(
             request,
             "manager/magazzino/item_edit.html",
             {
-                "request": request,
-                "user": current_user,
                 "item": item,
                 "categorie": categorie,
                 "fallback_categoria": fallback_categoria,
@@ -2209,8 +2164,6 @@ def manager_magazzino_duplicate(
         request,
         "manager/magazzino/item_duplicate.html",
         {
-            "request": request,
-            "user": current_user,
             "item": item,
             "error_message": None,
             "title": "Duplica articolo",
@@ -2252,8 +2205,6 @@ def manager_magazzino_duplicate_create(
             request,
             "manager/magazzino/item_duplicate.html",
             {
-                "request": request,
-                "user": current_user,
                 "item": item,
                 "error_message": "Il codice articolo è obbligatorio.",
                 "title": "Duplica articolo",
@@ -2272,8 +2223,6 @@ def manager_magazzino_duplicate_create(
             request,
             "manager/magazzino/item_duplicate.html",
             {
-                "request": request,
-                "user": current_user,
                 "item": item,
                 "error_message": "Esiste già un articolo con questo codice.",
                 "title": "Duplica articolo",
@@ -2394,7 +2343,7 @@ def manager_magazzino_scarico(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     try:
         item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
         if not item:
@@ -2474,7 +2423,7 @@ def manager_magazzino_carico_rapido(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     try:
         item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
         if not item:
@@ -2548,7 +2497,7 @@ def manager_magazzino_scarico_rapido(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     try:
         item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
         if not item:
@@ -2684,8 +2633,6 @@ def manager_magazzino_richieste(
         request,
         "manager/magazzino/richieste_list.html",
         {
-            "request": request,
-            "user": current_user,
             "richieste": richieste,
             "stato_filtro": stato_filtro,
             "stati": list(MagazzinoRichiestaStatusEnum),
@@ -2734,7 +2681,7 @@ def manager_magazzino_richiesta_detail(
         templates,
         request,
         "manager/magazzino/richiesta_detail.html",
-        {"request": request, "user": current_user, "richiesta": richiesta},
+        {"richiesta": richiesta},
         db,
         current_user,
     )
@@ -2753,7 +2700,7 @@ def manager_magazzino_richiesta_approva(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     richiesta = (
         db.query(MagazzinoRichiesta)
         .options(
@@ -2804,8 +2751,6 @@ def manager_magazzino_richiesta_approva(
             request,
             "manager/magazzino/richiesta_detail.html",
             {
-                "request": request,
-                "user": current_user,
                 "richiesta": richiesta,
                 "error_message": str(exc),
             },
@@ -2819,8 +2764,6 @@ def manager_magazzino_richiesta_approva(
             request,
             "manager/magazzino/richiesta_detail.html",
             {
-                "request": request,
-                "user": current_user,
                 "richiesta": richiesta,
                 "error_message": _magazzino_error_message(lang, "operazione_fallita"),
             },
@@ -2848,7 +2791,7 @@ async def manager_magazzino_richiesta_evadi(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     richiesta = (
         db.query(MagazzinoRichiesta)
         .options(
@@ -3014,8 +2957,6 @@ async def manager_magazzino_richiesta_evadi(
             request,
             "manager/magazzino/richiesta_detail.html",
             {
-                "request": request,
-                "user": current_user,
                 "richiesta": richiesta,
                 "error_message": exc.detail,
             },
@@ -3030,8 +2971,6 @@ async def manager_magazzino_richiesta_evadi(
             request,
             "manager/magazzino/richiesta_detail.html",
             {
-                "request": request,
-                "user": current_user,
                 "richiesta": richiesta,
                 "error_message": str(exc),
             },
@@ -3046,8 +2985,6 @@ async def manager_magazzino_richiesta_evadi(
             request,
             "manager/magazzino/richiesta_detail.html",
             {
-                "request": request,
-                "user": current_user,
                 "richiesta": richiesta,
                 "error_message": "Errore durante l'evasione della richiesta.",
             },
@@ -3077,7 +3014,7 @@ def manager_magazzino_richiesta_rifiuta(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    lang = request.cookies.get("lang", "it")
+    lang = get_lang_from_request(request)
     richiesta = db.query(MagazzinoRichiesta).filter(MagazzinoRichiesta.id == richiesta_id).first()
     if not richiesta:
         return RedirectResponse(
@@ -3110,8 +3047,6 @@ def manager_magazzino_richiesta_rifiuta(
             request,
             "manager/magazzino/richiesta_detail.html",
             {
-                "request": request,
-                "user": current_user,
                 "richiesta": richiesta,
                 "error_message": _magazzino_error_message(lang, "operazione_fallita"),
             },
