@@ -118,6 +118,13 @@ def render_template(
     return templates.TemplateResponse(template_name, template_context, **response_kwargs)
 
 
+def get_lang_from_request(request: Request) -> str:
+    lang = request.cookies.get("lang")
+    if lang in ("it", "fr"):
+        return lang
+    return "it"
+
+
 def build_template_context(
     request: Request,
     user: User | None,
@@ -127,6 +134,7 @@ def build_template_context(
     template_context.setdefault("request", request)
     template_context.setdefault("user", user)
     template_context.setdefault("has_perm", has_perm)
+    template_context.setdefault("lang", get_lang_from_request(request))
 
     is_manager = bool(user and has_perm(user, "manager.access"))
     is_capo = bool(user and user.role == RoleEnum.caposquadra)

@@ -54,6 +54,7 @@ from template_context import (
     build_template_context,
     get_cached_role_choices,
     get_cached_site_status_values,
+    get_lang_from_request,
     register_manager_badges,
     register_permission_helpers,
     register_static_helpers,
@@ -264,13 +265,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # -------------------------------------------------
 # MULTILINGUA (COOKIE) + HOMEPAGE TEMPLATE
 # -------------------------------------------------
-
-def get_lang_from_request(request: Request) -> str:
-    lang = request.cookies.get("lang")
-    if lang in ("it", "fr"):
-        return lang
-    return "it"
-
 def _get_user_from_cookie(request: Request) -> User | None:
     cookie_token = request.cookies.get("access_token")
     if not cookie_token:
