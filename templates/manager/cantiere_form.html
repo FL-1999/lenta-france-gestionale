@@ -246,6 +246,10 @@
 </div>
 
 {% if mode == "edit" %}
+  {% include "manager/_site_progress_section.html" %}
+{% endif %}
+
+{% if mode == "edit" %}
   <div class="card" style="margin-top: 1.5rem;">
     <div class="card-header">
       <div class="card-title">
