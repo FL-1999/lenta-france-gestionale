@@ -12,38 +12,32 @@
         {% endif %}
     </p>
 
-    <div class="site-progress-cards">
-        <article class="site-progress-card">
-            <div class="site-progress-card-header">
-                <h3 class="site-progress-card-title">{{ progress_summary.cordoli.label }}</h3>
-                <span class="site-progress-card-value">{{ progress_summary.cordoli.percent }}%</span>
-            </div>
+    <div class="progress-cards-container">
+        <div class="progress-card" onclick="location.href='{{ url_for('manager_cantiere_modifica_get', site_id=site.id) }}#progress-cordoli'">
+            <h3>{{ progress_summary.cordoli.label }}</h3>
+            <div class="progress-value">{{ progress_summary.cordoli.percent }}%</div>
             <div class="progress-bar" aria-hidden="true">
                 <div class="progress-bar-fill" style="width: {{ progress_summary.cordoli.percent }}%;"></div>
             </div>
-            <p class="site-progress-card-subtitle">{{ progress_summary.cordoli.subtitle }}</p>
-        </article>
+            <div class="progress-subtext">{{ progress_summary.cordoli.subtitle }}</div>
+        </div>
 
-        <article class="site-progress-card">
-            <div class="site-progress-card-header">
-                <h3 class="site-progress-card-title">{{ progress_summary.paratie.label }}</h3>
-                <span class="site-progress-card-value">{{ progress_summary.paratie.percent }}%</span>
-            </div>
+        <div class="progress-card" onclick="location.href='{{ url_for('manager_cantiere_modifica_get', site_id=site.id) }}#progress-paratie'">
+            <h3>{{ progress_summary.paratie.label }}</h3>
+            <div class="progress-value">{{ progress_summary.paratie.percent }}%</div>
             <div class="progress-bar" aria-hidden="true">
                 <div class="progress-bar-fill" style="width: {{ progress_summary.paratie.percent }}%;"></div>
             </div>
-            <p class="site-progress-card-subtitle">{{ progress_summary.paratie.subtitle }}</p>
-        </article>
+            <div class="progress-subtext">{{ progress_summary.paratie.subtitle }}</div>
+        </div>
 
-        <article class="site-progress-card">
-            <div class="site-progress-card-header">
-                <h3 class="site-progress-card-title">{{ progress_summary.puntoni.label }}</h3>
-                <span class="site-progress-card-value">{{ progress_summary.puntoni.percent }}%</span>
-            </div>
+        <div class="progress-card" onclick="location.href='{{ url_for('manager_cantiere_modifica_get', site_id=site.id) }}#progress-puntoni'">
+            <h3>{{ progress_summary.puntoni.label }}</h3>
+            <div class="progress-value">{{ progress_summary.puntoni.percent }}%</div>
             <div class="progress-bar" aria-hidden="true">
                 <div class="progress-bar-fill" style="width: {{ progress_summary.puntoni.percent }}%;"></div>
             </div>
-            <p class="site-progress-card-subtitle">{{ progress_summary.puntoni.subtitle }}</p>
-        </article>
+            <div class="progress-subtext">{{ progress_summary.puntoni.subtitle }}</div>
+        </div>
     </div>
 </section>

@@ -543,6 +543,56 @@ form textarea {
   border-radius: 999px;
 }
 
+.progress-cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.progress-card {
+    flex: 1 1 calc(33% - 20px);
+    background: var(--card-bg, #1d1f24);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.progress-card:hover {
+    transform: scale(1.03);
+}
+
+.progress-value {
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #333;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: #4caf50;
+}
+
+.progress-subtext {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    .progress-card {
+        flex-basis: 100%;
+    }
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .data-table th,
