@@ -1787,39 +1787,6 @@ def _get_site_for_detail(db: Session, site_id: int, current_user: User) -> Site:
     raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
 
-@app.get("/manager/cantieri/{site_id}", response_class=HTMLResponse, name="manager_site_detail")
-@app.get("/manager/sites/{site_id}", response_class=HTMLResponse)
-def manager_site_detail(
-    request: Request,
-    site_id: int,
-    current_user: User = Depends(get_current_active_user_html),
-):
-    if not has_perm(current_user, "manager.access") and current_user.role != RoleEnum.caposquadra:
-        raise HTTPException(status_code=403, detail="Permessi insufficienti")
-
-    lang = request.cookies.get("lang", "it")
-    db = SessionLocal()
-    try:
-        site = _get_site_for_detail(db, site_id, current_user)
-        progress_summary, strut_levels_view, strut_levels_count = _build_site_progress(
-            site, lang
-        )
-    finally:
-        db.close()
-
-    return templates.TemplateResponse(
-        "manager/site_detail.html",
-        build_template_context(
-            request,
-            current_user,
-            site=site,
-            progress_summary=progress_summary,
-            strut_levels=strut_levels_view,
-            strut_levels_count=strut_levels_count,
-        ),
-    )
-
-
 @app.post(
     "/manager/sites/{site_id}/progress/cordoli",
     name="manager_site_progress_cordoli",
@@ -2174,6 +2141,39 @@ def manager_cantiere_nuovo_post(
         db.close()
 
     return RedirectResponse(url="/manager/cantieri", status_code=303)
+
+
+@app.get("/manager/cantieri/{site_id}", response_class=HTMLResponse, name="manager_site_detail")
+@app.get("/manager/sites/{site_id}", response_class=HTMLResponse)
+def manager_site_detail(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access") and current_user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    lang = request.cookies.get("lang", "it")
+    db = SessionLocal()
+    try:
+        site = _get_site_for_detail(db, site_id, current_user)
+        progress_summary, strut_levels_view, strut_levels_count = _build_site_progress(
+            site, lang
+        )
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "manager/site_detail.html",
+        build_template_context(
+            request,
+            current_user,
+            site=site,
+            progress_summary=progress_summary,
+            strut_levels=strut_levels_view,
+            strut_levels_count=strut_levels_count,
+        ),
+    )
 
 
 @app.get("/manager/cantieri/{site_id}/modifica", response_class=HTMLResponse)
