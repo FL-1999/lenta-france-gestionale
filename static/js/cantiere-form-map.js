@@ -284,9 +284,6 @@
 
     if (form) {
       form.addEventListener("submit", (event) => {
-        if (!isEditMode) {
-          return;
-        }
         const hasLat = isCoordinateSet(latInput.value);
         const hasLng = isCoordinateSet(lngInput.value);
         const hasAddress = addressInput.value.trim() !== "";
@@ -294,7 +291,8 @@
           return;
         }
 
-        const confirmAllowed = confirmCheckbox && confirmCheckbox.checked;
+        const confirmAllowed =
+          isEditMode && confirmCheckbox && confirmCheckbox.checked;
         if (confirmAllowed) {
           return;
         }
