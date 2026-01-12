@@ -37,6 +37,7 @@ from models import (
     RoleEnum,
     Report,
     Site,
+    SiteStrutLevel,
     SiteStatusEnum,
     Machine,
     FicheTypeEnum,
@@ -1676,16 +1677,77 @@ def manager_site_detail(
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
+    def _progress_percent(done_value: float, total_value: float) -> int:
+        if total_value <= 0:
+            return 0
+        return int(round((done_value / total_value) * 100))
+
+    def _progress_status(percent: int, lang: str) -> str:
+        if percent >= 100:
+            return "Completato" if lang == "it" else "Terminé"
+        if percent <= 0:
+            return "Da avviare" if lang == "it" else "À démarrer"
+        return "In corso" if lang == "it" else "En cours"
+
+    lang = request.cookies.get("lang", "it")
     db = SessionLocal()
     try:
         site = (
             db.query(Site)
-            .options(joinedload(Site.caposquadra))
+            .options(joinedload(Site.caposquadra), joinedload(Site.strut_levels))
             .filter(Site.id == site_id)
             .first()
         )
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        cordoli_total = float(site.cordoli_total_m or 0)
+        cordoli_done = float(site.cordoli_done_m or 0)
+        paratie_total = int(site.paratie_total_panels or 0)
+        paratie_done = int(site.paratie_done_panels or 0)
+
+        strut_levels = list(site.strut_levels or [])
+        strut_total = sum(level.total_struts_level or 0 for level in strut_levels)
+        strut_done = sum(level.done_struts_level or 0 for level in strut_levels)
+
+        progress_summary = {
+            "cordoli": {
+                "total": cordoli_total,
+                "done": cordoli_done,
+                "percent": _progress_percent(cordoli_done, cordoli_total),
+            },
+            "paratie": {
+                "total": paratie_total,
+                "done": paratie_done,
+                "percent": _progress_percent(paratie_done, paratie_total),
+            },
+            "puntoni": {
+                "total": strut_total,
+                "done": strut_done,
+                "percent": _progress_percent(strut_done, strut_total),
+            },
+        }
+        for key in progress_summary:
+            percent = progress_summary[key]["percent"]
+            progress_summary[key]["status"] = _progress_status(percent, lang)
+
+        strut_levels_count = max(site.strut_levels_count or 0, len(strut_levels), 1)
+        strut_levels_by_index = {level.level_index: level for level in strut_levels}
+        strut_levels_view = []
+        for index in range(1, strut_levels_count + 1):
+            level = strut_levels_by_index.get(index)
+            total_level = int(level.total_struts_level or 0) if level else 0
+            done_level = int(level.done_struts_level or 0) if level else 0
+            quota = level.level_quota if level else ""
+            strut_levels_view.append(
+                {
+                    "level_index": index,
+                    "level_quota": quota,
+                    "total": total_level,
+                    "done": done_level,
+                    "percent": _progress_percent(done_level, total_level),
+                }
+            )
     finally:
         db.close()
 
@@ -1695,7 +1757,148 @@ def manager_site_detail(
             request,
             current_user,
             site=site,
+            progress_summary=progress_summary,
+            strut_levels=strut_levels_view,
+            strut_levels_count=strut_levels_count,
         ),
+    )
+
+
+@app.post(
+    "/manager/sites/{site_id}/progress/cordoli",
+    name="manager_site_progress_cordoli",
+)
+def manager_site_progress_cordoli(
+    request: Request,
+    site_id: int,
+    cordoli_total_m: float | None = Form(None),
+    cordoli_done_m: float | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        total_value = max(float(cordoli_total_m or 0), 0.0)
+        done_value = max(float(cordoli_done_m or 0), 0.0)
+        site.cordoli_total_m = total_value
+        site.cordoli_done_m = done_value
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(
+        url=f"/manager/sites/{site_id}#progress-cordoli",
+        status_code=303,
+    )
+
+
+@app.post(
+    "/manager/sites/{site_id}/progress/paratie",
+    name="manager_site_progress_paratie",
+)
+def manager_site_progress_paratie(
+    request: Request,
+    site_id: int,
+    paratie_total_panels: int | None = Form(None),
+    paratie_done_panels: int | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        total_value = max(int(paratie_total_panels or 0), 0)
+        done_value = max(int(paratie_done_panels or 0), 0)
+        site.paratie_total_panels = total_value
+        site.paratie_done_panels = done_value
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(
+        url=f"/manager/sites/{site_id}#progress-paratie",
+        status_code=303,
+    )
+
+
+@app.post(
+    "/manager/sites/{site_id}/progress/puntoni",
+    name="manager_site_progress_puntoni",
+)
+def manager_site_progress_puntoni(
+    request: Request,
+    site_id: int,
+    levels_count: int = Form(1),
+    level_index: list[int] = Form(default_factory=list),
+    level_quota: list[str] = Form(default_factory=list),
+    total_struts_level: list[int] = Form(default_factory=list),
+    done_struts_level: list[int] = Form(default_factory=list),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    def _safe_int(value: int | str | None) -> int:
+        try:
+            return max(int(value or 0), 0)
+        except (TypeError, ValueError):
+            return 0
+
+    normalized_count = max(_safe_int(levels_count), 1)
+    levels_data: dict[int, dict[str, object]] = {}
+    for idx, raw_index in enumerate(level_index):
+        index_value = _safe_int(raw_index)
+        if index_value <= 0:
+            continue
+        quota_value = (level_quota[idx] if idx < len(level_quota) else "") or ""
+        total_value = _safe_int(total_struts_level[idx] if idx < len(total_struts_level) else 0)
+        done_value = _safe_int(done_struts_level[idx] if idx < len(done_struts_level) else 0)
+        levels_data[index_value] = {
+            "quota": quota_value.strip() or None,
+            "total": total_value,
+            "done": done_value,
+        }
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).options(joinedload(Site.strut_levels)).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        existing_levels = {level.level_index: level for level in site.strut_levels}
+        for index in range(1, normalized_count + 1):
+            payload = levels_data.get(index, {})
+            level = existing_levels.get(index)
+            if not level:
+                level = SiteStrutLevel(site_id=site.id, level_index=index)
+                db.add(level)
+            level.level_quota = payload.get("quota")
+            level.total_struts_level = int(payload.get("total") or 0)
+            level.done_struts_level = int(payload.get("done") or 0)
+
+        for index, level in existing_levels.items():
+            if index > normalized_count:
+                db.delete(level)
+
+        site.strut_levels_count = normalized_count
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(
+        url=f"/manager/sites/{site_id}#progress-puntoni",
+        status_code=303,
     )
 
 
