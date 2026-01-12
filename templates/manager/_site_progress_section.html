@@ -1,234 +1,309 @@
 {% if has_perm(user, "manager.access") %}
 <section class="progress-section" id="progress-section">
-    <h2 class="page-title">
-        {% if lang == 'fr' %}Avancement chantier{% else %}Avanzamento lavori{% endif %}
-    </h2>
-    <p class="page-subtitle">
-        {% if lang == 'fr' %}
-            Résumé des macro-phases avec état et pourcentage.
-        {% else %}
-            Riassunto delle macro-fasi con stato e percentuale.
-        {% endif %}
-    </p>
+  <h2 class="page-title">
+    {% if lang == 'fr' %}Avancement chantier{% else %}Avanzamento lavori{% endif %}
+  </h2>
+  <p class="page-subtitle">
+    {% if lang == 'fr' %}
+      Résumé des macro-phases avec état et pourcentage.
+    {% else %}
+      Riassunto delle macro-fasi con stato e percentuale.
+    {% endif %}
+  </p>
 
-    <div class="progress-card-grid">
-        <a class="progress-card" href="#progress-cordoli">
-            <div class="progress-card-title">
-                {% if lang == 'fr' %}Guides (cordons){% else %}Cordoli guida{% endif %}
-            </div>
-            <div class="progress-card-meta">
-                <span class="progress-card-percent">{{ progress_summary.cordoli.percent }} %</span>
-                <span class="progress-card-status">{{ progress_summary.cordoli.status }}</span>
-            </div>
-            <div class="progress-bar" aria-hidden="true">
-                <div class="progress-bar-fill" style="width: {{ progress_summary.cordoli.percent }}%;"></div>
-            </div>
-        </a>
-        <a class="progress-card" href="#progress-paratie">
-            <div class="progress-card-title">
-                {% if lang == 'fr' %}Excavation + parois{% else %}Scavo + paratie{% endif %}
-            </div>
-            <div class="progress-card-meta">
-                <span class="progress-card-percent">{{ progress_summary.paratie.percent }} %</span>
-                <span class="progress-card-status">{{ progress_summary.paratie.status }}</span>
-            </div>
-            <div class="progress-bar" aria-hidden="true">
-                <div class="progress-bar-fill" style="width: {{ progress_summary.paratie.percent }}%;"></div>
-            </div>
-        </a>
-        <a class="progress-card" href="#progress-puntoni">
-            <div class="progress-card-title">
-                {% if lang == 'fr' %}Pose des butons{% else %}Posa puntoni{% endif %}
-            </div>
-            <div class="progress-card-meta">
-                <span class="progress-card-percent">{{ progress_summary.puntoni.percent }} %</span>
-                <span class="progress-card-status">{{ progress_summary.puntoni.status }}</span>
-            </div>
-            <div class="progress-bar" aria-hidden="true">
-                <div class="progress-bar-fill" style="width: {{ progress_summary.puntoni.percent }}%;"></div>
-            </div>
-        </a>
+  {# --- CARD RIASSUNTIVE IN ALTO --- #}
+  <div class="progress-card-grid">
+    {# Card Cordoli #}
+    <a class="progress-card" href="#progress-cordoli">
+      <div class="progress-card-title">
+        {% if lang == 'fr' %}Guides (cordons){% else %}Cordoli guida{% endif %}
+      </div>
+      <div class="progress-card-meta">
+        <span class="progress-card-percent">
+          {{ progress_summary.cordoli.percent }}%
+        </span>
+        <span class="progress-card-status">
+          {{ progress_summary.cordoli.status }}
+        </span>
+      </div>
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.cordoli.percent }}%;"></div>
+      </div>
+    </a>
+
+    {# Card Paratie #}
+    <a class="progress-card" href="#progress-paratie">
+      <div class="progress-card-title">
+        {% if lang == 'fr' %}Excavation + parois{% else %}Scavo + paratie{% endif %}
+      </div>
+      <div class="progress-card-meta">
+        <span class="progress-card-percent">
+          {{ progress_summary.paratie.percent }}%
+        </span>
+        <span class="progress-card-status">
+          {{ progress_summary.paratie.status }}
+        </span>
+      </div>
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.paratie.percent }}%;"></div>
+      </div>
+    </a>
+
+    {# Card Puntoni #}
+    <a class="progress-card" href="#progress-puntoni">
+      <div class="progress-card-title">
+        {% if lang == 'fr' %}Pose des butons{% else %}Posa puntoni{% endif %}
+      </div>
+      <div class="progress-card-meta">
+        <span class="progress-card-percent">
+          {{ progress_summary.puntoni.percent }}%
+        </span>
+        <span class="progress-card-status">
+          {{ progress_summary.puntoni.status }}
+        </span>
+      </div>
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.puntoni.percent }}%;"></div>
+      </div>
+    </a>
+  </div>
+
+  {# --- DETTAGLIO CORDOLI --- #}
+  <div class="progress-detail" id="progress-cordoli">
+    <div class="progress-detail-header">
+      <h3>
+        {% if lang == 'fr' %}Guides (cordons){% else %}Cordoli guida{% endif %}
+      </h3>
+      <span class="progress-card-status">
+        {{ progress_summary.cordoli.status }}
+      </span>
     </div>
 
-    <div class="progress-detail" id="progress-cordoli">
-        <div class="progress-detail-header">
-            <h3>{% if lang == 'fr' %}Guides (cordons){% else %}Cordoli guida{% endif %}</h3>
-            <span class="progress-card-status">{{ progress_summary.cordoli.status }}</span>
+    <form method="post"
+          action="{{ url_for('manager_site_progress_cordoli', site_id=site.id) }}">
+      <div class="form-group">
+        <label class="form-label" for="cordoli_total_m">
+          {% if lang == 'fr' %}Mètres totaux à réaliser{% else %}Metri totali da eseguire{% endif %}
+        </label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          id="cordoli_total_m"
+          name="cordoli_total_m"
+          class="form-control"
+          value="{{ progress_summary.cordoli.total }}"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cordoli_done_m">
+          {% if lang == 'fr' %}Mètres réalisés{% else %}Metri eseguiti{% endif %}
+        </label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          id="cordoli_done_m"
+          name="cordoli_done_m"
+          class="form-control"
+          value="{{ progress_summary.cordoli.done }}"
+        />
+      </div>
+
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.cordoli.percent }}%;"></div>
+      </div>
+      <p class="progress-card-percent">
+        {{ progress_summary.cordoli.percent }}%
+      </p>
+
+      <button type="submit" class="btn btn-primary">
+        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+      </button>
+    </form>
+  </div>
+
+  {# --- DETTAGLIO PARATIE --- #}
+  <div class="progress-detail" id="progress-paratie">
+    <div class="progress-detail-header">
+      <h3>
+        {% if lang == 'fr' %}Excavation + parois{% else %}Scavo + paratie{% endif %}
+      </h3>
+      <span class="progress-card-status">
+        {{ progress_summary.paratie.status }}
+      </span>
+    </div>
+
+    <form method="post"
+          action="{{ url_for('manager_site_progress_paratie', site_id=site.id) }}">
+      <div class="form-group">
+        <label class="form-label" for="paratie_total_panels">
+          {% if lang == 'fr' %}Panneaux totaux{% else %}Pannelli totali{% endif %}
+        </label>
+        <input
+          type="number"
+          min="0"
+          id="paratie_total_panels"
+          name="paratie_total_panels"
+          class="form-control"
+          value="{{ progress_summary.paratie.total }}"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="paratie_done_panels">
+          {% if lang == 'fr' %}Panneaux réalisés{% else %}Pannelli eseguiti{% endif %}
+        </label>
+        <input
+          type="number"
+          min="0"
+          id="paratie_done_panels"
+          name="paratie_done_panels"
+          class="form-control"
+          value="{{ progress_summary.paratie.done }}"
+        />
+      </div>
+
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.paratie.percent }}%;"></div>
+      </div>
+      <p class="progress-card-percent">
+        {{ progress_summary.paratie.percent }}%
+      </p>
+
+      <button type="submit" class="btn btn-primary">
+        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+      </button>
+    </form>
+  </div>
+
+  {# --- DETTAGLIO PUNTONI --- #}
+  <div class="progress-detail" id="progress-puntoni">
+    <div class="progress-detail-header">
+      <h3>
+        {% if lang == 'fr' %}Pose des butons{% else %}Posa puntoni{% endif %}
+      </h3>
+      <span class="progress-card-status">
+        {{ progress_summary.puntoni.status }}
+      </span>
+    </div>
+
+    <form method="post"
+          action="{{ url_for('manager_site_progress_puntoni', site_id=site.id) }}">
+      <div class="form-group">
+        <label class="form-label" for="levels_count">
+          {% if lang == 'fr' %}Nombre de niveaux{% else %}Numero livelli{% endif %}
+        </label>
+        <input
+          type="number"
+          min="1"
+          id="levels_count"
+          name="levels_count"
+          class="form-control"
+          value="{{ strut_levels_count }}"
+        />
+      </div>
+
+      <div class="progress-level-grid">
+        {% for level in strut_levels %}
+        <div class="progress-level-card">
+          <div class="progress-level-title">
+            {% if lang == 'fr' %}Niveau{% else %}Livello{% endif %} {{ level.level_index }}
+          </div>
+
+          <input type="hidden" name="level_index" value="{{ level.level_index }}" />
+
+          <div class="form-group">
+            <label class="form-label" for="level_quota_{{ level.level_index }}">
+              {% if lang == 'fr' %}Cote{% else %}Quota{% endif %}
+            </label>
+            <input
+              type="text"
+              id="level_quota_{{ level.level_index }}"
+              name="level_quota"
+              class="form-control"
+              value="{{ level.level_quota }}"
+              placeholder="-3.50 m"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="total_struts_level_{{ level.level_index }}">
+              {% if lang == 'fr' %}Butons totaux{% else %}Puntoni totali livello{% endif %}
+            </label>
+            <input
+              type="number"
+              min="0"
+              id="total_struts_level_{{ level.level_index }}"
+              name="total_struts_level"
+              class="form-control"
+              value="{{ level.total }}"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="done_struts_level_{{ level.level_index }}">
+              {% if lang == 'fr' %}Butons réalisés{% else %}Puntoni eseguiti livello{% endif %}
+            </label>
+            <input
+              type="number"
+              min="0"
+              id="done_struts_level_{{ level.level_index }}"
+              name="done_struts_level"
+              class="form-control"
+              value="{{ level.done }}"
+            />
+          </div>
+
+          <div class="progress-level-meta">
+            <span class="progress-card-percent">
+              {{ level.percent }}%
+            </span>
+            <div class="progress-bar" aria-hidden="true">
+              <div class="progress-bar-fill"
+                   style="width: {{ level.percent }}%;"></div>
+            </div>
+          </div>
         </div>
-        <form method="post" action="{{ url_for('manager_site_progress_cordoli', site_id=site.id) }}">
-            <div class="form-group">
-                <label class="form-label" for="cordoli_total_m">
-                    {% if lang == 'fr' %}Mètres totaux à réaliser{% else %}Metri totali da eseguire{% endif %}
-                </label>
-                <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    id="cordoli_total_m"
-                    name="cordoli_total_m"
-                    class="form-control"
-                    value="{{ progress_summary.cordoli.total }}"
-                />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="cordoli_done_m">
-                    {% if lang == 'fr' %}Mètres réalisés{% else %}Metri eseguiti{% endif %}
-                </label>
-                <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    id="cordoli_done_m"
-                    name="cordoli_done_m"
-                    class="form-control"
-                    value="{{ progress_summary.cordoli.done }}"
-                />
-            </div>
-            <div class="progress-bar" aria-hidden="true">
-                <div class="progress-bar-fill" style="width: {{ progress_summary.cordoli.percent }}%;"></div>
-            </div>
-            <p class="progress-card-percent">{{ progress_summary.cordoli.percent }} %</p>
-            <button type="submit" class="btn btn-primary">
-                {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
-            </button>
-        </form>
-    </div>
+        {% endfor %}
+      </div>
 
-    <div class="progress-detail" id="progress-paratie">
-        <div class="progress-detail-header">
-            <h3>{% if lang == 'fr' %}Excavation + parois{% else %}Scavo + paratie{% endif %}</h3>
-            <span class="progress-card-status">{{ progress_summary.paratie.status }}</span>
+      <div class="progress-detail-header">
+        <div>
+          <p>
+            <strong>
+              {% if lang == 'fr' %}Total butons prévus{% else %}Totale puntoni previsti{% endif %}:
+            </strong>
+            {{ progress_summary.puntoni.total }}
+          </p>
+          <p>
+            <strong>
+              {% if lang == 'fr' %}Total butons réalisés{% else %}Totale puntoni eseguiti{% endif %}:
+            </strong>
+            {{ progress_summary.puntoni.done }}
+          </p>
         </div>
-        <form method="post" action="{{ url_for('manager_site_progress_paratie', site_id=site.id) }}">
-            <div class="form-group">
-                <label class="form-label" for="paratie_total_panels">
-                    {% if lang == 'fr' %}Panneaux totaux{% else %}Pannelli totali{% endif %}
-                </label>
-                <input
-                    type="number"
-                    min="0"
-                    id="paratie_total_panels"
-                    name="paratie_total_panels"
-                    class="form-control"
-                    value="{{ progress_summary.paratie.total }}"
-                />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="paratie_done_panels">
-                    {% if lang == 'fr' %}Panneaux réalisés{% else %}Pannelli eseguiti{% endif %}
-                </label>
-                <input
-                    type="number"
-                    min="0"
-                    id="paratie_done_panels"
-                    name="paratie_done_panels"
-                    class="form-control"
-                    value="{{ progress_summary.paratie.done }}"
-                />
-            </div>
-            <div class="progress-bar" aria-hidden="true">
-                <div class="progress-bar-fill" style="width: {{ progress_summary.paratie.percent }}%;"></div>
-            </div>
-            <p class="progress-card-percent">{{ progress_summary.paratie.percent }} %</p>
-            <button type="submit" class="btn btn-primary">
-                {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
-            </button>
-        </form>
-    </div>
-
-    <div class="progress-detail" id="progress-puntoni">
-        <div class="progress-detail-header">
-            <h3>{% if lang == 'fr' %}Pose des butons{% else %}Posa puntoni{% endif %}</h3>
-            <span class="progress-card-status">{{ progress_summary.puntoni.status }}</span>
+        <div>
+          <div class="progress-bar" aria-hidden="true">
+            <div class="progress-bar-fill"
+                 style="width: {{ progress_summary.puntoni.percent }}%;"></div>
+          </div>
+          <p class="progress-card-percent">
+            {{ progress_summary.puntoni.percent }}%
+          </p>
         </div>
-        <form method="post" action="{{ url_for('manager_site_progress_puntoni', site_id=site.id) }}">
-            <div class="form-group">
-                <label class="form-label" for="levels_count">
-                    {% if lang == 'fr' %}Nombre de niveaux{% else %}Numero livelli{% endif %}
-                </label>
-                <input
-                    type="number"
-                    min="1"
-                    id="levels_count"
-                    name="levels_count"
-                    class="form-control"
-                    value="{{ strut_levels_count }}"
-                />
-            </div>
+      </div>
 
-            <div class="progress-level-grid">
-                {% for level in strut_levels %}
-                <div class="progress-level-card">
-                    <div class="progress-level-title">
-                        {% if lang == 'fr' %}Niveau{% else %}Livello{% endif %} {{ level.level_index }}
-                    </div>
-                    <input type="hidden" name="level_index" value="{{ level.level_index }}" />
-                    <div class="form-group">
-                        <label class="form-label" for="level_quota_{{ level.level_index }}">
-                            {% if lang == 'fr' %}Cote{% else %}Quota{% endif %}
-                        </label>
-                        <input
-                            type="text"
-                            id="level_quota_{{ level.level_index }}"
-                            name="level_quota"
-                            class="form-control"
-                            value="{{ level.level_quota }}"
-                            placeholder="-3.50 m"
-                        />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="total_struts_level_{{ level.level_index }}">
-                            {% if lang == 'fr' %}Butons totaux{% else %}Puntoni totali livello{% endif %}
-                        </label>
-                        <input
-                            type="number"
-                            min="0"
-                            id="total_struts_level_{{ level.level_index }}"
-                            name="total_struts_level"
-                            class="form-control"
-                            value="{{ level.total }}"
-                        />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="done_struts_level_{{ level.level_index }}">
-                            {% if lang == 'fr' %}Butons réalisés{% else %}Puntoni eseguiti livello{% endif %}
-                        </label>
-                        <input
-                            type="number"
-                            min="0"
-                            id="done_struts_level_{{ level.level_index }}"
-                            name="done_struts_level"
-                            class="form-control"
-                            value="{{ level.done }}"
-                        />
-                    </div>
-                    <div class="progress-level-meta">
-                        <span class="progress-card-percent">{{ level.percent }} %</span>
-                        <div class="progress-bar" aria-hidden="true">
-                            <div class="progress-bar-fill" style="width: {{ level.percent }}%;"></div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="progress-detail-header">
-                <div>
-                    <p><strong>{% if lang == 'fr' %}Total butons prévus{% else %}Totale puntoni previsti{% endif %}:</strong> {{ progress_summary.puntoni.total }}</p>
-                    <p><strong>{% if lang == 'fr' %}Total butons réalisés{% else %}Totale puntoni eseguiti{% endif %}:</strong> {{ progress_summary.puntoni.done }}</p>
-                </div>
-                <div>
-                    <div class="progress-bar" aria-hidden="true">
-                        <div class="progress-bar-fill" style="width: {{ progress_summary.puntoni.percent }}%;"></div>
-                    </div>
-                    <p class="progress-card-percent">{{ progress_summary.puntoni.percent }} %</p>
-                </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary">
-                {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
-            </button>
-        </form>
-    </div>
+      <button type="submit" class="btn btn-primary">
+        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+      </button>
+    </form>
+  </div>
 </section>
 {% endif %}
