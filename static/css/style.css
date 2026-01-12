@@ -342,10 +342,35 @@ body {
 }
 
 .notifications-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     font-size: 0.85rem;
     font-weight: 600;
     margin-bottom: 8px;
     color: #e2e8f0;
+}
+
+.notifications-panel__action {
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    border-radius: 999px;
+    background: transparent;
+    color: #bae6fd;
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.notifications-panel__action:hover {
+    color: #e0f2fe;
+    border-color: rgba(186, 230, 253, 0.8);
+}
+
+.notifications-panel__action:disabled,
+.notifications-panel__action.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
 
 .notifications-panel__list {

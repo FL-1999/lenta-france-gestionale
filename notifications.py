@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Iterable
 
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from models import Notification, RoleEnum, Report, Site, User, MagazzinoRichiesta
@@ -74,6 +75,24 @@ def _get_magazzino_manager_users(db: Session) -> list[User]:
     )
 
 
+def _find_site_for_report(db: Session, report: Report) -> Site | None:
+    if not report.site_name_or_code:
+        return None
+    value = report.site_name_or_code.strip()
+    if not value:
+        return None
+    return (
+        db.query(Site)
+        .filter(
+            or_(
+                Site.code == value,
+                func.lower(Site.name) == value.lower(),
+            )
+        )
+        .first()
+    )
+
+
 def notify_new_report(db: Session, report: Report, author: User) -> None:
     author_name = author.full_name or author.email
     message = (
@@ -87,6 +106,18 @@ def notify_new_report(db: Session, report: Report, author: User) -> None:
         target_url="/manager/rapportini",
         exclude_user_id=author.id,
     )
+    site = _find_site_for_report(db, report)
+    if site and site.caposquadra_id and site.caposquadra_id != author.id:
+        capo_message = (
+            f"Nuovo rapportino per il cantiere {site.name}."
+        )
+        create_notification(
+            db,
+            "report_created",
+            capo_message,
+            recipient_user_id=site.caposquadra_id,
+            target_url="/capo/rapportini",
+        )
 
 
 def notify_site_status_change(

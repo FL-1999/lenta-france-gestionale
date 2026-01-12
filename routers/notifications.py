@@ -30,6 +30,28 @@ class NotificationListResponse(BaseModel):
     notifications: list[NotificationOut]
 
 
+class NotificationListItem(BaseModel):
+    id: int
+    message: str
+    link_url: str | None = None
+    read: bool
+    created_at: datetime
+
+
+class NotificationListPayload(BaseModel):
+    unread_count: int
+    notifications: list[NotificationListItem]
+
+
+class UnreadCountResponse(BaseModel):
+    unread_count: int
+
+
+class MarkReadRequest(BaseModel):
+    notification_id: int | None = None
+    mark_all: bool = False
+
+
 def _notifications_base_query(db: Session, current_user: User):
     return db.query(Notification).filter(
         or_(
@@ -37,6 +59,83 @@ def _notifications_base_query(db: Session, current_user: User):
             Notification.recipient_role == current_user.role,
         )
     )
+
+
+def _serialize_notification(notification: Notification) -> NotificationListItem:
+    return NotificationListItem(
+        id=notification.id,
+        message=notification.message,
+        link_url=notification.target_url,
+        read=notification.is_read,
+        created_at=notification.created_at,
+    )
+
+
+@router.get("/unread-count", response_model=UnreadCountResponse)
+def unread_count(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    base_query = _notifications_base_query(db, current_user)
+    unread_count = (
+        base_query.filter(Notification.is_read.is_(False)).count()
+    )
+    return UnreadCountResponse(unread_count=unread_count)
+
+
+@router.get("/list", response_model=NotificationListPayload)
+def list_latest_notifications(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    limit = max(1, min(limit, 50))
+    base_query = _notifications_base_query(db, current_user)
+    unread_count = (
+        base_query.filter(Notification.is_read.is_(False)).count()
+    )
+    notifications = (
+        base_query.order_by(Notification.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return NotificationListPayload(
+        unread_count=unread_count,
+        notifications=[_serialize_notification(n) for n in notifications],
+    )
+
+
+@router.post("/mark-read", response_model=UnreadCountResponse)
+def mark_notifications_read(
+    payload: MarkReadRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    base_query = _notifications_base_query(db, current_user)
+    if payload.mark_all:
+        (
+            base_query.filter(Notification.is_read.is_(False))
+            .update({"is_read": True}, synchronize_session=False)
+        )
+        db.commit()
+    elif payload.notification_id is not None:
+        notification = (
+            base_query.filter(Notification.id == payload.notification_id)
+            .first()
+        )
+        if not notification:
+            raise HTTPException(status_code=404, detail="Notifica non trovata")
+        if not notification.is_read:
+            notification.is_read = True
+            db.add(notification)
+            db.commit()
+            db.refresh(notification)
+    else:
+        raise HTTPException(status_code=400, detail="Nessuna notifica selezionata")
+    unread_count = (
+        base_query.filter(Notification.is_read.is_(False)).count()
+    )
+    return UnreadCountResponse(unread_count=unread_count)
 
 
 @router.get("", response_model=NotificationListResponse)
