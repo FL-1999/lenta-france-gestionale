@@ -83,7 +83,11 @@
         {% for s in sites_list %}
         {% set caposquadra = site_caposquadra_map.get(s.id) if site_caposquadra_map else None %}
         <tr data-list-item>
-          <td><strong>{{ s.name or s.nome or "-" }}</strong></td>
+          <td>
+            <a href="{{ url_for('manager_site_detail', site_id=s.id) }}" class="site-detail-link">
+              <strong>{{ s.name or s.nome or "-" }}</strong>
+            </a>
+          </td>
           <td>{{ s.code or "-" }}</td>
           <td>{{ s.city or s.location or "-" }}</td>
           <td>{{ caposquadra.full_name if caposquadra and caposquadra.full_name else "—" }}</td>
@@ -133,7 +137,11 @@
     <article class="card list-card" data-list-item>
       <div class="card-body">
         <div class="list-card-header">
-          <h3>{{ s.name or s.nome or "-" }}</h3>
+          <h3>
+            <a href="{{ url_for('manager_site_detail', site_id=s.id) }}" class="site-detail-link">
+              {{ s.name or s.nome or "-" }}
+            </a>
+          </h3>
           <span class="badge badge-secondary">
             {{ s.status.value if s.status else "-" }}
           </span>
