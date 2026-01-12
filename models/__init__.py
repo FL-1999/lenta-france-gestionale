@@ -16,6 +16,7 @@ from sqlalchemy import (
     DateTime,
     CheckConstraint,
     JSON,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlmodel import SQLModel, Field
@@ -202,6 +203,11 @@ class Site(Base):
     end_date = Column(Date, nullable=True)
     status = Column(Enum(SiteStatusEnum), nullable=False, default=SiteStatusEnum.aperto)
     is_active = Column(Boolean, default=True, nullable=False)
+    cordoli_total_m = Column(Float, nullable=True)
+    cordoli_done_m = Column(Float, nullable=True)
+    paratie_total_panels = Column(Integer, nullable=True)
+    paratie_done_panels = Column(Integer, nullable=True)
+    strut_levels_count = Column(Integer, nullable=True)
 
     caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     caposquadra = relationship("User", back_populates="assigned_sites")
@@ -210,10 +216,43 @@ class Site(Base):
     reports = relationship("Report", back_populates="site", cascade="all, delete-orphan")
     fiches = relationship("Fiche", back_populates="site", cascade="all, delete-orphan")
     machines = relationship("Machine", back_populates="site", cascade="all, delete-orphan")
+    strut_levels = relationship(
+        "SiteStrutLevel",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        order_by="SiteStrutLevel.level_index",
+    )
 
     def __repr__(self) -> str:
         return f"<Site id={self.id} code={self.code} name={self.name}>"
 
+
+
+# ------------------------------------------------------------
+# MODELLO LIVELLI PUNTONI
+# ------------------------------------------------------------
+
+class SiteStrutLevel(Base):
+    __tablename__ = "site_strut_levels"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=False, index=True)
+    level_index = Column(Integer, nullable=False)
+    level_quota = Column(String(50), nullable=True)
+    total_struts_level = Column(Integer, nullable=False, default=0)
+    done_struts_level = Column(Integer, nullable=False, default=0)
+
+    site = relationship("Site", back_populates="strut_levels")
+
+    __table_args__ = (
+        UniqueConstraint("site_id", "level_index", name="uq_site_strut_levels_index"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            "<SiteStrutLevel "
+            f"id={self.id} site_id={self.site_id} level_index={self.level_index}>"
+        )
 
 
 # ------------------------------------------------------------
