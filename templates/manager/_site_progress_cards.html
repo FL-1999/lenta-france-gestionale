@@ -25,7 +25,7 @@
                 <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.cordoli.percent }}%;"></div>
             </div>
             <div class="site-progress-card-sub">
-                {{ progress_summary.cordoli.subtitle }}
+                {{ progress_summary.cordoli.done }} / {{ progress_summary.cordoli.total }} m
             </div>
         </div>
 
@@ -40,7 +40,8 @@
                 <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.paratie.percent }}%;"></div>
             </div>
             <div class="site-progress-card-sub">
-                {{ progress_summary.paratie.subtitle }}
+                {{ progress_summary.paratie.done }} / {{ progress_summary.paratie.total }}
+                {% if lang == 'fr' %}panneaux{% else %}pannelli{% endif %}
             </div>
         </div>
 
@@ -55,7 +56,8 @@
                 <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.puntoni.percent }}%;"></div>
             </div>
             <div class="site-progress-card-sub">
-                {{ progress_summary.puntoni.subtitle }}
+                {{ progress_summary.puntoni.done }} / {{ progress_summary.puntoni.total }}
+                {% if lang == 'fr' %}butons{% else %}puntoni{% endif %}
             </div>
         </div>
     </div>
