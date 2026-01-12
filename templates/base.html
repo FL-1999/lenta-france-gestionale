@@ -162,14 +162,17 @@
                     </a>
                 {% endif %}
 
-                <div class="nav-notifications" data-notifications data-endpoint="/api/notifications/poll" data-read-endpoint="/api/notifications/{id}/read" data-poll-interval="30000">
+                <div class="nav-notifications" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
                     <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
                         🔔
                         <span class="badge-notification is-hidden" data-notifications-badge></span>
                     </button>
                     <div class="notifications-panel" data-notifications-panel>
                         <div class="notifications-panel__header">
-                            {% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}
+                            <span>{% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}</span>
+                            <button type="button" class="notifications-panel__action" data-notifications-mark-all>
+                                {% if lang == 'fr' %}Tout marquer comme lu{% else %}Segna tutte come lette{% endif %}
+                            </button>
                         </div>
                         <ul class="notifications-panel__list" data-notifications-list></ul>
                         <div class="notifications-panel__empty is-hidden" data-notifications-empty>
