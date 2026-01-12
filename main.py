@@ -1972,8 +1972,11 @@ def manager_cantiere_nuovo_post(
     if not has_perm(current_user, "sites.create"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    if not name or not code:
-        raise HTTPException(status_code=400, detail="Nome e codice sono obbligatori")
+    errors: list[str] = []
+    if not name or not name.strip():
+        errors.append("Il nome del cantiere è obbligatorio.")
+    if not code or not code.strip():
+        errors.append("Il codice del cantiere è obbligatorio.")
 
     def parse_date(value: str | None) -> date | None:
         if not value:
@@ -2005,23 +2008,37 @@ def manager_cantiere_nuovo_post(
     lng_value = parse_coordinate(lng)
     has_address = bool(address and address.strip())
 
-    if status not in SiteStatusEnum.__members__:
-        raise HTTPException(status_code=400, detail="Stato non valido")
-    status_value = SiteStatusEnum[status]
+    if start_date and start_date_parsed is None:
+        errors.append("La data di inizio non è valida.")
+    if end_date and end_date_parsed is None:
+        errors.append("La data di fine non è valida.")
+    if lat not in (None, "") and lat_value is None:
+        errors.append("La latitudine inserita non è valida.")
+    if lng not in (None, "") and lng_value is None:
+        errors.append("La longitudine inserita non è valida.")
 
-    if has_address and (lat_value is None or lng_value is None):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per "
-                "impostare la posizione."
-            ),
+    if status not in SiteStatusEnum.__members__:
+        errors.append("Lo stato selezionato non è valido.")
+        status_value = SiteStatusEnum.aperto
+    else:
+        status_value = SiteStatusEnum[status]
+
+    if (
+        has_address
+        and (lat_value is None or lng_value is None)
+        and confirm_unverified is None
+    ):
+        errors.append(
+            "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per "
+            "impostare la posizione, oppure conferma per salvare senza coordinate."
         )
 
     db = SessionLocal()
     try:
         parsed_capo_id = parse_caposquadra(caposquadra_id)
-        if parsed_capo_id is not None:
+        if caposquadra_id not in (None, "") and parsed_capo_id is None:
+            errors.append("Il caposquadra selezionato non è valido.")
+        elif parsed_capo_id is not None:
             capo = (
                 db.query(User)
                 .filter(User.id == parsed_capo_id)
@@ -2030,7 +2047,54 @@ def manager_cantiere_nuovo_post(
                 .first()
             )
             if not capo:
-                raise HTTPException(status_code=400, detail="Caposquadra non valido")
+                errors.append("Il caposquadra selezionato non è valido.")
+
+        if errors:
+            logger.warning(
+                "Validation error on site create (request_id=%s): %s",
+                _get_request_id(request),
+                errors,
+            )
+            site_status_values = get_cached_site_status_values()
+            google_maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY")
+            capisquadra = (
+                db.query(User)
+                .filter(User.role == RoleEnum.caposquadra)
+                .filter(User.is_active.is_(True))
+                .order_by(User.full_name, User.email)
+                .all()
+            )
+            return templates.TemplateResponse(
+                "manager/cantiere_form.html",
+                build_template_context(
+                    request,
+                    current_user,
+                    mode="create",
+                    site=None,
+                    site_status_values=site_status_values,
+                    capisquadra=capisquadra,
+                    google_maps_api_key=google_maps_api_key,
+                    error_message=errors[0],
+                    form_data={
+                        "name": name,
+                        "code": code,
+                        "address": address or "",
+                        "lat": lat_value,
+                        "lng": lng_value,
+                        "place_id": place_id or "",
+                        "city": city or "",
+                        "country": country or "",
+                        "start_date": start_date or "",
+                        "end_date": end_date or "",
+                        "status": status,
+                        "is_active": is_active,
+                        "caposquadra_id": parsed_capo_id,
+                        "confirm_unverified": confirm_unverified,
+                    },
+                    form_submitted=True,
+                ),
+                status_code=400,
+            )
 
         new_site = Site(
             name=name,

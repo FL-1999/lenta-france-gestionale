@@ -25,13 +25,34 @@
     </div>
     <div class="card-body">
       {% set is_capo = user and user.role and user.role.value == 'caposquadra' %}
+      {% set form_data = form_data or {} %}
+      {% set form_submitted = form_submitted or false %}
+      {% set form_name = form_data.get('name') %}
+      {% set form_code = form_data.get('code') %}
+      {% set form_city = form_data.get('city') %}
+      {% set form_country = form_data.get('country') %}
+      {% set form_start_date = form_data.get('start_date') %}
+      {% set form_end_date = form_data.get('end_date') %}
+      {% set form_address = form_data.get('address') %}
+      {% set form_lat = form_data.get('lat') %}
+      {% set form_lng = form_data.get('lng') %}
+      {% set form_place_id = form_data.get('place_id') %}
+      {% set form_status = form_data.get('status') %}
+      {% set form_capo = form_data.get('caposquadra_id') %}
+      {% set form_active = form_data.get('is_active') %}
+      {% set form_confirm_unverified = form_data.get('confirm_unverified') %}
       <form method="post" data-mode="{{ mode }}" class="cantiere-form">
-        {% set has_coordinates = site and site.lat is not none and site.lng is not none %}
-        {% set has_address = site and (site.address or site.indirizzo) %}
+        {% set has_coordinates = (form_lat is not none and form_lng is not none) or (site and site.lat is not none and site.lng is not none) %}
+        {% set has_address = (form_address is not none and form_address | trim != '') or (site and (site.address or site.indirizzo)) %}
         {% set address_status_class = 'badge-success' if has_coordinates else 'badge-danger' %}
         {% set address_status_label = 'Verificato ✅' if has_coordinates else 'Non verificato ⚠️' %}
         {% set address_alert_style = 'display:block;' if has_address and not has_coordinates else 'display:none;' %}
         {% set address_confirm_style = 'display:flex;' if has_address and not has_coordinates else 'display:none;' %}
+        {% if error_message %}
+          <div class="alert alert-danger" role="alert" style="margin-bottom: 1rem;">
+            {{ error_message }}
+          </div>
+        {% endif %}
         <div class="cantiere-stepper" data-cantiere-stepper>
           <div class="cantiere-stepper-item is-active" data-step-index="0">
             <span class="cantiere-stepper-index">1</span>
@@ -51,34 +72,34 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="name">Nome*</label>
-              <input type="text" id="name" name="name" class="form-control" value="{{ site.name if site else '' }}" required>
+              <input type="text" id="name" name="name" class="form-control" value="{{ form_name if form_name is not none else (site.name if site else '') }}" required>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="code">Codice*</label>
-              <input type="text" id="code" name="code" class="form-control" value="{{ site.code if site else '' }}" required>
+              <input type="text" id="code" name="code" class="form-control" value="{{ form_code if form_code is not none else (site.code if site else '') }}" required>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="city">Città</label>
-              <input type="text" id="city" name="city" class="form-control" value="{{ site.city if site else '' }}">
+              <input type="text" id="city" name="city" class="form-control" value="{{ form_city if form_city is not none else (site.city if site else '') }}">
             </div>
 
             <div class="form-group">
               <label class="form-label" for="country">Nazione</label>
-              <input type="text" id="country" name="country" class="form-control" value="{{ site.country if site else '' }}">
+              <input type="text" id="country" name="country" class="form-control" value="{{ form_country if form_country is not none else (site.country if site else '') }}">
             </div>
 
             <div class="form-group">
               <label class="form-label" for="start_date">Data inizio</label>
               <input type="date" id="start_date" name="start_date" class="form-control"
-                     value="{{ site.start_date.isoformat() if site and site.start_date else '' }}">
+                     value="{{ form_start_date if form_start_date is not none else (site.start_date.isoformat() if site and site.start_date else '') }}">
             </div>
 
             <div class="form-group">
               <label class="form-label" for="end_date">Data fine</label>
               <input type="date" id="end_date" name="end_date" class="form-control"
-                     value="{{ site.end_date.isoformat() if site and site.end_date else '' }}">
+                     value="{{ form_end_date if form_end_date is not none else (site.end_date.isoformat() if site and site.end_date else '') }}">
             </div>
           </div>
         </div>
@@ -94,7 +115,7 @@
                      {% if is_capo %}readonly{% endif %}
                      placeholder="Inizia a scrivere l’indirizzo…"
                      autocomplete="off"
-                     value="{{ site.address if site else '' }}">
+                     value="{{ form_address if form_address is not none else (site.address if site else '') }}">
               {% if not is_capo %}
                 <small class="form-text text-muted">
                   Scegli dai suggerimenti per avere indirizzo verificato.
@@ -128,7 +149,7 @@
                        type="text"
                        class="form-control"
                        readonly
-                       value="{{ site.lat if site and site.lat is not none else '' }}">
+                       value="{{ form_lat if form_lat is not none else (site.lat if site and site.lat is not none else '') }}">
               </div>
 
               <div class="form-group">
@@ -138,7 +159,7 @@
                        type="text"
                        class="form-control"
                        readonly
-                       value="{{ site.lng if site and site.lng is not none else '' }}">
+                       value="{{ form_lng if form_lng is not none else (site.lng if site and site.lng is not none else '') }}">
               </div>
             {% endif %}
             {% if not is_capo and not google_maps_api_key %}
@@ -162,23 +183,22 @@
                 <div id="cantiere-address-alert" class="alert alert-warning" role="alert" style="display: none;"></div>
               </div>
 
-              {% if mode == "edit" %}
-                <div id="cantiere-unverified-confirm-wrapper"
-                     class="form-group form-group-inline"
-                     style="grid-column: 1 / -1; {{ address_confirm_style }}">
-                  <input type="checkbox"
-                         id="cantiere-unverified-confirm"
-                         name="confirm_unverified"
-                         class="form-control"
-                         value="1">
-                  <label class="form-label" for="cantiere-unverified-confirm">
-                    Confermo salvataggio senza coordinate.
-                  </label>
-                </div>
-              {% endif %}
-              <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ site.place_id if site else '' }}">
-              <input id="cantiere_lat" name="lat" type="hidden" value="{{ site.lat if site and site.lat is not none else '' }}">
-              <input id="cantiere_lng" name="lng" type="hidden" value="{{ site.lng if site and site.lng is not none else '' }}">
+              <div id="cantiere-unverified-confirm-wrapper"
+                   class="form-group form-group-inline"
+                   style="grid-column: 1 / -1; {{ address_confirm_style }}">
+                <input type="checkbox"
+                       id="cantiere-unverified-confirm"
+                       name="confirm_unverified"
+                       class="form-control"
+                       value="1"
+                       {% if form_confirm_unverified %}checked{% endif %}>
+                <label class="form-label" for="cantiere-unverified-confirm">
+                  Confermo salvataggio senza coordinate.
+                </label>
+              </div>
+              <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ form_place_id if form_place_id is not none else (site.place_id if site else '') }}">
+              <input id="cantiere_lat" name="lat" type="hidden" value="{{ form_lat if form_lat is not none else (site.lat if site and site.lat is not none else '') }}">
+              <input id="cantiere_lng" name="lng" type="hidden" value="{{ form_lng if form_lng is not none else (site.lng if site and site.lng is not none else '') }}">
             {% endif %}
           </div>
         </div>
@@ -189,7 +209,7 @@
               <label class="form-label" for="status">Stato</label>
               <select id="status" name="status" class="form-select" required>
                 {% for status in site_status_values %}
-                  <option value="{{ status }}" {% if site and (site.status.name == status or site.status.value == status) %}selected{% endif %}>
+                  <option value="{{ status }}" {% if form_status == status or (form_status is none and site and (site.status.name == status or site.status.value == status)) %}selected{% endif %}>
                     {{ status }}
                   </option>
                 {% endfor %}
@@ -199,7 +219,7 @@
             <div class="form-group">
               <label class="form-label" for="caposquadra_id">Caposquadra responsabile</label>
               <select id="caposquadra_id" name="caposquadra_id" class="form-select">
-                {% set selected_capo = site.caposquadra_id if site else '' %}
+                {% set selected_capo = form_capo if form_capo is not none else (site.caposquadra_id if site else '') %}
                 <option value="" {% if not selected_capo %}selected{% endif %}>-</option>
                 {% for capo in capisquadra %}
                   <option value="{{ capo.id }}" {% if selected_capo == capo.id %}selected{% endif %}>
@@ -210,7 +230,7 @@
             </div>
 
             <div class="form-group form-group-inline">
-              <input type="checkbox" id="is_active" name="is_active" class="form-control" {% if not site or site.is_active %}checked{% endif %}>
+              <input type="checkbox" id="is_active" name="is_active" class="form-control" {% if (form_submitted and form_active is not none) or (not form_submitted and (not site or site.is_active)) %}checked{% endif %}>
               <label class="form-label" for="is_active">Cantiere attivo</label>
             </div>
           </div>
