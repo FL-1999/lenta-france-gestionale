@@ -1,0 +1,49 @@
+{% set lang = request.cookies.get('lang', 'it') %}
+
+<section class="site-progress" id="site-progress">
+    <h2 class="page-title">
+        {% if lang == 'fr' %}Avancement chantier{% else %}Avanzamento lavori{% endif %}
+    </h2>
+    <p class="page-subtitle">
+        {% if lang == 'fr' %}
+            Synthèse des macro-phases avec progression actuelle.
+        {% else %}
+            Sintesi delle macro-fasi con avanzamento aggiornato.
+        {% endif %}
+    </p>
+
+    <div class="site-progress-cards">
+        <article class="site-progress-card">
+            <div class="site-progress-card-header">
+                <h3 class="site-progress-card-title">{{ progress_summary.cordoli.label }}</h3>
+                <span class="site-progress-card-value">{{ progress_summary.cordoli.percent }}%</span>
+            </div>
+            <div class="progress-bar" aria-hidden="true">
+                <div class="progress-bar-fill" style="width: {{ progress_summary.cordoli.percent }}%;"></div>
+            </div>
+            <p class="site-progress-card-subtitle">{{ progress_summary.cordoli.subtitle }}</p>
+        </article>
+
+        <article class="site-progress-card">
+            <div class="site-progress-card-header">
+                <h3 class="site-progress-card-title">{{ progress_summary.paratie.label }}</h3>
+                <span class="site-progress-card-value">{{ progress_summary.paratie.percent }}%</span>
+            </div>
+            <div class="progress-bar" aria-hidden="true">
+                <div class="progress-bar-fill" style="width: {{ progress_summary.paratie.percent }}%;"></div>
+            </div>
+            <p class="site-progress-card-subtitle">{{ progress_summary.paratie.subtitle }}</p>
+        </article>
+
+        <article class="site-progress-card">
+            <div class="site-progress-card-header">
+                <h3 class="site-progress-card-title">{{ progress_summary.puntoni.label }}</h3>
+                <span class="site-progress-card-value">{{ progress_summary.puntoni.percent }}%</span>
+            </div>
+            <div class="progress-bar" aria-hidden="true">
+                <div class="progress-bar-fill" style="width: {{ progress_summary.puntoni.percent }}%;"></div>
+            </div>
+            <p class="site-progress-card-subtitle">{{ progress_summary.puntoni.subtitle }}</p>
+        </article>
+    </div>
+</section>

@@ -29,10 +29,12 @@
         </p>
     </div>
     <div class="page-actions">
-        <a href="{{ url_for('manager_cantiere_modifica_get', site_id=site.id) }}" class="btn btn-primary">
-            {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-        </a>
-        <a href="{{ url_for('manager_cantieri') }}" class="btn btn-secondary">
+        {% if has_perm(user, "sites.update") %}
+            <a href="{{ url_for('manager_cantiere_modifica_get', site_id=site.id) }}" class="btn btn-primary">
+                {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            </a>
+        {% endif %}
+        <a href="{{ '/manager/cantieri' if has_perm(user, 'manager.access') else '/capo/dashboard' }}" class="btn btn-secondary">
             {% if lang == 'fr' %}Retour{% else %}Torna ai cantieri{% endif %}
         </a>
     </div>
@@ -64,5 +66,5 @@
     </div>
 </div>
 
-{% include "manager/_site_progress_section.html" %}
+{% include "manager/_site_progress_cards.html" %}
 {% endblock %}

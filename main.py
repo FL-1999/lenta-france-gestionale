@@ -16,7 +16,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from jose import JWTError, jwt
 
 from sqlalchemy import case, func
-from sqlalchemy.orm import joinedload, load_only
+from sqlalchemy.orm import joinedload, load_only, Session
 from sqlmodel import SQLModel
 
 from database import Base, engine, SessionLocal, get_db
@@ -1682,9 +1682,15 @@ def _progress_status(percent: int, lang: str) -> str:
     return "In corso" if lang == "it" else "En cours"
 
 
+def _format_progress_value(value: float | int) -> str:
+    if isinstance(value, float) and not value.is_integer():
+        return f"{value:.2f}".rstrip("0").rstrip(".")
+    return str(int(value))
+
+
 def _build_site_progress(
     site: Site, lang: str
-) -> tuple[dict[str, dict[str, int | float | str]], list[dict[str, int | str]], int]:
+) -> tuple[dict[str, dict[str, object]], list[dict[str, int | str]], int]:
     cordoli_total = float(site.cordoli_total_m or 0)
     cordoli_done = float(site.cordoli_done_m or 0)
     paratie_total = int(site.paratie_total_panels or 0)
@@ -1694,21 +1700,48 @@ def _build_site_progress(
     strut_total = sum(level.total_struts_level or 0 for level in strut_levels)
     strut_done = sum(level.done_struts_level or 0 for level in strut_levels)
 
+    labels = {
+        "cordoli": "Cordoli guida" if lang == "it" else "Guides (cordons)",
+        "paratie": "Scavo + paratie" if lang == "it" else "Excavation + parois",
+        "puntoni": "Posa puntoni" if lang == "it" else "Pose des butons",
+    }
+    units = {
+        "cordoli": "m",
+        "paratie": "pannelli" if lang == "it" else "panneaux",
+        "puntoni": "puntoni" if lang == "it" else "butons",
+    }
+
+    cordoli_done_display = _format_progress_value(cordoli_done)
+    cordoli_total_display = _format_progress_value(cordoli_total)
+    paratie_done_display = _format_progress_value(paratie_done)
+    paratie_total_display = _format_progress_value(paratie_total)
+    strut_done_display = _format_progress_value(strut_done)
+    strut_total_display = _format_progress_value(strut_total)
+
     progress_summary = {
         "cordoli": {
+            "label": labels["cordoli"],
             "total": cordoli_total,
             "done": cordoli_done,
             "percent": _progress_percent(cordoli_done, cordoli_total),
+            "unit": units["cordoli"],
+            "subtitle": f"{cordoli_done_display} / {cordoli_total_display} {units['cordoli']}",
         },
         "paratie": {
+            "label": labels["paratie"],
             "total": paratie_total,
             "done": paratie_done,
             "percent": _progress_percent(paratie_done, paratie_total),
+            "unit": units["paratie"],
+            "subtitle": f"{paratie_done_display} / {paratie_total_display} {units['paratie']}",
         },
         "puntoni": {
+            "label": labels["puntoni"],
             "total": strut_total,
             "done": strut_done,
             "percent": _progress_percent(strut_done, strut_total),
+            "unit": units["puntoni"],
+            "subtitle": f"{strut_done_display} / {strut_total_display} {units['puntoni']}",
         },
     }
     for key in progress_summary:
@@ -1733,30 +1766,41 @@ def _build_site_progress(
             }
         )
 
+    progress_summary["puntoni"]["levels"] = strut_levels_view
+
     return progress_summary, strut_levels_view, strut_levels_count
 
 
-@app.get("/manager/sites/{site_id}", response_class=HTMLResponse, name="manager_site_detail")
+def _get_site_for_detail(db: Session, site_id: int, current_user: User) -> Site:
+    query = db.query(Site).options(
+        joinedload(Site.caposquadra),
+        joinedload(Site.strut_levels),
+    )
+    query = scope_sites_query(query, current_user)
+    site = query.filter(Site.id == site_id).first()
+    if site:
+        return site
+    if current_user.role == RoleEnum.caposquadra:
+        exists = db.query(Site.id).filter(Site.id == site_id).first()
+        if exists:
+            raise HTTPException(status_code=403, detail="Cantiere non assegnato")
+    raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+
+@app.get("/manager/cantieri/{site_id}", response_class=HTMLResponse, name="manager_site_detail")
+@app.get("/manager/sites/{site_id}", response_class=HTMLResponse)
 def manager_site_detail(
     request: Request,
     site_id: int,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "manager.access"):
+    if not has_perm(current_user, "manager.access") and current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     lang = request.cookies.get("lang", "it")
     db = SessionLocal()
     try:
-        site = (
-            db.query(Site)
-            .options(joinedload(Site.caposquadra), joinedload(Site.strut_levels))
-            .filter(Site.id == site_id)
-            .first()
-        )
-        if not site:
-            raise HTTPException(status_code=404, detail="Cantiere non trovato")
-
+        site = _get_site_for_detail(db, site_id, current_user)
         progress_summary, strut_levels_view, strut_levels_count = _build_site_progress(
             site, lang
         )
@@ -1805,7 +1849,7 @@ def manager_site_progress_cordoli(
         db.close()
 
     return RedirectResponse(
-        url=f"/manager/sites/{site_id}#progress-cordoli",
+        url=f"/manager/cantieri/{site_id}/modifica#progress-cordoli",
         status_code=303,
     )
 
@@ -1839,7 +1883,7 @@ def manager_site_progress_paratie(
         db.close()
 
     return RedirectResponse(
-        url=f"/manager/sites/{site_id}#progress-paratie",
+        url=f"/manager/cantieri/{site_id}/modifica#progress-paratie",
         status_code=303,
     )
 
@@ -1909,7 +1953,7 @@ def manager_site_progress_puntoni(
         db.close()
 
     return RedirectResponse(
-        url=f"/manager/sites/{site_id}#progress-puntoni",
+        url=f"/manager/cantieri/{site_id}/modifica#progress-puntoni",
         status_code=303,
     )
 
