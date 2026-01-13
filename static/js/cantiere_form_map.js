@@ -37,6 +37,7 @@
       return;
     }
 
+    const addressInput = document.getElementById("cantiere-address");
     const latInput = document.getElementById("lat");
     const lngInput = document.getElementById("lng");
     if (!latInput || !lngInput) {
@@ -99,6 +100,34 @@
         mapCenter = { lat: currentCenter.lat(), lng: currentCenter.lng() };
       }
     });
+
+    if (addressInput) {
+      addressInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+        }
+      });
+    }
+
+    if (addressInput && window.google.maps.places) {
+      const autocomplete = new window.google.maps.places.Autocomplete(addressInput, {
+        types: ["geocode"],
+      });
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry || !place.geometry.location) {
+          return;
+        }
+
+        const location = place.geometry.location;
+        map.setCenter(location);
+        map.setZoom(17);
+        marker.setPosition(location);
+
+        updateLatLngInputs(latInput, lngInput, location.lat(), location.lng());
+      });
+    }
 
     mapInstance = map;
     markerInstance = marker;
