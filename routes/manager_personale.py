@@ -1,7 +1,7 @@
 import logging
 import time
 from typing import Optional
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -11,7 +11,11 @@ from sqlalchemy import func
 
 from auth import get_current_active_user_html
 from database import get_session
-from models import Personale, User
+from models import Personale, Site, User
+from personale_presenze_repository import (
+    get_week_attendance,
+    upsert_personale_presenza,
+)
 from template_context import register_manager_badges, render_template
 from permissions import has_perm
 
@@ -23,6 +27,20 @@ DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
 
 perf_logger = logging.getLogger("lenta_france_gestionale.performance")
+ATTENDANCE_STATUSES = [
+    ("WORK", "Lavoro"),
+    ("FERIE", "Ferie"),
+    ("PERMESSO", "Permesso"),
+    ("MALATTIA", "Malattia"),
+    ("RIPOSO", "Riposo"),
+]
+ATTENDANCE_STATUS_CLASSES = {
+    "WORK": "badge-work",
+    "FERIE": "badge-ferie",
+    "PERMESSO": "badge-permesso",
+    "MALATTIA": "badge-malattia",
+    "RIPOSO": "badge-riposo",
+}
 
 
 def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
@@ -34,6 +52,40 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
 def _ensure_manager(user: User) -> None:
     if not has_perm(user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def _parse_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _parse_int(value: str | None) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+def _parse_float(value: str | None) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def _get_week_start(value: date | None) -> date:
+    if value:
+        return value
+    today = date.today()
+    return today - timedelta(days=today.weekday())
 
 
 @router.get(
@@ -243,3 +295,122 @@ def manager_personale_delete(
     return RedirectResponse(
         url=request.url_for("manager_personale_list"), status_code=303
     )
+
+
+@router.get(
+    "/manager/personale/presenze",
+    response_class=HTMLResponse,
+    name="manager_personale_presenze",
+)
+def manager_personale_presenze(
+    request: Request,
+    week_start: Optional[date] = None,
+    personale_id: Optional[int] = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    lang = request.cookies.get("lang", "it")
+    week_start = _get_week_start(week_start)
+    week_end = week_start + timedelta(days=6)
+    week_days = [week_start + timedelta(days=offset) for offset in range(7)]
+
+    personale_query = select(Personale).where(Personale.attivo.is_(True))
+    if personale_id:
+        personale_query = personale_query.where(Personale.id == personale_id)
+    personale = session.exec(
+        personale_query.order_by(Personale.cognome, Personale.nome)
+    ).all()
+
+    presenze = get_week_attendance(session, week_start, week_end, personale_id)
+    sites = session.exec(
+        select(Site)
+        .where(Site.is_active.is_(True))
+        .order_by(Site.code, Site.name)
+    ).all()
+    site_map = {site.id: site for site in sites if site.id is not None}
+
+    attendance_map: dict[int, dict[date, dict[str, object]]] = {}
+    for presenza in presenze:
+        site = site_map.get(presenza.site_id)
+        attendance_map.setdefault(presenza.personale_id, {})[presenza.attendance_date] = {
+            "status": presenza.status,
+            "site_id": presenza.site_id,
+            "site_code": site.code if site else None,
+            "site_name": site.name if site else None,
+            "hours": presenza.hours,
+            "note": presenza.note,
+        }
+
+    # TODO: aggiungere export CSV settimanale per manager.
+
+    return render_template(
+        templates,
+        request,
+        "manager/personale/personale_presenze.html",
+        {
+            "lang": lang,
+            "personale": personale,
+            "week_start": week_start,
+            "week_end": week_end,
+            "week_days": week_days,
+            "prev_week": week_start - timedelta(days=7),
+            "next_week": week_start + timedelta(days=7),
+            "attendance_map": attendance_map,
+            "sites": sites,
+            "status_options": ATTENDANCE_STATUSES,
+            "status_labels": dict(ATTENDANCE_STATUSES),
+            "status_classes": ATTENDANCE_STATUS_CLASSES,
+            "personale_filter": personale_id,
+        },
+        session,
+        current_user,
+    )
+
+
+@router.post(
+    "/manager/personale/presenze",
+    response_class=HTMLResponse,
+    name="manager_personale_presenze_update",
+)
+def manager_personale_presenze_update(
+    request: Request,
+    personale_id: int = Form(...),
+    attendance_date: str = Form(...),
+    status: str = Form(...),
+    site_id: str = Form(""),
+    hours: str = Form(""),
+    week_start: str = Form(""),
+    personale_filter: str = Form(""),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+
+    parsed_date = _parse_date(attendance_date)
+    if not parsed_date:
+        raise HTTPException(status_code=400, detail="Data non valida")
+
+    parsed_site_id = _parse_int(site_id)
+    parsed_hours = _parse_float(hours)
+    redirect_week = _parse_date(week_start) or _get_week_start(None)
+    redirect_personale = _parse_int(personale_filter)
+
+    if status != "WORK":
+        parsed_site_id = None
+
+    upsert_personale_presenza(
+        session=session,
+        personale_id=personale_id,
+        attendance_date=parsed_date,
+        status=status,
+        site_id=parsed_site_id,
+        hours=parsed_hours,
+    )
+    session.commit()
+
+    url = request.url_for("manager_personale_presenze")
+    url = url.include_query_params(week_start=redirect_week.isoformat())
+    if redirect_personale:
+        url = url.include_query_params(personale_id=redirect_personale)
+    return RedirectResponse(url=url, status_code=303)

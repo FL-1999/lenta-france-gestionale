@@ -36,6 +36,9 @@
         <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouveau{% else %}Nuovo{% endif %}
         </a>
+        <a href="{{ url_for('manager_personale_presenze') }}" class="btn btn-secondary">
+            📅 {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
+        </a>
     {% endif %}
 </div>
 
