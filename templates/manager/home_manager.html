@@ -70,7 +70,12 @@
                     <span class="shortcut-badge">{{ badge_text }}</span>
                 {% endif %}
                 <div class="shortcut-body">
-                    <div class="shortcut-title">📦 Magazzino</div>
+                    <div class="shortcut-title">
+                        📦 Magazzino
+                        {% if has_unread_warehouse_notifications %}
+                            <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
+                        {% endif %}
+                    </div>
                     <div class="shortcut-subtitle">
                         {% if lang == 'fr' %}
                             Gérez les articles et les demandes.
@@ -100,6 +105,9 @@
                         </a>
                         <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_movimenti') }}">
                             {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
+                            {% if has_unread_warehouse_notifications %}
+                                <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
+                            {% endif %}
                         </a>
                     </div>
                 </div>

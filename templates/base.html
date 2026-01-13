@@ -134,6 +134,9 @@
                                     {{ '99+' if nuove_richieste_count > 99 else nuove_richieste_count }}
                                 </span>
                             {% endif %}
+                            {% if has_unread_warehouse_notifications %}
+                                <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
+                            {% endif %}
                             {% if manager_badges.low_stock %}
                                 <span class="nav-badge nav-badge--alert" title="{% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}">
                                     {{ manager_badges.low_stock }}
@@ -148,6 +151,9 @@
                             Magasin
                         {% else %}
                             Magazzino
+                        {% endif %}
+                        {% if has_unread_warehouse_notifications %}
+                            <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
                         {% endif %}
                     </a>
                 {% endif %}
@@ -293,6 +299,9 @@
                 <a href="{{ magazzino_path }}" class="bottom-nav__link {% if is_magazzino_active %}bottom-nav__link--active{% endif %}">
                     <span class="bottom-nav__icon" aria-hidden="true">📦</span>
                     <span class="bottom-nav__label">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</span>
+                    {% if has_unread_warehouse_notifications %}
+                        <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
+                    {% endif %}
                 </a>
             {% endif %}
             {% if show_reports %}

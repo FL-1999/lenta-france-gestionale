@@ -16,6 +16,7 @@ from models import (
     SiteStatusEnum,
     User,
 )
+from notifications import unread_warehouse_notifications_count
 from permissions import has_perm
 
 
@@ -62,6 +63,7 @@ _CACHE_KEY_NUOVE_RICHIESTE = "nuove_richieste_count"
 _CACHE_KEY_MANAGER_BADGES = "manager_badge_counts"
 _CACHE_KEY_SITE_STATUSES = "site_status_values"
 _CACHE_KEY_ROLE_CHOICES = "role_choices"
+_CACHE_KEY_WAREHOUSE_NOTIFICATIONS = "warehouse_unread_notifications"
 
 _CACHE_TTL_SHORT = 30
 _CACHE_TTL_MEDIUM = 120
@@ -95,6 +97,35 @@ def get_cached_nuove_richieste_count(request: Request, db=None) -> int:
         count = int(get_numero_richieste_nuove(db) or 0)
         request.state.nuove_richieste_count = count
         _CACHE.set(_CACHE_KEY_NUOVE_RICHIESTE, count, _CACHE_TTL_SHORT)
+        return count
+    finally:
+        if close_db:
+            db.close()
+
+
+def get_cached_warehouse_notifications_count(
+    request: Request, user: User | None, db=None
+) -> int:
+    if not user:
+        return 0
+    cached = getattr(request.state, "warehouse_unread_notifications_count", None)
+    if isinstance(cached, int):
+        return cached
+
+    cache_key = f"{_CACHE_KEY_WAREHOUSE_NOTIFICATIONS}:{user.id}:{user.role.value}"
+    cached_global = _CACHE.get(cache_key)
+    if isinstance(cached_global, int):
+        request.state.warehouse_unread_notifications_count = cached_global
+        return cached_global
+
+    close_db = False
+    if db is None:
+        db = SessionLocal()
+        close_db = True
+    try:
+        count = int(unread_warehouse_notifications_count(db, user) or 0)
+        request.state.warehouse_unread_notifications_count = count
+        _CACHE.set(cache_key, count, _CACHE_TTL_SHORT)
         return count
     finally:
         if close_db:
@@ -140,6 +171,13 @@ def build_template_context(
     is_capo = bool(user and user.role == RoleEnum.caposquadra)
     template_context.setdefault("is_manager", is_manager)
     template_context.setdefault("is_capo", is_capo)
+    warehouse_unread_count = get_cached_warehouse_notifications_count(request, user)
+    template_context.setdefault(
+        "unread_warehouse_notifications_count", warehouse_unread_count
+    )
+    template_context.setdefault(
+        "has_unread_warehouse_notifications", warehouse_unread_count > 0
+    )
     return template_context
 
 
