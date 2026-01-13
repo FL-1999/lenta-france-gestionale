@@ -4,7 +4,7 @@ import time
 from typing import Optional
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
@@ -331,12 +331,12 @@ def manager_personale_delete(
 )
 def manager_personale_presenze(
     request: Request,
-    view: str | None = None,
-    week_start: Optional[date] = None,
-    month: str | None = None,
-    personale_id: Optional[int] = None,
-    report_type: str | None = None,
-    site_id: Optional[int] = None,
+    view: str = Query("week"),
+    month: Optional[str] = Query(None),
+    report_type: str = Query("employee"),
+    personale_id: Optional[int] = Query(None),
+    site_id: Optional[int] = Query(None),
+    week_start: Optional[date] = Query(None),
     autofill: str | None = None,
     autofill_personale: Optional[int] = None,
     session: Session = Depends(get_session),
@@ -351,8 +351,16 @@ def manager_personale_presenze(
         report_type = (report_type or "employee").lower()
         if report_type not in {"employee", "site", "summary"}:
             report_type = "employee"
+        if report_type == "employee":
+            site_id = None
+        elif report_type == "site":
+            personale_id = None
+        else:
+            personale_id = None
+            site_id = None
     else:
         report_type = "employee"
+        site_id = None
     week_start = _get_week_start(week_start)
     week_end = week_start + timedelta(days=6)
     week_days = [week_start + timedelta(days=offset) for offset in range(7)]
