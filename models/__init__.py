@@ -546,5 +546,33 @@ class Personale(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class PersonalePresenza(SQLModel, table=True):
+    __tablename__ = "personale_presenze"
+    __table_args__ = (
+        UniqueConstraint("personale_id", "date", name="uq_personale_presenze_personale_date"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    personale_id: int = Field(foreign_key="personale.id", index=True)
+    attendance_date: date = Field(
+        sa_column=Column("date", Date, index=True, nullable=False)
+    )
+    site_id: Optional[int] = Field(default=None, index=True)
+    status: str = Field(max_length=20)
+    hours: Optional[float] = None
+    note: Optional[str] = None
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime,
+            default=datetime.utcnow,
+            onupdate=datetime.utcnow,
+            nullable=False,
+        )
+    )
+
+
 # Import dei modelli specifici
 from .veicoli import Veicolo

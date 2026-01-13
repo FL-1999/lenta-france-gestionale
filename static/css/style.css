@@ -948,6 +948,31 @@ body {
     color: var(--color-badge-text);
 }
 
+.badge-work {
+    background: var(--color-badge-secondary-bg);
+    color: var(--color-badge-text);
+}
+
+.badge-ferie {
+    background: var(--color-badge-warning-bg);
+    color: var(--color-badge-text);
+}
+
+.badge-permesso {
+    background: var(--color-accent);
+    color: var(--color-badge-text);
+}
+
+.badge-malattia {
+    background: var(--color-badge-danger-bg);
+    color: var(--color-badge-text);
+}
+
+.badge-riposo {
+    background: var(--color-badge-muted-bg);
+    color: var(--color-badge-text);
+}
+
 .address-status-badge {
     letter-spacing: 0.01em;
 }
@@ -1188,6 +1213,108 @@ body {
     padding: 1.5rem;
     color: var(--color-text-muted);
     background: rgba(148, 163, 184, 0.06);
+}
+
+.week-selector {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    justify-content: space-between;
+}
+
+.week-selector .form-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.week-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.week-range {
+    font-weight: 600;
+    color: var(--color-text-subtle);
+}
+
+.attendance-table th,
+.attendance-table td {
+    text-align: center;
+    min-width: 140px;
+}
+
+.attendance-table th:first-child,
+.attendance-table td:first-child {
+    text-align: left;
+    min-width: 200px;
+}
+
+.attendance-day {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.attendance-day-name {
+    font-weight: 700;
+}
+
+.attendance-day-date {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+}
+
+.attendance-person .text-muted {
+    font-size: var(--font-size-xs);
+}
+
+.attendance-cell {
+    vertical-align: top;
+}
+
+.attendance-cell-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 46px;
+}
+
+.attendance-empty {
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.attendance-hours {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-subtle);
+}
+
+.attendance-editor {
+    margin-top: 0.4rem;
+}
+
+.attendance-editor summary {
+    list-style: none;
+}
+
+.attendance-editor summary::-webkit-details-marker {
+    display: none;
+}
+
+.attendance-edit-trigger {
+    width: 100%;
+}
+
+.attendance-form {
+    margin-top: 0.5rem;
+    display: grid;
+    gap: 0.5rem;
 }
 
 .list-search-sticky {
