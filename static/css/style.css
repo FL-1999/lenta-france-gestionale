@@ -1328,6 +1328,28 @@ body {
     margin-top: 1rem;
 }
 
+.presenze-month-filters {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+.presenze-filter-form label {
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.presenze-month-list,
+.presenze-month-site,
+.presenze-month-summary {
+    margin-top: 1rem;
+}
+
 .presenza-day {
     min-height: 60px;
     display: flex;

@@ -335,6 +335,8 @@ def manager_personale_presenze(
     week_start: Optional[date] = None,
     month: str | None = None,
     personale_id: Optional[int] = None,
+    report_type: str | None = None,
+    site_id: Optional[int] = None,
     autofill: str | None = None,
     autofill_personale: Optional[int] = None,
     session: Session = Depends(get_session),
@@ -345,6 +347,12 @@ def manager_personale_presenze(
     view = (view or "week").lower()
     if view not in {"week", "month"}:
         view = "week"
+    if view == "month":
+        report_type = (report_type or "employee").lower()
+        if report_type not in {"employee", "site", "summary"}:
+            report_type = "employee"
+    else:
+        report_type = "employee"
     week_start = _get_week_start(week_start)
     week_end = week_start + timedelta(days=6)
     week_days = [week_start + timedelta(days=offset) for offset in range(7)]
@@ -403,7 +411,15 @@ def manager_personale_presenze(
     }
 
     selected_personale = personale_by_id.get(personale_id) if personale_id else None
+    selected_site = site_map.get(site_id) if site_id else None
+    status_labels = dict(ATTENDANCE_STATUSES)
     attendance_by_date: dict[date, dict[str, object]] = {}
+    employee_month_rows: list[dict[str, object]] = []
+    site_month_rows: list[dict[str, object]] = []
+    site_summary_by_personale: dict[int, dict[str, object]] = {}
+    site_summary_list: list[dict[str, object]] = []
+    summary_by_personale: dict[int, dict[str, object]] = {}
+    summary_list: list[dict[str, object]] = []
     if view == "month" and selected_personale:
         month_presenze = session.exec(
             select(PersonalePresenza).where(
@@ -422,6 +438,119 @@ def manager_personale_presenze(
                 "hours": presenza.hours,
                 "note": presenza.note,
             }
+        if report_type == "employee":
+            month_dates = [
+                month_start + timedelta(days=offset) for offset in range(last_day)
+            ]
+            for day in month_dates:
+                day_attendance = attendance_by_date.get(day)
+                day_status = day_attendance["status"] if day_attendance else None
+                employee_month_rows.append(
+                    {
+                        "date": day,
+                        "status": day_status,
+                        "status_label": status_labels.get(day_status, day_status or "—"),
+                        "site": site_map.get(day_attendance["site_id"])
+                        if day_attendance
+                        else None,
+                        "hours": day_attendance["hours"] if day_attendance else None,
+                    }
+                )
+
+    if view == "month" and report_type == "site" and selected_site:
+        site_presenze = session.exec(
+            select(PersonalePresenza).where(
+                PersonalePresenza.site_id == selected_site.id,
+                PersonalePresenza.attendance_date >= month_start,
+                PersonalePresenza.attendance_date <= month_end,
+            )
+        ).all()
+        for presenza in site_presenze:
+            worker = personale_by_id.get(presenza.personale_id)
+            if not worker:
+                continue
+            site_month_rows.append(
+                {
+                    "date": presenza.attendance_date,
+                    "personale": worker,
+                    "status": presenza.status,
+                    "status_label": status_labels.get(presenza.status, presenza.status),
+                    "hours": presenza.hours,
+                }
+            )
+            summary_row = site_summary_by_personale.setdefault(
+                worker.id,
+                {
+                    "personale": worker,
+                    "days_work": 0,
+                    "hours_work": 0.0,
+                },
+            )
+            if presenza.status == "WORK":
+                summary_row["days_work"] += 1
+                if presenza.hours:
+                    summary_row["hours_work"] += presenza.hours
+        site_month_rows.sort(
+            key=lambda row: (
+                row["date"],
+                row["personale"].cognome,
+                row["personale"].nome,
+            )
+        )
+        site_summary_list = sorted(
+            site_summary_by_personale.values(),
+            key=lambda row: (row["personale"].cognome, row["personale"].nome),
+        )
+
+    if view == "month" and report_type == "summary":
+        for worker in personale_list:
+            summary_by_personale[worker.id] = {
+                "personale": worker,
+                "days_work": 0,
+                "days_ferie": 0,
+                "days_permesso": 0,
+                "days_malattia": 0,
+                "days_riposo": 0,
+                "hours_work": 0.0,
+            }
+        month_presenze = session.exec(
+            select(PersonalePresenza).where(
+                PersonalePresenza.attendance_date >= month_start,
+                PersonalePresenza.attendance_date <= month_end,
+            )
+        ).all()
+        for presenza in month_presenze:
+            worker = personale_by_id.get(presenza.personale_id)
+            if not worker:
+                continue
+            summary_row = summary_by_personale.setdefault(
+                worker.id,
+                {
+                    "personale": worker,
+                    "days_work": 0,
+                    "days_ferie": 0,
+                    "days_permesso": 0,
+                    "days_malattia": 0,
+                    "days_riposo": 0,
+                    "hours_work": 0.0,
+                },
+            )
+            if presenza.status == "WORK":
+                summary_row["days_work"] += 1
+                if presenza.hours:
+                    summary_row["hours_work"] += presenza.hours
+            elif presenza.status == "FERIE":
+                summary_row["days_ferie"] += 1
+            elif presenza.status == "PERMESSO":
+                summary_row["days_permesso"] += 1
+            elif presenza.status == "MALATTIA":
+                summary_row["days_malattia"] += 1
+            elif presenza.status == "RIPOSO":
+                summary_row["days_riposo"] += 1
+        summary_list = sorted(
+            summary_by_personale.values(),
+            key=lambda row: (row["personale"].cognome, row["personale"].nome),
+        )
 
     success_message = None
     error_message = None
@@ -460,11 +589,20 @@ def manager_personale_presenze(
             "attendance_by_date": attendance_by_date,
             "month_context": month_context,
             "selected_month": selected_month,
+            "month_label": month_context["month_label"],
             "sites": sites,
             "status_options": ATTENDANCE_STATUSES,
-            "status_labels": dict(ATTENDANCE_STATUSES),
+            "status_labels": status_labels,
             "status_classes": ATTENDANCE_STATUS_CLASSES,
             "personale_filter": personale_id,
+            "report_type": report_type,
+            "employee_month_rows": employee_month_rows,
+            "site_month_rows": site_month_rows,
+            "site_summary_by_personale": site_summary_by_personale,
+            "site_summary_list": site_summary_list,
+            "summary_by_personale": summary_by_personale,
+            "summary_list": summary_list,
+            "selected_site": selected_site,
             "success_message": success_message,
             "error_message": error_message,
         },
