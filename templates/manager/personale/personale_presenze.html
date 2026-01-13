@@ -54,6 +54,12 @@
 
 <div class="card table-card">
     <div class="card-body">
+        {% if success_message %}
+            <div class="alert alert-success">{{ success_message }}</div>
+        {% endif %}
+        {% if error_message %}
+            <div class="alert alert-danger">{{ error_message }}</div>
+        {% endif %}
         <table class="data-table attendance-table">
             <thead>
                 <tr>
@@ -77,6 +83,18 @@
                             {% if p.ruolo %}
                                 <div class="text-muted">{{ p.ruolo }}</div>
                             {% endif %}
+                            <form method="post"
+                                  action="{{ url_for('manager_personale_presenze_autofill') }}"
+                                  class="form-inline">
+                                <input type="hidden" name="personale_id" value="{{ p.id }}" />
+                                <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}" />
+                                {% if personale_filter %}
+                                    <input type="hidden" name="personale_filter" value="{{ personale_filter }}" />
+                                {% endif %}
+                                <button type="submit" class="btn btn-secondary btn-sm">
+                                    🗓️ {% if lang == 'fr' %}Copier le lundi{% else %}Copia da lunedì{% endif %}
+                                </button>
+                            </form>
                         </td>
                         {% for day in week_days %}
                             {% set day_att = attendance_map.get(p.id, {}).get(day) %}

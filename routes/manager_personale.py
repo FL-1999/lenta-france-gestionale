@@ -13,6 +13,7 @@ from auth import get_current_active_user_html
 from database import get_session
 from models import Personale, Site, User
 from personale_presenze_repository import (
+    copy_week_attendance_from_monday,
     get_week_attendance,
     upsert_personale_presenza,
 )
@@ -306,6 +307,8 @@ def manager_personale_presenze(
     request: Request,
     week_start: Optional[date] = None,
     personale_id: Optional[int] = None,
+    autofill: str | None = None,
+    autofill_personale: Optional[int] = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -321,6 +324,7 @@ def manager_personale_presenze(
     personale = session.exec(
         personale_query.order_by(Personale.cognome, Personale.nome)
     ).all()
+    personale_by_id = {worker.id: worker for worker in personale}
 
     presenze = get_week_attendance(session, week_start, week_end, personale_id)
     sites = session.exec(
@@ -342,6 +346,22 @@ def manager_personale_presenze(
             "note": presenza.note,
         }
 
+    success_message = None
+    error_message = None
+    if autofill == "missing":
+        error_message = "Nessuna presenza il lunedì da copiare."
+    elif autofill == "noop":
+        error_message = "Nessuna cella vuota da compilare con il lunedì."
+    elif autofill == "success":
+        target = personale_by_id.get(autofill_personale)
+        if target:
+            success_message = (
+                "Presenze copiate da lunedì per "
+                f"{target.cognome} {target.nome} (mar–dom, solo celle vuote)."
+            )
+        else:
+            success_message = "Presenze copiate da lunedì (mar–dom, solo celle vuote)."
+
     # TODO: aggiungere export CSV settimanale per manager.
 
     return render_template(
@@ -362,6 +382,8 @@ def manager_personale_presenze(
             "status_labels": dict(ATTENDANCE_STATUSES),
             "status_classes": ATTENDANCE_STATUS_CLASSES,
             "personale_filter": personale_id,
+            "success_message": success_message,
+            "error_message": error_message,
         },
         session,
         current_user,
@@ -413,4 +435,51 @@ def manager_personale_presenze_update(
     url = url.include_query_params(week_start=redirect_week.isoformat())
     if redirect_personale:
         url = url.include_query_params(personale_id=redirect_personale)
+    return RedirectResponse(url=url, status_code=303)
+
+
+@router.post(
+    "/manager/personale/presenze/autofill",
+    response_class=HTMLResponse,
+    name="manager_personale_presenze_autofill",
+)
+def manager_personale_presenze_autofill(
+    request: Request,
+    personale_id: int = Form(...),
+    week_start: str = Form(...),
+    overwrite: bool = Form(False),
+    personale_filter: str = Form(""),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+
+    parsed_week_start = _parse_date(week_start)
+    if not parsed_week_start:
+        raise HTTPException(status_code=400, detail="Data non valida")
+
+    redirect_personale = _parse_int(personale_filter)
+
+    created, updated, has_monday = copy_week_attendance_from_monday(
+        session=session,
+        personale_id=personale_id,
+        week_start=parsed_week_start,
+        overwrite=overwrite,
+    )
+
+    autofill_status = "success"
+    if not has_monday:
+        autofill_status = "missing"
+    elif created == 0 and updated == 0:
+        autofill_status = "noop"
+    else:
+        session.commit()
+
+    url = request.url_for("manager_personale_presenze")
+    url = url.include_query_params(week_start=parsed_week_start.isoformat())
+    if redirect_personale:
+        url = url.include_query_params(personale_id=redirect_personale)
+    url = url.include_query_params(
+        autofill=autofill_status, autofill_personale=personale_id
+    )
     return RedirectResponse(url=url, status_code=303)
