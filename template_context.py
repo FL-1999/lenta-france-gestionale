@@ -132,6 +132,18 @@ def get_cached_warehouse_notifications_count(
             db.close()
 
 
+def get_warehouse_notifications_context(
+    request: Request,
+    user: User | None,
+    db=None,
+) -> dict[str, object]:
+    count = get_cached_warehouse_notifications_count(request, user, db)
+    return {
+        "unread_warehouse_notifications_count": count,
+        "has_unread_warehouse_notifications": count > 0,
+    }
+
+
 def render_template(
     templates,
     request: Request,
@@ -171,13 +183,9 @@ def build_template_context(
     is_capo = bool(user and user.role == RoleEnum.caposquadra)
     template_context.setdefault("is_manager", is_manager)
     template_context.setdefault("is_capo", is_capo)
-    warehouse_unread_count = get_cached_warehouse_notifications_count(request, user)
-    template_context.setdefault(
-        "unread_warehouse_notifications_count", warehouse_unread_count
-    )
-    template_context.setdefault(
-        "has_unread_warehouse_notifications", warehouse_unread_count > 0
-    )
+    warehouse_notifications_context = get_warehouse_notifications_context(request, user)
+    for key, value in warehouse_notifications_context.items():
+        template_context.setdefault(key, value)
     return template_context
 
 
