@@ -193,6 +193,14 @@
                             Personale
                         {% endif %}
                     </a>
+                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link">
+                        📅
+                        {% if lang == 'fr' %}
+                            Présences
+                        {% else %}
+                            Presenze
+                        {% endif %}
+                    </a>
                 {% endif %}
                 {% if show_users_link %}
                     <a href="/manager/utenti" class="nav-link">

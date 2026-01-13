@@ -424,6 +424,40 @@
                     <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
                         ➕ {% if lang == 'fr' %}Nouvel employé{% else %}Nuovo personale{% endif %}
                     </a>
+                    <a href="{{ url_for('manager_personale_presenze') }}" class="btn btn-secondary">
+                        📅 {% if lang == 'fr' %}Présences hebdomadaires{% else %}Presenze settimanali{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Presenze -->
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--reports" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="5" width="18" height="16" rx="2" />
+                            <path d="M8 3v4" stroke-linecap="round" />
+                            <path d="M16 3v4" stroke-linecap="round" />
+                            <path d="M3 9h18" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span>{% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>
+                    {% if lang == 'fr' %}
+                        Consultez et mettez à jour les présences hebdomadaires du personnel.
+                    {% else %}
+                        Visualizza e aggiorna le presenze settimanali del personale.
+                    {% endif %}
+                </p>
+                <div class="card-actions">
+                    <a href="{{ url_for('manager_personale_presenze') }}" class="btn btn-secondary btn-sm">
+                        {% if lang == 'fr' %}Ouvrir les présences{% else %}Apri presenze{% endif %}
+                    </a>
                 </div>
             </div>
         </div>
