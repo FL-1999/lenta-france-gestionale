@@ -64,13 +64,11 @@
       return;
     }
     const mapElement = document.getElementById("cantiere-pick-map");
-    if (!mapElement || !mapElement.dataset.googleMapsApiKey) {
+    if (!mapElement) {
       return;
     }
-    if (typeof window.loadGoogleMapsScriptOnce === "function") {
-      window.loadGoogleMapsScriptOnce("initCantiereFormMap", ["places"]);
-    } else if (typeof window.initCantiereFormMap === "function") {
-      window.initCantiereFormMap();
+    if (typeof window.initMap === "function") {
+      window.initMap();
     }
   };
 

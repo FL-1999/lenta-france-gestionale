@@ -143,8 +143,8 @@
             </div>
             {% if is_capo %}
               <div class="form-group">
-                <label class="form-label" for="cantiere_lat">Latitudine</label>
-                <input id="cantiere_lat"
+                <label class="form-label" for="lat">Latitudine</label>
+                <input id="lat"
                        name="lat"
                        type="text"
                        class="form-control"
@@ -153,8 +153,8 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="cantiere_lng">Longitudine</label>
-                <input id="cantiere_lng"
+                <label class="form-label" for="lng">Longitudine</label>
+                <input id="lng"
                        name="lng"
                        type="text"
                        class="form-control"
@@ -197,8 +197,8 @@
                 </label>
               </div>
               <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ form_place_id if form_place_id is not none else (site.place_id if site else '') }}">
-              <input id="cantiere_lat" name="lat" type="hidden" value="{{ form_lat if form_lat is not none else (site.lat if site and site.lat is not none else '') }}">
-              <input id="cantiere_lng" name="lng" type="hidden" value="{{ form_lng if form_lng is not none else (site.lng if site and site.lng is not none else '') }}">
+              <input id="lat" name="lat" type="hidden" value="{{ form_lat if form_lat is not none else (site.lat if site and site.lat is not none else '') }}">
+              <input id="lng" name="lng" type="hidden" value="{{ form_lng if form_lng is not none else (site.lng if site and site.lng is not none else '') }}">
             {% endif %}
           </div>
         </div>
@@ -318,7 +318,8 @@
 {% endif %}
 
 <script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
-<script src="{{ url_for('static', path='/js/cantiere-form-map.js') }}"></script>
+<script src="{{ url_for('static', path='/js/cantiere_form_map.js') }}"></script>
 <script src="{{ url_for('static', path='/js/cantiere-form-stepper.js') }}"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
 
 {% endblock %}
