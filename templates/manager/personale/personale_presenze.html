@@ -31,7 +31,7 @@
                class="btn btn-sm {% if view != 'month' %}btn-primary{% else %}btn-secondary{% endif %}">
                 {% if lang == 'fr' %}Semaine{% else %}Settimana{% endif %}
             </a>
-            <a href="{{ url_for('manager_personale_presenze') }}?view=month&month={{ selected_month }}"
+            <a href="{{ url_for('manager_personale_presenze') }}?view=month&month={{ selected_month }}&report_type={{ report_type }}"
                class="btn btn-sm {% if view == 'month' %}btn-primary{% else %}btn-secondary{% endif %}">
                 {% if lang == 'fr' %}Mois{% else %}Mese{% endif %}
             </a>
@@ -191,38 +191,227 @@
 {% if view == 'month' %}
     <div class="card">
         <div class="card-body">
-            <form method="get" action="{{ url_for('manager_personale_presenze') }}" class="form-inline">
-                <input type="hidden" name="view" value="month" />
-                <label class="form-label">
-                    {% if lang == 'fr' %}Employé{% else %}Dipendente{% endif %}
-                    <select name="personale_id" class="form-select">
-                        <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
-                        {% for worker in personale_list %}
-                            <option value="{{ worker.id }}" {% if selected_personale and worker.id == selected_personale.id %}selected{% endif %}>
-                                {{ worker.cognome }} {{ worker.nome }}
+            <section class="presenze-month-filters">
+                <form method="get" action="{{ url_for('manager_personale_presenze') }}" class="presenze-filter-form">
+                    <input type="hidden" name="view" value="month" />
+                    <input type="hidden" name="month" value="{{ selected_month }}" />
+                    <label>
+                        {% if lang == 'fr' %}Type de liste{% else %}Tipo elenco{% endif %}
+                        <select name="report_type" onchange="this.form.submit()">
+                            <option value="employee" {% if report_type == 'employee' %}selected{% endif %}>
+                                {% if lang == 'fr' %}Par employé{% else %}Per dipendente{% endif %}
                             </option>
-                        {% endfor %}
-                    </select>
-                </label>
-                <label class="form-label">
-                    {% if lang == 'fr' %}Mois{% else %}Mese{% endif %}
-                    <input type="month" name="month" value="{{ selected_month }}" class="form-input" />
-                </label>
-                <button type="submit" class="btn btn-primary">
-                    🔎 {% if lang == 'fr' %}Mettre à jour{% else %}Aggiorna{% endif %}
-                </button>
-            </form>
-            {% if not selected_personale %}
-                <div class="alert alert-info">
-                    {% if lang == 'fr' %}
-                        Sélectionnez un employé pour voir les présences mensuelles.
-                    {% else %}
-                        Seleziona un dipendente per vedere le presenze mensili.
+                            <option value="site" {% if report_type == 'site' %}selected{% endif %}>
+                                {% if lang == 'fr' %}Par chantier{% else %}Per cantiere{% endif %}
+                            </option>
+                            <option value="summary" {% if report_type == 'summary' %}selected{% endif %}>
+                                {% if lang == 'fr' %}Récapitulatif général{% else %}Riepilogo generale{% endif %}
+                            </option>
+                        </select>
+                    </label>
+                    {% if report_type == 'employee' %}
+                        <label>
+                            {% if lang == 'fr' %}Employé{% else %}Dipendente{% endif %}
+                            <select name="personale_id" onchange="this.form.submit()">
+                                <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                                {% for worker in personale_list %}
+                                    <option value="{{ worker.id }}" {% if selected_personale and worker.id == selected_personale.id %}selected{% endif %}>
+                                        {{ worker.nome }} {{ worker.cognome }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    {% elif report_type == 'site' %}
+                        <label>
+                            {% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}
+                            <select name="site_id" onchange="this.form.submit()">
+                                <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                                {% for site in sites %}
+                                    <option value="{{ site.id }}" {% if selected_site and site.id == selected_site.id %}selected{% endif %}>
+                                        {{ site.code or site.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
                     {% endif %}
-                </div>
-            {% endif %}
+                    <label>
+                        {% if lang == 'fr' %}Mois{% else %}Mese{% endif %}
+                        <input type="month" name="month" value="{{ selected_month }}" onchange="this.form.submit()" />
+                    </label>
+                </form>
+            </section>
         </div>
     </div>
+
+    {% if report_type == 'employee' %}
+        {% if selected_personale %}
+            <div class="card table-card">
+                <div class="card-body">
+                    <h2 class="section-title">
+                        {% if lang == 'fr' %}Rapport mensuel pour{% else %}Report mensile per{% endif %}
+                        {{ selected_personale.nome }} {{ selected_personale.cognome }} — {{ month_label }}
+                    </h2>
+                    <table class="data-table presenze-month-list">
+                        <thead>
+                            <tr>
+                                <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                                <th>{% if lang == 'fr' %}Jour{% else %}Giorno{% endif %}</th>
+                                <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                                <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                                <th>{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in employee_month_rows %}
+                                <tr>
+                                    <td>{{ row.date.strftime("%d/%m/%Y") }}</td>
+                                    <td>{{ row.date.strftime("%a") }}</td>
+                                    <td>{{ row.status_label or '—' }}</td>
+                                    <td>
+                                        {% if row.site %}
+                                            {{ row.site.code or row.site.name }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.hours is not none %}
+                                            {{ "%.2f"|format(row.hours) }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        {% if lang == 'fr' %}
+                            Sélectionnez un employé pour voir les présences mensuelles.
+                        {% else %}
+                            Seleziona un dipendente per vedere il report mensile.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% elif report_type == 'site' %}
+        {% if selected_site %}
+            <div class="card table-card">
+                <div class="card-body">
+                    <h2 class="section-title">
+                        {% if lang == 'fr' %}Présences dans le chantier{% else %}Presenze nel cantiere{% endif %}
+                        {{ selected_site.code or selected_site.name }} — {{ month_label }}
+                    </h2>
+                    <table class="data-table presenze-month-site">
+                        <thead>
+                            <tr>
+                                <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                                <th>{% if lang == 'fr' %}Employé{% else %}Dipendente{% endif %}</th>
+                                <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                                <th>{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in site_month_rows %}
+                                <tr>
+                                    <td>{{ row.date.strftime("%d/%m/%Y") }}</td>
+                                    <td>{{ row.personale.nome }} {{ row.personale.cognome }}</td>
+                                    <td>{{ row.status_label }}</td>
+                                    <td>
+                                        {% if row.hours is not none %}
+                                            {{ "%.2f"|format(row.hours) }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if site_summary_list %}
+                <div class="card table-card">
+                    <div class="card-body">
+                        <h3 class="section-title">
+                            {% if lang == 'fr' %}Résumé par employé{% else %}Riepilogo per dipendente{% endif %}
+                        </h3>
+                        <table class="data-table presenze-month-site">
+                            <thead>
+                                <tr>
+                                    <th>{% if lang == 'fr' %}Employé{% else %}Dipendente{% endif %}</th>
+                                    <th>{% if lang == 'fr' %}Jours travail{% else %}Giorni lavoro{% endif %}</th>
+                                    <th>{% if lang == 'fr' %}Heures travail{% else %}Ore lavoro{% endif %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in site_summary_list %}
+                                    <tr>
+                                        <td>{{ item.personale.nome }} {{ item.personale.cognome }}</td>
+                                        <td>{{ item.days_work }}</td>
+                                        <td>{{ "%.2f"|format(item.hours_work) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        {% if lang == 'fr' %}
+                            Sélectionnez un chantier pour voir les présences mensuelles.
+                        {% else %}
+                            Seleziona un cantiere per vedere il report mensile.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% elif report_type == 'summary' %}
+        <div class="card table-card">
+            <div class="card-body">
+                <h2 class="section-title">
+                    {% if lang == 'fr' %}Récapitulatif général employés{% else %}Riepilogo generale dipendenti{% endif %}
+                    — {{ month_label }}
+                </h2>
+                <table class="data-table presenze-month-summary">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'fr' %}Employé{% else %}Dipendente{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Jours travail{% else %}Giorni lavoro{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Jours vacances{% else %}Giorni ferie{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Jours permission{% else %}Giorni permesso{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Jours maladie{% else %}Giorni malattia{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Jours repos{% else %}Giorni riposo{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Heures travail{% else %}Ore lavoro{% endif %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary_list %}
+                            <tr>
+                                <td>{{ item.personale.nome }} {{ item.personale.cognome }}</td>
+                                <td>{{ item.days_work }}</td>
+                                <td>{{ item.days_ferie }}</td>
+                                <td>{{ item.days_permesso }}</td>
+                                <td>{{ item.days_malattia }}</td>
+                                <td>{{ item.days_riposo }}</td>
+                                <td>{{ "%.2f"|format(item.hours_work) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
 
     {% if selected_personale %}
         <div class="card table-card">
