@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from models import Notification, RoleEnum, Report, Site, User, MagazzinoRichiesta
 
+WAREHOUSE_NOTIFICATION_TYPES = {"magazzino_richiesta"}
+
 
 def create_notification(
     db: Session,
@@ -54,6 +56,23 @@ def create_notifications_for_users(
             )
         )
     return notifications
+
+
+def unread_warehouse_notifications_count(db: Session, user: User | None) -> int:
+    if not user:
+        return 0
+    return (
+        db.query(Notification)
+        .filter(
+            or_(
+                Notification.recipient_user_id == user.id,
+                Notification.recipient_role == user.role,
+            ),
+            Notification.is_read.is_(False),
+            Notification.notification_type.in_(WAREHOUSE_NOTIFICATION_TYPES),
+        )
+        .count()
+    )
 
 
 def _get_manager_users(db: Session) -> list[User]:

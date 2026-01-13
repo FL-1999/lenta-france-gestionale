@@ -26,6 +26,9 @@
         </a>
         <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
             📊 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
+            {% if has_unread_warehouse_notifications %}
+                <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
+            {% endif %}
         </a>
         <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
             🧾 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}

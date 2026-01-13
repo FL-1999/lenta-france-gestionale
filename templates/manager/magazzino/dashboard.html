@@ -113,6 +113,9 @@
             </a>
             <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_movimenti') }}">
                 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
+                {% if has_unread_warehouse_notifications %}
+                    <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
+                {% endif %}
             </a>
             <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_richieste') }}">
                 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
