@@ -1,3 +1,4 @@
+import calendar
 import logging
 import time
 from typing import Optional
@@ -11,7 +12,7 @@ from sqlalchemy import func
 
 from auth import get_current_active_user_html
 from database import get_session
-from models import Personale, Site, User
+from models import Personale, PersonalePresenza, Site, User
 from personale_presenze_repository import (
     copy_week_attendance_from_monday,
     get_week_attendance,
@@ -42,6 +43,21 @@ ATTENDANCE_STATUS_CLASSES = {
     "MALATTIA": "badge-malattia",
     "RIPOSO": "badge-riposo",
 }
+MONTH_NAMES_IT = [
+    "",
+    "Gennaio",
+    "Febbraio",
+    "Marzo",
+    "Aprile",
+    "Maggio",
+    "Giugno",
+    "Luglio",
+    "Agosto",
+    "Settembre",
+    "Ottobre",
+    "Novembre",
+    "Dicembre",
+]
 
 
 def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
@@ -80,6 +96,16 @@ def _parse_float(value: str | None) -> float | None:
         return float(value)
     except ValueError:
         return None
+
+
+def _parse_month(value: str | None) -> tuple[int, int] | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.strptime(value, "%Y-%m")
+    except ValueError:
+        return None
+    return parsed.year, parsed.month
 
 
 def _get_week_start(value: date | None) -> date:
@@ -305,7 +331,9 @@ def manager_personale_delete(
 )
 def manager_personale_presenze(
     request: Request,
+    view: str | None = None,
     week_start: Optional[date] = None,
+    month: str | None = None,
     personale_id: Optional[int] = None,
     autofill: str | None = None,
     autofill_personale: Optional[int] = None,
@@ -314,17 +342,23 @@ def manager_personale_presenze(
 ):
     _ensure_manager(current_user)
     lang = request.cookies.get("lang", "it")
+    view = (view or "week").lower()
+    if view not in {"week", "month"}:
+        view = "week"
     week_start = _get_week_start(week_start)
     week_end = week_start + timedelta(days=6)
     week_days = [week_start + timedelta(days=offset) for offset in range(7)]
 
-    personale_query = select(Personale).where(Personale.attivo.is_(True))
-    if personale_id:
-        personale_query = personale_query.where(Personale.id == personale_id)
-    personale = session.exec(
-        personale_query.order_by(Personale.cognome, Personale.nome)
-    ).all()
-    personale_by_id = {worker.id: worker for worker in personale}
+    personale_query = (
+        select(Personale)
+        .where(Personale.attivo.is_(True))
+        .order_by(Personale.cognome, Personale.nome)
+    )
+    personale_list = session.exec(personale_query).all()
+    personale = personale_list
+    if personale_id and view != "month":
+        personale = [worker for worker in personale_list if worker.id == personale_id]
+    personale_by_id = {worker.id: worker for worker in personale_list}
 
     presenze = get_week_attendance(session, week_start, week_end, personale_id)
     sites = session.exec(
@@ -345,6 +379,49 @@ def manager_personale_presenze(
             "hours": presenza.hours,
             "note": presenza.note,
         }
+
+    parsed_month = _parse_month(month)
+    if parsed_month:
+        month_year, month_number = parsed_month
+    else:
+        today = date.today()
+        month_year, month_number = today.year, today.month
+    selected_month = f"{month_year:04d}-{month_number:02d}"
+    month_start = date(month_year, month_number, 1)
+    last_day = calendar.monthrange(month_year, month_number)[1]
+    month_end = date(month_year, month_number, last_day)
+    month_calendar = calendar.Calendar(firstweekday=0)
+    month_weeks = [
+        [day if day.month == month_number else None for day in week]
+        for week in month_calendar.monthdatescalendar(month_year, month_number)
+    ]
+    month_context = {
+        "year": month_year,
+        "month": month_number,
+        "month_label": f"{MONTH_NAMES_IT[month_number]} {month_year}",
+        "weeks": month_weeks,
+    }
+
+    selected_personale = personale_by_id.get(personale_id) if personale_id else None
+    attendance_by_date: dict[date, dict[str, object]] = {}
+    if view == "month" and selected_personale:
+        month_presenze = session.exec(
+            select(PersonalePresenza).where(
+                PersonalePresenza.personale_id == personale_id,
+                PersonalePresenza.attendance_date >= month_start,
+                PersonalePresenza.attendance_date <= month_end,
+            )
+        ).all()
+        for presenza in month_presenze:
+            site = site_map.get(presenza.site_id)
+            attendance_by_date[presenza.attendance_date] = {
+                "status": presenza.status,
+                "site_id": presenza.site_id,
+                "site_code": site.code if site else None,
+                "site_name": site.name if site else None,
+                "hours": presenza.hours,
+                "note": presenza.note,
+            }
 
     success_message = None
     error_message = None
@@ -370,13 +447,19 @@ def manager_personale_presenze(
         "manager/personale/personale_presenze.html",
         {
             "lang": lang,
+            "view": view,
             "personale": personale,
+            "personale_list": personale_list,
+            "selected_personale": selected_personale,
             "week_start": week_start,
             "week_end": week_end,
             "week_days": week_days,
             "prev_week": week_start - timedelta(days=7),
             "next_week": week_start + timedelta(days=7),
             "attendance_map": attendance_map,
+            "attendance_by_date": attendance_by_date,
+            "month_context": month_context,
+            "selected_month": selected_month,
             "sites": sites,
             "status_options": ATTENDANCE_STATUSES,
             "status_labels": dict(ATTENDANCE_STATUSES),

@@ -26,150 +26,249 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="week-selector">
-            <form method="get" action="{{ url_for('manager_personale_presenze') }}" class="form-inline">
-                <label for="week_start" class="form-label">{% if lang == 'fr' %}Semaine{% else %}Settimana{% endif %}</label>
-                <input type="date" id="week_start" name="week_start" value="{{ week_start.isoformat() }}" class="form-input" />
-                {% if personale_filter %}
-                    <input type="hidden" name="personale_id" value="{{ personale_filter }}" />
-                {% endif %}
-                <button type="submit" class="btn btn-primary">🔎 {% if lang == 'fr' %}Voir{% else %}Vai{% endif %}</button>
-            </form>
-            <div class="week-nav">
-                <a class="btn btn-secondary btn-sm"
-                   href="{{ url_for('manager_personale_presenze') }}?week_start={{ prev_week.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}">
-                    ◀️ {% if lang == 'fr' %}Semaine précédente{% else %}Settimana precedente{% endif %}
-                </a>
-                <span class="week-range">
-                    {{ week_start.strftime('%d/%m/%Y') }} - {{ week_end.strftime('%d/%m/%Y') }}
-                </span>
-                <a class="btn btn-secondary btn-sm"
-                   href="{{ url_for('manager_personale_presenze') }}?week_start={{ next_week.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}">
-                    {% if lang == 'fr' %}Semaine suivante{% else %}Settimana successiva{% endif %} ▶️
-                </a>
-            </div>
+        <div class="presenze-view-switch">
+            <a href="{{ url_for('manager_personale_presenze') }}?view=week&week_start={{ week_start.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}"
+               class="btn btn-sm {% if view != 'month' %}btn-primary{% else %}btn-secondary{% endif %}">
+                {% if lang == 'fr' %}Semaine{% else %}Settimana{% endif %}
+            </a>
+            <a href="{{ url_for('manager_personale_presenze') }}?view=month&month={{ selected_month }}"
+               class="btn btn-sm {% if view == 'month' %}btn-primary{% else %}btn-secondary{% endif %}">
+                {% if lang == 'fr' %}Mois{% else %}Mese{% endif %}
+            </a>
         </div>
+        {% if view != 'month' %}
+            <div class="week-selector">
+                <form method="get" action="{{ url_for('manager_personale_presenze') }}" class="form-inline">
+                    <input type="hidden" name="view" value="week" />
+                    <label for="week_start" class="form-label">{% if lang == 'fr' %}Semaine{% else %}Settimana{% endif %}</label>
+                    <input type="date" id="week_start" name="week_start" value="{{ week_start.isoformat() }}" class="form-input" />
+                    {% if personale_filter %}
+                        <input type="hidden" name="personale_id" value="{{ personale_filter }}" />
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary">🔎 {% if lang == 'fr' %}Voir{% else %}Vai{% endif %}</button>
+                </form>
+                <div class="week-nav">
+                    <a class="btn btn-secondary btn-sm"
+                       href="{{ url_for('manager_personale_presenze') }}?view=week&week_start={{ prev_week.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}">
+                        ◀️ {% if lang == 'fr' %}Semaine précédente{% else %}Settimana precedente{% endif %}
+                    </a>
+                    <span class="week-range">
+                        {{ week_start.strftime('%d/%m/%Y') }} - {{ week_end.strftime('%d/%m/%Y') }}
+                    </span>
+                    <a class="btn btn-secondary btn-sm"
+                       href="{{ url_for('manager_personale_presenze') }}?view=week&week_start={{ next_week.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}">
+                        {% if lang == 'fr' %}Semaine suivante{% else %}Settimana successiva{% endif %} ▶️
+                    </a>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
 
-<div class="card table-card">
-    <div class="card-body">
-        {% if success_message %}
-            <div class="alert alert-success">{{ success_message }}</div>
-        {% endif %}
-        {% if error_message %}
-            <div class="alert alert-danger">{{ error_message }}</div>
-        {% endif %}
-        <table class="data-table attendance-table">
-            <thead>
-                <tr>
-                    <th>{% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</th>
-                    {% set weekday_names = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] %}
-                    {% for day in week_days %}
-                        <th>
-                            <div class="attendance-day">
-                                <span class="attendance-day-name">{{ weekday_names[day.weekday()] }}</span>
-                                <span class="attendance-day-date">{{ day.strftime('%d/%m') }}</span>
-                            </div>
-                        </th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in personale %}
+{% if view != 'month' %}
+    <div class="card table-card">
+        <div class="card-body">
+            {% if success_message %}
+                <div class="alert alert-success">{{ success_message }}</div>
+            {% endif %}
+            {% if error_message %}
+                <div class="alert alert-danger">{{ error_message }}</div>
+            {% endif %}
+            <table class="data-table attendance-table">
+                <thead>
                     <tr>
-                        <td class="attendance-person">
-                            <strong>{{ p.cognome }} {{ p.nome }}</strong>
-                            {% if p.ruolo %}
-                                <div class="text-muted">{{ p.ruolo }}</div>
-                            {% endif %}
-                            <form method="post"
-                                  action="{{ url_for('manager_personale_presenze_autofill') }}"
-                                  class="form-inline">
-                                <input type="hidden" name="personale_id" value="{{ p.id }}" />
-                                <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}" />
-                                {% if personale_filter %}
-                                    <input type="hidden" name="personale_filter" value="{{ personale_filter }}" />
-                                {% endif %}
-                                <button type="submit" class="btn btn-secondary btn-sm">
-                                    🗓️ {% if lang == 'fr' %}Copier le lundi{% else %}Copia da lunedì{% endif %}
-                                </button>
-                            </form>
-                        </td>
+                        <th>{% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</th>
+                        {% set weekday_names = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] %}
                         {% for day in week_days %}
-                            {% set day_att = attendance_map.get(p.id, {}).get(day) %}
-                            <td class="attendance-cell">
-                                <div class="attendance-cell-main">
-                                    {% if day_att %}
-                                        {% set status = day_att.status %}
-                                        {% set badge_class = status_classes.get(status, 'badge-muted') %}
-                                        {% if status == 'WORK' and day_att.site_code %}
-                                            <span class="badge {{ badge_class }}">{{ day_att.site_code }}</span>
-                                        {% else %}
-                                            <span class="badge {{ badge_class }}">{{ status_labels.get(status, status) }}</span>
-                                        {% endif %}
-                                        {% if day_att.hours %}
-                                            <div class="attendance-hours">{{ day_att.hours }}h</div>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="attendance-empty">—</span>
-                                    {% endif %}
+                            <th>
+                                <div class="attendance-day">
+                                    <span class="attendance-day-name">{{ weekday_names[day.weekday()] }}</span>
+                                    <span class="attendance-day-date">{{ day.strftime('%d/%m') }}</span>
                                 </div>
-                                <details class="attendance-editor">
-                                    <summary class="btn btn-secondary btn-sm attendance-edit-trigger">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</summary>
-                                    <form method="post" action="{{ url_for('manager_personale_presenze_update') }}" class="attendance-form">
-                                        <input type="hidden" name="personale_id" value="{{ p.id }}" />
-                                        <input type="hidden" name="attendance_date" value="{{ day.isoformat() }}" />
-                                        <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}" />
-                                        {% if personale_filter %}
-                                            <input type="hidden" name="personale_filter" value="{{ personale_filter }}" />
-                                        {% endif %}
-                                        <label class="form-label">
-                                            {% if lang == 'fr' %}Statut{% else %}Stato{% endif %}
-                                            <select name="status" class="form-select" required>
-                                                {% for value, label in status_options %}
-                                                    <option value="{{ value }}" {% if day_att and day_att.status == value %}selected{% endif %}>
-                                                        {{ label }}
-                                                    </option>
-                                                {% endfor %}
-                                            </select>
-                                        </label>
-                                        <label class="form-label">
-                                            {% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}
-                                            <select name="site_id" class="form-select">
-                                                <option value="">—</option>
-                                                {% for site in sites %}
-                                                    <option value="{{ site.id }}" {% if day_att and day_att.site_id == site.id %}selected{% endif %}>
-                                                        {{ site.code or site.name }}
-                                                    </option>
-                                                {% endfor %}
-                                            </select>
-                                        </label>
-                                        <label class="form-label">
-                                            {% if lang == 'fr' %}Heures{% else %}Ore{% endif %}
-                                            <input type="number" name="hours" min="0" step="0.25" class="form-input" value="{{ day_att.hours if day_att else '' }}" />
-                                        </label>
-                                        <button type="submit" class="btn btn-primary btn-sm">
-                                            💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
-                                        </button>
-                                    </form>
-                                </details>
-                            </td>
+                            </th>
                         {% endfor %}
                     </tr>
-                {% else %}
-                    <tr class="table-empty">
-                        <td colspan="{{ 1 + week_days|length }}">
-                            {% if lang == 'fr' %}
-                                Aucun personnel actif pour cette semaine.
-                            {% else %}
-                                Nessun personale attivo per questa settimana.
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for p in personale %}
+                        <tr>
+                            <td class="attendance-person">
+                                <strong>{{ p.cognome }} {{ p.nome }}</strong>
+                                {% if p.ruolo %}
+                                    <div class="text-muted">{{ p.ruolo }}</div>
+                                {% endif %}
+                                <form method="post"
+                                      action="{{ url_for('manager_personale_presenze_autofill') }}"
+                                      class="form-inline">
+                                    <input type="hidden" name="personale_id" value="{{ p.id }}" />
+                                    <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}" />
+                                    {% if personale_filter %}
+                                        <input type="hidden" name="personale_filter" value="{{ personale_filter }}" />
+                                    {% endif %}
+                                    <button type="submit" class="btn btn-secondary btn-sm">
+                                        🗓️ {% if lang == 'fr' %}Copier le lundi{% else %}Copia da lunedì{% endif %}
+                                    </button>
+                                </form>
+                            </td>
+                            {% for day in week_days %}
+                                {% set day_att = attendance_map.get(p.id, {}).get(day) %}
+                                <td class="attendance-cell">
+                                    <div class="attendance-cell-main">
+                                        {% if day_att %}
+                                            {% set status = day_att.status %}
+                                            {% set badge_class = status_classes.get(status, 'badge-muted') %}
+                                            {% if status == 'WORK' and day_att.site_code %}
+                                                <span class="badge {{ badge_class }}">{{ day_att.site_code }}</span>
+                                            {% else %}
+                                                <span class="badge {{ badge_class }}">{{ status_labels.get(status, status) }}</span>
+                                            {% endif %}
+                                            {% if day_att.hours %}
+                                                <div class="attendance-hours">{{ day_att.hours }}h</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="attendance-empty">—</span>
+                                        {% endif %}
+                                    </div>
+                                    <details class="attendance-editor">
+                                        <summary class="btn btn-secondary btn-sm attendance-edit-trigger">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</summary>
+                                        <form method="post" action="{{ url_for('manager_personale_presenze_update') }}" class="attendance-form">
+                                            <input type="hidden" name="personale_id" value="{{ p.id }}" />
+                                            <input type="hidden" name="attendance_date" value="{{ day.isoformat() }}" />
+                                            <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}" />
+                                            {% if personale_filter %}
+                                                <input type="hidden" name="personale_filter" value="{{ personale_filter }}" />
+                                            {% endif %}
+                                            <label class="form-label">
+                                                {% if lang == 'fr' %}Statut{% else %}Stato{% endif %}
+                                                <select name="status" class="form-select" required>
+                                                    {% for value, label in status_options %}
+                                                        <option value="{{ value }}" {% if day_att and day_att.status == value %}selected{% endif %}>
+                                                            {{ label }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </label>
+                                            <label class="form-label">
+                                                {% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}
+                                                <select name="site_id" class="form-select">
+                                                    <option value="">—</option>
+                                                    {% for site in sites %}
+                                                        <option value="{{ site.id }}" {% if day_att and day_att.site_id == site.id %}selected{% endif %}>
+                                                            {{ site.code or site.name }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </label>
+                                            <label class="form-label">
+                                                {% if lang == 'fr' %}Heures{% else %}Ore{% endif %}
+                                                <input type="number" name="hours" min="0" step="0.25" class="form-input" value="{{ day_att.hours if day_att else '' }}" />
+                                            </label>
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                                            </button>
+                                        </form>
+                                    </details>
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% else %}
+                        <tr class="table-empty">
+                            <td colspan="{{ 1 + week_days|length }}">
+                                {% if lang == 'fr' %}
+                                    Aucun personnel actif pour cette semaine.
+                                {% else %}
+                                    Nessun personale attivo per questa settimana.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
+{% endif %}
+
+{% if view == 'month' %}
+    <div class="card">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('manager_personale_presenze') }}" class="form-inline">
+                <input type="hidden" name="view" value="month" />
+                <label class="form-label">
+                    {% if lang == 'fr' %}Employé{% else %}Dipendente{% endif %}
+                    <select name="personale_id" class="form-select">
+                        <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                        {% for worker in personale_list %}
+                            <option value="{{ worker.id }}" {% if selected_personale and worker.id == selected_personale.id %}selected{% endif %}>
+                                {{ worker.cognome }} {{ worker.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="form-label">
+                    {% if lang == 'fr' %}Mois{% else %}Mese{% endif %}
+                    <input type="month" name="month" value="{{ selected_month }}" class="form-input" />
+                </label>
+                <button type="submit" class="btn btn-primary">
+                    🔎 {% if lang == 'fr' %}Mettre à jour{% else %}Aggiorna{% endif %}
+                </button>
+            </form>
+            {% if not selected_personale %}
+                <div class="alert alert-info">
+                    {% if lang == 'fr' %}
+                        Sélectionnez un employé pour voir les présences mensuelles.
+                    {% else %}
+                        Seleziona un dipendente per vedere le presenze mensili.
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if selected_personale %}
+        <div class="card table-card">
+            <div class="card-body">
+                <h2 class="section-title">
+                    {{ selected_personale.cognome }} {{ selected_personale.nome }} — {{ month_context.month_label }}
+                </h2>
+                <table class="data-table presenze-month">
+                    <thead>
+                        <tr>
+                            {% set weekday_names = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] %}
+                            {% for day_name in weekday_names %}
+                                <th>{{ day_name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in month_context.weeks %}
+                            <tr>
+                                {% for day in week %}
+                                    <td>
+                                        {% if day %}
+                                            {% set att = attendance_by_date.get(day) %}
+                                            <div class="presenza-day">
+                                                <div class="presenza-day-date">{{ day.day }}</div>
+                                                {% if att %}
+                                                    {% set status = att.status %}
+                                                    {% set badge_class = status_classes.get(status, 'badge-muted') %}
+                                                    {% if status == 'WORK' and (att.site_code or att.site_name) %}
+                                                        <span class="badge {{ badge_class }}">{{ att.site_code or att.site_name }}</span>
+                                                    {% else %}
+                                                        <span class="badge {{ badge_class }}">{{ status_labels.get(status, status) }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="presenza-day-empty">—</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+{% endif %}
 {% endblock %}
