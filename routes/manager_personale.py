@@ -474,6 +474,59 @@ def manager_personale_presenze(
 
 
 @router.post(
+    "/manager/personale/presenze/day-update",
+    response_class=HTMLResponse,
+    name="manager_personale_presenze_day_update",
+)
+def manager_personale_presenze_day_update(
+    request: Request,
+    personale_id: int = Form(...),
+    date_value: str = Form(..., alias="date"),
+    status: str = Form(...),
+    site_id: str = Form(""),
+    hours: str = Form(""),
+    month: str = Form(""),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+
+    parsed_date = _parse_date(date_value)
+    if not parsed_date:
+        raise HTTPException(status_code=400, detail="Data non valida")
+
+    parsed_site_id = _parse_int(site_id)
+    parsed_hours = _parse_float(hours)
+
+    if status != "WORK":
+        parsed_site_id = None
+
+    upsert_personale_presenza(
+        session=session,
+        personale_id=personale_id,
+        attendance_date=parsed_date,
+        status=status,
+        site_id=parsed_site_id,
+        hours=parsed_hours,
+    )
+    session.commit()
+
+    parsed_month = _parse_month(month)
+    if parsed_month:
+        redirect_month = f"{parsed_month[0]:04d}-{parsed_month[1]:02d}"
+    else:
+        redirect_month = parsed_date.strftime("%Y-%m")
+
+    url = request.url_for("manager_personale_presenze")
+    url = url.include_query_params(
+        view="month",
+        personale_id=personale_id,
+        month=redirect_month,
+    )
+    return RedirectResponse(url=url, status_code=303)
+
+
+@router.post(
     "/manager/personale/presenze",
     response_class=HTMLResponse,
     name="manager_personale_presenze_update",

@@ -1346,6 +1346,41 @@ body {
     opacity: 0.4;
 }
 
+.presenza-day-editor {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+}
+
+.presenza-day-editor summary {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.presenza-day-editor[open] {
+    background: rgba(15, 23, 42, 0.85);
+    border-radius: 8px;
+    padding: 0.3rem 0.4rem 0.4rem;
+}
+
+.form-label-sm {
+    font-size: 0.75rem;
+    display: block;
+    margin-bottom: 0.1rem;
+}
+
+.form-control-sm,
+.form-select-sm {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.35rem;
+    margin-bottom: 0.3rem;
+}
+
+.btn.btn-xs {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+}
+
 .badge-work {
     background: #3b82f6;
     color: #fff;
