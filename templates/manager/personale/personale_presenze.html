@@ -194,7 +194,6 @@
             <section class="presenze-month-filters">
                 <form method="get" action="{{ url_for('manager_personale_presenze') }}" class="presenze-filter-form">
                     <input type="hidden" name="view" value="month" />
-                    <input type="hidden" name="month" value="{{ selected_month }}" />
                     <label>
                         {% if lang == 'fr' %}Type de liste{% else %}Tipo elenco{% endif %}
                         <select name="report_type" onchange="this.form.submit()">
