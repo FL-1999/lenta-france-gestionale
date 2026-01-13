@@ -107,8 +107,8 @@
         <div class="cantiere-step" data-step="2">
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label" for="cantiere_address">Indirizzo</label>
-              <input id="cantiere_address"
+              <label class="form-label" for="cantiere-address">Indirizzo</label>
+              <input id="cantiere-address"
                      name="address"
                      type="text"
                      class="form-control"
@@ -320,6 +320,6 @@
 <script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
 <script src="{{ url_for('static', path='/js/cantiere_form_map.js') }}"></script>
 <script src="{{ url_for('static', path='/js/cantiere-form-stepper.js') }}"></script>
-<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initMap" async defer></script>
 
 {% endblock %}
