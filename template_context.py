@@ -170,7 +170,7 @@ def render_template(
         request, db
     )
     warehouse_requests_count = (
-        warehouse_requests_repository.count_pending_for_user(db, user.id)
+        warehouse_requests_repository.count_pending_requests_for_user(db, user.id)
         if user
         else 0
     )

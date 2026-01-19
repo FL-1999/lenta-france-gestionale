@@ -21,6 +21,9 @@
     {% if has_warehouse_requests %}
         <span class="notification-dot"></span>
     {% endif %}
+    <span class="debug-flag" style="margin-left:8px; opacity:.6; font-size:12px;">
+        (req={{ warehouse_requests_count }})
+    </span>
 </a>
 <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
     🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
