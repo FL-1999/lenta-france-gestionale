@@ -16,14 +16,11 @@
         <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
     {% endif %}
 </a>
-<a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
+<a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary pill">
     🧾 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
     {% if has_warehouse_requests %}
-        <span class="notification-dot"></span>
+        <span class="notification-dot" aria-label="Nuove richieste"></span>
     {% endif %}
-    <span class="debug-flag" style="margin-left:8px; opacity:.6; font-size:12px;">
-        (req={{ warehouse_requests_count }})
-    </span>
 </a>
 <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
     🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
