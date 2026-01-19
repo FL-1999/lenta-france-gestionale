@@ -1,0 +1,27 @@
+<a href="{{ url_for('manager_magazzino_dashboard') }}" class="btn btn-secondary">
+    🧭 {% if lang == 'fr' %}Tableau de bord{% else %}Dashboard{% endif %}
+</a>
+<a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+    📦 {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}
+</a>
+<a href="{{ url_for('manager_magazzino_sotto_soglia') }}" class="btn btn-secondary">
+    📉 {% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}
+    {% if has_unread_warehouse_low_stock_notifications %}
+        <span class="badge-notification" title="{% if lang == 'fr' %}Notifications sous seuil non lues{% else %}Notifiche sotto soglia non lette{% endif %}"></span>
+    {% endif %}
+</a>
+<a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
+    📊 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
+    {% if has_unread_warehouse_notifications %}
+        <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
+    {% endif %}
+</a>
+<a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
+    🧾 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
+    {% if has_warehouse_requests %}
+        <span class="notification-dot"></span>
+    {% endif %}
+</a>
+<a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
+    🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
+</a>

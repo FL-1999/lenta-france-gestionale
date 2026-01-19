@@ -104,28 +104,8 @@
         </div>
     </div>
     <div class="card-body">
-        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-            <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_list') }}">
-                {% if lang == 'fr' %}Liste{% else %}Lista{% endif %}
-            </a>
-            <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_sotto_soglia') }}">
-                {% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}
-                {% if has_unread_warehouse_low_stock_notifications %}
-                    <span class="badge-notification" title="{% if lang == 'fr' %}Notifications sous seuil non lues{% else %}Notifiche sotto soglia non lette{% endif %}"></span>
-                {% endif %}
-            </a>
-            <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_movimenti') }}">
-                {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
-                {% if has_unread_warehouse_notifications %}
-                    <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
-                {% endif %}
-            </a>
-            <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_richieste') }}">
-                {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
-                {% if has_unread_warehouse_request_notifications %}
-                    <span class="badge-notification" title="{% if lang == 'fr' %}Demandes magazzino non lette{% else %}Richieste magazzino non lette{% endif %}"></span>
-                {% endif %}
-            </a>
+        <div class="magazzino-pill-bar">
+            {% include "manager/magazzino/_nav_pills.html" %}
         </div>
     </div>
 </div>
