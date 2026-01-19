@@ -2952,3 +2952,27 @@ label.form-label[for="profondita_totale"]{
   vertical-align: middle !important;
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
 }
+
+.warehouse-pill {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  overflow: visible !important;
+}
+
+.warehouse-pill__label {
+  position: relative;
+  z-index: 1;
+}
+
+.warehouse-pill__dot {
+  position: absolute !important;
+  top: -4px !important;
+  right: -4px !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: #ff3b30 !important;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.45) !important;
+  z-index: 5 !important;
+}
