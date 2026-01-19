@@ -132,6 +132,8 @@ def manager_personale_list(
     lang = request.cookies.get("lang", "it")
     page, per_page = _normalize_pagination(page, per_page)
     total_count = session.exec(select(func.count(Personale.id))).one()
+    if not isinstance(total_count, int):
+        total_count = int(total_count[0])
     query_started = time.monotonic()
     personale = session.exec(
         select(Personale)
