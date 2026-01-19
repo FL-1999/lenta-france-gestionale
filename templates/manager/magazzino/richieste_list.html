@@ -36,6 +36,10 @@
     </div>
 </div>
 
+<div class="magazzino-pill-bar">
+    {% include "manager/magazzino/_nav_pills.html" %}
+</div>
+
 {% set ok = request.query_params.get('ok') %}
 {% set err = request.query_params.get('err') %}
 {% if ok %}
