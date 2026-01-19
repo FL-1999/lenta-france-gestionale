@@ -169,23 +169,38 @@ def render_template(
     request: Request,
     template_name: str,
     context: dict | None,
-    db,
+    db=None,
     user: User | None,
     **response_kwargs,
 ):
-    template_context = build_manager_context(request, user, **(context or {}))
-    template_context["nuove_richieste_count"] = get_cached_nuove_richieste_count(
-        request, db
-    )
-    warehouse_requests_count = (
-        warehouse_requests_repository.count_pending_requests_for_user(db, user.id)
-        if user
-        else 0
-    )
-    template_context["warehouse_requests_count"] = warehouse_requests_count
-    template_context["has_warehouse_requests"] = warehouse_requests_count > 0
+    created_here = False
+    if db is None:
+        db = getattr(getattr(request, "state", None), "db", None)
+    if db is None:
+        db = SessionLocal()
+        created_here = True
 
-    return templates.TemplateResponse(template_name, template_context, **response_kwargs)
+    try:
+        template_context = build_manager_context(request, user, **(context or {}))
+        template_context["nuove_richieste_count"] = get_cached_nuove_richieste_count(
+            request, db
+        )
+        warehouse_requests_count = 0
+        if user and db is not None:
+            warehouse_requests_count = (
+                warehouse_requests_repository.count_pending_requests_for_user(
+                    db, user.id
+                )
+            )
+        template_context["warehouse_requests_count"] = warehouse_requests_count
+        template_context["has_warehouse_requests"] = warehouse_requests_count > 0
+
+        return templates.TemplateResponse(
+            template_name, template_context, **response_kwargs
+        )
+    finally:
+        if created_here and db is not None:
+            db.close()
 
 
 def get_lang_from_request(request: Request) -> str:
