@@ -23,6 +23,9 @@
         </a>
         <a href="{{ url_for('manager_magazzino_sotto_soglia') }}" class="btn btn-secondary">
             📉 {% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}
+            {% if has_unread_warehouse_low_stock_notifications %}
+                <span class="badge-notification" title="{% if lang == 'fr' %}Notifications sous seuil non lues{% else %}Notifiche sotto soglia non lette{% endif %}"></span>
+            {% endif %}
         </a>
         <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
             📊 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
@@ -32,6 +35,9 @@
         </a>
         <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
             🧾 {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
+            {% if has_unread_warehouse_request_notifications %}
+                <span class="badge-notification" title="{% if lang == 'fr' %}Demandes magazzino non lette{% else %}Richieste magazzino non lette{% endif %}"></span>
+            {% endif %}
         </a>
         <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
             🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}

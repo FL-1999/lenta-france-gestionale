@@ -8,7 +8,11 @@ from sqlalchemy.orm import Session
 
 from models import Notification, RoleEnum, Report, Site, User, MagazzinoRichiesta
 
-WAREHOUSE_NOTIFICATION_TYPES = {"magazzino_richiesta"}
+WAREHOUSE_NOTIFICATION_REQUEST_TYPES = {"magazzino_richiesta"}
+WAREHOUSE_NOTIFICATION_LOW_STOCK_TYPES = {"magazzino_sotto_soglia"}
+WAREHOUSE_NOTIFICATION_TYPES = (
+    WAREHOUSE_NOTIFICATION_REQUEST_TYPES | WAREHOUSE_NOTIFICATION_LOW_STOCK_TYPES
+)
 
 
 def create_notification(
@@ -58,21 +62,61 @@ def create_notifications_for_users(
     return notifications
 
 
-def unread_warehouse_notifications_count(db: Session, user: User | None) -> int:
+def _warehouse_notifications_base_query(db: Session, user: User):
+    return db.query(Notification).filter(
+        or_(
+            Notification.recipient_user_id == user.id,
+            Notification.recipient_role == user.role,
+        ),
+        Notification.is_read.is_(False),
+    )
+
+
+def get_warehouse_notification_counts(
+    db: Session, user: User | None
+) -> dict[str, int | bool]:
     if not user:
-        return 0
-    return (
-        db.query(Notification)
-        .filter(
-            or_(
-                Notification.recipient_user_id == user.id,
-                Notification.recipient_role == user.role,
-            ),
-            Notification.is_read.is_(False),
-            Notification.notification_type.in_(WAREHOUSE_NOTIFICATION_TYPES),
+        return {
+            "total": 0,
+            "low_stock": 0,
+            "requests": 0,
+            "has_any": False,
+            "has_low_stock": False,
+            "has_requests": False,
+        }
+
+    base_query = _warehouse_notifications_base_query(db, user)
+    total = (
+        base_query.filter(
+            Notification.notification_type.in_(WAREHOUSE_NOTIFICATION_TYPES)
         )
         .count()
     )
+    low_stock = (
+        base_query.filter(
+            Notification.notification_type.in_(WAREHOUSE_NOTIFICATION_LOW_STOCK_TYPES)
+        )
+        .count()
+    )
+    requests = (
+        base_query.filter(
+            Notification.notification_type.in_(WAREHOUSE_NOTIFICATION_REQUEST_TYPES)
+        )
+        .count()
+    )
+    return {
+        "total": total,
+        "low_stock": low_stock,
+        "requests": requests,
+        "has_any": total > 0,
+        "has_low_stock": low_stock > 0,
+        "has_requests": requests > 0,
+    }
+
+
+def unread_warehouse_notifications_count(db: Session, user: User | None) -> int:
+    counts = get_warehouse_notification_counts(db, user)
+    return int(counts["total"])
 
 
 def _get_manager_users(db: Session) -> list[User]:

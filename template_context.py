@@ -16,7 +16,7 @@ from models import (
     SiteStatusEnum,
     User,
 )
-from notifications import unread_warehouse_notifications_count
+from notifications import get_warehouse_notification_counts
 from permissions import has_perm
 
 
@@ -105,16 +105,23 @@ def get_cached_nuove_richieste_count(request: Request, db=None) -> int:
 
 def get_cached_warehouse_notifications_count(
     request: Request, user: User | None, db=None
-) -> int:
+) -> dict[str, int | bool]:
     if not user:
-        return 0
+        return {
+            "total": 0,
+            "low_stock": 0,
+            "requests": 0,
+            "has_any": False,
+            "has_low_stock": False,
+            "has_requests": False,
+        }
     cached = getattr(request.state, "warehouse_unread_notifications_count", None)
-    if isinstance(cached, int):
+    if isinstance(cached, dict):
         return cached
 
     cache_key = f"{_CACHE_KEY_WAREHOUSE_NOTIFICATIONS}:{user.id}:{user.role.value}"
     cached_global = _CACHE.get(cache_key)
-    if isinstance(cached_global, int):
+    if isinstance(cached_global, dict):
         request.state.warehouse_unread_notifications_count = cached_global
         return cached_global
 
@@ -123,10 +130,10 @@ def get_cached_warehouse_notifications_count(
         db = SessionLocal()
         close_db = True
     try:
-        count = int(unread_warehouse_notifications_count(db, user) or 0)
-        request.state.warehouse_unread_notifications_count = count
-        _CACHE.set(cache_key, count, _CACHE_TTL_SHORT)
-        return count
+        counts = get_warehouse_notification_counts(db, user)
+        request.state.warehouse_unread_notifications_count = counts
+        _CACHE.set(cache_key, counts, _CACHE_TTL_SHORT)
+        return counts
     finally:
         if close_db:
             db.close()
@@ -137,10 +144,14 @@ def get_warehouse_notifications_context(
     user: User | None,
     db=None,
 ) -> dict[str, object]:
-    count = get_cached_warehouse_notifications_count(request, user, db)
+    counts = get_cached_warehouse_notifications_count(request, user, db)
     return {
-        "unread_warehouse_notifications_count": count,
-        "has_unread_warehouse_notifications": count > 0,
+        "unread_warehouse_notifications_count": counts["total"],
+        "has_unread_warehouse_notifications": counts["has_any"],
+        "unread_warehouse_low_stock_notifications_count": counts["low_stock"],
+        "unread_warehouse_request_notifications_count": counts["requests"],
+        "has_unread_warehouse_low_stock_notifications": counts["has_low_stock"],
+        "has_unread_warehouse_request_notifications": counts["has_requests"],
     }
 
 
