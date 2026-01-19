@@ -156,6 +156,14 @@ def get_warehouse_notifications_context(
     }
 
 
+def build_manager_context(
+    request: Request,
+    user: User | None,
+    **context: object,
+) -> dict:
+    return build_template_context(request, user, **context)
+
+
 def render_template(
     templates,
     request: Request,
@@ -165,7 +173,7 @@ def render_template(
     user: User | None,
     **response_kwargs,
 ):
-    template_context = build_template_context(request, user, **(context or {}))
+    template_context = build_manager_context(request, user, **(context or {}))
     template_context["nuove_richieste_count"] = get_cached_nuove_richieste_count(
         request, db
     )
