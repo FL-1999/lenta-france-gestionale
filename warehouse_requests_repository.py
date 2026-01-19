@@ -10,12 +10,14 @@ PENDING_REQUEST_STATUSES = {
 }
 
 
-def count_pending_for_user(db: Session, user_id: int | None = None) -> int:
+def count_pending_for_user(db: Session | None, user_id: int | None = None) -> int:
+    if db is None:
+        return 0
     query = db.query(MagazzinoRichiesta).filter(
         MagazzinoRichiesta.stato.in_(PENDING_REQUEST_STATUSES)
     )
     return int(query.count() or 0)
 
 
-def count_pending_requests_for_user(db: Session, user_id: int | None = None) -> int:
+def count_pending_requests_for_user(db: Session | None, user_id: int | None = None) -> int:
     return count_pending_for_user(db, user_id)
