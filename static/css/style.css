@@ -2936,3 +2936,19 @@ label.form-label[for="profondita_totale"]{
   justify-content: space-between;
   gap: 0.5rem;
 }
+
+.pill {
+  position: relative;
+  overflow: visible;
+}
+
+.pill .notification-dot {
+  display: inline-block !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: #ff3b30 !important;
+  margin-left: 8px !important;
+  vertical-align: middle !important;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
