@@ -6,13 +6,10 @@ from typing import Iterable
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from magazzino_repository import count_under_threshold
 from models import Notification, RoleEnum, Report, Site, User, MagazzinoRichiesta
+from warehouse_requests_repository import count_pending_requests_for_user
 
-WAREHOUSE_NOTIFICATION_REQUEST_TYPES = {"magazzino_richiesta"}
-WAREHOUSE_NOTIFICATION_LOW_STOCK_TYPES = {"magazzino_sotto_soglia"}
-WAREHOUSE_NOTIFICATION_TYPES = (
-    WAREHOUSE_NOTIFICATION_REQUEST_TYPES | WAREHOUSE_NOTIFICATION_LOW_STOCK_TYPES
-)
 
 
 def create_notification(
@@ -62,16 +59,6 @@ def create_notifications_for_users(
     return notifications
 
 
-def _warehouse_notifications_base_query(db: Session, user: User):
-    return db.query(Notification).filter(
-        or_(
-            Notification.recipient_user_id == user.id,
-            Notification.recipient_role == user.role,
-        ),
-        Notification.is_read.is_(False),
-    )
-
-
 def get_warehouse_notification_counts(
     db: Session, user: User | None
 ) -> dict[str, int | bool]:
@@ -85,25 +72,9 @@ def get_warehouse_notification_counts(
             "has_requests": False,
         }
 
-    base_query = _warehouse_notifications_base_query(db, user)
-    total = (
-        base_query.filter(
-            Notification.notification_type.in_(WAREHOUSE_NOTIFICATION_TYPES)
-        )
-        .count()
-    )
-    low_stock = (
-        base_query.filter(
-            Notification.notification_type.in_(WAREHOUSE_NOTIFICATION_LOW_STOCK_TYPES)
-        )
-        .count()
-    )
-    requests = (
-        base_query.filter(
-            Notification.notification_type.in_(WAREHOUSE_NOTIFICATION_REQUEST_TYPES)
-        )
-        .count()
-    )
+    low_stock = count_under_threshold(db)
+    requests = count_pending_requests_for_user(db, user.id)
+    total = low_stock + requests
     return {
         "total": total,
         "low_stock": low_stock,
