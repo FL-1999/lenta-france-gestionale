@@ -170,7 +170,7 @@ def render_template(
     template_name: str,
     context: dict | None,
     db=None,
-    user: User | None,
+    user: User | None = None,
     **response_kwargs,
 ):
     created_here = False
