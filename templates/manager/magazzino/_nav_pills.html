@@ -4,7 +4,7 @@
 <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
     📦 {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}
 </a>
-<a href="{{ url_for('manager_magazzino_sotto_soglia') }}" class="nav-pill">
+<a href="{{ url_for('manager_magazzino_sotto_soglia') }}" class="btn btn-secondary pill-with-dot">
     <span class="nav-pill__label">{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
     {% if has_warehouse_low_stock %}
         <span class="pill-dot" aria-label="Materiali sotto soglia"></span>
@@ -13,7 +13,7 @@
 <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
     📊 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
 </a>
-<a href="{{ url_for('manager_magazzino_richieste') }}" class="nav-pill">
+<a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary pill-with-dot">
     <span class="nav-pill__label">{% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}</span>
     {% if has_warehouse_requests %}
         <span class="pill-dot" aria-label="Nuove richieste"></span>
