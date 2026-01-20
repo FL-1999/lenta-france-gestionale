@@ -218,6 +218,26 @@ def build_template_context(
     warehouse_notifications_context = get_warehouse_notifications_context(request, user)
     for key, value in warehouse_notifications_context.items():
         template_context.setdefault(key, value)
+    template_context.setdefault(
+        "warehouse_requests_count",
+        template_context.get("unread_warehouse_request_notifications_count", 0),
+    )
+    template_context.setdefault(
+        "has_warehouse_requests",
+        template_context.get("has_unread_warehouse_request_notifications", False),
+    )
+    template_context.setdefault(
+        "warehouse_low_stock_count",
+        template_context.get("unread_warehouse_low_stock_notifications_count", 0),
+    )
+    template_context.setdefault(
+        "has_warehouse_low_stock",
+        template_context.get("has_unread_warehouse_low_stock_notifications", False),
+    )
+    template_context.setdefault(
+        "warehouse_notifications_total",
+        template_context.get("unread_warehouse_notifications_count", 0),
+    )
     return template_context
 
 
