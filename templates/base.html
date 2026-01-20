@@ -129,11 +129,12 @@
                             {% else %}
                                 Magazzino
                             {% endif %}
-                            {% if nuove_richieste_count and nuove_richieste_count > 0 %}
-                                <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
-                                    {{ '99+' if nuove_richieste_count > 99 else nuove_richieste_count }}
-                                </span>
-                            {% endif %}
+{% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
+  <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
+    {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
+  </span>
+{% endif %}
+
                             {% if has_unread_warehouse_notifications %}
                                 <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
                             {% endif %}
