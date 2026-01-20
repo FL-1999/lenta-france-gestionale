@@ -3009,3 +3009,26 @@ label.form-label[for="profondita_totale"]{
 .pills-bar{
   overflow: visible !important;
 }
+
+/* Assicura che le pill restino “tonde” e senza sottolineatura */
+.nav-pill, .nav-pill:visited, .nav-pill:hover, .nav-pill:active{
+  text-decoration: none;
+}
+
+/* Pallino rosso piccolo tipo badge */
+.nav-pill{
+  position: relative;     /* per ancorare il dot */
+  overflow: visible;
+}
+
+.pill-dot{
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #ff3b30;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.45);
+  pointer-events: none;
+}
