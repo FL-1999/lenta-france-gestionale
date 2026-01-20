@@ -2977,31 +2977,13 @@ label.form-label[for="profondita_totale"]{
   z-index: 5 !important;
 }
 
-.nav-pill.nav-pill--requests{
-  position: relative !important;
-  overflow: visible !important;
-}
-
-.nav-pill__dot{
-  position: absolute !important;
-  top: -5px !important;
-  right: -5px !important;
-  width: 10px !important;
-  height: 10px !important;
-  border-radius: 999px !important;
-  background: #ff3b30 !important;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.45) !important;
-  z-index: 9999 !important;
-  pointer-events: none !important;
-}
-
 /* pill link: mai sottolineate */
 .nav-pill, .nav-pill:visited, .nav-pill:hover, .nav-pill:active{
   text-decoration: none !important;
 }
 
-/* badge visibile */
-.nav-pill.nav-pill--requests{
+.nav-pill.nav-pill--requests,
+.nav-pill.nav-pill--lowstock{
   position: relative !important;
   overflow: visible !important;
   padding-right: 18px !important; /* spazio per il badge */
@@ -3021,6 +3003,9 @@ label.form-label[for="profondita_totale"]{
 }
 
 /* IMPORTANTISSIMO: se il contenitore delle pill taglia (overflow hidden), forzalo */
-.magazzino-nav-pills, .nav-pills, .pills-bar{
+.magazzino-pill-bar,
+.magazzino-nav-pills,
+.nav-pills,
+.pills-bar{
   overflow: visible !important;
 }

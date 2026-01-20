@@ -18,7 +18,6 @@ from models import (
 )
 from notifications import get_warehouse_notification_counts
 from permissions import has_perm
-import warehouse_requests_repository
 
 
 def _can_view_manager_badges(user: User | None) -> bool:
@@ -185,15 +184,6 @@ def render_template(
         template_context["nuove_richieste_count"] = get_cached_nuove_richieste_count(
             request, db
         )
-        warehouse_requests_count = 0
-        if user and db is not None:
-            warehouse_requests_count = (
-                warehouse_requests_repository.count_pending_requests_for_user(
-                    db, user.id
-                )
-            )
-        template_context["warehouse_requests_count"] = warehouse_requests_count
-        template_context["has_warehouse_requests"] = warehouse_requests_count > 0
 
         return templates.TemplateResponse(
             template_name, template_context, **response_kwargs
