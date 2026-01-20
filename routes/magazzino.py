@@ -36,6 +36,8 @@ from template_context import (
 )
 from permissions import has_perm
 from notifications import notify_magazzino_richiesta
+import magazzino_repository
+import warehouse_requests_repository
 
 
 templates = Jinja2Templates(directory="templates")
@@ -56,6 +58,31 @@ MAX_CATEGORIA_ICON_LENGTH = 32
 MAX_CATEGORIA_COLOR_LENGTH = 20
 DEFAULT_PER_PAGE = 25
 MAX_PER_PAGE = 100
+
+
+def build_magazzino_badges(db: Session | None, user: User | None) -> dict[str, object]:
+    if not user:
+        return {
+            "warehouse_requests_count": 0,
+            "has_warehouse_requests": False,
+            "warehouse_low_stock_count": 0,
+            "has_warehouse_low_stock": False,
+            "warehouse_notifications_total": 0,
+            "has_unread_warehouse_notifications": False,
+        }
+    requests_count = warehouse_requests_repository.count_pending_requests_for_user(
+        db, user.id
+    )
+    low_stock_count = magazzino_repository.count_under_threshold(db)
+    notifications_total = requests_count + low_stock_count
+    return {
+        "warehouse_requests_count": requests_count,
+        "has_warehouse_requests": requests_count > 0,
+        "warehouse_low_stock_count": low_stock_count,
+        "has_warehouse_low_stock": low_stock_count > 0,
+        "warehouse_notifications_total": notifications_total,
+        "has_unread_warehouse_notifications": notifications_total > 0,
+    }
 
 
 def ensure_caposquadra_or_manager(user: User) -> None:
@@ -692,6 +719,7 @@ def manager_magazzino_dashboard(
         SimpleNamespace(codice=codice, nome=nome, totale=totale)
         for codice, nome, totale in top_consumi_rows
     ]
+    badges = build_magazzino_badges(db, current_user)
     return render_template(
         templates,
         request,
@@ -701,6 +729,7 @@ def manager_magazzino_dashboard(
             "esauriti_count": esauriti_count,
             "richieste_nuove_count": richieste_nuove_count,
             "top_consumi": top_consumi,
+            **badges,
         },
         db,
         current_user,
@@ -861,6 +890,7 @@ def _render_magazzino_items_list(
         "sotto_soglia": sotto_soglia == 1,
         "esauriti": esauriti == 1,
     }
+    badges = build_magazzino_badges(db, current_user)
     return render_template(
         templates,
         request,
@@ -879,6 +909,7 @@ def _render_magazzino_items_list(
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             "success_message": success_message,
             "error_message": error_message,
+            **badges,
         },
         db,
         current_user,
@@ -924,6 +955,7 @@ def manager_magazzino_sotto_soglia(
         for entry in items_with_order
         if entry.da_ordinare is not None and entry.da_ordinare > 0
     ]
+    badges = build_magazzino_badges(db, current_user)
 
     return render_template(
         templates,
@@ -933,6 +965,7 @@ def manager_magazzino_sotto_soglia(
             "items": items_with_order,
             "items_count": len(items_with_order),
             "suggested_entries": suggested_entries,
+            **badges,
         },
         db,
         current_user,
@@ -1213,6 +1246,7 @@ def manager_magazzino_movimenti(
 
     cantieri = db.query(Site).order_by(Site.name.asc()).all()
     items = db.query(MagazzinoItem).order_by(MagazzinoItem.nome.asc()).all()
+    badges = build_magazzino_badges(db, current_user)
 
     return render_template(
         templates,
@@ -1236,6 +1270,7 @@ def manager_magazzino_movimenti(
             "page": page,
             "total_pages": total_pages,
             "total_count": total_count,
+            **badges,
         },
         db,
         current_user,
@@ -1347,6 +1382,7 @@ def manager_magazzino_categorie_list(
     active_ids = [categoria.id for categoria in categorie if categoria.attiva]
     first_active_id = active_ids[0] if active_ids else None
     last_active_id = active_ids[-1] if active_ids else None
+    badges = build_magazzino_badges(db, current_user)
     return render_template(
         templates,
         request,
@@ -1355,6 +1391,7 @@ def manager_magazzino_categorie_list(
             "categorie": categorie,
             "first_active_id": first_active_id,
             "last_active_id": last_active_id,
+            **badges,
         },
         db,
         current_user,
@@ -2627,6 +2664,7 @@ def manager_magazzino_richieste(
         .limit(per_page)
         .all()
     )
+    badges = build_magazzino_badges(db, current_user)
 
     return render_template(
         templates,
@@ -2640,6 +2678,7 @@ def manager_magazzino_richieste(
             "page": page,
             "total_pages": total_pages,
             "total_count": total_count,
+            **badges,
         },
         db,
         current_user,
