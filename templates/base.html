@@ -129,12 +129,7 @@
                                     {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
                                 </span>
                             {% endif %}
-
-                            {% if manager_badges.low_stock %}
-                                <span class="nav-badge nav-badge--alert" title="{% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}">
-                                    {{ manager_badges.low_stock }}
-                                </span>
-                            {% endif %}
+                            
                         </a>
                     </div>
 
