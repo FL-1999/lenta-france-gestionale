@@ -3055,3 +3055,13 @@ label.form-label[for="profondita_totale"]{
 .nav-link--card .badge-notification:empty {
   display: none !important;
 }
+/* STOP pallino extra ovunque (Magazzino compreso) */
+.notification-dot {
+  display: none !important;
+}
+
+/* STOP eventuali badge vuoti (pallino senza numero) */
+.badge-notification:empty {
+  display: none !important;
+}
+
