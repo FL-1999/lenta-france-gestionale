@@ -3046,3 +3046,12 @@ label.form-label[for="profondita_totale"]{
   box-shadow: 0 0 0 2px rgba(0,0,0,0.45);
   pointer-events: none;
 }
+/* STOP pallino extra accanto al badge Magazzino */
+.nav-link--card .notification-dot {
+  display: none !important;
+}
+
+/* Sicurezza: se esiste un badge vuoto, non farlo vedere */
+.nav-link--card .badge-notification:empty {
+  display: none !important;
+}
