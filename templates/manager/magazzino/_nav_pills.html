@@ -11,7 +11,14 @@
     📊 {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
 </a>
 <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
-    <span class="nav-pill__label">{% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}</span>
+  <span class="nav-pill__label">{% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}</span>
+
+  {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
+    <span class="badge-notification"
+          title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
+      {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
+    </span>
+  {% endif %}
 </a>
 <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
     🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
