@@ -208,6 +208,9 @@ class Site(Base):
     paratie_total_panels = Column(Integer, nullable=True)
     paratie_done_panels = Column(Integer, nullable=True)
     strut_levels_count = Column(Integer, nullable=True)
+    installazione_cantiere_pct = Column(Integer, nullable=False, default=0)
+    rabotage_pct = Column(Integer, nullable=False, default=0)
+    pozzi_pompaggio_pct = Column(Integer, nullable=False, default=0)
 
     caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     caposquadra = relationship("User", back_populates="assigned_sites")
