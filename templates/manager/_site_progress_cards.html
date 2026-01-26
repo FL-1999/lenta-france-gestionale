@@ -60,5 +60,50 @@
                 {% if lang == 'fr' %}butons{% else %}puntoni{% endif %}
             </div>
         </div>
+
+        <div class="site-progress-card" role="button">
+            <div class="site-progress-card-title">
+                {% if lang == 'fr' %}Installation chantier{% else %}Installazione cantiere{% endif %}
+            </div>
+            <div class="site-progress-card-percent">
+                {{ progress_summary.installazione_cantiere.percent }}%
+            </div>
+            <div class="site-progress-card-bar" aria-hidden="true">
+                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.installazione_cantiere.percent }}%;"></div>
+            </div>
+            <div class="site-progress-card-sub">
+                {{ progress_summary.installazione_cantiere.status }}
+            </div>
+        </div>
+
+        <div class="site-progress-card" role="button">
+            <div class="site-progress-card-title">
+                {% if lang == 'fr' %}Rabotage{% else %}Rabotage{% endif %}
+            </div>
+            <div class="site-progress-card-percent">
+                {{ progress_summary.rabotage.percent }}%
+            </div>
+            <div class="site-progress-card-bar" aria-hidden="true">
+                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.rabotage.percent }}%;"></div>
+            </div>
+            <div class="site-progress-card-sub">
+                {{ progress_summary.rabotage.status }}
+            </div>
+        </div>
+
+        <div class="site-progress-card" role="button">
+            <div class="site-progress-card-title">
+                {% if lang == 'fr' %}Puits / pompage{% else %}Pozzi / pompaggio{% endif %}
+            </div>
+            <div class="site-progress-card-percent">
+                {{ progress_summary.pozzi_pompaggio.percent }}%
+            </div>
+            <div class="site-progress-card-bar" aria-hidden="true">
+                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.pozzi_pompaggio.percent }}%;"></div>
+            </div>
+            <div class="site-progress-card-sub">
+                {{ progress_summary.pozzi_pompaggio.status }}
+            </div>
+        </div>
     </div>
 </section>
