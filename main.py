@@ -1688,6 +1688,33 @@ def _format_progress_value(value: float | int) -> str:
     return str(int(value))
 
 
+def _clamp_progress_percent(value: str | int | float | None) -> int:
+    if value in ("", None):
+        return 0
+    try:
+        numeric_value = int(float(value))
+    except (TypeError, ValueError):
+        return 0
+    return max(0, min(100, numeric_value))
+
+
+def _apply_extra_site_progress(
+    site: Site,
+    installazione_cantiere_pct: str | int | float | None,
+    rabotage_pct: str | int | float | None,
+    pozzi_pompaggio_pct: str | int | float | None,
+) -> None:
+    if (
+        installazione_cantiere_pct is None
+        and rabotage_pct is None
+        and pozzi_pompaggio_pct is None
+    ):
+        return
+    site.installazione_cantiere_pct = _clamp_progress_percent(installazione_cantiere_pct)
+    site.rabotage_pct = _clamp_progress_percent(rabotage_pct)
+    site.pozzi_pompaggio_pct = _clamp_progress_percent(pozzi_pompaggio_pct)
+
+
 def _build_site_progress(
     site: Site, lang: str
 ) -> tuple[dict[str, dict[str, object]], list[dict[str, int | str]], int]:
@@ -1695,6 +1722,9 @@ def _build_site_progress(
     cordoli_done = float(site.cordoli_done_m or 0)
     paratie_total = int(site.paratie_total_panels or 0)
     paratie_done = int(site.paratie_done_panels or 0)
+    installazione_cantiere_pct = _clamp_progress_percent(site.installazione_cantiere_pct)
+    rabotage_pct = _clamp_progress_percent(site.rabotage_pct)
+    pozzi_pompaggio_pct = _clamp_progress_percent(site.pozzi_pompaggio_pct)
 
     strut_levels = list(site.strut_levels or [])
     strut_total = sum(level.total_struts_level or 0 for level in strut_levels)
@@ -1704,11 +1734,17 @@ def _build_site_progress(
         "cordoli": "Cordoli guida" if lang == "it" else "Guides (cordons)",
         "paratie": "Scavo + paratie" if lang == "it" else "Excavation + parois",
         "puntoni": "Posa puntoni" if lang == "it" else "Pose des butons",
+        "installazione_cantiere": "Installazione cantiere" if lang == "it" else "Installation chantier",
+        "rabotage": "Rabotage" if lang == "it" else "Rabotage",
+        "pozzi_pompaggio": "Pozzi pompaggio" if lang == "it" else "Puits de pompage",
     }
     units = {
         "cordoli": "m",
         "paratie": "pannelli" if lang == "it" else "panneaux",
         "puntoni": "puntoni" if lang == "it" else "butons",
+        "installazione_cantiere": "%",
+        "rabotage": "%",
+        "pozzi_pompaggio": "%",
     }
 
     cordoli_done_display = _format_progress_value(cordoli_done)
@@ -1742,6 +1778,30 @@ def _build_site_progress(
             "percent": _progress_percent(strut_done, strut_total),
             "unit": units["puntoni"],
             "subtitle": f"{strut_done_display} / {strut_total_display} {units['puntoni']}",
+        },
+        "installazione_cantiere": {
+            "label": labels["installazione_cantiere"],
+            "total": 100,
+            "done": installazione_cantiere_pct,
+            "percent": installazione_cantiere_pct,
+            "unit": units["installazione_cantiere"],
+            "subtitle": f"{installazione_cantiere_pct}{units['installazione_cantiere']}",
+        },
+        "rabotage": {
+            "label": labels["rabotage"],
+            "total": 100,
+            "done": rabotage_pct,
+            "percent": rabotage_pct,
+            "unit": units["rabotage"],
+            "subtitle": f"{rabotage_pct}{units['rabotage']}",
+        },
+        "pozzi_pompaggio": {
+            "label": labels["pozzi_pompaggio"],
+            "total": 100,
+            "done": pozzi_pompaggio_pct,
+            "percent": pozzi_pompaggio_pct,
+            "unit": units["pozzi_pompaggio"],
+            "subtitle": f"{pozzi_pompaggio_pct}{units['pozzi_pompaggio']}",
         },
     }
     for key in progress_summary:
@@ -1796,6 +1856,9 @@ def manager_site_progress_cordoli(
     site_id: int,
     cordoli_total_m: float | None = Form(None),
     cordoli_done_m: float | None = Form(None),
+    installazione_cantiere_pct: str | None = Form(None),
+    rabotage_pct: str | None = Form(None),
+    pozzi_pompaggio_pct: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "manager.access"):
@@ -1811,6 +1874,12 @@ def manager_site_progress_cordoli(
         done_value = max(float(cordoli_done_m or 0), 0.0)
         site.cordoli_total_m = total_value
         site.cordoli_done_m = done_value
+        _apply_extra_site_progress(
+            site,
+            installazione_cantiere_pct,
+            rabotage_pct,
+            pozzi_pompaggio_pct,
+        )
         db.commit()
     finally:
         db.close()
@@ -1830,6 +1899,9 @@ def manager_site_progress_paratie(
     site_id: int,
     paratie_total_panels: int | None = Form(None),
     paratie_done_panels: int | None = Form(None),
+    installazione_cantiere_pct: str | None = Form(None),
+    rabotage_pct: str | None = Form(None),
+    pozzi_pompaggio_pct: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "manager.access"):
@@ -1845,6 +1917,12 @@ def manager_site_progress_paratie(
         done_value = max(int(paratie_done_panels or 0), 0)
         site.paratie_total_panels = total_value
         site.paratie_done_panels = done_value
+        _apply_extra_site_progress(
+            site,
+            installazione_cantiere_pct,
+            rabotage_pct,
+            pozzi_pompaggio_pct,
+        )
         db.commit()
     finally:
         db.close()
@@ -1867,6 +1945,9 @@ def manager_site_progress_puntoni(
     level_quota: list[str] = Form(default_factory=list),
     total_struts_level: list[int] = Form(default_factory=list),
     done_struts_level: list[int] = Form(default_factory=list),
+    installazione_cantiere_pct: str | None = Form(None),
+    rabotage_pct: str | None = Form(None),
+    pozzi_pompaggio_pct: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "manager.access"):
@@ -1915,6 +1996,12 @@ def manager_site_progress_puntoni(
                 db.delete(level)
 
         site.strut_levels_count = normalized_count
+        _apply_extra_site_progress(
+            site,
+            installazione_cantiere_pct,
+            rabotage_pct,
+            pozzi_pompaggio_pct,
+        )
         db.commit()
     finally:
         db.close()
