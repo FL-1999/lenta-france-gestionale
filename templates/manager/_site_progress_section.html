@@ -13,10 +13,29 @@
 
   {# --- CARD RIASSUNTIVE IN ALTO --- #}
   <div class="progress-card-grid">
+    {# Card Installazione cantiere #}
+    <a class="progress-card" href="#progress-installazione-cantiere">
+      <div class="progress-card-title">
+        {% if lang == 'fr' %}Installation chantier{% else %}Installazione cantiere{% endif %}
+      </div>
+      <div class="progress-card-meta">
+        <span class="progress-card-percent">
+          {{ progress_summary.installazione_cantiere.percent }}%
+        </span>
+        <span class="progress-card-status">
+          {{ progress_summary.installazione_cantiere.status }}
+        </span>
+      </div>
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.installazione_cantiere.percent }}%;"></div>
+      </div>
+    </a>
+
     {# Card Cordoli #}
     <a class="progress-card" href="#progress-cordoli">
       <div class="progress-card-title">
-        {% if lang == 'fr' %}Guides (cordons){% else %}Cordoli guida{% endif %}
+        {% if lang == 'fr' %}Guides (cordons){% else %}Muretti guida{% endif %}
       </div>
       <div class="progress-card-meta">
         <span class="progress-card-percent">
@@ -35,7 +54,7 @@
     {# Card Paratie #}
     <a class="progress-card" href="#progress-paratie">
       <div class="progress-card-title">
-        {% if lang == 'fr' %}Excavation + parois{% else %}Scavo + paratie{% endif %}
+        {% if lang == 'fr' %}Excavation / parois{% else %}Scavo/Paratie{% endif %}
       </div>
       <div class="progress-card-meta">
         <span class="progress-card-percent">
@@ -69,13 +88,99 @@
              style="width: {{ progress_summary.puntoni.percent }}%;"></div>
       </div>
     </a>
+
+    {# Card Rabotage #}
+    <a class="progress-card" href="#progress-rabotage">
+      <div class="progress-card-title">
+        {% if lang == 'fr' %}Rabotage{% else %}Rabotage{% endif %}
+      </div>
+      <div class="progress-card-meta">
+        <span class="progress-card-percent">
+          {{ progress_summary.rabotage.percent }}%
+        </span>
+        <span class="progress-card-status">
+          {{ progress_summary.rabotage.status }}
+        </span>
+      </div>
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.rabotage.percent }}%;"></div>
+      </div>
+    </a>
+
+    {# Card Pozzi / pompaggio #}
+    <a class="progress-card" href="#progress-pozzi-pompaggio">
+      <div class="progress-card-title">
+        {% if lang == 'fr' %}Puits / pompage{% else %}Pozzi / pompaggio{% endif %}
+      </div>
+      <div class="progress-card-meta">
+        <span class="progress-card-percent">
+          {{ progress_summary.pozzi_pompaggio.percent }}%
+        </span>
+        <span class="progress-card-status">
+          {{ progress_summary.pozzi_pompaggio.status }}
+        </span>
+      </div>
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.pozzi_pompaggio.percent }}%;"></div>
+      </div>
+    </a>
+  </div>
+
+  {# --- DETTAGLIO INSTALLAZIONE CANTIERE --- #}
+  <div class="progress-detail" id="progress-installazione-cantiere">
+    <div class="progress-detail-header">
+      <h3>
+        {% if lang == 'fr' %}Installation chantier{% else %}Installazione cantiere{% endif %}
+      </h3>
+      <span class="progress-card-status">
+        {{ progress_summary.installazione_cantiere.status }}
+      </span>
+    </div>
+
+    <form method="post"
+          action="{{ url_for('manager_site_progress_cordoli', site_id=site.id) }}">
+      <input type="hidden" name="cordoli_total_m" value="{{ progress_summary.cordoli.total }}" />
+      <input type="hidden" name="cordoli_done_m" value="{{ progress_summary.cordoli.done }}" />
+      <input type="hidden" name="rabotage_pct" value="{{ progress_summary.rabotage.percent }}" />
+      <input type="hidden" name="pozzi_pompaggio_pct" value="{{ progress_summary.pozzi_pompaggio.percent }}" />
+
+      <div class="form-group">
+        <label class="form-label" for="installazione_cantiere_pct">
+          {% if lang == 'fr' %}Installation chantier{% else %}Installazione cantiere{% endif %}
+        </label>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+          id="installazione_cantiere_pct"
+          name="installazione_cantiere_pct"
+          class="form-control"
+          value="{{ progress_summary.installazione_cantiere.percent }}"
+        />
+      </div>
+
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.installazione_cantiere.percent }}%;"></div>
+      </div>
+      <p class="progress-card-percent">
+        {{ progress_summary.installazione_cantiere.percent }}%
+      </p>
+
+      <button type="submit" class="btn btn-primary">
+        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+      </button>
+    </form>
   </div>
 
   {# --- DETTAGLIO CORDOLI --- #}
   <div class="progress-detail" id="progress-cordoli">
     <div class="progress-detail-header">
       <h3>
-        {% if lang == 'fr' %}Guides (cordons){% else %}Cordoli guida{% endif %}
+        {% if lang == 'fr' %}Guides (cordons){% else %}Muretti guida{% endif %}
       </h3>
       <span class="progress-card-status">
         {{ progress_summary.cordoli.status }}
@@ -132,7 +237,7 @@
   <div class="progress-detail" id="progress-paratie">
     <div class="progress-detail-header">
       <h3>
-        {% if lang == 'fr' %}Excavation + parois{% else %}Scavo + paratie{% endif %}
+        {% if lang == 'fr' %}Excavation / parois{% else %}Scavo/Paratie{% endif %}
       </h3>
       <span class="progress-card-status">
         {{ progress_summary.paratie.status }}
@@ -299,6 +404,102 @@
           </p>
         </div>
       </div>
+
+      <button type="submit" class="btn btn-primary">
+        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+      </button>
+    </form>
+  </div>
+
+  {# --- DETTAGLIO RABOTAGE --- #}
+  <div class="progress-detail" id="progress-rabotage">
+    <div class="progress-detail-header">
+      <h3>
+        {% if lang == 'fr' %}Rabotage{% else %}Rabotage{% endif %}
+      </h3>
+      <span class="progress-card-status">
+        {{ progress_summary.rabotage.status }}
+      </span>
+    </div>
+
+    <form method="post"
+          action="{{ url_for('manager_site_progress_cordoli', site_id=site.id) }}">
+      <input type="hidden" name="cordoli_total_m" value="{{ progress_summary.cordoli.total }}" />
+      <input type="hidden" name="cordoli_done_m" value="{{ progress_summary.cordoli.done }}" />
+      <input type="hidden" name="installazione_cantiere_pct" value="{{ progress_summary.installazione_cantiere.percent }}" />
+      <input type="hidden" name="pozzi_pompaggio_pct" value="{{ progress_summary.pozzi_pompaggio.percent }}" />
+
+      <div class="form-group">
+        <label class="form-label" for="rabotage_pct">
+          {% if lang == 'fr' %}Rabotage{% else %}Rabotage{% endif %}
+        </label>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+          id="rabotage_pct"
+          name="rabotage_pct"
+          class="form-control"
+          value="{{ progress_summary.rabotage.percent }}"
+        />
+      </div>
+
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.rabotage.percent }}%;"></div>
+      </div>
+      <p class="progress-card-percent">
+        {{ progress_summary.rabotage.percent }}%
+      </p>
+
+      <button type="submit" class="btn btn-primary">
+        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+      </button>
+    </form>
+  </div>
+
+  {# --- DETTAGLIO POZZI / POMPAGGIO --- #}
+  <div class="progress-detail" id="progress-pozzi-pompaggio">
+    <div class="progress-detail-header">
+      <h3>
+        {% if lang == 'fr' %}Puits / pompage{% else %}Pozzi / pompaggio{% endif %}
+      </h3>
+      <span class="progress-card-status">
+        {{ progress_summary.pozzi_pompaggio.status }}
+      </span>
+    </div>
+
+    <form method="post"
+          action="{{ url_for('manager_site_progress_cordoli', site_id=site.id) }}">
+      <input type="hidden" name="cordoli_total_m" value="{{ progress_summary.cordoli.total }}" />
+      <input type="hidden" name="cordoli_done_m" value="{{ progress_summary.cordoli.done }}" />
+      <input type="hidden" name="installazione_cantiere_pct" value="{{ progress_summary.installazione_cantiere.percent }}" />
+      <input type="hidden" name="rabotage_pct" value="{{ progress_summary.rabotage.percent }}" />
+
+      <div class="form-group">
+        <label class="form-label" for="pozzi_pompaggio_pct">
+          {% if lang == 'fr' %}Puits / pompage{% else %}Pozzi / pompaggio{% endif %}
+        </label>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+          id="pozzi_pompaggio_pct"
+          name="pozzi_pompaggio_pct"
+          class="form-control"
+          value="{{ progress_summary.pozzi_pompaggio.percent }}"
+        />
+      </div>
+
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-bar-fill"
+             style="width: {{ progress_summary.pozzi_pompaggio.percent }}%;"></div>
+      </div>
+      <p class="progress-card-percent">
+        {{ progress_summary.pozzi_pompaggio.percent }}%
+      </p>
 
       <button type="submit" class="btn btn-primary">
         {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
