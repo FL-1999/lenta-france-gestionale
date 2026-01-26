@@ -1755,6 +1755,14 @@ def _build_site_progress(
     strut_total_display = _format_progress_value(strut_total)
 
     progress_summary = {
+        "installazione_cantiere": {
+            "label": labels["installazione_cantiere"],
+            "total": 100,
+            "done": installazione_cantiere_pct,
+            "percent": installazione_cantiere_pct,
+            "unit": units["installazione_cantiere"],
+            "subtitle": f"{installazione_cantiere_pct}{units['installazione_cantiere']}",
+        },
         "cordoli": {
             "label": labels["cordoli"],
             "total": cordoli_total,
@@ -1771,21 +1779,13 @@ def _build_site_progress(
             "unit": units["paratie"],
             "subtitle": f"{paratie_done_display} / {paratie_total_display} {units['paratie']}",
         },
-        "puntoni": {
-            "label": labels["puntoni"],
-            "total": strut_total,
-            "done": strut_done,
-            "percent": _progress_percent(strut_done, strut_total),
-            "unit": units["puntoni"],
-            "subtitle": f"{strut_done_display} / {strut_total_display} {units['puntoni']}",
-        },
-        "installazione_cantiere": {
-            "label": labels["installazione_cantiere"],
+        "pozzi_pompaggio": {
+            "label": labels["pozzi_pompaggio"],
             "total": 100,
-            "done": installazione_cantiere_pct,
-            "percent": installazione_cantiere_pct,
-            "unit": units["installazione_cantiere"],
-            "subtitle": f"{installazione_cantiere_pct}{units['installazione_cantiere']}",
+            "done": pozzi_pompaggio_pct,
+            "percent": pozzi_pompaggio_pct,
+            "unit": units["pozzi_pompaggio"],
+            "subtitle": f"{pozzi_pompaggio_pct}{units['pozzi_pompaggio']}",
         },
         "rabotage": {
             "label": labels["rabotage"],
@@ -1795,13 +1795,13 @@ def _build_site_progress(
             "unit": units["rabotage"],
             "subtitle": f"{rabotage_pct}{units['rabotage']}",
         },
-        "pozzi_pompaggio": {
-            "label": labels["pozzi_pompaggio"],
-            "total": 100,
-            "done": pozzi_pompaggio_pct,
-            "percent": pozzi_pompaggio_pct,
-            "unit": units["pozzi_pompaggio"],
-            "subtitle": f"{pozzi_pompaggio_pct}{units['pozzi_pompaggio']}",
+        "puntoni": {
+            "label": labels["puntoni"],
+            "total": strut_total,
+            "done": strut_done,
+            "percent": _progress_percent(strut_done, strut_total),
+            "unit": units["puntoni"],
+            "subtitle": f"{strut_done_display} / {strut_total_display} {units['puntoni']}",
         },
     }
     for key in progress_summary:
