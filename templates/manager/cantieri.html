@@ -1,10 +1,8 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
-
 {% block title %}
     {% if lang == 'fr' %}Chantiers – Manager – Lenta France{% else %}Cantieri – Manager – Lenta France{% endif %}
 {% endblock %}
-
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
@@ -109,13 +107,17 @@
               📍
             </button>
           </td>
+
+          {# ✅ AZIONI CENTRATE VERTICALI #}
           <td class="table-actions">
-            <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
-              ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-            </a>
-            <a href="/manager/cantieri/{{ s.id }}/modifica#progress-section" class="btn btn-secondary btn-sm">
-              📈 {% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}
-            </a>
+            <div class="actions--vertical">
+              <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
+                ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+              </a>
+              <a href="/manager/cantieri/{{ s.id }}/modifica#progress-section" class="btn btn-secondary btn-sm">
+                📈 {% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}
+              </a>
+            </div>
           </td>
         </tr>
         {% else %}
@@ -149,6 +151,7 @@
             {{ s.status.value if s.status else "-" }}
           </span>
         </div>
+
         <div class="list-card-meta">
           <div>
             <span class="label">{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</span>
@@ -173,6 +176,7 @@
             </span>
           </div>
         </div>
+
         <div class="list-card-actions">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary btn-site-map"
@@ -182,7 +186,9 @@
                   data-address="{{ s.address or s.indirizzo or '' }}">
             📍 {% if lang == 'fr' %}Carte{% else %}Mappa{% endif %}
           </button>
-          <div class="list-card-actions-column">
+
+          {# ✅ AZIONI CENTRATE VERTICALI (mobile card) #}
+          <div class="list-card-actions-column actions--vertical">
             <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
               ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
             </a>
@@ -235,6 +241,22 @@
     </div>
   </div>
 </div>
+
+{# ✅ CSS locale per centrare i due bottoni #}
+<style>
+  .actions--vertical{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+  }
+  .actions--vertical .btn{
+    width:auto !important;
+    display:inline-flex;
+    justify-content:center;
+  }
+</style>
 
 <script src="{{ url_for('static', path='/js/list-search.js') }}"></script>
 <script src="{{ url_for('static', path='/js/site-map-preview.js') }}"></script>
