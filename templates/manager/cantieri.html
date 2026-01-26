@@ -182,12 +182,14 @@
                   data-address="{{ s.address or s.indirizzo or '' }}">
             📍 {% if lang == 'fr' %}Carte{% else %}Mappa{% endif %}
           </button>
-          <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
-            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-          </a>
-          <a href="/manager/cantieri/{{ s.id }}/modifica#progress-section" class="btn btn-secondary btn-sm">
-            📈 {% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}
-          </a>
+          <div class="list-card-actions-column">
+            <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
+              ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            </a>
+            <a href="/manager/cantieri/{{ s.id }}/modifica#progress-section" class="btn btn-secondary btn-sm">
+              📈 {% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}
+            </a>
+          </div>
         </div>
       </div>
     </article>
