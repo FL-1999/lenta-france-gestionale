@@ -113,6 +113,9 @@
             <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
               ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
             </a>
+            <a href="/manager/cantieri/{{ s.id }}/modifica#progress-section" class="btn btn-outline-secondary btn-sm">
+              📈 {% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}
+            </a>
           </td>
         </tr>
         {% else %}
@@ -181,6 +184,9 @@
           </button>
           <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
             ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+          </a>
+          <a href="/manager/cantieri/{{ s.id }}/modifica#progress-section" class="btn btn-outline-secondary btn-sm">
+            📈 {% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}
           </a>
         </div>
       </div>
