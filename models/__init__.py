@@ -293,11 +293,41 @@ class Machine(Base, TimestampMixin):
     site = relationship("Site", back_populates="machines")
 
     fiches = relationship("Fiche", back_populates="machine")
+    assignments = relationship(
+        "MachineSiteAssignment",
+        back_populates="machine",
+        order_by="desc(MachineSiteAssignment.assigned_at)",
+    )
 
     is_active = Column(Boolean, default=True, nullable=False)
 
     def __repr__(self) -> str:
         return f"<Machine id={self.id} code={self.code} name={self.name}>"
+
+
+# ------------------------------------------------------------
+# MODELLO STORICO ASSEGNAZIONI MACCHINARI
+# ------------------------------------------------------------
+
+class MachineSiteAssignment(Base):
+    __tablename__ = "machine_site_assignments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    unassigned_at = Column(DateTime, nullable=True)
+    location_label = Column(String(255), nullable=True)
+    note = Column(Text, nullable=True)
+
+    machine = relationship("Machine", back_populates="assignments")
+    site = relationship("Site")
+
+    def __repr__(self) -> str:
+        return (
+            "<MachineSiteAssignment "
+            f"id={self.id} machine_id={self.machine_id} site_id={self.site_id}>"
+        )
 
 
 # ------------------------------------------------------------
