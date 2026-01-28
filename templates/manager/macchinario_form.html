@@ -109,12 +109,12 @@
                   {% if s == 'attivo' %}Actif
                   {% elif s == 'deposito' %}Dépôt
                   {% elif s == 'fuori_servizio' %}Hors service
-                  {% else %}Maintenance{% endif %}
+                  {% else %}{{ s }}{% endif %}
                 {% else %}
                   {% if s == 'attivo' %}Attivo
                   {% elif s == 'deposito' %}Deposito
                   {% elif s == 'fuori_servizio' %}Fuori servizio
-                  {% else %}Manutenzione{% endif %}
+                  {% else %}{{ s }}{% endif %}
                 {% endif %}
               </option>
             {% endfor %}
