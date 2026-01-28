@@ -47,10 +47,20 @@ class SiteStatusEnum(PyEnum):
 
 
 class MachineTypeEnum(PyEnum):
-    escavatore = "escavatore"
-    autocarro = "autocarro"
-    furgone = "furgone"
-    altro = "altro"
+    macchina_base_su_cingoli = "macchina base su cingoli"
+    pala_gommata = "pala gommata"
+    scavatore = "scavatore"
+    gru_cingolata = "gru cingolata"
+    kelly_per_diaframmi = "kelly per diaframmi"
+    macchina_operatrice_diaframmi = "macchina operatrice diaframmi"
+    macchina_operatrice_pali = "macchina operatrice pali"
+    gruppo_elettrogeno = "gruppo elettrogeno"
+    dissabbiatore = "dissabbiatore"
+    miscelatore = "miscelatore"
+    pompa_bentonite = "pompa bentonite"
+    pompa_acqua = "pompa acqua"
+    saldatrice = "saldatrice"
+    taglia_asfalto = "taglia asfalto"
 
 
 class FicheTypeEnum(PyEnum):
