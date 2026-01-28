@@ -92,9 +92,12 @@
               {% if lang == 'fr' %}Sélectionnez un type{% else %}Seleziona una tipologia{% endif %}
             </option>
             {% for t in machine_types %}
-              <option value="{{ t.value }}"
-                {% if macchinario and macchinario.machine_type and macchinario.machine_type.value == t.value %}selected{% endif %}>
-                {{ t.label_fr if lang == 'fr' else t.label_it }}
+              {% set t_value = t.value if t.value is defined else t %}
+              {% set t_label = t.label_fr if lang == 'fr' and t.label_fr is defined else t.label_it if t.label_it is defined else t_value %}
+              {% set current_type = macchinario.machine_type.value if macchinario and macchinario.machine_type and macchinario.machine_type.value is defined else macchinario.machine_type %}
+              <option value="{{ t_value }}"
+                {% if macchinario and current_type == t_value %}selected{% endif %}>
+                {{ t_label }}
               </option>
             {% endfor %}
           </select>
@@ -106,17 +109,19 @@
           </label>
           <select id="status" name="status" class="form-select" required>
             {% for s in status_choices %}
-              <option value="{{ s }}" {% if macchinario and macchinario.status == s %}selected{% endif %}>
+              {% set s_value = s.value if s.value is defined else s %}
+              {% set current_status = macchinario.status.value if macchinario and macchinario.status and macchinario.status.value is defined else macchinario.status %}
+              <option value="{{ s_value }}" {% if macchinario and current_status == s_value %}selected{% endif %}>
                 {% if lang == 'fr' %}
-                  {% if s == 'attivo' %}Actif
-                  {% elif s == 'deposito' %}Dépôt
-                  {% elif s == 'fuori_servizio' %}Hors service
-                  {% else %}Maintenance{% endif %}
+                  {% if s_value == 'attivo' %}Actif
+                  {% elif s_value == 'deposito' %}Dépôt
+                  {% elif s_value == 'fuori_servizio' %}Hors service
+                  {% else %}{{ s_value }}{% endif %}
                 {% else %}
-                  {% if s == 'attivo' %}Attivo
-                  {% elif s == 'deposito' %}Deposito
-                  {% elif s == 'fuori_servizio' %}Fuori servizio
-                  {% else %}Manutenzione{% endif %}
+                  {% if s_value == 'attivo' %}Attivo
+                  {% elif s_value == 'deposito' %}Deposito
+                  {% elif s_value == 'fuori_servizio' %}Fuori servizio
+                  {% else %}{{ s_value }}{% endif %}
                 {% endif %}
               </option>
             {% endfor %}
