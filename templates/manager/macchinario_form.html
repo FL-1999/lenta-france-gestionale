@@ -90,7 +90,10 @@
               {% if lang == 'fr' %}Sélectionnez un type{% else %}Seleziona una tipologia{% endif %}
             </option>
             {% for t in machine_types %}
-              <option value="{{ t.value }}" {% if machine and machine.machine_type and machine.machine_type.value == t.value %}selected{% endif %}>{{ t.value }}</option>
+              <option value="{{ t.value }}"
+                {% if machine and machine.machine_type and machine.machine_type.value == t.value %}selected{% endif %}>
+                {{ t.label_fr if lang == 'fr' else t.label_it }}
+              </option>
             {% endfor %}
           </select>
         </div>
@@ -103,9 +106,15 @@
             {% for s in status_choices %}
               <option value="{{ s }}" {% if machine and machine.status == s %}selected{% endif %}>
                 {% if lang == 'fr' %}
-                  {% if s == 'attivo' %}Actif{% elif s == 'fuori_servizio' %}Hors service{% else %}Maintenance{% endif %}
+                  {% if s == 'attivo' %}Actif
+                  {% elif s == 'deposito' %}Dépôt
+                  {% elif s == 'fuori_servizio' %}Hors service
+                  {% else %}Maintenance{% endif %}
                 {% else %}
-                  {% if s == 'attivo' %}Attivo{% elif s == 'fuori_servizio' %}Fuori servizio{% else %}Manutenzione{% endif %}
+                  {% if s == 'attivo' %}Attivo
+                  {% elif s == 'deposito' %}Deposito
+                  {% elif s == 'fuori_servizio' %}Fuori servizio
+                  {% else %}Manutenzione{% endif %}
                 {% endif %}
               </option>
             {% endfor %}
@@ -114,15 +123,25 @@
 
         <div class="form-group">
           <label class="form-label" for="site_id">
-            {% if lang == 'fr' %}Chantier assigné{% else %}Cantiere assegnato{% endif %}
+            {% if lang == 'fr' %}Localisation{% else %}Localizzazione{% endif %}
           </label>
           <select id="site_id" name="site_id" class="form-select">
             <option value="">
               {% if lang == 'fr' %}Aucun{% else %}Nessuno{% endif %}
             </option>
-            {% for s in sites %}
-              <option value="{{ s.id }}" {% if machine and machine.site_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
-            {% endfor %}
+
+            <!-- Localizzazioni fisse -->
+            <option value="__montauroux__" {% if machine and machine.site_id == '__montauroux__' %}selected{% endif %}>Montauroux</option>
+            <option value="__st_jeannet__" {% if machine and machine.site_id == '__st_jeannet__' %}selected{% endif %}>St. Jeannet</option>
+            <option value="__sommariva__" {% if machine and machine.site_id == '__sommariva__' %}selected{% endif %}>Sommariva</option>
+
+            <optgroup label="{% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}">
+              {% for s in sites %}
+                <option value="{{ s.id }}" {% if machine and machine.site_id == s.id %}selected{% endif %}>
+                  {{ s.name }} ({{ s.code }})
+                </option>
+              {% endfor %}
+            </optgroup>
           </select>
         </div>
 
