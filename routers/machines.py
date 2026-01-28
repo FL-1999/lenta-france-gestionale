@@ -21,8 +21,6 @@ register_manager_badges(templates)
 
 MACHINE_STATUS_CHOICES = [
     "attivo",
-    "manutenzione",
-    "maintenance",
     "fuori_servizio",
     "deposito",
 ]
