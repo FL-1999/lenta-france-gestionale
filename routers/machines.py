@@ -19,7 +19,13 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 
-MACHINE_STATUS_CHOICES = ["attivo", "manutenzione", "fuori_servizio"]
+MACHINE_STATUS_CHOICES = [
+    "attivo",
+    "manutenzione",
+    "maintenance",
+    "fuori_servizio",
+    "deposito",
+]
 DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
 
