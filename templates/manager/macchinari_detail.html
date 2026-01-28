@@ -62,6 +62,19 @@
             <p><strong>{% if lang == 'fr' %}Modèle{% else %}Modello{% endif %}:</strong> {{ macchinario.model_name }}</p>
             <p><strong>{% if lang == 'fr' %}Matricule{% else %}Matricola{% endif %}:</strong> {{ macchinario.plate }}</p>
             <p><strong>{% if lang == 'fr' %}Type{% else %}Tipologia{% endif %}:</strong> {{ macchinario.machine_type.value if macchinario.machine_type else '-' }}</p>
+            <p>
+                <strong>{% if lang == 'fr' %}Localisation actuelle{% else %}Localizzazione corrente{% endif %}:</strong>
+                {% if macchinario.site %}
+                    {{ macchinario.site.name }} ({{ macchinario.site.code }})
+                {% else %}
+                    {% set open_assignment = (macchinario.assignments | selectattr('unassigned_at', 'equalto', none) | list | first) %}
+                    {% if open_assignment and open_assignment.location_label %}
+                        {{ open_assignment.location_label }}
+                    {% else %}
+                        —
+                    {% endif %}
+                {% endif %}
+            </p>
         </div>
     </section>
 
