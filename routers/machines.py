@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session, load_only
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import Machine, MachineTypeEnum, Site
+from models import Machine, MachineSiteAssignment, MachineTypeEnum, Site
 from schemas import MachineCreate, MachineRead
 from template_context import build_template_context, register_manager_badges
 from permissions import has_perm
@@ -48,13 +49,71 @@ def _get_machine_or_404(db: Session, machine_id: int) -> Machine:
     return machine
 
 
-def _parse_site_id(site_id_value: str | None) -> int | None:
+LOCATION_LABELS = {
+    "__montauroux__": "Montauroux",
+    "__st_jeannet__": "St. Jeannet",
+    "__sommariva__": "Sommariva",
+}
+
+
+def _parse_site_selection(
+    site_id_value: str | int | None,
+) -> tuple[int | None, str | None]:
     if site_id_value in (None, ""):
-        return None
+        return None, None
+    if isinstance(site_id_value, int):
+        return site_id_value, None
     try:
-        return int(site_id_value)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Cantiere non valido")
+        return int(site_id_value), None
+    except (TypeError, ValueError):
+        pass
+    location_label = LOCATION_LABELS.get(str(site_id_value))
+    if location_label is None:
+        raise HTTPException(status_code=400, detail="Localizzazione non valida")
+    return None, location_label
+
+
+def _update_machine_assignment(
+    db: Session,
+    machine: Machine,
+    site_id_value: str | int | None,
+) -> None:
+    site_id, location_label = _parse_site_selection(site_id_value)
+
+    if site_id is not None:
+        site = (
+            db.query(Site)
+            .filter(Site.id == site_id, Site.is_active == True)  # noqa: E712
+            .first()
+        )
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+    now = datetime.utcnow()
+    open_assignment = (
+        db.query(MachineSiteAssignment)
+        .filter(
+            MachineSiteAssignment.machine_id == machine.id,
+            MachineSiteAssignment.unassigned_at.is_(None),
+        )
+        .order_by(MachineSiteAssignment.assigned_at.desc())
+        .first()
+    )
+    if open_assignment:
+        open_assignment.unassigned_at = now
+
+    if site_id is None and location_label is None:
+        machine.site_id = None
+        return
+
+    machine.site_id = site_id
+    assignment = MachineSiteAssignment(
+        machine_id=machine.id,
+        site_id=site_id,
+        assigned_at=now,
+        location_label=location_label,
+    )
+    db.add(assignment)
 
 
 # -------------------------------------------------
@@ -78,9 +137,11 @@ def create_machine_api(
         plate=machine_in.plate,
         status=machine_in.status,
         notes=machine_in.notes,
-        site_id=machine_in.site_id,
+        site_id=None,
     )
     db.add(machine)
+    db.flush()
+    _update_machine_assignment(db, machine, machine_in.site_id)
     db.commit()
     db.refresh(machine)
     return machine
@@ -229,8 +290,6 @@ def manager_machine_new_post(
     if status not in MACHINE_STATUS_CHOICES:
         raise HTTPException(status_code=400, detail="Stato macchinario non valido")
 
-    parsed_site_id = _parse_site_id(site_id)
-
     machine = Machine(
         code=code,
         name=name,
@@ -240,9 +299,11 @@ def manager_machine_new_post(
         plate=plate,
         status=status,
         notes=notes,
-        site_id=parsed_site_id,
+        site_id=None,
     )
     db.add(machine)
+    db.flush()
+    _update_machine_assignment(db, machine, site_id)
     db.commit()
 
     return RedirectResponse(url="/manager/macchinari", status_code=303)
@@ -343,7 +404,7 @@ def manager_machine_edit_post(
     machine.plate = plate
     machine.status = status
     machine.notes = notes
-    machine.site_id = _parse_site_id(site_id)
+    _update_machine_assignment(db, machine, site_id)
 
     db.commit()
 
@@ -384,15 +445,7 @@ def manager_machine_assign_post(
     _require_manager_or_admin(current_user)
     machine = _get_machine_or_404(db, machine_id)
 
-    parsed_site_id = _parse_site_id(site_id)
-
-    if parsed_site_id is not None:
-        site = db.query(Site).filter(Site.id == parsed_site_id, Site.is_active == True).first()  # noqa: E712
-        if not site:
-            raise HTTPException(status_code=404, detail="Cantiere non trovato")
-        machine.site_id = site.id
-    else:
-        machine.site_id = None
+    _update_machine_assignment(db, machine, site_id)
 
     db.commit()
 
