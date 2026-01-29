@@ -1,6 +1,7 @@
 import logging
 import time
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -260,6 +261,9 @@ def manager_machines_page(
         or 0
     )
 
+    success_message = request.query_params.get("success_message")
+    error_message = request.query_params.get("error_message")
+
     return templates.TemplateResponse(
         "manager/macchinari_list.html",
         build_template_context(
@@ -273,6 +277,8 @@ def manager_machines_page(
             page=page,
             per_page=per_page,
             total_pages=max(1, (total_count + per_page - 1) // per_page),
+            success_message=success_message,
+            error_message=error_message,
         ),
     )
 
@@ -454,6 +460,68 @@ def manager_machine_edit_post(
     db.commit()
 
     return RedirectResponse(url=f"/manager/macchinari/{machine_id}", status_code=303)
+
+
+@router.post(
+    "/manager/macchinari/{machine_id}/quick-update",
+    name="manager_machine_quick_update",
+)
+def manager_machine_quick_update(
+    request: Request,
+    machine_id: int,
+    status: str = Form(...),
+    location: str | None = Form(""),
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_manager_or_admin(current_user)
+    error_message = None
+
+    try:
+        machine = _get_machine_or_404(db, machine_id)
+        if status not in MACHINE_STATUS_CHOICES:
+            raise HTTPException(status_code=400, detail="Stato macchinario non valido")
+
+        site_id, location_label = _parse_site_selection(location)
+        if site_id is not None:
+            site = (
+                db.query(Site)
+                .filter(Site.id == site_id, Site.is_active == True)  # noqa: E712
+                .first()
+            )
+            if not site:
+                raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        machine.status = status
+        has_history = (
+            db.query(MachineSiteAssignment.id)
+            .filter(MachineSiteAssignment.machine_id == machine.id)
+            .first()
+            is not None
+        )
+        if has_history:
+            _update_machine_assignment(db, machine, location)
+        else:
+            machine.site_id = site_id
+            if location_label is not None:
+                machine.site_id = None
+
+        db.commit()
+        success_message = "Aggiornato"
+    except HTTPException as exc:
+        db.rollback()
+        error_message = exc.detail or "Errore"
+        success_message = None
+
+    base_url = str(request.url_for("manager_machines_list"))
+    params = {}
+    if error_message:
+        params["error_message"] = error_message
+    else:
+        params["success_message"] = success_message or "Aggiornato"
+
+    url = f"{base_url}?{urlencode(params)}" if params else base_url
+    return RedirectResponse(url=url, status_code=303)
 
 
 @router.get("/manager/macchinari/assegna/{machine_id}", response_class=HTMLResponse)
