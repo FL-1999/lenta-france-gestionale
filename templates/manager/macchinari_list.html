@@ -32,6 +32,17 @@
     </div>
 </div>
 
+{% if success_message %}
+    <div class="alert alert-success">
+        {{ success_message }}
+    </div>
+{% endif %}
+{% if error_message %}
+    <div class="alert alert-danger">
+        {{ error_message }}
+    </div>
+{% endif %}
+
 <div class="dashboard-kpi-grid">
     <div class="kpi-card kpi-accent-1">
         <div class="kpi-top">
