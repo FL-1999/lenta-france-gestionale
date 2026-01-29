@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -114,6 +114,48 @@ def _update_machine_assignment(
         location_label=location_label,
     )
     db.add(assignment)
+
+
+def _format_duration(delta: timedelta) -> str:
+    total_seconds = max(int(delta.total_seconds()), 0)
+    total_minutes = total_seconds // 60
+    hours = total_minutes // 60
+    days = hours // 24
+    hours = hours % 24
+    minutes = total_minutes % 60
+
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes or not parts:
+        parts.append(f"{minutes}m")
+    return " ".join(parts)
+
+
+def _build_assignment_rows(
+    assignments: list[MachineSiteAssignment],
+    now: datetime,
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for assignment in assignments:
+        end_time = assignment.unassigned_at or now
+        duration = _format_duration(end_time - assignment.assigned_at)
+        location = "—"
+        if assignment.site:
+            location = f"{assignment.site.name} ({assignment.site.code})"
+        elif assignment.location_label:
+            location = assignment.location_label
+        rows.append(
+            {
+                "assigned_at": assignment.assigned_at,
+                "unassigned_at": assignment.unassigned_at,
+                "location": location,
+                "duration": duration,
+            }
+        )
+    return rows
 
 
 # -------------------------------------------------
@@ -322,6 +364,8 @@ def manager_machine_detail(
 ):
     _require_manager_or_admin(current_user)
     machine = _get_machine_or_404(db, machine_id)
+    now = datetime.utcnow()
+    assignment_rows = _build_assignment_rows(machine.assignments or [], now)
 
     return templates.TemplateResponse(
         "manager/macchinari_detail.html",
@@ -329,6 +373,7 @@ def manager_machine_detail(
             request,
             current_user,
             macchinario=machine,
+            assignment_rows=assignment_rows,
             current_user=current_user,
         ),
     )

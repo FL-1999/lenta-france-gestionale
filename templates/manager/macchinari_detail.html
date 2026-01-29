@@ -105,6 +105,60 @@
     </section>
 </div>
 
+<div class="card table-card" style="margin-top: 2rem;">
+    <div class="card-header">
+        <div class="card-title">
+            📌
+            {% if lang == 'fr' %}
+                Historique des affectations
+            {% else %}
+                Storico assegnazioni
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Depuis{% else %}Da{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Jusqu'à{% else %}A{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Où{% else %}Dove{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Durée{% else %}Durata{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set rows = assignment_rows | default([]) %}
+                {% if rows %}
+                    {% for row in rows %}
+                        <tr>
+                            <td>{{ row.assigned_at.strftime("%d/%m/%Y %H:%M") if row.assigned_at else "—" }}</td>
+                            <td>
+                                {% if row.unassigned_at %}
+                                    {{ row.unassigned_at.strftime("%d/%m/%Y %H:%M") }}
+                                {% else %}
+                                    {% if lang == 'fr' %}En cours{% else %}in corso{% endif %}
+                                {% endif %}
+                            </td>
+                            <td>{{ row.location }}</td>
+                            <td>{{ row.duration }}</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="text-muted">
+                            {% if lang == 'fr' %}
+                                Aucune affectation enregistrée.
+                            {% else %}
+                                Nessuna assegnazione registrata.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <div class="form-actions" style="margin-top: 2rem;">
     <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-secondary">
         {% if lang == 'fr' %}Retour à la liste{% else %}Torna all'elenco{% endif %}
