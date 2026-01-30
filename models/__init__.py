@@ -269,6 +269,26 @@ class SiteStrutLevel(Base):
 
 
 # ------------------------------------------------------------
+# MODELLO TIPO MACCHINARIO
+# ------------------------------------------------------------
+
+class MachineType(Base):
+    __tablename__ = "machine_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(255), unique=True, nullable=False)
+    label_it = Column(String(255), nullable=False)
+    label_fr = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    machines = relationship("Machine", back_populates="machine_type_rel")
+
+    def __repr__(self) -> str:
+        return f"<MachineType id={self.id} code={self.code}>"
+
+
+# ------------------------------------------------------------
 # MODELLO MACCHINARIO
 # ------------------------------------------------------------
 
@@ -284,6 +304,7 @@ class Machine(Base, TimestampMixin):
     model_name = Column(String(255), nullable=True)
 
     machine_type = Column(Enum(MachineTypeEnum), nullable=True)
+    machine_type_id = Column(Integer, ForeignKey("machine_types.id"), nullable=True)
     plate = Column(String(50), nullable=True)  # targa / matricola, se presente
 
     status = Column(String(50), nullable=False, default="attivo")
@@ -291,6 +312,7 @@ class Machine(Base, TimestampMixin):
 
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
     site = relationship("Site", back_populates="machines")
+    machine_type_rel = relationship("MachineType", back_populates="machines")
 
     fiches = relationship("Fiche", back_populates="machine")
     assignments = relationship(
