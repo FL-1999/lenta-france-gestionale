@@ -116,15 +116,24 @@
                     <tr>
                         {% set stato = m.status or 'attivo' %}
                         {% set open_assignment = (m.assignments | selectattr('unassigned_at', 'equalto', none) | list | first) %}
+                        {% set latest_assignment = (m.assignments | list | first) %}
+                        {% set location_label = none %}
+                        {% if open_assignment and open_assignment.location_label %}
+                            {% set location_label = open_assignment.location_label %}
+                        {% elif m.location_label is defined and m.location_label %}
+                            {% set location_label = m.location_label %}
+                        {% elif latest_assignment and latest_assignment.location_label %}
+                            {% set location_label = latest_assignment.location_label %}
+                        {% endif %}
                         {% set location_value = '' %}
                         {% if m.site %}
                             {% set location_value = m.site.id %}
-                        {% elif open_assignment and open_assignment.location_label %}
-                            {% if open_assignment.location_label == 'Montauroux' %}
+                        {% elif location_label %}
+                            {% if location_label == 'Montauroux' %}
                                 {% set location_value = '__montauroux__' %}
-                            {% elif open_assignment.location_label == 'St. Jeannet' %}
+                            {% elif location_label == 'St. Jeannet' %}
                                 {% set location_value = '__st_jeannet__' %}
-                            {% elif open_assignment.location_label == 'Sommariva' %}
+                            {% elif location_label == 'Sommariva' %}
                                 {% set location_value = '__sommariva__' %}
                             {% endif %}
                         {% endif %}
@@ -146,8 +155,8 @@
                             {% if m.site %}
                                 {{ m.site.name }} ({{ m.site.code }})
                             {% else %}
-                                {% if open_assignment and open_assignment.location_label %}
-                                    {{ open_assignment.location_label }}
+                                {% if location_label %}
+                                    {{ location_label }}
                                 {% else %}
                                     —
                                 {% endif %}
