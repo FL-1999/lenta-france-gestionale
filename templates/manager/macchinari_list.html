@@ -165,8 +165,8 @@
                                 class="btn btn-secondary btn-sm"
                                 data-machine-quick-open
                                 data-machine-id="{{ m.id }}"
-                                data-machine-status="{{ stato }}"
-                                data-machine-location="{{ location_value }}"
+                                data-current-status="{{ stato }}"
+                                data-current-location="{{ location_value }}"
                             >
                                 ⚡ {% if lang == 'fr' %}Déplacer / Statut{% else %}Sposta / Stato{% endif %}
                             </button>
@@ -268,15 +268,15 @@
             return;
         }
         const machineId = trigger.dataset.machineId;
-        const status = trigger.dataset.machineStatus;
-        const location = trigger.dataset.machineLocation;
+        const status = trigger.dataset.currentStatus;
+        const location = trigger.dataset.currentLocation;
         const actionTemplate = quickForm.dataset.actionTemplate;
 
         if (actionTemplate && machineId) {
             quickForm.action = actionTemplate.replace('/0/quick-update', `/${machineId}/quick-update`);
         }
-        if (statusSelect && status) {
-            statusSelect.value = status;
+        if (statusSelect) {
+            statusSelect.value = status || '';
         }
         if (locationSelect) {
             locationSelect.value = location || '';
