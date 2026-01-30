@@ -114,11 +114,24 @@
             <tbody>
                 {% for m in machines %}
                     <tr>
+                        {% set stato = m.status or 'attivo' %}
+                        {% set open_assignment = (m.assignments | selectattr('unassigned_at', 'equalto', none) | list | first) %}
+                        {% set location_value = '' %}
+                        {% if m.site %}
+                            {% set location_value = m.site.id %}
+                        {% elif open_assignment and open_assignment.location_label %}
+                            {% if open_assignment.location_label == 'Montauroux' %}
+                                {% set location_value = '__montauroux__' %}
+                            {% elif open_assignment.location_label == 'St. Jeannet' %}
+                                {% set location_value = '__st_jeannet__' %}
+                            {% elif open_assignment.location_label == 'Sommariva' %}
+                                {% set location_value = '__sommariva__' %}
+                            {% endif %}
+                        {% endif %}
                         <td>{{ m.name }}</td>
                         <td>{{ m.code }}</td>
                         <td>{{ m.brand }} {{ m.model_name }}</td>
                         <td>
-                            {% set stato = m.status or 'attivo' %}
                             {% if stato == 'fuori_servizio' %}
                                 <span class="badge badge-danger">
                                     {% if lang == 'fr' %}Hors service{% else %}Fuori servizio{% endif %}
@@ -133,7 +146,6 @@
                             {% if m.site %}
                                 {{ m.site.name }} ({{ m.site.code }})
                             {% else %}
-                                {% set open_assignment = (m.assignments | selectattr('unassigned_at', 'equalto', none) | list | first) %}
                                 {% if open_assignment and open_assignment.location_label %}
                                     {{ open_assignment.location_label }}
                                 {% else %}
@@ -148,6 +160,16 @@
                             <a href="{{ request.url_for('manager_machine_edit', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
                                 {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                             </a>
+                            <button
+                                type="button"
+                                class="btn btn-secondary btn-sm"
+                                data-machine-quick-open
+                                data-machine-id="{{ m.id }}"
+                                data-machine-status="{{ stato }}"
+                                data-machine-location="{{ location_value }}"
+                            >
+                                ⚡ {% if lang == 'fr' %}Déplacer / Statut{% else %}Sposta / Stato{% endif %}
+                            </button>
                         </td>
                     </tr>
                 {% else %}
@@ -166,6 +188,58 @@
     </div>
 </div>
 
+<div class="modal" id="machine-quick-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-content card">
+        <div class="card-body">
+            <div class="modal-header">
+                <h2>
+                    {% if lang == 'fr' %}Déplacer / Statut{% else %}Sposta / Stato{% endif %}
+                </h2>
+                <button type="button" class="btn btn-secondary btn-sm" data-modal-close>✖</button>
+            </div>
+            <form
+                method="post"
+                id="machine-quick-form"
+                data-action-template="{{ request.url_for('manager_machine_quick_update', machine_id=0) }}"
+            >
+                <div class="form-grid-2">
+                    <div class="form-field">
+                        <label for="machine-quick-status">{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</label>
+                        <select name="status" id="machine-quick-status" required>
+                            <option value="attivo">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</option>
+                            <option value="fuori_servizio">{% if lang == 'fr' %}Hors service{% else %}Fuori servizio{% endif %}</option>
+                            <option value="deposito">{% if lang == 'fr' %}Dépôt{% else %}Deposito{% endif %}</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="machine-quick-location">{% if lang == 'fr' %}Localisation{% else %}Localizzazione{% endif %}</label>
+                        <select name="location" id="machine-quick-location">
+                            <option value="">{% if lang == 'fr' %}Aucune{% else %}Nessuno{% endif %}</option>
+                            <option value="__montauroux__">Montauroux</option>
+                            <option value="__st_jeannet__">St. Jeannet</option>
+                            <option value="__sommariva__">Sommariva</option>
+                            <optgroup label="{% if lang == 'fr' %}Chantiers réels{% else %}Cantieri reali{% endif %}">
+                                {% for site in sites %}
+                                    <option value="{{ site.id }}">{{ site.name }} ({{ site.code }})</option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-modal-close>
+                        {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% if total_pages and total_pages > 1 %}
     <div class="pagination-row" style="margin-top: 1.5rem;">
         <div class="pagination-meta">
@@ -181,5 +255,58 @@
         </div>
     </div>
 {% endif %}
+
+<script>
+    const quickModal = document.getElementById('machine-quick-modal');
+    const quickForm = document.getElementById('machine-quick-form');
+    const statusSelect = document.getElementById('machine-quick-status');
+    const locationSelect = document.getElementById('machine-quick-location');
+    const quickButtons = document.querySelectorAll('[data-machine-quick-open]');
+
+    const openQuickModal = (trigger) => {
+        if (!quickModal || !quickForm) {
+            return;
+        }
+        const machineId = trigger.dataset.machineId;
+        const status = trigger.dataset.machineStatus;
+        const location = trigger.dataset.machineLocation;
+        const actionTemplate = quickForm.dataset.actionTemplate;
+
+        if (actionTemplate && machineId) {
+            quickForm.action = actionTemplate.replace('/0/quick-update', `/${machineId}/quick-update`);
+        }
+        if (statusSelect && status) {
+            statusSelect.value = status;
+        }
+        if (locationSelect) {
+            locationSelect.value = location || '';
+        }
+        quickModal.classList.add('is-open');
+        quickModal.setAttribute('aria-hidden', 'false');
+        statusSelect?.focus();
+    };
+
+    const closeQuickModal = () => {
+        if (!quickModal) {
+            return;
+        }
+        quickModal.classList.remove('is-open');
+        quickModal.setAttribute('aria-hidden', 'true');
+    };
+
+    quickButtons.forEach((button) => {
+        button.addEventListener('click', () => openQuickModal(button));
+    });
+
+    quickModal?.querySelectorAll('[data-modal-close]').forEach((button) => {
+        button.addEventListener('click', closeQuickModal);
+    });
+
+    quickModal?.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeQuickModal();
+        }
+    });
+</script>
 
 {% endblock %}
