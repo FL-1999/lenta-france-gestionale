@@ -12,6 +12,7 @@
 {% block content %}
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set is_edit = is_edit | default(False) %}
+{% set selected_machine_type = selected_machine_type | default('') %}
 
 <div class="form-page">
   <div class="form-page-header">
@@ -87,24 +88,31 @@
           <label class="form-label" for="type">
             {% if lang == 'fr' %}Type{% else %}Tipologia{% endif %}
           </label>
-          <select id="type" name="type" class="form-select">
-            <option value="">
-              {% if lang == 'fr' %}Sélectionnez un type{% else %}Seleziona una tipologia{% endif %}
-            </option>
-            {% for t in machine_types %}
-              {% set t_value = t.value if t.value is defined else t %}
-              {% set t_label = t.label_fr if lang == 'fr' and t.label_fr else t.label_it if t.label_it else t_value %}
-              {% if macchinario and macchinario.machine_type_rel %}
+          <div style="display: flex; gap: var(--space-2); align-items: center;">
+            <select id="type" name="type" class="form-select" style="flex: 1;">
+              <option value="">
+                {% if lang == 'fr' %}Sélectionnez un type{% else %}Seleziona una tipologia{% endif %}
+              </option>
+              {% if selected_machine_type %}
+                {% set current_type = selected_machine_type %}
+              {% elif macchinario and macchinario.machine_type_rel %}
                 {% set current_type = macchinario.machine_type_rel.code %}
               {% else %}
                 {% set current_type = macchinario.machine_type.value if macchinario and macchinario.machine_type and macchinario.machine_type.value is defined else macchinario.machine_type %}
               {% endif %}
-              <option value="{{ t_value }}"
-                {% if macchinario and current_type == t_value %}selected{% endif %}>
-                {{ t_label }}
-              </option>
-            {% endfor %}
-          </select>
+              {% for t in machine_types %}
+                {% set t_value = t.value if t.value is defined else t %}
+                {% set t_label = t.label_fr if lang == 'fr' and t.label_fr else t.label_it if t.label_it else t_value %}
+                <option value="{{ t_value }}"
+                  {% if current_type == t_value %}selected{% endif %}>
+                  {{ t_label }}
+                </option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" data-modal-open="machine-type">
+              {% if lang == 'fr' %}➕ Nouvelle typologie{% else %}➕ Nuova tipologia{% endif %}
+            </button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -175,4 +183,77 @@
     </div>
   </div>
 </div>
+
+<div class="modal" id="machine-type-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-close></div>
+  <div class="modal-content card">
+    <div class="card-body">
+      <div class="modal-header">
+        <h2>
+          {% if lang == 'fr' %}Nouvelle typologie{% else %}Nuova tipologia{% endif %}
+        </h2>
+        <button type="button" class="btn btn-secondary btn-sm" data-modal-close>✖</button>
+      </div>
+      <form method="post" action="{{ request.url_for('manager_machine_type_create') }}" class="form-grid">
+        <input type="hidden" name="redirect_to" value="{{ request.url.path }}">
+        <div class="form-group">
+          <label class="form-label" for="machine-type-label-it">
+            {% if lang == 'fr' %}Libellé IT*{% else %}Etichetta IT*{% endif %}
+          </label>
+          <input type="text" id="machine-type-label-it" name="label_it" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="machine-type-label-fr">
+            {% if lang == 'fr' %}Libellé FR{% else %}Etichetta FR{% endif %}
+          </label>
+          <input type="text" id="machine-type-label-fr" name="label_fr" class="form-control">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" data-modal-close>
+            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+          </button>
+          <button type="submit" class="btn btn-primary">
+            {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const machineTypeModal = document.getElementById('machine-type-modal');
+  const machineTypeTriggers = document.querySelectorAll('[data-modal-open="machine-type"]');
+
+  const openMachineTypeModal = () => {
+    if (!machineTypeModal) {
+      return;
+    }
+    machineTypeModal.classList.add('is-open');
+    machineTypeModal.setAttribute('aria-hidden', 'false');
+    machineTypeModal.querySelector('input[name="label_it"]')?.focus();
+  };
+
+  const closeMachineTypeModal = () => {
+    if (!machineTypeModal) {
+      return;
+    }
+    machineTypeModal.classList.remove('is-open');
+    machineTypeModal.setAttribute('aria-hidden', 'true');
+  };
+
+  machineTypeTriggers.forEach((button) => {
+    button.addEventListener('click', openMachineTypeModal);
+  });
+
+  machineTypeModal?.querySelectorAll('[data-modal-close]').forEach((button) => {
+    button.addEventListener('click', closeMachineTypeModal);
+  });
+
+  machineTypeModal?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeMachineTypeModal();
+    }
+  });
+</script>
 {% endblock %}

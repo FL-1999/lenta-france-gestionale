@@ -1,7 +1,7 @@
 import logging
 import time
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -225,6 +225,44 @@ def _resolve_machine_type(
     return None, machine_type_enum
 
 
+def _snake_case(value: str) -> str:
+    cleaned = (value or "").strip().lower()
+    if not cleaned:
+        return "tipologia"
+    snake_chars: list[str] = []
+    last_underscore = False
+    for char in cleaned:
+        if char.isalnum():
+            snake_chars.append(char)
+            last_underscore = False
+        else:
+            if not last_underscore:
+                snake_chars.append("_")
+                last_underscore = True
+    snake = "".join(snake_chars).strip("_")
+    return snake or "tipologia"
+
+
+def _build_machine_type_redirect(
+    redirect_to: str | None,
+    machine_type_code: str,
+) -> str:
+    base_url = redirect_to if redirect_to and redirect_to.startswith("/") else "/manager/macchinari/nuovo"
+    parsed = urlsplit(base_url)
+    query_params = dict(parse_qsl(parsed.query))
+    query_params["machine_type"] = machine_type_code
+    updated_query = urlencode(query_params)
+    return urlunsplit(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            updated_query,
+            parsed.fragment,
+        )
+    )
+
+
 # -------------------------------------------------
 # API REST BASI /machines
 # -------------------------------------------------
@@ -364,6 +402,7 @@ def manager_machine_new_get(
     _require_manager_or_admin(current_user)
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
     machine_types = _load_machine_types(db)
+    selected_machine_type = request.query_params.get("machine_type")
 
     return templates.TemplateResponse(
         "manager/macchinari_form.html",
@@ -376,6 +415,7 @@ def manager_machine_new_get(
             machine_types=machine_types,
             status_choices=MACHINE_STATUS_CHOICES,
             sites=sites,
+            selected_machine_type=selected_machine_type,
         ),
     )
 
@@ -465,6 +505,7 @@ def manager_machine_edit_get(
     machine = _get_machine_or_404(db, machine_id)
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
     machine_types = _load_machine_types(db)
+    selected_machine_type = request.query_params.get("machine_type")
 
     return templates.TemplateResponse(
         "manager/macchinari_form.html",
@@ -477,6 +518,7 @@ def manager_machine_edit_get(
             machine_types=machine_types,
             status_choices=MACHINE_STATUS_CHOICES,
             sites=sites,
+            selected_machine_type=selected_machine_type,
         ),
     )
 
@@ -522,6 +564,40 @@ def manager_machine_edit_post(
     db.commit()
 
     return RedirectResponse(url=f"/manager/macchinari/{machine_id}", status_code=303)
+
+
+@router.post("/manager/machine-types", name="manager_machine_type_create")
+def manager_machine_type_create(
+    request: Request,
+    label_it: str = Form(...),
+    label_fr: str | None = Form(None),
+    redirect_to: str | None = Form(None),
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_manager_or_admin(current_user)
+
+    label_it_value = (label_it or "").strip()
+    if not label_it_value:
+        raise HTTPException(status_code=400, detail="La tipologia è obbligatoria.")
+
+    label_fr_value = (label_fr or "").strip() or None
+    code = _snake_case(label_it_value)
+
+    machine_type = db.query(MachineType).filter(MachineType.code == code).first()
+    if machine_type is None:
+        machine_type = MachineType(
+            code=code,
+            label_it=label_it_value,
+            label_fr=label_fr_value,
+            is_active=True,
+        )
+        db.add(machine_type)
+        db.commit()
+        db.refresh(machine_type)
+
+    redirect_url = _build_machine_type_redirect(redirect_to, machine_type.code)
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.post(
