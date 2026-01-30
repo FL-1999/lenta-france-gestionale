@@ -260,6 +260,7 @@ def manager_machines_page(
         .scalar()
         or 0
     )
+    sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
 
     success_message = request.query_params.get("success_message")
     error_message = request.query_params.get("error_message")
@@ -274,6 +275,7 @@ def manager_machines_page(
             kpi_total=kpi_total,
             kpi_active=kpi_active,
             kpi_oos=kpi_oos,
+            sites=sites,
             page=page,
             per_page=per_page,
             total_pages=max(1, (total_count + per_page - 1) // per_page),
