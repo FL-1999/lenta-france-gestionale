@@ -93,8 +93,12 @@
             </option>
             {% for t in machine_types %}
               {% set t_value = t.value if t.value is defined else t %}
-              {% set t_label = t.label_fr if lang == 'fr' and t.label_fr is defined else t.label_it if t.label_it is defined else t_value %}
-              {% set current_type = macchinario.machine_type.value if macchinario and macchinario.machine_type and macchinario.machine_type.value is defined else macchinario.machine_type %}
+              {% set t_label = t.label_fr if lang == 'fr' and t.label_fr else t.label_it if t.label_it else t_value %}
+              {% if macchinario and macchinario.machine_type_rel %}
+                {% set current_type = macchinario.machine_type_rel.code %}
+              {% else %}
+                {% set current_type = macchinario.machine_type.value if macchinario and macchinario.machine_type and macchinario.machine_type.value is defined else macchinario.machine_type %}
+              {% endif %}
               <option value="{{ t_value }}"
                 {% if macchinario and current_type == t_value %}selected{% endif %}>
                 {{ t_label }}

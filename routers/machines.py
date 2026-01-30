@@ -7,11 +7,12 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, load_only
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import Machine, MachineSiteAssignment, MachineTypeEnum, Site
+from models import Machine, MachineSiteAssignment, MachineType, MachineTypeEnum, Site
 from schemas import MachineCreate, MachineRead
 from template_context import build_template_context, register_manager_badges
 from permissions import has_perm
@@ -159,6 +160,71 @@ def _build_assignment_rows(
     return rows
 
 
+def _serialize_machine_types(
+    machine_types: list[MachineType],
+) -> list[dict[str, str | None]]:
+    return [
+        {
+            "value": machine_type.code,
+            "label_it": machine_type.label_it,
+            "label_fr": machine_type.label_fr,
+        }
+        for machine_type in machine_types
+    ]
+
+
+def _build_machine_types_fallback() -> list[dict[str, str | None]]:
+    return [
+        {
+            "value": machine_type.value,
+            "label_it": None,
+            "label_fr": None,
+        }
+        for machine_type in MachineTypeEnum
+    ]
+
+
+def _load_machine_types(db: Session) -> list[dict[str, str | None]]:
+    try:
+        machine_types_db = (
+            db.query(MachineType)
+            .filter(MachineType.is_active == True)  # noqa: E712
+            .order_by(MachineType.label_it.asc())
+            .all()
+        )
+    except SQLAlchemyError:
+        machine_types_db = []
+
+    if not machine_types_db:
+        return _build_machine_types_fallback()
+    return _serialize_machine_types(machine_types_db)
+
+
+def _resolve_machine_type(
+    db: Session,
+    type_value: str | None,
+) -> tuple[MachineType | None, MachineTypeEnum | None]:
+    if not type_value:
+        return None, None
+
+    machine_type_record = (
+        db.query(MachineType).filter(MachineType.code == type_value).first()
+    )
+    machine_type_enum = None
+    if machine_type_record:
+        try:
+            machine_type_enum = MachineTypeEnum(type_value)
+        except ValueError:
+            machine_type_enum = None
+        return machine_type_record, machine_type_enum
+
+    try:
+        machine_type_enum = MachineTypeEnum(type_value)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Tipo macchinario non valido")
+    return None, machine_type_enum
+
+
 # -------------------------------------------------
 # API REST BASI /machines
 # -------------------------------------------------
@@ -297,6 +363,7 @@ def manager_machine_new_get(
 ):
     _require_manager_or_admin(current_user)
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
+    machine_types = _load_machine_types(db)
 
     return templates.TemplateResponse(
         "manager/macchinari_form.html",
@@ -306,7 +373,7 @@ def manager_machine_new_get(
             current_user=current_user,
             is_edit=False,
             macchinario=None,
-            machine_types=list(MachineTypeEnum),
+            machine_types=machine_types,
             status_choices=MACHINE_STATUS_CHOICES,
             sites=sites,
         ),
@@ -330,12 +397,7 @@ def manager_machine_new_post(
 ):
     _require_manager_or_admin(current_user)
 
-    machine_type = None
-    if type:
-        try:
-            machine_type = MachineTypeEnum(type)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Tipo macchinario non valido")
+    machine_type_record, machine_type_enum = _resolve_machine_type(db, type)
 
     if status not in MACHINE_STATUS_CHOICES:
         raise HTTPException(status_code=400, detail="Stato macchinario non valido")
@@ -343,7 +405,8 @@ def manager_machine_new_post(
     machine = Machine(
         code=code,
         name=name,
-        machine_type=machine_type,
+        machine_type=machine_type_enum,
+        machine_type_id=machine_type_record.id if machine_type_record else None,
         brand=brand,
         model_name=model_name,
         plate=plate,
@@ -401,6 +464,7 @@ def manager_machine_edit_get(
     _require_manager_or_admin(current_user)
     machine = _get_machine_or_404(db, machine_id)
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
+    machine_types = _load_machine_types(db)
 
     return templates.TemplateResponse(
         "manager/macchinari_form.html",
@@ -410,7 +474,7 @@ def manager_machine_edit_get(
             current_user=current_user,
             is_edit=True,
             macchinario=machine,
-            machine_types=list(MachineTypeEnum),
+            machine_types=machine_types,
             status_choices=MACHINE_STATUS_CHOICES,
             sites=sites,
         ),
@@ -439,19 +503,15 @@ def manager_machine_edit_post(
     _require_manager_or_admin(current_user)
     machine = _get_machine_or_404(db, machine_id)
 
-    machine_type = None
-    if type:
-        try:
-            machine_type = MachineTypeEnum(type)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Tipo macchinario non valido")
+    machine_type_record, machine_type_enum = _resolve_machine_type(db, type)
 
     if status not in MACHINE_STATUS_CHOICES:
         raise HTTPException(status_code=400, detail="Stato macchinario non valido")
 
     machine.code = code
     machine.name = name
-    machine.machine_type = machine_type
+    machine.machine_type = machine_type_enum
+    machine.machine_type_id = machine_type_record.id if machine_type_record else None
     machine.brand = brand
     machine.model_name = model_name
     machine.plate = plate
