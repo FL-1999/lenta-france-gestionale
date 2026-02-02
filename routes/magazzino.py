@@ -2375,6 +2375,7 @@ def manager_magazzino_scarico(
     item_id: int = Form(...),
     quantita: str = Form(...),
     cantiere_id: int | None = Form(None),
+    caposquadra_id: int | None = Form(None),
     note: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -2394,6 +2395,13 @@ def manager_magazzino_scarico(
         if quantita_valore > quantita_attuale:
             raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
+        if cantiere_id is None and caposquadra_id is None:
+            raise ValueError(
+                "Sélectionnez un chantier ou un chef d'équipe."
+                if lang == "fr"
+                else "Seleziona un cantiere o un caposquadra."
+            )
+
         item.quantita_disponibile = quantita_attuale - quantita_valore
 
         db.add(item)
@@ -2402,6 +2410,7 @@ def manager_magazzino_scarico(
             tipo=MagazzinoMovimentoTipoEnum.scarico,
             quantita=quantita_valore,
             cantiere_id=cantiere_id,
+            caposquadra_id=caposquadra_id,
             creato_da_user_id=current_user.id,
             note=(note or "").strip() or None,
         )
@@ -2418,6 +2427,7 @@ def manager_magazzino_scarico(
                 "codice": item.codice,
                 "quantita": quantita_valore,
                 "cantiere_id": cantiere_id,
+                "caposquadra_id": caposquadra_id,
                 "note": (note or "").strip() or None,
             },
         )
