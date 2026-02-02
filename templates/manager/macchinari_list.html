@@ -106,6 +106,7 @@
                     <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
                     <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
                     <th>{% if lang == 'fr' %}Marque / Modèle{% else %}Marca / Modello{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Typologie{% else %}Tipologia{% endif %}</th>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
                     <th>{% if lang == 'fr' %}Localisation{% else %}Localizzazione{% endif %}</th>
                     <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
@@ -118,12 +119,22 @@
                         {% set open_assignment = (m.assignments | selectattr('unassigned_at', 'equalto', none) | list | first) %}
                         {% set latest_assignment = (m.assignments | list | first) %}
                         {% set location_label = none %}
+                        {% set machine_type_label = none %}
                         {% if open_assignment and open_assignment.location_label %}
                             {% set location_label = open_assignment.location_label %}
                         {% elif m.location_label is defined and m.location_label %}
                             {% set location_label = m.location_label %}
                         {% elif latest_assignment and latest_assignment.location_label %}
                             {% set location_label = latest_assignment.location_label %}
+                        {% endif %}
+                        {% if m.machine_type_rel %}
+                            {% if lang == 'fr' %}
+                                {% set machine_type_label = m.machine_type_rel.label_fr %}
+                            {% else %}
+                                {% set machine_type_label = m.machine_type_rel.label_it %}
+                            {% endif %}
+                        {% elif m.machine_type %}
+                            {% set machine_type_label = m.machine_type.value %}
                         {% endif %}
                         {% set location_value = '' %}
                         {% if m.site %}
@@ -140,6 +151,13 @@
                         <td>{{ m.name }}</td>
                         <td>{{ m.code }}</td>
                         <td>{{ m.brand }} {{ m.model_name }}</td>
+                        <td>
+                            {% if machine_type_label %}
+                                {{ machine_type_label }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
                         <td>
                             {% if stato == 'fuori_servizio' %}
                                 <span class="badge badge-danger">
@@ -183,7 +201,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="6" class="table-empty">
+                        <td colspan="7" class="table-empty">
                             {% if lang == 'fr' %}
                                 Aucun macchinario enregistré pour le moment.
                             {% else %}
