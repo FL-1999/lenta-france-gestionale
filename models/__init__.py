@@ -585,11 +585,13 @@ class MagazzinoMovimento(Base, TimestampMixin):
         Integer, ForeignKey("magazzino_richieste.id"), nullable=True
     )
     creato_da_user_id = Column("user_id", Integer, ForeignKey("users.id"), nullable=True)
+    caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     note = Column(Text, nullable=True)
 
     item = relationship("MagazzinoItem")
     cantiere = relationship("Site")
     creato_da_user = relationship("User")
+    caposquadra = relationship("User", foreign_keys=[caposquadra_id])
     richiesta = relationship("MagazzinoRichiesta")
 
 
