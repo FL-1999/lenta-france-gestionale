@@ -876,6 +876,15 @@ def _render_magazzino_items_list(
         .order_by(Site.name.asc())
         .all()
     )
+    personale = (
+        db.query(User)
+        .filter(
+            User.is_active.is_(True),
+            User.role.notin_([RoleEnum.admin, RoleEnum.manager]),
+        )
+        .order_by(User.full_name.asc(), User.email.asc())
+        .all()
+    )
     items_by_categoria = _group_items_by_categoria(
         items,
         [categoria for categoria in categorie if isinstance(categoria, MagazzinoCategoria)],
@@ -903,7 +912,8 @@ def _render_magazzino_items_list(
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
             "filters": filters,
-            "cantieri": cantieri,
+            "sites": cantieri,
+            "personale": personale,
             "color_options": CATEGORIA_COLOR_OPTIONS,
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
@@ -2539,7 +2549,8 @@ def manager_magazzino_scarico_rapido(
     request: Request,
     quantita: str = Form(...),
     note: str = Form(""),
-    cantiere_id: int | None = Form(None),
+    site_id: int | None = Form(None),
+    caposquadra_id: int | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -2564,7 +2575,8 @@ def manager_magazzino_scarico_rapido(
             item_id=item.id,
             tipo=MagazzinoMovimentoTipoEnum.scarico,
             quantita=quantita_valore,
-            cantiere_id=cantiere_id,
+            cantiere_id=site_id,
+            caposquadra_id=caposquadra_id,
             creato_da_user_id=current_user.id,
             note=(note or "").strip() or None,
         )
@@ -2580,7 +2592,8 @@ def manager_magazzino_scarico_rapido(
                 "item_id": item.id,
                 "codice": item.codice,
                 "quantita": quantita_valore,
-                "cantiere_id": cantiere_id,
+                "cantiere_id": site_id,
+                "caposquadra_id": caposquadra_id,
                 "note": (note or "").strip() or None,
             },
         )
