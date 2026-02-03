@@ -1,0 +1,81 @@
+{% extends "shared/base.html" %}
+{% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
+    {% if lang == 'fr' %}Typologies machines – Manager – Lenta France{% else %}Tipologie macchinari – Manager – Lenta France{% endif %}
+{% endblock %}
+{% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}
+                Gestion des machines
+            {% else %}
+                Gestione macchinari
+            {% endif %}
+        </p>
+        <h1 class="page-title">
+            {% if lang == 'fr' %}
+                Typologies machines
+            {% else %}
+                Tipologie macchinari
+            {% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Liste des typologies actives et du nombre de machines associées.
+            {% else %}
+                Elenco delle tipologie attive e del numero di macchinari associati.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="card table-card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            🧩
+            {% if lang == 'fr' %}
+                Typologies actives
+            {% else %}
+                Tipologie attive
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Libellé (IT){% else %}Etichetta (IT){% endif %}</th>
+                    <th>{% if lang == 'fr' %}Libellé (FR){% else %}Etichetta (FR){% endif %}</th>
+                    <th>{% if lang == 'fr' %}Machines{% else %}Macchinari{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for machine_type in machine_types %}
+                    <tr>
+                        <td>{{ machine_type.code }}</td>
+                        <td>{{ machine_type.label_it }}</td>
+                        <td>{{ machine_type.label_fr or '—' }}</td>
+                        <td>{{ machine_type_counts.get(machine_type.code, 0) }}</td>
+                        <td class="table-actions">
+                            <a href="{{ request.url_for('manager_machine_types_detail', code=machine_type.code) }}" class="btn btn-secondary btn-sm">
+                                {% if lang == 'fr' %}Voir{% else %}Vedi{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="table-empty">
+                            {% if lang == 'fr' %}Aucune typologie disponible.{% else %}Nessuna tipologia disponibile.{% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

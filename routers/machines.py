@@ -6,7 +6,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, load_only
 
@@ -200,6 +200,76 @@ def _load_machine_types(db: Session) -> list[dict[str, str | None]]:
     return _serialize_machine_types(machine_types_db)
 
 
+def _build_manager_machines_query(db: Session):
+    return (
+        db.query(Machine)
+        .options(
+            load_only(
+                Machine.id,
+                Machine.name,
+                Machine.code,
+                Machine.brand,
+                Machine.model_name,
+                Machine.status,
+            )
+        )
+        .order_by(Machine.name.asc(), Machine.id.asc())
+    )
+
+
+def _build_machine_type_filters(
+    machine_type_record: MachineType | None,
+    machine_type_enum: MachineTypeEnum | None,
+) -> list:
+    if machine_type_record and machine_type_enum:
+        return [
+            or_(
+                Machine.machine_type_id == machine_type_record.id,
+                Machine.machine_type == machine_type_enum,
+            )
+        ]
+    if machine_type_record:
+        return [Machine.machine_type_id == machine_type_record.id]
+    if machine_type_enum:
+        return [Machine.machine_type == machine_type_enum]
+    return []
+
+
+def _build_machine_type_counts(
+    db: Session,
+    machine_types: list[MachineType],
+) -> dict[str, int]:
+    type_id_to_code = {machine_type.id: machine_type.code for machine_type in machine_types}
+    counts = {machine_type.code: 0 for machine_type in machine_types}
+    machine_rows = db.query(Machine.machine_type_id, Machine.machine_type).all()
+    for machine_type_id, machine_type_enum in machine_rows:
+        if machine_type_id and machine_type_id in type_id_to_code:
+            code = type_id_to_code[machine_type_id]
+        elif machine_type_enum:
+            code = machine_type_enum.value
+        else:
+            continue
+        if code in counts:
+            counts[code] += 1
+    return counts
+
+
+def _build_machine_type_filter_payload(
+    machine_type_record: MachineType | None,
+    machine_type_enum: MachineTypeEnum | None,
+) -> dict[str, str | None]:
+    code = None
+    if machine_type_record:
+        code = machine_type_record.code
+    elif machine_type_enum:
+        code = machine_type_enum.value
+    return {
+        "code": code,
+        "label_it": machine_type_record.label_it if machine_type_record else None,
+        "label_fr": machine_type_record.label_fr if machine_type_record else None,
+    }
+
+
 def _resolve_machine_type(
     db: Session,
     type_value: str | None,
@@ -323,21 +393,11 @@ def manager_machines_page(
     _require_manager_or_admin(current_user)
 
     page, per_page = _normalize_pagination(page, per_page)
-    total_count = db.query(func.count(Machine.id)).scalar() or 0
+    base_query = _build_manager_machines_query(db)
+    total_count = base_query.with_entities(func.count(Machine.id)).order_by(None).scalar() or 0
     query_started = time.monotonic()
     machines = (
-        db.query(Machine)
-        .options(
-            load_only(
-                Machine.id,
-                Machine.name,
-                Machine.code,
-                Machine.brand,
-                Machine.model_name,
-                Machine.status,
-            )
-        )
-        .order_by(Machine.name.asc(), Machine.id.asc())
+        base_query
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
@@ -385,6 +445,127 @@ def manager_machines_page(
             total_pages=max(1, (total_count + per_page - 1) // per_page),
             success_message=success_message,
             error_message=error_message,
+        ),
+    )
+
+
+@router.get(
+    "/manager/macchinari/tipologie",
+    response_class=HTMLResponse,
+    name="manager_machine_types_list",
+)
+def manager_machine_types_page(
+    request: Request,
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_manager_or_admin(current_user)
+
+    machine_types = (
+        db.query(MachineType)
+        .filter(MachineType.is_active == True)  # noqa: E712
+        .order_by(MachineType.label_it.asc())
+        .all()
+    )
+    machine_type_counts = _build_machine_type_counts(db, machine_types)
+
+    return templates.TemplateResponse(
+        "manager/macchinari_tipologie_list.html",
+        build_template_context(
+            request,
+            current_user,
+            machine_types=machine_types,
+            machine_type_counts=machine_type_counts,
+        ),
+    )
+
+
+@router.get(
+    "/manager/macchinari/tipologie/{code}",
+    response_class=HTMLResponse,
+    name="manager_machine_types_detail",
+)
+def manager_machine_types_detail_page(
+    request: Request,
+    code: str,
+    current_user=Depends(get_current_active_user_html),
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
+    db: Session = Depends(get_db),
+):
+    _require_manager_or_admin(current_user)
+
+    page, per_page = _normalize_pagination(page, per_page)
+    machine_type_record, machine_type_enum = _resolve_machine_type(db, code)
+    machine_type_filters = _build_machine_type_filters(
+        machine_type_record,
+        machine_type_enum,
+    )
+    base_query = _build_manager_machines_query(db)
+    if machine_type_filters:
+        base_query = base_query.filter(*machine_type_filters)
+    total_count = base_query.with_entities(func.count(Machine.id)).order_by(None).scalar() or 0
+    query_started = time.monotonic()
+    machines = (
+        base_query
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    perf_logger.debug(
+        "manager_machines_list rows=%s total=%s page=%s per_page=%s duration_ms=%.2f",
+        len(machines),
+        total_count,
+        page,
+        per_page,
+        (time.monotonic() - query_started) * 1000,
+    )
+
+    kpi_total = total_count
+    kpi_active = (
+        db.query(func.count(Machine.id))
+        .filter(
+            func.coalesce(Machine.status, "attivo") == "attivo",
+            *machine_type_filters,
+        )
+        .scalar()
+        or 0
+    )
+    kpi_oos = (
+        db.query(func.count(Machine.id))
+        .filter(
+            Machine.status == "fuori_servizio",
+            *machine_type_filters,
+        )
+        .scalar()
+        or 0
+    )
+    sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
+
+    success_message = request.query_params.get("success_message")
+    error_message = request.query_params.get("error_message")
+    machine_type_filter = _build_machine_type_filter_payload(
+        machine_type_record,
+        machine_type_enum,
+    )
+
+    return templates.TemplateResponse(
+        "manager/macchinari_list.html",
+        build_template_context(
+            request,
+            current_user,
+            user_role="manager",
+            machines=machines,
+            kpi_total=kpi_total,
+            kpi_active=kpi_active,
+            kpi_oos=kpi_oos,
+            sites=sites,
+            page=page,
+            per_page=per_page,
+            total_pages=max(1, (total_count + per_page - 1) // per_page),
+            success_message=success_message,
+            error_message=error_message,
+            machine_type_filter=machine_type_filter,
         ),
     )
 
