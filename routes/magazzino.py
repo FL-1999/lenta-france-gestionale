@@ -1137,6 +1137,7 @@ def manager_magazzino_movimenti(
         joinedload(MagazzinoMovimento.item),
         joinedload(MagazzinoMovimento.cantiere),
         joinedload(MagazzinoMovimento.creato_da_user),
+        joinedload(MagazzinoMovimento.caposquadra),
     )
     if q:
         search = f"%{q.strip()}%"
@@ -1182,6 +1183,7 @@ def manager_magazzino_movimenti(
                 "Tipo",
                 "Quantità",
                 "Cantiere",
+                "Destinazione",
                 "Utente",
                 "Note",
                 "Richiesta",
@@ -1198,6 +1200,15 @@ def manager_magazzino_movimenti(
             user_label = ""
             if movimento.creato_da_user:
                 user_label = movimento.creato_da_user.full_name or movimento.creato_da_user.email
+            destinazione_label = ""
+            cantiere_label = movimento.cantiere.name if movimento.cantiere else ""
+            personale_label = ""
+            if movimento.caposquadra:
+                personale_label = movimento.caposquadra.full_name or movimento.caposquadra.email
+            if cantiere_label and personale_label:
+                destinazione_label = f"Cantiere: {cantiere_label} — Personale: {personale_label}"
+            else:
+                destinazione_label = cantiere_label or personale_label
             writer.writerow(
                 [
                     created_at,
@@ -1206,6 +1217,7 @@ def manager_magazzino_movimenti(
                     movimento.tipo.value if movimento.tipo else "",
                     movimento.quantita,
                     movimento.cantiere.name if movimento.cantiere else "",
+                    destinazione_label,
                     user_label or "",
                     movimento.note or "",
                     movimento.riferimento_richiesta_id or "",

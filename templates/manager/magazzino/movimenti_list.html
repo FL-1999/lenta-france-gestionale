@@ -136,6 +136,7 @@
                         <th>{% if lang == 'fr' %}Type{% else %}Tipo{% endif %}</th>
                         <th>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
                         <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Destination{% else %}Destinazione{% endif %}</th>
                         <th>{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</th>
                         <th>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</th>
                         <th>{% if lang == 'fr' %}Demande{% else %}Richiesta{% endif %}</th>
@@ -155,6 +156,23 @@
                             <td>{{ movimento.tipo.value if movimento.tipo else '—' }}</td>
                             <td>{{ movimento.quantita }}</td>
                             <td>{{ movimento.cantiere.name if movimento.cantiere else '—' }}</td>
+                            <td>
+                                {% set cantiere_label = movimento.cantiere.name if movimento.cantiere else '' %}
+                                {% set personale_label = movimento.caposquadra.full_name if movimento.caposquadra and movimento.caposquadra.full_name else (movimento.caposquadra.email if movimento.caposquadra else '') %}
+                                {% if cantiere_label and personale_label %}
+                                    {% if lang == 'fr' %}
+                                        Chantier: {{ cantiere_label }} — Personnel: {{ personale_label }}
+                                    {% else %}
+                                        Cantiere: {{ cantiere_label }} — Personale: {{ personale_label }}
+                                    {% endif %}
+                                {% elif cantiere_label %}
+                                    {{ cantiere_label }}
+                                {% elif personale_label %}
+                                    {{ personale_label }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
                             <td>{{ movimento.creato_da_user.full_name if movimento.creato_da_user and movimento.creato_da_user.full_name else (movimento.creato_da_user.email if movimento.creato_da_user else '—') }}</td>
                             <td>{{ movimento.note or '—' }}</td>
                             <td>
@@ -167,7 +185,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="8" class="muted">{% if lang == 'fr' %}Aucun mouvement enregistré.{% else %}Nessun movimento registrato.{% endif %}</td>
+                            <td colspan="9" class="muted">{% if lang == 'fr' %}Aucun mouvement enregistré.{% else %}Nessun movimento registrato.{% endif %}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
