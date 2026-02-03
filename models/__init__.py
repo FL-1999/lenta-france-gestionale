@@ -130,6 +130,16 @@ class User(Base, TimestampMixin):
     reports = relationship("Report", back_populates="created_by", cascade="all, delete-orphan")
     fiches = relationship("Fiche", back_populates="created_by", cascade="all, delete-orphan")
     assigned_sites = relationship("Site", back_populates="caposquadra")
+    magazzino_movimenti_creati = relationship(
+        "MagazzinoMovimento",
+        foreign_keys="MagazzinoMovimento.creato_da_user_id",
+        back_populates="creato_da_user",
+    )
+    magazzino_movimenti_caposquadra = relationship(
+        "MagazzinoMovimento",
+        foreign_keys="MagazzinoMovimento.caposquadra_id",
+        back_populates="caposquadra",
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"
@@ -590,8 +600,16 @@ class MagazzinoMovimento(Base, TimestampMixin):
 
     item = relationship("MagazzinoItem")
     cantiere = relationship("Site")
-    creato_da_user = relationship("User")
-    caposquadra = relationship("User", foreign_keys=[caposquadra_id])
+    creato_da_user = relationship(
+        "User",
+        foreign_keys=[creato_da_user_id],
+        back_populates="magazzino_movimenti_creati",
+    )
+    caposquadra = relationship(
+        "User",
+        foreign_keys=[caposquadra_id],
+        back_populates="magazzino_movimenti_caposquadra",
+    )
     richiesta = relationship("MagazzinoRichiesta")
 
 
