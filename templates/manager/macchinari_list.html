@@ -29,6 +29,17 @@
                 Panoramica di tutti i macchinari disponibili e del loro stato.
             {% endif %}
         </p>
+        {% if machine_type_filter is defined and machine_type_filter.code %}
+            {% set filter_label = machine_type_filter.label_fr if lang == 'fr' else machine_type_filter.label_it %}
+            <p class="page-subtitle">
+                {% if lang == 'fr' %}
+                    Typologie sélectionnée :
+                {% else %}
+                    Tipologia selezionata:
+                {% endif %}
+                <strong>{{ filter_label or machine_type_filter.code }}</strong>
+            </p>
+        {% endif %}
     </div>
 </div>
 
