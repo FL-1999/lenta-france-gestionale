@@ -566,6 +566,7 @@ def manager_machine_types_detail_page(
             success_message=success_message,
             error_message=error_message,
             machine_type_filter=machine_type_filter,
+            is_machine_type_detail=True,
         ),
     )
 

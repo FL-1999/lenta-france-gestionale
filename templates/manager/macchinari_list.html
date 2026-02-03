@@ -1,7 +1,16 @@
 {% extends "shared/base.html" %}
 {% block title %}
     {% set lang = request.cookies.get('lang', 'it') %}
-    {% if lang == 'fr' %}Macchinari – Manager – Lenta France{% else %}Macchinari – Manager – Lenta France{% endif %}
+    {% if is_machine_type_detail and machine_type_filter %}
+        {% set filter_label = machine_type_filter.label_fr if lang == 'fr' else machine_type_filter.label_it %}
+        {% if lang == 'fr' %}
+            Machines : {{ filter_label or machine_type_filter.code }} – Manager – Lenta France
+        {% else %}
+            Macchinari: {{ filter_label or machine_type_filter.code }} – Manager – Lenta France
+        {% endif %}
+    {% else %}
+        {% if lang == 'fr' %}Macchinari – Manager – Lenta France{% else %}Macchinari – Manager – Lenta France{% endif %}
+    {% endif %}
 {% endblock %}
 {% block content %}
 {% set lang = request.cookies.get('lang', 'it') %}
@@ -15,13 +24,24 @@
                 Gestione macchinari
             {% endif %}
         </p>
-        <h1 class="page-title">
-            {% if lang == 'fr' %}
-                Macchinari
-            {% else %}
-                Macchinari
-            {% endif %}
-        </h1>
+        {% if is_machine_type_detail and machine_type_filter %}
+            {% set filter_label = machine_type_filter.label_fr if lang == 'fr' else machine_type_filter.label_it %}
+            <h1 class="page-title">
+                {% if lang == 'fr' %}
+                    Machines : {{ filter_label or machine_type_filter.code }}
+                {% else %}
+                    Macchinari: {{ filter_label or machine_type_filter.code }}
+                {% endif %}
+            </h1>
+        {% else %}
+            <h1 class="page-title">
+                {% if lang == 'fr' %}
+                    Macchinari
+                {% else %}
+                    Macchinari
+                {% endif %}
+            </h1>
+        {% endif %}
         <p class="page-subtitle">
             {% if lang == 'fr' %}
                 Vue d'ensemble de tous les macchinari disponibles et de leur statut.
@@ -41,6 +61,13 @@
             </p>
         {% endif %}
     </div>
+    {% if is_machine_type_detail %}
+        <div class="header-actions">
+            <a href="{{ request.url_for('manager_machine_types_list') }}" class="btn btn-secondary">
+                ← {% if lang == 'fr' %}Retour aux typologies{% else %}Torna a Tipologie{% endif %}
+            </a>
+        </div>
+    {% endif %}
 </div>
 
 {% if success_message %}
