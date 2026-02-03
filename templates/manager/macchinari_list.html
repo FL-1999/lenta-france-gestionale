@@ -70,6 +70,15 @@
     {% endif %}
 </div>
 
+<div class="page-actions-row" style="margin-top: 1rem;">
+    <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-secondary">
+        📋 {% if lang == 'fr' %}Liste des machines{% else %}Lista macchinari{% endif %}
+    </a>
+    <a href="{{ request.url_for('manager_machine_types_list') }}" class="btn btn-secondary">
+        🧩 {% if lang == 'fr' %}Typologies{% else %}Tipologie{% endif %}
+    </a>
+</div>
+
 {% if success_message %}
     <div class="alert alert-success">
         {{ success_message }}

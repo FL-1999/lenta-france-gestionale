@@ -32,6 +32,15 @@
     </div>
 </div>
 
+<div class="page-actions-row" style="margin-top: 1rem;">
+    <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-secondary">
+        📋 {% if lang == 'fr' %}Liste des machines{% else %}Lista macchinari{% endif %}
+    </a>
+    <a href="{{ request.url_for('manager_machine_types_list') }}" class="btn btn-secondary">
+        🧩 {% if lang == 'fr' %}Typologies{% else %}Tipologie{% endif %}
+    </a>
+</div>
+
 <div class="card table-card" style="margin-top: 1.5rem;">
     <div class="card-header">
         <div class="card-title">
