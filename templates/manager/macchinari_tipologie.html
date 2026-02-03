@@ -1,0 +1,70 @@
+{% extends "shared/base.html" %}
+{% block title %}
+    {% set lang = request.cookies.get('lang', 'it') %}
+    {% if lang == 'fr' %}Typologies machines – Manager – Lenta France{% else %}Tipologie macchinari – Manager – Lenta France{% endif %}
+{% endblock %}
+{% block content %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}
+                Gestion des machines
+            {% else %}
+                Gestione macchinari
+            {% endif %}
+        </p>
+        <h1 class="page-title">
+            {% if lang == 'fr' %}
+                Typologies machines
+            {% else %}
+                Tipologie macchinari
+            {% endif %}
+        </h1>
+    </div>
+</div>
+
+<div class="card table-card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            🧩
+            {% if lang == 'fr' %}
+                Typologies
+            {% else %}
+                Tipologie
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Nom de la typologie{% else %}Nome tipologia{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Machines{% else %}Macchinari{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for machine_type in machine_types %}
+                    <tr>
+                        <td>{{ machine_type.label_it or machine_type.label or machine_type.name }}</td>
+                        <td>{{ machine_type_counts.get(machine_type.code, 0) }}</td>
+                        <td class="table-actions">
+                            <a href="/manager/macchinari/tipologie/{{ machine_type.code }}" class="btn btn-secondary btn-sm">
+                                {% if lang == 'fr' %}Voir les machines{% else %}Vedi macchinari{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="table-empty">
+                            {% if lang == 'fr' %}Aucune typologie disponible.{% else %}Nessuna tipologia disponibile.{% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
