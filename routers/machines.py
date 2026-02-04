@@ -217,22 +217,18 @@ def _build_manager_machines_query(db: Session):
     )
 
 
-def _build_machine_type_filters(
-    machine_type_record: MachineType | None,
+def _build_machine_type_filters_by_code(
+    machine_type_code: str,
     machine_type_enum: MachineTypeEnum | None,
 ) -> list:
-    if machine_type_record and machine_type_enum:
+    if machine_type_enum:
         return [
             or_(
-                Machine.machine_type_id == machine_type_record.id,
+                MachineType.code == machine_type_code,
                 Machine.machine_type == machine_type_enum,
             )
         ]
-    if machine_type_record:
-        return [Machine.machine_type_id == machine_type_record.id]
-    if machine_type_enum:
-        return [Machine.machine_type == machine_type_enum]
-    return []
+    return [MachineType.code == machine_type_code]
 
 
 def _build_machine_type_counts(
@@ -278,21 +274,19 @@ def _resolve_machine_type(
         return None, None
 
     machine_type_record = (
-        db.query(MachineType).filter(MachineType.code == type_value).first()
+        db.query(MachineType)
+        .filter(
+            MachineType.code == type_value,
+            MachineType.is_active == True,  # noqa: E712
+        )
+        .first()
     )
     machine_type_enum = None
-    if machine_type_record:
-        try:
-            machine_type_enum = MachineTypeEnum(type_value)
-        except ValueError:
-            machine_type_enum = None
-        return machine_type_record, machine_type_enum
-
     try:
         machine_type_enum = MachineTypeEnum(type_value)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Tipo macchinario non valido")
-    return None, machine_type_enum
+        machine_type_enum = None
+    return machine_type_record, machine_type_enum
 
 
 def _snake_case(value: str) -> str:
@@ -497,13 +491,19 @@ def manager_machine_types_detail_page(
 
     page, per_page = _normalize_pagination(page, per_page)
     machine_type_record, machine_type_enum = _resolve_machine_type(db, code)
-    machine_type_filters = _build_machine_type_filters(
-        machine_type_record,
-        machine_type_enum,
-    )
+    machine_type_filters = []
+    if code:
+        machine_type_filters = _build_machine_type_filters_by_code(
+            code,
+            machine_type_enum,
+        )
     base_query = _build_manager_machines_query(db)
     if machine_type_filters:
-        base_query = base_query.filter(*machine_type_filters)
+        base_query = (
+            base_query
+            .outerjoin(MachineType, Machine.machine_type_id == MachineType.id)
+            .filter(*machine_type_filters)
+        )
     total_count = base_query.with_entities(func.count(Machine.id)).order_by(None).scalar() or 0
     query_started = time.monotonic()
     machines = (
@@ -522,21 +522,22 @@ def manager_machine_types_detail_page(
     )
 
     kpi_total = total_count
-    kpi_active = (
-        db.query(func.count(Machine.id))
-        .filter(
-            func.coalesce(Machine.status, "attivo") == "attivo",
-            *machine_type_filters,
+    kpi_base_query = db.query(func.count(Machine.id))
+    if machine_type_filters:
+        kpi_base_query = (
+            kpi_base_query
+            .outerjoin(MachineType, Machine.machine_type_id == MachineType.id)
+            .filter(*machine_type_filters)
         )
+    kpi_active = (
+        kpi_base_query
+        .filter(func.coalesce(Machine.status, "attivo") == "attivo")
         .scalar()
         or 0
     )
     kpi_oos = (
-        db.query(func.count(Machine.id))
-        .filter(
-            Machine.status == "fuori_servizio",
-            *machine_type_filters,
-        )
+        kpi_base_query
+        .filter(Machine.status == "fuori_servizio")
         .scalar()
         or 0
     )
