@@ -499,6 +499,18 @@ def manager_machine_types_detail_page(
             code,
             machine_type_enum,
         )
+    active_machine_type_count = (
+        db.query(func.count(MachineType.id))
+        .filter(MachineType.is_active == True)  # noqa: E712
+        .scalar()
+        or 0
+    )
+    logger.info(
+        "manager_machine_types_detail pre-query code=%s machine_type_id=%s active_types=%s",
+        code,
+        machine_type_record.id if machine_type_record else None,
+        active_machine_type_count,
+    )
     logger.info(
         "manager_machine_types_detail code=%s filters=%s",
         code,
@@ -520,6 +532,7 @@ def manager_machine_types_detail_page(
         .limit(per_page)
         .all()
     )
+    sample_machines = base_query.limit(10).all()
     perf_logger.debug(
         "manager_machines_list rows=%s total=%s page=%s per_page=%s duration_ms=%.2f",
         len(machines),
@@ -527,6 +540,14 @@ def manager_machine_types_detail_page(
         page,
         per_page,
         (time.monotonic() - query_started) * 1000,
+    )
+    logger.info(
+        "manager_machine_types_detail post-query count=%s sample=%s",
+        total_count,
+        [
+            (machine.id, machine.machine_type_id, machine.machine_type)
+            for machine in sample_machines
+        ],
     )
 
     kpi_total = total_count
