@@ -31,6 +31,7 @@ DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
 
 perf_logger = logging.getLogger("lenta_france_gestionale.performance")
+logger = logging.getLogger(__name__)
 
 
 def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
@@ -497,6 +498,11 @@ def manager_machine_types_detail_page(
             code,
             machine_type_enum,
         )
+    logger.info(
+        "manager_machine_types_detail code=%s filters=%s",
+        code,
+        machine_type_filters,
+    )
     base_query = _build_manager_machines_query(db)
     if machine_type_filters:
         base_query = (
@@ -505,6 +511,7 @@ def manager_machine_types_detail_page(
             .filter(*machine_type_filters)
         )
     total_count = base_query.with_entities(func.count(Machine.id)).order_by(None).scalar() or 0
+    logger.info("manager_machine_types_detail count=%s", total_count)
     query_started = time.monotonic()
     machines = (
         base_query
@@ -640,7 +647,20 @@ def manager_machine_new_post(
     db.add(machine)
     db.flush()
     _update_machine_assignment(db, machine, site_id)
+    logger.info(
+        "create_machine pre-commit type=%s machine_type_id=%s machine_type=%s",
+        type,
+        machine.machine_type_id,
+        machine.machine_type,
+    )
     db.commit()
+    db.refresh(machine)
+    logger.info(
+        "create_machine post-commit id=%s machine_type_id=%s machine_type=%s",
+        machine.id,
+        machine.machine_type_id,
+        machine.machine_type,
+    )
 
     return RedirectResponse(url="/manager/macchinari", status_code=303)
 
@@ -744,7 +764,20 @@ def manager_machine_edit_post(
     machine.notes = notes
     _update_machine_assignment(db, machine, site_id)
 
+    logger.info(
+        "manager_machine_update pre-commit type=%s machine_type_id=%s machine_type=%s",
+        type,
+        machine.machine_type_id,
+        machine.machine_type,
+    )
     db.commit()
+    db.refresh(machine)
+    logger.info(
+        "manager_machine_update post-commit id=%s machine_type_id=%s machine_type=%s",
+        machine.id,
+        machine.machine_type_id,
+        machine.machine_type,
+    )
 
     return RedirectResponse(url=f"/manager/macchinari/{machine_id}", status_code=303)
 
