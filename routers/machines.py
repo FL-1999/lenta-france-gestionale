@@ -270,19 +270,17 @@ def _build_machine_type_filter_payload(
 def _resolve_machine_type(
     db: Session,
     type_value: str | None,
+    reactivate: bool = False,
 ) -> tuple[MachineType | None, MachineTypeEnum | None]:
     type_value = (type_value or "").strip()
     if not type_value:
         return None, None
 
-    machine_type_record = (
-        db.query(MachineType)
-        .filter(
-            MachineType.code == type_value,
-            MachineType.is_active == True,  # noqa: E712
-        )
-        .first()
-    )
+    machine_type_record = db.query(MachineType).filter(MachineType.code == type_value).first()
+    if machine_type_record and reactivate and not machine_type_record.is_active:
+        machine_type_record.is_active = True
+        db.add(machine_type_record)
+        db.flush()
     machine_type_enum = None
     try:
         machine_type_enum = MachineTypeEnum(type_value)
@@ -649,7 +647,7 @@ def manager_machine_new_post(
 ):
     _require_manager_or_admin(current_user)
 
-    machine_type_record, machine_type_enum = _resolve_machine_type(db, type)
+    machine_type_record, machine_type_enum = _resolve_machine_type(db, type, reactivate=True)
 
     if status not in MACHINE_STATUS_CHOICES:
         raise HTTPException(status_code=400, detail="Stato macchinario non valido")
@@ -770,7 +768,7 @@ def manager_machine_edit_post(
     _require_manager_or_admin(current_user)
     machine = _get_machine_or_404(db, machine_id)
 
-    machine_type_record, machine_type_enum = _resolve_machine_type(db, type)
+    machine_type_record, machine_type_enum = _resolve_machine_type(db, type, reactivate=True)
 
     if status not in MACHINE_STATUS_CHOICES:
         raise HTTPException(status_code=400, detail="Stato macchinario non valido")
@@ -831,8 +829,12 @@ def manager_machine_type_create(
             is_active=True,
         )
         db.add(machine_type)
-        db.commit()
-        db.refresh(machine_type)
+    elif not machine_type.is_active:
+        machine_type.is_active = True
+        db.add(machine_type)
+
+    db.commit()
+    db.refresh(machine_type)
 
     redirect_url = _build_machine_type_redirect(redirect_to, machine_type.code)
     return RedirectResponse(url=redirect_url, status_code=303)
