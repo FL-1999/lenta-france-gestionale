@@ -271,6 +271,7 @@ def _resolve_machine_type(
     db: Session,
     type_value: str | None,
 ) -> tuple[MachineType | None, MachineTypeEnum | None]:
+    type_value = (type_value or "").strip()
     if not type_value:
         return None, None
 
