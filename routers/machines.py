@@ -276,6 +276,7 @@ def _resolve_machine_type(
     if not type_value:
         return None, None
 
+    # Lookup by code without filtering on is_active to preserve legacy/inactive entries.
     machine_type_record = db.query(MachineType).filter(MachineType.code == type_value).first()
     if machine_type_record and reactivate and not machine_type_record.is_active:
         machine_type_record.is_active = True
