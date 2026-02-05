@@ -231,6 +231,19 @@ def manager_ordini_list(
 ):
     _ensure_manager(current_user)
     normalized_status = (status or "").strip().lower() or None
+    total_orders = db.query(func.count(PurchaseOrder.id)).scalar() or 0
+    partial_orders = (
+        db.query(func.count(PurchaseOrder.id))
+        .filter(func.lower(PurchaseOrder.status) == "parziale")
+        .scalar()
+        or 0
+    )
+    closed_orders = (
+        db.query(func.count(PurchaseOrder.id))
+        .filter(func.lower(PurchaseOrder.status).in_(["chiuso", "completato"]))
+        .scalar()
+        or 0
+    )
     query = db.query(PurchaseOrder)
     if normalized_status:
         query = query.filter(func.lower(PurchaseOrder.status) == normalized_status)
@@ -244,6 +257,9 @@ def manager_ordini_list(
             "orders": orders,
             "status_filter": normalized_status,
             "page_title": page_title,
+            "total_orders": total_orders,
+            "partial_orders": partial_orders,
+            "closed_orders": closed_orders,
         },
         db,
         current_user,
