@@ -3151,36 +3151,22 @@ label.form-label[for="profondita_totale"]{
   grid-template-columns:repeat(3,minmax(0,1fr)) !important;
   gap:12px !important;
 }
+
 .shortcut-container-grid.orders-warehouse-grid > .shortcut-card{
+  grid-column:auto !important;
+  width:auto !important;
   min-height:120px;
   padding:14px;
 }
-@media (max-width:1100px){ .shortcut-container-grid.orders-warehouse-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; } }
-@media (max-width:700px){ .shortcut-container-grid.orders-warehouse-grid{ grid-template-columns:1fr !important; } }
-/* FORZA la griglia 3-colonne dentro la card contenitore */
-.shortcut-container-grid.orders-warehouse-grid{
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 12px !important;
-  align-items: stretch;
-}
 
-/* Card interne più compatte */
-.shortcut-container-grid.orders-warehouse-grid > .shortcut-card{
-  min-height: 120px;
-  padding: 14px;
-}
-
-/* Tablet */
-@media (max-width: 1100px){
+@media (max-width:1100px){
   .shortcut-container-grid.orders-warehouse-grid{
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
   }
 }
 
-/* Mobile */
-@media (max-width: 700px){
+@media (max-width:700px){
   .shortcut-container-grid.orders-warehouse-grid{
-    grid-template-columns: 1fr !important;
+    grid-template-columns:1fr !important;
   }
 }
