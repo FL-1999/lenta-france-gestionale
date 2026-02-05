@@ -632,6 +632,11 @@ class PurchaseOrder(Base):
         back_populates="order",
         cascade="all, delete-orphan",
     )
+    deliveries = relationship(
+        "PurchaseDelivery",
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<PurchaseOrder id={self.id} order_number={self.order_number}>"
@@ -646,11 +651,59 @@ class PurchaseOrderLine(Base):
     qty_ordered = Column(Float, nullable=False)
 
     order = relationship("PurchaseOrder", back_populates="lines")
+    delivery_lines = relationship(
+        "PurchaseDeliveryLine",
+        back_populates="order_line",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return (
             "<PurchaseOrderLine "
             f"id={self.id} order_id={self.order_id} qty_ordered={self.qty_ordered}>"
+        )
+
+
+class PurchaseDelivery(Base):
+    __tablename__ = "purchase_deliveries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=False)
+    delivery_number = Column(String(100), nullable=False)
+    delivery_date = Column(Date, nullable=True)
+    file_delivery = Column(String(255), nullable=True)
+    confirmed = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    order = relationship("PurchaseOrder", back_populates="deliveries")
+    lines = relationship(
+        "PurchaseDeliveryLine",
+        back_populates="delivery",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return (
+            "<PurchaseDelivery "
+            f"id={self.id} order_id={self.order_id} delivery_number={self.delivery_number}>"
+        )
+
+
+class PurchaseDeliveryLine(Base):
+    __tablename__ = "purchase_delivery_lines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    delivery_id = Column(Integer, ForeignKey("purchase_deliveries.id"), nullable=False)
+    order_line_id = Column(Integer, ForeignKey("purchase_order_lines.id"), nullable=False)
+    qty_delivered = Column(Float, nullable=False)
+
+    delivery = relationship("PurchaseDelivery", back_populates="lines")
+    order_line = relationship("PurchaseOrderLine", back_populates="delivery_lines")
+
+    def __repr__(self) -> str:
+        return (
+            "<PurchaseDeliveryLine "
+            f"id={self.id} delivery_id={self.delivery_id} qty_delivered={self.qty_delivered}>"
         )
 
 
