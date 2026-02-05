@@ -64,14 +64,14 @@
                 </tr>
             </thead>
             <tbody>
-                {% for machine_type in machine_types %}
+                {% for tipologia in tipologie %}
                     <tr>
-                        <td>{{ machine_type.code }}</td>
-                        <td>{{ machine_type.label_it }}</td>
-                        <td>{{ machine_type.label_fr or '—' }}</td>
-                        <td>{{ machine_type_counts.get(machine_type.code, 0) }}</td>
+                        <td>{{ tipologia.code }}</td>
+                        <td>{{ tipologia.label_it }}</td>
+                        <td>{{ tipologia.label_fr or '—' }}</td>
+                        <td>{{ tipologia.count }}</td>
                         <td class="table-actions">
-                            <a href="{{ request.url_for('manager_machine_types_detail', code=machine_type.code) }}" class="btn btn-secondary btn-sm">
+                            <a href="{{ request.url_for('manager_machine_types_detail', code=tipologia.code) }}" class="btn btn-secondary btn-sm">
                                 {% if lang == 'fr' %}Voir{% else %}Vedi{% endif %}
                             </a>
                         </td>
