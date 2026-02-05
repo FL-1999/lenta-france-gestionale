@@ -10,7 +10,13 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import PurchaseOrder, PurchaseOrderLine, User
+from models import (
+    PurchaseDelivery,
+    PurchaseDeliveryLine,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    User,
+)
 from permissions import has_perm
 from template_context import register_manager_badges, render_template
 
@@ -183,3 +189,155 @@ def manager_ordini_create(
         url=request.url_for("manager_ordini_new"),
         status_code=303,
     )
+
+
+@router.get("/manager/ordini/{order_id}", name="manager_ordini_detail")
+def manager_ordini_detail(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    delivered_totals = {
+        line_id: total
+        for line_id, total in (
+            db.query(
+                PurchaseDeliveryLine.order_line_id,
+                func.coalesce(func.sum(PurchaseDeliveryLine.qty_delivered), 0.0),
+            )
+            .join(
+                PurchaseDelivery,
+                PurchaseDelivery.id == PurchaseDeliveryLine.delivery_id,
+            )
+            .filter(
+                PurchaseDelivery.order_id == order.id,
+                PurchaseDelivery.confirmed.is_(True),
+            )
+            .group_by(PurchaseDeliveryLine.order_line_id)
+            .all()
+        )
+    }
+
+    return {
+        "id": order.id,
+        "order_number": order.order_number,
+        "supplier_name": order.supplier_name,
+        "order_date": order.order_date,
+        "status": order.status,
+        "lines": [
+            {
+                "id": line.id,
+                "description": line.description,
+                "qty_ordered": line.qty_ordered,
+                "qty_delivered": delivered_totals.get(line.id, 0.0),
+            }
+            for line in order.lines
+        ],
+    }
+
+
+@router.post("/manager/ordini/{order_id}/bolle/nuova", name="manager_ordini_bolle_nuova")
+def manager_ordini_bolle_nuova(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    delivery_count = (
+        db.query(func.count(PurchaseDelivery.id))
+        .filter(PurchaseDelivery.order_id == order.id)
+        .scalar()
+        or 0
+    )
+    delivery_number = f"{order.order_number}-{delivery_count + 1}"
+    delivery = PurchaseDelivery(
+        order_id=order.id,
+        delivery_number=delivery_number,
+        delivery_date=date.today(),
+        confirmed=False,
+    )
+    db.add(delivery)
+    db.flush()
+
+    for line in order.lines:
+        db.add(
+            PurchaseDeliveryLine(
+                delivery_id=delivery.id,
+                order_line_id=line.id,
+                qty_delivered=line.qty_ordered,
+            )
+        )
+
+    db.commit()
+    db.refresh(delivery)
+
+    return {
+        "delivery_id": delivery.id,
+        "order_id": order.id,
+        "delivery_number": delivery.delivery_number,
+        "confirmed": delivery.confirmed,
+    }
+
+
+@router.post(
+    "/manager/ordini/bolle/{delivery_id}/conferma",
+    name="manager_ordini_bolle_conferma",
+)
+def manager_ordini_bolle_conferma(
+    delivery_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    delivery = (
+        db.query(PurchaseDelivery).filter(PurchaseDelivery.id == delivery_id).first()
+    )
+    if not delivery:
+        raise HTTPException(status_code=404, detail="Bolla non trovata")
+
+    if not delivery.confirmed:
+        delivery.confirmed = True
+        db.add(delivery)
+        db.flush()
+
+    order = (
+        db.query(PurchaseOrder)
+        .filter(PurchaseOrder.id == delivery.order_id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    total_ordered = (
+        db.query(func.coalesce(func.sum(PurchaseOrderLine.qty_ordered), 0.0))
+        .filter(PurchaseOrderLine.order_id == order.id)
+        .scalar()
+        or 0.0
+    )
+    total_delivered = (
+        db.query(func.coalesce(func.sum(PurchaseDeliveryLine.qty_delivered), 0.0))
+        .join(
+            PurchaseDelivery,
+            PurchaseDelivery.id == PurchaseDeliveryLine.delivery_id,
+        )
+        .filter(
+            PurchaseDelivery.order_id == order.id,
+            PurchaseDelivery.confirmed.is_(True),
+        )
+        .scalar()
+        or 0.0
+    )
+
+    order.status = "COMPLETATO" if total_delivered >= total_ordered else "PARZIALE"
+    db.add(order)
+    db.commit()
+
+    return {"order_id": order.id, "status": order.status}
