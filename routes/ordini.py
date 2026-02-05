@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 from auth import get_current_active_user_html
 from database import get_db
 from models import (
+    MagazzinoItem,
+    MagazzinoMovimento,
+    MagazzinoMovimentoTipoEnum,
     PurchaseDelivery,
     PurchaseDeliveryLine,
     PurchaseOrder,
@@ -49,6 +52,30 @@ def _parse_float(value: str | None) -> float | None:
         return float(value)
     except ValueError:
         return None
+
+
+def _find_magazzino_item_by_description(
+    db: Session,
+    description: str | None,
+) -> MagazzinoItem | None:
+    if not description:
+        return None
+    normalized = description.strip()
+    if not normalized:
+        return None
+    normalized_lower = normalized.lower()
+    item = (
+        db.query(MagazzinoItem)
+        .filter(func.lower(MagazzinoItem.codice) == normalized_lower)
+        .first()
+    )
+    if item:
+        return item
+    return (
+        db.query(MagazzinoItem)
+        .filter(func.lower(MagazzinoItem.nome) == normalized_lower)
+        .first()
+    )
 
 
 def _get_next_order_number(db: Session) -> str:
@@ -315,6 +342,38 @@ def manager_ordini_bolle_conferma(
     )
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    existing_movimento = (
+        db.query(MagazzinoMovimento.id)
+        .filter(MagazzinoMovimento.purchase_delivery_id == delivery.id)
+        .first()
+    )
+    if not existing_movimento:
+        for line in delivery.lines:
+            qty = line.qty_delivered or 0.0
+            if qty <= 0:
+                continue
+            item = _find_magazzino_item_by_description(db, line.order_line.description)
+            if not item:
+                logger.warning(
+                    "Nessun articolo magazzino per riga ordine %s (delivery %s)",
+                    line.order_line_id,
+                    delivery.id,
+                )
+                continue
+            item.quantita_disponibile = (item.quantita_disponibile or 0.0) + qty
+            db.add(item)
+            db.add(
+                MagazzinoMovimento(
+                    item_id=item.id,
+                    tipo=MagazzinoMovimentoTipoEnum.carico,
+                    quantita=qty,
+                    creato_da_user_id=current_user.id,
+                    purchase_order_id=delivery.order_id,
+                    purchase_delivery_id=delivery.id,
+                    note=f"Bolla {delivery.delivery_number}",
+                )
+            )
 
     total_ordered = (
         db.query(func.coalesce(func.sum(PurchaseOrderLine.qty_ordered), 0.0))

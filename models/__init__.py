@@ -594,6 +594,10 @@ class MagazzinoMovimento(Base, TimestampMixin):
     riferimento_richiesta_id = Column(
         Integer, ForeignKey("magazzino_richieste.id"), nullable=True
     )
+    purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=True)
+    purchase_delivery_id = Column(
+        Integer, ForeignKey("purchase_deliveries.id"), nullable=True
+    )
     creato_da_user_id = Column("user_id", Integer, ForeignKey("users.id"), nullable=True)
     caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     note = Column(Text, nullable=True)
@@ -611,6 +615,8 @@ class MagazzinoMovimento(Base, TimestampMixin):
         back_populates="magazzino_movimenti_caposquadra",
     )
     richiesta = relationship("MagazzinoRichiesta")
+    purchase_order = relationship("PurchaseOrder")
+    purchase_delivery = relationship("PurchaseDelivery")
 
 
 class PurchaseOrder(Base):
