@@ -222,14 +222,13 @@ def _build_machine_type_filters_by_code(
     machine_type_code: str,
     machine_type_enum: MachineTypeEnum | None,
 ) -> list:
-    if machine_type_enum:
-        return [
-            or_(
-                MachineType.code == machine_type_code,
-                Machine.machine_type == machine_type_enum,
-            )
-        ]
-    return [MachineType.code == machine_type_code]
+    machine_type_value = machine_type_enum or machine_type_code
+    return [
+        or_(
+            MachineType.code == machine_type_code,
+            Machine.machine_type == machine_type_value,
+        )
+    ]
 
 
 def _build_machine_type_counts(
@@ -265,6 +264,62 @@ def _build_machine_type_filter_payload(
         "label_it": machine_type_record.label_it if machine_type_record else None,
         "label_fr": machine_type_record.label_fr if machine_type_record else None,
     }
+
+
+def _humanize_machine_type_code(code: str) -> str:
+    cleaned = (code or "").strip().replace("_", " ")
+    cleaned = " ".join(part for part in cleaned.split(" ") if part)
+    return cleaned.title() if cleaned else "Tipologia"
+
+
+def _build_machine_types_from_machines(db: Session) -> list[dict[str, str | int | None]]:
+    types: dict[str, dict[str, str | int | None]] = {}
+    machine_type_rows = (
+        db.query(
+            MachineType.code,
+            MachineType.label_it,
+            MachineType.label_fr,
+            func.count(Machine.id),
+        )
+        .select_from(Machine)
+        .outerjoin(MachineType, Machine.machine_type_id == MachineType.id)
+        .filter(MachineType.code.isnot(None))
+        .group_by(MachineType.code, MachineType.label_it, MachineType.label_fr)
+        .all()
+    )
+    for code, label_it, label_fr, count in machine_type_rows:
+        if not code:
+            continue
+        types[code] = {
+            "code": code,
+            "label_it": label_it or _humanize_machine_type_code(code),
+            "label_fr": label_fr,
+            "count": count,
+        }
+
+    enum_rows = (
+        db.query(Machine.machine_type, func.count(Machine.id))
+        .filter(Machine.machine_type.isnot(None))
+        .group_by(Machine.machine_type)
+        .all()
+    )
+    for machine_type_enum, count in enum_rows:
+        if not machine_type_enum:
+            continue
+        code = machine_type_enum.value
+        if code in types:
+            types[code]["count"] = int(types[code]["count"] or 0) + count
+            if not types[code].get("label_it"):
+                types[code]["label_it"] = _humanize_machine_type_code(code)
+        else:
+            types[code] = {
+                "code": code,
+                "label_it": _humanize_machine_type_code(code),
+                "label_fr": None,
+                "count": count,
+            }
+
+    return sorted(types.values(), key=lambda item: (item.get("label_it") or item["code"]).lower())
 
 
 def _resolve_machine_type(
@@ -455,22 +510,14 @@ def manager_machine_types_page(
     db: Session = Depends(get_db),
 ):
     _require_manager_or_admin(current_user)
-
-    machine_types = (
-        db.query(MachineType)
-        .filter(MachineType.is_active == True)  # noqa: E712
-        .order_by(MachineType.label_it.asc())
-        .all()
-    )
-    machine_type_counts = _build_machine_type_counts(db, machine_types)
+    tipologie = _build_machine_types_from_machines(db)
 
     return templates.TemplateResponse(
         "manager/macchinari_tipologie_list.html",
         build_template_context(
             request,
             current_user,
-            machine_types=machine_types,
-            machine_type_counts=machine_type_counts,
+            tipologie=tipologie,
         ),
     )
 
