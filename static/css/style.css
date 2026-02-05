@@ -3264,4 +3264,5 @@ label.form-label[for="profondita_totale"]{
         grid-template-columns: 1fr;
     }
 }
+.orders-warehouse-grid{ outline: 4px solid lime !important; }
 
