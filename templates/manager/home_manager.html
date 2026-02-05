@@ -734,4 +734,33 @@
 
 {% endif %}
 <script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
+<style>
+  /* DEBUG: forza layout 3 colonne dentro Ordini & Magazzino */
+  .shortcut-container-grid.orders-warehouse-grid{
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    align-items: stretch;
+  }
+
+  /* IMPORTANTISSIMO: se qualche CSS forza 1 card per riga */
+  .shortcut-container-grid.orders-warehouse-grid > .card.shortcut-card{
+    grid-column: auto !important;
+    width: auto !important;
+    min-height: 120px;
+    padding: 14px;
+  }
+
+  @media (max-width: 1100px){
+    .shortcut-container-grid.orders-warehouse-grid{
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
+
+  @media (max-width: 700px){
+    .shortcut-container-grid.orders-warehouse-grid{
+      grid-template-columns: 1fr !important;
+    }
+  }
+</style>
 {% endblock %}
