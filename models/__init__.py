@@ -613,6 +613,47 @@ class MagazzinoMovimento(Base, TimestampMixin):
     richiesta = relationship("MagazzinoRichiesta")
 
 
+class PurchaseOrder(Base):
+    __tablename__ = "purchase_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_number = Column(String(50), nullable=False, unique=True)
+    supplier_name = Column(String(255), nullable=True)
+    order_date = Column(Date, nullable=True)
+    requester_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    invoice_number = Column(String(100), nullable=True)
+    file_invoice = Column(String(255), nullable=True)
+    status = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    requester = relationship("User")
+    lines = relationship(
+        "PurchaseOrderLine",
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<PurchaseOrder id={self.id} order_number={self.order_number}>"
+
+
+class PurchaseOrderLine(Base):
+    __tablename__ = "purchase_order_lines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=False)
+    description = Column(Text, nullable=True)
+    qty_ordered = Column(Float, nullable=False)
+
+    order = relationship("PurchaseOrder", back_populates="lines")
+
+    def __repr__(self) -> str:
+        return (
+            "<PurchaseOrderLine "
+            f"id={self.id} order_id={self.order_id} qty_ordered={self.qty_ordered}>"
+        )
+
+
 class Personale(SQLModel, table=True):
     __tablename__ = "personale"
 
