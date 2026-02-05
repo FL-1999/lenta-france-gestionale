@@ -10,6 +10,14 @@
 {% endblock %}
 
 {% block content %}
+<div class="page-actions-row" style="margin-bottom: 1rem;">
+    <a href="/manager/magazzino" class="btn btn-secondary">
+        {% if lang == 'fr' %}Aller au magasin{% else %}Vai a Magazzino{% endif %}
+    </a>
+    <a href="/manager/ordini?status=chiuso" class="btn btn-secondary">
+        {% if lang == 'fr' %}Voir les commandes closes{% else %}Vedi Ordini Chiusi{% endif %}
+    </a>
+</div>
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">
