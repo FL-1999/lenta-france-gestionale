@@ -1,0 +1,116 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Nouvelle commande{% else %}Nuovo ordine{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
+        <h1 class="page-title">🧾 {% if lang == 'fr' %}Nouvelle commande{% else %}Nuovo ordine{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Le numéro de commande est généré automatiquement.
+            {% else %}
+                Il numero ordine viene generato automaticamente.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('home_manager') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<form method="post">
+    <div class="card large-form-card">
+        <div class="card-body">
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</label>
+                    <input type="text" name="supplier_name" required>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Date de commande{% else %}Data ordine{% endif %}</label>
+                    <input type="date" name="order_date">
+                </div>
+            </div>
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Numéro facture{% else %}Numero fattura{% endif %}</label>
+                <input type="text" name="invoice_number">
+            </div>
+        </div>
+    </div>
+
+    <div class="card table-card" style="margin-top: 16px;">
+        <div class="card-body">
+            <table class="data-table" id="righe-table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <input type="text" name="description" required>
+                        </td>
+                        <td class="text-right">
+                            <input type="number" name="qty_ordered" min="0" step="0.01" required>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="form-actions" style="margin-top: 16px;">
+                <button type="button" class="btn btn-secondary" id="add-row">
+                    ➕ {% if lang == 'fr' %}Ajouter une ligne{% else %}Aggiungi riga{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions" style="margin-top: 16px;">
+        <a href="{{ url_for('home_manager') }}" class="btn btn-secondary">
+            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+        </a>
+        <button type="submit" class="btn btn-primary">
+            {% if lang == 'fr' %}Créer{% else %}Crea ordine{% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+    const addRowButton = document.getElementById('add-row');
+    const tableBody = document.querySelector('#righe-table tbody');
+    if (addRowButton && tableBody) {
+        addRowButton.addEventListener('click', () => {
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>
+                    <input type="text" name="description" required>
+                </td>
+                <td class="text-right">
+                    <input type="number" name="qty_ordered" min="0" step="0.01" required>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button>
+                </td>
+            `;
+            tableBody.appendChild(newRow);
+        });
+
+        tableBody.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target && target.classList.contains('remove-row')) {
+                target.closest('tr').remove();
+            }
+        });
+    }
+</script>
+{% endblock %}
