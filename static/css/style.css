@@ -3241,3 +3241,27 @@ label.form-label[for="profondita_totale"]{
     grid-template-columns:1fr !important;
   }
 }
+/* ===============================
+   ORDINI & MAGAZZINO – GRID FIX
+   =============================== */
+
+.orders-warehouse-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+/* Forza le card a non occupare tutta la riga */
+.orders-warehouse-grid > .shortcut-card {
+    width: 100%;
+    margin: 0;
+}
+
+/* Responsive: su mobile tornano in colonna */
+@media (max-width: 900px) {
+    .orders-warehouse-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
