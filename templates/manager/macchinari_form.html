@@ -101,7 +101,7 @@
                 {% set current_type = macchinario.machine_type.value if macchinario and macchinario.machine_type and macchinario.machine_type.value is defined else macchinario.machine_type %}
               {% endif %}
               {% for t in machine_types %}
-                {% set t_value = t.value if t.value is defined else t %}
+                {% set t_value = t.code if t.code is defined else (t.value if t.value is defined else t) %}
                 {% set t_label = t.label_fr if lang == 'fr' and t.label_fr else t.label_it if t.label_it else t_value %}
                 <option value="{{ t_value }}"
                   {% if current_type == t_value %}selected{% endif %}>
