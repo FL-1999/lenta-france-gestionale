@@ -55,6 +55,45 @@
     </div>
 </div>
 
+<div class="dashboard-kpi-grid" style="margin-bottom: 1.5rem;">
+    <div class="kpi-card kpi-accent-1">
+        <div class="kpi-top">
+            <span class="kpi-icon">📦</span>
+            <span class="badge badge-secondary">
+                {% if lang == 'fr' %}Totaux{% else %}Totali{% endif %}
+            </span>
+        </div>
+        <div class="kpi-value">{{ total_orders or 0 }}</div>
+        <div class="kpi-sub">
+            {% if lang == 'fr' %}Toutes les commandes{% else %}Tutti gli ordini{% endif %}
+        </div>
+    </div>
+    <div class="kpi-card kpi-accent-2">
+        <div class="kpi-top">
+            <span class="kpi-icon">🟡</span>
+            <span class="badge badge-warning">
+                {% if lang == 'fr' %}Partiels{% else %}Parziali{% endif %}
+            </span>
+        </div>
+        <div class="kpi-value">{{ partial_orders or 0 }}</div>
+        <div class="kpi-sub">
+            {% if lang == 'fr' %}Livraisons en cours{% else %}Consegne in corso{% endif %}
+        </div>
+    </div>
+    <div class="kpi-card kpi-accent-3">
+        <div class="kpi-top">
+            <span class="kpi-icon">✅</span>
+            <span class="badge badge-success">
+                {% if lang == 'fr' %}Clos{% else %}Chiusi{% endif %}
+            </span>
+        </div>
+        <div class="kpi-value">{{ closed_orders or 0 }}</div>
+        <div class="kpi-sub">
+            {% if lang == 'fr' %}Commandes complétées{% else %}Ordini completati{% endif %}
+        </div>
+    </div>
+</div>
+
 <div class="card table-card">
     <div class="card-header">
         <div class="card-title">
