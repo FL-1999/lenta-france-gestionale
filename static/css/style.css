@@ -3170,3 +3170,53 @@ label.form-label[for="profondita_totale"]{
     grid-template-columns:1fr !important;
   }
 }
+
+/* Contenitore principale */
+.orders-container {
+  padding: 1.25rem;
+}
+
+/* Header della card grande */
+.orders-container-header {
+  margin-bottom: 1rem;
+}
+
+.orders-container-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.orders-container-header p {
+  margin: 0.25rem 0 0;
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+/* GRID A 3 COLONNE */
+.orders-container-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+/* Card compatte */
+.shortcut-card.compact {
+  padding: 1rem;
+  min-height: auto;
+}
+
+.shortcut-card.compact .shortcut-title {
+  font-size: 1rem;
+}
+
+.shortcut-card.compact .shortcut-subtitle {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .orders-container-grid {
+    grid-template-columns: 1fr;
+  }
+}

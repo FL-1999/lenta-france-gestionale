@@ -54,105 +54,38 @@
 
     <div class="dashboard-shortcuts">
         <div class="section-header">
-            <h2>{% if lang == 'fr' %}Raccourcis{% else %}Scorciatoie{% endif %}</h2>
-            <p>
-                {% if lang == 'fr' %}
-                    Accès rapide aux fonctionnalités clés du Magazzino.
-                {% else %}
-                    Accesso rapido alle funzioni principali del Magazzino.
-                {% endif %}
-            </p>
+            <h2>Scorciatoie</h2>
+            <p>Accesso rapido a ordini e magazzino.</p>
         </div>
-        <div class="shortcut-grid">
-            <div class="card shortcut-card shortcut-card--container">
-                <div class="shortcut-container-header">
-                    <div class="shortcut-title">📦 {% if lang == 'fr' %}Ordres & Magasin{% else %}Ordini & Magazzino{% endif %}</div>
+
+        <div class="card shortcut-card orders-container">
+            <div class="orders-container-header">
+                <h3>📦 Ordini & Magazzino</h3>
+                <p>Gestione ordini di acquisto e stock</p>
+            </div>
+
+            <div class="orders-container-grid">
+                <div class="card shortcut-card compact">
+                    <a class="shortcut-card-link" href="/manager/ordini"></a>
+                    <div class="shortcut-title">🧾 Ordini generali</div>
                     <div class="shortcut-subtitle">
-                        {% if lang == 'fr' %}
-                            Raccourcis essentiels pour les ordres et le stock.
-                        {% else %}
-                            Scorciatoie essenziali per ordini e stock.
-                        {% endif %}
+                        Lista completa ordini di acquisto
                     </div>
                 </div>
-                <div class="shortcut-container-grid orders-warehouse-grid">
-                    <div class="card shortcut-card">
-                        <a class="shortcut-card-link" href="/manager/ordini" aria-label="Apri Ordini Generali"></a>
-                        <div class="shortcut-body">
-                            <div class="shortcut-title">
-                                🧾 {% if lang == 'fr' %}Ordres généraux{% else %}Ordini generali{% endif %}
-                            </div>
-                            <div class="shortcut-subtitle">
-                                {% if lang == 'fr' %}
-                                    Suivez la liste complète des ordres d'achat.
-                                {% else %}
-                                    Consulta la lista completa degli ordini di acquisto.
-                                {% endif %}
-                            </div>
-                        </div>
+
+                <div class="card shortcut-card compact">
+                    <a class="shortcut-card-link" href="/manager/magazzino"></a>
+                    <div class="shortcut-title">📦 Magazzino</div>
+                    <div class="shortcut-subtitle">
+                        Articoli, richieste e movimenti
                     </div>
-                    <div class="card shortcut-card">
-                        <a class="shortcut-card-link" href="/manager/magazzino" aria-label="Apri Magazzino"></a>
-                        {% if nuove_richieste > 0 %}
-                            <span class="shortcut-badge">{{ badge_text }}</span>
-                        {% endif %}
-                        <div class="shortcut-body">
-                            <div class="shortcut-title">
-                                📦 Magazzino
-                                {% if has_unread_warehouse_notifications %}
-                                    <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
-                                {% endif %}
-                            </div>
-                            <div class="shortcut-subtitle">
-                                {% if lang == 'fr' %}
-                                    Gérez les articles et les demandes.
-                                {% else %}
-                                    Gestisci articoli e richieste.
-                                {% endif %}
-                            </div>
-                            {% if nuove_richieste > 0 %}
-                                <div class="shortcut-line">
-                                    {% if lang == 'fr' %}Nouvelles demandes{% else %}Richieste nuove{% endif %}: {{ nuove_richieste }}
-                                </div>
-                            {% endif %}
-                            <div class="shortcut-links">
-                                <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_list') }}">
-                                    {% if lang == 'fr' %}Ouvrir Magazzino{% else %}Apri Magazzino{% endif %}
-                                </a>
-                                <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_richieste') }}">
-                                    {% if lang == 'fr' %}Ouvrir demandes{% else %}Apri Richieste{% endif %}
-                                </a>
-                            </div>
-                            <div class="shortcut-quick-links">
-                                <span class="shortcut-quick-label">
-                                    {% if lang == 'fr' %}Liens rapides:{% else %}Link rapidi:{% endif %}
-                                </span>
-                                <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_richieste') }}">
-                                    {% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}
-                                </a>
-                                <a class="shortcut-link" href="{{ request.url_for('manager_magazzino_movimenti') }}">
-                                    {% if lang == 'fr' %}Mouvements{% else %}Movimenti{% endif %}
-                                    {% if has_unread_warehouse_notifications %}
-                                        <span class="badge-notification" title="{% if lang == 'fr' %}Notifications magasin non lues{% else %}Notifiche magazzino non lette{% endif %}"></span>
-                                    {% endif %}
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card shortcut-card">
-                        <a class="shortcut-card-link" href="/manager/ordini?status=chiuso" aria-label="Apri Ordini Chiusi"></a>
-                        <div class="shortcut-body">
-                            <div class="shortcut-title">
-                                ✅ {% if lang == 'fr' %}Ordres clos{% else %}Ordini chiusi{% endif %}
-                            </div>
-                            <div class="shortcut-subtitle">
-                                {% if lang == 'fr' %}
-                                    Consultez les ordres clôturés et archivés.
-                                {% else %}
-                                    Rivedi gli ordini chiusi e archiviati.
-                                {% endif %}
-                            </div>
-                        </div>
+                </div>
+
+                <div class="card shortcut-card compact">
+                    <a class="shortcut-card-link" href="/manager/ordini?status=chiuso"></a>
+                    <div class="shortcut-title">✅ Ordini chiusi</div>
+                    <div class="shortcut-subtitle">
+                        Ordini completati e archiviati
                     </div>
                 </div>
             </div>
