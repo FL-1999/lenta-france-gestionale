@@ -1,0 +1,90 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}
+        {% if status_filter == 'chiuso' %}Ordres clos{% else %}Ordres{% endif %} – Manager – Lenta France
+    {% else %}
+        {{ page_title }} – Manager – Lenta France
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}Gestion des commandes{% else %}Gestione ordini{% endif %}
+        </p>
+        <h1 class="page-title">
+            🧾
+            {% if lang == 'fr' %}
+                {% if status_filter == 'chiuso' %}Ordres clos{% else %}Ordres{% endif %}
+            {% else %}
+                {{ page_title }}
+            {% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Consultez la liste des commandes d'achat.
+            {% else %}
+                Consulta la lista degli ordini di acquisto.
+            {% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="/manager/ordini/nuovo" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvel ordre{% else %}Nuovo ordine{% endif %}
+        </a>
+        {% if status_filter == 'chiuso' %}
+            <a href="/manager/ordini" class="btn btn-secondary">
+                {% if lang == 'fr' %}Tous les ordres{% else %}Tutti gli ordini{% endif %}
+            </a>
+        {% else %}
+            <a href="/manager/ordini?status=chiuso" class="btn btn-secondary">
+                {% if lang == 'fr' %}Ordres clos{% else %}Ordini chiusi{% endif %}
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-header">
+        <div class="card-title">
+            📋 {% if lang == 'fr' %}Liste des commandes{% else %}Elenco ordini{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}N° commande{% else %}N° ordine{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set orders_list = orders | default([]) %}
+                {% for order in orders_list %}
+                <tr>
+                    <td>{{ order.order_number }}</td>
+                    <td>{{ order.supplier_name or '-' }}</td>
+                    <td>{{ order.order_date.strftime("%d/%m/%Y") if order.order_date else '-' }}</td>
+                    <td>{{ order.status or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="table-empty">
+                        {% if lang == 'fr' %}
+                            Aucune commande trouvée.
+                        {% else %}
+                            Nessun ordine trovato.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

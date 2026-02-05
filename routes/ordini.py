@@ -218,6 +218,38 @@ def manager_ordini_create(
     )
 
 
+@router.get(
+    "/manager/ordini",
+    response_class=HTMLResponse,
+    name="manager_ordini_list",
+)
+def manager_ordini_list(
+    request: Request,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    normalized_status = (status or "").strip().lower() or None
+    query = db.query(PurchaseOrder)
+    if normalized_status:
+        query = query.filter(func.lower(PurchaseOrder.status) == normalized_status)
+    orders = query.order_by(PurchaseOrder.order_date.desc()).all()
+    page_title = "Ordini chiusi" if normalized_status == "chiuso" else "Ordini"
+    return render_template(
+        templates,
+        request,
+        "manager/ordini/ordini_list.html",
+        {
+            "orders": orders,
+            "status_filter": normalized_status,
+            "page_title": page_title,
+        },
+        db,
+        current_user,
+    )
+
+
 @router.get("/manager/ordini/{order_id}", name="manager_ordini_detail")
 def manager_ordini_detail(
     order_id: int,
