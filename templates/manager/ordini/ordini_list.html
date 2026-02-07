@@ -14,7 +14,7 @@
     <a href="/manager/magazzino" class="btn btn-secondary">
         {% if lang == 'fr' %}Aller au magasin{% else %}Vai a Magazzino{% endif %}
     </a>
-    <a href="/manager/ordini?status=chiuso" class="btn btn-secondary">
+    <a href="/manager/ordini/chiusi" class="btn btn-secondary">
         {% if lang == 'fr' %}Voir les commandes closes{% else %}Vedi Ordini Chiusi{% endif %}
     </a>
 </div>
@@ -48,7 +48,7 @@
                 {% if lang == 'fr' %}Tous les ordres{% else %}Tutti gli ordini{% endif %}
             </a>
         {% else %}
-            <a href="/manager/ordini?status=chiuso" class="btn btn-secondary">
+            <a href="/manager/ordini/chiusi" class="btn btn-secondary">
                 {% if lang == 'fr' %}Ordres clos{% else %}Ordini chiusi{% endif %}
             </a>
         {% endif %}
@@ -94,6 +94,33 @@
     </div>
 </div>
 
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <form method="get" class="form-grid-2" style="gap: 16px;">
+            {% if status_filter %}
+                <input type="hidden" name="status" value="{{ status_filter }}">
+            {% endif %}
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</label>
+                <input type="text" name="supplier" value="{{ supplier_filter or '' }}">
+            </div>
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Date de début{% else %}Data inizio{% endif %}</label>
+                <input type="date" name="date_from" value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
+            </div>
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Date de fin{% else %}Data fine{% endif %}</label>
+                <input type="date" name="date_to" value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
+            </div>
+            <div class="form-actions" style="align-items: flex-end;">
+                <button type="submit" class="btn btn-secondary">
+                    🔎 {% if lang == 'fr' %}Filtrer{% else %}Filtra{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card table-card">
     <div class="card-header">
         <div class="card-title">
@@ -107,21 +134,41 @@
                     <th>{% if lang == 'fr' %}N° commande{% else %}N° ordine{% endif %}</th>
                     <th>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</th>
                     <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Demandeur{% else %}Richiedente{% endif %}</th>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 {% set orders_list = orders | default([]) %}
                 {% for order in orders_list %}
                 <tr>
-                    <td>{{ order.order_number }}</td>
+                    <td>
+                        <a href="{{ url_for('manager_ordini_detail', order_id=order.id) }}">
+                            {{ order.order_number }}
+                        </a>
+                    </td>
                     <td>{{ order.supplier_name or '-' }}</td>
                     <td>{{ order.order_date.strftime("%d/%m/%Y") if order.order_date else '-' }}</td>
+                    <td>
+                        {% if order.requester %}
+                            {{ order.requester.full_name or order.requester.email }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>{{ order.status or '-' }}</td>
+                    <td class="text-right">{{ completion_map.get(order.id, 0) }}%</td>
+                    <td>
+                        <a href="{{ url_for('manager_ordini_detail', order_id=order.id) }}" class="btn btn-sm btn-secondary">
+                            {% if lang == 'fr' %}Détails{% else %}Dettaglio{% endif %}
+                        </a>
+                    </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="4" class="table-empty">
+                    <td colspan="7" class="table-empty">
                         {% if lang == 'fr' %}
                             Aucune commande trouvée.
                         {% else %}

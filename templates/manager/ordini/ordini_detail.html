@@ -1,0 +1,147 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Détail commande{% else %}Dettaglio ordine{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
+        <h1 class="page-title">
+            🧾 {% if lang == 'fr' %}Commande{% else %}Ordine{% endif %} #{{ order.order_number }}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Fournisseur {{ order.supplier_name or '-' }} · Statut {{ order.status or '-' }}
+            {% else %}
+                Fornitore {{ order.supplier_name or '-' }} · Stato {{ order.status or '-' }}
+            {% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_ordini_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+        <a href="{{ url_for('manager_ordini_bolle_nuova', order_id=order.id) }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvelle livraison{% else %}Nuova bolla{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <div class="form-grid-2">
+            <div>
+                <strong>{% if lang == 'fr' %}Date{% else %}Data{% endif %}:</strong>
+                {{ order.order_date.strftime("%d/%m/%Y") if order.order_date else '-' }}
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Demandeur{% else %}Richiedente{% endif %}:</strong>
+                {% if order.requester %}
+                    {{ order.requester.full_name or order.requester.email }}
+                {% else %}
+                    -
+                {% endif %}
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}:</strong>
+                {{ completion_percent }}%
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Facture{% else %}Fattura{% endif %}:</strong>
+                {{ order.invoice_number or '-' }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card table-card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            📦 {% if lang == 'fr' %}Lignes de commande{% else %}Righe ordine{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Commandé{% else %}Ordinato{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Livré{% else %}Consegnato{% endif %}</th>
+                    <th class="text-right">{% if lang == 'fr' %}Restant{% else %}Residuo{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in lines %}
+                <tr>
+                    <td>{{ line.description or '-' }}</td>
+                    <td class="text-right">{{ line.qty_ordered }}</td>
+                    <td class="text-right">{{ line.qty_delivered }}</td>
+                    <td class="text-right">{{ line.qty_remaining }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="table-empty">
+                        {% if lang == 'fr' %}Aucune ligne{% else %}Nessuna riga{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-header">
+        <div class="card-title">
+            🚚 {% if lang == 'fr' %}Livraisons{% else %}Bolle{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Bolla{% else %}Bolla{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for delivery in deliveries %}
+                <tr>
+                    <td>{{ delivery.delivery_number }}</td>
+                    <td>{{ delivery.delivery_date.strftime("%d/%m/%Y") if delivery.delivery_date else '-' }}</td>
+                    <td>
+                        {% if delivery.confirmed %}
+                            ✅ {% if lang == 'fr' %}Confirmée{% else %}Confermata{% endif %}
+                        {% else %}
+                            🟡 {% if lang == 'fr' %}À confirmer{% else %}Da confermare{% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not delivery.confirmed %}
+                        <form method="post" action="{{ url_for('manager_ordini_bolle_conferma', delivery_id=delivery.id) }}">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                {% if lang == 'fr' %}Confirmer{% else %}Conferma{% endif %}
+                            </button>
+                        </form>
+                        {% else %}
+                            <span class="badge badge-success">OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="table-empty">
+                        {% if lang == 'fr' %}Aucune livraison{% else %}Nessuna bolla{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
