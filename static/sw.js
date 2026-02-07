@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const PRECACHE_NAME = `precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline';
@@ -56,6 +56,23 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(request.url);
+  if (url.origin === self.location.origin && url.pathname.startsWith('/static/css/')) {
+    event.respondWith(
+      caches.open(RUNTIME_NAME).then((cache) =>
+        cache.match(request).then((cachedResponse) => {
+          const fetchPromise = fetch(request)
+            .then((response) => {
+              cache.put(request, response.clone());
+              return response;
+            })
+            .catch(() => cachedResponse);
+          return cachedResponse || fetchPromise;
+        })
+      )
+    );
+    return;
+  }
+
   if (url.origin === self.location.origin && url.pathname.startsWith('/static/')) {
     event.respondWith(
       caches.match(request).then((cachedResponse) =>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import os
 from pathlib import Path
 from threading import Lock
 
@@ -329,3 +330,4 @@ def static_url(request: Request, path: str) -> str:
 
 def register_static_helpers(templates) -> None:
     templates.env.globals.setdefault("static_url", static_url)
+    templates.env.globals.setdefault("ASSET_VERSION", os.getenv("ASSET_VERSION", "1"))

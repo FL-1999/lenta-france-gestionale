@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import re
 import uuid
 from datetime import date, datetime, timedelta
 from math import ceil
@@ -162,12 +163,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_HASHED_ASSET_RE = re.compile(r"\\.[0-9a-f]{8,}\\.")
+
 
 @app.middleware("http")
 async def add_static_cache_headers(request: Request, call_next):
     response = await call_next(request)
     if request.url.path.startswith("/static/"):
-        if "v" in request.query_params:
+        if request.url.path == "/static/css/style.css":
+            response.headers["Cache-Control"] = "no-cache"
+        elif "v" in request.query_params or _HASHED_ASSET_RE.search(request.url.path):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         else:
             response.headers["Cache-Control"] = "public, max-age=86400"
