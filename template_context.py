@@ -116,11 +116,23 @@ def get_cached_warehouse_notifications_count(
             "has_low_stock": False,
             "has_requests": False,
         }
+    user_id = getattr(user, "id", None)
+    role = getattr(user, "role", None)
+    role_value = role.value if hasattr(role, "value") else role
+    if user_id is None or role_value is None:
+        return {
+            "total": 0,
+            "low_stock": 0,
+            "requests": 0,
+            "has_any": False,
+            "has_low_stock": False,
+            "has_requests": False,
+        }
     cached = getattr(request.state, "warehouse_unread_notifications_count", None)
     if isinstance(cached, dict):
         return cached
 
-    cache_key = f"{_CACHE_KEY_WAREHOUSE_NOTIFICATIONS}:{user.id}:{user.role.value}"
+    cache_key = f"{_CACHE_KEY_WAREHOUSE_NOTIFICATIONS}:{user_id}:{role_value}"
     cached_global = _CACHE.get(cache_key)
     if isinstance(cached_global, dict):
         request.state.warehouse_unread_notifications_count = cached_global
