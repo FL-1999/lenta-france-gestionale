@@ -3283,6 +3283,4 @@ label.form-label[for="profondita_totale"]{
 @media (max-width: 700px){
   .orders-container-grid{ grid-template-columns: 1fr !important; }
 }
-.orders-container-grid{ outline: 4px solid lime !important; }
-
 
