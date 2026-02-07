@@ -1,0 +1,81 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Nouvelle livraison{% else %}Nuova bolla{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
+        <h1 class="page-title">
+            🚚 {% if lang == 'fr' %}Nouvelle livraison{% else %}Nuova bolla{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Commande #{{ order.order_number }} · Fournisseur {{ order.supplier_name or '-' }}
+            {% else %}
+                Ordine #{{ order.order_number }} · Fornitore {{ order.supplier_name or '-' }}
+            {% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_ordini_detail', order_id=order.id) }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<form method="post">
+    <div class="card table-card">
+        <div class="card-header">
+            <div class="card-title">
+                📦 {% if lang == 'fr' %}Quantités livrées{% else %}Quantità consegnate{% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Commandé{% else %}Ordinato{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Déjà livré{% else %}Già consegnato{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Reste{% else %}Residuo{% endif %}</th>
+                        <th class="text-right">{% if lang == 'fr' %}Quantité livrée{% else %}Quantità consegnata{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td>{{ line.description or '-' }}</td>
+                        <td class="text-right">{{ line.qty_ordered }}</td>
+                        <td class="text-right">{{ line.qty_delivered }}</td>
+                        <td class="text-right">{{ line.qty_remaining }}</td>
+                        <td class="text-right">
+                            <input type="hidden" name="order_line_id" value="{{ line.id }}">
+                            <input type="number" name="qty_delivered" min="0" step="0.01" value="{{ line.qty_remaining }}" style="max-width: 120px;">
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="table-empty">
+                            {% if lang == 'fr' %}Aucune ligne{% else %}Nessuna riga{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="form-actions" style="margin-top: 16px;">
+        <a href="{{ url_for('manager_ordini_detail', order_id=order.id) }}" class="btn btn-secondary">
+            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+        </a>
+        <button type="submit" class="btn btn-primary">
+            {% if lang == 'fr' %}Créer la livraison{% else %}Crea bolla{% endif %}
+        </button>
+    </div>
+</form>
+{% endblock %}

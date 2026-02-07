@@ -4,7 +4,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import Integer, cast, func
+from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -78,12 +78,62 @@ def _find_magazzino_item_by_description(
     )
 
 
-def _get_next_order_number(db: Session) -> str:
+def _get_next_order_number(db: Session, order_date: date | None) -> str:
+    target_year = (order_date or date.today()).year
+    year_prefix = f"{target_year}-"
+
+    year_order_exists = (
+        db.query(PurchaseOrder.id)
+        .filter(PurchaseOrder.order_number.like(f"{year_prefix}%"))
+        .first()
+    )
+    if year_order_exists:
+        max_year_value = (
+            db.query(
+                func.max(cast(func.substr(PurchaseOrder.order_number, 6), Integer))
+            )
+            .filter(PurchaseOrder.order_number.like(f"{year_prefix}%"))
+            .scalar()
+            or 0
+        )
+        return f"{year_prefix}{max_year_value + 1:04d}"
+
     max_value = (
         db.query(func.max(cast(PurchaseOrder.order_number, Integer))).scalar()
         or 0
     )
     return str(max_value + 1)
+
+
+def _load_delivered_totals(db: Session, order_id: int) -> dict[int, float]:
+    return {
+        line_id: total
+        for line_id, total in (
+            db.query(
+                PurchaseDeliveryLine.order_line_id,
+                func.coalesce(func.sum(PurchaseDeliveryLine.qty_delivered), 0.0),
+            )
+            .join(
+                PurchaseDelivery,
+                PurchaseDelivery.id == PurchaseDeliveryLine.delivery_id,
+            )
+            .filter(
+                PurchaseDelivery.order_id == order_id,
+                PurchaseDelivery.confirmed.is_(True),
+            )
+            .group_by(PurchaseDeliveryLine.order_line_id)
+            .all()
+        )
+    }
+
+
+def _calculate_completion_percent(
+    total_ordered: float,
+    total_delivered: float,
+) -> float:
+    if total_ordered <= 0:
+        return 0.0
+    return min(100.0, round((total_delivered / total_ordered) * 100, 2))
 
 
 def _create_order_with_lines(
@@ -95,14 +145,14 @@ def _create_order_with_lines(
     lines: list[tuple[str, float]],
 ) -> PurchaseOrder:
     for attempt in range(MAX_ORDER_NUMBER_RETRIES):
-        order_number = _get_next_order_number(db)
+        order_number = _get_next_order_number(db, order_date)
         order = PurchaseOrder(
             order_number=order_number,
             supplier_name=supplier_name,
             order_date=order_date,
             requester_user_id=requester_user_id,
             invoice_number=invoice_number,
-            status="NUOVO",
+            status="APERTO",
         )
         db.add(order)
         try:
@@ -226,11 +276,17 @@ def manager_ordini_create(
 def manager_ordini_list(
     request: Request,
     status: str | None = None,
+    supplier: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
     normalized_status = (status or "").strip().lower() or None
+    supplier_filter = (supplier or "").strip() or None
+    parsed_date_from = _parse_date(date_from)
+    parsed_date_to = _parse_date(date_to)
     total_orders = db.query(func.count(PurchaseOrder.id)).scalar() or 0
     partial_orders = (
         db.query(func.count(PurchaseOrder.id))
@@ -247,8 +303,67 @@ def manager_ordini_list(
     query = db.query(PurchaseOrder)
     if normalized_status:
         query = query.filter(func.lower(PurchaseOrder.status) == normalized_status)
+    else:
+        query = query.filter(
+            or_(
+                PurchaseOrder.status.is_(None),
+                func.lower(PurchaseOrder.status) != "chiuso",
+            )
+        )
+    if supplier_filter:
+        query = query.filter(
+            func.lower(PurchaseOrder.supplier_name).contains(
+                supplier_filter.lower()
+            )
+        )
+    if parsed_date_from:
+        query = query.filter(PurchaseOrder.order_date >= parsed_date_from)
+    if parsed_date_to:
+        query = query.filter(PurchaseOrder.order_date <= parsed_date_to)
     orders = query.order_by(PurchaseOrder.order_date.desc()).all()
-    page_title = "Ordini chiusi" if normalized_status == "chiuso" else "Ordini"
+    order_ids = [order.id for order in orders]
+    ordered_totals = {}
+    delivered_totals = {}
+    if order_ids:
+        ordered_totals = {
+            order_id: total
+            for order_id, total in (
+                db.query(
+                    PurchaseOrderLine.order_id,
+                    func.coalesce(func.sum(PurchaseOrderLine.qty_ordered), 0.0),
+                )
+                .filter(PurchaseOrderLine.order_id.in_(order_ids))
+                .group_by(PurchaseOrderLine.order_id)
+                .all()
+            )
+        }
+        delivered_totals = {
+            order_id: total
+            for order_id, total in (
+                db.query(
+                    PurchaseDelivery.order_id,
+                    func.coalesce(func.sum(PurchaseDeliveryLine.qty_delivered), 0.0),
+                )
+                .join(
+                    PurchaseDeliveryLine,
+                    PurchaseDeliveryLine.delivery_id == PurchaseDelivery.id,
+                )
+                .filter(
+                    PurchaseDelivery.order_id.in_(order_ids),
+                    PurchaseDelivery.confirmed.is_(True),
+                )
+                .group_by(PurchaseDelivery.order_id)
+                .all()
+            )
+        }
+    completion_map = {
+        order.id: _calculate_completion_percent(
+            ordered_totals.get(order.id, 0.0),
+            delivered_totals.get(order.id, 0.0),
+        )
+        for order in orders
+    }
+    page_title = "Ordini chiusi" if normalized_status == "chiuso" else "Ordini aperti"
     return render_template(
         templates,
         request,
@@ -256,18 +371,51 @@ def manager_ordini_list(
         {
             "orders": orders,
             "status_filter": normalized_status,
+            "supplier_filter": supplier_filter,
+            "date_from": parsed_date_from,
+            "date_to": parsed_date_to,
             "page_title": page_title,
             "total_orders": total_orders,
             "partial_orders": partial_orders,
             "closed_orders": closed_orders,
+            "completion_map": completion_map,
         },
         db,
         current_user,
     )
 
 
-@router.get("/manager/ordini/{order_id}", name="manager_ordini_detail")
+@router.get(
+    "/manager/ordini/chiusi",
+    response_class=HTMLResponse,
+    name="manager_ordini_list_chiusi",
+)
+def manager_ordini_list_chiusi(
+    request: Request,
+    supplier: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    return manager_ordini_list(
+        request=request,
+        status="chiuso",
+        supplier=supplier,
+        date_from=date_from,
+        date_to=date_to,
+        db=db,
+        current_user=current_user,
+    )
+
+
+@router.get(
+    "/manager/ordini/{order_id}",
+    response_class=HTMLResponse,
+    name="manager_ordini_detail",
+)
 def manager_ordini_detail(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -277,46 +425,55 @@ def manager_ordini_detail(
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
 
-    delivered_totals = {
-        line_id: total
-        for line_id, total in (
-            db.query(
-                PurchaseDeliveryLine.order_line_id,
-                func.coalesce(func.sum(PurchaseDeliveryLine.qty_delivered), 0.0),
-            )
-            .join(
-                PurchaseDelivery,
-                PurchaseDelivery.id == PurchaseDeliveryLine.delivery_id,
-            )
-            .filter(
-                PurchaseDelivery.order_id == order.id,
-                PurchaseDelivery.confirmed.is_(True),
-            )
-            .group_by(PurchaseDeliveryLine.order_line_id)
-            .all()
-        )
-    }
+    delivered_totals = _load_delivered_totals(db, order.id)
+    ordered_total = sum(line.qty_ordered or 0.0 for line in order.lines)
+    delivered_total = sum(delivered_totals.get(line.id, 0.0) for line in order.lines)
+    completion_percent = _calculate_completion_percent(
+        ordered_total, delivered_total
+    )
 
-    return {
-        "id": order.id,
-        "order_number": order.order_number,
-        "supplier_name": order.supplier_name,
-        "order_date": order.order_date,
-        "status": order.status,
-        "lines": [
-            {
-                "id": line.id,
-                "description": line.description,
-                "qty_ordered": line.qty_ordered,
-                "qty_delivered": delivered_totals.get(line.id, 0.0),
-            }
-            for line in order.lines
-        ],
-    }
+    lines = [
+        {
+            "id": line.id,
+            "description": line.description,
+            "qty_ordered": line.qty_ordered,
+            "qty_delivered": delivered_totals.get(line.id, 0.0),
+            "qty_remaining": max(
+                0.0, (line.qty_ordered or 0.0) - delivered_totals.get(line.id, 0.0)
+            ),
+        }
+        for line in order.lines
+    ]
+
+    deliveries = (
+        db.query(PurchaseDelivery)
+        .filter(PurchaseDelivery.order_id == order.id)
+        .order_by(PurchaseDelivery.created_at.desc())
+        .all()
+    )
+
+    return render_template(
+        templates,
+        request,
+        "manager/ordini/ordini_detail.html",
+        {
+            "order": order,
+            "lines": lines,
+            "deliveries": deliveries,
+            "completion_percent": completion_percent,
+        },
+        db,
+        current_user,
+    )
 
 
-@router.post("/manager/ordini/{order_id}/bolle/nuova", name="manager_ordini_bolle_nuova")
+@router.get(
+    "/manager/ordini/{order_id}/bolle/nuova",
+    response_class=HTMLResponse,
+    name="manager_ordini_bolle_nuova",
+)
 def manager_ordini_bolle_nuova(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -325,6 +482,70 @@ def manager_ordini_bolle_nuova(
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    delivered_totals = _load_delivered_totals(db, order.id)
+    lines = [
+        {
+            "id": line.id,
+            "description": line.description,
+            "qty_ordered": line.qty_ordered,
+            "qty_delivered": delivered_totals.get(line.id, 0.0),
+            "qty_remaining": max(
+                0.0, (line.qty_ordered or 0.0) - delivered_totals.get(line.id, 0.0)
+            ),
+        }
+        for line in order.lines
+    ]
+
+    return render_template(
+        templates,
+        request,
+        "manager/ordini/bolla_new.html",
+        {
+            "order": order,
+            "lines": lines,
+        },
+        db,
+        current_user,
+    )
+
+
+@router.post(
+    "/manager/ordini/{order_id}/bolle/nuova",
+    response_class=HTMLResponse,
+    name="manager_ordini_bolle_create",
+)
+def manager_ordini_bolle_create(
+    request: Request,
+    order_id: int,
+    order_line_id: list[int] = Form(...),
+    qty_delivered: list[str] = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    lines_payload = list(zip(order_line_id, qty_delivered))
+    if not lines_payload:
+        raise HTTPException(status_code=400, detail="Nessuna riga bolla valida")
+
+    valid_line_ids = {line.id for line in order.lines}
+    parsed_lines: list[tuple[int, float]] = []
+    for line_id, raw_qty in lines_payload:
+        if line_id not in valid_line_ids:
+            raise HTTPException(status_code=400, detail="Riga ordine non valida")
+        parsed_qty = _parse_float(raw_qty)
+        if parsed_qty is None or parsed_qty < 0:
+            raise HTTPException(status_code=400, detail="Quantità consegnata non valida")
+        if parsed_qty == 0:
+            continue
+        parsed_lines.append((line_id, parsed_qty))
+
+    if not parsed_lines:
+        raise HTTPException(status_code=400, detail="Nessuna quantità consegnata valida")
 
     delivery_count = (
         db.query(func.count(PurchaseDelivery.id))
@@ -342,24 +563,21 @@ def manager_ordini_bolle_nuova(
     db.add(delivery)
     db.flush()
 
-    for line in order.lines:
+    for line_id, parsed_qty in parsed_lines:
         db.add(
             PurchaseDeliveryLine(
                 delivery_id=delivery.id,
-                order_line_id=line.id,
-                qty_delivered=line.qty_ordered,
+                order_line_id=line_id,
+                qty_delivered=parsed_qty,
             )
         )
 
     db.commit()
-    db.refresh(delivery)
 
-    return {
-        "delivery_id": delivery.id,
-        "order_id": order.id,
-        "delivery_number": delivery.delivery_number,
-        "confirmed": delivery.confirmed,
-    }
+    return RedirectResponse(
+        url=request.url_for("manager_ordini_detail", order_id=order.id),
+        status_code=303,
+    )
 
 
 @router.post(
@@ -423,27 +641,24 @@ def manager_ordini_bolle_conferma(
                 )
             )
 
-    total_ordered = (
-        db.query(func.coalesce(func.sum(PurchaseOrderLine.qty_ordered), 0.0))
-        .filter(PurchaseOrderLine.order_id == order.id)
-        .scalar()
-        or 0.0
-    )
-    total_delivered = (
-        db.query(func.coalesce(func.sum(PurchaseDeliveryLine.qty_delivered), 0.0))
-        .join(
-            PurchaseDelivery,
-            PurchaseDelivery.id == PurchaseDeliveryLine.delivery_id,
+    delivered_totals = _load_delivered_totals(db, order.id)
+    order_lines = order.lines
+    if not order_lines:
+        order.status = "APERTO"
+    else:
+        all_delivered = all(
+            delivered_totals.get(line.id, 0.0) >= (line.qty_ordered or 0.0)
+            for line in order_lines
         )
-        .filter(
-            PurchaseDelivery.order_id == order.id,
-            PurchaseDelivery.confirmed.is_(True),
+        any_delivered = any(
+            delivered_totals.get(line.id, 0.0) > 0.0 for line in order_lines
         )
-        .scalar()
-        or 0.0
-    )
-
-    order.status = "COMPLETATO" if total_delivered >= total_ordered else "PARZIALE"
+        if all_delivered:
+            order.status = "CHIUSO"
+        elif any_delivered:
+            order.status = "PARZIALE"
+        else:
+            order.status = "APERTO"
     db.add(order)
     db.commit()
 
