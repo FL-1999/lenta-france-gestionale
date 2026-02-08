@@ -632,7 +632,7 @@ def logout() -> RedirectResponse:
 # PAGINE FRONTEND — MANAGER & CAPOSQUADRA
 # -------------------------------------------------
 
-@app.get("/manager/dashboard", response_class=HTMLResponse)
+@app.get("/manager/dashboard", response_class=HTMLResponse, name="manager_dashboard")
 def manager_dashboard(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
