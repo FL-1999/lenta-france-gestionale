@@ -19,7 +19,7 @@
         </p>
     </div>
     <div class="header-actions">
-        <a href="{{ url_for('home_manager') }}" class="btn btn-secondary">
+        <a href="{{ url_for('manager_dashboard') }}" class="btn btn-secondary">
             ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
         </a>
     </div>
@@ -76,7 +76,7 @@
     </div>
 
     <div class="form-actions" style="margin-top: 16px;">
-        <a href="{{ url_for('home_manager') }}" class="btn btn-secondary">
+        <a href="{{ url_for('manager_dashboard') }}" class="btn btn-secondary">
             {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
         </a>
         <button type="submit" class="btn btn-primary">
