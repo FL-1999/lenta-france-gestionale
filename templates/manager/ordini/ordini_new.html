@@ -52,6 +52,7 @@
                     <tr>
                         <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
                         <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Article magasin{% else %}Articolo magazzino{% endif %}</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -62,6 +63,16 @@
                         </td>
                         <td class="text-right">
                             <input type="number" name="qty_ordered" min="0" step="0.01" required>
+                        </td>
+                        <td>
+                            <select name="magazzino_item_id">
+                                <option value="">
+                                    {% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}
+                                </option>
+                                {% for item in magazzino_items %}
+                                    <option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </td>
                         <td></td>
                     </tr>
@@ -88,6 +99,8 @@
 <script>
     const addRowButton = document.getElementById('add-row');
     const tableBody = document.querySelector('#righe-table tbody');
+    const selectPlaceholder = "{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}";
+    const optionsHtml = `{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>{% endfor %}`;
     if (addRowButton && tableBody) {
         addRowButton.addEventListener('click', () => {
             const newRow = document.createElement('tr');
@@ -97,6 +110,12 @@
                 </td>
                 <td class="text-right">
                     <input type="number" name="qty_ordered" min="0" step="0.01" required>
+                </td>
+                <td>
+                    <select name="magazzino_item_id">
+                        <option value="">${selectPlaceholder}</option>
+                        ${optionsHtml}
+                    </select>
                 </td>
                 <td>
                     <button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button>

@@ -653,10 +653,14 @@ class PurchaseOrderLine(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=False)
+    magazzino_item_id = Column(
+        Integer, ForeignKey("magazzino_items.id"), nullable=True, index=True
+    )
     description = Column(Text, nullable=True)
     qty_ordered = Column(Float, nullable=False)
 
     order = relationship("PurchaseOrder", back_populates="lines")
+    magazzino_item = relationship("MagazzinoItem")
     delivery_lines = relationship(
         "PurchaseDeliveryLine",
         back_populates="order_line",

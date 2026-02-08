@@ -30,6 +30,12 @@
     </div>
 </div>
 
+{% if error_message %}
+    <div class="alert alert-danger">
+        {{ error_message }}
+    </div>
+{% endif %}
+
 <div class="card" style="margin-bottom: 1.5rem;">
     <div class="card-body">
         <div class="form-grid-2">
