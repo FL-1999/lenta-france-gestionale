@@ -1,0 +1,59 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Ajouter facture{% else %}Aggiungi fattura{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
+        <h1 class="page-title">
+            {% if lang == 'fr' %}Facture commande{% else %}Fattura ordine{% endif %} #{{ order.order_number }}
+        </h1>
+    </div>
+</div>
+
+{% if error_message %}
+<div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    <div class="card large-form-card">
+        <div class="card-body">
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Numéro facture{% else %}Numero fattura{% endif %}</label>
+                    <input type="text" name="invoice_number" value="{{ form_data.invoice_number }}">
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Date facture{% else %}Data fattura{% endif %}</label>
+                    <input type="date" name="invoice_date" value="{{ form_data.invoice_date }}">
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Fichier facture{% else %}File fattura{% endif %}</label>
+                    <input type="file" name="invoice_file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx">
+                    {% if order.file_invoice %}
+                    <small>
+                        {% if lang == 'fr' %}Fichier déjà chargé{% else %}File già caricato{% endif %}:
+                        <a href="/static/{{ order.file_invoice }}" target="_blank" rel="noopener">
+                            {% if lang == 'fr' %}Voir/Télécharger{% else %}Visualizza/Scarica{% endif %}
+                        </a>
+                    </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions" style="margin-top: 16px;">
+        <a href="{{ url_for('manager_ordini_detail', order_id=order.id) }}" class="btn btn-secondary">
+            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+        </a>
+        <button type="submit" class="btn btn-primary">
+            {% if lang == 'fr' %}Enregistrer facture{% else %}Salva fattura{% endif %}
+        </button>
+    </div>
+</form>
+{% endblock %}

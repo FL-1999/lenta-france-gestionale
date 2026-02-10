@@ -637,6 +637,7 @@ class PurchaseOrder(Base):
         nullable=True,
     )
     invoice_number = Column(String(100), nullable=True)
+    invoice_date = Column(Date, nullable=True)
     file_invoice = Column(String(255), nullable=True)
     status = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

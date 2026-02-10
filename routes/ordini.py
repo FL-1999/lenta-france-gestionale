@@ -1,8 +1,11 @@
 import logging
+import shutil
+from pathlib import Path
+from uuid import uuid4
 from datetime import date, datetime
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import Integer, cast, func, or_
@@ -32,6 +35,7 @@ router = APIRouter(tags=["ordini"])
 
 logger = logging.getLogger("lenta_france_gestionale.orders")
 MAX_ORDER_NUMBER_RETRIES = 5
+INVOICE_UPLOAD_DIR = Path("static/uploads/invoices")
 
 
 def _ensure_manager(user: User) -> None:
@@ -170,7 +174,6 @@ def _render_order_form(
             "warehouse_category_id": "",
             "new_category_name": "",
             "new_category_macro": "Generale",
-            "invoice_number": "",
             "lines": [{"description": "", "qty_ordered": "", "magazzino_item_id": ""}],
         }
     return render_template(
@@ -196,7 +199,6 @@ def _create_order_with_lines(
     db: Session,
     supplier_name: str | None,
     order_date: date | None,
-    invoice_number: str | None,
     requester_user_id: int | None,
     lines: list[tuple[str, float, int | None]],
 ) -> PurchaseOrder:
@@ -207,7 +209,6 @@ def _create_order_with_lines(
             supplier_name=supplier_name,
             order_date=order_date,
             requester_user_id=requester_user_id,
-            invoice_number=invoice_number,
             status="APERTO",
         )
         db.add(order)
@@ -280,7 +281,6 @@ def manager_ordini_create(
     warehouse_category_id: str = Form(""),
     new_category_name: str = Form(""),
     new_category_macro: str = Form(""),
-    invoice_number: str = Form(""),
     description: list[str] = Form(...),
     qty_ordered: list[str] = Form(...),
     magazzino_item_id: list[str] = Form(...),
@@ -299,7 +299,6 @@ def manager_ordini_create(
         "warehouse_category_id": warehouse_category_id or "",
         "new_category_name": new_category_name or "",
         "new_category_macro": new_category_macro or "",
-        "invoice_number": invoice_number or "",
         "lines": [
             {"description": d or "", "qty_ordered": q or "", "magazzino_item_id": i or ""}
             for d, q, i in zip(description, qty_ordered, magazzino_item_id)
@@ -428,7 +427,6 @@ def manager_ordini_create(
             db,
             supplier_name=supplier_name_clean,
             order_date=parsed_order_date,
-            invoice_number=invoice_number.strip() or None,
             requester_user_id=requester.id,
             lines=lines,
         )
@@ -649,6 +647,113 @@ def manager_ordini_detail(
         },
         db,
         current_user,
+    )
+
+
+@router.get(
+    "/manager/ordini/{order_id}/fattura",
+    response_class=HTMLResponse,
+    name="manager_ordini_fattura_form",
+)
+def manager_ordini_fattura_form(
+    request: Request,
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    return render_template(
+        templates,
+        request,
+        "manager/ordini/fattura_form.html",
+        {
+            "order": order,
+            "error_message": None,
+            "form_data": {
+                "invoice_number": order.invoice_number or "",
+                "invoice_date": order.invoice_date.strftime("%Y-%m-%d") if order.invoice_date else "",
+            },
+        },
+        db,
+        current_user,
+    )
+
+
+@router.post(
+    "/manager/ordini/{order_id}/fattura",
+    response_class=HTMLResponse,
+    name="manager_ordini_fattura_save",
+)
+def manager_ordini_fattura_save(
+    request: Request,
+    order_id: int,
+    invoice_number: str = Form(""),
+    invoice_date: str = Form(""),
+    invoice_file: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    parsed_invoice_date = _parse_date(invoice_date)
+    if invoice_date and not parsed_invoice_date:
+        return render_template(
+            templates,
+            request,
+            "manager/ordini/fattura_form.html",
+            {
+                "order": order,
+                "error_message": "Data fattura non valida.",
+                "form_data": {
+                    "invoice_number": invoice_number or "",
+                    "invoice_date": invoice_date or "",
+                },
+            },
+            db,
+            current_user,
+        )
+
+    if (not order.file_invoice) and (invoice_file is None or not invoice_file.filename):
+        return render_template(
+            templates,
+            request,
+            "manager/ordini/fattura_form.html",
+            {
+                "order": order,
+                "error_message": "Il file fattura è obbligatorio.",
+                "form_data": {
+                    "invoice_number": invoice_number or "",
+                    "invoice_date": invoice_date or "",
+                },
+            },
+            db,
+            current_user,
+        )
+
+    if invoice_file and invoice_file.filename:
+        INVOICE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        extension = Path(invoice_file.filename).suffix
+        file_name = f"ordine-{order.id}-{uuid4().hex}{extension}"
+        destination = INVOICE_UPLOAD_DIR / file_name
+        with destination.open("wb") as output:
+            shutil.copyfileobj(invoice_file.file, output)
+        order.file_invoice = f"uploads/invoices/{file_name}"
+
+    order.invoice_number = invoice_number.strip() or None
+    order.invoice_date = parsed_invoice_date
+    db.add(order)
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("manager_ordini_detail", order_id=order.id),
+        status_code=303,
     )
 
 
