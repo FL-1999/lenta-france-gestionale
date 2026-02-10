@@ -10,20 +10,13 @@
     <div class="page-header-main">
         <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
         <h1 class="page-title">🧾 {% if lang == 'fr' %}Nouvelle commande{% else %}Nuovo ordine{% endif %}</h1>
-        <p class="page-subtitle">
-            {% if lang == 'fr' %}
-                Le numéro de commande est généré automatiquement.
-            {% else %}
-                Il numero ordine viene generato automaticamente.
-            {% endif %}
-        </p>
     </div>
     <div class="header-actions">
-        <a href="{{ url_for('manager_dashboard') }}" class="btn btn-secondary">
-            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
-        </a>
+        <a href="{{ url_for('manager_dashboard') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
     </div>
 </div>
+
+{% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
 
 <form method="post">
     <div class="card large-form-card">
@@ -31,16 +24,78 @@
             <div class="form-grid-2">
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</label>
-                    <input type="text" name="supplier_name" required>
+                    <input type="text" name="supplier_name" value="{{ form_data.supplier_name }}" required>
                 </div>
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Date de commande{% else %}Data ordine{% endif %}</label>
-                    <input type="date" name="order_date">
+                    <input type="date" name="order_date" value="{{ form_data.order_date }}" required>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Demandeur{% else %}Richiedente{% endif %}</label>
+                    <select name="requester_user_id" required>
+                        <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                        {% for requester in requesters %}
+                            <option value="{{ requester.id }}" {% if form_data.requester_user_id == requester.id|string %}selected{% endif %}>
+                                {{ requester.full_name or requester.email }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Numéro facture{% else %}Numero fattura{% endif %}</label>
+                    <input type="text" name="invoice_number" value="{{ form_data.invoice_number }}">
                 </div>
             </div>
-            <div class="form-field">
-                <label>{% if lang == 'fr' %}Numéro facture{% else %}Numero fattura{% endif %}</label>
-                <input type="text" name="invoice_number">
+
+            <div class="form-field" style="margin-top: 12px;">
+                <label>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</label>
+                <textarea name="description_text" rows="3">{{ form_data.description_text }}</textarea>
+            </div>
+
+            <div class="form-field" style="margin-top: 12px;">
+                <label>{% if lang == 'fr' %}Type de commande{% else %}Tipo ordine{% endif %}</label>
+                <div style="display:flex; gap:16px; margin-top:6px;">
+                    <label><input type="radio" name="order_kind" value="closed" {% if form_data.order_kind == 'closed' %}checked{% endif %}> {% if lang == 'fr' %}Commande fermée (chantier){% else %}Ordine CHIUSO (cantiere){% endif %}</label>
+                    <label><input type="radio" name="order_kind" value="warehouse" {% if form_data.order_kind != 'closed' %}checked{% endif %}> {% if lang == 'fr' %}Commande magasin (catégorie){% else %}Ordine MAGAZZINO (categoria){% endif %}</label>
+                </div>
+            </div>
+
+            <div id="closed-section" class="form-field" style="margin-top: 12px;">
+                <label>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
+                <select name="site_id">
+                    <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                    {% for site in sites %}
+                        <option value="{{ site.id }}" {% if form_data.site_id == site.id|string %}selected{% endif %}>{{ site.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="warehouse-section" style="margin-top: 12px;">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Catégorie magasin{% else %}Categoria magazzino{% endif %}</label>
+                    <select name="warehouse_category_id" id="warehouse_category_id">
+                        <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                        {% for category in warehouse_categories %}
+                            <option value="{{ category.id }}" {% if form_data.warehouse_category_id == category.id|string %}selected{% endif %}>{{ category.nome }} / {{ category.macro }}</option>
+                        {% endfor %}
+                        <option value="{{ new_category_sentinel }}" {% if form_data.warehouse_category_id == new_category_sentinel %}selected{% endif %}>➕ {% if lang == 'fr' %}Créer nouvelle catégorie{% else %}Crea nuova categoria{% endif %}</option>
+                    </select>
+                </div>
+                <div id="new-category-fields" class="form-grid-2" style="margin-top: 12px;">
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Nom nouvelle catégorie{% else %}Nome nuova categoria{% endif %}</label>
+                        <input type="text" name="new_category_name" value="{{ form_data.new_category_name }}">
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Macro{% else %}Macro{% endif %}</label>
+                        <select name="new_category_macro">
+                            <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                            {% for macro in macro_options %}
+                                <option value="{{ macro }}" {% if form_data.new_category_macro == macro %}selected{% endif %}>{{ macro }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -48,88 +103,69 @@
     <div class="card table-card" style="margin-top: 16px;">
         <div class="card-body">
             <table class="data-table" id="righe-table">
-                <thead>
-                    <tr>
-                        <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
-                        <th class="text-right">{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Article magasin{% else %}Articolo magazzino{% endif %}</th>
-                        <th></th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Descrizione</th><th class="text-right">Quantità</th><th>Articolo magazzino</th><th></th></tr></thead>
                 <tbody>
+                    {% for line in form_data.lines %}
                     <tr>
-                        <td>
-                            <input type="text" name="description" required>
-                        </td>
-                        <td class="text-right">
-                            <input type="number" name="qty_ordered" min="0" step="0.01" required>
-                        </td>
+                        <td><input type="text" name="description" value="{{ line.description }}"></td>
+                        <td class="text-right"><input type="number" name="qty_ordered" min="0" step="0.01" value="{{ line.qty_ordered }}"></td>
                         <td>
                             <select name="magazzino_item_id">
-                                <option value="">
-                                    {% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}
-                                </option>
+                                <option value="">Seleziona</option>
                                 {% for item in magazzino_items %}
-                                    <option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>
+                                    <option value="{{ item.id }}" {% if line.magazzino_item_id == item.id|string %}selected{% endif %}>{{ item.codice }} - {{ item.nome }}</option>
                                 {% endfor %}
                             </select>
                         </td>
-                        <td></td>
+                        <td>{% if not loop.first %}<button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button>{% endif %}</td>
                     </tr>
+                    {% endfor %}
                 </tbody>
             </table>
             <div class="form-actions" style="margin-top: 16px;">
-                <button type="button" class="btn btn-secondary" id="add-row">
-                    ➕ {% if lang == 'fr' %}Ajouter une ligne{% else %}Aggiungi riga{% endif %}
-                </button>
+                <button type="button" class="btn btn-secondary" id="add-row">➕ Aggiungi riga</button>
             </div>
         </div>
     </div>
 
     <div class="form-actions" style="margin-top: 16px;">
-        <a href="{{ url_for('manager_dashboard') }}" class="btn btn-secondary">
-            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
-        </a>
-        <button type="submit" class="btn btn-primary">
-            {% if lang == 'fr' %}Créer{% else %}Crea ordine{% endif %}
-        </button>
+        <a href="{{ url_for('manager_dashboard') }}" class="btn btn-secondary">Annulla</a>
+        <button type="submit" class="btn btn-primary">Crea ordine</button>
     </div>
 </form>
 
 <script>
-    const addRowButton = document.getElementById('add-row');
-    const tableBody = document.querySelector('#righe-table tbody');
-    const selectPlaceholder = "{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}";
-    const optionsHtml = `{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>{% endfor %}`;
-    if (addRowButton && tableBody) {
-        addRowButton.addEventListener('click', () => {
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td>
-                    <input type="text" name="description" required>
-                </td>
-                <td class="text-right">
-                    <input type="number" name="qty_ordered" min="0" step="0.01" required>
-                </td>
-                <td>
-                    <select name="magazzino_item_id">
-                        <option value="">${selectPlaceholder}</option>
-                        ${optionsHtml}
-                    </select>
-                </td>
-                <td>
-                    <button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button>
-                </td>
-            `;
-            tableBody.appendChild(newRow);
-        });
+const addRowButton = document.getElementById('add-row');
+const tableBody = document.querySelector('#righe-table tbody');
+const optionsHtml = `{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>{% endfor %}`;
+const warehouseCategorySelect = document.getElementById('warehouse_category_id');
+const newCategoryFields = document.getElementById('new-category-fields');
+const closedSection = document.getElementById('closed-section');
+const warehouseSection = document.getElementById('warehouse-section');
+const sentinel = "{{ new_category_sentinel }}";
 
-        tableBody.addEventListener('click', (event) => {
-            const target = event.target;
-            if (target && target.classList.contains('remove-row')) {
-                target.closest('tr').remove();
-            }
-        });
-    }
+function updateKindSections() {
+    const selectedKind = document.querySelector('input[name="order_kind"]:checked')?.value;
+    closedSection.style.display = selectedKind === 'closed' ? 'block' : 'none';
+    warehouseSection.style.display = selectedKind === 'warehouse' ? 'block' : 'none';
+}
+function updateNewCategoryFields() {
+    newCategoryFields.style.display = warehouseCategorySelect.value === sentinel ? 'grid' : 'none';
+}
+
+document.querySelectorAll('input[name="order_kind"]').forEach(el => el.addEventListener('change', updateKindSections));
+warehouseCategorySelect?.addEventListener('change', updateNewCategoryFields);
+updateKindSections();
+updateNewCategoryFields();
+
+addRowButton?.addEventListener('click', () => {
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `<td><input type="text" name="description"></td><td class="text-right"><input type="number" name="qty_ordered" min="0" step="0.01"></td><td><select name="magazzino_item_id"><option value="">Seleziona</option>${optionsHtml}</select></td><td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td>`;
+    tableBody.appendChild(newRow);
+});
+tableBody?.addEventListener('click', (event) => {
+    const target = event.target;
+    if (target && target.classList.contains('remove-row')) target.closest('tr').remove();
+});
 </script>
 {% endblock %}

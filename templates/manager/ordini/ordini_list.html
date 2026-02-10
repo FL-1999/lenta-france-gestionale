@@ -135,6 +135,7 @@
                     <th>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</th>
                     <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
                     <th>{% if lang == 'fr' %}Demandeur{% else %}Richiedente{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Destinazione{% else %}Destinazione{% endif %}</th>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
                     <th class="text-right">{% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}</th>
                     <th></th>
@@ -158,6 +159,7 @@
                             -
                         {% endif %}
                     </td>
+                    <td>{{ destination_map.get(order.id, '-') }}</td>
                     <td>{{ order.status or '-' }}</td>
                     <td class="text-right">{{ completion_map.get(order.id, 0) }}%</td>
                     <td>
@@ -168,7 +170,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="table-empty">
+                    <td colspan="8" class="table-empty">
                         {% if lang == 'fr' %}
                             Aucune commande trouvée.
                         {% else %}
