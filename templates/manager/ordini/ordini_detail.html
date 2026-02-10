@@ -52,12 +52,20 @@
                 {% endif %}
             </div>
             <div>
+                <strong>{% if lang == 'fr' %}Tipo/destinazione{% else %}Tipo/destinazione{% endif %}:</strong>
+                {{ destination_label }}
+            </div>
+            <div>
                 <strong>{% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}:</strong>
                 {{ completion_percent }}%
             </div>
             <div>
                 <strong>{% if lang == 'fr' %}Facture{% else %}Fattura{% endif %}:</strong>
                 {{ order.invoice_number or '-' }}
+            </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}:</strong>
+                {{ order.description or '-' }}
             </div>
         </div>
     </div>

@@ -491,6 +491,7 @@ class MagazzinoCategoria(Base, TimestampMixin):
     slug = Column(String(255), nullable=False, unique=True)
     ordine = Column(Integer, nullable=False, default=0)
     attiva = Column(Boolean, default=True, nullable=False)
+    macro = Column(String(120), nullable=False, default="Generale")
     icon = Column(String(32), nullable=True, default="📦")
     color = Column(String(20), nullable=True, default="indigo")
 
@@ -627,12 +628,22 @@ class PurchaseOrder(Base):
     supplier_name = Column(String(255), nullable=True)
     order_date = Column(Date, nullable=True)
     requester_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    description = Column(Text, nullable=True)
+    order_kind = Column(String(20), nullable=False, default="warehouse")
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    warehouse_category_id = Column(
+        Integer,
+        ForeignKey("magazzino_categorie.id"),
+        nullable=True,
+    )
     invoice_number = Column(String(100), nullable=True)
     file_invoice = Column(String(255), nullable=True)
     status = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     requester = relationship("User")
+    site = relationship("Site")
+    warehouse_category = relationship("MagazzinoCategoria")
     lines = relationship(
         "PurchaseOrderLine",
         back_populates="order",

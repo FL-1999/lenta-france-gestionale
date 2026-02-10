@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_active_user_html
 from database import get_db
 from models import (
+    MagazzinoCategoria,
     MagazzinoItem,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
@@ -19,6 +20,7 @@ from models import (
     PurchaseDeliveryLine,
     PurchaseOrder,
     PurchaseOrderLine,
+    Site,
     User,
 )
 from permissions import has_perm
@@ -113,6 +115,83 @@ def _calculate_completion_percent(
     return min(100.0, round((total_delivered / total_ordered) * 100, 2))
 
 
+def _order_destination_label(order: PurchaseOrder) -> str:
+    if order.order_kind == "closed":
+        site_name = order.site.name if order.site else "-"
+        return f"CHIUSO/CANTIERE: {site_name}"
+    category_name = order.warehouse_category.nome if order.warehouse_category else "-"
+    macro_name = order.warehouse_category.macro if order.warehouse_category else "-"
+    return f"MAGAZZINO: {category_name} / {macro_name}"
+
+
+def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[str]]:
+    magazzino_items = (
+        db.query(MagazzinoItem)
+        .filter(MagazzinoItem.attivo.is_(True))
+        .order_by(MagazzinoItem.nome.asc())
+        .all()
+    )
+    sites = db.query(Site).filter(Site.is_active.is_(True)).order_by(Site.name.asc()).all()
+    warehouse_categories = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.attiva.is_(True))
+        .order_by(MagazzinoCategoria.nome.asc())
+        .all()
+    )
+    requesters = (
+        db.query(User)
+        .filter(User.is_active.is_(True))
+        .order_by(User.full_name.asc(), User.email.asc())
+        .all()
+    )
+    macro_options = sorted({(cat.macro or "Generale").strip() or "Generale" for cat in warehouse_categories})
+    if "Generale" not in macro_options:
+        macro_options.insert(0, "Generale")
+    return magazzino_items, sites, warehouse_categories, requesters, macro_options
+
+
+def _render_order_form(
+    request: Request,
+    db: Session,
+    current_user: User,
+    *,
+    error_message: str | None = None,
+    form_data: dict | None = None,
+):
+    magazzino_items, sites, warehouse_categories, requesters, macro_options = _load_order_form_dependencies(db)
+    if form_data is None:
+        form_data = {
+            "supplier_name": "",
+            "order_date": "",
+            "requester_user_id": str(current_user.id),
+            "description_text": "",
+            "order_kind": "warehouse",
+            "site_id": "",
+            "warehouse_category_id": "",
+            "new_category_name": "",
+            "new_category_macro": "Generale",
+            "invoice_number": "",
+            "lines": [{"description": "", "qty_ordered": "", "magazzino_item_id": ""}],
+        }
+    return render_template(
+        templates,
+        request,
+        "manager/ordini/ordini_new.html",
+        {
+            "magazzino_items": magazzino_items,
+            "sites": sites,
+            "warehouse_categories": warehouse_categories,
+            "requesters": requesters,
+            "macro_options": macro_options,
+            "error_message": error_message,
+            "form_data": form_data,
+            "new_category_sentinel": "__new__",
+        },
+        db,
+        current_user,
+    )
+
+
 def _create_order_with_lines(
     db: Session,
     supplier_name: str | None,
@@ -182,20 +261,7 @@ def manager_ordini_new(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    magazzino_items = (
-        db.query(MagazzinoItem)
-        .filter(MagazzinoItem.attivo.is_(True))
-        .order_by(MagazzinoItem.nome.asc())
-        .all()
-    )
-    return render_template(
-        templates,
-        request,
-        "manager/ordini/ordini_new.html",
-        {"magazzino_items": magazzino_items},
-        db,
-        current_user,
-    )
+    return _render_order_form(request, db, current_user)
 
 
 @router.post(
@@ -207,6 +273,13 @@ def manager_ordini_create(
     request: Request,
     supplier_name: str = Form(...),
     order_date: str = Form(""),
+    requester_user_id: str = Form(""),
+    description_text: str = Form(""),
+    order_kind: str = Form(""),
+    site_id: str = Form(""),
+    warehouse_category_id: str = Form(""),
+    new_category_name: str = Form(""),
+    new_category_macro: str = Form(""),
     invoice_number: str = Form(""),
     description: list[str] = Form(...),
     qty_ordered: list[str] = Form(...),
@@ -215,28 +288,111 @@ def manager_ordini_create(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+
+    form_data = {
+        "supplier_name": supplier_name or "",
+        "order_date": order_date or "",
+        "requester_user_id": requester_user_id or "",
+        "description_text": description_text or "",
+        "order_kind": order_kind or "",
+        "site_id": site_id or "",
+        "warehouse_category_id": warehouse_category_id or "",
+        "new_category_name": new_category_name or "",
+        "new_category_macro": new_category_macro or "",
+        "invoice_number": invoice_number or "",
+        "lines": [
+            {"description": d or "", "qty_ordered": q or "", "magazzino_item_id": i or ""}
+            for d, q, i in zip(description, qty_ordered, magazzino_item_id)
+        ],
+    }
+
     parsed_order_date = _parse_date(order_date)
-    if order_date and parsed_order_date is None:
-        raise HTTPException(status_code=400, detail="Data ordine non valida")
+    if not parsed_order_date:
+        return _render_order_form(request, db, current_user, error_message="La data ordine è obbligatoria.", form_data=form_data)
 
     supplier_name_clean = supplier_name.strip()
     if not supplier_name_clean:
-        raise HTTPException(status_code=400, detail="Fornitore obbligatorio")
+        return _render_order_form(request, db, current_user, error_message="Il fornitore è obbligatorio.", form_data=form_data)
+
+    try:
+        requester_id_int = int(requester_user_id)
+    except (TypeError, ValueError):
+        requester_id_int = 0
+    requester = db.query(User).filter(User.id == requester_id_int, User.is_active.is_(True)).first()
+    if not requester:
+        return _render_order_form(request, db, current_user, error_message="Il richiedente è obbligatorio.", form_data=form_data)
+
+    normalized_kind = (order_kind or "").strip().lower()
+    if normalized_kind not in {"closed", "warehouse"}:
+        return _render_order_form(request, db, current_user, error_message="Il tipo ordine è obbligatorio.", form_data=form_data)
+
+    selected_site_id: int | None = None
+    selected_category_id: int | None = None
+    if normalized_kind == "closed":
+        try:
+            selected_site_id = int(site_id)
+        except (TypeError, ValueError):
+            selected_site_id = None
+        site = db.query(Site).filter(Site.id == selected_site_id, Site.is_active.is_(True)).first() if selected_site_id else None
+        if not site:
+            return _render_order_form(request, db, current_user, error_message="Per ordine chiuso devi selezionare un cantiere valido.", form_data=form_data)
+        form_data["warehouse_category_id"] = ""
+    else:
+        if warehouse_category_id == "__new__":
+            nome_categoria = (new_category_name or "").strip()
+            macro_categoria = (new_category_macro or "").strip()
+            if not nome_categoria:
+                return _render_order_form(request, db, current_user, error_message="Inserisci il nome della nuova categoria.", form_data=form_data)
+            if not macro_categoria:
+                return _render_order_form(request, db, current_user, error_message="Seleziona la macro della nuova categoria.", form_data=form_data)
+            existing = db.query(MagazzinoCategoria).filter(func.lower(MagazzinoCategoria.nome) == nome_categoria.lower()).first()
+            if existing:
+                selected_category_id = existing.id
+            else:
+                max_order = db.query(func.max(MagazzinoCategoria.ordine)).scalar() or 0
+                base_slug = nome_categoria.lower().strip().replace(" ", "-")
+                slug = ''.join(ch for ch in base_slug if ch.isalnum() or ch == '-') or 'categoria'
+                candidate = slug
+                counter = 2
+                while db.query(MagazzinoCategoria.id).filter(MagazzinoCategoria.slug == candidate).first():
+                    candidate = f"{slug}-{counter}"
+                    counter += 1
+                categoria = MagazzinoCategoria(
+                    nome=nome_categoria,
+                    slug=candidate,
+                    ordine=max_order + 1,
+                    attiva=True,
+                    macro=macro_categoria,
+                )
+                db.add(categoria)
+                db.commit()
+                db.refresh(categoria)
+                selected_category_id = categoria.id
+            form_data["warehouse_category_id"] = str(selected_category_id)
+        else:
+            try:
+                selected_category_id = int(warehouse_category_id)
+            except (TypeError, ValueError):
+                selected_category_id = None
+        categoria = db.query(MagazzinoCategoria).filter(MagazzinoCategoria.id == selected_category_id, MagazzinoCategoria.attiva.is_(True)).first() if selected_category_id else None
+        if not categoria:
+            db.rollback()
+            return _render_order_form(request, db, current_user, error_message="Per ordine magazzino devi selezionare una categoria valida.", form_data=form_data)
+        form_data["site_id"] = ""
 
     if len(description) != len(qty_ordered) or len(description) != len(magazzino_item_id):
-        raise HTTPException(status_code=400, detail="Righe ordine non valide")
+        db.rollback()
+        return _render_order_form(request, db, current_user, error_message="Righe ordine non valide.", form_data=form_data)
 
     selected_item_ids: set[int] = set()
     for raw_id in magazzino_item_id:
         if raw_id:
             try:
                 selected_item_ids.add(int(raw_id))
-            except ValueError as exc:
-                raise HTTPException(
-                    status_code=400, detail="Articolo magazzino non valido"
-                ) from exc
+            except ValueError:
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message="Articolo magazzino non valido.", form_data=form_data)
 
-    existing_item_ids: set[int] = set()
     if selected_item_ids:
         existing_item_ids = {
             item_id
@@ -244,38 +400,47 @@ def manager_ordini_create(
             .filter(MagazzinoItem.id.in_(selected_item_ids))
             .all()
         }
-        if missing_ids := (selected_item_ids - existing_item_ids):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Articolo magazzino non valido: {sorted(missing_ids)}",
-            )
+        if selected_item_ids - existing_item_ids:
+            db.rollback()
+            return _render_order_form(request, db, current_user, error_message="Uno o più articoli magazzino non sono validi.", form_data=form_data)
 
     lines: list[tuple[str, float, int | None]] = []
-    for raw_description, raw_qty, raw_item_id in zip(
-        description, qty_ordered, magazzino_item_id
-    ):
+    for raw_description, raw_qty, raw_item_id in zip(description, qty_ordered, magazzino_item_id):
         if not raw_description and not raw_qty:
             continue
         parsed_qty = _parse_float(raw_qty)
         if parsed_qty is None or parsed_qty <= 0:
-            raise HTTPException(status_code=400, detail="Quantità non valida")
-        description_clean = raw_description.strip()
+            db.rollback()
+            return _render_order_form(request, db, current_user, error_message="Quantità non valida nelle righe ordine.", form_data=form_data)
+        description_clean = (raw_description or "").strip()
         if not description_clean:
-            raise HTTPException(status_code=400, detail="Descrizione mancante")
+            db.rollback()
+            return _render_order_form(request, db, current_user, error_message="Descrizione riga mancante.", form_data=form_data)
         item_id = int(raw_item_id) if raw_item_id else None
         lines.append((description_clean, parsed_qty, item_id))
 
     if not lines:
-        raise HTTPException(status_code=400, detail="Nessuna riga valida")
+        db.rollback()
+        return _render_order_form(request, db, current_user, error_message="Inserisci almeno una riga ordine valida.", form_data=form_data)
 
-    _create_order_with_lines(
-        db,
-        supplier_name=supplier_name_clean,
-        order_date=parsed_order_date,
-        invoice_number=invoice_number.strip() or None,
-        requester_user_id=current_user.id,
-        lines=lines,
-    )
+    try:
+        order = _create_order_with_lines(
+            db,
+            supplier_name=supplier_name_clean,
+            order_date=parsed_order_date,
+            invoice_number=invoice_number.strip() or None,
+            requester_user_id=requester.id,
+            lines=lines,
+        )
+        order.description = (description_text or "").strip() or None
+        order.order_kind = normalized_kind
+        order.site_id = selected_site_id if normalized_kind == "closed" else None
+        order.warehouse_category_id = selected_category_id if normalized_kind == "warehouse" else None
+        db.add(order)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     return RedirectResponse(
         url=request.url_for("manager_ordini_new"),
@@ -378,6 +543,7 @@ def manager_ordini_list(
         )
         for order in orders
     }
+    destination_map = {order.id: _order_destination_label(order) for order in orders}
     page_title = "Ordini chiusi" if normalized_status == "chiuso" else "Ordini aperti"
     return render_template(
         templates,
@@ -394,6 +560,7 @@ def manager_ordini_list(
             "partial_orders": partial_orders,
             "closed_orders": closed_orders,
             "completion_map": completion_map,
+            "destination_map": destination_map,
         },
         db,
         current_user,
@@ -478,6 +645,7 @@ def manager_ordini_detail(
             "deliveries": deliveries,
             "completion_percent": completion_percent,
             "error_message": error_message,
+            "destination_label": _order_destination_label(order),
         },
         db,
         current_user,
