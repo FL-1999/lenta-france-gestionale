@@ -67,14 +67,19 @@
             </div>
 
             <div id="warehouse-section" style="margin-top: 12px;">
+                <div class="form-field" style="margin-bottom: 8px;">
+                    <div style="display:flex; gap:16px; margin-top:6px;">
+                        <label><input type="radio" name="category_mode" value="existing" {% if form_data.category_mode != 'new' %}checked{% endif %}> Usa categoria esistente</label>
+                        <label><input type="radio" name="category_mode" value="new" {% if form_data.category_mode == 'new' %}checked{% endif %}> ➕ Crea nuova categoria</label>
+                    </div>
+                </div>
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Catégorie magasin{% else %}Categoria magazzino{% endif %}</label>
                     <select name="warehouse_category_id" id="warehouse_category_id">
                         <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
                         {% for category in warehouse_categories %}
-                            <option value="{{ category.id }}" {% if form_data.warehouse_category_id == category.id|string %}selected{% endif %}>{{ category.nome }} / {{ category.macro }}</option>
+                            <option value="{{ category.id }}" {% if form_data.warehouse_category_id == category.id|string %}selected{% endif %}>{{ category.nome }} / {{ (category.macro_ref.name if category.macro_ref else category.macro) }}</option>
                         {% endfor %}
-                        <option value="{{ new_category_sentinel }}" {% if form_data.warehouse_category_id == new_category_sentinel %}selected{% endif %}>➕ {% if lang == 'fr' %}Créer nouvelle catégorie{% else %}Crea nuova categoria{% endif %}</option>
                     </select>
                 </div>
                 <div id="new-category-fields" class="form-grid-2" style="margin-top: 12px;">
@@ -84,12 +89,17 @@
                     </div>
                     <div class="form-field">
                         <label>{% if lang == 'fr' %}Macro{% else %}Macro{% endif %}</label>
-                        <select name="new_category_macro">
+                        <select name="new_category_macro_id" id="new_category_macro_id">
                             <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
-                            {% for macro in macro_options %}
-                                <option value="{{ macro }}" {% if form_data.new_category_macro == macro %}selected{% endif %}>{{ macro }}</option>
+                            {% for macro in warehouse_macros %}
+                                <option value="{{ macro.id }}" {% if form_data.new_category_macro_id == macro.id|string %}selected{% endif %}>{{ macro.name }}</option>
                             {% endfor %}
+                            <option value="{{ new_macro_sentinel }}" {% if form_data.new_category_macro_id == new_macro_sentinel %}selected{% endif %}>➕ Crea nuova macro</option>
                         </select>
+                    </div>
+                    <div class="form-field" id="new-macro-name-field" style="grid-column: 1 / -1;">
+                        <label>Nome nuova macro</label>
+                        <input type="text" name="new_macro_name" value="{{ form_data.new_macro_name }}">
                     </div>
                 </div>
             </div>
@@ -136,9 +146,12 @@ const tableBody = document.querySelector('#righe-table tbody');
 const optionsHtml = `{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>{% endfor %}`;
 const warehouseCategorySelect = document.getElementById('warehouse_category_id');
 const newCategoryFields = document.getElementById('new-category-fields');
+const newMacroSelect = document.getElementById('new_category_macro_id');
+const newMacroNameField = document.getElementById('new-macro-name-field');
+const categoryModeRadios = document.querySelectorAll('input[name="category_mode"]');
 const closedSection = document.getElementById('closed-section');
 const warehouseSection = document.getElementById('warehouse-section');
-const sentinel = "{{ new_category_sentinel }}";
+const newMacroSentinel = "{{ new_macro_sentinel }}";
 
 function updateKindSections() {
     const selectedKind = document.querySelector('input[name="order_kind"]:checked')?.value;
@@ -146,13 +159,22 @@ function updateKindSections() {
     warehouseSection.style.display = selectedKind === 'warehouse' ? 'block' : 'none';
 }
 function updateNewCategoryFields() {
-    newCategoryFields.style.display = warehouseCategorySelect.value === sentinel ? 'grid' : 'none';
+    const mode = document.querySelector('input[name="category_mode"]:checked')?.value;
+    const isNew = mode === 'new';
+    newCategoryFields.style.display = isNew ? 'grid' : 'none';
+    warehouseCategorySelect.disabled = isNew;
+}
+function updateNewMacroField() {
+    const show = newMacroSelect?.value === newMacroSentinel;
+    newMacroNameField.style.display = show ? 'block' : 'none';
 }
 
 document.querySelectorAll('input[name="order_kind"]').forEach(el => el.addEventListener('change', updateKindSections));
-warehouseCategorySelect?.addEventListener('change', updateNewCategoryFields);
+categoryModeRadios.forEach(el => el.addEventListener('change', updateNewCategoryFields));
+newMacroSelect?.addEventListener('change', updateNewMacroField);
 updateKindSections();
 updateNewCategoryFields();
+updateNewMacroField();
 
 addRowButton?.addEventListener('click', () => {
     const newRow = document.createElement('tr');

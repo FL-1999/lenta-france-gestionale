@@ -1,4 +1,3 @@
-import logging
 import shutil
 from pathlib import Path
 from uuid import uuid4
@@ -17,6 +16,7 @@ from database import get_db
 from models import (
     MagazzinoCategoria,
     MagazzinoItem,
+    MagazzinoMacro,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
     PurchaseDelivery,
@@ -33,8 +33,6 @@ templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 router = APIRouter(tags=["ordini"])
 
-logger = logging.getLogger("lenta_france_gestionale.orders")
-MAX_ORDER_NUMBER_RETRIES = 5
 INVOICE_UPLOAD_DIR = Path("static/uploads/invoices")
 
 
@@ -124,11 +122,15 @@ def _order_destination_label(order: PurchaseOrder) -> str:
         site_name = order.site.name if order.site else "-"
         return f"CHIUSO/CANTIERE: {site_name}"
     category_name = order.warehouse_category.nome if order.warehouse_category else "-"
-    macro_name = order.warehouse_category.macro if order.warehouse_category else "-"
+    macro_name = (
+        order.warehouse_category.macro_ref.name
+        if order.warehouse_category and order.warehouse_category.macro_ref
+        else (order.warehouse_category.macro if order.warehouse_category else "-")
+    )
     return f"MAGAZZINO: {category_name} / {macro_name}"
 
 
-def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[str]]:
+def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[MagazzinoMacro]]:
     magazzino_items = (
         db.query(MagazzinoItem)
         .filter(MagazzinoItem.attivo.is_(True))
@@ -148,10 +150,8 @@ def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], lis
         .order_by(User.full_name.asc(), User.email.asc())
         .all()
     )
-    macro_options = sorted({(cat.macro or "Generale").strip() or "Generale" for cat in warehouse_categories})
-    if "Generale" not in macro_options:
-        macro_options.insert(0, "Generale")
-    return magazzino_items, sites, warehouse_categories, requesters, macro_options
+    warehouse_macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
+    return magazzino_items, sites, warehouse_categories, requesters, warehouse_macros
 
 
 def _render_order_form(
@@ -162,7 +162,7 @@ def _render_order_form(
     error_message: str | None = None,
     form_data: dict | None = None,
 ):
-    magazzino_items, sites, warehouse_categories, requesters, macro_options = _load_order_form_dependencies(db)
+    magazzino_items, sites, warehouse_categories, requesters, warehouse_macros = _load_order_form_dependencies(db)
     if form_data is None:
         form_data = {
             "supplier_name": "",
@@ -173,7 +173,9 @@ def _render_order_form(
             "site_id": "",
             "warehouse_category_id": "",
             "new_category_name": "",
-            "new_category_macro": "Generale",
+            "category_mode": "existing",
+            "new_category_macro_id": "",
+            "new_macro_name": "",
             "lines": [{"description": "", "qty_ordered": "", "magazzino_item_id": ""}],
         }
     return render_template(
@@ -185,10 +187,11 @@ def _render_order_form(
             "sites": sites,
             "warehouse_categories": warehouse_categories,
             "requesters": requesters,
-            "macro_options": macro_options,
+            "warehouse_macros": warehouse_macros,
             "error_message": error_message,
             "form_data": form_data,
             "new_category_sentinel": "__new__",
+            "new_macro_sentinel": "__new_macro__",
         },
         db,
         current_user,
@@ -202,53 +205,27 @@ def _create_order_with_lines(
     requester_user_id: int | None,
     lines: list[tuple[str, float, int | None]],
 ) -> PurchaseOrder:
-    for attempt in range(MAX_ORDER_NUMBER_RETRIES):
-        order_number = _get_next_order_number(db, order_date)
-        order = PurchaseOrder(
-            order_number=order_number,
-            supplier_name=supplier_name,
-            order_date=order_date,
-            requester_user_id=requester_user_id,
-            status="APERTO",
-        )
-        db.add(order)
-        try:
-            db.flush()
-        except IntegrityError:
-            logger.warning(
-                "Duplicate order_number %s on attempt %s",
-                order_number,
-                attempt + 1,
-            )
-            db.rollback()
-            continue
-
-        for description, qty, magazzino_item_id in lines:
-            db.add(
-                PurchaseOrderLine(
-                    order_id=order.id,
-                    description=description,
-                    qty_ordered=qty,
-                    magazzino_item_id=magazzino_item_id,
-                )
-            )
-
-        try:
-            db.commit()
-        except IntegrityError:
-            logger.warning(
-                "IntegrityError while committing order_number %s on attempt %s",
-                order_number,
-                attempt + 1,
-            )
-            db.rollback()
-            continue
-        return order
-
-    raise HTTPException(
-        status_code=500,
-        detail="Impossibile generare un numero ordine univoco",
+    order = PurchaseOrder(
+        order_number=_get_next_order_number(db, order_date),
+        supplier_name=supplier_name,
+        order_date=order_date,
+        requester_user_id=requester_user_id,
+        status="APERTO",
     )
+    db.add(order)
+    db.flush()
+
+    for description, qty, magazzino_item_id in lines:
+        db.add(
+            PurchaseOrderLine(
+                order_id=order.id,
+                description=description,
+                qty_ordered=qty,
+                magazzino_item_id=magazzino_item_id,
+            )
+        )
+
+    return order
 
 
 @router.get(
@@ -280,7 +257,9 @@ def manager_ordini_create(
     site_id: str = Form(""),
     warehouse_category_id: str = Form(""),
     new_category_name: str = Form(""),
-    new_category_macro: str = Form(""),
+    category_mode: str = Form("existing"),
+    new_category_macro_id: str = Form(""),
+    new_macro_name: str = Form(""),
     description: list[str] = Form(...),
     qty_ordered: list[str] = Form(...),
     magazzino_item_id: list[str] = Form(...),
@@ -298,7 +277,9 @@ def manager_ordini_create(
         "site_id": site_id or "",
         "warehouse_category_id": warehouse_category_id or "",
         "new_category_name": new_category_name or "",
-        "new_category_macro": new_category_macro or "",
+        "category_mode": category_mode or "existing",
+        "new_category_macro_id": new_category_macro_id or "",
+        "new_macro_name": new_macro_name or "",
         "lines": [
             {"description": d or "", "qty_ordered": q or "", "magazzino_item_id": i or ""}
             for d, q, i in zip(description, qty_ordered, magazzino_item_id)
@@ -337,13 +318,38 @@ def manager_ordini_create(
             return _render_order_form(request, db, current_user, error_message="Per ordine chiuso devi selezionare un cantiere valido.", form_data=form_data)
         form_data["warehouse_category_id"] = ""
     else:
-        if warehouse_category_id == "__new__":
+        if category_mode == "new" or warehouse_category_id == "__new__":
             nome_categoria = (new_category_name or "").strip()
-            macro_categoria = (new_category_macro or "").strip()
             if not nome_categoria:
                 return _render_order_form(request, db, current_user, error_message="Inserisci il nome della nuova categoria.", form_data=form_data)
-            if not macro_categoria:
-                return _render_order_form(request, db, current_user, error_message="Seleziona la macro della nuova categoria.", form_data=form_data)
+
+            selected_macro: MagazzinoMacro | None = None
+            if new_category_macro_id == "__new_macro__":
+                macro_name_clean = (new_macro_name or "").strip()
+                if not macro_name_clean:
+                    return _render_order_form(request, db, current_user, error_message="Inserisci il nome della nuova macro.", form_data=form_data)
+                selected_macro = (
+                    db.query(MagazzinoMacro)
+                    .filter(func.lower(MagazzinoMacro.name) == macro_name_clean.lower())
+                    .first()
+                )
+                if not selected_macro:
+                    selected_macro = MagazzinoMacro(name=macro_name_clean)
+                    db.add(selected_macro)
+                    db.flush()
+            else:
+                try:
+                    macro_id_int = int(new_category_macro_id)
+                except (TypeError, ValueError):
+                    macro_id_int = 0
+                selected_macro = (
+                    db.query(MagazzinoMacro)
+                    .filter(MagazzinoMacro.id == macro_id_int)
+                    .first()
+                )
+                if not selected_macro:
+                    return _render_order_form(request, db, current_user, error_message="Seleziona una macro valida per la nuova categoria.", form_data=form_data)
+
             existing = db.query(MagazzinoCategoria).filter(func.lower(MagazzinoCategoria.nome) == nome_categoria.lower()).first()
             if existing:
                 selected_category_id = existing.id
@@ -361,11 +367,11 @@ def manager_ordini_create(
                     slug=candidate,
                     ordine=max_order + 1,
                     attiva=True,
-                    macro=macro_categoria,
+                    macro=selected_macro.name,
+                    macro_id=selected_macro.id,
                 )
                 db.add(categoria)
-                db.commit()
-                db.refresh(categoria)
+                db.flush()
                 selected_category_id = categoria.id
             form_data["warehouse_category_id"] = str(selected_category_id)
         else:
@@ -434,8 +440,10 @@ def manager_ordini_create(
         order.order_kind = normalized_kind
         order.site_id = selected_site_id if normalized_kind == "closed" else None
         order.warehouse_category_id = selected_category_id if normalized_kind == "warehouse" else None
-        db.add(order)
         db.commit()
+    except IntegrityError:
+        db.rollback()
+        return _render_order_form(request, db, current_user, error_message="Impossibile salvare l'ordine. Verifica i dati inseriti.", form_data=form_data)
     except Exception:
         db.rollback()
         raise

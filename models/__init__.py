@@ -492,8 +492,11 @@ class MagazzinoCategoria(Base, TimestampMixin):
     ordine = Column(Integer, nullable=False, default=0)
     attiva = Column(Boolean, default=True, nullable=False)
     macro = Column(String(120), nullable=False, default="Generale")
+    macro_id = Column(Integer, ForeignKey("magazzino_macro.id"), nullable=True)
     icon = Column(String(32), nullable=True, default="📦")
     color = Column(String(20), nullable=True, default="indigo")
+
+    macro_ref = relationship("MagazzinoMacro", back_populates="categorie")
 
     def __repr__(self) -> str:
         return f"<MagazzinoCategoria id={self.id} nome={self.nome} slug={self.slug}>"
@@ -521,6 +524,19 @@ class MagazzinoItem(Base, TimestampMixin):
             f"<MagazzinoItem id={self.id} codice={self.codice} nome={self.nome} "
             f"unita={self.unita_misura}>"
         )
+
+
+class MagazzinoMacro(Base):
+    __tablename__ = "magazzino_macro"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(120), nullable=False, unique=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    categorie = relationship("MagazzinoCategoria", back_populates="macro_ref")
+
+    def __repr__(self) -> str:
+        return f"<MagazzinoMacro id={self.id} name={self.name}>"
 
 
 class MagazzinoRichiesta(Base, TimestampMixin):
