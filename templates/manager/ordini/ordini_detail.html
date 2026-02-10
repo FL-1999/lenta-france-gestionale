@@ -27,6 +27,15 @@
         <a href="{{ url_for('manager_ordini_bolle_nuova', order_id=order.id) }}" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvelle livraison{% else %}Nuova bolla{% endif %}
         </a>
+            {% if order.file_invoice %}
+        <a href="{{ url_for('manager_ordini_fattura_form', order_id=order.id) }}" class="btn btn-secondary">
+            ✏️ {% if lang == 'fr' %}Modifier facture{% else %}Modifica fattura{% endif %}
+        </a>
+        {% else %}
+        <a href="{{ url_for('manager_ordini_fattura_form', order_id=order.id) }}" class="btn btn-secondary">
+            ➕ {% if lang == 'fr' %}Ajouter facture{% else %}Aggiungi fattura{% endif %}
+        </a>
+        {% endif %}
     </div>
 </div>
 
@@ -61,13 +70,35 @@
             </div>
             <div>
                 <strong>{% if lang == 'fr' %}Facture{% else %}Fattura{% endif %}:</strong>
-                {{ order.invoice_number or '-' }}
+                {% if order.file_invoice %}
+                    ✅ {% if lang == 'fr' %}Présente{% else %}Presente{% endif %}
+                    {% if order.invoice_number %}({{ order.invoice_number }}){% endif %}
+                {% else %}
+                    ❌ {% if lang == 'fr' %}Manquante{% else %}Mancante{% endif %}
+                {% endif %}
             </div>
             <div>
                 <strong>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}:</strong>
                 {{ order.description or '-' }}
             </div>
+            <div>
+                <strong>{% if lang == 'fr' %}Date facture{% else %}Data fattura{% endif %}:</strong>
+                {{ order.invoice_date.strftime("%d/%m/%Y") if order.invoice_date else '-' }}
+            </div>
         </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <strong>{% if lang == 'fr' %}Fichier facture{% else %}File fattura{% endif %}:</strong>
+        {% if order.file_invoice %}
+            <a href="/static/{{ order.file_invoice }}" target="_blank" rel="noopener">
+                {% if lang == 'fr' %}Voir/Télécharger{% else %}Visualizza/Scarica{% endif %}
+            </a>
+        {% else %}
+            -
+        {% endif %}
     </div>
 </div>
 
@@ -145,6 +176,10 @@
                         {% else %}
                             <span class="badge badge-success">OK</span>
                         {% endif %}
+                        <a href="{{ url_for('manager_ordini_fattura_form', order_id=order.id) }}" class="btn btn-sm btn-secondary" style="margin-top:0.25rem;">
+                            {% if order.file_invoice %}✏️ {% if lang == 'fr' %}Modifier facture{% else %}Modifica fattura{% endif %}{% else %}➕ {% if lang == 'fr' %}Ajouter facture{% else %}Aggiungi fattura{% endif %}{% endif %}
+                        </a>
+                    
                     </td>
                 </tr>
                 {% else %}
