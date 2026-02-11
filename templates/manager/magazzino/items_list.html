@@ -297,40 +297,10 @@
                 </h2>
                 <button type="button" class="btn btn-secondary btn-sm" data-modal-close>✖</button>
             </div>
-            <form method="post" action="{{ url_for('manager_magazzino_categorie_create') }}">
-                <div class="form-grid-2">
-                    <div class="form-field">
-                        <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
-                        <input type="text" name="nome" required>
-                    </div>
-                    <div class="form-field">
-                        <label>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</label>
-                        <input type="number" name="ordine" min="0" value="0">
-                    </div>
-                </div>
-                <div class="form-grid-2">
-                    <div class="form-field">
-                        <label>{% if lang == 'fr' %}Icône{% else %}Icona{% endif %}</label>
-                        <input type="text" name="icon" maxlength="32" placeholder="📦"
-                               value="{{ default_categoria_icon }}">
-                    </div>
-                    <div class="form-field">
-                        <label>{% if lang == 'fr' %}Couleur{% else %}Colore{% endif %}</label>
-                        <select name="color">
-                            {% for option in color_options %}
-                                <option value="{{ option }}" {% if option == default_categoria_color %}selected{% endif %}>
-                                    {{ option|capitalize }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-
+            <form method="post" action="{{ url_for('manager_magazzino_macro_create') }}">
                 <div class="form-field">
-                    <label class="checkbox">
-                        <input type="checkbox" name="attiva" checked>
-                        <span>{% if lang == 'fr' %}Active{% else %}Attiva{% endif %}</span>
-                    </label>
+                    <label>{% if lang == 'fr' %}Nom macro{% else %}Nome macro{% endif %}*</label>
+                    <input type="text" name="name" required>
                 </div>
 
                 <div class="form-actions">
