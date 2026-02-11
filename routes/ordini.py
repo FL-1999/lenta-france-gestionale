@@ -276,6 +276,35 @@ def _create_order_with_lines(
     return order
 
 
+def _get_or_create_warehouse_item(
+    db: Session,
+    *,
+    categoria_id: int,
+    nome_item: str,
+) -> MagazzinoItem:
+    normalized_name = nome_item.strip()
+    existing_item = (
+        db.query(MagazzinoItem)
+        .filter(
+            MagazzinoItem.categoria_id == categoria_id,
+            func.lower(MagazzinoItem.nome) == normalized_name.lower(),
+        )
+        .first()
+    )
+    if existing_item:
+        return existing_item
+
+    new_item = MagazzinoItem(
+        nome=normalized_name,
+        categoria_id=categoria_id,
+        quantita_disponibile=0.0,
+        attivo=True,
+    )
+    db.add(new_item)
+    db.flush()
+    return new_item
+
+
 @router.get(
     "/manager/ordini/nuovo",
     response_class=HTMLResponse,
@@ -480,6 +509,33 @@ def manager_ordini_create(
     if not lines:
         db.rollback()
         return _render_order_form(request, db, current_user, error_message="Inserisci almeno una riga ordine valida.", form_data=form_data)
+
+    is_new_warehouse_category = normalized_kind == "warehouse" and (
+        category_mode == "new" or warehouse_category_id == "__new__"
+    )
+    if is_new_warehouse_category and selected_category_id is not None:
+        cached_items_by_name: dict[str, MagazzinoItem] = {}
+        updated_lines: list[tuple[str, float, int | None]] = []
+        for index, (description_clean, parsed_qty, item_id) in enumerate(lines):
+            if item_id is not None:
+                updated_lines.append((description_clean, parsed_qty, item_id))
+                continue
+
+            cache_key = description_clean.lower()
+            selected_item = cached_items_by_name.get(cache_key)
+            if selected_item is None:
+                selected_item = _get_or_create_warehouse_item(
+                    db,
+                    categoria_id=selected_category_id,
+                    nome_item=description_clean,
+                )
+                cached_items_by_name[cache_key] = selected_item
+
+            updated_lines.append((description_clean, parsed_qty, selected_item.id))
+            if index < len(form_data["lines"]):
+                form_data["lines"][index]["magazzino_item_id"] = str(selected_item.id)
+
+        lines = updated_lines
 
     try:
         order = _create_order_with_lines(
