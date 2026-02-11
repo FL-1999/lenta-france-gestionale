@@ -39,7 +39,7 @@
     </div>
 </div>
 
-<form method="post" action="{{ url_for(form_action, categoria_id=categoria.id) if is_edit else url_for(form_action) }}">
+<form method="post" action="{{ url_for('manager_magazzino_categorie_update', categoria_id=categoria.id) if is_edit else url_for('manager_magazzino_categorie_create') }}">
     <div class="card large-form-card">
         <div class="card-body">
             {% if error_message %}
