@@ -36,6 +36,14 @@
             ➕ {% if lang == 'fr' %}Ajouter facture{% else %}Aggiungi fattura{% endif %}
         </a>
         {% endif %}
+        {% if can_discharge %}
+        <form method="post" action="{{ url_for('manager_ordini_scarico', order_id=order.id) }}" style="display:inline-block;">
+            <button type="submit" class="btn btn-secondary" {% if not has_pending_discharge %}disabled title="Nessuna bolla confermata da scaricare"{% endif %}>
+                ⬇️ {% if lang == 'fr' %}Décharger vers chantier{% else %}Scarica su cantiere{% endif %}
+                {% if has_pending_discharge %}({{ pending_discharge_qty }}){% endif %}
+            </button>
+        </form>
+        {% endif %}
     </div>
 </div>
 
@@ -113,6 +121,7 @@
             <thead>
                 <tr>
                     <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Article stock{% else %}Articolo magazzino{% endif %}</th>
                     <th class="text-right">{% if lang == 'fr' %}Commandé{% else %}Ordinato{% endif %}</th>
                     <th class="text-right">{% if lang == 'fr' %}Livré{% else %}Consegnato{% endif %}</th>
                     <th class="text-right">{% if lang == 'fr' %}Restant{% else %}Residuo{% endif %}</th>
@@ -122,13 +131,20 @@
                 {% for line in lines %}
                 <tr>
                     <td>{{ line.description or '-' }}</td>
+                    <td>
+                        {% if line.magazzino_item %}
+                            {{ line.magazzino_item.codice or '-' }} - {{ line.magazzino_item.nome }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td class="text-right">{{ line.qty_ordered }}</td>
                     <td class="text-right">{{ line.qty_delivered }}</td>
                     <td class="text-right">{{ line.qty_remaining }}</td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="4" class="table-empty">
+                    <td colspan="5" class="table-empty">
                         {% if lang == 'fr' %}Aucune ligne{% else %}Nessuna riga{% endif %}
                     </td>
                 </tr>

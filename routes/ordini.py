@@ -108,6 +108,53 @@ def _load_delivered_totals(db: Session, order_id: int) -> dict[int, float]:
     }
 
 
+def _collect_pending_discharge_requirements(
+    db: Session, order: PurchaseOrder
+) -> tuple[dict[int, float], list[PurchaseDelivery]]:
+    confirmed_deliveries = (
+        db.query(PurchaseDelivery)
+        .filter(
+            PurchaseDelivery.order_id == order.id,
+            PurchaseDelivery.confirmed.is_(True),
+        )
+        .order_by(PurchaseDelivery.created_at.asc())
+        .all()
+    )
+    if not confirmed_deliveries:
+        return {}, []
+
+    confirmed_delivery_ids = [delivery.id for delivery in confirmed_deliveries]
+    discharged_delivery_ids = {
+        delivery_id
+        for (delivery_id,) in db.query(MagazzinoMovimento.purchase_delivery_id)
+        .filter(
+            MagazzinoMovimento.purchase_order_id == order.id,
+            MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum.scarico,
+            MagazzinoMovimento.purchase_delivery_id.in_(confirmed_delivery_ids),
+        )
+        .all()
+        if delivery_id is not None
+    }
+
+    pending_deliveries = [
+        delivery
+        for delivery in confirmed_deliveries
+        if delivery.id not in discharged_delivery_ids
+    ]
+
+    required_by_item: dict[int, float] = {}
+    for delivery in pending_deliveries:
+        for line in delivery.lines:
+            if not line.order_line or line.qty_delivered is None or line.qty_delivered <= 0:
+                continue
+            item_id = line.order_line.magazzino_item_id
+            if item_id is None:
+                continue
+            required_by_item[item_id] = required_by_item.get(item_id, 0.0) + line.qty_delivered
+
+    return required_by_item, pending_deliveries
+
+
 def _calculate_completion_percent(
     total_ordered: float,
     total_delivered: float,
@@ -630,6 +677,7 @@ def manager_ordini_detail(
         {
             "id": line.id,
             "description": line.description,
+            "magazzino_item": line.magazzino_item,
             "qty_ordered": line.qty_ordered,
             "qty_delivered": delivered_totals.get(line.id, 0.0),
             "qty_remaining": max(
@@ -645,6 +693,9 @@ def manager_ordini_detail(
         .order_by(PurchaseDelivery.created_at.desc())
         .all()
     )
+    pending_discharge_requirements, pending_discharge_deliveries = (
+        _collect_pending_discharge_requirements(db, order)
+    )
     error_message = request.query_params.get("err")
 
     return render_template(
@@ -658,6 +709,11 @@ def manager_ordini_detail(
             "completion_percent": completion_percent,
             "error_message": error_message,
             "destination_label": _order_destination_label(order),
+            "can_discharge": order.order_kind == "closed" and order.site_id is not None,
+            "has_pending_discharge": bool(pending_discharge_deliveries),
+            "pending_discharge_qty": round(
+                sum(pending_discharge_requirements.values()), 2
+            ),
         },
         db,
         current_user,
@@ -985,6 +1041,104 @@ def manager_ordini_bolle_conferma(
         else:
             order.status = "APERTO"
     db.add(order)
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("manager_ordini_detail", order_id=order.id),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/ordini/{order_id}/scarico",
+    name="manager_ordini_scarico",
+)
+def manager_ordini_scarico(
+    request: Request,
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    if order.order_kind != "closed" or order.site_id is None:
+        query_string = urlencode(
+            {"err": "Scarico disponibile solo per ordini chiusi associati a un cantiere."}
+        )
+        url = f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{query_string}"
+        return RedirectResponse(url=url, status_code=303)
+
+    required_by_item, pending_deliveries = _collect_pending_discharge_requirements(db, order)
+    if not pending_deliveries:
+        query_string = urlencode({"err": "Nessuna bolla confermata da scaricare."})
+        url = f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{query_string}"
+        return RedirectResponse(url=url, status_code=303)
+
+    if not required_by_item:
+        query_string = urlencode(
+            {"err": "Nessuna quantità valida da scaricare per le bolle confermate."}
+        )
+        url = f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{query_string}"
+        return RedirectResponse(url=url, status_code=303)
+
+    items = {
+        item.id: item
+        for item in db.query(MagazzinoItem)
+        .filter(MagazzinoItem.id.in_(list(required_by_item.keys())))
+        .all()
+    }
+    for item_id, required_qty in required_by_item.items():
+        item = items.get(item_id)
+        if not item:
+            query_string = urlencode({"err": "Articolo magazzino non valido per lo scarico."})
+            url = (
+                f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{query_string}"
+            )
+            return RedirectResponse(url=url, status_code=303)
+        available_qty = item.quantita_disponibile or 0.0
+        if available_qty < required_qty:
+            query_string = urlencode(
+                {
+                    "err": (
+                        f"Stock insufficiente per {item.codice or item.nome or f'ID {item.id}'}: "
+                        f"disponibile {available_qty}, richiesto {required_qty}."
+                    )
+                }
+            )
+            url = (
+                f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{query_string}"
+            )
+            return RedirectResponse(url=url, status_code=303)
+
+    for delivery in pending_deliveries:
+        for line in delivery.lines:
+            if not line.order_line:
+                continue
+            item_id = line.order_line.magazzino_item_id
+            qty = line.qty_delivered or 0.0
+            if item_id is None or qty <= 0:
+                continue
+            item = items.get(item_id)
+            if not item:
+                continue
+            item.quantita_disponibile = (item.quantita_disponibile or 0.0) - qty
+            db.add(item)
+            db.add(
+                MagazzinoMovimento(
+                    item_id=item.id,
+                    tipo=MagazzinoMovimentoTipoEnum.scarico,
+                    quantita=qty,
+                    cantiere_id=order.site_id,
+                    creato_da_user_id=current_user.id,
+                    purchase_order_id=order.id,
+                    purchase_delivery_id=delivery.id,
+                    note=f"Scarico ordine {order.order_number} · bolla {delivery.delivery_number}",
+                )
+            )
+
     db.commit()
 
     return RedirectResponse(
