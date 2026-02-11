@@ -173,7 +173,7 @@
             <tbody>
                 {% for delivery in deliveries %}
                 <tr>
-                    <td>{{ delivery.delivery_number }}</td>
+                    <td>Bolla: {{ delivery.delivery_number or '—' }}</td>
                     <td>{{ delivery.delivery_date.strftime("%d/%m/%Y") if delivery.delivery_date else '-' }}</td>
                     <td>
                         {% if delivery.confirmed %}
