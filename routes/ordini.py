@@ -4,7 +4,7 @@ from uuid import uuid4
 from datetime import date, datetime
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import Integer, cast, func, or_
@@ -361,6 +361,122 @@ def _get_or_create_warehouse_item(
     return new_item
 
 
+def _build_unique_category_slug(db: Session, category_name: str) -> str:
+    base_slug = category_name.lower().strip().replace(" ", "-")
+    slug = "".join(ch for ch in base_slug if ch.isalnum() or ch == "-") or "categoria"
+    candidate = slug
+    counter = 2
+    while db.query(MagazzinoCategoria.id).filter(MagazzinoCategoria.slug == candidate).first():
+        candidate = f"{slug}-{counter}"
+        counter += 1
+    return candidate
+
+
+def _get_or_create_category_for_name(
+    db: Session,
+    *,
+    category_name: str,
+    selected_macro: MagazzinoMacro,
+) -> MagazzinoCategoria:
+    existing_category = (
+        db.query(MagazzinoCategoria)
+        .filter(func.lower(MagazzinoCategoria.nome) == category_name.lower())
+        .first()
+    )
+    if existing_category:
+        return existing_category
+
+    max_order = db.query(func.max(MagazzinoCategoria.ordine)).scalar() or 0
+    categoria = MagazzinoCategoria(
+        nome=category_name,
+        slug=_build_unique_category_slug(db, category_name),
+        ordine=max_order + 1,
+        attiva=True,
+        macro=selected_macro.name,
+        macro_id=selected_macro.id,
+    )
+    db.add(categoria)
+    db.flush()
+    return categoria
+
+
+@router.post(
+    "/api/ordini/ensure-warehouse-item",
+    name="api_ordini_ensure_warehouse_item",
+)
+def api_ordini_ensure_warehouse_item(
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+
+    new_category_name = (payload.get("new_category_name") or "").strip()
+    macro_value = str((payload.get("macro_id") or "").strip())
+    new_macro_name = (payload.get("new_macro_name") or "").strip()
+    item_name = (payload.get("item_name") or "").strip()
+
+    if not new_category_name:
+        raise HTTPException(status_code=400, detail="Nome nuova categoria obbligatorio.")
+    if not item_name:
+        raise HTTPException(status_code=400, detail="Nome articolo obbligatorio.")
+
+    selected_macro: MagazzinoMacro | None = None
+    if macro_value == "__new__":
+        if not new_macro_name:
+            raise HTTPException(status_code=400, detail="Nome nuova macro obbligatorio.")
+        selected_macro = (
+            db.query(MagazzinoMacro)
+            .filter(func.lower(MagazzinoMacro.name) == new_macro_name.lower())
+            .first()
+        )
+        if not selected_macro:
+            selected_macro = MagazzinoMacro(name=new_macro_name)
+            db.add(selected_macro)
+            db.flush()
+    else:
+        try:
+            macro_id_int = int(macro_value)
+        except (TypeError, ValueError):
+            macro_id_int = 0
+        selected_macro = (
+            db.query(MagazzinoMacro)
+            .filter(MagazzinoMacro.id == macro_id_int)
+            .first()
+        )
+        if not selected_macro:
+            raise HTTPException(status_code=400, detail="Macro non valida.")
+
+    try:
+        categoria = _get_or_create_category_for_name(
+            db,
+            category_name=new_category_name,
+            selected_macro=selected_macro,
+        )
+        item = _get_or_create_warehouse_item(
+            db,
+            categoria_id=categoria.id,
+            nome_item=item_name,
+        )
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Impossibile creare categoria o articolo.")
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "ok": True,
+        "categoria_id": categoria.id,
+        "categoria_nome": categoria.nome,
+        "macro_id": selected_macro.id,
+        "macro_nome": selected_macro.name,
+        "item_id": item.id,
+        "item_nome": item.nome,
+    }
+
+
 @router.get(
     "/manager/ordini/nuovo",
     response_class=HTMLResponse,
@@ -488,29 +604,12 @@ def manager_ordini_create(
                 if not selected_macro:
                     return _render_order_form(request, db, current_user, error_message="Seleziona una macro valida per la nuova categoria.", form_data=form_data)
 
-            existing = db.query(MagazzinoCategoria).filter(func.lower(MagazzinoCategoria.nome) == nome_categoria.lower()).first()
-            if existing:
-                selected_category_id = existing.id
-            else:
-                max_order = db.query(func.max(MagazzinoCategoria.ordine)).scalar() or 0
-                base_slug = nome_categoria.lower().strip().replace(" ", "-")
-                slug = ''.join(ch for ch in base_slug if ch.isalnum() or ch == '-') or 'categoria'
-                candidate = slug
-                counter = 2
-                while db.query(MagazzinoCategoria.id).filter(MagazzinoCategoria.slug == candidate).first():
-                    candidate = f"{slug}-{counter}"
-                    counter += 1
-                categoria = MagazzinoCategoria(
-                    nome=nome_categoria,
-                    slug=candidate,
-                    ordine=max_order + 1,
-                    attiva=True,
-                    macro=selected_macro.name,
-                    macro_id=selected_macro.id,
-                )
-                db.add(categoria)
-                db.flush()
-                selected_category_id = categoria.id
+            categoria = _get_or_create_category_for_name(
+                db,
+                category_name=nome_categoria,
+                selected_macro=selected_macro,
+            )
+            selected_category_id = categoria.id
             form_data["warehouse_category_id"] = str(selected_category_id)
         else:
             try:
