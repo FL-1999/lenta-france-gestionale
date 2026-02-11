@@ -10,7 +10,9 @@ from main import app
 from models import (
     MagazzinoItem,
     MagazzinoMacro,
+    PurchaseDelivery,
     PurchaseOrder,
+    PurchaseOrderLine,
     RoleEnum,
     User,
 )
@@ -146,6 +148,7 @@ class OrdiniRoutesTests(unittest.TestCase):
         bolla_response = self.client.post(
             f"/manager/ordini/{order_id}/bolle/nuova",
             data={
+                "delivery_number": f"BOL-{unique_token}",
                 "order_line_id": [str(order_line_id)],
                 "qty_delivered": ["2"],
             },
@@ -173,6 +176,135 @@ class OrdiniRoutesTests(unittest.TestCase):
             item = session.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
             self.assertIsNotNone(item)
             self.assertEqual(item.quantita_disponibile, 2.0)
+        finally:
+            session.close()
+
+    def test_create_delivery_without_number_shows_user_friendly_error(self) -> None:
+        unique_token = uuid4().hex
+
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-delivery-{unique_token}@example.com",
+                full_name="Ordini Delivery Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            session.add(requester)
+            session.flush()
+
+            order = PurchaseOrder(
+                order_number=f"TEST-DEL-{unique_token[:8]}",
+                supplier_name="Fornitore Test",
+                requester_user_id=requester.id,
+                status="bozza",
+            )
+            session.add(order)
+            session.flush()
+
+            order_line = PurchaseOrderLine(
+                order_id=order.id,
+                description="Ricambio",
+                qty_ordered=3,
+            )
+            session.add(order_line)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
+            order_line_id = order_line.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/ordini/{order_id}/bolle/nuova",
+            data={
+                "delivery_number": " ",
+                "order_line_id": [str(order_line_id)],
+                "qty_delivered": ["1"],
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Inserisci il numero bolla.", response.text)
+
+        session = SessionLocal()
+        try:
+            deliveries = (
+                session.query(PurchaseDelivery)
+                .filter(PurchaseDelivery.order_id == order_id)
+                .all()
+            )
+            self.assertEqual(len(deliveries), 0)
+        finally:
+            session.close()
+
+    def test_save_invoice_without_file_keeps_existing_file(self) -> None:
+        unique_token = uuid4().hex
+
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-invoice-{unique_token}@example.com",
+                full_name="Ordini Invoice Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            session.add(requester)
+            session.flush()
+
+            order = PurchaseOrder(
+                order_number=f"TEST-INV-{unique_token[:8]}",
+                supplier_name="Fornitore Test",
+                requester_user_id=requester.id,
+                status="bozza",
+                file_invoice="uploads/invoices/existing-file.pdf",
+            )
+            session.add(order)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/ordini/{order_id}/fattura",
+            data={
+                "invoice_number": "INV-2026-001",
+                "invoice_date": "2026-02-10",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        session = SessionLocal()
+        try:
+            saved_order = session.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+            self.assertIsNotNone(saved_order)
+            self.assertEqual(saved_order.invoice_number, "INV-2026-001")
+            self.assertEqual(saved_order.file_invoice, "uploads/invoices/existing-file.pdf")
         finally:
             session.close()
 

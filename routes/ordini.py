@@ -108,6 +108,62 @@ def _load_delivered_totals(db: Session, order_id: int) -> dict[int, float]:
     }
 
 
+def _get_next_delivery_number(db: Session, order: PurchaseOrder) -> str:
+    delivery_count = (
+        db.query(func.count(PurchaseDelivery.id))
+        .filter(PurchaseDelivery.order_id == order.id)
+        .scalar()
+        or 0
+    )
+    return f"{order.order_number}-{delivery_count + 1}"
+
+
+def _build_delivery_lines(order: PurchaseOrder, delivered_totals: dict[int, float]) -> list[dict]:
+    return [
+        {
+            "id": line.id,
+            "description": line.description,
+            "qty_ordered": line.qty_ordered,
+            "qty_delivered": delivered_totals.get(line.id, 0.0),
+            "qty_remaining": max(
+                0.0, (line.qty_ordered or 0.0) - delivered_totals.get(line.id, 0.0)
+            ),
+        }
+        for line in order.lines
+    ]
+
+
+def _render_bolla_form(
+    request: Request,
+    db: Session,
+    current_user: User,
+    *,
+    order: PurchaseOrder,
+    error_message: str | None = None,
+    form_data: dict | None = None,
+):
+    delivered_totals = _load_delivered_totals(db, order.id)
+    lines = _build_delivery_lines(order, delivered_totals)
+    if form_data is None:
+        form_data = {
+            "delivery_number": _get_next_delivery_number(db, order),
+        }
+
+    return render_template(
+        templates,
+        request,
+        "manager/ordini/bolla_new.html",
+        {
+            "order": order,
+            "lines": lines,
+            "error_message": error_message,
+            "form_data": form_data,
+        },
+        db,
+        current_user,
+    )
+
+
 def _collect_pending_discharge_requirements(
     db: Session, order: PurchaseOrder
 ) -> tuple[dict[int, float], list[PurchaseDelivery]]:
@@ -846,23 +902,6 @@ def manager_ordini_fattura_save(
             current_user,
         )
 
-    if (not order.file_invoice) and (invoice_file is None or not invoice_file.filename):
-        return render_template(
-            templates,
-            request,
-            "manager/ordini/fattura_form.html",
-            {
-                "order": order,
-                "error_message": "Il file fattura è obbligatorio.",
-                "form_data": {
-                    "invoice_number": invoice_number or "",
-                    "invoice_date": invoice_date or "",
-                },
-            },
-            db,
-            current_user,
-        )
-
     if invoice_file and invoice_file.filename:
         INVOICE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         extension = Path(invoice_file.filename).suffix
@@ -899,31 +938,7 @@ def manager_ordini_bolle_nuova(
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
 
-    delivered_totals = _load_delivered_totals(db, order.id)
-    lines = [
-        {
-            "id": line.id,
-            "description": line.description,
-            "qty_ordered": line.qty_ordered,
-            "qty_delivered": delivered_totals.get(line.id, 0.0),
-            "qty_remaining": max(
-                0.0, (line.qty_ordered or 0.0) - delivered_totals.get(line.id, 0.0)
-            ),
-        }
-        for line in order.lines
-    ]
-
-    return render_template(
-        templates,
-        request,
-        "manager/ordini/bolla_new.html",
-        {
-            "order": order,
-            "lines": lines,
-        },
-        db,
-        current_user,
-    )
+    return _render_bolla_form(request, db, current_user, order=order)
 
 
 @router.post(
@@ -934,6 +949,7 @@ def manager_ordini_bolle_nuova(
 def manager_ordini_bolle_create(
     request: Request,
     order_id: int,
+    delivery_number: str = Form(""),
     order_line_id: list[int] = Form(...),
     qty_delivered: list[str] = Form(...),
     db: Session = Depends(get_db),
@@ -943,6 +959,17 @@ def manager_ordini_bolle_create(
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    clean_delivery_number = delivery_number.strip()
+    if not clean_delivery_number:
+        return _render_bolla_form(
+            request,
+            db,
+            current_user,
+            order=order,
+            error_message="Inserisci il numero bolla.",
+            form_data={"delivery_number": ""},
+        )
 
     lines_payload = list(zip(order_line_id, qty_delivered))
     if not lines_payload:
@@ -963,16 +990,9 @@ def manager_ordini_bolle_create(
     if not parsed_lines:
         raise HTTPException(status_code=400, detail="Nessuna quantità consegnata valida")
 
-    delivery_count = (
-        db.query(func.count(PurchaseDelivery.id))
-        .filter(PurchaseDelivery.order_id == order.id)
-        .scalar()
-        or 0
-    )
-    delivery_number = f"{order.order_number}-{delivery_count + 1}"
     delivery = PurchaseDelivery(
         order_id=order.id,
-        delivery_number=delivery_number,
+        delivery_number=clean_delivery_number,
         delivery_date=date.today(),
         confirmed=False,
     )
