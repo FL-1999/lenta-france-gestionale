@@ -36,7 +36,11 @@
                         <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
                         {% for requester in requesters %}
                             <option value="{{ requester.id }}" {% if form_data.requester_user_id == requester.id|string %}selected{% endif %}>
-                                {{ requester.full_name or requester.email }}
+                                {% if requester.full_name %}
+                                    {{ requester.full_name }}{% if requester.email %} ({{ requester.email }}){% endif %}
+                                {% else %}
+                                    {{ requester.email }}
+                                {% endif %}
                             </option>
                         {% endfor %}
                     </select>
