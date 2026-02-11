@@ -9,6 +9,7 @@ from auth import get_current_active_user_html
 from database import Base, SessionLocal, engine
 from main import app
 from models import (
+    MagazzinoCategoria,
     MagazzinoItem,
     MagazzinoMacro,
     PurchaseDelivery,
@@ -177,6 +178,80 @@ class OrdiniRoutesTests(unittest.TestCase):
             item = session.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
             self.assertIsNotNone(item)
             self.assertEqual(item.quantita_disponibile, 2.0)
+        finally:
+            session.close()
+
+
+    def test_api_magazzino_ensure_item_is_idempotent_and_autocreates_technical_category(self) -> None:
+        unique_token = uuid4().hex
+
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-api-{unique_token}@example.com",
+                full_name="Ordini API Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            macro = MagazzinoMacro(name=f"Macro API {unique_token}")
+            session.add_all([requester, macro])
+            session.commit()
+            session.refresh(requester)
+            session.refresh(macro)
+            requester_id = requester.id
+            requester_name = requester.full_name
+            macro_id = macro.id
+            macro_name = macro.name
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        payload = {
+            "macro_id": str(macro_id),
+            "new_macro_name": "",
+            "item_name": "Filtro FB1500",
+        }
+
+        first_response = self.client.post("/api/magazzino/ensure-item", json=payload)
+        self.assertEqual(first_response.status_code, 200)
+        first_data = first_response.json()
+        self.assertTrue(first_data.get("ok"))
+        self.assertEqual(first_data.get("macro_id"), macro_id)
+        self.assertEqual(first_data.get("macro_nome"), macro_name)
+
+        second_response = self.client.post("/api/magazzino/ensure-item", json={**payload, "item_name": "filtro fb1500"})
+        self.assertEqual(second_response.status_code, 200)
+        second_data = second_response.json()
+
+        self.assertEqual(first_data.get("item_id"), second_data.get("item_id"))
+        self.assertEqual(first_data.get("categoria_id"), second_data.get("categoria_id"))
+
+        session = SessionLocal()
+        try:
+            categoria = session.query(MagazzinoCategoria).filter(MagazzinoCategoria.id == first_data["categoria_id"]).first()
+            self.assertIsNotNone(categoria)
+            assert categoria is not None
+            self.assertEqual(categoria.nome, macro_name)
+            self.assertEqual(categoria.macro_id, macro_id)
+
+            items_count = (
+                session.query(MagazzinoItem)
+                .filter(
+                    MagazzinoItem.categoria_id == categoria.id,
+                    MagazzinoItem.nome.ilike("filtro fb1500"),
+                )
+                .count()
+            )
+            self.assertEqual(items_count, 1)
         finally:
             session.close()
 
