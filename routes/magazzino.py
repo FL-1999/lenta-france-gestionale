@@ -17,6 +17,7 @@ from database import get_db
 from models import (
     MagazzinoCategoria,
     MagazzinoItem,
+    MagazzinoMacro,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
     MagazzinoRichiesta,
@@ -125,6 +126,10 @@ def _parse_categoria_id(value: str | None) -> int | None:
         return int(value)
     except ValueError:
         return None
+
+
+def _load_magazzino_macros(db: Session) -> list[MagazzinoMacro]:
+    return db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
 
 
 def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
@@ -1427,9 +1432,11 @@ def manager_magazzino_categorie_list(
 )
 def manager_magazzino_categorie_new(
     request: Request,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    macros = _load_magazzino_macros(db)
     return render_template(
         templates,
         request,
@@ -1441,8 +1448,10 @@ def manager_magazzino_categorie_new(
             "color_options": CATEGORIA_COLOR_OPTIONS,
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+            "macros": macros,
+            "new_macro_sentinel": "__new__",
         },
-        None,
+        db,
         current_user,
     )
 
@@ -1458,12 +1467,15 @@ def manager_magazzino_categorie_create(
     ordine: str | None = Form("0"),
     icon: str | None = Form(""),
     color: str | None = Form(""),
+    macro_id: str = Form(""),
+    new_macro_name: str = Form(""),
     attiva: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
     lang = get_lang_from_request(request)
+    macros = _load_magazzino_macros(db)
     nome_value = nome.strip()
     if not nome_value:
         return render_template(
@@ -1478,6 +1490,8 @@ def manager_magazzino_categorie_create(
                 "color_options": CATEGORIA_COLOR_OPTIONS,
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+                "macros": macros,
+                "new_macro_sentinel": "__new__",
             },
             db,
             current_user,
@@ -1500,6 +1514,8 @@ def manager_magazzino_categorie_create(
                 "color_options": CATEGORIA_COLOR_OPTIONS,
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+                "macros": macros,
+                "new_macro_sentinel": "__new__",
             },
             db,
             current_user,
@@ -1530,10 +1546,93 @@ def manager_magazzino_categorie_create(
                 "color_options": CATEGORIA_COLOR_OPTIONS,
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+                "macros": macros,
+                "new_macro_sentinel": "__new__",
             },
             db,
             current_user,
         )
+
+    macro_value = (macro_id or "").strip()
+    selected_macro: MagazzinoMacro | None = None
+    if macro_value == "__new__":
+        macro_name_clean = (new_macro_name or "").strip()
+        if not macro_name_clean:
+            categoria_preview = SimpleNamespace(
+                nome=nome_value,
+                ordine=ordine_value,
+                attiva=attiva,
+                icon=icon_value,
+                color=color_value,
+                macro_id=macro_value,
+                new_macro_name="",
+            )
+            return render_template(
+                templates,
+                request,
+                "manager/magazzino/categorie_form.html",
+                {
+                    "categoria": categoria_preview,
+                    "form_action": "manager_magazzino_categorie_create",
+                    "title": "Nuova macro categoria",
+                    "error_message": "Inserisci il nome della nuova macro.",
+                    "color_options": CATEGORIA_COLOR_OPTIONS,
+                    "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                    "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+                    "macros": macros,
+                    "new_macro_sentinel": "__new__",
+                },
+                db,
+                current_user,
+            )
+        selected_macro = (
+            db.query(MagazzinoMacro)
+            .filter(func.lower(MagazzinoMacro.name) == macro_name_clean.lower())
+            .first()
+        )
+        if not selected_macro:
+            selected_macro = MagazzinoMacro(name=macro_name_clean)
+            db.add(selected_macro)
+            db.flush()
+    else:
+        try:
+            macro_id_int = int(macro_value)
+        except ValueError:
+            macro_id_int = 0
+        selected_macro = (
+            db.query(MagazzinoMacro)
+            .filter(MagazzinoMacro.id == macro_id_int)
+            .first()
+        )
+        if not selected_macro:
+            categoria_preview = SimpleNamespace(
+                nome=nome_value,
+                ordine=ordine_value,
+                attiva=attiva,
+                icon=icon_value,
+                color=color_value,
+                macro_id=macro_value,
+                new_macro_name=(new_macro_name or "").strip(),
+            )
+            return render_template(
+                templates,
+                request,
+                "manager/magazzino/categorie_form.html",
+                {
+                    "categoria": categoria_preview,
+                    "form_action": "manager_magazzino_categorie_create",
+                    "title": "Nuova macro categoria",
+                    "error_message": "Seleziona una macro valida.",
+                    "color_options": CATEGORIA_COLOR_OPTIONS,
+                    "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                    "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+                    "macros": macros,
+                    "new_macro_sentinel": "__new__",
+                },
+                db,
+                current_user,
+            )
+
     base_slug = _slugify(nome_value)
     slug = _ensure_unique_slug(db, base_slug)
     try:
@@ -1542,6 +1641,8 @@ def manager_magazzino_categorie_create(
             slug=slug,
             ordine=ordine_value,
             attiva=attiva,
+            macro=selected_macro.name,
+            macro_id=selected_macro.id,
             icon=icon_value or DEFAULT_CATEGORIA_ICON,
             color=color_value or DEFAULT_CATEGORIA_COLOR,
         )
@@ -1577,6 +1678,8 @@ def manager_magazzino_categorie_create(
                 "color_options": CATEGORIA_COLOR_OPTIONS,
                 "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
                 "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+                "macros": macros,
+                "new_macro_sentinel": "__new__",
             },
             db,
             current_user,
@@ -1609,6 +1712,7 @@ def manager_magazzino_categorie_edit(
             url=request.url_for("manager_magazzino_categorie_list"),
             status_code=303,
         )
+    macros = _load_magazzino_macros(db)
     return render_template(
         templates,
         request,
@@ -1620,6 +1724,8 @@ def manager_magazzino_categorie_edit(
             "color_options": CATEGORIA_COLOR_OPTIONS,
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+            "macros": macros,
+            "new_macro_sentinel": "__new__",
         },
         db,
         current_user,
