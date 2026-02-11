@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -304,9 +305,54 @@ class OrdiniRoutesTests(unittest.TestCase):
             saved_order = session.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
             self.assertIsNotNone(saved_order)
             self.assertEqual(saved_order.invoice_number, "INV-2026-001")
+            self.assertEqual(saved_order.invoice_date, date(2026, 2, 10))
             self.assertEqual(saved_order.file_invoice, "uploads/invoices/existing-file.pdf")
         finally:
             session.close()
+
+    def test_invoice_form_uses_multipart_without_required_file(self) -> None:
+        unique_token = uuid4().hex
+
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-invoice-form-{unique_token}@example.com",
+                full_name="Ordini Invoice Form Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            order = PurchaseOrder(
+                order_number=f"TEST-INVFORM-{unique_token[:8]}",
+                supplier_name="Fornitore Test",
+                requester_user_id=1,
+                status="bozza",
+            )
+            session.add(requester)
+            session.flush()
+            order.requester_user_id = requester.id
+            session.add(order)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get(f"/manager/ordini/{order_id}/fattura")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('<form method="post" enctype="multipart/form-data">', response.text)
+        self.assertIn('name="invoice_file"', response.text)
+        self.assertNotIn('name="invoice_file" required', response.text)
 
 
 if __name__ == "__main__":
