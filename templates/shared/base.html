@@ -54,10 +54,13 @@
     {% set show_magazzino = user and (is_manager or can_access_inventory or is_capo or user.is_magazzino_manager) %}
     {% set show_magazzino_card = user and (is_manager or can_access_inventory or user.is_magazzino_manager) %}
     {% set show_fiches = is_manager %}
-    {% set show_audit = user and has_perm(user, 'manager.access') %}
-{% set audit_path = url_for('admin_audit_list') if can_manage_settings else url_for('manager_audit_list') %}
-{% set show_backup = can_manage_settings %}
-{% set show_personale = can_access_personale or is_manager %}
+    {% set is_admin = user and has_perm(user, 'admin.access') %}
+    {% set can_access_manager_settings = user and has_perm(user, 'manager.access') %}
+    {% set show_settings_dropdown = is_admin or can_access_manager_settings %}
+    {% set show_api_docs = is_admin %}
+    {% set audit_path = url_for('admin_audit_list') if is_admin else url_for('manager_audit_list') %}
+    {% set show_backup = show_settings_dropdown %}
+    {% set show_personale = can_access_personale or is_manager %}
 
     {% set show_users_link = is_manager and can_read_users %}
     {% set show_reports = can_access_reports %}
@@ -72,19 +75,28 @@
                     Lenta France Gestionale Cantieri
                 {% endif %}
             </span>
+            {% if is_authenticated %}
+                <div class="nav-notifications" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
+                    <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
+                        🔔
+                        <span class="badge-notification is-hidden" data-notifications-badge></span>
+                    </button>
+                    <div class="notifications-panel" data-notifications-panel>
+                        <div class="notifications-panel__header">
+                            <span>{% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}</span>
+                            <button type="button" class="notifications-panel__action" data-notifications-mark-all>
+                                {% if lang == 'fr' %}Tout marquer comme lu{% else %}Segna tutte come lette{% endif %}
+                            </button>
+                        </div>
+                        <ul class="notifications-panel__list" data-notifications-list></ul>
+                        <div class="notifications-panel__empty is-hidden" data-notifications-empty>
+                            {% if lang == 'fr' %}Aucune notification{% else %}Nessuna notifica{% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
         </div>
         <div class="nav-right">
-            <div class="nav-lang-switch">
-                <a href="/set-language/it"
-                   class="lang-flag {% if lang == 'it' %}lang-flag--active{% endif %}">
-                    🇮🇹
-                </a>
-                <a href="/set-language/fr"
-                   class="lang-flag {% if lang == 'fr' %}lang-flag--active{% endif %}">
-                    🇫🇷
-                </a>
-            </div>
-
             {% if not is_authenticated %}
                 <a href="/login" class="nav-link">
                     🔐
@@ -95,12 +107,12 @@
                     {% endif %}
                 </a>
             {% else %}
-                <a href="{{ home_path }}" class="nav-link">
-                    🏠
+                <a href="/logout" class="nav-link">
+                    🚪
                     {% if lang == 'fr' %}
-                        Accueil
+                        Déconnexion
                     {% else %}
-                        Home
+                        Logout
                     {% endif %}
                 </a>
                 {% if show_magazzino_card %}
@@ -135,43 +147,18 @@
                         {% endif %}
                     </a>
                 {% endif %}
-                {% if show_reports %}
-                    <a href="{{ report_path }}" class="nav-link">
-                        📊
-                        {% if lang == 'fr' %}
-                            {% if is_manager %}Rapports{% else %}Rapports journaliers{% endif %}
-                        {% else %}
-                            {% if is_manager %}Report{% else %}Rapportini{% endif %}
-                        {% endif %}
-                    </a>
-                {% endif %}
-
-                <div class="nav-notifications" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
-                    <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
-                        🔔
-                        <span class="badge-notification is-hidden" data-notifications-badge></span>
-                    </button>
-                    <div class="notifications-panel" data-notifications-panel>
-                        <div class="notifications-panel__header">
-                            <span>{% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}</span>
-                            <button type="button" class="notifications-panel__action" data-notifications-mark-all>
-                                {% if lang == 'fr' %}Tout marquer comme lu{% else %}Segna tutte come lette{% endif %}
-                            </button>
-                        </div>
-                        <ul class="notifications-panel__list" data-notifications-list></ul>
-                        <div class="notifications-panel__empty is-hidden" data-notifications-empty>
-                            {% if lang == 'fr' %}Aucune notification{% else %}Nessuna notifica{% endif %}
-                        </div>
-                    </div>
-                </div>
+                <a href="{{ home_path }}" class="nav-link">
+                    🏠
+                    {% if lang == 'fr' %}
+                        Accueil
+                    {% else %}
+                        Home
+                    {% endif %}
+                </a>
                 {% if show_fiches %}
                     <a href="{{ fiches_path }}" class="nav-link">
                         🧾
-                        {% if lang == 'fr' %}
-                            Fiches
-                        {% else %}
-                            Fiches
-                        {% endif %}
+                        Fiches
                     </a>
                 {% endif %}
                 {% if show_cantieri %}
@@ -185,14 +172,6 @@
                     </a>
                 {% endif %}
                 {% if show_personale %}
-                    <a href="{{ url_for('manager_personale_list') }}" class="nav-link">
-                        👥
-                        {% if lang == 'fr' %}
-                            Personnel
-                        {% else %}
-                            Personale
-                        {% endif %}
-                    </a>
                     <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link">
                         📅
                         {% if lang == 'fr' %}
@@ -202,52 +181,38 @@
                         {% endif %}
                     </a>
                 {% endif %}
-                {% if show_users_link %}
-                    <a href="/manager/utenti" class="nav-link">
-                        👤
-                        {% if lang == 'fr' %}
-                            Utilisateurs
-                        {% else %}
-                            Utenti
-                        {% endif %}
-                    </a>
+                {% if show_settings_dropdown %}
+                    <div class="nav-dropdown" data-settings-dropdown>
+                        <button type="button" class="nav-link nav-dropdown__toggle" data-settings-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                            ⚙
+                            {% if lang == 'fr' %}
+                                Paramètres ▾
+                            {% else %}
+                                Impostazioni ▾
+                            {% endif %}
+                        </button>
+                        <div class="nav-dropdown__menu" data-settings-dropdown-menu>
+                            <a href="{{ audit_path }}" class="nav-dropdown__item">🧾 Audit</a>
+                            <a href="/manager/utenti" class="nav-dropdown__item">👤 {% if lang == 'fr' %}Utilisateurs{% else %}Utenti{% endif %}</a>
+                            <a href="{{ report_path }}" class="nav-dropdown__item">📊 {% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</a>
+                            <a href="{{ url_for('manager_personale_list') }}" class="nav-dropdown__item">👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</a>
+                            <a href="{{ url_for('admin_backup_export') }}" class="nav-dropdown__item">🛡️ Backup & Export</a>
+                            {% if show_api_docs %}
+                                <a href="/docs" class="nav-dropdown__item">📘 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
+                            {% endif %}
+                        </div>
+                    </div>
                 {% endif %}
-                {% if show_audit %}
-                    <a href="{{ audit_path }}" class="nav-link">
-                        🧾
-                        {% if lang == 'fr' %}
-                            Audit
-                        {% else %}
-                            Audit
-                        {% endif %}
+                <div class="nav-lang-switch">
+                    <a href="/set-language/it"
+                       class="lang-flag {% if lang == 'it' %}lang-flag--active{% endif %}">
+                        🇮🇹
                     </a>
-                {% endif %}
-                {% if show_backup %}
-                    <a href="{{ url_for('admin_backup_export') }}" class="nav-link">
-                        🛡️
-                        {% if lang == 'fr' %}
-                            Backup & Export
-                        {% else %}
-                            Backup & Export
-                        {% endif %}
+                    <a href="/set-language/fr"
+                       class="lang-flag {% if lang == 'fr' %}lang-flag--active{% endif %}">
+                        🇫🇷
                     </a>
-                {% endif %}
-                <a href="/docs" class="nav-link">
-                    📘
-                    {% if lang == 'fr' %}
-                        Docs API
-                    {% else %}
-                        API Docs
-                    {% endif %}
-                </a>
-                <a href="/logout" class="nav-link">
-                    🚪
-                    {% if lang == 'fr' %}
-                        Déconnexion
-                    {% else %}
-                        Logout
-                    {% endif %}
-                </a>
+                </div>
                 <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="{% if lang == 'fr' %}Changer de thème{% else %}Cambia tema{% endif %}">
                     <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
                     <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
@@ -304,5 +269,39 @@
 
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
     <script src="{{ url_for('static', path='/js/notifications.js') }}"></script>
+    <script>
+        (() => {
+            const dropdown = document.querySelector('[data-settings-dropdown]');
+            if (!dropdown) return;
+
+            const toggle = dropdown.querySelector('[data-settings-dropdown-toggle]');
+            const menu = dropdown.querySelector('[data-settings-dropdown-menu]');
+            if (!toggle || !menu) return;
+
+            const closeMenu = () => {
+                dropdown.classList.remove('is-open');
+                toggle.setAttribute('aria-expanded', 'false');
+            };
+
+            toggle.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const isOpen = dropdown.classList.toggle('is-open');
+                toggle.setAttribute('aria-expanded', String(isOpen));
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!dropdown.contains(event.target)) {
+                    closeMenu();
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeMenu();
+                }
+            });
+        })();
+    </script>
+
 </body>
 </html>

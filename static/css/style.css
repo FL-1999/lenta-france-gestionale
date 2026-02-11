@@ -219,6 +219,7 @@ body {
 .nav-left {
     display: flex;
     align-items: center;
+    gap: var(--space-2);
 }
 
 .logo {
@@ -246,6 +247,52 @@ body {
 .nav-right {
     display: flex;
     align-items: center;
+}
+
+.nav-dropdown {
+    position: relative;
+    margin-left: var(--space-3);
+}
+
+.nav-dropdown__toggle {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+}
+
+.nav-dropdown__menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 220px;
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 16px 32px rgba(2, 6, 23, 0.45);
+    padding: 8px;
+    display: none;
+    z-index: 90;
+}
+
+.nav-dropdown.is-open .nav-dropdown__menu {
+    display: block;
+}
+
+.nav-dropdown__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    color: #e2e8f0;
+    font-size: 0.86rem;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.nav-dropdown__item:hover {
+    background: rgba(99, 102, 241, 0.2);
+    color: #f8fafc;
 }
 
 .nav-link {
@@ -323,6 +370,10 @@ body {
 .nav-notifications {
     position: relative;
     margin-left: var(--space-3);
+}
+
+.nav-left .nav-notifications {
+    margin-left: var(--space-2);
 }
 
 .nav-link--icon {
@@ -3283,4 +3334,3 @@ label.form-label[for="profondita_totale"]{
 @media (max-width: 700px){
   .orders-container-grid{ grid-template-columns: 1fr !important; }
 }
-
