@@ -1436,7 +1436,7 @@ def manager_magazzino_categorie_new(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    macros = _load_magazzino_macros(db)
+    macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
     return render_template(
         templates,
         request,
@@ -1686,6 +1686,59 @@ def manager_magazzino_categorie_create(
         )
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/macro/nuova",
+    response_class=HTMLResponse,
+    name="manager_magazzino_macro_create",
+)
+def manager_magazzino_macro_create(
+    request: Request,
+    name: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    macro_name = (name or "").strip()
+    if not macro_name:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_list").include_query_params(err="operazione_fallita"),
+            status_code=303,
+        )
+
+    macro = (
+        db.query(MagazzinoMacro)
+        .filter(func.lower(MagazzinoMacro.name) == macro_name.lower())
+        .first()
+    )
+    if not macro:
+        try:
+            macro = MagazzinoMacro(name=macro_name)
+            db.add(macro)
+            db.flush()
+            _log_audit(
+                db,
+                current_user,
+                "MACRO_CREATE",
+                "MagazzinoMacro",
+                macro.id,
+                {"name": macro.name},
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+            return RedirectResponse(
+                url=request.url_for("manager_magazzino_list").include_query_params(
+                    err="operazione_fallita"
+                ),
+                status_code=303,
+            )
+
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_list").include_query_params(ok="macro"),
         status_code=303,
     )
 
