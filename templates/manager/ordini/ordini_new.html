@@ -156,21 +156,150 @@ const categoryModeRadios = document.querySelectorAll('input[name="category_mode"
 const closedSection = document.getElementById('closed-section');
 const warehouseSection = document.getElementById('warehouse-section');
 const newMacroSentinel = "{{ new_macro_sentinel }}";
+const autoCreatedLabel = '{% if lang == "fr" %}Créé automatiquement{% else %}Creato automaticamente{% endif %}';
+const genericAutoError = '{% if lang == "fr" %}Impossible de créer automatiquement l'article.{% else %}Impossibile creare automaticamente l'articolo.{% endif %}';
+
+function debounce(fn, wait) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), wait);
+    };
+}
+
+function getSelectedOrderKind() {
+    return document.querySelector('input[name="order_kind"]:checked')?.value || '';
+}
+
+function getSelectedCategoryMode() {
+    return document.querySelector('input[name="category_mode"]:checked')?.value || '';
+}
 
 function updateKindSections() {
-    const selectedKind = document.querySelector('input[name="order_kind"]:checked')?.value;
+    const selectedKind = getSelectedOrderKind();
     closedSection.style.display = selectedKind === 'closed' ? 'block' : 'none';
     warehouseSection.style.display = selectedKind === 'warehouse' ? 'block' : 'none';
 }
+
 function updateNewCategoryFields() {
-    const mode = document.querySelector('input[name="category_mode"]:checked')?.value;
+    const mode = getSelectedCategoryMode();
     const isNew = mode === 'new';
     newCategoryFields.style.display = isNew ? 'grid' : 'none';
     warehouseCategorySelect.disabled = isNew;
 }
+
 function updateNewMacroField() {
     const show = newMacroSelect?.value === newMacroSentinel;
     newMacroNameField.style.display = show ? 'block' : 'none';
+}
+
+function ensureInlineStatus(selectEl) {
+    let status = selectEl.parentElement.querySelector('.auto-item-status');
+    if (!status) {
+        status = document.createElement('small');
+        status.className = 'auto-item-status';
+        status.style.display = 'block';
+        status.style.marginTop = '4px';
+        selectEl.parentElement.appendChild(status);
+    }
+    return status;
+}
+
+function clearInlineStatus(selectEl) {
+    const status = selectEl.parentElement.querySelector('.auto-item-status');
+    if (status) {
+        status.textContent = '';
+        status.style.color = '';
+    }
+}
+
+function setInlineStatus(selectEl, message, isError = false) {
+    const status = ensureInlineStatus(selectEl);
+    status.textContent = message;
+    status.style.color = isError ? '#c62828' : '#2e7d32';
+}
+
+function buildEnsurePayload(descriptionValue) {
+    return {
+        new_category_name: document.querySelector('input[name="new_category_name"]')?.value?.trim() || '',
+        macro_id: newMacroSelect?.value?.trim() || '',
+        new_macro_name: document.querySelector('input[name="new_macro_name"]')?.value?.trim() || '',
+        item_name: descriptionValue.trim(),
+    };
+}
+
+function hasValidEnsureContext(payload) {
+    if (getSelectedOrderKind() !== 'warehouse') return false;
+    const categoryMode = getSelectedCategoryMode();
+    const categorySentinel = warehouseCategorySelect?.value === '__new__';
+    if (!(categoryMode === 'new' || categorySentinel)) return false;
+    if (!payload.new_category_name || !payload.item_name) return false;
+    if (!payload.macro_id) return false;
+    if (payload.macro_id === newMacroSentinel && !payload.new_macro_name) return false;
+    return true;
+}
+
+async function ensureWarehouseItemForRow(row, descriptionInput) {
+    const selectEl = row.querySelector('select[name="magazzino_item_id"]');
+    if (!selectEl) return;
+
+    const payload = buildEnsurePayload(descriptionInput.value || '');
+    if (!hasValidEnsureContext(payload)) {
+        clearInlineStatus(selectEl);
+        return;
+    }
+
+    const requestKey = JSON.stringify(payload);
+    row.dataset.autoEnsureRequest = requestKey;
+
+    try {
+        const response = await fetch("{{ url_for('api_ordini_ensure_warehouse_item') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const responseData = await response.json().catch(() => ({}));
+        if (row.dataset.autoEnsureRequest !== requestKey) {
+            return;
+        }
+        if (!response.ok || !responseData.ok) {
+            const message = responseData.detail || genericAutoError;
+            setInlineStatus(selectEl, message, true);
+            return;
+        }
+
+        const itemId = String(responseData.item_id);
+        let option = selectEl.querySelector(`option[value="${itemId}"]`);
+        if (!option) {
+            option = document.createElement('option');
+            option.value = itemId;
+            option.textContent = responseData.item_nome;
+            selectEl.appendChild(option);
+        }
+        option.textContent = responseData.item_nome;
+        selectEl.value = itemId;
+        setInlineStatus(selectEl, autoCreatedLabel, false);
+    } catch (error) {
+        if (row.dataset.autoEnsureRequest !== requestKey) {
+            return;
+        }
+        setInlineStatus(selectEl, genericAutoError, true);
+    }
+}
+
+const debouncedEnsureForRow = debounce((row, input) => {
+    ensureWarehouseItemForRow(row, input);
+}, 500);
+
+function bindDescriptionAutoEnsure(row) {
+    const input = row.querySelector('input[name="description"]');
+    if (!input || row.dataset.autoEnsureBound === '1') return;
+    row.dataset.autoEnsureBound = '1';
+    input.addEventListener('input', () => debouncedEnsureForRow(row, input));
+    input.addEventListener('change', () => ensureWarehouseItemForRow(row, input));
 }
 
 document.querySelectorAll('input[name="order_kind"]').forEach(el => el.addEventListener('change', updateKindSections));
@@ -180,11 +309,15 @@ updateKindSections();
 updateNewCategoryFields();
 updateNewMacroField();
 
+tableBody?.querySelectorAll('tr').forEach(bindDescriptionAutoEnsure);
+
 addRowButton?.addEventListener('click', () => {
     const newRow = document.createElement('tr');
     newRow.innerHTML = `<td><input type="text" name="description"></td><td class="text-right"><input type="number" name="qty_ordered" min="0" step="0.01"></td><td><select name="magazzino_item_id"><option value="">Seleziona</option>${optionsHtml}</select></td><td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td>`;
     tableBody.appendChild(newRow);
+    bindDescriptionAutoEnsure(newRow);
 });
+
 tableBody?.addEventListener('click', (event) => {
     const target = event.target;
     if (target && target.classList.contains('remove-row')) target.closest('tr').remove();
