@@ -531,6 +531,9 @@ class MagazzinoMacro(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(120), nullable=False, unique=True)
+    ordine = Column(Integer, nullable=False, default=0)
+    icon = Column(String(32), nullable=True)
+    color = Column(String(40), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     categorie = relationship("MagazzinoCategoria", back_populates="macro_ref")

@@ -1697,17 +1697,30 @@ def manager_magazzino_categorie_create(
 )
 def manager_magazzino_macro_create(
     request: Request,
-    name: str = Form(...),
+    name: str = Form(""),
+    nome: str = Form(""),
+    ordine: str | None = Form("0"),
+    icon: str | None = Form(""),
+    color: str | None = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    macro_name = (name or "").strip()
+    macro_name = (name or nome or "").strip()
     if not macro_name:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_list").include_query_params(err="operazione_fallita"),
+            url=request.url_for("manager_magazzino_categorie_new").include_query_params(
+                err="operazione_fallita"
+            ),
             status_code=303,
         )
+
+    try:
+        ordine_value = int(ordine or 0)
+    except ValueError:
+        ordine_value = 0
+    icon_value = (icon or "").strip() or None
+    color_value = (color or "").strip().lower() or None
 
     macro = (
         db.query(MagazzinoMacro)
@@ -1716,7 +1729,12 @@ def manager_magazzino_macro_create(
     )
     if not macro:
         try:
-            macro = MagazzinoMacro(name=macro_name)
+            macro = MagazzinoMacro(
+                name=macro_name,
+                ordine=ordine_value,
+                icon=icon_value,
+                color=color_value,
+            )
             db.add(macro)
             db.flush()
             _log_audit(
@@ -1725,20 +1743,25 @@ def manager_magazzino_macro_create(
                 "MACRO_CREATE",
                 "MagazzinoMacro",
                 macro.id,
-                {"name": macro.name},
+                {
+                    "name": macro.name,
+                    "ordine": macro.ordine,
+                    "icon": macro.icon,
+                    "color": macro.color,
+                },
             )
             db.commit()
         except Exception:
             db.rollback()
             return RedirectResponse(
-                url=request.url_for("manager_magazzino_list").include_query_params(
+                url=request.url_for("manager_magazzino_categorie_new").include_query_params(
                     err="operazione_fallita"
                 ),
                 status_code=303,
             )
 
     return RedirectResponse(
-        url=request.url_for("manager_magazzino_list").include_query_params(ok="macro"),
+        url=request.url_for("manager_magazzino_categorie_new").include_query_params(ok="macro"),
         status_code=303,
     )
 

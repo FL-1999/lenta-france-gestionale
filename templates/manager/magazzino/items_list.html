@@ -298,9 +298,27 @@
                 <button type="button" class="btn btn-secondary btn-sm" data-modal-close>✖</button>
             </div>
             <form method="post" action="{{ url_for('manager_magazzino_macro_create') }}">
-                <div class="form-field">
-                    <label>{% if lang == 'fr' %}Nom macro{% else %}Nome macro{% endif %}*</label>
-                    <input type="text" name="name" required>
+                <div class="form-grid-2">
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Nom macro{% else %}Nome macro{% endif %}*</label>
+                        <input type="text" name="name" required>
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</label>
+                        <input type="number" name="ordine" value="0" min="0">
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Icône{% else %}Icona{% endif %}</label>
+                        <input type="text" name="icon" placeholder="📦">
+                    </div>
+                    <div class="form-field">
+                        <label>{% if lang == 'fr' %}Couleur{% else %}Colore{% endif %}</label>
+                        <select name="color">
+                            {% for option in color_options %}
+                                <option value="{{ option }}" {% if option == default_categoria_color %}selected{% endif %}>{{ option|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-actions">
