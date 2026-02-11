@@ -372,6 +372,50 @@ def _build_unique_category_slug(db: Session, category_name: str) -> str:
     return candidate
 
 
+def _get_or_create_macro(
+    db: Session,
+    *,
+    macro_value: str,
+    new_macro_name: str,
+) -> MagazzinoMacro:
+    if macro_value == "__new__":
+        if not new_macro_name:
+            raise HTTPException(status_code=400, detail="Nome nuova macro obbligatorio.")
+        selected_macro = (
+            db.query(MagazzinoMacro)
+            .filter(func.lower(MagazzinoMacro.name) == new_macro_name.lower())
+            .first()
+        )
+        if selected_macro:
+            return selected_macro
+
+        selected_macro = MagazzinoMacro(name=new_macro_name)
+        db.add(selected_macro)
+        db.flush()
+        return selected_macro
+
+    try:
+        macro_id_int = int(macro_value)
+    except (TypeError, ValueError):
+        macro_id_int = 0
+    selected_macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id_int).first()
+    if not selected_macro:
+        raise HTTPException(status_code=400, detail="Macro non valida.")
+    return selected_macro
+
+
+def _get_or_create_category_for_macro(
+    db: Session,
+    *,
+    selected_macro: MagazzinoMacro,
+) -> MagazzinoCategoria:
+    return _get_or_create_category_for_name(
+        db,
+        category_name=selected_macro.name,
+        selected_macro=selected_macro,
+    )
+
+
 def _get_or_create_category_for_name(
     db: Session,
     *,
@@ -411,46 +455,21 @@ def api_ordini_ensure_warehouse_item(
 ):
     _ensure_manager(current_user)
 
-    new_category_name = (payload.get("new_category_name") or "").strip()
     macro_value = str((payload.get("macro_id") or "").strip())
     new_macro_name = (payload.get("new_macro_name") or "").strip()
     item_name = (payload.get("item_name") or "").strip()
 
-    if not new_category_name:
-        raise HTTPException(status_code=400, detail="Nome nuova categoria obbligatorio.")
     if not item_name:
         raise HTTPException(status_code=400, detail="Nome articolo obbligatorio.")
 
-    selected_macro: MagazzinoMacro | None = None
-    if macro_value == "__new__":
-        if not new_macro_name:
-            raise HTTPException(status_code=400, detail="Nome nuova macro obbligatorio.")
-        selected_macro = (
-            db.query(MagazzinoMacro)
-            .filter(func.lower(MagazzinoMacro.name) == new_macro_name.lower())
-            .first()
-        )
-        if not selected_macro:
-            selected_macro = MagazzinoMacro(name=new_macro_name)
-            db.add(selected_macro)
-            db.flush()
-    else:
-        try:
-            macro_id_int = int(macro_value)
-        except (TypeError, ValueError):
-            macro_id_int = 0
-        selected_macro = (
-            db.query(MagazzinoMacro)
-            .filter(MagazzinoMacro.id == macro_id_int)
-            .first()
-        )
-        if not selected_macro:
-            raise HTTPException(status_code=400, detail="Macro non valida.")
-
     try:
-        categoria = _get_or_create_category_for_name(
+        selected_macro = _get_or_create_macro(
             db,
-            category_name=new_category_name,
+            macro_value=macro_value,
+            new_macro_name=new_macro_name,
+        )
+        categoria = _get_or_create_category_for_macro(
+            db,
             selected_macro=selected_macro,
         )
         item = _get_or_create_warehouse_item(
@@ -571,42 +590,21 @@ def manager_ordini_create(
         form_data["warehouse_category_id"] = ""
     else:
         if category_mode == "new" or warehouse_category_id == "__new__":
-            nome_categoria = (new_category_name or "").strip()
-            if not nome_categoria:
-                return _render_order_form(request, db, current_user, error_message="Inserisci il nome della nuova categoria.", form_data=form_data)
-
             macro_value = (macro_id or macro or new_category_macro_id or "").strip()
+            if not macro_value:
+                return _render_order_form(request, db, current_user, error_message="Seleziona una macro valida per il nuovo articolo.", form_data=form_data)
 
-            selected_macro: MagazzinoMacro | None = None
-            if macro_value == "__new__":
-                macro_name_clean = (new_macro_name or "").strip()
-                if not macro_name_clean:
-                    return _render_order_form(request, db, current_user, error_message="Inserisci il nome della nuova macro.", form_data=form_data)
-                selected_macro = (
-                    db.query(MagazzinoMacro)
-                    .filter(func.lower(MagazzinoMacro.name) == macro_name_clean.lower())
-                    .first()
+            try:
+                selected_macro = _get_or_create_macro(
+                    db,
+                    macro_value=macro_value,
+                    new_macro_name=(new_macro_name or "").strip(),
                 )
-                if not selected_macro:
-                    selected_macro = MagazzinoMacro(name=macro_name_clean)
-                    db.add(selected_macro)
-                    db.flush()
-            else:
-                try:
-                    macro_id_int = int(macro_value)
-                except (TypeError, ValueError):
-                    macro_id_int = 0
-                selected_macro = (
-                    db.query(MagazzinoMacro)
-                    .filter(MagazzinoMacro.id == macro_id_int)
-                    .first()
-                )
-                if not selected_macro:
-                    return _render_order_form(request, db, current_user, error_message="Seleziona una macro valida per la nuova categoria.", form_data=form_data)
+            except HTTPException as exc:
+                return _render_order_form(request, db, current_user, error_message=str(exc.detail), form_data=form_data)
 
-            categoria = _get_or_create_category_for_name(
+            categoria = _get_or_create_category_for_macro(
                 db,
-                category_name=nome_categoria,
                 selected_macro=selected_macro,
             )
             selected_category_id = categoria.id

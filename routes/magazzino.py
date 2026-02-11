@@ -6,10 +6,11 @@ from datetime import date, datetime, time, timedelta
 from math import ceil
 from types import SimpleNamespace
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from auth import get_current_active_user_html
@@ -214,6 +215,139 @@ def _ensure_unique_slug(
             return slug
         slug = f"{base_slug}-{counter}"
         counter += 1
+
+
+
+
+def _get_or_create_macro(db: Session, macro_value: str, new_macro_name: str) -> MagazzinoMacro:
+    if macro_value == "__new__":
+        macro_name_clean = (new_macro_name or "").strip()
+        if not macro_name_clean:
+            raise HTTPException(status_code=400, detail="Nome nuova macro obbligatorio.")
+        selected_macro = (
+            db.query(MagazzinoMacro)
+            .filter(func.lower(MagazzinoMacro.name) == macro_name_clean.lower())
+            .first()
+        )
+        if selected_macro:
+            return selected_macro
+
+        selected_macro = MagazzinoMacro(name=macro_name_clean)
+        db.add(selected_macro)
+        db.flush()
+        return selected_macro
+
+    try:
+        macro_id_int = int(macro_value)
+    except (TypeError, ValueError):
+        macro_id_int = 0
+
+    selected_macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id_int).first()
+    if not selected_macro:
+        raise HTTPException(status_code=400, detail="Macro non valida.")
+    return selected_macro
+
+
+def _get_or_create_category_for_macro(db: Session, selected_macro: MagazzinoMacro) -> MagazzinoCategoria:
+    existing_category = (
+        db.query(MagazzinoCategoria)
+        .filter(
+            MagazzinoCategoria.macro_id == selected_macro.id,
+            func.lower(MagazzinoCategoria.nome) == selected_macro.name.lower(),
+        )
+        .first()
+    )
+    if existing_category:
+        return existing_category
+
+    max_order = db.query(func.max(MagazzinoCategoria.ordine)).scalar() or 0
+    categoria = MagazzinoCategoria(
+        nome=selected_macro.name,
+        slug=_ensure_unique_slug(db, _slugify(selected_macro.name)),
+        ordine=max_order + 1,
+        attiva=True,
+        macro=selected_macro.name,
+        macro_id=selected_macro.id,
+    )
+    db.add(categoria)
+    db.flush()
+    return categoria
+
+
+def _get_or_create_item_for_category(
+    db: Session,
+    *,
+    category_id: int,
+    item_name: str,
+) -> MagazzinoItem:
+    normalized_name = item_name.strip()
+    existing_item = (
+        db.query(MagazzinoItem)
+        .filter(
+            MagazzinoItem.categoria_id == category_id,
+            func.lower(MagazzinoItem.nome) == normalized_name.lower(),
+        )
+        .first()
+    )
+    if existing_item:
+        return existing_item
+
+    item = MagazzinoItem(
+        nome=normalized_name,
+        categoria_id=category_id,
+        quantita_disponibile=0.0,
+        attivo=True,
+    )
+    db.add(item)
+    db.flush()
+    return item
+
+
+
+@router.post("/api/magazzino/ensure-item", name="api_magazzino_ensure_item")
+def api_magazzino_ensure_item(
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+
+    macro_value = str((payload.get("macro_id") or "").strip())
+    new_macro_name = (payload.get("new_macro_name") or "").strip()
+    item_name = (payload.get("item_name") or "").strip()
+
+    if not item_name:
+        raise HTTPException(status_code=400, detail="Nome nuovo articolo obbligatorio.")
+    if not macro_value:
+        raise HTTPException(status_code=400, detail="Macro obbligatoria.")
+
+    try:
+        selected_macro = _get_or_create_macro(db, macro_value, new_macro_name)
+        categoria = _get_or_create_category_for_macro(db, selected_macro)
+        item = _get_or_create_item_for_category(
+            db,
+            category_id=categoria.id,
+            item_name=item_name,
+        )
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Impossibile creare macro/categoria/articolo.")
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "ok": True,
+        "item_id": item.id,
+        "item_nome": item.nome,
+        "macro_id": selected_macro.id,
+        "macro_nome": selected_macro.name,
+        "categoria_id": categoria.id,
+    }
 
 
 def _parse_date(value: str | None) -> date | None:

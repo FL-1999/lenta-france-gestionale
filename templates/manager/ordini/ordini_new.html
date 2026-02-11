@@ -74,7 +74,7 @@
                 <div class="form-field" style="margin-bottom: 8px;">
                     <div style="display:flex; gap:16px; margin-top:6px;">
                         <label><input type="radio" name="category_mode" value="existing" {% if form_data.category_mode != 'new' %}checked{% endif %}> Usa categoria esistente</label>
-                        <label><input type="radio" name="category_mode" value="new" {% if form_data.category_mode == 'new' %}checked{% endif %}> ➕ Crea nuova categoria</label>
+                        <label><input type="radio" name="category_mode" value="new" {% if form_data.category_mode == 'new' %}checked{% endif %}> ➕ Crea nuovo articolo</label>
                     </div>
                 </div>
                 <div class="form-field">
@@ -88,7 +88,7 @@
                 </div>
                 <div id="new-category-fields" class="form-grid-2" style="margin-top: 12px;">
                     <div class="form-field">
-                        <label>{% if lang == 'fr' %}Nom nouvelle catégorie{% else %}Nome nuova categoria{% endif %}</label>
+                        <label>{% if lang == 'fr' %}Nom nouvel article{% else %}Nome nuovo articolo{% endif %}</label>
                         <input type="text" name="new_category_name" value="{{ form_data.new_category_name }}">
                     </div>
                     <div class="form-field">
@@ -220,11 +220,11 @@ function setInlineStatus(selectEl, message, isError = false) {
 }
 
 function buildEnsurePayload(descriptionValue) {
+    const newItemName = document.querySelector('input[name="new_category_name"]')?.value?.trim() || '';
     return {
-        new_category_name: document.querySelector('input[name="new_category_name"]')?.value?.trim() || '',
         macro_id: newMacroSelect?.value?.trim() || '',
         new_macro_name: document.querySelector('input[name="new_macro_name"]')?.value?.trim() || '',
-        item_name: descriptionValue.trim(),
+        item_name: newItemName || descriptionValue.trim(),
     };
 }
 
@@ -233,7 +233,7 @@ function hasValidEnsureContext(payload) {
     const categoryMode = getSelectedCategoryMode();
     const categorySentinel = warehouseCategorySelect?.value === '__new__';
     if (!(categoryMode === 'new' || categorySentinel)) return false;
-    if (!payload.new_category_name || !payload.item_name) return false;
+    if (!payload.item_name) return false;
     if (!payload.macro_id) return false;
     if (payload.macro_id === newMacroSentinel && !payload.new_macro_name) return false;
     return true;
@@ -253,7 +253,7 @@ async function ensureWarehouseItemForRow(row, descriptionInput) {
     row.dataset.autoEnsureRequest = requestKey;
 
     try {
-        const response = await fetch("{{ url_for('api_ordini_ensure_warehouse_item') }}", {
+        const response = await fetch("{{ url_for('api_magazzino_ensure_item') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
