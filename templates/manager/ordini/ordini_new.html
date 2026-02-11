@@ -89,12 +89,12 @@
                     </div>
                     <div class="form-field">
                         <label>{% if lang == 'fr' %}Macro{% else %}Macro{% endif %}</label>
-                        <select name="new_category_macro_id" id="new_category_macro_id">
+                        <select name="macro_id" id="macro_id">
                             <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
-                            {% for macro in warehouse_macros %}
-                                <option value="{{ macro.id }}" {% if form_data.new_category_macro_id == macro.id|string %}selected{% endif %}>{{ macro.name }}</option>
+                            {% for macro in macros %}
+                                <option value="{{ macro.id }}" {% if form_data.macro_id == macro.id|string %}selected{% endif %}>{{ macro.name }}</option>
                             {% endfor %}
-                            <option value="{{ new_macro_sentinel }}" {% if form_data.new_category_macro_id == new_macro_sentinel %}selected{% endif %}>➕ Crea nuova macro</option>
+                            <option value="{{ new_macro_sentinel }}" {% if form_data.macro_id == new_macro_sentinel %}selected{% endif %}>➕ Crea nuova macro</option>
                         </select>
                     </div>
                     <div class="form-field" id="new-macro-name-field" style="grid-column: 1 / -1;">
@@ -146,7 +146,7 @@ const tableBody = document.querySelector('#righe-table tbody');
 const optionsHtml = `{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.codice }} - {{ item.nome }}</option>{% endfor %}`;
 const warehouseCategorySelect = document.getElementById('warehouse_category_id');
 const newCategoryFields = document.getElementById('new-category-fields');
-const newMacroSelect = document.getElementById('new_category_macro_id');
+const newMacroSelect = document.getElementById('macro_id');
 const newMacroNameField = document.getElementById('new-macro-name-field');
 const categoryModeRadios = document.querySelectorAll('input[name="category_mode"]');
 const closedSection = document.getElementById('closed-section');

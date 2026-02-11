@@ -150,8 +150,8 @@ def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], lis
         .order_by(User.full_name.asc(), User.email.asc())
         .all()
     )
-    warehouse_macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
-    return magazzino_items, sites, warehouse_categories, requesters, warehouse_macros
+    macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
+    return magazzino_items, sites, warehouse_categories, requesters, macros
 
 
 def _render_order_form(
@@ -162,7 +162,7 @@ def _render_order_form(
     error_message: str | None = None,
     form_data: dict | None = None,
 ):
-    magazzino_items, sites, warehouse_categories, requesters, warehouse_macros = _load_order_form_dependencies(db)
+    magazzino_items, sites, warehouse_categories, requesters, macros = _load_order_form_dependencies(db)
     if form_data is None:
         form_data = {
             "supplier_name": "",
@@ -174,7 +174,8 @@ def _render_order_form(
             "warehouse_category_id": "",
             "new_category_name": "",
             "category_mode": "existing",
-            "new_category_macro_id": "",
+            "macro_id": "",
+            "macro": "",
             "new_macro_name": "",
             "lines": [{"description": "", "qty_ordered": "", "magazzino_item_id": ""}],
         }
@@ -187,11 +188,11 @@ def _render_order_form(
             "sites": sites,
             "warehouse_categories": warehouse_categories,
             "requesters": requesters,
-            "warehouse_macros": warehouse_macros,
+            "macros": macros,
             "error_message": error_message,
             "form_data": form_data,
             "new_category_sentinel": "__new__",
-            "new_macro_sentinel": "__new_macro__",
+            "new_macro_sentinel": "__new__",
         },
         db,
         current_user,
@@ -258,6 +259,8 @@ def manager_ordini_create(
     warehouse_category_id: str = Form(""),
     new_category_name: str = Form(""),
     category_mode: str = Form("existing"),
+    macro_id: str = Form(""),
+    macro: str = Form(""),
     new_category_macro_id: str = Form(""),
     new_macro_name: str = Form(""),
     description: list[str] = Form(...),
@@ -278,7 +281,8 @@ def manager_ordini_create(
         "warehouse_category_id": warehouse_category_id or "",
         "new_category_name": new_category_name or "",
         "category_mode": category_mode or "existing",
-        "new_category_macro_id": new_category_macro_id or "",
+        "macro_id": macro_id or new_category_macro_id or "",
+        "macro": macro or "",
         "new_macro_name": new_macro_name or "",
         "lines": [
             {"description": d or "", "qty_ordered": q or "", "magazzino_item_id": i or ""}
@@ -323,8 +327,10 @@ def manager_ordini_create(
             if not nome_categoria:
                 return _render_order_form(request, db, current_user, error_message="Inserisci il nome della nuova categoria.", form_data=form_data)
 
+            macro_value = (macro_id or macro or new_category_macro_id or "").strip()
+
             selected_macro: MagazzinoMacro | None = None
-            if new_category_macro_id == "__new_macro__":
+            if macro_value == "__new__":
                 macro_name_clean = (new_macro_name or "").strip()
                 if not macro_name_clean:
                     return _render_order_form(request, db, current_user, error_message="Inserisci il nome della nuova macro.", form_data=form_data)
@@ -339,7 +345,7 @@ def manager_ordini_create(
                     db.flush()
             else:
                 try:
-                    macro_id_int = int(new_category_macro_id)
+                    macro_id_int = int(macro_value)
                 except (TypeError, ValueError):
                     macro_id_int = 0
                 selected_macro = (
