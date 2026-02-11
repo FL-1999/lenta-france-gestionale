@@ -155,17 +155,22 @@ class MagazzinoRoutesTests(unittest.TestCase):
 
         response = self.client.post(
             "/manager/magazzino/macro/nuova",
-            data={"name": macro_name},
+            data={"name": macro_name, "ordine": "4", "icon": "🧰", "color": "blue"},
             cookies={"lang": "it"},
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303)
+        self.assertIn("/manager/magazzino/categorie/nuova", response.headers.get("location", ""))
 
         with SessionLocal() as db:
             created_macro = (
                 db.query(MagazzinoMacro).filter(MagazzinoMacro.name == macro_name).first()
             )
             self.assertIsNotNone(created_macro)
+            assert created_macro is not None
+            self.assertEqual(created_macro.ordine, 4)
+            self.assertEqual(created_macro.icon, "🧰")
+            self.assertEqual(created_macro.color, "blue")
 
 
 if __name__ == "__main__":
