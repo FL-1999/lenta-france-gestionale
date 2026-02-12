@@ -308,6 +308,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    position: relative;
 }
 
 .nav-card {
@@ -361,6 +362,15 @@ body {
 .badge-notification.is-hidden {
     display: none;
 }
+
+.nav-right .nav-link .badge-notification,
+.nav-link--icon .badge-notification {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    margin-left: 0;
+}
+
 
 .notification-dot {
     display: inline-block;
