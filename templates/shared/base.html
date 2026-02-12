@@ -264,7 +264,7 @@
 
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212c"></script>
     <script src="{{ url_for('static', path='/js/notifications.js') }}?v=20260212c"></script>
-    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260212c"></script>
+    <!-- <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260212c"></script> -->
     <script>
         (() => {
             const dropdown = document.querySelector('[data-settings-dropdown]');
@@ -299,8 +299,12 @@
         })();
     </script>
 
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(rs => rs.forEach(r => r.unregister()))
+          .catch(() => {});
+      }
+    </script>
 </body>
 </html>
-<span style="background:lime;color:#000;padding:2px 6px;border-radius:6px;font-weight:800;">
-  NAV_TEST_123
-</span>
