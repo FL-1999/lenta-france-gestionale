@@ -167,21 +167,19 @@
 
                 {% if show_magazzino_card %}
                     {% set manager_badges = manager_badge_counts(request, user) %}
-                    <div class="nav-card nav-right__item">
-                        <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link nav-link--card">
-                            📦
-                            {% if lang == 'fr' %}
-                                Magasin
-                            {% else %}
-                                Magazzino
-                            {% endif %}
-                            {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
-                                <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
-                                    {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
-                                </span>
-                            {% endif %}
-                        </a>
-                    </div>
+                    <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link nav-right__item">
+                        📦
+                        {% if lang == 'fr' %}
+                            Magasin
+                        {% else %}
+                            Magazzino
+                        {% endif %}
+                        {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
+                            <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
+                                {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
+                            </span>
+                        {% endif %}
+                    </a>
                 {% elif is_capo %}
                     <a href="{{ url_for('capo_magazzino_list') }}" class="nav-link nav-right__item">
                         📦
