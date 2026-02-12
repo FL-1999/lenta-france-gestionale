@@ -247,11 +247,16 @@ body {
 .nav-right {
     display: flex;
     align-items: center;
+    gap: var(--space-3);
+}
+
+.nav-right__item {
+    margin-left: 0;
 }
 
 .nav-dropdown {
     position: relative;
-    margin-left: var(--space-3);
+    margin-left: 0;
 }
 
 .nav-dropdown__toggle {
@@ -500,7 +505,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    margin-right: 0.75rem;
+    margin-right: 0;
 }
 
 .lang-flag {
