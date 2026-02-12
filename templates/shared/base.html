@@ -300,10 +300,14 @@
     </script>
 
     <script>
-      if ("serviceWorker" in navigator) {
+      console.log("UNREGISTER_SW_START");
+      if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations()
-          .then(rs => rs.forEach(r => r.unregister()))
-          .catch(() => {});
+          .then(rs => Promise.all(rs.map(r => r.unregister())))
+          .then(() => caches.keys())
+          .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+          .then(() => console.log("UNREGISTER_SW_DONE"))
+          .catch(err => console.warn("SW unregister failed:", err));
       }
     </script>
 </body>
