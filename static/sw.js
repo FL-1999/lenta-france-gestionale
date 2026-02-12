@@ -1,14 +1,14 @@
-const CACHE_VERSION = 'v20260212b';
-const PRECACHE_NAME = `precache-${CACHE_VERSION}`;
-const RUNTIME_NAME = `runtime-${CACHE_VERSION}`;
+const CACHE_NAME = 'app-cache-v20260212a';
+const PRECACHE_NAME = `${CACHE_NAME}-precache`;
+const RUNTIME_NAME = `${CACHE_NAME}-runtime`;
 const OFFLINE_URL = '/offline';
 
 const PRECACHE_URLS = [
   OFFLINE_URL,
   '/static/manifest.webmanifest',
-  '/static/css/style.css?v=20260212b',
-  '/static/js/theme_switcher.js?v=20260212b',
-  '/static/js/sw_register.js?v=20260212b',
+  '/static/css/style.css?v=20260212c',
+  '/static/js/theme_switcher.js?v=20260212c',
+  '/static/js/sw_register.js?v=20260212c',
   '/static/img/logo.png',
   '/static/img/icon-192.png',
   '/static/img/icon-512.png'
