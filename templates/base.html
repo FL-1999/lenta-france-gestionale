@@ -111,14 +111,33 @@
                     </a>
                 </div>
 
+                <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
+                    <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
+                        🔔
+                        <span class="badge-notification is-hidden" data-notifications-badge></span>
+                    </button>
+                    <div class="notifications-panel" data-notifications-panel>
+                        <div class="notifications-panel__header">
+                            <span>{% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}</span>
+                            <button type="button" class="notifications-panel__action" data-notifications-mark-all>
+                                {% if lang == 'fr' %}Tout marquer comme lu{% else %}Segna tutte come lette{% endif %}
+                            </button>
+                        </div>
+                        <ul class="notifications-panel__list" data-notifications-list></ul>
+                        <div class="notifications-panel__empty is-hidden" data-notifications-empty>
+                            {% if lang == 'fr' %}Aucune notification{% else %}Nessuna notifica{% endif %}
+                        </div>
+                    </div>
+                </div>
+
                 {% if show_settings_dropdown %}
                     <div class="nav-dropdown nav-right__item" data-settings-dropdown>
                         <button type="button" class="nav-link nav-dropdown__toggle" data-settings-dropdown-toggle aria-haspopup="true" aria-expanded="false">
                             ⚙
                             {% if lang == 'fr' %}
-                                Paramètres ▾
+                                Général ▾
                             {% else %}
-                                Impostazioni ▾
+                                Generali ▾
                             {% endif %}
                         </button>
                         <div class="nav-dropdown__menu" data-settings-dropdown-menu>
@@ -135,27 +154,6 @@
                             <a href="/logout" class="nav-dropdown__item">🚪 {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
                         </div>
                     </div>
-                {% endif %}
-
-                {% if show_personale %}
-                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
-                        📅
-                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_cantieri %}
-                    <a href="{{ cantieri_path }}" class="nav-link nav-right__item">
-                        🏗️
-                        {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_fiches %}
-                    <a href="{{ fiches_path }}" class="nav-link nav-right__item">
-                        🧾
-                        {% if lang == 'fr' %}Fiches{% else %}Fiches{% endif %}
-                    </a>
                 {% endif %}
 
                 <a href="{{ home_path }}" class="nav-link nav-right__item">
@@ -200,6 +198,34 @@
                     </a>
                 {% endif %}
 
+                {% if show_personale %}
+                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
+                        📅
+                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_fiches %}
+                    <a href="{{ fiches_path }}" class="nav-link nav-right__item">
+                        🧾
+                        {% if lang == 'fr' %}Fiches{% else %}Fiches{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_cantieri %}
+                    <a href="{{ cantieri_path }}" class="nav-link nav-right__item">
+                        🏗️
+                        {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_personale %}
+                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
+                        📅
+                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
+                    </a>
+                {% endif %}
+
                 {% if show_reports %}
                     <a href="{{ report_path }}" class="nav-link nav-right__item">
                         📊
@@ -210,25 +236,6 @@
                         {% endif %}
                     </a>
                 {% endif %}
-
-                <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
-                    <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
-                        🔔
-                        <span class="badge-notification is-hidden" data-notifications-badge></span>
-                    </button>
-                    <div class="notifications-panel" data-notifications-panel>
-                        <div class="notifications-panel__header">
-                            <span>{% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}</span>
-                            <button type="button" class="notifications-panel__action" data-notifications-mark-all>
-                                {% if lang == 'fr' %}Tout marquer comme lu{% else %}Segna tutte come lette{% endif %}
-                            </button>
-                        </div>
-                        <ul class="notifications-panel__list" data-notifications-list></ul>
-                        <div class="notifications-panel__empty is-hidden" data-notifications-empty>
-                            {% if lang == 'fr' %}Aucune notification{% else %}Nessuna notifica{% endif %}
-                        </div>
-                    </div>
-                </div>
             {% endif %}
         </div>
     </nav>
