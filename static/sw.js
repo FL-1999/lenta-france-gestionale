@@ -1,15 +1,14 @@
-const CACHE_VERSION = 'v20260212a';
+const CACHE_VERSION = 'v20260212b';
 const PRECACHE_NAME = `precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline';
 
 const PRECACHE_URLS = [
-  '/',
   OFFLINE_URL,
   '/static/manifest.webmanifest',
-  '/static/css/style.css?v=20260212a',
-  '/static/js/theme_switcher.js?v=20260212a',
-  '/static/js/sw_register.js?v=20260212a',
+  '/static/css/style.css?v=20260212b',
+  '/static/js/theme_switcher.js?v=20260212b',
+  '/static/js/sw_register.js?v=20260212b',
   '/static/img/logo.png',
   '/static/img/icon-192.png',
   '/static/img/icon-512.png'
@@ -44,7 +43,9 @@ const staleWhileRevalidate = (request) =>
     cache.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request)
         .then((response) => {
-          cache.put(request, response.clone());
+          if (response && response.ok) {
+            cache.put(request, response.clone());
+          }
           return response;
         })
         .catch(() => cachedResponse);
@@ -88,7 +89,9 @@ self.addEventListener('fetch', (event) => {
         }
 
         return fetch(request).then((response) => {
-          caches.open(RUNTIME_NAME).then((cache) => cache.put(request, response.clone()));
+          if (response && response.ok) {
+            caches.open(RUNTIME_NAME).then((cache) => cache.put(request, response.clone()));
+          }
           return response;
         });
       })

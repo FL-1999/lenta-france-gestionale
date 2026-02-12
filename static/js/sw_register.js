@@ -1,7 +1,10 @@
-if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/static/sw.js?v=20260212a', { updateViaCache: 'none' }).catch((error) => {
-      console.warn('Service worker registration failed:', error);
-    });
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch((error) => {
+        console.warn('Service worker unregister failed:', error);
+      });
   });
 }
