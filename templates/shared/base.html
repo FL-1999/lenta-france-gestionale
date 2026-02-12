@@ -15,7 +15,7 @@
     <link rel="apple-touch-icon" href="/static/img/logo.png" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v={{ ASSET_VERSION }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=nav2" />
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -56,7 +56,7 @@
     {% set show_fiches = is_manager %}
     {% set is_admin = user and has_perm(user, 'admin.access') %}
     {% set can_access_manager_settings = user and has_perm(user, 'manager.access') %}
-    {% set show_settings_dropdown = is_admin or can_access_manager_settings %}
+    {% set show_settings_dropdown = is_admin or is_manager %}
     {% set show_api_docs = is_admin %}
     {% set audit_path = url_for('admin_audit_list') if is_admin else url_for('manager_audit_list') %}
     {% set show_backup = show_settings_dropdown %}
@@ -69,6 +69,7 @@
         <div class="nav-left">
             <img src="{{ url_for('static', path='/img/logo.png') }}" class="logo" alt="Logo Lenta France" />
             <span class="brand">
+                TEST_NAV_v1
                 {% if lang == 'fr' %}
                     Lenta France Logiciel de chantiers
                 {% else %}
@@ -107,14 +108,6 @@
                     {% endif %}
                 </a>
             {% else %}
-                <a href="/logout" class="nav-link">
-                    🚪
-                    {% if lang == 'fr' %}
-                        Déconnexion
-                    {% else %}
-                        Logout
-                    {% endif %}
-                </a>
                 {% if show_magazzino_card %}
                     {% set manager_badges = manager_badge_counts(request, user) %}
                     <div class="nav-card">
@@ -200,6 +193,7 @@
                             {% if show_api_docs %}
                                 <a href="/docs" class="nav-dropdown__item">📘 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
                             {% endif %}
+                            <a href="/logout" class="nav-dropdown__item">🚪 {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
                         </div>
                     </div>
                 {% endif %}
