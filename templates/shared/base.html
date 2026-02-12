@@ -15,7 +15,7 @@
     <link rel="apple-touch-icon" href="/static/img/logo.png" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=999" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260212a" />
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -261,8 +261,8 @@
         </nav>
     {% endif %}
 
-    <script src="{{ url_for('static', path='/js/theme_switcher.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/notifications.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212a"></script>
+    <script src="{{ url_for('static', path='/js/notifications.js') }}?v=20260212a"></script>
     <script>
         (() => {
             const dropdown = document.querySelector('[data-settings-dropdown]');
