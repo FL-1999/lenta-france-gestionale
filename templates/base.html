@@ -58,10 +58,13 @@
     {% set show_magazzino = user and (is_manager or can_access_inventory or is_capo or user.is_magazzino_manager) %}
     {% set show_magazzino_card = user and (is_manager or can_access_inventory or user.is_magazzino_manager) %}
     {% set show_fiches = is_manager %}
-    {% set show_audit = user and has_perm(user, 'manager.access') %}
-{% set audit_path = url_for('admin_audit_list') if can_manage_settings else url_for('manager_audit_list') %}
-{% set show_backup = can_manage_settings %}
-{% set show_personale = can_access_personale or is_manager %}
+    {% set is_admin = user and has_perm(user, 'admin.access') %}
+    {% set can_access_manager_settings = user and has_perm(user, 'manager.access') %}
+    {% set show_settings_dropdown = is_admin or is_manager %}
+    {% set show_api_docs = is_admin %}
+    {% set audit_path = url_for('admin_audit_list') if is_admin else url_for('manager_audit_list') %}
+    {% set show_backup = show_settings_dropdown %}
+    {% set show_personale = can_access_personale or is_manager %}
     {% set is_home_active = current_path == home_path and not section %}
     {% set is_cantieri_active = current_path.startswith('/manager/cantieri') or (section == 'cantieri') or current_path.startswith('/capo/cantieri') %}
     {% set is_magazzino_active = current_path.startswith('/manager/magazzino') or current_path.startswith('/capo/magazzino') %}
@@ -83,16 +86,6 @@
             </span>
         </div>
         <div class="nav-right">
-            <div class="nav-lang-switch">
-                <a href="/set-language/it"
-                   class="lang-flag {% if request.cookies.get('lang', 'it') == 'it' %}lang-flag--active{% endif %}">
-                    🇮🇹
-                </a>
-                <a href="/set-language/fr"
-                   class="lang-flag {% if request.cookies.get('lang', 'it') == 'fr' %}lang-flag--active{% endif %}">
-                    🇫🇷
-                </a>
-            </div>
             {% if not is_authenticated %}
                 <a href="/login" class="nav-link">
                     🔐
@@ -103,7 +96,69 @@
                     {% endif %}
                 </a>
             {% else %}
-                <a href="{{ home_path }}" class="nav-link">
+                <button id="theme-toggle" class="theme-toggle-btn nav-right__item" type="button" aria-label="{% if lang == 'fr' %}Changer de thème{% else %}Cambia tema{% endif %}">
+                    <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
+                    <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
+                </button>
+                <div class="nav-lang-switch nav-right__item">
+                    <a href="/set-language/it"
+                       class="lang-flag {% if request.cookies.get('lang', 'it') == 'it' %}lang-flag--active{% endif %}">
+                        🇮🇹
+                    </a>
+                    <a href="/set-language/fr"
+                       class="lang-flag {% if request.cookies.get('lang', 'it') == 'fr' %}lang-flag--active{% endif %}">
+                        🇫🇷
+                    </a>
+                </div>
+
+                {% if show_settings_dropdown %}
+                    <div class="nav-dropdown nav-right__item" data-settings-dropdown>
+                        <button type="button" class="nav-link nav-dropdown__toggle" data-settings-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                            ⚙
+                            {% if lang == 'fr' %}
+                                Paramètres ▾
+                            {% else %}
+                                Impostazioni ▾
+                            {% endif %}
+                        </button>
+                        <div class="nav-dropdown__menu" data-settings-dropdown-menu>
+                            <a href="{{ audit_path }}" class="nav-dropdown__item">🧾 Audit</a>
+                            <a href="/manager/utenti" class="nav-dropdown__item">👤 {% if lang == 'fr' %}Utilisateurs{% else %}Utenti{% endif %}</a>
+                            <a href="{{ report_path }}" class="nav-dropdown__item">📊 {% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</a>
+                            <a href="{{ url_for('manager_personale_list') }}" class="nav-dropdown__item">👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</a>
+                            {% if show_backup %}
+                                <a href="{{ url_for('admin_backup_export') }}" class="nav-dropdown__item">🛡️ Backup & Export</a>
+                            {% endif %}
+                            {% if show_api_docs %}
+                                <a href="/docs" class="nav-dropdown__item">📘 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
+                            {% endif %}
+                            <a href="/logout" class="nav-dropdown__item">🚪 {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if show_personale %}
+                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
+                        📅
+                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_cantieri %}
+                    <a href="{{ cantieri_path }}" class="nav-link nav-right__item">
+                        🏗️
+                        {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_fiches %}
+                    <a href="{{ fiches_path }}" class="nav-link nav-right__item">
+                        🧾
+                        {% if lang == 'fr' %}Fiches{% else %}Fiches{% endif %}
+                    </a>
+                {% endif %}
+
+                <a href="{{ home_path }}" class="nav-link nav-right__item">
                     🏠
                     {% if lang == 'fr' %}
                         Accueil
@@ -114,7 +169,7 @@
 
                 {% if show_magazzino_card %}
                     {% set manager_badges = manager_badge_counts(request, user) %}
-                    <div class="nav-card">
+                    <div class="nav-card nav-right__item">
                         <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link nav-link--card">
                             📦
                             {% if lang == 'fr' %}
@@ -122,27 +177,21 @@
                             {% else %}
                                 Magazzino
                             {% endif %}
-
-                            {# ✅ SOLO badge numerico (niente pallino vuoto) #}
                             {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
                                 <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
                                     {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
                                 </span>
                             {% endif %}
-                            
                         </a>
                     </div>
-
                 {% elif is_capo %}
-                    <a href="{{ url_for('capo_magazzino_list') }}" class="nav-link">
+                    <a href="{{ url_for('capo_magazzino_list') }}" class="nav-link nav-right__item">
                         📦
                         {% if lang == 'fr' %}
                             Magasin
                         {% else %}
                             Magazzino
                         {% endif %}
-
-                        {# ✅ SOLO badge numerico anche per capo (se vuoi) #}
                         {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
                             <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
                                 {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
@@ -152,7 +201,7 @@
                 {% endif %}
 
                 {% if show_reports %}
-                    <a href="{{ report_path }}" class="nav-link">
+                    <a href="{{ report_path }}" class="nav-link nav-right__item">
                         📊
                         {% if lang == 'fr' %}
                             {% if is_manager %}Rapports{% else %}Rapports journaliers{% endif %}
@@ -162,7 +211,7 @@
                     </a>
                 {% endif %}
 
-                <div class="nav-notifications" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
+                <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
                     <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
                         🔔
                         <span class="badge-notification is-hidden" data-notifications-badge></span>
@@ -180,65 +229,6 @@
                         </div>
                     </div>
                 </div>
-
-                {% if show_fiches %}
-                    <a href="{{ fiches_path }}" class="nav-link">
-                        🧾
-                        {% if lang == 'fr' %}Fiches{% else %}Fiches{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_cantieri %}
-                    <a href="{{ cantieri_path }}" class="nav-link">
-                        🏗️
-                        {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_personale %}
-                    <a href="{{ url_for('manager_personale_list') }}" class="nav-link">
-                        👥
-                        {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}
-                    </a>
-                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link">
-                        📅
-                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_users_link %}
-                    <a href="/manager/utenti" class="nav-link">
-                        👤
-                        {% if lang == 'fr' %}Utilisateurs{% else %}Utenti{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_audit %}
-                    <a href="{{ audit_path }}" class="nav-link">
-                        🧾
-                        {% if lang == 'fr' %}Audit{% else %}Audit{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_backup %}
-                    <a href="{{ url_for('admin_backup_export') }}" class="nav-link">
-                        🛡️
-                        {% if lang == 'fr' %}Backup & Export{% else %}Backup & Export{% endif %}
-                    </a>
-                {% endif %}
-
-                <a href="/docs" class="nav-link">
-                    📘
-                    {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}
-                </a>
-                <a href="/logout" class="nav-link">
-                    🚪
-                    {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}
-                </a>
-                <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="{% if lang == 'fr' %}Changer de thème{% else %}Cambia tema{% endif %}">
-                    <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
-                    <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
-                </button>
             {% endif %}
         </div>
     </nav>
