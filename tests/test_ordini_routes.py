@@ -339,10 +339,10 @@ class OrdiniRoutesTests(unittest.TestCase):
             order = session.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
             self.assertIsNotNone(order)
             assert order is not None
-            payload = build_order_email(order, "fr")
-            self.assertTrue(payload["to"].startswith("fornitore-"))
-            self.assertIn("Commande", payload["subject"])
-            self.assertIn("disponibilité", payload["body"])
+            subject, body = build_order_email(order, user=order.requester, lang="fr")
+            self.assertIn("Commande n°", subject)
+            self.assertIn(f"Supplier {unique_token}", subject)
+            self.assertIn("confirmation de commande", body)
         finally:
             session.close()
 
@@ -552,6 +552,96 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertIn('<form method="post" enctype="multipart/form-data">', response.text)
         self.assertIn('name="invoice_file"', response.text)
         self.assertNotIn('name="invoice_file" required', response.text)
+
+    def test_manager_ordini_detail_disables_email_button_when_supplier_email_missing(self) -> None:
+        unique_token = uuid4().hex
+
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-detail-{unique_token}@example.com",
+                full_name="Ordini Detail Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            order = PurchaseOrder(
+                order_number=f"TEST-DETAIL-{unique_token[:8]}",
+                supplier_name="Fornitore senza email",
+                requester_user_id=1,
+                status="bozza",
+            )
+            session.add(requester)
+            session.flush()
+            order.requester_user_id = requester.id
+            session.add(order)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get(f"/manager/ordini/{order_id}", cookies={"lang": "it"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('title="Email fornitore non disponibile"', response.text)
+        self.assertIn('Invia ordine', response.text)
+
+    def test_manager_ordini_email_redirects_back_when_supplier_email_missing(self) -> None:
+        unique_token = uuid4().hex
+
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-email-{unique_token}@example.com",
+                full_name="Ordini Email Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            order = PurchaseOrder(
+                order_number=f"TEST-MAIL-{unique_token[:8]}",
+                supplier_name="Fornitore senza email",
+                requester_user_id=1,
+                status="bozza",
+            )
+            session.add(requester)
+            session.flush()
+            order.requester_user_id = requester.id
+            session.add(order)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get(
+            f"/manager/ordini/{order_id}/email",
+            follow_redirects=False,
+            cookies={"lang": "it"},
+        )
+        self.assertEqual(response.status_code, 303)
+        self.assertIn(f"/manager/ordini/{order_id}", response.headers.get("location", ""))
+        self.assertIn("Email+fornitore+non+disponibile", response.headers.get("location", ""))
 
 
 if __name__ == "__main__":

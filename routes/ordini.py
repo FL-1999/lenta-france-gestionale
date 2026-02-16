@@ -242,46 +242,89 @@ def _order_supplier_label(order: PurchaseOrder) -> str:
     return "-"
 
 
-def build_order_email(order: PurchaseOrder, lang: str) -> dict[str, str]:
+def build_order_email(order: PurchaseOrder, user: User, lang: str = "it") -> tuple[str, str]:
     normalized_lang = "fr" if (lang or "").lower() == "fr" else "it"
     order_date_text = order.order_date.strftime("%d/%m/%Y") if order.order_date else "-"
-    destination = _order_destination_label(order)
     supplier_name = _order_supplier_label(order)
+    sender_name = (getattr(user, "full_name", "") or "").strip() or "Lenta France"
     lines = [
-        f"- {(line.description or '-').strip() or '-'} — {line.qty_ordered or 0}"
+        f"- {(line.description or '-').strip() or '-'} – Quantità: {line.qty_ordered or 0}"
         for line in order.lines
     ]
-    lines_text = "\n".join(lines) if lines else "-"
 
     if normalized_lang == "fr":
-        subject = f"Commande {order.order_number} - Lenta France"
-        body = (
-            "Bonjour,\n"
-            f"merci de trouver ci-dessous la commande n° {order.order_number} du {order_date_text}.\n"
-            f"Fournisseur : {supplier_name}\n"
-            f"Destination : {destination}\n"
-            "Articles :\n"
-            f"{lines_text}\n\n"
-            "Pouvez-vous confirmer la disponibilité et le délai de livraison ?\n\n"
-            "Merci,\n"
-            "Lenta France"
+        subject = f"Commande n° {order.order_number} – {supplier_name}"
+        lines = [line.replace("Quantità", "Quantité") for line in lines]
+        body_parts = [
+            "Bonjour,",
+            "",
+            f"Nous vous transmettons notre commande n° {order.order_number} du {order_date_text}.",
+            "",
+            "Veuillez trouver ci-dessous le détail de la fourniture demandée :",
+            "",
+            *(lines or ["-"]),
+        ]
+        if order.description:
+            body_parts.extend(
+                [
+                    "",
+                    "Informations complémentaires :",
+                    order.description,
+                ]
+            )
+        body_parts.extend(
+            [
+                "",
+                "Dans l’attente de votre confirmation de commande et de vos délais de livraison.",
+                "",
+                "Cordialement",
+                "",
+                sender_name,
+                "Lenta France",
+            ]
         )
-    else:
-        subject = f"Ordine {order.order_number} - Lenta France"
-        body = (
-            "Buongiorno,\n"
-            f"in allegato/dettaglio l’ordine n. {order.order_number} del {order_date_text}.\n"
-            f"Fornitore: {supplier_name}\n"
-            f"Destinazione: {destination}\n"
-            "Articoli:\n"
-            f"{lines_text}\n\n"
-            "Potete confermare disponibilità e tempi di consegna?\n\n"
-            "Grazie,\n"
-            "Lenta France"
-        )
+        body = "\n".join(body_parts)
+        return subject, body
 
-    to_email = order.supplier.email if order.supplier and order.supplier.email else ""
-    return {"to": to_email, "subject": subject, "body": body}
+    subject = f"Ordine n. {order.order_number} – {supplier_name}"
+    body_parts = [
+        "Gentili,",
+        "",
+        f"con la presente trasmettiamo il nostro ordine n. {order.order_number} del {order_date_text}.",
+        "",
+        "Di seguito il riepilogo della fornitura richiesta:",
+        "",
+        *(lines or ["-"]),
+    ]
+    if order.description:
+        body_parts.extend(
+            [
+                "",
+                "Note aggiuntive:",
+                order.description,
+            ]
+        )
+    body_parts.extend(
+        [
+            "",
+            "Restiamo in attesa di una vostra conferma d’ordine e di eventuali indicazioni sui tempi di consegna.",
+            "",
+            "Cordiali saluti",
+            "",
+            sender_name,
+            "Lenta France",
+        ]
+    )
+    body = "\n".join(body_parts)
+    return subject, body
+
+
+def build_order_mailto_link(order: PurchaseOrder, user: User, lang: str = "it") -> str | None:
+    supplier_email = (order.supplier.email if order.supplier and order.supplier.email else "").strip()
+    if not supplier_email:
+        return None
+    subject, body = build_order_email(order, user=user, lang=lang)
+    return f"mailto:{quote(supplier_email)}?subject={quote(subject)}&body={quote(body)}"
 
 
 def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[MagazzinoMacro], list[Supplier]]:
@@ -1184,6 +1227,8 @@ def manager_ordini_detail(
         _collect_pending_discharge_requirements(db, order)
     )
     error_message = request.query_params.get("err")
+    lang = request.cookies.get("lang", "it")
+    email_link = build_order_mailto_link(order, user=current_user, lang=lang)
 
     return render_template(
         templates,
@@ -1202,6 +1247,7 @@ def manager_ordini_detail(
             "pending_discharge_qty": round(
                 sum(pending_discharge_requirements.values()), 2
             ),
+            "email_link": email_link,
         },
         db,
         current_user,
@@ -1215,7 +1261,6 @@ def manager_ordini_detail(
 def manager_ordini_email(
     request: Request,
     order_id: int,
-    lang: str = "it",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -1224,10 +1269,11 @@ def manager_ordini_email(
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
 
-    payload = build_order_email(order, lang)
-    mailto_url = (
-        f"mailto:{quote(payload['to'])}?subject={quote(payload['subject'])}&body={quote(payload['body'])}"
-    )
+    lang = request.cookies.get("lang", "it")
+    mailto_url = build_order_mailto_link(order, user=current_user, lang=lang)
+    if not mailto_url:
+        url = f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{urlencode({'err': 'Email fornitore non disponibile'})}"
+        return RedirectResponse(url=url, status_code=303)
     return RedirectResponse(url=mailto_url, status_code=302)
 
 
