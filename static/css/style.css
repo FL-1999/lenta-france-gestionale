@@ -272,10 +272,11 @@ body {
 .nav-dropdown__menu {
     position: absolute;
     top: calc(100% + 8px);
-    left: -40px;
-    right: auto;
-    min-width: 210px;
-    max-width: 260px;
+    right: 0;
+    left: auto;
+    transform: translateX(-120px);
+    min-width: 220px;
+    max-width: 280px;
     padding: 6px;
     border-radius: 14px;
     background: rgba(15, 23, 42, 0.92);
@@ -291,7 +292,7 @@ body {
     content: "";
     position: absolute;
     top: -6px;
-    left: 22px;
+    right: 28px;
     width: 12px;
     height: 12px;
     background: rgba(15, 23, 42, 0.92);
