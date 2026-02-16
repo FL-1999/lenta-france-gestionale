@@ -205,6 +205,7 @@ body {
 /* TODO(mobile): introdurre una navbar compatta (hamburger/off-canvas) e badge ridotti per evitare overflow. */
 .navbar {
     height: 60px;
+    overflow: visible;
     background: var(--color-bg-navbar);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
@@ -218,6 +219,7 @@ body {
 
 .nav-left {
     display: flex;
+    overflow: visible;
     align-items: center;
     gap: var(--space-2);
 }
@@ -246,6 +248,7 @@ body {
 
 .nav-right {
     display: flex;
+    overflow: visible;
     align-items: center;
     gap: var(--space-3);
 }
@@ -277,7 +280,7 @@ body {
     box-shadow: 0 16px 32px rgba(2, 6, 23, 0.45);
     padding: 8px;
     display: none;
-    z-index: 90;
+    z-index: 9999;
 }
 
 .nav-dropdown.is-open .nav-dropdown__menu {
