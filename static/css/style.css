@@ -221,7 +221,7 @@ body {
     display: flex;
     overflow: visible;
     align-items: center;
-    gap: var(--space-2);
+    gap: 16px;
 }
 
 .logo {
@@ -250,7 +250,8 @@ body {
     display: flex;
     overflow: visible;
     align-items: center;
-    gap: var(--space-3);
+    gap: 12px;
+    margin-left: auto;
 }
 
 .nav-right__item {
