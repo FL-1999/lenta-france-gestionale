@@ -277,10 +277,17 @@
                 toggle.setAttribute('aria-expanded', 'false');
             };
 
+            toggle.setAttribute('aria-expanded', 'false');
+
             toggle.addEventListener('click', (event) => {
+                event.preventDefault();
                 event.stopPropagation();
                 const isOpen = dropdown.classList.toggle('is-open');
                 toggle.setAttribute('aria-expanded', String(isOpen));
+            });
+
+            menu.addEventListener('click', (event) => {
+                event.stopPropagation();
             });
 
             document.addEventListener('click', (event) => {
