@@ -27,13 +27,15 @@
         <a href="{{ url_for('manager_ordini_bolle_nuova', order_id=order.id) }}" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvelle livraison{% else %}Nuova bolla{% endif %}
         </a>
-        <div class="dropdown" style="display:inline-block;">
-            <button class="btn btn-secondary" type="button">📧 {% if lang == 'fr' %}Créer email commande{% else %}Crea email ordine{% endif %}</button>
-            <div class="dropdown-menu" style="display:block; position:static; padding:0; border:none; background:none;">
-                <a class="btn btn-sm btn-secondary" href="{{ url_for('manager_ordini_email', order_id=order.id) }}?lang=it">Italiano</a>
-                <a class="btn btn-sm btn-secondary" href="{{ url_for('manager_ordini_email', order_id=order.id) }}?lang=fr">Français</a>
-            </div>
-        </div>
+        {% if email_link %}
+        <a href="{{ email_link }}" class="btn btn-primary">
+            ✉️ {% if lang == 'fr' %}Envoyer commande{% else %}Invia ordine{% endif %}
+        </a>
+        {% else %}
+        <button class="btn btn-primary" disabled title="Email fornitore non disponibile">
+            ✉️ {% if lang == 'fr' %}Envoyer commande{% else %}Invia ordine{% endif %}
+        </button>
+        {% endif %}
             {% if order.file_invoice %}
         <a href="{{ url_for('manager_ordini_fattura_form', order_id=order.id) }}" class="btn btn-secondary">
             ✏️ {% if lang == 'fr' %}Modifier facture{% else %}Modifica fattura{% endif %}
