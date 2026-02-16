@@ -1,0 +1,43 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}{% if is_new %}{% if lang == 'fr' %}Nouveau fournisseur{% else %}Nuovo fornitore{% endif %}{% else %}{% if lang == 'fr' %}Modifier fournisseur{% else %}Modifica fornitore{% endif %}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
+        <h1 class="page-title">🏷️ {% if is_new %}{% if lang == 'fr' %}Nouveau fournisseur{% else %}Nuovo fornitore{% endif %}{% else %}{% if lang == 'fr' %}Modifier fournisseur{% else %}Modifica fornitore{% endif %}{% endif %}</h1>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_fornitori_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+    </div>
+</div>
+
+{% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
+
+<form method="post" action="{{ form_action }}">
+    <div class="card large-form-card">
+        <div class="card-body">
+            <p style="margin-top:0; opacity:.8;">{% if lang == 'fr' %}Tous les champs sont facultatifs. Nom conseillé.{% else %}Tutti i campi sono facoltativi. Nome consigliato.{% endif %}</p>
+            <div class="form-grid-2">
+                <div class="form-field"><label>{% if lang == 'fr' %}Nom / raison sociale{% else %}Nome / ragione sociale{% endif %}</label><input type="text" name="name" value="{{ supplier.name if supplier else '' }}"></div>
+                <div class="form-field"><label>{% if lang == 'fr' %}Lieu / ville{% else %}Luogo / città{% endif %}</label><input type="text" name="city" value="{{ supplier.city if supplier else '' }}"></div>
+                <div class="form-field"><label>{% if lang == 'fr' %}Adresse{% else %}Indirizzo{% endif %}</label><input type="text" name="address" value="{{ supplier.address if supplier else '' }}"></div>
+                <div class="form-field"><label>CAP</label><input type="text" name="zip_code" value="{{ supplier.zip_code if supplier else '' }}"></div>
+                <div class="form-field"><label>{% if lang == 'fr' %}Province{% else %}Provincia{% endif %}</label><input type="text" name="province" value="{{ supplier.province if supplier else '' }}"></div>
+                <div class="form-field"><label>{% if lang == 'fr' %}Pays{% else %}Nazione{% endif %}</label><input type="text" name="country" value="{{ supplier.country if supplier else '' }}"></div>
+                <div class="form-field"><label>Email</label><input type="email" name="email" value="{{ supplier.email if supplier else '' }}"></div>
+                <div class="form-field"><label>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</label><input type="text" name="phone" value="{{ supplier.phone if supplier else '' }}"></div>
+                <div class="form-field"><label>{% if lang == 'fr' %}TVA{% else %}Partita IVA/TVA{% endif %}</label><input type="text" name="vat_number" value="{{ supplier.vat_number if supplier else '' }}"></div>
+            </div>
+            <div class="form-field" style="margin-top: 12px;"><label>Note</label><textarea name="notes" rows="4">{{ supplier.notes if supplier else '' }}</textarea></div>
+        </div>
+    </div>
+
+    <div class="form-actions" style="margin-top: 16px;">
+        <a href="{{ url_for('manager_fornitori_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
+        <button class="btn btn-primary" type="submit">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+    </div>
+</form>
+{% endblock %}
