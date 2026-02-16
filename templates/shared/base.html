@@ -1,26 +1,30 @@
 <!DOCTYPE html>
 <html lang="{{ request.cookies.get('lang', 'it') }}" data-theme="dark">
 <head>
-    <!-- SHARED_BASE_HTML_MARKER -->
     <meta charset="UTF-8" />
-    <!-- NAV_DEPLOY_MARKER 2026-02-12_A -->
+    <!-- BASE_HTML_MARKER -->
     <title>
-        {% block title %}
-            Lenta France Gestionale
-        {% endblock %}
+        {% if lang == 'fr' %}
+            {{ title if title else "Lenta France Logiciel" }}
+        {% else %}
+            {{ title if title else "Lenta France Gestionale" }}
+        {% endif %}
     </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b1120" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Lenta France" />
-    <link rel="apple-touch-icon" href="/static/img/logo.png" />
-    <link rel="manifest" href="/static/manifest.webmanifest" />
+<!-- PWA / Mobile -->
+<link rel="manifest" href="/static/manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Lenta France" />
+<link rel="apple-touch-icon" href="/static/img/logo.png" />
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260216d" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260216e" />
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
+    {% set current_path = request.url.path %}
+    {% set section = request.query_params.get('section') %}
     {% set is_manager = is_manager if is_manager is defined else (user and has_perm(user, 'manager.access')) %}
     {% set is_capo = is_capo if is_capo is defined else (user and user.role.value == 'caposquadra') %}
     {% set can_manage_users = user and has_perm(user, 'users.manage') %}
@@ -45,14 +49,13 @@
     {% set show_cantieri = is_manager %}
     {% set cantieri_path = "/manager/cantieri" %}
     {% set report_path = "/manager/report" if is_manager else "/capo/rapportini/nuovo" %}
-
     {% set fiches_path = "/manager/fiches" %}
+    {% set profile_path = "/manager/utenti" if can_manage_users else ("/capo/dashboard?section=profilo" if is_capo else "/manager/dashboard") %}
     {% if is_capo %}
         {% set magazzino_path = "/capo/magazzino" %}
     {% else %}
         {% set magazzino_path = "/manager/magazzino" %}
     {% endif %}
-    {% set profile_path = "/manager/utenti" if can_manage_users else ("/capo/dashboard?section=profilo" if is_capo else "/manager/dashboard") %}
     {% set show_magazzino = user and (is_manager or can_access_inventory or is_capo or user.is_magazzino_manager) %}
     {% set show_magazzino_card = user and (is_manager or can_access_inventory or user.is_magazzino_manager) %}
     {% set show_fiches = is_manager %}
@@ -63,14 +66,38 @@
     {% set audit_path = url_for('admin_audit_list') if is_admin else url_for('manager_audit_list') %}
     {% set show_backup = show_settings_dropdown %}
     {% set show_personale = can_access_personale or is_manager %}
-
+    {% set is_home_active = current_path == home_path and not section %}
+    {% set is_cantieri_active = current_path.startswith('/manager/cantieri') or (section == 'cantieri') or current_path.startswith('/capo/cantieri') %}
+    {% set is_magazzino_active = current_path.startswith('/manager/magazzino') or current_path.startswith('/capo/magazzino') %}
+    {% set is_report_active = current_path.startswith('/manager/report') or current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') %}
+    {% set is_profile_active = current_path.startswith('/manager/utenti') or (section == 'profilo') %}
+    {% set show_profile = can_manage_users or is_capo %}
     {% set show_users_link = is_manager and can_read_users %}
     {% set show_reports = can_access_reports %}
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="nav-left">
-            {% if is_authenticated %}
-                <div class="nav-notifications" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
+             <img src="{{ url_for('static', path='/img/logo.png') }}" class="logo" alt="Logo Lenta France" />
+            <span class="brand">
+                {% if lang == 'fr' %}
+                    Lenta France Logiciel
+                {% else %}
+                    Lenta France Gestionale
+                {% endif %}
+            </span>
+        </div>
+        <div class="nav-right">
+            {% if not is_authenticated %}
+                <a href="/login" class="nav-link">
+                    🔐
+                    {% if lang == 'fr' %}
+                        Se connecter
+                    {% else %}
+                        Login
+                    {% endif %}
+                </a>
+            {% else %}
+                <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
                     <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
                         🔔
                         <span class="badge-notification is-hidden" data-notifications-badge></span>
@@ -88,36 +115,15 @@
                         </div>
                     </div>
                 </div>
-            {% endif %}
-            <img src="{{ url_for('static', path='/img/logo.png') }}" class="logo" alt="Logo Lenta France" />
-            <span class="brand">
-                TEST_NAV_v1
-                {% if lang == 'fr' %}
-                    Lenta France Logiciel de chantiers
-                {% else %}
-                    Lenta France Gestionale Cantieri
-                {% endif %}
-            </span>
-        </div>
-        <div class="nav-right">
-            {% if not is_authenticated %}
-                <a href="/login" class="nav-link">
-                    🔐
-                    {% if lang == 'fr' %}
-                        Se connecter
-                    {% else %}
-                        Login
-                    {% endif %}
-                </a>
-            {% else %}
+
                 {% if show_settings_dropdown %}
                     <div class="nav-dropdown nav-right__item" data-settings-dropdown>
                         <button type="button" class="nav-link nav-dropdown__toggle" data-settings-dropdown-toggle aria-haspopup="true" aria-expanded="false">
                             ⚙
                             {% if lang == 'fr' %}
-                                Paramètres ▾
+                                Général ▾
                             {% else %}
-                                Impostazioni ▾
+                                Generali ▾
                             {% endif %}
                         </button>
                         <div class="nav-dropdown__menu" data-settings-dropdown-menu>
@@ -125,7 +131,9 @@
                             <a href="/manager/utenti" class="nav-dropdown__item">👤 {% if lang == 'fr' %}Utilisateurs{% else %}Utenti{% endif %}</a>
                             <a href="{{ report_path }}" class="nav-dropdown__item">📊 {% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</a>
                             <a href="{{ url_for('manager_personale_list') }}" class="nav-dropdown__item">👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</a>
-                            <a href="{{ url_for('admin_backup_export') }}" class="nav-dropdown__item">🛡️ Backup & Export</a>
+                            {% if show_backup %}
+                                <a href="{{ url_for('admin_backup_export') }}" class="nav-dropdown__item">🛡️ Backup & Export</a>
+                            {% endif %}
                             {% if show_api_docs %}
                                 <a href="/docs" class="nav-dropdown__item">📘 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
                             {% endif %}
@@ -133,32 +141,7 @@
                         </div>
                     </div>
                 {% endif %}
-                {% if show_personale %}
-                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
-                        📅
-                        {% if lang == 'fr' %}
-                            Présences
-                        {% else %}
-                            Presenze
-                        {% endif %}
-                    </a>
-                {% endif %}
-                {% if show_cantieri %}
-                    <a href="{{ cantieri_path }}" class="nav-link nav-right__item">
-                        🏗️
-                        {% if lang == 'fr' %}
-                            Chantiers
-                        {% else %}
-                            Cantieri
-                        {% endif %}
-                    </a>
-                {% endif %}
-                {% if show_fiches %}
-                    <a href="{{ fiches_path }}" class="nav-link nav-right__item">
-                        🧾
-                        Fiches
-                    </a>
-                {% endif %}
+
                 <a href="{{ home_path }}" class="nav-link nav-right__item">
                     🏠
                     {% if lang == 'fr' %}
@@ -167,6 +150,7 @@
                         Home
                     {% endif %}
                 </a>
+
                 {% if show_magazzino_card %}
                     {% set manager_badges = manager_badge_counts(request, user) %}
                     <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link nav-right__item">
@@ -176,14 +160,9 @@
                         {% else %}
                             Magazzino
                         {% endif %}
-                        {% if nuove_richieste_count and nuove_richieste_count > 0 %}
+                        {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
                             <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
-                                {{ '99+' if nuove_richieste_count > 99 else nuove_richieste_count }}
-                            </span>
-                        {% endif %}
-                        {% if manager_badges.low_stock %}
-                            <span class="nav-badge nav-badge--alert" title="{% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}">
-                                {{ manager_badges.low_stock }}
+                                {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
                             </span>
                         {% endif %}
                     </a>
@@ -195,15 +174,59 @@
                         {% else %}
                             Magazzino
                         {% endif %}
+                        {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
+                            <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
+                                {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
+                            </span>
+                        {% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_personale %}
+                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
+                        📅
+                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_fiches %}
+                    <a href="{{ fiches_path }}" class="nav-link nav-right__item">
+                        🧾
+                        {% if lang == 'fr' %}Fiches{% else %}Fiches{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_cantieri %}
+                    <a href="{{ cantieri_path }}" class="nav-link nav-right__item">
+                        🏗️
+                        {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_personale %}
+                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
+                        📅
+                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if show_reports %}
+                    <a href="{{ report_path }}" class="nav-link nav-right__item">
+                        📊
+                        {% if lang == 'fr' %}
+                            {% if is_manager %}Rapports{% else %}Rapports journaliers{% endif %}
+                        {% else %}
+                            {% if is_manager %}Report{% else %}Rapportini{% endif %}
+                        {% endif %}
                     </a>
                 {% endif %}
                 <div class="nav-lang-switch nav-right__item">
                     <a href="/set-language/it"
-                       class="lang-flag {% if lang == 'it' %}lang-flag--active{% endif %}">
+                       class="lang-flag {% if request.cookies.get('lang', 'it') == 'it' %}lang-flag--active{% endif %}">
                         🇮🇹
                     </a>
                     <a href="/set-language/fr"
-                       class="lang-flag {% if lang == 'fr' %}lang-flag--active{% endif %}">
+                       class="lang-flag {% if request.cookies.get('lang', 'it') == 'fr' %}lang-flag--active{% endif %}">
                         🇫🇷
                     </a>
                 </div>
@@ -220,38 +243,42 @@
         {% block content %}
         {% endblock %}
     </main>
+
     {% if user %}
-        {% set current_path = request.url.path %}
-        {% set section = request.query_params.get('section') %}
-        {% set is_home_active = current_path == home_path and not section %}
-        {% set is_cantieri_active = current_path.startswith('/manager/cantieri') or (section == 'cantieri') or current_path.startswith('/capo/cantieri') %}
-        {% set is_magazzino_active = current_path.startswith('/manager/magazzino') or current_path.startswith('/capo/magazzino') %}
-        {% set is_report_active = current_path.startswith('/manager/report') or current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') %}
-        {% set is_profile_active = current_path.startswith('/manager/utenti') or (section == 'profilo') %}
-        {% set show_profile = can_manage_users or is_capo %}
         <nav class="bottom-nav" aria-label="{% if lang == 'fr' %}Navigation principale{% else %}Navigazione principale{% endif %}">
             <a href="{{ home_path }}" class="bottom-nav__link {% if is_home_active %}bottom-nav__link--active{% endif %}">
                 <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
                 <span class="bottom-nav__label">{% if lang == 'fr' %}Accueil{% else %}Home{% endif %}</span>
             </a>
+
             {% if show_cantieri %}
                 <a href="{{ cantieri_path }}" class="bottom-nav__link {% if is_cantieri_active %}bottom-nav__link--active{% endif %}">
                     <span class="bottom-nav__icon" aria-hidden="true">🏗️</span>
                     <span class="bottom-nav__label">{% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}</span>
                 </a>
             {% endif %}
+
             {% if show_magazzino %}
                 <a href="{{ magazzino_path }}" class="bottom-nav__link {% if is_magazzino_active %}bottom-nav__link--active{% endif %}">
                     <span class="bottom-nav__icon" aria-hidden="true">📦</span>
                     <span class="bottom-nav__label">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</span>
+
+                    {# ✅ SOLO badge numerico anche in bottom-nav #}
+                    {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
+                        <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
+                            {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
+                        </span>
+                    {% endif %}
                 </a>
             {% endif %}
+
             {% if show_reports %}
                 <a href="{{ report_path }}" class="bottom-nav__link {% if is_report_active %}bottom-nav__link--active{% endif %}">
                     <span class="bottom-nav__icon" aria-hidden="true">📊</span>
                     <span class="bottom-nav__label">{% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</span>
                 </a>
             {% endif %}
+
             {% if show_profile %}
                 <a href="{{ profile_path }}" class="bottom-nav__link {% if is_profile_active %}bottom-nav__link--active{% endif %}">
                     <span class="bottom-nav__icon" aria-hidden="true">👤</span>
@@ -263,58 +290,37 @@
 
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212c"></script>
     <script src="{{ url_for('static', path='/js/notifications.js') }}?v=20260212c"></script>
-    <!-- <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260212c"></script> -->
+    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260212c"></script>
     <script>
         (() => {
             const dropdown = document.querySelector('[data-settings-dropdown]');
             if (!dropdown) return;
-
             const toggle = dropdown.querySelector('[data-settings-dropdown-toggle]');
             const menu = dropdown.querySelector('[data-settings-dropdown-menu]');
             if (!toggle || !menu) return;
 
-            const closeMenu = () => {
+            const close = () => {
                 dropdown.classList.remove('is-open');
                 toggle.setAttribute('aria-expanded', 'false');
             };
 
-            toggle.setAttribute('aria-expanded', 'false');
-
-            toggle.addEventListener('click', (event) => {
-                event.preventDefault();
-                event.stopPropagation();
+            toggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const isOpen = dropdown.classList.toggle('is-open');
                 toggle.setAttribute('aria-expanded', String(isOpen));
             });
 
-            menu.addEventListener('click', (event) => {
-                event.stopPropagation();
+            document.addEventListener('click', (e) => {
+                if (!dropdown.contains(e.target)) close();
             });
 
-            document.addEventListener('click', (event) => {
-                if (!dropdown.contains(event.target)) {
-                    closeMenu();
-                }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') close();
             });
 
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape') {
-                    closeMenu();
-                }
-            });
+            menu.addEventListener('click', (e) => e.stopPropagation());
         })();
-    </script>
-
-    <script>
-      console.log("UNREGISTER_SW_START");
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations()
-          .then(rs => Promise.all(rs.map(r => r.unregister())))
-          .then(() => caches.keys())
-          .then(keys => Promise.all(keys.map(k => caches.delete(k))))
-          .then(() => console.log("UNREGISTER_SW_DONE"))
-          .catch(err => console.warn("SW unregister failed:", err));
-      }
     </script>
 </body>
 </html>
