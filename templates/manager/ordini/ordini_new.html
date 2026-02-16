@@ -24,7 +24,17 @@
             <div class="form-grid-2">
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</label>
-                    <input type="text" name="supplier_name" value="{{ form_data.supplier_name }}" required>
+                    <select name="supplier_id" id="supplier-id-select">
+                        <option value="">— {% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %} —</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}" {% if form_data.supplier_id == supplier.id|string %}selected{% endif %}>
+                            {{ supplier.name or ('Fornitore #' ~ supplier.id) }}{% if supplier.email %} ({{ supplier.email }}){% endif %}
+                        </option>
+                        {% endfor %}
+                        <option value="{{ new_supplier_sentinel }}" {% if form_data.supplier_id == new_supplier_sentinel %}selected{% endif %}>+ {% if lang == 'fr' %}Créer nouveau fournisseur{% else %}Crea nuovo fornitore{% endif %}</option>
+                    </select>
+                    <small>{% if lang == 'fr' %}Nom conseillé, mais non obligatoire.{% else %}Nome consigliato, ma non obbligatorio.{% endif %}</small>
+                    <input type="hidden" name="supplier_name" value="{{ form_data.supplier_name }}">
                 </div>
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Date de commande{% else %}Data ordine{% endif %}</label>
@@ -44,6 +54,21 @@
                             </option>
                         {% endfor %}
                     </select>
+                </div>
+            </div>
+
+            <div id="new-supplier-fields" class="form-grid-2" style="margin-top: 12px;">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Nom / raison sociale{% else %}Nome / ragione sociale{% endif %}</label>
+                    <input type="text" name="new_supplier_name" value="{{ form_data.new_supplier_name }}">
+                </div>
+                <div class="form-field">
+                    <label>Email</label>
+                    <input type="email" name="new_supplier_email" value="{{ form_data.new_supplier_email }}">
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</label>
+                    <input type="text" name="new_supplier_phone" value="{{ form_data.new_supplier_phone }}">
                 </div>
             </div>
 
@@ -156,6 +181,9 @@ const categoryModeRadios = document.querySelectorAll('input[name="category_mode"
 const closedSection = document.getElementById('closed-section');
 const warehouseSection = document.getElementById('warehouse-section');
 const newMacroSentinel = "{{ new_macro_sentinel }}";
+const supplierSelect = document.getElementById('supplier-id-select');
+const newSupplierFields = document.getElementById('new-supplier-fields');
+const newSupplierSentinel = "{{ new_supplier_sentinel }}";
 const autoCreatedLabel = '{% if lang == "fr" %}Créé automatiquement{% else %}Creato automaticamente{% endif %}';
 const genericAutoError = '{% if lang == "fr" %}Impossible de créer automatiquement l'article.{% else %}Impossibile creare automaticamente l'articolo.{% endif %}';
 
@@ -191,6 +219,13 @@ function updateNewCategoryFields() {
 function updateNewMacroField() {
     const show = newMacroSelect?.value === newMacroSentinel;
     newMacroNameField.style.display = show ? 'block' : 'none';
+}
+
+function updateNewSupplierFields() {
+    const show = supplierSelect?.value === newSupplierSentinel;
+    if (newSupplierFields) {
+        newSupplierFields.style.display = show ? 'grid' : 'none';
+    }
 }
 
 function ensureInlineStatus(selectEl) {
@@ -305,9 +340,11 @@ function bindDescriptionAutoEnsure(row) {
 document.querySelectorAll('input[name="order_kind"]').forEach(el => el.addEventListener('change', updateKindSections));
 categoryModeRadios.forEach(el => el.addEventListener('change', updateNewCategoryFields));
 newMacroSelect?.addEventListener('change', updateNewMacroField);
+supplierSelect?.addEventListener('change', updateNewSupplierFields);
 updateKindSections();
 updateNewCategoryFields();
 updateNewMacroField();
+updateNewSupplierFields();
 
 tableBody?.querySelectorAll('tr').forEach(bindDescriptionAutoEnsure);
 

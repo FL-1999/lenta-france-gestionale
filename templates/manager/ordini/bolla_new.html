@@ -14,9 +14,9 @@
         </h1>
         <p class="page-subtitle">
             {% if lang == 'fr' %}
-                Commande #{{ order.order_number }} · Fournisseur {{ order.supplier_name or '-' }}
+                Commande #{{ order.order_number }} · Fournisseur {{ (order.supplier.name if order.supplier and order.supplier.name else order.supplier_name) or '-' }}
             {% else %}
-                Ordine #{{ order.order_number }} · Fornitore {{ order.supplier_name or '-' }}
+                Ordine #{{ order.order_number }} · Fornitore {{ (order.supplier.name if order.supplier and order.supplier.name else order.supplier_name) or '-' }}
             {% endif %}
         </p>
     </div>

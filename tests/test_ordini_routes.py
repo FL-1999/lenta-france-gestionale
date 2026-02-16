@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from auth import get_current_active_user_html
 from database import Base, SessionLocal, engine
 from main import app
+from routes.ordini import build_order_email
 from models import (
     MagazzinoCategoria,
     MagazzinoItem,
@@ -144,6 +145,7 @@ class OrdiniRoutesTests(unittest.TestCase):
             order_id = order.id
             order_line_id = order.lines[0].id
             item_id = item.id
+            category_id = item.categoria_id
         finally:
             session.close()
 
@@ -254,6 +256,128 @@ class OrdiniRoutesTests(unittest.TestCase):
             self.assertEqual(items_count, 1)
         finally:
             session.close()
+
+
+    def test_create_order_with_inline_new_supplier_and_email_redirect(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-supplier-{unique_token}@example.com",
+                full_name="Ordini Supplier Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            categoria = MagazzinoCategoria(nome=f"Cat {unique_token}", slug=f"cat-{unique_token}", ordine=99999, attiva=True)
+            item = MagazzinoItem(nome="Bulloni", codice=f"B-{unique_token[:5]}", categoria=categoria, quantita_disponibile=0.0, attivo=True)
+            session.add_all([requester, categoria, item])
+            session.commit()
+            session.refresh(requester)
+            session.refresh(item)
+            requester_id = requester.id
+            item_id = item.id
+            category_id = item.categoria_id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name="Ordini Supplier Tester",
+                is_magazzino_manager=False,
+            )
+        )
+
+        create_response = self.client.post(
+            "/manager/ordini/nuovo",
+            data={
+                "supplier_name": "",
+                "supplier_id": "__new__",
+                "new_supplier_name": f"Supplier {unique_token}",
+                "new_supplier_email": f"fornitore-{unique_token}@example.com",
+                "new_supplier_phone": "",
+                "order_date": "2026-02-01",
+                "requester_user_id": str(requester_id),
+                "description_text": "Ordine con fornitore inline",
+                "order_kind": "warehouse",
+                "warehouse_category_id": str(category_id),
+                "site_id": "",
+                "new_category_name": "",
+                "category_mode": "existing",
+                "macro_id": "",
+                "macro": "",
+                "new_category_macro_id": "",
+                "new_macro_name": "",
+                "description": ["Bulloni"],
+                "qty_ordered": ["10"],
+                "magazzino_item_id": [str(item_id)],
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(create_response.status_code, 303)
+
+        session = SessionLocal()
+        try:
+            order = (
+                session.query(PurchaseOrder)
+                .filter(PurchaseOrder.description == "Ordine con fornitore inline")
+                .order_by(PurchaseOrder.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(order)
+            assert order is not None
+            self.assertIsNotNone(order.supplier_id)
+            self.assertEqual(order.supplier_name, f"Supplier {unique_token}")
+            order_id = order.id
+        finally:
+            session.close()
+
+        session = SessionLocal()
+        try:
+            order = session.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+            self.assertIsNotNone(order)
+            assert order is not None
+            payload = build_order_email(order, "fr")
+            self.assertTrue(payload["to"].startswith("fornitore-"))
+            self.assertIn("Commande", payload["subject"])
+            self.assertIn("disponibilité", payload["body"])
+        finally:
+            session.close()
+
+    def test_manager_fornitori_crud_pages(self) -> None:
+        unique_token = uuid4().hex
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=1,
+                role=RoleEnum.manager,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        create_response = self.client.post(
+            "/manager/fornitori/nuovo",
+            data={
+                "name": f"Fornitore {unique_token}",
+                "city": "Paris",
+                "address": "Rue de Test",
+                "zip_code": "75001",
+                "province": "Paris",
+                "country": "FR",
+                "email": f"f-{unique_token}@example.com",
+                "phone": "123",
+                "vat_number": "FR123",
+                "notes": "note",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(create_response.status_code, 303)
+
+        list_response = self.client.get(f"/manager/fornitori?q={unique_token}")
+        self.assertEqual(list_response.status_code, 200)
+        self.assertIn(f"Fornitore {unique_token}", list_response.text)
 
     def test_create_delivery_without_number_shows_user_friendly_error(self) -> None:
         unique_token = uuid4().hex

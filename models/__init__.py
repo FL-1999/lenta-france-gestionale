@@ -639,12 +639,32 @@ class MagazzinoMovimento(Base, TimestampMixin):
     purchase_delivery = relationship("PurchaseDelivery")
 
 
+class Supplier(Base, TimestampMixin):
+    __tablename__ = "suppliers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(100), nullable=True)
+    address = Column(String(255), nullable=True)
+    city = Column(String(120), nullable=True)
+    zip_code = Column(String(20), nullable=True)
+    province = Column(String(120), nullable=True)
+    country = Column(String(120), nullable=True)
+    vat_number = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    purchase_orders = relationship("PurchaseOrder", back_populates="supplier")
+
+
 class PurchaseOrder(Base):
     __tablename__ = "purchase_orders"
 
     id = Column(Integer, primary_key=True, index=True)
     order_number = Column(String(50), nullable=False, unique=True)
     supplier_name = Column(String(255), nullable=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
     order_date = Column(Date, nullable=True)
     requester_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     description = Column(Text, nullable=True)
@@ -662,6 +682,7 @@ class PurchaseOrder(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     requester = relationship("User")
+    supplier = relationship("Supplier", back_populates="purchase_orders")
     site = relationship("Site")
     warehouse_category = relationship("MagazzinoCategoria")
     lines = relationship(

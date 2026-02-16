@@ -1,0 +1,67 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}{% if lang == 'fr' %}Fournisseurs{% else %}Fornitori{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
+        <h1 class="page-title">🏷️ {% if lang == 'fr' %}Fournisseurs{% else %}Fornitori{% endif %}</h1>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_ordini_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Commandes{% else %}Ordini{% endif %}</a>
+        <a href="{{ url_for('manager_fornitori_new') }}" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouveau fournisseur{% else %}Nuovo fornitore{% endif %}</a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1rem;">
+    <div class="card-body">
+        <form method="get" class="form-grid-2">
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Recherche nom/email{% else %}Ricerca nome/email{% endif %}</label>
+                <input type="text" name="q" value="{{ q or '' }}">
+            </div>
+            <div class="form-actions" style="align-items:flex-end;">
+                <button class="btn btn-secondary" type="submit">🔎 {% if lang == 'fr' %}Rechercher{% else %}Cerca{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                    <th>Email</th>
+                    <th>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                <tr>
+                    <td>{{ supplier.name or '-' }}</td>
+                    <td>{{ supplier.email or '-' }}</td>
+                    <td>{{ supplier.phone or '-' }}</td>
+                    <td>{{ supplier.city or '-' }}</td>
+                    <td>{% if supplier.is_active %}✅ {% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}{% else %}⏸️ {% if lang == 'fr' %}Inactif{% else %}Disattivo{% endif %}{% endif %}</td>
+                    <td>
+                        <a class="btn btn-sm btn-secondary" href="{{ url_for('manager_fornitori_edit', supplier_id=supplier.id) }}">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a>
+                        <form method="post" action="{{ url_for('manager_fornitori_toggle', supplier_id=supplier.id) }}" style="display:inline-block;">
+                            <button class="btn btn-sm btn-secondary" type="submit">{% if supplier.is_active %}{% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}{% else %}{% if lang == 'fr' %}Activer{% else %}Attiva{% endif %}{% endif %}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="table-empty">{% if lang == 'fr' %}Aucun fournisseur{% else %}Nessun fornitore{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -40,6 +40,9 @@
         </p>
     </div>
     <div class="page-actions">
+        <a href="{{ url_for('manager_fornitori_list') }}" class="btn btn-secondary">
+            🏷️ {% if lang == 'fr' %}Fournisseurs{% else %}Fornitori{% endif %}
+        </a>
         <a href="/manager/ordini/nuovo" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvel ordre{% else %}Nuovo ordine{% endif %}
         </a>
@@ -150,7 +153,7 @@
                             {{ order.order_number }}
                         </a>
                     </td>
-                    <td>{{ order.supplier_name or '-' }}</td>
+                    <td>{{ supplier_label_map.get(order.id, '-') }}</td>
                     <td>{{ order.order_date.strftime("%d/%m/%Y") if order.order_date else '-' }}</td>
                     <td>
                         {% if order.requester %}
