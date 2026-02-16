@@ -3492,3 +3492,30 @@ label.form-label[for="profondita_totale"]{
 }
 
 .navbar, .nav-left, .nav-right { overflow: visible; }
+
+/* Manager navbar canonical layering fix (2026-02-16) */
+.navbar{
+  position: sticky;
+  top: 0;
+  z-index: 10000;
+  overflow: visible;
+}
+
+.nav-left, .nav-right{
+  overflow: visible;
+}
+
+.nav-dropdown{
+  position: relative;
+}
+
+.nav-dropdown__menu{
+  z-index: 10001;
+}
+
+.page-header,
+.page-header-main{
+  position: relative;
+  z-index: 1;
+}
+
