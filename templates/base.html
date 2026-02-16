@@ -2,6 +2,7 @@
 <html lang="{{ request.cookies.get('lang', 'it') }}" data-theme="dark">
 <head>
     <meta charset="UTF-8" />
+    <!-- BASE_HTML_MARKER -->
     <title>
         {% if lang == 'fr' %}
             {{ title if title else "Lenta France Logiciel" }}
@@ -291,5 +292,36 @@
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212c"></script>
     <script src="{{ url_for('static', path='/js/notifications.js') }}?v=20260212c"></script>
     <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260212c"></script>
+    <script>
+        (() => {
+            const dropdown = document.querySelector('[data-settings-dropdown]');
+            if (!dropdown) return;
+            const toggle = dropdown.querySelector('[data-settings-dropdown-toggle]');
+            const menu = dropdown.querySelector('[data-settings-dropdown-menu]');
+            if (!toggle || !menu) return;
+
+            const close = () => {
+                dropdown.classList.remove('is-open');
+                toggle.setAttribute('aria-expanded', 'false');
+            };
+
+            toggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isOpen = dropdown.classList.toggle('is-open');
+                toggle.setAttribute('aria-expanded', String(isOpen));
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!dropdown.contains(e.target)) close();
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') close();
+            });
+
+            menu.addEventListener('click', (e) => e.stopPropagation());
+        })();
+    </script>
 </body>
 </html>
