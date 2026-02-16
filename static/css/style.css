@@ -3381,3 +3381,43 @@ label.form-label[for="profondita_totale"]{
 }
 
 .nav-dropdown.is-open .nav-dropdown__menu{ display:block; }
+
+/* Navbar right controls pinned to the edge (language + theme) */
+.navbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.nav-left{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+  flex: 1 1 auto;
+}
+
+.nav-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-left:auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px){
+  .nav-right{
+    position: sticky;
+    right: 0;
+    z-index: 1000;
+  }
+  .nav-left{
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-left::-webkit-scrollbar{ display:none; }
+}

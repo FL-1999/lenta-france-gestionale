@@ -17,7 +17,7 @@
     <link rel="apple-touch-icon" href="/static/img/logo.png" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260216b" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260216c" />
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -110,20 +110,6 @@
                     {% endif %}
                 </a>
             {% else %}
-                <button id="theme-toggle" class="theme-toggle-btn nav-right__item" type="button" aria-label="{% if lang == 'fr' %}Changer de thème{% else %}Cambia tema{% endif %}">
-                    <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
-                    <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
-                </button>
-                <div class="nav-lang-switch nav-right__item">
-                    <a href="/set-language/it"
-                       class="lang-flag {% if lang == 'it' %}lang-flag--active{% endif %}">
-                        🇮🇹
-                    </a>
-                    <a href="/set-language/fr"
-                       class="lang-flag {% if lang == 'fr' %}lang-flag--active{% endif %}">
-                        🇫🇷
-                    </a>
-                </div>
                 {% if show_settings_dropdown %}
                     <div class="nav-dropdown nav-right__item" data-settings-dropdown>
                         <button type="button" class="nav-link nav-dropdown__toggle" data-settings-dropdown-toggle aria-haspopup="true" aria-expanded="false">
@@ -211,6 +197,20 @@
                         {% endif %}
                     </a>
                 {% endif %}
+                <div class="nav-lang-switch nav-right__item">
+                    <a href="/set-language/it"
+                       class="lang-flag {% if lang == 'it' %}lang-flag--active{% endif %}">
+                        🇮🇹
+                    </a>
+                    <a href="/set-language/fr"
+                       class="lang-flag {% if lang == 'fr' %}lang-flag--active{% endif %}">
+                        🇫🇷
+                    </a>
+                </div>
+                <button id="theme-toggle" class="theme-toggle-btn nav-right__item" type="button" aria-label="{% if lang == 'fr' %}Changer de thème{% else %}Cambia tema{% endif %}">
+                    <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
+                    <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
+                </button>
             {% endif %}
         </div>
     </nav>
