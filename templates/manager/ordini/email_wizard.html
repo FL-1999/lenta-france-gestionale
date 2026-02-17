@@ -1,0 +1,67 @@
+{% extends "shared/base.html" %}
+{% block title %}Wizard Email Ordine{% endblock %}
+{% block content %}
+<div class="page-header"><h1 class="page-title">✉️ Crea mail ordine</h1></div>
+<div class="card"><div class="card-body">
+  <div class="form-grid-2">
+    <div class="form-field"><label>Fornitore</label><select id="supplier_id">{% for s in suppliers %}<option value="{{ s.id }}" {% if supplier_id == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+    <div class="form-field"><label>Lingua</label><select id="language"><option value="it">Italiano</option><option value="fr">Français</option><option value="en">English</option></select></div>
+    <div class="form-field"><label>Referente</label><input id="contact_name" type="text" placeholder="Nome referente"></div>
+    <div class="form-field"><label>Destinatario email</label><input id="recipient_email" type="email" placeholder="email@fornitore.com"></div>
+  </div>
+
+  <div class="form-field">
+    <label>Destinazione consegna</label>
+    <select id="destination_type">
+      <option value="site">Cantiere</option>
+      <option value="depot">Deposito</option>
+      <option value="supplier_pickup">Ritiro dal fornitore</option>
+    </select>
+    <select id="destination_id">
+      {% for site in sites %}<option value="site:{{ site.id }}">{{ site.name }}</option>{% endfor %}
+      {% for depot in depots %}<option value="depot:{{ depot.id }}">{{ depot.name }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div class="form-field"><label>Subject</label><input id="subject" type="text"></div>
+  <div class="form-field"><label>Body</label><textarea id="body" rows="14"></textarea></div>
+  <div class="form-actions">
+    <button class="btn btn-secondary" type="button" id="generate">Genera anteprima</button>
+    <a class="btn btn-primary" id="mailto_link" href="#">Apri nel client mail</a>
+    <button class="btn btn-secondary" type="button" id="copy_text">Copia testo</button>
+  </div>
+</div></div>
+<script>
+async function hydrateSupplier(){
+  const id=document.getElementById('supplier_id').value;
+  if(!id) return;
+  const data=await fetch(`/api/suppliers/${id}`).then(r=>r.json());
+  if(!document.getElementById('contact_name').value) document.getElementById('contact_name').value=data.contact_name||'';
+  if(!document.getElementById('recipient_email').value) document.getElementById('recipient_email').value=data.contact_email||data.email||'';
+}
+async function generate(){
+  const val=document.getElementById('destination_id').value||'';
+  const [kind,id]=val.split(':');
+  const payload={
+    supplier_id: document.getElementById('supplier_id').value,
+    language: document.getElementById('language').value,
+    contact_name: document.getElementById('contact_name').value,
+    recipient_email: document.getElementById('recipient_email').value,
+    destination_type: document.getElementById('destination_type').value === 'supplier_pickup' ? 'supplier_pickup' : kind,
+    destination_id: id,
+    lines: [{description:'Materiale da ordine in bozza', qty_ordered:1}],
+  };
+  const data=await fetch('/api/ordini/email-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+  document.getElementById('subject').value=data.subject||'';
+  document.getElementById('body').value=data.body||'';
+  document.getElementById('mailto_link').href=data.mailto||'#';
+}
+
+document.getElementById('supplier_id').addEventListener('change', hydrateSupplier);
+document.getElementById('generate').addEventListener('click', generate);
+document.getElementById('copy_text').addEventListener('click', async ()=>{
+  await navigator.clipboard.writeText(`Subject: ${document.getElementById('subject').value}\n\n${document.getElementById('body').value}`);
+});
+hydrateSupplier();
+</script>
+{% endblock %}
