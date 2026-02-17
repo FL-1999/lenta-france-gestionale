@@ -90,6 +90,18 @@ class MagazzinoMovimentoTipoEnum(PyEnum):
     rettifica = "rettifica"
 
 
+class DeliveryTypeEnum(PyEnum):
+    SITE = "SITE"
+    DEPOT = "DEPOT"
+    PICKUP = "PICKUP"
+
+
+class EmailLanguageEnum(PyEnum):
+    IT = "IT"
+    FR = "FR"
+    EN = "EN"
+
+
 # ------------------------------------------------------------
 # MIXIN PER TIMESTAMP
 # ------------------------------------------------------------
@@ -644,10 +656,12 @@ class Supplier(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=True)
+    legal_name = Column(String(255), nullable=True)
     email = Column(String(255), nullable=True)
     phone = Column(String(100), nullable=True)
     contact_name = Column(String(255), nullable=True)
     contact_email = Column(String(255), nullable=True)
+    contact_phone = Column(String(100), nullable=True)
     address = Column(String(255), nullable=True)
     city = Column(String(120), nullable=True)
     zip_code = Column(String(20), nullable=True)
@@ -658,6 +672,18 @@ class Supplier(Base, TimestampMixin):
     is_active = Column(Boolean, default=True, nullable=False)
 
     purchase_orders = relationship("PurchaseOrder", back_populates="supplier")
+
+
+class Depot(Base, TimestampMixin):
+    __tablename__ = "depots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, unique=True)
+    address = Column(String(255), nullable=False)
+    notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    deliveries = relationship("PurchaseDelivery", back_populates="delivery_depot")
 
 
 class PurchaseOrder(Base):
@@ -673,7 +699,11 @@ class PurchaseOrder(Base):
     recipient_email = Column(String(255), nullable=True)
     order_date = Column(Date, nullable=True)
     requester_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    requester_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     description = Column(Text, nullable=True)
+    contact_name_override = Column(String(255), nullable=True)
+    contact_email_override = Column(String(255), nullable=True)
+    email_language = Column(Enum(EmailLanguageEnum), nullable=True)
     order_kind = Column(String(20), nullable=False, default="warehouse")
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
     warehouse_category_id = Column(
@@ -687,7 +717,8 @@ class PurchaseOrder(Base):
     status = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    requester = relationship("User")
+    requester = relationship("User", foreign_keys=[requester_user_id])
+    requester_v2 = relationship("User", foreign_keys=[requester_id])
     supplier = relationship("Supplier", back_populates="purchase_orders")
     site = relationship("Site")
     warehouse_category = relationship("MagazzinoCategoria")
@@ -749,6 +780,12 @@ class PurchaseOrderLine(Base):
 
 class PurchaseDelivery(Base):
     __tablename__ = "purchase_deliveries"
+    __table_args__ = (
+        CheckConstraint(
+            "delivery_type IN ('SITE', 'DEPOT', 'PICKUP')",
+            name="ck_purchase_deliveries_delivery_type",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=False)
@@ -756,9 +793,14 @@ class PurchaseDelivery(Base):
     delivery_date = Column(Date, nullable=True)
     file_delivery = Column(String(255), nullable=True)
     confirmed = Column(Boolean, nullable=False, default=False)
+    delivery_type = Column(String(10), nullable=False, default=DeliveryTypeEnum.SITE.value)
+    delivery_site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    delivery_depot_id = Column(Integer, ForeignKey("depots.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     order = relationship("PurchaseOrder", back_populates="deliveries")
+    delivery_site = relationship("Site")
+    delivery_depot = relationship("Depot", back_populates="deliveries")
     lines = relationship(
         "PurchaseDeliveryLine",
         back_populates="delivery",
