@@ -17,6 +17,7 @@ from models import (
     PurchaseOrder,
     PurchaseOrderLine,
     RoleEnum,
+    Supplier,
     User,
 )
 
@@ -642,6 +643,82 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertEqual(response.status_code, 303)
         self.assertIn(f"/manager/ordini/{order_id}", response.headers.get("location", ""))
         self.assertIn("Email+fornitore+non+disponibile", response.headers.get("location", ""))
+
+
+    def test_api_supplier_by_id_returns_contact_data(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            supplier = Supplier(
+                name=f"Supplier {unique_token}",
+                email=f"supplier-{unique_token}@example.com",
+                phone="+33 1 99 99 99 99",
+                contact_name="Paul Martin",
+                contact_email=f"paul-{unique_token}@example.com",
+                is_active=True,
+            )
+            session.add(supplier)
+            session.commit()
+            supplier_id = supplier.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=1,
+                role=RoleEnum.manager,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get(f"/api/suppliers/{supplier_id}")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["contact_name"], "Paul Martin")
+        self.assertTrue(data["contact_email"].startswith("paul-"))
+
+    def test_api_email_preview_supports_english_template(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            supplier = Supplier(
+                name=f"Supplier EN {unique_token}",
+                email=f"supplier-en-{unique_token}@example.com",
+                contact_name="John Doe",
+                contact_email=f"john-{unique_token}@example.com",
+                is_active=True,
+            )
+            session.add(supplier)
+            session.commit()
+            supplier_id = supplier.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=1,
+                role=RoleEnum.manager,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            "/api/ordini/email-preview",
+            json={
+                "supplier_id": supplier_id,
+                "language": "en",
+                "order_number": "DRAFT-1",
+                "destination_type": "supplier_pickup",
+                "lines": [{"description": "Screws", "qty_ordered": 12}],
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("Purchase order", data["subject"])
+        self.assertIn("Dear", data["body"])
+        self.assertTrue(data["mailto"].startswith("mailto:"))
 
 
 if __name__ == "__main__":

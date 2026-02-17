@@ -646,6 +646,8 @@ class Supplier(Base, TimestampMixin):
     name = Column(String(255), nullable=True)
     email = Column(String(255), nullable=True)
     phone = Column(String(100), nullable=True)
+    contact_name = Column(String(255), nullable=True)
+    contact_email = Column(String(255), nullable=True)
     address = Column(String(255), nullable=True)
     city = Column(String(120), nullable=True)
     zip_code = Column(String(20), nullable=True)
@@ -665,6 +667,10 @@ class PurchaseOrder(Base):
     order_number = Column(String(50), nullable=False, unique=True)
     supplier_name = Column(String(255), nullable=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
+    supplier_email = Column(String(255), nullable=True)
+    supplier_phone = Column(String(100), nullable=True)
+    contact_name = Column(String(255), nullable=True)
+    recipient_email = Column(String(255), nullable=True)
     order_date = Column(Date, nullable=True)
     requester_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     description = Column(Text, nullable=True)
@@ -698,6 +704,21 @@ class PurchaseOrder(Base):
 
     def __repr__(self) -> str:
         return f"<PurchaseOrder id={self.id} order_number={self.order_number}>"
+
+
+
+
+class Depot(Base):
+    __tablename__ = "depots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(120), nullable=False, unique=True)
+    address = Column(String(255), nullable=True)
+    city = Column(String(120), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<Depot id={self.id} name={self.name}>"
 
 
 class PurchaseOrderLine(Base):

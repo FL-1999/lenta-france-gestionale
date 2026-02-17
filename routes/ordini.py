@@ -5,7 +5,7 @@ from datetime import date, datetime
 from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +22,7 @@ from models import (
     PurchaseDelivery,
     PurchaseDeliveryLine,
     PurchaseOrder,
+    Depot,
     PurchaseOrderLine,
     Site,
     Supplier,
@@ -242,92 +243,115 @@ def _order_supplier_label(order: PurchaseOrder) -> str:
     return "-"
 
 
-def build_order_email(order: PurchaseOrder, user: User, lang: str = "it") -> tuple[str, str]:
-    normalized_lang = "fr" if (lang or "").lower() == "fr" else "it"
+def build_order_email(
+    order: PurchaseOrder,
+    user: User,
+    lang: str = "it",
+    *,
+    destination_label: str | None = None,
+    recipient_name: str | None = None,
+) -> tuple[str, str]:
+    normalized_lang = (lang or "it").lower()
+    if normalized_lang not in {"it", "fr", "en"}:
+        normalized_lang = "it"
+
     order_date_text = order.order_date.strftime("%d/%m/%Y") if order.order_date else "-"
     supplier_name = _order_supplier_label(order)
     sender_name = (getattr(user, "full_name", "") or "").strip() or "Lenta France"
+    contact_name = (recipient_name or order.contact_name or "").strip()
+    destination_text = destination_label or _order_destination_label(order)
     lines = [
-        f"- {(line.description or '-').strip() or '-'} – Quantità: {line.qty_ordered or 0}"
+        f"- {(line.description or '-').strip() or '-'} – Qty: {line.qty_ordered or 0}"
         for line in order.lines
     ]
 
     if normalized_lang == "fr":
         subject = f"Commande n° {order.order_number} – {supplier_name}"
-        lines = [line.replace("Quantità", "Quantité") for line in lines]
+        greeting = f"Bonjour {contact_name}," if contact_name else "Bonjour,"
         body_parts = [
-            "Bonjour,",
+            greeting,
             "",
             f"Nous vous transmettons notre commande n° {order.order_number} du {order_date_text}.",
+            f"Destination de livraison: {destination_text}.",
             "",
             "Veuillez trouver ci-dessous le détail de la fourniture demandée :",
+            "",
+            *[line.replace("Qty", "Quantité") for line in (lines or ["-"])],
+        ]
+        if order.description:
+            body_parts.extend(["", "Informations complémentaires :", order.description])
+        body_parts.extend([
+            "",
+            "Dans l’attente de votre confirmation de commande et de vos délais de livraison.",
+            "",
+            "Cordialement",
+            "",
+            sender_name,
+            "Lenta France",
+        ])
+        return subject, "\n".join(body_parts)
+
+    if normalized_lang == "en":
+        subject = f"Purchase order #{order.order_number} – {supplier_name}"
+        greeting = f"Dear {contact_name}," if contact_name else "Dear Sir or Madam,"
+        body_parts = [
+            greeting,
+            "",
+            f"Please find our purchase order #{order.order_number} dated {order_date_text}.",
+            f"Delivery destination: {destination_text}.",
+            "",
+            "Order details:",
             "",
             *(lines or ["-"]),
         ]
         if order.description:
-            body_parts.extend(
-                [
-                    "",
-                    "Informations complémentaires :",
-                    order.description,
-                ]
-            )
-        body_parts.extend(
-            [
-                "",
-                "Dans l’attente de votre confirmation de commande et de vos délais de livraison.",
-                "",
-                "Cordialement",
-                "",
-                sender_name,
-                "Lenta France",
-            ]
-        )
-        body = "\n".join(body_parts)
-        return subject, body
-
-    subject = f"Ordine n. {order.order_number} – {supplier_name}"
-    body_parts = [
-        "Gentili,",
-        "",
-        f"con la presente trasmettiamo il nostro ordine n. {order.order_number} del {order_date_text}.",
-        "",
-        "Di seguito il riepilogo della fornitura richiesta:",
-        "",
-        *(lines or ["-"]),
-    ]
-    if order.description:
-        body_parts.extend(
-            [
-                "",
-                "Note aggiuntive:",
-                order.description,
-            ]
-        )
-    body_parts.extend(
-        [
+            body_parts.extend(["", "Additional notes:", order.description])
+        body_parts.extend([
             "",
-            "Restiamo in attesa di una vostra conferma d’ordine e di eventuali indicazioni sui tempi di consegna.",
+            "We remain at your disposal and kindly await your order confirmation.",
             "",
-            "Cordiali saluti",
+            "Best regards,",
             "",
             sender_name,
             "Lenta France",
-        ]
-    )
-    body = "\n".join(body_parts)
-    return subject, body
+        ])
+        return subject, "\n".join(body_parts)
+
+    subject = f"Ordine n. {order.order_number} – {supplier_name}"
+    greeting = f"Gentile {contact_name}," if contact_name else "Gentili,"
+    body_parts = [
+        greeting,
+        "",
+        f"con la presente trasmettiamo il nostro ordine n. {order.order_number} del {order_date_text}.",
+        f"Destinazione consegna: {destination_text}.",
+        "",
+        "Di seguito il riepilogo della fornitura richiesta:",
+        "",
+        *[line.replace("Qty", "Quantità") for line in (lines or ["-"])],
+    ]
+    if order.description:
+        body_parts.extend(["", "Note aggiuntive:", order.description])
+    body_parts.extend([
+        "",
+        "Restiamo in attesa di una vostra conferma d’ordine e di eventuali indicazioni sui tempi di consegna.",
+        "",
+        "Cordiali saluti",
+        "",
+        sender_name,
+        "Lenta France",
+    ])
+    return subject, "\n".join(body_parts)
 
 
 def build_order_mailto_link(order: PurchaseOrder, user: User, lang: str = "it") -> str | None:
-    supplier_email = (order.supplier.email if order.supplier and order.supplier.email else "").strip()
+    supplier_email = (order.recipient_email or order.supplier_email or (order.supplier.email if order.supplier and order.supplier.email else "")).strip()
     if not supplier_email:
         return None
     subject, body = build_order_email(order, user=user, lang=lang)
     return f"mailto:{quote(supplier_email)}?subject={quote(subject)}&body={quote(body)}"
 
 
-def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[MagazzinoMacro], list[Supplier]]:
+def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[MagazzinoMacro], list[Supplier], list[Depot]]:
     magazzino_items = (
         db.query(MagazzinoItem)
         .filter(MagazzinoItem.attivo.is_(True))
@@ -349,7 +373,8 @@ def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], lis
     )
     macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
     suppliers = db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name.asc(), Supplier.id.asc()).all()
-    return magazzino_items, sites, warehouse_categories, requesters, macros, suppliers
+    depots = db.query(Depot).filter(Depot.is_active.is_(True)).order_by(Depot.name.asc()).all()
+    return magazzino_items, sites, warehouse_categories, requesters, macros, suppliers, depots
 
 
 def _render_order_form(
@@ -360,7 +385,7 @@ def _render_order_form(
     error_message: str | None = None,
     form_data: dict | None = None,
 ):
-    magazzino_items, sites, warehouse_categories, requesters, macros, suppliers = _load_order_form_dependencies(db)
+    magazzino_items, sites, warehouse_categories, requesters, macros, suppliers, depots = _load_order_form_dependencies(db)
     if form_data is None:
         form_data = {
             "supplier_name": "",
@@ -368,6 +393,8 @@ def _render_order_form(
             "new_supplier_name": "",
             "new_supplier_email": "",
             "new_supplier_phone": "",
+            "contact_name": "",
+            "recipient_email": "",
             "order_date": "",
             "requester_user_id": str(current_user.id),
             "description_text": "",
@@ -392,6 +419,7 @@ def _render_order_form(
             "requesters": requesters,
             "macros": macros,
             "suppliers": suppliers,
+            "depots": depots,
             "error_message": error_message,
             "form_data": form_data,
             "new_category_sentinel": "__new__",
@@ -811,6 +839,8 @@ def manager_ordini_create(
     new_supplier_name: str = Form(""),
     new_supplier_email: str = Form(""),
     new_supplier_phone: str = Form(""),
+    contact_name: str = Form(""),
+    recipient_email: str = Form(""),
     order_date: str = Form(""),
     requester_user_id: str = Form(""),
     description_text: str = Form(""),
@@ -837,6 +867,8 @@ def manager_ordini_create(
         "new_supplier_name": new_supplier_name or "",
         "new_supplier_email": new_supplier_email or "",
         "new_supplier_phone": new_supplier_phone or "",
+        "contact_name": contact_name or "",
+        "recipient_email": recipient_email or "",
         "order_date": order_date or "",
         "requester_user_id": requester_user_id or "",
         "description_text": description_text or "",
@@ -859,17 +891,26 @@ def manager_ordini_create(
         return _render_order_form(request, db, current_user, error_message="La data ordine è obbligatoria.", form_data=form_data)
 
     selected_supplier_id: int | None = None
+    selected_supplier: Supplier | None = None
     supplier_name_clean = (supplier_name or "").strip()
+    supplier_email_clean = (new_supplier_email or "").strip() or None
+    supplier_phone_clean = (new_supplier_phone or "").strip() or None
+    contact_name_clean = (contact_name or "").strip() or None
+    recipient_email_clean = (recipient_email or "").strip() or None
+
     if (supplier_id or "").strip() == "__new__":
         new_supplier = Supplier(
             name=(new_supplier_name or "").strip() or None,
-            email=(new_supplier_email or "").strip() or None,
-            phone=(new_supplier_phone or "").strip() or None,
+            email=supplier_email_clean,
+            phone=supplier_phone_clean,
+            contact_name=contact_name_clean,
+            contact_email=recipient_email_clean,
             is_active=True,
         )
         db.add(new_supplier)
         db.flush()
         selected_supplier_id = new_supplier.id
+        selected_supplier = new_supplier
         supplier_name_clean = new_supplier.name or supplier_name_clean
     elif (supplier_id or "").strip():
         try:
@@ -879,8 +920,13 @@ def manager_ordini_create(
         supplier = db.query(Supplier).filter(Supplier.id == selected_supplier_id).first()
         if not supplier:
             return _render_order_form(request, db, current_user, error_message="Fornitore non trovato.", form_data=form_data)
+        selected_supplier = supplier
         if supplier.name:
             supplier_name_clean = supplier.name
+        supplier_email_clean = supplier.email or supplier_email_clean
+        supplier_phone_clean = supplier.phone or supplier_phone_clean
+        contact_name_clean = contact_name_clean or supplier.contact_name
+        recipient_email_clean = recipient_email_clean or supplier.contact_email or supplier.email
 
     try:
         requester_id_int = int(requester_user_id)
@@ -1017,6 +1063,10 @@ def manager_ordini_create(
             lines=lines,
         )
         order.description = (description_text or "").strip() or None
+        order.supplier_email = supplier_email_clean
+        order.supplier_phone = supplier_phone_clean
+        order.contact_name = contact_name_clean
+        order.recipient_email = recipient_email_clean
         order.order_kind = normalized_kind
         order.site_id = selected_site_id if normalized_kind == "closed" else None
         order.warehouse_category_id = selected_category_id if normalized_kind == "warehouse" else None
@@ -1033,6 +1083,175 @@ def manager_ordini_create(
         status_code=303,
     )
 
+
+
+
+
+def _resolve_destination_label(db: Session, destination_type: str, destination_id: str | None) -> str:
+    normalized_type = (destination_type or "").strip().lower()
+    if normalized_type == "site":
+        try:
+            site_id = int(destination_id or "")
+        except (TypeError, ValueError):
+            return "Cantiere non specificato"
+        site = db.query(Site).filter(Site.id == site_id).first()
+        return f"Cantiere: {site.name}" if site else "Cantiere non specificato"
+    if normalized_type == "depot":
+        try:
+            depot_id = int(destination_id or "")
+        except (TypeError, ValueError):
+            return "Deposito non specificato"
+        depot = db.query(Depot).filter(Depot.id == depot_id).first()
+        return f"Deposito: {depot.name}" if depot else "Deposito non specificato"
+    return "Ritiro dal fornitore"
+
+
+@router.get('/api/suppliers/{supplier_id}', name='api_supplier_by_id')
+def api_supplier_by_id(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id, Supplier.is_active.is_(True)).first()
+    if not supplier:
+        raise HTTPException(status_code=404, detail='Fornitore non trovato')
+    return {
+        'id': supplier.id,
+        'name': supplier.name,
+        'email': supplier.email,
+        'phone': supplier.phone,
+        'contact_name': supplier.contact_name,
+        'contact_email': supplier.contact_email,
+    }
+
+
+@router.post('/api/ordini', name='api_ordini_create')
+def api_ordini_create(
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    supplier_id = payload.get('supplier_id')
+    lines = payload.get('lines') or []
+    if not supplier_id or not isinstance(lines, list) or not lines:
+        raise HTTPException(status_code=400, detail='supplier_id e almeno una riga sono obbligatori')
+
+    supplier = db.query(Supplier).filter(Supplier.id == int(supplier_id)).first()
+    if not supplier:
+        raise HTTPException(status_code=404, detail='Fornitore non trovato')
+
+    parsed_lines: list[tuple[str, float, int | None]] = []
+    for row in lines:
+        description = (row.get('description') or '').strip()
+        qty = _parse_float(str(row.get('qty_ordered') or ''))
+        if not description or qty is None or qty <= 0:
+            raise HTTPException(status_code=400, detail='Riga ordine non valida')
+        item_id = row.get('magazzino_item_id')
+        parsed_lines.append((description, qty, int(item_id) if item_id else None))
+
+    order = _create_order_with_lines(
+        db,
+        supplier_name=supplier.name,
+        supplier_id=supplier.id,
+        order_date=_parse_date(payload.get('order_date')),
+        requester_user_id=current_user.id,
+        lines=parsed_lines,
+    )
+    order.description = (payload.get('description') or '').strip() or None
+    order.order_kind = (payload.get('order_kind') or 'warehouse').strip().lower()
+    order.supplier_email = supplier.email
+    order.supplier_phone = supplier.phone
+    order.contact_name = (payload.get('contact_name') or supplier.contact_name or '').strip() or None
+    order.recipient_email = (payload.get('recipient_email') or supplier.contact_email or supplier.email or '').strip() or None
+    db.commit()
+    return {'ok': True, 'order_id': order.id, 'order_number': order.order_number}
+
+
+@router.post('/api/ordini/email-preview', name='api_ordini_email_preview')
+def api_ordini_email_preview(
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    try:
+        supplier_id = int(payload.get('supplier_id'))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail='supplier_id obbligatorio')
+
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
+    if not supplier:
+        raise HTTPException(status_code=404, detail='Fornitore non trovato')
+
+    fake_order = PurchaseOrder(
+        order_number=(payload.get('order_number') or 'BOZZA').strip(),
+        supplier_name=supplier.name,
+        supplier_email=supplier.email,
+        supplier_phone=supplier.phone,
+        contact_name=(payload.get('contact_name') or supplier.contact_name or '').strip() or None,
+        recipient_email=(payload.get('recipient_email') or supplier.contact_email or supplier.email or '').strip() or None,
+        order_date=_parse_date(payload.get('order_date')),
+        description=(payload.get('description_text') or '').strip() or None,
+        order_kind=(payload.get('order_kind') or 'warehouse').strip().lower(),
+    )
+    fake_order.lines = [
+        PurchaseOrderLine(
+            description=(line.get('description') or '').strip() or '-',
+            qty_ordered=_parse_float(str(line.get('qty_ordered') or '0')) or 0,
+        )
+        for line in (payload.get('lines') or [])
+    ]
+
+    destination_label = _resolve_destination_label(
+        db,
+        payload.get('destination_type') or 'supplier_pickup',
+        str(payload.get('destination_id') or ''),
+    )
+    language = (payload.get('language') or 'it').strip().lower()
+    subject, body = build_order_email(
+        fake_order,
+        user=current_user,
+        lang=language,
+        destination_label=destination_label,
+        recipient_name=fake_order.contact_name,
+    )
+    recipient = fake_order.recipient_email or supplier.contact_email or supplier.email
+    mailto = f"mailto:{quote(recipient or '')}?{urlencode({'subject': subject, 'body': body})}" if recipient else None
+    return {
+        'ok': True,
+        'recipient_email': recipient,
+        'subject': subject,
+        'body': body,
+        'mailto': mailto,
+    }
+
+
+@router.get('/manager/ordini/nuovo/wizard-email', response_class=HTMLResponse, name='manager_ordini_email_wizard')
+def manager_ordini_email_wizard(
+    request: Request,
+    supplier_id: str = '',
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    suppliers = db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name.asc()).all()
+    sites = db.query(Site).filter(Site.is_active.is_(True)).order_by(Site.name.asc()).all()
+    depots = db.query(Depot).filter(Depot.is_active.is_(True)).order_by(Depot.name.asc()).all()
+    return render_template(
+        templates,
+        request,
+        'manager/ordini/email_wizard.html',
+        {
+            'suppliers': suppliers,
+            'sites': sites,
+            'depots': depots,
+            'supplier_id': supplier_id,
+        },
+        db,
+        current_user,
+    )
 
 @router.get(
     "/manager/ordini",
