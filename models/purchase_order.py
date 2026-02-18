@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text, event
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -9,6 +9,9 @@ from .entities import DeliveryTypeEnum, EmailLanguageEnum
 
 class PurchaseOrder(Base):
     __tablename__ = "purchase_orders"
+    __table_args__ = (
+        CheckConstraint("delivery_type IN ('SITE', 'DEPOT', 'PICKUP')", name="ck_purchase_orders_delivery_type"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     order_number = Column(String(50), nullable=False, unique=True)
@@ -32,12 +35,17 @@ class PurchaseOrder(Base):
     invoice_date = Column(Date, nullable=True)
     file_invoice = Column(String(255), nullable=True)
     status = Column(String(50), nullable=True)
+    delivery_type = Column(String(10), nullable=False, default=DeliveryTypeEnum.PICKUP.value)
+    delivery_site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    delivery_depot_id = Column(Integer, ForeignKey("depots.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     requester = relationship("User", foreign_keys=[requester_user_id])
     requester_v2 = relationship("User", foreign_keys=[requester_id])
     supplier = relationship("Supplier", back_populates="purchase_orders")
-    site = relationship("Site")
+    site = relationship("Site", foreign_keys=[site_id])
+    delivery_site = relationship("Site", foreign_keys=[delivery_site_id])
+    delivery_depot = relationship("Depot")
     warehouse_category = relationship("MagazzinoCategoria")
     lines = relationship("PurchaseOrderLine", back_populates="order", cascade="all, delete-orphan")
     deliveries = relationship("PurchaseDelivery", back_populates="order", cascade="all, delete-orphan")
@@ -102,3 +110,34 @@ class PurchaseDeliveryLine(Base):
 
     def __repr__(self) -> str:
         return f"<PurchaseDeliveryLine id={self.id} delivery_id={self.delivery_id} qty_delivered={self.qty_delivered}>"
+
+
+def _validate_purchase_order_delivery_destination(target: PurchaseOrder) -> None:
+    delivery_type = target.delivery_type or DeliveryTypeEnum.PICKUP.value
+    target.delivery_type = delivery_type
+
+    if delivery_type == DeliveryTypeEnum.SITE.value:
+        if target.delivery_site_id is None:
+            raise ValueError("delivery_site_id is required when delivery_type=SITE")
+        if target.delivery_depot_id is not None:
+            raise ValueError("delivery_depot_id must be NULL when delivery_type=SITE")
+    elif delivery_type == DeliveryTypeEnum.DEPOT.value:
+        if target.delivery_depot_id is None:
+            raise ValueError("delivery_depot_id is required when delivery_type=DEPOT")
+        if target.delivery_site_id is not None:
+            raise ValueError("delivery_site_id must be NULL when delivery_type=DEPOT")
+    elif delivery_type == DeliveryTypeEnum.PICKUP.value:
+        if target.delivery_site_id is not None or target.delivery_depot_id is not None:
+            raise ValueError("delivery_site_id and delivery_depot_id must be NULL when delivery_type=PICKUP")
+    else:
+        raise ValueError("delivery_type must be one of SITE, DEPOT, PICKUP")
+
+
+@event.listens_for(PurchaseOrder, "before_insert")
+def _purchase_order_before_insert(_mapper, _connection, target: PurchaseOrder) -> None:
+    _validate_purchase_order_delivery_destination(target)
+
+
+@event.listens_for(PurchaseOrder, "before_update")
+def _purchase_order_before_update(_mapper, _connection, target: PurchaseOrder) -> None:
+    _validate_purchase_order_delivery_destination(target)

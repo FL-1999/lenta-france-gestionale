@@ -19,6 +19,7 @@ from models import (
     MagazzinoMacro,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
+    DeliveryTypeEnum,
     PurchaseDelivery,
     PurchaseDeliveryLine,
     PurchaseOrder,
@@ -1070,6 +1071,14 @@ def manager_ordini_create(
         order.order_kind = normalized_kind
         order.site_id = selected_site_id if normalized_kind == "closed" else None
         order.warehouse_category_id = selected_category_id if normalized_kind == "warehouse" else None
+        if normalized_kind == "closed":
+            order.delivery_type = DeliveryTypeEnum.SITE.value
+            order.delivery_site_id = selected_site_id
+            order.delivery_depot_id = None
+        else:
+            order.delivery_type = DeliveryTypeEnum.PICKUP.value
+            order.delivery_site_id = None
+            order.delivery_depot_id = None
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -1161,6 +1170,9 @@ def api_ordini_create(
     )
     order.description = (payload.get('description') or '').strip() or None
     order.order_kind = (payload.get('order_kind') or 'warehouse').strip().lower()
+    order.delivery_type = DeliveryTypeEnum.PICKUP.value
+    order.delivery_site_id = None
+    order.delivery_depot_id = None
     order.supplier_email = supplier.email
     order.supplier_phone = supplier.phone
     order.contact_name = (payload.get('contact_name') or supplier.contact_name or '').strip() or None
