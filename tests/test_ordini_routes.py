@@ -774,6 +774,8 @@ class OrdiniRoutesTests(unittest.TestCase):
         payload = preview_response.json()
         self.assertEqual(payload.get("to"), f"contact-{unique_token}@example.com")
         self.assertIn("Commande", payload.get("subject", ""))
+        self.assertIn("Ritiro dal fornitore", payload.get("subject", ""))
+        self.assertIn("Lieu de livraison : Ritiro dal fornitore", payload.get("body", ""))
         self.assertIn("mailto:", payload.get("mailto_url", ""))
 
     def test_order_email_preview_uses_override_fields(self) -> None:

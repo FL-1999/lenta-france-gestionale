@@ -370,11 +370,75 @@ def build_order_email(
     return subject, "\n".join(body_parts)
 
 
+def generate_email_preview(
+    order: PurchaseOrder,
+    supplier: Supplier | None,
+    delivery_label: str,
+    requester_name: str,
+) -> dict[str, str]:
+    company_name = "Lenta France"
+    order_id = order.id if order.id is not None else order.order_number
+    if order.order_date:
+        order_date = order.order_date.strftime("%d/%m/%Y")
+    else:
+        order_date = "-"
+
+    contact_name = (
+        (order.contact_name_override or "").strip()
+        or ((supplier.contact_name if supplier and supplier.contact_name else "").strip())
+        or None
+    )
+    greeting = f"Bonjour {contact_name}," if contact_name else "Bonjour,"
+    description = (order.description or "-").strip() or "-"
+    clean_delivery_label = (delivery_label or "-").strip() or "-"
+
+    subject = f"Commande n° {order_id} – {clean_delivery_label} – {order_date}"
+    body = "\n".join(
+        [
+            greeting,
+            "",
+            f"Nous vous transmettons notre commande n° {order_id} du {order_date}.",
+            "",
+            f"Lieu de livraison : {clean_delivery_label}",
+            "",
+            "Détails de la commande :",
+            description,
+            "",
+            "Merci de bien vouloir nous confirmer la prise en charge de cette commande et nous indiquer vos délais de livraison.",
+            "",
+            "Cordialement,",
+            "",
+            requester_name,
+            company_name,
+        ]
+    )
+
+    # Defensive UTF-8 normalization for external email clients (e.g. Outlook).
+    subject = subject.encode("utf-8").decode("utf-8")
+    body = body.encode("utf-8").decode("utf-8")
+
+    recipient_email = (
+        (order.contact_email_override or "").strip()
+        or ((supplier.contact_email if supplier and supplier.contact_email else "").strip())
+        or ((supplier.email if supplier and supplier.email else "").strip())
+    )
+    mailto_url = f"mailto:{recipient_email}?subject={quote(subject)}&body={quote(body)}"
+
+    return {
+        "to": recipient_email,
+        "subject": subject,
+        "body": body,
+        "mailto_url": mailto_url,
+    }
+
+
 def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str | None:
     supplier_email = _order_email_recipient(order)
     if not supplier_email:
         return None
     subject, body = build_order_email(order, supplier=order.supplier, lang=lang)
+    subject = subject.encode("utf-8").decode("utf-8")
+    body = body.encode("utf-8").decode("utf-8")
     return f"mailto:{quote(supplier_email)}?subject={quote(subject)}&body={quote(body)}"
 
 
@@ -1280,18 +1344,33 @@ def manager_ordini_email_preview(
 
     destination_label = _delivery_destination_label(delivery_type=delivery_type, site=site, depot=depot)
 
-    subject, body = build_order_email(
-        order,
-        supplier=order.supplier,
-        lang=lang,
-        delivery_label=destination_label,
-    )
+    if lang == 'fr':
+        preview = generate_email_preview(
+            order,
+            order.supplier,
+            destination_label,
+            current_user.full_name,
+        )
+        subject = preview['subject']
+        body = preview['body']
+        recipient_email = preview['to']
+    else:
+        subject, body = build_order_email(
+            order,
+            supplier=order.supplier,
+            lang=lang,
+            delivery_label=destination_label,
+        )
+        recipient_email = _order_email_recipient(order)
 
-    recipient_email = (payload.get('to_override') or '').strip() or _order_email_recipient(order)
+    recipient_email = (payload.get('to_override') or '').strip() or recipient_email
     subject = (payload.get('subject_override') or '').strip() or subject
     body_override = payload.get('body_override')
     if isinstance(body_override, str) and body_override.strip():
         body = body_override
+
+    subject = subject.encode('utf-8').decode('utf-8')
+    body = body.encode('utf-8').decode('utf-8')
 
     mailto_url = f"mailto:{quote(recipient_email)}?subject={quote(subject)}&body={quote(body)}"
 
