@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from auth import get_current_active_user_html
 from database import Base, SessionLocal, engine
 from main import app
-from routes.ordini import build_order_email
+from routes.ordini import build_order_email, build_order_mailto_link
 from models import (
     MagazzinoCategoria,
     MagazzinoItem,
@@ -368,6 +368,11 @@ class OrdiniRoutesTests(unittest.TestCase):
             self.assertIn("Commande n°", subject)
             self.assertIn(f"Supplier {unique_token}", subject)
             self.assertIn("confirmer la prise en charge", body)
+            mailto_url = build_order_mailto_link(order, lang="fr")
+            self.assertIsNotNone(mailto_url)
+            assert mailto_url is not None
+            self.assertIn("R%C3%A9capitulatif", mailto_url)
+            self.assertIn("n%C2%B0", mailto_url)
         finally:
             session.close()
 
@@ -777,6 +782,8 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertIn("Ritiro dal fornitore", payload.get("subject", ""))
         self.assertIn("Lieu de livraison : Ritiro dal fornitore", payload.get("body", ""))
         self.assertIn("mailto:", payload.get("mailto_url", ""))
+        self.assertIn("n%C2%B0", payload.get("mailto_url", ""))
+        self.assertIn("D%C3%A9tail", payload.get("mailto_url", ""))
 
     def test_order_email_preview_uses_override_fields(self) -> None:
         unique_token = uuid4().hex
