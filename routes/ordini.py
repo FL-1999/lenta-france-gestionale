@@ -323,7 +323,7 @@ def build_order_email(
     ]
 
     if normalized_lang == "fr":
-        subject = f"Commande n° {order.order_number} – {supplier_name}"
+        subject = f"Commande n° {order.order_number} - {supplier_name}"
         greeting = f"Bonjour {contact_name}," if contact_name else "Bonjour,"
         body_parts = [
             greeting,
@@ -370,11 +370,13 @@ def build_order_email(
     return subject, "\n".join(body_parts)
 
 
-def fix_mojibake(s: str) -> str:
-    try:
-        return s.encode("latin1").decode("utf-8")
-    except Exception:
-        return s
+def fix_mojibake_if_needed(s: str) -> str:
+    if "Ã" in s or "Â" in s:
+        try:
+            return s.encode("latin1").decode("utf-8")
+        except Exception:
+            return s
+    return s
 
 
 def _mailto_encode(s: str) -> str:
@@ -429,10 +431,9 @@ Cordialement,
 Lenta France
 """
 
-    logger.info("Email preview FR pre-mailto subject=%r body=%r has_mojibake=%s", subject, body, ("Ã" in body) or ("Â" in body))
-    if ("Ã" in body) or ("Â" in body) or ("Ã" in subject) or ("Â" in subject):
-        subject = fix_mojibake(subject)
-        body = fix_mojibake(body)
+    logger.info("Email preview FR pre-mailto subject=%r body=%r", subject, body)
+    subject = fix_mojibake_if_needed(subject)
+    body = fix_mojibake_if_needed(body)
 
     recipient_email = (
         (order.contact_email_override or "").strip()
@@ -442,6 +443,11 @@ Lenta France
     subject_encoded = _mailto_encode(subject)
     body_encoded = _mailto_encode(body)
     mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
+    logger.info(
+        "Email preview FR encoded checks has_recap=%s has_numero=%s",
+        "R%C3%A9capitulatif" in mailto_url,
+        "n%C2%B0" in mailto_url,
+    )
     logger.info("Email preview FR mailto_url=%s", mailto_url)
 
     return {
@@ -457,13 +463,18 @@ def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str | Non
     if not supplier_email:
         return None
     subject, body = build_order_email(order, supplier=order.supplier, lang=lang)
-    logger.info("Order email pre-mailto subject=%r body=%r has_mojibake=%s", subject, body, ("Ã" in body) or ("Â" in body))
-    if ("Ã" in body) or ("Â" in body) or ("Ã" in subject) or ("Â" in subject):
-        subject = fix_mojibake(subject)
-        body = fix_mojibake(body)
+    logger.info("Order email pre-mailto subject=%r body=%r", subject, body)
+    subject = fix_mojibake_if_needed(subject)
+    body = fix_mojibake_if_needed(body)
     subject_encoded = _mailto_encode(subject)
     body_encoded = _mailto_encode(body)
-    return f"mailto:{supplier_email}?subject={subject_encoded}&body={body_encoded}"
+    mailto_url = f"mailto:{supplier_email}?subject={subject_encoded}&body={body_encoded}"
+    logger.info(
+        "Order email encoded checks has_recap=%s has_numero=%s",
+        "R%C3%A9capitulatif" in mailto_url,
+        "n%C2%B0" in mailto_url,
+    )
+    return mailto_url
 
 
 def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[MagazzinoMacro], list[Supplier], list[Depot]]:
@@ -1392,14 +1403,18 @@ def manager_ordini_email_preview(
     if isinstance(body_override, str) and body_override.strip():
         body = body_override
 
-    logger.info("Order email preview pre-mailto subject=%r body=%r has_mojibake=%s", subject, body, ("Ã" in body) or ("Â" in body))
-    if ("Ã" in body) or ("Â" in body) or ("Ã" in subject) or ("Â" in subject):
-        subject = fix_mojibake(subject)
-        body = fix_mojibake(body)
+    logger.info("Order email preview pre-mailto subject=%r body=%r", subject, body)
+    subject = fix_mojibake_if_needed(subject)
+    body = fix_mojibake_if_needed(body)
     subject_encoded = _mailto_encode(subject)
     body_encoded = _mailto_encode(body)
 
     mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
+    logger.info(
+        "Order email preview encoded checks has_recap=%s has_numero=%s",
+        "R%C3%A9capitulatif" in mailto_url,
+        "n%C2%B0" in mailto_url,
+    )
     logger.info("Order email preview mailto_url=%s", mailto_url)
 
     return {
