@@ -64,11 +64,6 @@
   </div></div>
 
   <div class="card"><div class="card-body">
-    <h3>4) Email</h3>
-    <a id="create-mail-btn" class="btn btn-secondary" href="/manager/ordini/email-wizard">Crea mail</a>
-  </div></div>
-
-  <div class="card"><div class="card-body">
     <h3>Righe ordine</h3>
     <table class="table" id="righe-table"><thead><tr><th>Descrizione</th><th>Q.tà</th><th>Articolo magazzino</th><th></th></tr></thead><tbody>
       {% for line in form_data.lines %}
@@ -95,7 +90,6 @@ const supplierError = document.getElementById('supplier-error');
 const sName = document.getElementById('s-name');
 const sEmail = document.getElementById('s-email');
 const sPhone = document.getElementById('s-phone');
-const createMailBtn = document.getElementById('create-mail-btn');
 
 function setKindVisibility() {
   const kind = document.querySelector('input[name="order_kind"]:checked')?.value;
@@ -105,7 +99,6 @@ function setKindVisibility() {
 
 async function loadSupplier() {
   const supplierId = supplierSelect.value;
-  createMailBtn.href = `/manager/ordini/email-wizard?supplier_id=${encodeURIComponent(supplierId || '')}`;
   supplierError.style.display = 'none';
   if (!supplierId) {
     supplierCard.style.display = 'none';
