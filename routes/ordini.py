@@ -370,6 +370,18 @@ def build_order_email(
     return subject, "\n".join(body_parts)
 
 
+def fix_mojibake(s: str) -> str:
+    try:
+        return s.encode("latin1").decode("utf-8")
+    except Exception:
+        return s
+
+
+def _mailto_encode(s: str) -> str:
+    normalized = s.replace("\r\n", "\n").replace("\n", "\r\n")
+    return quote(normalized, safe="", encoding="utf-8", errors="strict")
+
+
 def generate_email_preview(
     order: PurchaseOrder,
     supplier: Supplier | None,
@@ -399,7 +411,7 @@ def generate_email_preview(
     ]
     order_lines_text = "\n".join(order_lines) if order_lines else "-"
 
-    subject = f"Commande n° {order_id} – {clean_delivery_label} – {order_date}"
+    subject = f"Commande n° {order_id} - {clean_delivery_label} - {order_date}"
     body = f"""Bonjour {contact_name if contact_name else ''},
 
 Nous vous transmettons notre commande n° {order_id} du {order_date}.
@@ -410,21 +422,27 @@ Lieu de livraison : {clean_delivery_label}
 Détail de la commande :
 {order_lines_text}
 
-Merci de bien vouloir confirmer la prise en charge et nous indiquer vos délais de livraison.
+Merci de bien vouloir confirmer la prise en charge de cette commande et nous indiquer vos délais de livraison.
 
 Cordialement,
 
 Lenta France
 """
 
+    logger.info("Email preview FR pre-mailto subject=%r body=%r has_mojibake=%s", subject, body, ("Ã" in body) or ("Â" in body))
+    if ("Ã" in body) or ("Â" in body) or ("Ã" in subject) or ("Â" in subject):
+        subject = fix_mojibake(subject)
+        body = fix_mojibake(body)
+
     recipient_email = (
         (order.contact_email_override or "").strip()
         or ((supplier.contact_email if supplier and supplier.contact_email else "").strip())
         or ((supplier.email if supplier and supplier.email else "").strip())
     )
-    subject_encoded = quote(subject, safe="")
-    body_encoded = quote(body, safe="")
+    subject_encoded = _mailto_encode(subject)
+    body_encoded = _mailto_encode(body)
     mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
+    logger.info("Email preview FR mailto_url=%s", mailto_url)
 
     return {
         "to": recipient_email,
@@ -439,8 +457,12 @@ def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str | Non
     if not supplier_email:
         return None
     subject, body = build_order_email(order, supplier=order.supplier, lang=lang)
-    subject_encoded = quote(subject, safe="")
-    body_encoded = quote(body, safe="")
+    logger.info("Order email pre-mailto subject=%r body=%r has_mojibake=%s", subject, body, ("Ã" in body) or ("Â" in body))
+    if ("Ã" in body) or ("Â" in body) or ("Ã" in subject) or ("Â" in subject):
+        subject = fix_mojibake(subject)
+        body = fix_mojibake(body)
+    subject_encoded = _mailto_encode(subject)
+    body_encoded = _mailto_encode(body)
     return f"mailto:{supplier_email}?subject={subject_encoded}&body={body_encoded}"
 
 
@@ -1370,10 +1392,15 @@ def manager_ordini_email_preview(
     if isinstance(body_override, str) and body_override.strip():
         body = body_override
 
-    subject_encoded = quote(subject, safe='')
-    body_encoded = quote(body, safe='')
+    logger.info("Order email preview pre-mailto subject=%r body=%r has_mojibake=%s", subject, body, ("Ã" in body) or ("Â" in body))
+    if ("Ã" in body) or ("Â" in body) or ("Ã" in subject) or ("Â" in subject):
+        subject = fix_mojibake(subject)
+        body = fix_mojibake(body)
+    subject_encoded = _mailto_encode(subject)
+    body_encoded = _mailto_encode(body)
 
     mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
+    logger.info("Order email preview mailto_url=%s", mailto_url)
 
     return {
         'to': recipient_email,
