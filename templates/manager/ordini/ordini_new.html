@@ -21,9 +21,7 @@
         {% for supplier in suppliers %}
           <option value="{{ supplier.id }}" {% if form_data.supplier_id == supplier.id|string %}selected{% endif %}>{{ supplier.name or ('Fornitore #' ~ supplier.id) }}</option>
         {% endfor %}
-        <option value="{{ new_supplier_sentinel }}" {% if form_data.supplier_id == new_supplier_sentinel %}selected{% endif %}>+ Crea nuovo fornitore</option>
       </select>
-      <input type="hidden" name="supplier_name" id="supplier_name" value="{{ form_data.supplier_name }}">
     </div>
 
     <div id="supplier-empty" class="empty-state">Seleziona un fornitore per vedere i dati anagrafici.</div>
@@ -31,15 +29,14 @@
     <div id="supplier-error" class="alert alert-danger" style="display:none;"></div>
 
     <div id="supplier-card" class="supplier-card" style="display:none;">
-      <div><strong>🏢 Nome / ragione sociale</strong><p id="s-name">-</p></div>
+      <div><strong>🏢 Ragione sociale</strong><p id="s-name">-</p></div>
       <div><strong>✉️ Email</strong><p id="s-email">-</p></div>
       <div><strong>📞 Telefono</strong><p id="s-phone">-</p></div>
     </div>
 
-    <div id="new-supplier-fields" class="form-grid-2" style="display:none; margin-top:12px;">
-      <div class="form-field"><label>Nome / ragione sociale</label><input type="text" name="new_supplier_name" value="{{ form_data.new_supplier_name }}"></div>
-      <div class="form-field"><label>Email</label><input type="email" name="new_supplier_email" value="{{ form_data.new_supplier_email }}"></div>
-      <div class="form-field"><label>Telefono</label><input type="text" name="new_supplier_phone" value="{{ form_data.new_supplier_phone }}"></div>
+    <div class="form-grid-2" style="margin-top:12px;">
+      <div class="form-field"><label for="contact_name_override">Referente per questo ordine (opzionale)</label><input type="text" id="contact_name_override" name="contact_name_override" value="{{ form_data.contact_name_override }}" placeholder="Es. Marie Dupont"></div>
+      <div class="form-field"><label for="contact_email_override">Email referente (opzionale)</label><input type="email" id="contact_email_override" name="contact_email_override" value="{{ form_data.contact_email_override }}" placeholder="Es. referente@fornitore.com"></div>
     </div>
   </div></div>
 
@@ -68,10 +65,6 @@
 
   <div class="card"><div class="card-body">
     <h3>4) Email</h3>
-    <div class="form-grid-2">
-      <div class="form-field"><label>Referente</label><input type="text" name="contact_name" id="contact_name" value="{{ form_data.contact_name }}" placeholder="Es. Marie Dupont"></div>
-      <div class="form-field"><label>Destinatario email</label><input type="email" name="recipient_email" id="recipient_email" value="{{ form_data.recipient_email }}" placeholder="Es. referente@fornitore.com"></div>
-    </div>
     <a id="create-mail-btn" class="btn btn-secondary" href="{{ url_for('manager_ordini_email_wizard') }}">Crea mail</a>
   </div></div>
 
@@ -95,8 +88,6 @@
 
 <script>
 const supplierSelect = document.getElementById('supplier-id-select');
-const newSupplierFields = document.getElementById('new-supplier-fields');
-const newSupplierSentinel = "{{ new_supplier_sentinel }}";
 const supplierCard = document.getElementById('supplier-card');
 const supplierEmpty = document.getElementById('supplier-empty');
 const supplierLoading = document.getElementById('supplier-loading');
@@ -104,9 +95,6 @@ const supplierError = document.getElementById('supplier-error');
 const sName = document.getElementById('s-name');
 const sEmail = document.getElementById('s-email');
 const sPhone = document.getElementById('s-phone');
-const supplierNameInput = document.getElementById('supplier_name');
-const contactNameInput = document.getElementById('contact_name');
-const recipientInput = document.getElementById('recipient_email');
 const createMailBtn = document.getElementById('create-mail-btn');
 
 function setKindVisibility() {
@@ -119,29 +107,36 @@ async function loadSupplier() {
   const supplierId = supplierSelect.value;
   createMailBtn.href = `{{ url_for('manager_ordini_email_wizard') }}?supplier_id=${encodeURIComponent(supplierId || '')}`;
   supplierError.style.display = 'none';
-  if (!supplierId) { supplierCard.style.display='none'; supplierEmpty.style.display='block'; return; }
-  if (supplierId === newSupplierSentinel) { newSupplierFields.style.display='grid'; supplierCard.style.display='none'; supplierEmpty.style.display='none'; return; }
-  newSupplierFields.style.display='none';
-  supplierLoading.style.display='block'; supplierEmpty.style.display='none';
+  if (!supplierId) {
+    supplierCard.style.display = 'none';
+    supplierLoading.style.display = 'none';
+    supplierEmpty.style.display = 'block';
+    return;
+  }
+
+  supplierLoading.style.display = 'block';
+  supplierEmpty.style.display = 'none';
+  supplierCard.style.display = 'none';
   try {
     const res = await fetch(`/api/suppliers/${supplierId}`);
     if (!res.ok) throw new Error('Fornitore non trovato');
     const data = await res.json();
-    supplierNameInput.value = data.name || '';
-    sName.textContent = data.name || '-'; sEmail.textContent = data.email || '-'; sPhone.textContent = data.phone || '-';
-    if (!contactNameInput.value) contactNameInput.value = data.contact_name || '';
-    if (!recipientInput.value) recipientInput.value = data.contact_email || data.email || '';
-    supplierCard.style.display='grid';
+    sName.textContent = data.name || '-';
+    sEmail.textContent = data.email || '-';
+    sPhone.textContent = data.phone || '-';
+    supplierCard.style.display = 'grid';
   } catch (e) {
-    supplierError.textContent = e.message; supplierError.style.display='block'; supplierCard.style.display='none';
+    supplierError.textContent = e.message;
+    supplierError.style.display = 'block';
   } finally {
-    supplierLoading.style.display='none';
+    supplierLoading.style.display = 'none';
   }
 }
 
 document.querySelectorAll('input[name="order_kind"]').forEach((el)=>el.addEventListener('change', setKindVisibility));
 supplierSelect.addEventListener('change', loadSupplier);
-setKindVisibility(); loadSupplier();
+setKindVisibility();
+loadSupplier();
 
 document.getElementById('add-row').addEventListener('click', ()=>{
   document.querySelector('#righe-table tbody').insertAdjacentHTML('beforeend', `<tr><td><input type="text" name="description" required></td><td><input type="number" name="qty_ordered" step="0.01" min="0" required></td><td><select name="magazzino_item_id"><option value="">Seleziona</option>{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.nome }}</option>{% endfor %}</select></td><td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td></tr>`);
