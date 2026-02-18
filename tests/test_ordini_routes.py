@@ -678,47 +678,139 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertEqual(data["contact_name"], "Paul Martin")
         self.assertTrue(data["contact_email"].startswith("paul-"))
 
-    def test_api_email_preview_supports_english_template(self) -> None:
+    def test_manager_order_email_wizard_renders_and_preview_returns_mailto(self) -> None:
         unique_token = uuid4().hex
         session = SessionLocal()
         try:
-            supplier = Supplier(
-                name=f"Supplier EN {unique_token}",
-                email=f"supplier-en-{unique_token}@example.com",
-                contact_name="John Doe",
-                contact_email=f"john-{unique_token}@example.com",
+            requester = User(
+                email=f"ordini-email-{unique_token}@example.com",
+                full_name="Ordini Email Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
                 is_active=True,
             )
-            session.add(supplier)
+            supplier = Supplier(
+                name=f"Fornitore Email {unique_token}",
+                email=f"supplier-{unique_token}@example.com",
+                contact_name="Mario Rossi",
+                contact_email=f"contact-{unique_token}@example.com",
+                is_active=True,
+            )
+            session.add_all([requester, supplier])
+            session.flush()
+
+            order = PurchaseOrder(
+                order_number=f"ORD-EMAIL-{unique_token[:6]}",
+                supplier_name=supplier.name,
+                supplier_id=supplier.id,
+                requester_user_id=requester.id,
+                status="APERTO",
+                order_kind="warehouse",
+                contact_name=supplier.contact_name,
+                recipient_email=supplier.contact_email,
+            )
+            session.add(order)
+            session.flush()
+
+            line = PurchaseOrderLine(
+                order_id=order.id,
+                description="Tubo acciaio",
+                qty_ordered=4,
+            )
+            session.add(line)
             session.commit()
-            supplier_id = supplier.id
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
         finally:
             session.close()
 
         app.dependency_overrides[get_current_active_user_html] = (
             lambda: SimpleNamespace(
-                id=1,
+                id=requester_id,
                 role=RoleEnum.manager,
-                full_name="Test Manager",
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        page_response = self.client.get(f"/manager/ordini/{order_id}/email", cookies={"lang": "it"})
+        self.assertEqual(page_response.status_code, 200)
+        self.assertIn("Email ordine", page_response.text)
+
+        preview_response = self.client.post(
+            f"/manager/ordini/{order_id}/email/preview",
+            json={
+                "lang": "fr",
+                "delivery_type": "PICKUP",
+                "to_override": "",
+            },
+        )
+        self.assertEqual(preview_response.status_code, 200)
+        payload = preview_response.json()
+        self.assertEqual(payload.get("to"), f"contact-{unique_token}@example.com")
+        self.assertIn("Commande", payload.get("subject", ""))
+        self.assertIn("mailto:", payload.get("mailto_url", ""))
+
+    def test_order_email_preview_uses_override_fields(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-email-override-{unique_token}@example.com",
+                full_name="Ordini Email Override Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            supplier = Supplier(
+                name=f"Fornitore Override {unique_token}",
+                email=f"supplier-override-{unique_token}@example.com",
+                is_active=True,
+            )
+            session.add_all([requester, supplier])
+            session.flush()
+            order = PurchaseOrder(
+                order_number=f"ORD-OVR-{unique_token[:6]}",
+                supplier_name=supplier.name,
+                supplier_id=supplier.id,
+                requester_user_id=requester.id,
+                status="APERTO",
+            )
+            session.add(order)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
                 is_magazzino_manager=False,
             )
         )
 
         response = self.client.post(
-            "/api/ordini/email-preview",
+            f"/manager/ordini/{order_id}/email/preview",
             json={
-                "supplier_id": supplier_id,
-                "language": "en",
-                "order_number": "DRAFT-1",
-                "destination_type": "supplier_pickup",
-                "lines": [{"description": "Screws", "qty_ordered": 12}],
+                "lang": "it",
+                "delivery_type": "PICKUP",
+                "to_override": "override@example.com",
+                "subject_override": "Oggetto custom",
+                "body_override": "Corpo custom",
             },
         )
+
         self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("Purchase order", data["subject"])
-        self.assertIn("Dear", data["body"])
-        self.assertTrue(data["mailto"].startswith("mailto:"))
+        payload = response.json()
+        self.assertEqual(payload.get("to"), "override@example.com")
+        self.assertEqual(payload.get("subject"), "Oggetto custom")
+        self.assertEqual(payload.get("body"), "Corpo custom")
+        self.assertIn("subject=Oggetto%20custom", payload.get("mailto_url", ""))
 
 
 if __name__ == "__main__":

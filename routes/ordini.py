@@ -244,6 +244,37 @@ def _order_supplier_label(order: PurchaseOrder) -> str:
     return "-"
 
 
+def _order_email_recipient(order: PurchaseOrder) -> str:
+    return (
+        order.contact_email_override
+        or (order.supplier.contact_email if order.supplier and order.supplier.contact_email else "")
+        or (order.supplier.email if order.supplier and order.supplier.email else "")
+        or ""
+    ).strip()
+
+
+def _order_email_contact_name(order: PurchaseOrder) -> str | None:
+    return (
+        order.contact_name_override
+        or (order.supplier.contact_name if order.supplier and order.supplier.contact_name else "")
+        or None
+    )
+
+
+def _delivery_destination_label(
+    *,
+    delivery_type: str,
+    site: Site | None = None,
+    depot: Depot | None = None,
+) -> str:
+    normalized_type = (delivery_type or "").strip().upper()
+    if normalized_type == DeliveryTypeEnum.SITE.value:
+        return f"Cantiere: {site.name}" if site else "Cantiere non specificato"
+    if normalized_type == DeliveryTypeEnum.DEPOT.value:
+        return f"Deposito: {depot.name}" if depot else "Deposito non specificato"
+    return "Ritiro dal fornitore"
+
+
 def build_order_email(
     order: PurchaseOrder,
     user: User,
@@ -350,14 +381,7 @@ def build_order_email(
 
 
 def build_order_mailto_link(order: PurchaseOrder, user: User, lang: str = "it") -> str | None:
-    supplier_email = (
-        order.contact_email_override
-        or order.recipient_email
-        or (order.supplier.contact_email if order.supplier and order.supplier.contact_email else "")
-        or (order.supplier.email if order.supplier and order.supplier.email else "")
-        or order.supplier_email
-        or ""
-    ).strip()
+    supplier_email = _order_email_recipient(order)
     if not supplier_email:
         return None
     subject, body = build_order_email(order, user=user, lang=lang)
@@ -1198,91 +1222,114 @@ def api_ordini_create(
     return {'ok': True, 'order_id': order.id, 'order_number': order.order_number}
 
 
-@router.post('/api/ordini/email-preview', name='api_ordini_email_preview')
-def api_ordini_email_preview(
+
+@router.post('/manager/ordini/{order_id}/email/preview', name='manager_ordini_email_preview')
+def manager_ordini_email_preview(
+    order_id: int,
     payload: dict = Body(default={}),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    try:
-        supplier_id = int(payload.get('supplier_id'))
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail='supplier_id obbligatorio')
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail='Ordine non trovato')
 
-    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
-    if not supplier:
-        raise HTTPException(status_code=404, detail='Fornitore non trovato')
+    lang = (payload.get('lang') or 'it').strip().lower()
+    delivery_type = (payload.get('delivery_type') or order.delivery_type or DeliveryTypeEnum.PICKUP.value).strip().upper()
 
-    fake_order = PurchaseOrder(
-        order_number=(payload.get('order_number') or 'BOZZA').strip(),
-        supplier_name=supplier.name,
-        supplier_email=None,
-        supplier_phone=None,
-        contact_name=supplier.contact_name,
-        recipient_email=supplier.contact_email or supplier.email,
-        contact_name_override=(payload.get('contact_name_override') or payload.get('contact_name') or '').strip() or None,
-        contact_email_override=(payload.get('contact_email_override') or payload.get('recipient_email') or '').strip() or None,
-        order_date=_parse_date(payload.get('order_date')),
-        description=(payload.get('description_text') or '').strip() or None,
-        order_kind=(payload.get('order_kind') or 'warehouse').strip().lower(),
-    )
-    fake_order.lines = [
-        PurchaseOrderLine(
-            description=(line.get('description') or '').strip() or '-',
-            qty_ordered=_parse_float(str(line.get('qty_ordered') or '0')) or 0,
-        )
-        for line in (payload.get('lines') or [])
-    ]
+    site = None
+    depot = None
+    if delivery_type == DeliveryTypeEnum.SITE.value:
+        raw_site_id = payload.get('delivery_site_id') or order.delivery_site_id
+        try:
+            site_id = int(raw_site_id)
+        except (TypeError, ValueError):
+            site_id = None
+        site = db.query(Site).filter(Site.id == site_id, Site.is_active.is_(True)).first() if site_id else None
+    elif delivery_type == DeliveryTypeEnum.DEPOT.value:
+        raw_depot_id = payload.get('delivery_depot_id') or order.delivery_depot_id
+        try:
+            depot_id = int(raw_depot_id)
+        except (TypeError, ValueError):
+            depot_id = None
+        depot = db.query(Depot).filter(Depot.id == depot_id, Depot.is_active.is_(True)).first() if depot_id else None
+    else:
+        delivery_type = DeliveryTypeEnum.PICKUP.value
 
-    destination_label = _resolve_destination_label(
-        db,
-        payload.get('destination_type') or 'supplier_pickup',
-        str(payload.get('destination_id') or ''),
-    )
-    language = (payload.get('language') or 'it').strip().lower()
+    destination_label = _delivery_destination_label(delivery_type=delivery_type, site=site, depot=depot)
+
+    recipient_name = _order_email_contact_name(order)
     subject, body = build_order_email(
-        fake_order,
+        order,
         user=current_user,
-        lang=language,
+        lang=lang,
         destination_label=destination_label,
-        recipient_name=fake_order.contact_name_override or fake_order.contact_name,
+        recipient_name=recipient_name,
     )
-    recipient = fake_order.contact_email_override or fake_order.recipient_email or supplier.contact_email or supplier.email
-    mailto = f"mailto:{quote(recipient or '')}?{urlencode({'subject': subject, 'body': body})}" if recipient else None
+
+    recipient_email = (payload.get('to_override') or '').strip() or _order_email_recipient(order)
+    subject = (payload.get('subject_override') or '').strip() or subject
+    body_override = payload.get('body_override')
+    if isinstance(body_override, str) and body_override.strip():
+        body = body_override
+
+    mailto_url = f"mailto:{quote(recipient_email)}?subject={quote(subject)}&body={quote(body)}"
+
     return {
-        'ok': True,
-        'recipient_email': recipient,
+        'to': recipient_email,
         'subject': subject,
         'body': body,
-        'mailto': mailto,
+        'mailto_url': mailto_url,
     }
 
 
-@router.get('/manager/ordini/nuovo/wizard-email', response_class=HTMLResponse, name='manager_ordini_email_wizard')
-def manager_ordini_email_wizard(
+@router.get(
+    '/manager/ordini/{order_id}/email',
+    response_class=HTMLResponse,
+    name='manager_ordini_email',
+)
+def manager_ordini_email(
     request: Request,
-    supplier_id: str = '',
+    order_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    suppliers = db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name.asc()).all()
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail='Ordine non trovato')
+
     sites = db.query(Site).filter(Site.is_active.is_(True)).order_by(Site.name.asc()).all()
     depots = db.query(Depot).filter(Depot.is_active.is_(True)).order_by(Depot.name.asc()).all()
+
+    default_lang = (request.cookies.get('lang') or 'it').strip().lower()
+    if default_lang not in {'it', 'fr'}:
+        default_lang = 'it'
+
+    default_delivery_type = (order.delivery_type or DeliveryTypeEnum.PICKUP.value).strip().upper()
+    if default_delivery_type not in {DeliveryTypeEnum.SITE.value, DeliveryTypeEnum.DEPOT.value, DeliveryTypeEnum.PICKUP.value}:
+        default_delivery_type = DeliveryTypeEnum.PICKUP.value
+
     return render_template(
         templates,
         request,
         'manager/ordini/email_wizard.html',
         {
-            'suppliers': suppliers,
+            'order': order,
+            'supplier': order.supplier,
             'sites': sites,
             'depots': depots,
-            'supplier_id': supplier_id,
+            'default_lang': default_lang,
+            'default_delivery_type': default_delivery_type,
+            'default_delivery_site_id': order.delivery_site_id,
+            'default_delivery_depot_id': order.delivery_depot_id,
+            'default_to': _order_email_recipient(order),
         },
         db,
         current_user,
     )
+
 
 @router.get(
     "/manager/ordini",
@@ -1477,8 +1524,6 @@ def manager_ordini_detail(
         _collect_pending_discharge_requirements(db, order)
     )
     error_message = request.query_params.get("err")
-    lang = request.cookies.get("lang", "it")
-    email_link = build_order_mailto_link(order, user=current_user, lang=lang)
 
     return render_template(
         templates,
@@ -1497,34 +1542,10 @@ def manager_ordini_detail(
             "pending_discharge_qty": round(
                 sum(pending_discharge_requirements.values()), 2
             ),
-            "email_link": email_link,
         },
         db,
         current_user,
     )
-
-
-@router.get(
-    "/manager/ordini/{order_id}/email",
-    name="manager_ordini_email",
-)
-def manager_ordini_email(
-    request: Request,
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
-):
-    _ensure_manager(current_user)
-    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Ordine non trovato")
-
-    lang = request.cookies.get("lang", "it")
-    mailto_url = build_order_mailto_link(order, user=current_user, lang=lang)
-    if not mailto_url:
-        url = f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{urlencode({'err': 'Email fornitore non disponibile'})}"
-        return RedirectResponse(url=url, status_code=303)
-    return RedirectResponse(url=mailto_url, status_code=302)
 
 
 @router.get(

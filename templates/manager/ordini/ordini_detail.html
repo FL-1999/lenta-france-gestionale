@@ -27,15 +27,9 @@
         <a href="{{ url_for('manager_ordini_bolle_nuova', order_id=order.id) }}" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvelle livraison{% else %}Nuova bolla{% endif %}
         </a>
-        {% if email_link %}
-        <a href="{{ email_link }}" class="btn btn-primary">
+        <a href="{{ url_for('manager_ordini_email', order_id=order.id) }}" class="btn btn-primary">
             ✉️ {% if lang == 'fr' %}Envoyer commande{% else %}Invia ordine{% endif %}
         </a>
-        {% else %}
-        <button class="btn btn-primary" disabled title="Email fornitore non disponibile">
-            ✉️ {% if lang == 'fr' %}Envoyer commande{% else %}Invia ordine{% endif %}
-        </button>
-        {% endif %}
             {% if order.file_invoice %}
         <a href="{{ url_for('manager_ordini_fattura_form', order_id=order.id) }}" class="btn btn-secondary">
             ✏️ {% if lang == 'fr' %}Modifier facture{% else %}Modifica fattura{% endif %}
