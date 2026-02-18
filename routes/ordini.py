@@ -275,30 +275,43 @@ def _delivery_destination_label(
     return "Ritiro dal fornitore"
 
 
+def _format_qty(value: float | int | None) -> str:
+    if value is None:
+        return "0"
+    as_float = float(value)
+    if as_float.is_integer():
+        return str(int(as_float))
+    return f"{as_float:.2f}".rstrip("0").rstrip(".")
+
+
 def build_order_email(
     order: PurchaseOrder,
-    user: User,
+    supplier: Supplier | None = None,
     lang: str = "it",
-    *,
-    destination_label: str | None = None,
-    recipient_name: str | None = None,
+    delivery_label: str | None = None,
 ) -> tuple[str, str]:
     normalized_lang = (lang or "it").lower()
-    if normalized_lang not in {"it", "fr", "en"}:
+    if normalized_lang not in {"it", "fr"}:
         normalized_lang = "it"
 
     order_date_text = order.order_date.strftime("%d/%m/%Y") if order.order_date else "-"
-    supplier_name = _order_supplier_label(order)
-    sender_name = (getattr(user, "full_name", "") or "").strip() or "Lenta France"
+    resolved_supplier = supplier or order.supplier
+    supplier_name = resolved_supplier.name if resolved_supplier and resolved_supplier.name else _order_supplier_label(order)
+    sender_name = "Lenta France"
     contact_name = (
-        recipient_name
-        or order.contact_name_override
+        order.contact_name_override
         or order.contact_name
-        or (order.supplier.contact_name if order.supplier and order.supplier.contact_name else "")
+        or (resolved_supplier.contact_name if resolved_supplier and resolved_supplier.contact_name else "")
     ).strip()
-    destination_text = destination_label or _order_destination_label(order)
+    destination_text = (delivery_label or "").strip()
+    if not destination_text:
+        destination_text = _delivery_destination_label(
+            delivery_type=order.delivery_type or DeliveryTypeEnum.PICKUP.value,
+            site=order.delivery_site,
+            depot=order.delivery_depot,
+        )
     lines = [
-        f"- {(line.description or '-').strip() or '-'} – Qty: {line.qty_ordered or 0}"
+        f"- {(line.description or '-').strip() or '-'} – Qty: {_format_qty(line.qty_ordered)}"
         for line in order.lines
     ]
 
@@ -309,45 +322,17 @@ def build_order_email(
             greeting,
             "",
             f"Nous vous transmettons notre commande n° {order.order_number} du {order_date_text}.",
-            f"Destination de livraison: {destination_text}.",
+            f"Livraison: {destination_text}.",
             "",
-            "Veuillez trouver ci-dessous le détail de la fourniture demandée :",
+            "Récapitulatif des lignes de commande :",
             "",
             *[line.replace("Qty", "Quantité") for line in (lines or ["-"])],
         ]
-        if order.description:
-            body_parts.extend(["", "Informations complémentaires :", order.description])
         body_parts.extend([
             "",
-            "Dans l’attente de votre confirmation de commande et de vos délais de livraison.",
+            "Merci de confirmer la prise en charge et de nous indiquer vos délais de livraison.",
             "",
             "Cordialement",
-            "",
-            sender_name,
-            "Lenta France",
-        ])
-        return subject, "\n".join(body_parts)
-
-    if normalized_lang == "en":
-        subject = f"Purchase order #{order.order_number} – {supplier_name}"
-        greeting = f"Dear {contact_name}," if contact_name else "Dear Sir or Madam,"
-        body_parts = [
-            greeting,
-            "",
-            f"Please find our purchase order #{order.order_number} dated {order_date_text}.",
-            f"Delivery destination: {destination_text}.",
-            "",
-            "Order details:",
-            "",
-            *(lines or ["-"]),
-        ]
-        if order.description:
-            body_parts.extend(["", "Additional notes:", order.description])
-        body_parts.extend([
-            "",
-            "We remain at your disposal and kindly await your order confirmation.",
-            "",
-            "Best regards,",
             "",
             sender_name,
             "Lenta France",
@@ -360,17 +345,15 @@ def build_order_email(
         greeting,
         "",
         f"con la presente trasmettiamo il nostro ordine n. {order.order_number} del {order_date_text}.",
-        f"Destinazione consegna: {destination_text}.",
+        f"Consegna: {destination_text}.",
         "",
-        "Di seguito il riepilogo della fornitura richiesta:",
+        "Riepilogo righe ordine:",
         "",
         *[line.replace("Qty", "Quantità") for line in (lines or ["-"])],
     ]
-    if order.description:
-        body_parts.extend(["", "Note aggiuntive:", order.description])
     body_parts.extend([
         "",
-        "Restiamo in attesa di una vostra conferma d’ordine e di eventuali indicazioni sui tempi di consegna.",
+        "Vi chiediamo conferma di presa in carico e indicazione dei tempi di consegna.",
         "",
         "Cordiali saluti",
         "",
@@ -380,11 +363,11 @@ def build_order_email(
     return subject, "\n".join(body_parts)
 
 
-def build_order_mailto_link(order: PurchaseOrder, user: User, lang: str = "it") -> str | None:
+def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str | None:
     supplier_email = _order_email_recipient(order)
     if not supplier_email:
         return None
-    subject, body = build_order_email(order, user=user, lang=lang)
+    subject, body = build_order_email(order, supplier=order.supplier, lang=lang)
     return f"mailto:{quote(supplier_email)}?subject={quote(subject)}&body={quote(body)}"
 
 
@@ -1259,13 +1242,11 @@ def manager_ordini_email_preview(
 
     destination_label = _delivery_destination_label(delivery_type=delivery_type, site=site, depot=depot)
 
-    recipient_name = _order_email_contact_name(order)
     subject, body = build_order_email(
         order,
-        user=current_user,
+        supplier=order.supplier,
         lang=lang,
-        destination_label=destination_label,
-        recipient_name=recipient_name,
+        delivery_label=destination_label,
     )
 
     recipient_email = (payload.get('to_override') or '').strip() or _order_email_recipient(order)
