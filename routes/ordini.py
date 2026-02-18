@@ -1,3 +1,4 @@
+import logging
 import shutil
 from pathlib import Path
 from uuid import uuid4
@@ -35,6 +36,7 @@ from template_context import register_manager_badges, render_template
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 router = APIRouter(tags=["ordini"])
+logger = logging.getLogger("lenta_france_gestionale.errors")
 
 INVOICE_UPLOAD_DIR = Path("static/uploads/invoices")
 
@@ -42,6 +44,11 @@ INVOICE_UPLOAD_DIR = Path("static/uploads/invoices")
 def _ensure_manager(user: User) -> None:
     if not has_perm(user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def _get_request_id(request: Request) -> str:
+    request_id = getattr(request.state, "request_id", None)
+    return request_id or "unknown"
 
 
 def _parse_date(value: str | None) -> date | None:
@@ -911,6 +918,9 @@ def manager_ordini_create(
     contact_email_override_clean = (contact_email_override or "").strip() or None
 
     supplier_id_raw = (supplier_id or "").strip()
+    if not supplier_id_raw:
+        return _render_order_form(request, db, current_user, error_message="Seleziona un fornitore.", form_data=form_data)
+
     if supplier_id_raw == "__new__":
         new_supplier = Supplier(
             name=(new_supplier_name or supplier_name or "").strip() or None,
@@ -1103,10 +1113,38 @@ def manager_ordini_create(
         db.commit()
     except IntegrityError:
         db.rollback()
-        return _render_order_form(request, db, current_user, error_message="Impossibile salvare l'ordine. Verifica i dati inseriti.", form_data=form_data)
+        request_id = _get_request_id(request)
+        logger.warning(
+            "create order failed (integrity) request_id=%s path=%s user_id=%s",
+            request_id,
+            request.url.path,
+            current_user.id,
+        )
+        return _render_order_form(
+            request,
+            db,
+            current_user,
+            error_message="Dati non validi / vincolo DB.",
+            form_data=form_data,
+        )
     except Exception:
         db.rollback()
-        raise
+        request_id = _get_request_id(request)
+        logger.exception(
+            "create order failed",
+            extra={
+                "request_id": request_id,
+                "path": str(request.url.path),
+                "user_id": current_user.id,
+            },
+        )
+        return _render_order_form(
+            request,
+            db,
+            current_user,
+            error_message="Si è verificato un errore inatteso durante la creazione dell'ordine. Riprova.",
+            form_data=form_data,
+        )
 
     return RedirectResponse(
         url=request.url_for("manager_ordini_new"),
