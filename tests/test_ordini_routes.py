@@ -42,6 +42,30 @@ class OrdiniRoutesTests(unittest.TestCase):
         response = self.client.get("/manager/ordini", cookies={"lang": "it"})
         self.assertEqual(response.status_code, 200)
 
+    def test_manager_ordini_new_renders_without_email_wizard_crash(self) -> None:
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=1,
+                role=RoleEnum.manager,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+        response = self.client.get("/manager/ordini/nuovo", cookies={"lang": "it"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_manager_ordini_email_wizard_placeholder_renders(self) -> None:
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=1,
+                role=RoleEnum.manager,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+        response = self.client.get("/manager/ordini/email-wizard", cookies={"lang": "it"})
+        self.assertEqual(response.status_code, 200)
+
     def test_manager_ordini_closed_list_renders(self) -> None:
         app.dependency_overrides[get_current_active_user_html] = (
             lambda: SimpleNamespace(
