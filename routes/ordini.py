@@ -374,9 +374,7 @@ def generate_email_preview(
     order: PurchaseOrder,
     supplier: Supplier | None,
     delivery_label: str,
-    requester_name: str,
 ) -> dict[str, str]:
-    company_name = "Lenta France"
     order_id = order.id if order.id is not None else order.order_number
     if order.order_date:
         order_date = order.order_date.strftime("%d/%m/%Y")
@@ -388,41 +386,45 @@ def generate_email_preview(
         or ((supplier.contact_name if supplier and supplier.contact_name else "").strip())
         or None
     )
-    greeting = f"Bonjour {contact_name}," if contact_name else "Bonjour,"
-    description = (order.description or "-").strip() or "-"
     clean_delivery_label = (delivery_label or "-").strip() or "-"
+    delivery_address = ""
+    if order.delivery_type == DeliveryTypeEnum.SITE.value and order.delivery_site and order.delivery_site.address:
+        delivery_address = order.delivery_site.address.strip()
+    elif order.delivery_type == DeliveryTypeEnum.DEPOT.value and order.delivery_depot and order.delivery_depot.address:
+        delivery_address = order.delivery_depot.address.strip()
+
+    order_lines = [
+        f"- {(line.description or '-').strip() or '-'} : {_format_qty(line.qty_ordered)}"
+        for line in order.lines
+    ]
+    order_lines_text = "\n".join(order_lines) if order_lines else "-"
 
     subject = f"Commande n° {order_id} – {clean_delivery_label} – {order_date}"
-    body = "\n".join(
-        [
-            greeting,
-            "",
-            f"Nous vous transmettons notre commande n° {order_id} du {order_date}.",
-            "",
-            f"Lieu de livraison : {clean_delivery_label}",
-            "",
-            "Détails de la commande :",
-            description,
-            "",
-            "Merci de bien vouloir nous confirmer la prise en charge de cette commande et nous indiquer vos délais de livraison.",
-            "",
-            "Cordialement,",
-            "",
-            requester_name,
-            company_name,
-        ]
-    )
+    body = f"""Bonjour {contact_name if contact_name else ''},
 
-    # Defensive UTF-8 normalization for external email clients (e.g. Outlook).
-    subject = subject.encode("utf-8").decode("utf-8")
-    body = body.encode("utf-8").decode("utf-8")
+Nous vous transmettons notre commande n° {order_id} du {order_date}.
+
+Lieu de livraison : {clean_delivery_label}
+{delivery_address if delivery_address else ''}
+
+Détail de la commande :
+{order_lines_text}
+
+Merci de bien vouloir confirmer la prise en charge et nous indiquer vos délais de livraison.
+
+Cordialement,
+
+Lenta France
+"""
 
     recipient_email = (
         (order.contact_email_override or "").strip()
         or ((supplier.contact_email if supplier and supplier.contact_email else "").strip())
         or ((supplier.email if supplier and supplier.email else "").strip())
     )
-    mailto_url = f"mailto:{recipient_email}?subject={quote(subject)}&body={quote(body)}"
+    subject_encoded = quote(subject, safe="")
+    body_encoded = quote(body, safe="")
+    mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
 
     return {
         "to": recipient_email,
@@ -437,9 +439,9 @@ def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str | Non
     if not supplier_email:
         return None
     subject, body = build_order_email(order, supplier=order.supplier, lang=lang)
-    subject = subject.encode("utf-8").decode("utf-8")
-    body = body.encode("utf-8").decode("utf-8")
-    return f"mailto:{quote(supplier_email)}?subject={quote(subject)}&body={quote(body)}"
+    subject_encoded = quote(subject, safe="")
+    body_encoded = quote(body, safe="")
+    return f"mailto:{supplier_email}?subject={subject_encoded}&body={body_encoded}"
 
 
 def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[MagazzinoMacro], list[Supplier], list[Depot]]:
@@ -1349,7 +1351,6 @@ def manager_ordini_email_preview(
             order,
             order.supplier,
             destination_label,
-            current_user.full_name,
         )
         subject = preview['subject']
         body = preview['body']
@@ -1369,10 +1370,10 @@ def manager_ordini_email_preview(
     if isinstance(body_override, str) and body_override.strip():
         body = body_override
 
-    subject = subject.encode('utf-8').decode('utf-8')
-    body = body.encode('utf-8').decode('utf-8')
+    subject_encoded = quote(subject, safe='')
+    body_encoded = quote(body, safe='')
 
-    mailto_url = f"mailto:{quote(recipient_email)}?subject={quote(subject)}&body={quote(body)}"
+    mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
 
     return {
         'to': recipient_email,
@@ -1400,6 +1401,7 @@ def manager_ordini_email_wizard(
         {},
         db,
         current_user,
+        headers={'Content-Type': 'text/html; charset=utf-8'},
     )
 
 
@@ -1447,6 +1449,7 @@ def manager_ordini_email(
         },
         db,
         current_user,
+        headers={'Content-Type': 'text/html; charset=utf-8'},
     )
 
 
