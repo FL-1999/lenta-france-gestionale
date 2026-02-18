@@ -13,6 +13,7 @@ class Supplier(Base, TimestampMixin):
     legal_name = Column(String(255), nullable=True)
     email = Column(String(255), nullable=True)
     phone = Column(String(100), nullable=True)
+    # Referente (tutti i campi opzionali)
     contact_name = Column(String(255), nullable=True)
     contact_email = Column(String(255), nullable=True)
     contact_phone = Column(String(100), nullable=True)
