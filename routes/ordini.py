@@ -259,7 +259,12 @@ def build_order_email(
     order_date_text = order.order_date.strftime("%d/%m/%Y") if order.order_date else "-"
     supplier_name = _order_supplier_label(order)
     sender_name = (getattr(user, "full_name", "") or "").strip() or "Lenta France"
-    contact_name = (recipient_name or order.contact_name or "").strip()
+    contact_name = (
+        recipient_name
+        or order.contact_name_override
+        or order.contact_name
+        or (order.supplier.contact_name if order.supplier and order.supplier.contact_name else "")
+    ).strip()
     destination_text = destination_label or _order_destination_label(order)
     lines = [
         f"- {(line.description or '-').strip() or '-'} – Qty: {line.qty_ordered or 0}"
@@ -345,7 +350,14 @@ def build_order_email(
 
 
 def build_order_mailto_link(order: PurchaseOrder, user: User, lang: str = "it") -> str | None:
-    supplier_email = (order.recipient_email or order.supplier_email or (order.supplier.email if order.supplier and order.supplier.email else "")).strip()
+    supplier_email = (
+        order.contact_email_override
+        or order.recipient_email
+        or (order.supplier.contact_email if order.supplier and order.supplier.contact_email else "")
+        or (order.supplier.email if order.supplier and order.supplier.email else "")
+        or order.supplier_email
+        or ""
+    ).strip()
     if not supplier_email:
         return None
     subject, body = build_order_email(order, user=user, lang=lang)
@@ -389,13 +401,9 @@ def _render_order_form(
     magazzino_items, sites, warehouse_categories, requesters, macros, suppliers, depots = _load_order_form_dependencies(db)
     if form_data is None:
         form_data = {
-            "supplier_name": "",
             "supplier_id": "",
-            "new_supplier_name": "",
-            "new_supplier_email": "",
-            "new_supplier_phone": "",
-            "contact_name": "",
-            "recipient_email": "",
+            "contact_name_override": "",
+            "contact_email_override": "",
             "order_date": "",
             "requester_user_id": str(current_user.id),
             "description_text": "",
@@ -425,7 +433,6 @@ def _render_order_form(
             "form_data": form_data,
             "new_category_sentinel": "__new__",
             "new_macro_sentinel": "__new__",
-            "new_supplier_sentinel": "__new__",
         },
         db,
         current_user,
@@ -835,13 +842,13 @@ def manager_ordini_new(
 )
 def manager_ordini_create(
     request: Request,
-    supplier_name: str = Form(""),
     supplier_id: str = Form(""),
+    supplier_name: str = Form(""),
     new_supplier_name: str = Form(""),
     new_supplier_email: str = Form(""),
     new_supplier_phone: str = Form(""),
-    contact_name: str = Form(""),
-    recipient_email: str = Form(""),
+    contact_name_override: str = Form(""),
+    contact_email_override: str = Form(""),
     order_date: str = Form(""),
     requester_user_id: str = Form(""),
     description_text: str = Form(""),
@@ -863,13 +870,13 @@ def manager_ordini_create(
     _ensure_manager(current_user)
 
     form_data = {
-        "supplier_name": supplier_name or "",
         "supplier_id": supplier_id or "",
+        "supplier_name": supplier_name or "",
         "new_supplier_name": new_supplier_name or "",
         "new_supplier_email": new_supplier_email or "",
         "new_supplier_phone": new_supplier_phone or "",
-        "contact_name": contact_name or "",
-        "recipient_email": recipient_email or "",
+        "contact_name_override": contact_name_override or "",
+        "contact_email_override": contact_email_override or "",
         "order_date": order_date or "",
         "requester_user_id": requester_user_id or "",
         "description_text": description_text or "",
@@ -893,41 +900,46 @@ def manager_ordini_create(
 
     selected_supplier_id: int | None = None
     selected_supplier: Supplier | None = None
-    supplier_name_clean = (supplier_name or "").strip()
-    supplier_email_clean = (new_supplier_email or "").strip() or None
-    supplier_phone_clean = (new_supplier_phone or "").strip() or None
-    contact_name_clean = (contact_name or "").strip() or None
-    recipient_email_clean = (recipient_email or "").strip() or None
+    contact_name_override_clean = (contact_name_override or "").strip() or None
+    contact_email_override_clean = (contact_email_override or "").strip() or None
 
-    if (supplier_id or "").strip() == "__new__":
+    supplier_id_raw = (supplier_id or "").strip()
+    if supplier_id_raw == "__new__":
         new_supplier = Supplier(
-            name=(new_supplier_name or "").strip() or None,
-            email=supplier_email_clean,
-            phone=supplier_phone_clean,
-            contact_name=contact_name_clean,
-            contact_email=recipient_email_clean,
+            name=(new_supplier_name or supplier_name or "").strip() or None,
+            email=(new_supplier_email or "").strip() or None,
+            phone=(new_supplier_phone or "").strip() or None,
+            contact_name=None,
+            contact_email=None,
             is_active=True,
         )
         db.add(new_supplier)
         db.flush()
         selected_supplier_id = new_supplier.id
         selected_supplier = new_supplier
-        supplier_name_clean = new_supplier.name or supplier_name_clean
-    elif (supplier_id or "").strip():
+    elif supplier_id_raw:
         try:
-            selected_supplier_id = int((supplier_id or "").strip())
+            selected_supplier_id = int(supplier_id_raw)
         except (TypeError, ValueError):
             return _render_order_form(request, db, current_user, error_message="Fornitore non valido.", form_data=form_data)
         supplier = db.query(Supplier).filter(Supplier.id == selected_supplier_id).first()
         if not supplier:
             return _render_order_form(request, db, current_user, error_message="Fornitore non trovato.", form_data=form_data)
         selected_supplier = supplier
-        if supplier.name:
-            supplier_name_clean = supplier.name
-        supplier_email_clean = supplier.email or supplier_email_clean
-        supplier_phone_clean = supplier.phone or supplier_phone_clean
-        contact_name_clean = contact_name_clean or supplier.contact_name
-        recipient_email_clean = recipient_email_clean or supplier.contact_email or supplier.email
+    elif (supplier_name or "").strip():
+        fallback_supplier = Supplier(
+            name=(supplier_name or "").strip() or None,
+            email=(new_supplier_email or "").strip() or None,
+            phone=(new_supplier_phone or "").strip() or None,
+            is_active=True,
+        )
+        db.add(fallback_supplier)
+        db.flush()
+        selected_supplier_id = fallback_supplier.id
+        selected_supplier = fallback_supplier
+
+    if selected_supplier is None:
+        return _render_order_form(request, db, current_user, error_message="Il fornitore è obbligatorio.", form_data=form_data)
 
     try:
         requester_id_int = int(requester_user_id)
@@ -1057,17 +1069,19 @@ def manager_ordini_create(
     try:
         order = _create_order_with_lines(
             db,
-            supplier_name=supplier_name_clean,
+            supplier_name=selected_supplier.name if selected_supplier and selected_supplier.name else None,
             supplier_id=selected_supplier_id,
             order_date=parsed_order_date,
             requester_user_id=requester.id,
             lines=lines,
         )
         order.description = (description_text or "").strip() or None
-        order.supplier_email = supplier_email_clean
-        order.supplier_phone = supplier_phone_clean
-        order.contact_name = contact_name_clean
-        order.recipient_email = recipient_email_clean
+        order.supplier_email = None
+        order.supplier_phone = None
+        order.contact_name = selected_supplier.contact_name if selected_supplier else None
+        order.recipient_email = selected_supplier.contact_email if selected_supplier and selected_supplier.contact_email else (selected_supplier.email if selected_supplier else None)
+        order.contact_name_override = contact_name_override_clean
+        order.contact_email_override = contact_email_override_clean
         order.order_kind = normalized_kind
         order.site_id = selected_site_id if normalized_kind == "closed" else None
         order.warehouse_category_id = selected_category_id if normalized_kind == "warehouse" else None
@@ -1132,6 +1146,7 @@ def api_supplier_by_id(
         'phone': supplier.phone,
         'contact_name': supplier.contact_name,
         'contact_email': supplier.contact_email,
+        'contact_phone': supplier.contact_phone,
     }
 
 
@@ -1173,10 +1188,12 @@ def api_ordini_create(
     order.delivery_type = DeliveryTypeEnum.PICKUP.value
     order.delivery_site_id = None
     order.delivery_depot_id = None
-    order.supplier_email = supplier.email
-    order.supplier_phone = supplier.phone
-    order.contact_name = (payload.get('contact_name') or supplier.contact_name or '').strip() or None
-    order.recipient_email = (payload.get('recipient_email') or supplier.contact_email or supplier.email or '').strip() or None
+    order.supplier_email = None
+    order.supplier_phone = None
+    order.contact_name = supplier.contact_name
+    order.recipient_email = supplier.contact_email or supplier.email
+    order.contact_name_override = (payload.get('contact_name_override') or payload.get('contact_name') or '').strip() or None
+    order.contact_email_override = (payload.get('contact_email_override') or payload.get('recipient_email') or '').strip() or None
     db.commit()
     return {'ok': True, 'order_id': order.id, 'order_number': order.order_number}
 
@@ -1200,10 +1217,12 @@ def api_ordini_email_preview(
     fake_order = PurchaseOrder(
         order_number=(payload.get('order_number') or 'BOZZA').strip(),
         supplier_name=supplier.name,
-        supplier_email=supplier.email,
-        supplier_phone=supplier.phone,
-        contact_name=(payload.get('contact_name') or supplier.contact_name or '').strip() or None,
-        recipient_email=(payload.get('recipient_email') or supplier.contact_email or supplier.email or '').strip() or None,
+        supplier_email=None,
+        supplier_phone=None,
+        contact_name=supplier.contact_name,
+        recipient_email=supplier.contact_email or supplier.email,
+        contact_name_override=(payload.get('contact_name_override') or payload.get('contact_name') or '').strip() or None,
+        contact_email_override=(payload.get('contact_email_override') or payload.get('recipient_email') or '').strip() or None,
         order_date=_parse_date(payload.get('order_date')),
         description=(payload.get('description_text') or '').strip() or None,
         order_kind=(payload.get('order_kind') or 'warehouse').strip().lower(),
@@ -1227,9 +1246,9 @@ def api_ordini_email_preview(
         user=current_user,
         lang=language,
         destination_label=destination_label,
-        recipient_name=fake_order.contact_name,
+        recipient_name=fake_order.contact_name_override or fake_order.contact_name,
     )
-    recipient = fake_order.recipient_email or supplier.contact_email or supplier.email
+    recipient = fake_order.contact_email_override or fake_order.recipient_email or supplier.contact_email or supplier.email
     mailto = f"mailto:{quote(recipient or '')}?{urlencode({'subject': subject, 'body': body})}" if recipient else None
     return {
         'ok': True,
