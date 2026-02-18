@@ -340,10 +340,10 @@ class OrdiniRoutesTests(unittest.TestCase):
             order = session.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
             self.assertIsNotNone(order)
             assert order is not None
-            subject, body = build_order_email(order, user=order.requester, lang="fr")
+            subject, body = build_order_email(order, supplier=order.supplier, lang="fr")
             self.assertIn("Commande n°", subject)
             self.assertIn(f"Supplier {unique_token}", subject)
-            self.assertIn("confirmation de commande", body)
+            self.assertIn("confirmer la prise en charge", body)
         finally:
             session.close()
 
