@@ -65,7 +65,7 @@
 
   <div class="card"><div class="card-body">
     <h3>4) Email</h3>
-    <a id="create-mail-btn" class="btn btn-secondary" href="{{ url_for('manager_ordini_email_wizard') }}">Crea mail</a>
+    <a id="create-mail-btn" class="btn btn-secondary" href="/manager/ordini/email-wizard">Crea mail</a>
   </div></div>
 
   <div class="card"><div class="card-body">
@@ -105,7 +105,7 @@ function setKindVisibility() {
 
 async function loadSupplier() {
   const supplierId = supplierSelect.value;
-  createMailBtn.href = `{{ url_for('manager_ordini_email_wizard') }}?supplier_id=${encodeURIComponent(supplierId || '')}`;
+  createMailBtn.href = `/manager/ordini/email-wizard?supplier_id=${encodeURIComponent(supplierId || '')}`;
   supplierError.style.display = 'none';
   if (!supplierId) {
     supplierCard.style.display = 'none';

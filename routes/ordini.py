@@ -1304,6 +1304,27 @@ def manager_ordini_email_preview(
 
 
 @router.get(
+    '/manager/ordini/email-wizard',
+    response_class=HTMLResponse,
+    name='manager_ordini_email_wizard',
+)
+def manager_ordini_email_wizard(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    return render_template(
+        templates,
+        request,
+        'manager/ordini/email_wizard_placeholder.html',
+        {},
+        db,
+        current_user,
+    )
+
+
+@router.get(
     '/manager/ordini/{order_id}/email',
     response_class=HTMLResponse,
     name='manager_ordini_email',
