@@ -1,0 +1,698 @@
+from enum import Enum as PyEnum
+import json
+from typing import Optional
+from datetime import datetime, date
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Date,
+    Float,
+    Text,
+    Boolean,
+    ForeignKey,
+    Enum,
+    DateTime,
+    CheckConstraint,
+    JSON,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import relationship
+from sqlmodel import SQLModel, Field
+
+from .base import Base
+
+
+# ------------------------------------------------------------
+# ENUM
+# ------------------------------------------------------------
+
+class RoleEnum(PyEnum):
+    admin = "admin"
+    manager = "manager"
+    caposquadra = "caposquadra"
+    magazzino = "magazzino"
+    contabilita = "contabilita"
+    hr = "hr"
+
+
+# Questi tre servono perché vengono importati in schemas.py
+
+class SiteStatusEnum(PyEnum):
+    # Stati in ITALIANO, compatibili con schemas.py (che usa .aperto)
+    aperto = "aperto"
+    chiuso = "chiuso"
+    pianificato = "pianificato"
+
+
+class MachineTypeEnum(PyEnum):
+    macchina_base_cingoli = "macchina_base_cingoli"
+    pala_gommata = "pala_gommata"
+    scavatore = "scavatore"
+    gru_cingolata = "gru_cingolata"
+    kelly_diaframmi = "kelly_diaframmi"
+    macchina_operatrice_diaframmi = "macchina_operatrice_diaframmi"
+    macchina_operatrice_pali = "macchina_operatrice_pali"
+    gruppo_elettrogeno = "gruppo_elettrogeno"
+    dissabbiatore = "dissabbiatore"
+    miscelatore = "miscelatore"
+    pompa_bentonite = "pompa_bentonite"
+    pompa_acqua = "pompa_acqua"
+    saldatrice = "saldatrice"
+    taglia_asfalto = "taglia_asfalto"
+
+
+class FicheTypeEnum(PyEnum):
+    produzione = "produzione"
+    fermo_macchina = "fermo_macchina"
+    controllo = "controllo"
+    altro = "altro"
+
+
+class MagazzinoRichiestaStatusEnum(PyEnum):
+    in_attesa = "IN_ATTESA"
+    approvata = "APPROVATA"
+    rifiutata = "RIFIUTATA"
+    parziale = "PARZIALE"
+    evasa = "EVASA"
+
+
+class MagazzinoRichiestaPrioritaEnum(PyEnum):
+    low = "LOW"
+    med = "MED"
+    high = "HIGH"
+
+
+class MagazzinoMovimentoTipoEnum(PyEnum):
+    scarico = "scarico"
+    carico = "carico"
+    rettifica = "rettifica"
+
+
+class DeliveryTypeEnum(PyEnum):
+    SITE = "SITE"
+    DEPOT = "DEPOT"
+    PICKUP = "PICKUP"
+
+
+class EmailLanguageEnum(PyEnum):
+    IT = "IT"
+    FR = "FR"
+    EN = "EN"
+
+
+# ------------------------------------------------------------
+# MIXIN PER TIMESTAMP
+# ------------------------------------------------------------
+
+class TimestampMixin:
+    created_at = Column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+# ------------------------------------------------------------
+# MODELLO UTENTE
+# ------------------------------------------------------------
+
+class User(Base, TimestampMixin):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    full_name = Column(String(255), nullable=True)
+
+    hashed_password = Column(String(255), nullable=False)
+
+    role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.caposquadra)
+    language = Column(String(10), nullable=True, default="it")
+
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_magazzino_manager = Column(Boolean, default=False, nullable=False)
+
+    # Relazioni
+    reports = relationship("Report", back_populates="created_by", cascade="all, delete-orphan")
+    fiches = relationship("Fiche", back_populates="created_by", cascade="all, delete-orphan")
+    assigned_sites = relationship("Site", back_populates="caposquadra")
+    magazzino_movimenti_creati = relationship(
+        "MagazzinoMovimento",
+        foreign_keys="MagazzinoMovimento.creato_da_user_id",
+        back_populates="creato_da_user",
+    )
+    magazzino_movimenti_caposquadra = relationship(
+        "MagazzinoMovimento",
+        foreign_keys="MagazzinoMovimento.caposquadra_id",
+        back_populates="caposquadra",
+    )
+
+    def __repr__(self) -> str:
+        return f"<User id={self.id} email={self.email} role={self.role}>"
+
+
+# ------------------------------------------------------------
+# MODELLO AUDIT LOG
+# ------------------------------------------------------------
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    action = Column(String(255), nullable=False)
+    target_type = Column("entity", String(255), nullable=False)
+    target_id = Column("entity_id", Integer, nullable=True)
+    extra_data = Column("details", JSON, nullable=True)
+
+    user = relationship("User")
+
+    @property
+    def extra_data_text(self) -> str | None:
+        if self.extra_data is None:
+            return None
+        if isinstance(self.extra_data, str):
+            return self.extra_data
+        return json.dumps(self.extra_data, ensure_ascii=False)
+
+    def __repr__(self) -> str:
+        return (
+            "<AuditLog "
+            f"id={self.id} action={self.action} target_type={self.target_type} target_id={self.target_id}>"
+        )
+
+
+# ------------------------------------------------------------
+# MODELLO NOTIFICA
+# ------------------------------------------------------------
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    notification_type = Column(String(50), nullable=False)
+    message = Column(Text, nullable=False)
+    recipient_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    recipient_role = Column(Enum(RoleEnum), nullable=True)
+    target_url = Column(String(255), nullable=True)
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    recipient_user = relationship("User")
+
+    def __repr__(self) -> str:
+        return (
+            "<Notification "
+            f"id={self.id} type={self.notification_type} recipient_user_id={self.recipient_user_id}>"
+        )
+
+
+# ------------------------------------------------------------
+# MODELLO CANTIERE (SITE)
+# ------------------------------------------------------------
+
+class Site(Base):
+    __tablename__ = "sites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    code = Column(String(50), unique=True, index=True, nullable=True)
+    address = Column(String(255), nullable=True)
+    place_id = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True, default="France")
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    status = Column(Enum(SiteStatusEnum), nullable=False, default=SiteStatusEnum.aperto)
+    is_active = Column(Boolean, default=True, nullable=False)
+    cordoli_total_m = Column(Float, nullable=True)
+    cordoli_done_m = Column(Float, nullable=True)
+    paratie_total_panels = Column(Integer, nullable=True)
+    paratie_done_panels = Column(Integer, nullable=True)
+    strut_levels_count = Column(Integer, nullable=True)
+    installazione_cantiere_pct = Column(Integer, nullable=False, default=0)
+    rabotage_pct = Column(Integer, nullable=False, default=0)
+    pozzi_pompaggio_pct = Column(Integer, nullable=False, default=0)
+
+    caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    caposquadra = relationship("User", back_populates="assigned_sites")
+
+    # Relazioni
+    reports = relationship("Report", back_populates="site", cascade="all, delete-orphan")
+    fiches = relationship("Fiche", back_populates="site", cascade="all, delete-orphan")
+    machines = relationship("Machine", back_populates="site", cascade="all, delete-orphan")
+    strut_levels = relationship(
+        "SiteStrutLevel",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        order_by="SiteStrutLevel.level_index",
+    )
+
+    def __repr__(self) -> str:
+        return f"<Site id={self.id} code={self.code} name={self.name}>"
+
+
+
+# ------------------------------------------------------------
+# MODELLO LIVELLI PUNTONI
+# ------------------------------------------------------------
+
+class SiteStrutLevel(Base):
+    __tablename__ = "site_strut_levels"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=False, index=True)
+    level_index = Column(Integer, nullable=False)
+    level_quota = Column(String(50), nullable=True)
+    total_struts_level = Column(Integer, nullable=False, default=0)
+    done_struts_level = Column(Integer, nullable=False, default=0)
+
+    site = relationship("Site", back_populates="strut_levels")
+
+    __table_args__ = (
+        UniqueConstraint("site_id", "level_index", name="uq_site_strut_levels_index"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            "<SiteStrutLevel "
+            f"id={self.id} site_id={self.site_id} level_index={self.level_index}>"
+        )
+
+
+# ------------------------------------------------------------
+# MODELLO TIPO MACCHINARIO
+# ------------------------------------------------------------
+
+class MachineType(Base):
+    __tablename__ = "machine_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(255), unique=True, nullable=False)
+    label_it = Column(String(255), nullable=False)
+    label_fr = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    machines = relationship("Machine", back_populates="machine_type_rel")
+
+    def __repr__(self) -> str:
+        return f"<MachineType id={self.id} code={self.code}>"
+
+
+# ------------------------------------------------------------
+# MODELLO MACCHINARIO
+# ------------------------------------------------------------
+
+class Machine(Base, TimestampMixin):
+    __tablename__ = "machines"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    name = Column(String(255), nullable=False)
+    code = Column(String(50), unique=True, index=True, nullable=True)
+
+    brand = Column(String(255), nullable=True)
+    model_name = Column(String(255), nullable=True)
+
+    machine_type = Column(Enum(MachineTypeEnum), nullable=True)
+    machine_type_id = Column(Integer, ForeignKey("machine_types.id"), nullable=True)
+    plate = Column(String(50), nullable=True)  # targa / matricola, se presente
+
+    status = Column(String(50), nullable=False, default="attivo")
+    notes = Column(Text, nullable=True)
+
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    site = relationship("Site", back_populates="machines")
+    machine_type_rel = relationship("MachineType", back_populates="machines")
+
+    fiches = relationship("Fiche", back_populates="machine")
+    assignments = relationship(
+        "MachineSiteAssignment",
+        back_populates="machine",
+        order_by="desc(MachineSiteAssignment.assigned_at)",
+    )
+
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<Machine id={self.id} code={self.code} name={self.name}>"
+
+
+# ------------------------------------------------------------
+# MODELLO STORICO ASSEGNAZIONI MACCHINARI
+# ------------------------------------------------------------
+
+class MachineSiteAssignment(Base):
+    __tablename__ = "machine_site_assignments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    unassigned_at = Column(DateTime, nullable=True)
+    location_label = Column(String(255), nullable=True)
+    note = Column(Text, nullable=True)
+
+    machine = relationship("Machine", back_populates="assignments")
+    site = relationship("Site")
+
+    def __repr__(self) -> str:
+        return (
+            "<MachineSiteAssignment "
+            f"id={self.id} machine_id={self.machine_id} site_id={self.site_id}>"
+        )
+
+
+# ------------------------------------------------------------
+# MODELLO REPORT (RAPPORTINO GIORNALIERO)
+# ------------------------------------------------------------
+
+class Report(Base, TimestampMixin):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Data del rapportino
+    date = Column(Date, nullable=False)
+
+    # Cantiere: opzionale FK al Site + nome/codice libero
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    site = relationship("Site", back_populates="reports")
+
+    site_name_or_code = Column(String(255), nullable=False)
+
+    # Dati lavorativi
+    total_hours = Column(Float, nullable=False, default=0.0)
+    workers_count = Column(Integer, nullable=False, default=0)
+
+    machines_used = Column(Text, nullable=True)
+    activities = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Chi ha creato il rapportino
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by = relationship("User", back_populates="reports")
+
+    def __repr__(self) -> str:
+        return f"<Report id={self.id} date={self.date} site={self.site_name_or_code}>"
+
+
+# ------------------------------------------------------------
+# MODELLO FICHE DI CANTIERE
+# ------------------------------------------------------------
+
+class Fiche(Base, TimestampMixin):
+    __tablename__ = "fiches"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    date = Column(Date, nullable=False)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=False)
+    site = relationship("Site", back_populates="fiches")
+
+    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=True)
+    machine = relationship("Machine", back_populates="fiches")
+
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by = relationship("User", back_populates="fiches")
+
+    fiche_type = Column(Enum(FicheTypeEnum), nullable=False)
+    description = Column(Text, nullable=False)
+    operator = Column(String(255), nullable=True)
+    hours = Column(Float, nullable=False)
+    notes = Column(Text, nullable=True)
+    tipologia_scavo = Column(String(50), nullable=True)
+    stratigrafia = Column(Text, nullable=True)
+    materiale = Column(String(100), nullable=True)
+    profondita_totale = Column(Float, nullable=True)
+    diametro_palo = Column(Float, nullable=True)
+    larghezza_pannello = Column(Float, nullable=True)
+    altezza_pannello = Column(Float, nullable=True)
+    data_getto = Column(Date, nullable=True)
+    metri_cubi_gettati = Column(Float, nullable=True)
+
+    layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
+    stratigrafie = relationship(
+        "FicheStratigrafia",
+        back_populates="fiche",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<Fiche id={self.id} date={self.date} type={self.fiche_type}>"
+
+
+# ------------------------------------------------------------
+# MODELLO STRATIGRAFIA FICHE (MULTI-LAYER)
+# ------------------------------------------------------------
+
+class FicheStratigrafia(Base, TimestampMixin):
+    __tablename__ = "fiche_stratigrafia"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fiche_id = Column(Integer, ForeignKey("fiches.id"), nullable=False)
+    fiche = relationship("Fiche", back_populates="stratigrafie")
+
+    da_profondita = Column(Float, nullable=False)
+    a_profondita = Column(Float, nullable=False)
+    materiale = Column(String(100), nullable=False)
+
+    def __repr__(self) -> str:
+        return (
+            f"<FicheStratigrafia id={self.id} fiche_id={self.fiche_id} "
+            f"da={self.da_profondita} a={self.a_profondita}>"
+        )
+
+
+# ------------------------------------------------------------
+# MODELLO STRATO (STRATIGRAPHY LAYER)
+# ------------------------------------------------------------
+
+class StratigraphyLayer(Base):
+    __tablename__ = "stratigraphy_layers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fiche_id = Column(Integer, ForeignKey("fiches.id"), nullable=False)
+    fiche = relationship("Fiche", back_populates="layers")
+
+    layer_index = Column(Integer, nullable=False)
+    material = Column(String(255), nullable=False)
+    thickness_m = Column(Float, nullable=False)
+    notes = Column(Text, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<StratigraphyLayer id={self.id} fiche_id={self.fiche_id} layer_index={self.layer_index}>"
+
+
+class MagazzinoCategoria(Base, TimestampMixin):
+    __tablename__ = "magazzino_categorie"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(255), nullable=False, unique=True)
+    slug = Column(String(255), nullable=False, unique=True)
+    ordine = Column(Integer, nullable=False, default=0)
+    attiva = Column(Boolean, default=True, nullable=False)
+    macro = Column(String(120), nullable=False, default="Generale")
+    macro_id = Column(Integer, ForeignKey("magazzino_macro.id"), nullable=True)
+    icon = Column(String(32), nullable=True, default="📦")
+    color = Column(String(20), nullable=True, default="indigo")
+
+    macro_ref = relationship("MagazzinoMacro", back_populates="categorie")
+
+    def __repr__(self) -> str:
+        return f"<MagazzinoCategoria id={self.id} nome={self.nome} slug={self.slug}>"
+
+
+class MagazzinoItem(Base, TimestampMixin):
+    __tablename__ = "magazzino_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(255), nullable=False)
+    codice = Column(String(120), nullable=False, default="")
+    descrizione = Column(Text, nullable=True)
+    unita_misura = Column(String(50), nullable=False, default="pz")
+    categoria_id = Column(Integer, ForeignKey("magazzino_categorie.id"), nullable=True)
+    quantita_disponibile = Column(Float, nullable=False, default=0.0)
+    soglia_minima = Column(Float, nullable=True)
+    attivo = Column(Boolean, default=True, nullable=False)
+    preferito = Column(Boolean, default=False, nullable=False)
+
+    categoria = relationship("MagazzinoCategoria")
+    righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")
+
+    def __repr__(self) -> str:
+        return (
+            f"<MagazzinoItem id={self.id} codice={self.codice} nome={self.nome} "
+            f"unita={self.unita_misura}>"
+        )
+
+
+class MagazzinoMacro(Base):
+    __tablename__ = "magazzino_macro"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(120), nullable=False, unique=True)
+    ordine = Column(Integer, nullable=False, default=0)
+    icon = Column(String(32), nullable=True)
+    color = Column(String(40), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    categorie = relationship("MagazzinoCategoria", back_populates="macro_ref")
+
+    def __repr__(self) -> str:
+        return f"<MagazzinoMacro id={self.id} name={self.name}>"
+
+
+class MagazzinoRichiesta(Base, TimestampMixin):
+    __tablename__ = "magazzino_richieste"
+
+    id = Column(Integer, primary_key=True, index=True)
+    priorita = Column(
+        Enum(MagazzinoRichiestaPrioritaEnum),
+        nullable=False,
+        default=MagazzinoRichiestaPrioritaEnum.med,
+    )
+    stato = Column(
+        Enum(MagazzinoRichiestaStatusEnum),
+        nullable=False,
+        default=MagazzinoRichiestaStatusEnum.in_attesa,
+    )
+
+    richiesto_da_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    note = Column(Text, nullable=True)
+    data_necessaria = Column(Date, nullable=True)
+
+    risposta_manager = Column(Text, nullable=True)
+    gestito_da_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    gestito_at = Column(DateTime, nullable=True)
+    letto_da_richiedente = Column(Boolean, default=False, nullable=False)
+
+    richiesto_da = relationship("User", foreign_keys=[richiesto_da_user_id])
+    gestito_da = relationship("User", foreign_keys=[gestito_da_user_id])
+    cantiere = relationship("Site")
+
+    righe = relationship(
+        "MagazzinoRichiestaRiga",
+        back_populates="richiesta",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<MagazzinoRichiesta id={self.id} stato={self.stato}>"
+
+
+class MagazzinoRichiestaRiga(Base):
+    __tablename__ = "magazzino_richieste_righe"
+
+    id = Column(Integer, primary_key=True, index=True)
+    richiesta_id = Column(Integer, ForeignKey("magazzino_richieste.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=False)
+    quantita_richiesta = Column(Float, nullable=False)
+    quantita_evasa = Column(Float, nullable=False, default=0.0)
+
+    richiesta = relationship("MagazzinoRichiesta", back_populates="righe")
+    item = relationship("MagazzinoItem", back_populates="righe_richiesta")
+
+    def __repr__(self) -> str:
+        return (
+            "<MagazzinoRichiestaRiga "
+            f"id={self.id} richiesta_id={self.richiesta_id} item_id={self.item_id}>"
+        )
+
+
+class MagazzinoMovimento(Base, TimestampMixin):
+    __tablename__ = "magazzino_movimenti"
+    __table_args__ = (
+        CheckConstraint("quantita > 0", name="chk_magazzino_movimenti_quantita_positive"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=False)
+    tipo = Column(Enum(MagazzinoMovimentoTipoEnum), nullable=False)
+    quantita = Column(Float, nullable=False)
+    cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    riferimento_richiesta_id = Column(
+        Integer, ForeignKey("magazzino_richieste.id"), nullable=True
+    )
+    purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=True)
+    purchase_delivery_id = Column(
+        Integer, ForeignKey("purchase_deliveries.id"), nullable=True
+    )
+    creato_da_user_id = Column("user_id", Integer, ForeignKey("users.id"), nullable=True)
+    caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    note = Column(Text, nullable=True)
+
+    item = relationship("MagazzinoItem")
+    cantiere = relationship("Site")
+    creato_da_user = relationship(
+        "User",
+        foreign_keys=[creato_da_user_id],
+        back_populates="magazzino_movimenti_creati",
+    )
+    caposquadra = relationship(
+        "User",
+        foreign_keys=[caposquadra_id],
+        back_populates="magazzino_movimenti_caposquadra",
+    )
+    richiesta = relationship("MagazzinoRichiesta")
+    purchase_order = relationship("PurchaseOrder")
+    purchase_delivery = relationship("PurchaseDelivery")
+
+
+class Personale(SQLModel, table=True):
+    __tablename__ = "personale"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nome: str
+    cognome: str
+    ruolo: Optional[str] = Field(
+        default=None, description="Ruolo in azienda (operaio, caposquadra, ecc.)"
+    )
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    data_assunzione: Optional[date] = None
+    attivo: bool = Field(default=True)
+    note: Optional[str] = None
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PersonalePresenza(SQLModel, table=True):
+    __tablename__ = "personale_presenze"
+    __table_args__ = (
+        UniqueConstraint("personale_id", "date", name="uq_personale_presenze_personale_date"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    personale_id: int = Field(foreign_key="personale.id", index=True)
+    attendance_date: date = Field(
+        sa_column=Column("date", Date, index=True, nullable=False)
+    )
+    site_id: Optional[int] = Field(default=None, index=True)
+    status: str = Field(max_length=20)
+    hours: Optional[float] = None
+    note: Optional[str] = None
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime,
+            default=datetime.utcnow,
+            onupdate=datetime.utcnow,
+            nullable=False,
+        )
+    )
+

@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Session, create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
 
 DATABASE_URL = "sqlite:///./lenta_france.db"
 
@@ -9,7 +9,7 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+from models.base import Base
 
 
 def get_db():
