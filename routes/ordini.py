@@ -379,9 +379,9 @@ def fix_mojibake_if_needed(s: str) -> str:
     return s
 
 
-def _mailto_encode(s: str) -> str:
+def _mailto_encode_cp1252(s: str) -> str:
     normalized = s.replace("\r\n", "\n").replace("\n", "\r\n")
-    return quote(normalized, safe="", encoding="utf-8", errors="strict")
+    return quote(normalized, safe="", encoding="cp1252", errors="strict")
 
 
 def generate_email_preview(
@@ -440,13 +440,13 @@ Lenta France
         or ((supplier.contact_email if supplier and supplier.contact_email else "").strip())
         or ((supplier.email if supplier and supplier.email else "").strip())
     )
-    subject_encoded = _mailto_encode(subject)
-    body_encoded = _mailto_encode(body)
+    subject_encoded = _mailto_encode_cp1252(subject)
+    body_encoded = _mailto_encode_cp1252(body)
     mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
     logger.info(
         "Email preview FR encoded checks has_recap=%s has_numero=%s",
-        "R%C3%A9capitulatif" in mailto_url,
-        "n%C2%B0" in mailto_url,
+        "%E9" in mailto_url,
+        "%B0" in mailto_url,
     )
     logger.info("Email preview FR mailto_url=%s", mailto_url)
 
@@ -466,13 +466,13 @@ def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str | Non
     logger.info("Order email pre-mailto subject=%r body=%r", subject, body)
     subject = fix_mojibake_if_needed(subject)
     body = fix_mojibake_if_needed(body)
-    subject_encoded = _mailto_encode(subject)
-    body_encoded = _mailto_encode(body)
+    subject_encoded = _mailto_encode_cp1252(subject)
+    body_encoded = _mailto_encode_cp1252(body)
     mailto_url = f"mailto:{supplier_email}?subject={subject_encoded}&body={body_encoded}"
     logger.info(
         "Order email encoded checks has_recap=%s has_numero=%s",
-        "R%C3%A9capitulatif" in mailto_url,
-        "n%C2%B0" in mailto_url,
+        "%E9" in mailto_url,
+        "%B0" in mailto_url,
     )
     return mailto_url
 
@@ -1406,14 +1406,14 @@ def manager_ordini_email_preview(
     logger.info("Order email preview pre-mailto subject=%r body=%r", subject, body)
     subject = fix_mojibake_if_needed(subject)
     body = fix_mojibake_if_needed(body)
-    subject_encoded = _mailto_encode(subject)
-    body_encoded = _mailto_encode(body)
+    subject_encoded = _mailto_encode_cp1252(subject)
+    body_encoded = _mailto_encode_cp1252(body)
 
     mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
     logger.info(
         "Order email preview encoded checks has_recap=%s has_numero=%s",
-        "R%C3%A9capitulatif" in mailto_url,
-        "n%C2%B0" in mailto_url,
+        "%E9" in mailto_url,
+        "%B0" in mailto_url,
     )
     logger.info("Order email preview mailto_url=%s", mailto_url)
 
