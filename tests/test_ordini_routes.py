@@ -846,5 +846,122 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertIn("subject=Oggetto%20custom", payload.get("mailto_url", ""))
 
 
+    def test_api_can_create_macro_and_tipologia_for_new_order_form(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-macro-tipologia-{unique_token}@example.com",
+                full_name="Ordini Macro Tipologia Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            session.add(requester)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        macro_response = self.client.post(
+            "/api/macros",
+            json={"name": f"Macro ordine {unique_token}", "description": "desc macro"},
+        )
+        self.assertEqual(macro_response.status_code, 200)
+        macro_payload = macro_response.json()
+        self.assertIsNotNone(macro_payload.get("id"))
+
+        tipologia_response = self.client.post(
+            "/api/tipologie",
+            json={
+                "name": f"Tipologia ordine {unique_token}",
+                "description": "desc tipologia",
+                "macro_id": str(macro_payload["id"]),
+            },
+        )
+        self.assertEqual(tipologia_response.status_code, 200)
+        tipologia_payload = tipologia_response.json()
+        self.assertIsNotNone(tipologia_payload.get("id"))
+        self.assertEqual(tipologia_payload.get("macro_id"), macro_payload["id"])
+
+    def test_create_order_rejects_tipologia_not_matching_macro(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-mismatch-{unique_token}@example.com",
+                full_name="Ordini Mismatch Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            supplier = Supplier(
+                name=f"Fornitore mismatch {unique_token}",
+                email=f"supplier-mismatch-{unique_token}@example.com",
+                is_active=True,
+            )
+            macro_a = MagazzinoMacro(name=f"Macro A {unique_token}")
+            macro_b = MagazzinoMacro(name=f"Macro B {unique_token}")
+            session.add_all([requester, supplier, macro_a, macro_b])
+            session.flush()
+            categoria_b = MagazzinoCategoria(
+                nome=f"Tipologia B {unique_token}",
+                slug=f"tipologia-b-{unique_token}",
+                ordine=1,
+                attiva=True,
+                macro=macro_b.name,
+                macro_id=macro_b.id,
+            )
+            session.add(categoria_b)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            supplier_id = supplier.id
+            macro_a_id = macro_a.id
+            categoria_b_id = categoria_b.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            "/manager/ordini/nuovo",
+            data={
+                "supplier_id": str(supplier_id),
+                "order_date": "2026-01-15",
+                "requester_user_id": str(requester_id),
+                "description_text": "Ordine test macro/tipologia",
+                "order_kind": "warehouse",
+                "warehouse_category_id": str(categoria_b_id),
+                "category_mode": "existing",
+                "macro_id": str(macro_a_id),
+                "description": ["item mismatch"],
+                "qty_ordered": ["1"],
+                "magazzino_item_id": [""],
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("La tipologia selezionata non appartiene alla macro scelta.", response.text)
+
+
 if __name__ == "__main__":
     unittest.main()
