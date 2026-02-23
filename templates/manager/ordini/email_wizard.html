@@ -48,9 +48,17 @@
                 <select id="delivery_depot_id" name="delivery_depot_id">
                     <option value="">Seleziona deposito</option>
                     {% for depot in depots %}
-                    <option value="{{ depot.id }}" {% if default_delivery_depot_id == depot.id %}selected{% endif %}>{{ depot.name }}</option>
+                    <option value="{{ depot.id }}" {% if default_delivery_depot_id == depot.id %}selected{% endif %}>{{ depot.name }} — {{ depot.city or '-' }} ({{ depot.zip_code or '-' }})</option>
                     {% endfor %}
                 </select>
+            </div>
+
+
+            <div class="form-field" id="depot_address_card">
+                <label>Indirizzo deposito</label>
+                <div class="summary-card">
+                    <div id="depot_address_text">Seleziona un deposito per vedere l'indirizzo completo.</div>
+                </div>
             </div>
 
             <div class="form-field">
@@ -89,10 +97,28 @@
 <script>
 const orderId = {{ order.id }};
 
+const depotsById = Object.fromEntries(({{ depots_json | tojson }}).map((depot) => [String(depot.id), depot]));
+
+function updateDepotAddressCard() {
+  const deliveryType = document.getElementById('delivery_type').value;
+  const card = document.getElementById('depot_address_card');
+  const text = document.getElementById('depot_address_text');
+  if (deliveryType !== 'DEPOT') {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  const selectedDepotId = document.getElementById('delivery_depot_id').value;
+  const depot = depotsById[String(selectedDepotId)];
+  text.textContent = (depot && depot.address) ? depot.address : 'Seleziona un deposito per vedere l'indirizzo completo.';
+}
+
+
 function updateDeliveryFieldsVisibility() {
   const deliveryType = document.getElementById('delivery_type').value;
   document.getElementById('site_field').style.display = deliveryType === 'SITE' ? '' : 'none';
   document.getElementById('depot_field').style.display = deliveryType === 'DEPOT' ? '' : 'none';
+  updateDepotAddressCard();
 }
 
 async function refreshPreview(useOverrides = false) {
@@ -137,7 +163,7 @@ document.getElementById('delivery_type').addEventListener('change', () => {
   refreshPreview();
 });
 document.getElementById('delivery_site_id').addEventListener('change', () => refreshPreview());
-document.getElementById('delivery_depot_id').addEventListener('change', () => refreshPreview());
+document.getElementById('delivery_depot_id').addEventListener('change', () => { updateDepotAddressCard(); refreshPreview(); });
 document.getElementById('lang').addEventListener('change', () => refreshPreview());
 document.getElementById('to_override').addEventListener('change', () => refreshPreview());
 document.getElementById('refresh_preview').addEventListener('click', () => refreshPreview(true));
@@ -151,6 +177,7 @@ document.getElementById('copy_text').addEventListener('click', async () => {
 });
 
 updateDeliveryFieldsVisibility();
+updateDepotAddressCard();
 refreshPreview();
 </script>
 {% endblock %}

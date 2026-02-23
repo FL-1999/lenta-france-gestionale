@@ -282,6 +282,21 @@ def _delivery_destination_label(
     return "Ritiro dal fornitore"
 
 
+def _format_depot_full_address(depot: Depot | None) -> str:
+    if not depot:
+        return ""
+    parts = [
+        (depot.address or "").strip(),
+        " ".join(part for part in [
+            (depot.zip_code or "").strip(),
+            (depot.city or "").strip(),
+        ] if part).strip(),
+        (depot.province or "").strip(),
+        (depot.country or "").strip(),
+    ]
+    return ", ".join(part for part in parts if part)
+
+
 def _format_qty(value: float | int | None) -> str:
     if value is None:
         return "0"
@@ -322,6 +337,8 @@ def build_order_email(
         for line in order.lines
     ]
 
+    depot_full_address = _format_depot_full_address(order.delivery_depot) if (order.delivery_type or '').strip().upper() == DeliveryTypeEnum.DEPOT.value else ''
+
     if normalized_lang == "fr":
         subject = f"Commande n° {order.order_number} - {supplier_name}"
         greeting = f"Bonjour {contact_name}," if contact_name else "Bonjour,"
@@ -330,6 +347,7 @@ def build_order_email(
             "",
             f"Nous vous transmettons notre commande n° {order.order_number} du {order_date_text}.",
             f"Livraison: {destination_text}.",
+            *( [f"Adresse : {depot_full_address}"] if depot_full_address else [] ),
             "",
             "Récapitulatif des lignes de commande :",
             "",
@@ -353,6 +371,7 @@ def build_order_email(
         "",
         f"con la presente trasmettiamo il nostro ordine n. {order.order_number} del {order_date_text}.",
         f"Consegna: {destination_text}.",
+        *( [f"Indirizzo: {depot_full_address}"] if depot_full_address else [] ),
         "",
         "Riepilogo righe ordine:",
         "",
@@ -402,10 +421,14 @@ def generate_email_preview(
     )
     clean_delivery_label = (delivery_label or "-").strip() or "-"
     delivery_address = ""
+    delivery_address_line = ""
     if order.delivery_type == DeliveryTypeEnum.SITE.value and order.delivery_site and order.delivery_site.address:
         delivery_address = order.delivery_site.address.strip()
-    elif order.delivery_type == DeliveryTypeEnum.DEPOT.value and order.delivery_depot and order.delivery_depot.address:
-        delivery_address = order.delivery_depot.address.strip()
+    elif order.delivery_type == DeliveryTypeEnum.DEPOT.value and order.delivery_depot:
+        delivery_address = _format_depot_full_address(order.delivery_depot)
+    if delivery_address:
+        prefix = "Adresse :" if order.delivery_type == DeliveryTypeEnum.DEPOT.value else "Adresse"
+        delivery_address_line = f"{prefix} {delivery_address}"
 
     order_lines = [
         f"- {(line.description or '-').strip() or '-'} : {_format_qty(line.qty_ordered)}"
@@ -419,7 +442,7 @@ def generate_email_preview(
 Nous vous transmettons notre commande n° {order_id} du {order_date}.
 
 Lieu de livraison : {clean_delivery_label}
-{delivery_address if delivery_address else ''}
+{delivery_address_line}
 
 Détail de la commande :
 {order_lines_text}
@@ -1451,6 +1474,9 @@ def manager_ordini_email_preview(
         delivery_type = DeliveryTypeEnum.PICKUP.value
 
     destination_label = _delivery_destination_label(delivery_type=delivery_type, site=site, depot=depot)
+    order.delivery_type = delivery_type
+    order.delivery_site = site
+    order.delivery_depot = depot
 
     if lang == 'fr':
         preview = generate_email_preview(
@@ -1538,6 +1564,14 @@ def manager_ordini_email(
 
     sites = db.query(Site).filter(Site.is_active.is_(True)).order_by(Site.name.asc()).all()
     depots = db.query(Depot).filter(Depot.is_active.is_(True)).order_by(Depot.name.asc()).all()
+    depots_json = [
+        {
+            'id': depot.id,
+            'name': depot.name,
+            'address': _format_depot_full_address(depot),
+        }
+        for depot in depots
+    ]
 
     default_lang = (request.cookies.get('lang') or 'it').strip().lower()
     if default_lang not in {'it', 'fr'}:
@@ -1556,6 +1590,7 @@ def manager_ordini_email(
             'supplier': order.supplier,
             'sites': sites,
             'depots': depots,
+            'depots_json': depots_json,
             'default_lang': default_lang,
             'default_delivery_type': default_delivery_type,
             'default_delivery_site_id': order.delivery_site_id,
