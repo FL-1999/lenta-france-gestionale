@@ -58,8 +58,33 @@
     </div>
     <div id="closed-section" class="form-field"><label>Cantiere</label><select name="site_id"><option value="">Seleziona</option>{% for site in sites %}<option value="{{ site.id }}" {% if form_data.site_id == site.id|string %}selected{% endif %}>{{ site.name }}</option>{% endfor %}</select></div>
     <div id="warehouse-section" class="form-field">
-      <label>Categoria magazzino</label><select name="warehouse_category_id" id="warehouse_category_id"><option value="">Seleziona</option>{% for category in warehouse_categories %}<option value="{{ category.id }}" {% if form_data.warehouse_category_id == category.id|string %}selected{% endif %}>{{ category.nome }}</option>{% endfor %}</select>
-      <input type="hidden" name="category_mode" value="existing"><input type="hidden" name="new_category_name" value=""><input type="hidden" name="macro_id" value=""><input type="hidden" name="macro" value=""><input type="hidden" name="new_category_macro_id" value=""><input type="hidden" name="new_macro_name" value="">
+      <div class="form-grid-2">
+        <div class="form-field">
+          <label for="macro_id">Macro</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="macro_id" name="macro_id">
+              <option value="">Seleziona</option>
+              {% for macro in macros %}
+              <option value="{{ macro.id }}" {% if form_data.macro_id == macro.id|string %}selected{% endif %}>{{ macro.name }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="open-new-macro-modal">＋ Nuova macro</button>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="warehouse_category_id">Tipologia</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select name="warehouse_category_id" id="warehouse_category_id">
+              <option value="">Seleziona</option>
+              {% for category in warehouse_categories %}
+              <option value="{{ category.id }}" data-macro-id="{{ category.macro_id or '' }}" {% if form_data.warehouse_category_id == category.id|string %}selected{% endif %}>{{ category.nome }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="open-new-tipologia-modal">＋ Nuova tipologia</button>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" name="category_mode" value="existing"><input type="hidden" name="new_category_name" value=""><input type="hidden" name="macro" value=""><input type="hidden" name="new_category_macro_id" value=""><input type="hidden" name="new_macro_name" value="">
     </div>
   </div></div>
 
@@ -81,6 +106,32 @@
   <div class="form-actions"><button type="submit" class="btn btn-primary">Crea ordine</button></div>
 </form>
 
+<div class="modal" id="new-macro-modal" aria-hidden="true" style="display:none;">
+  <div class="modal-backdrop" data-close-modal="new-macro-modal"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="new-macro-title">
+    <div class="card"><div class="card-body">
+      <h3 id="new-macro-title">Nuova macro</h3>
+      <div class="form-field"><label for="new-macro-name">Nome *</label><input id="new-macro-name" type="text" required></div>
+      <div class="form-field"><label for="new-macro-description">Descrizione</label><textarea id="new-macro-description" rows="2"></textarea></div>
+      <div id="new-macro-error" class="alert alert-danger" style="display:none;"></div>
+      <div class="form-actions"><button type="button" class="btn btn-secondary" data-close-modal="new-macro-modal">Annulla</button><button type="button" class="btn btn-primary" id="save-new-macro">Salva</button></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="modal" id="new-tipologia-modal" aria-hidden="true" style="display:none;">
+  <div class="modal-backdrop" data-close-modal="new-tipologia-modal"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="new-tipologia-title">
+    <div class="card"><div class="card-body">
+      <h3 id="new-tipologia-title">Nuova tipologia</h3>
+      <div class="form-field"><label for="new-tipologia-name">Nome *</label><input id="new-tipologia-name" type="text" required></div>
+      <div class="form-field"><label for="new-tipologia-description">Descrizione</label><textarea id="new-tipologia-description" rows="2"></textarea></div>
+      <div id="new-tipologia-error" class="alert alert-danger" style="display:none;"></div>
+      <div class="form-actions"><button type="button" class="btn btn-secondary" data-close-modal="new-tipologia-modal">Annulla</button><button type="button" class="btn btn-primary" id="save-new-tipologia">Salva</button></div>
+    </div></div>
+  </div>
+</div>
+
 <script>
 const supplierSelect = document.getElementById('supplier-id-select');
 const supplierCard = document.getElementById('supplier-card');
@@ -90,6 +141,101 @@ const supplierError = document.getElementById('supplier-error');
 const sName = document.getElementById('s-name');
 const sEmail = document.getElementById('s-email');
 const sPhone = document.getElementById('s-phone');
+const macroSelect = document.getElementById('macro_id');
+const tipologiaSelect = document.getElementById('warehouse_category_id');
+
+function toggleModal(id, shouldOpen) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.style.display = shouldOpen ? 'block' : 'none';
+  modal.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+}
+
+function syncTipologieByMacro() {
+  const selectedMacroId = macroSelect?.value || '';
+  Array.from(tipologiaSelect.options).forEach((option) => {
+    if (!option.value) {
+      option.hidden = false;
+      return;
+    }
+    const optionMacroId = option.dataset.macroId || '';
+    const shouldShow = !selectedMacroId || !optionMacroId || optionMacroId === selectedMacroId;
+    option.hidden = !shouldShow;
+    if (!shouldShow && option.selected) {
+      tipologiaSelect.value = '';
+    }
+  });
+}
+
+async function createMacro() {
+  const name = document.getElementById('new-macro-name').value.trim();
+  const description = document.getElementById('new-macro-description').value.trim();
+  const errorBox = document.getElementById('new-macro-error');
+  errorBox.style.display = 'none';
+  if (!name) {
+    errorBox.textContent = 'Il nome è obbligatorio.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  const res = await fetch('/api/macros', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, description}),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    errorBox.textContent = data.detail || 'Errore durante il salvataggio della macro.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  const option = document.createElement('option');
+  option.value = String(data.id);
+  option.textContent = data.name;
+  macroSelect.appendChild(option);
+  macroSelect.value = String(data.id);
+  syncTipologieByMacro();
+  toggleModal('new-macro-modal', false);
+  document.getElementById('new-macro-name').value = '';
+  document.getElementById('new-macro-description').value = '';
+}
+
+async function createTipologia() {
+  const name = document.getElementById('new-tipologia-name').value.trim();
+  const description = document.getElementById('new-tipologia-description').value.trim();
+  const errorBox = document.getElementById('new-tipologia-error');
+  errorBox.style.display = 'none';
+  if (!name) {
+    errorBox.textContent = 'Il nome è obbligatorio.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  if (!macroSelect.value) {
+    errorBox.textContent = 'Seleziona prima una macro.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  const res = await fetch('/api/tipologie', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, description, macro_id: macroSelect.value}),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    errorBox.textContent = data.detail || 'Errore durante il salvataggio della tipologia.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  const option = document.createElement('option');
+  option.value = String(data.id);
+  option.textContent = data.name;
+  option.dataset.macroId = String(data.macro_id || '');
+  tipologiaSelect.appendChild(option);
+  tipologiaSelect.value = String(data.id);
+  syncTipologieByMacro();
+  toggleModal('new-tipologia-modal', false);
+  document.getElementById('new-tipologia-name').value = '';
+  document.getElementById('new-tipologia-description').value = '';
+}
 
 function setKindVisibility() {
   const kind = document.querySelector('input[name="order_kind"]:checked')?.value;
@@ -128,8 +274,18 @@ async function loadSupplier() {
 
 document.querySelectorAll('input[name="order_kind"]').forEach((el)=>el.addEventListener('change', setKindVisibility));
 supplierSelect.addEventListener('change', loadSupplier);
+macroSelect?.addEventListener('change', syncTipologieByMacro);
 setKindVisibility();
 loadSupplier();
+syncTipologieByMacro();
+
+document.getElementById('open-new-macro-modal')?.addEventListener('click', () => toggleModal('new-macro-modal', true));
+document.getElementById('open-new-tipologia-modal')?.addEventListener('click', () => toggleModal('new-tipologia-modal', true));
+document.querySelectorAll('[data-close-modal]').forEach((el) => {
+  el.addEventListener('click', () => toggleModal(el.getAttribute('data-close-modal'), false));
+});
+document.getElementById('save-new-macro')?.addEventListener('click', createMacro);
+document.getElementById('save-new-tipologia')?.addEventListener('click', createTipologia);
 
 document.getElementById('add-row').addEventListener('click', ()=>{
   document.querySelector('#righe-table tbody').insertAdjacentHTML('beforeend', `<tr><td><input type="text" name="description" required></td><td><input type="number" name="qty_ordered" step="0.01" min="0" required></td><td><select name="magazzino_item_id"><option value="">Seleziona</option>{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.nome }}</option>{% endfor %}</select></td><td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td></tr>`);

@@ -748,6 +748,70 @@ def api_ordini_ensure_warehouse_item(
     }
 
 
+@router.post(
+    "/api/macros",
+    name="api_macros_create",
+)
+def api_macros_create(
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+
+    name = (payload.get("name") or "").strip()
+    _description = (payload.get("description") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nome macro obbligatorio.")
+
+    existing = db.query(MagazzinoMacro).filter(func.lower(MagazzinoMacro.name) == name.lower()).first()
+    if existing:
+        return {"id": existing.id, "name": existing.name}
+
+    macro = MagazzinoMacro(name=name)
+    db.add(macro)
+    db.commit()
+    db.refresh(macro)
+    return {"id": macro.id, "name": macro.name}
+
+
+@router.post(
+    "/api/tipologie",
+    name="api_tipologie_create",
+)
+def api_tipologie_create(
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+
+    name = (payload.get("name") or "").strip()
+    _description = (payload.get("description") or "").strip()
+    macro_id_raw = str((payload.get("macro_id") or "").strip())
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Nome tipologia obbligatorio.")
+    try:
+        macro_id = int(macro_id_raw)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Macro non valida.")
+
+    macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id).first()
+    if not macro:
+        raise HTTPException(status_code=400, detail="Macro non valida.")
+
+    categoria = _get_or_create_category_for_name(
+        db,
+        category_name=name,
+        selected_macro=macro,
+    )
+    db.commit()
+    db.refresh(categoria)
+
+    return {"id": categoria.id, "name": categoria.nome, "macro_id": categoria.macro_id}
+
+
 @router.get(
     "/manager/fornitori",
     response_class=HTMLResponse,
@@ -1110,6 +1174,15 @@ def manager_ordini_create(
         if not categoria:
             db.rollback()
             return _render_order_form(request, db, current_user, error_message="Per ordine magazzino devi selezionare una categoria valida.", form_data=form_data)
+        if macro_id:
+            try:
+                selected_macro_id = int(macro_id)
+            except (TypeError, ValueError):
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message="Macro non valida.", form_data=form_data)
+            if categoria.macro_id and categoria.macro_id != selected_macro_id:
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message="La tipologia selezionata non appartiene alla macro scelta.", form_data=form_data)
         form_data["site_id"] = ""
 
     if len(description) != len(qty_ordered) or len(description) != len(magazzino_item_id):
