@@ -268,18 +268,35 @@ def _order_email_contact_name(order: PurchaseOrder) -> str | None:
     )
 
 
-def _delivery_destination_label(
-    *,
+
+def build_delivery_label(
+    lang: str,
     delivery_type: str,
     site: Site | None = None,
     depot: Depot | None = None,
-) -> str:
-    normalized_type = (delivery_type or "").strip().upper()
-    if normalized_type == DeliveryTypeEnum.SITE.value:
-        return f"Cantiere: {site.name}" if site else "Cantiere non specificato"
+) -> tuple[str, str]:
+    normalized_lang = (lang or "it").strip().lower()
+    if normalized_lang not in {"it", "fr"}:
+        normalized_lang = "it"
+
+    normalized_type = (delivery_type or DeliveryTypeEnum.PICKUP.value).strip().upper()
+    address = ""
+    label = ""
+
     if normalized_type == DeliveryTypeEnum.DEPOT.value:
-        return f"Deposito: {depot.name}" if depot else "Deposito non specificato"
-    return "Ritiro dal fornitore"
+        depot_name = depot.name if depot and depot.name else "-"
+        label = f"Dépôt : {depot_name}" if normalized_lang == "fr" else f"Deposito: {depot_name}"
+        address = (depot.address or "").strip() if depot and depot.address else ""
+        return label, address
+
+    if normalized_type == DeliveryTypeEnum.SITE.value:
+        site_name = site.name if site and site.name else "-"
+        label = f"Chantier : {site_name}" if normalized_lang == "fr" else f"Cantiere: {site_name}"
+        address = (site.address or "").strip() if site and site.address else ""
+        return label, address
+
+    label = "Enlèvement chez le fournisseur" if normalized_lang == "fr" else "Ritiro dal fornitore"
+    return label, ""
 
 
 def _format_qty(value: float | int | None) -> str:
@@ -295,7 +312,9 @@ def build_order_email(
     order: PurchaseOrder,
     supplier: Supplier | None = None,
     lang: str = "it",
-    delivery_label: str | None = None,
+    delivery_data: dict[str, str | int | None] | None = None,
+    delivery_site: Site | None = None,
+    delivery_depot: Depot | None = None,
 ) -> tuple[str, str]:
     normalized_lang = (lang or "it").lower()
     if normalized_lang not in {"it", "fr"}:
@@ -310,13 +329,17 @@ def build_order_email(
         or order.contact_name
         or (resolved_supplier.contact_name if resolved_supplier and resolved_supplier.contact_name else "")
     ).strip()
-    destination_text = (delivery_label or "").strip()
-    if not destination_text:
-        destination_text = _delivery_destination_label(
-            delivery_type=order.delivery_type or DeliveryTypeEnum.PICKUP.value,
-            site=order.delivery_site,
-            depot=order.delivery_depot,
-        )
+    resolved_delivery_type = (
+        str((delivery_data or {}).get("delivery_type") or order.delivery_type or DeliveryTypeEnum.PICKUP.value)
+        .strip()
+        .upper()
+    )
+    destination_text, delivery_address = build_delivery_label(
+        normalized_lang,
+        resolved_delivery_type,
+        site=delivery_site or order.delivery_site,
+        depot=delivery_depot or order.delivery_depot,
+    )
     lines = [
         f"- {(line.description or '-').strip() or '-'} – Qty: {_format_qty(line.qty_ordered)}"
         for line in order.lines
@@ -330,6 +353,7 @@ def build_order_email(
             "",
             f"Nous vous transmettons notre commande n° {order.order_number} du {order_date_text}.",
             f"Livraison: {destination_text}.",
+            *([f"Adresse : {delivery_address}"] if delivery_address else []),
             "",
             "Récapitulatif des lignes de commande :",
             "",
@@ -353,6 +377,7 @@ def build_order_email(
         "",
         f"con la presente trasmettiamo il nostro ordine n. {order.order_number} del {order_date_text}.",
         f"Consegna: {destination_text}.",
+        *([f"Indirizzo: {delivery_address}"] if delivery_address else []),
         "",
         "Riepilogo righe ordine:",
         "",
@@ -387,7 +412,9 @@ def _mailto_encode_cp1252(s: str) -> str:
 def generate_email_preview(
     order: PurchaseOrder,
     supplier: Supplier | None,
-    delivery_label: str,
+    delivery_data: dict[str, str | int | None] | None = None,
+    delivery_site: Site | None = None,
+    delivery_depot: Depot | None = None,
 ) -> dict[str, str]:
     order_id = order.id if order.id is not None else order.order_number
     if order.order_date:
@@ -400,12 +427,17 @@ def generate_email_preview(
         or ((supplier.contact_name if supplier and supplier.contact_name else "").strip())
         or None
     )
-    clean_delivery_label = (delivery_label or "-").strip() or "-"
-    delivery_address = ""
-    if order.delivery_type == DeliveryTypeEnum.SITE.value and order.delivery_site and order.delivery_site.address:
-        delivery_address = order.delivery_site.address.strip()
-    elif order.delivery_type == DeliveryTypeEnum.DEPOT.value and order.delivery_depot and order.delivery_depot.address:
-        delivery_address = order.delivery_depot.address.strip()
+    resolved_delivery_type = (
+        str((delivery_data or {}).get("delivery_type") or order.delivery_type or DeliveryTypeEnum.PICKUP.value)
+        .strip()
+        .upper()
+    )
+    clean_delivery_label, delivery_address = build_delivery_label(
+        "fr",
+        resolved_delivery_type,
+        site=delivery_site or order.delivery_site,
+        depot=delivery_depot or order.delivery_depot,
+    )
 
     order_lines = [
         f"- {(line.description or '-').strip() or '-'} : {_format_qty(line.qty_ordered)}"
@@ -419,7 +451,7 @@ def generate_email_preview(
 Nous vous transmettons notre commande n° {order_id} du {order_date}.
 
 Lieu de livraison : {clean_delivery_label}
-{delivery_address if delivery_address else ''}
+{'Adresse : ' + delivery_address if delivery_address else ''}
 
 Détail de la commande :
 {order_lines_text}
@@ -1450,13 +1482,19 @@ def manager_ordini_email_preview(
     else:
         delivery_type = DeliveryTypeEnum.PICKUP.value
 
-    destination_label = _delivery_destination_label(delivery_type=delivery_type, site=site, depot=depot)
+    delivery_data = {
+        "delivery_type": delivery_type,
+        "delivery_site_id": site.id if site else None,
+        "delivery_depot_id": depot.id if depot else None,
+    }
 
     if lang == 'fr':
         preview = generate_email_preview(
             order,
             order.supplier,
-            destination_label,
+            delivery_data=delivery_data,
+            delivery_site=site,
+            delivery_depot=depot,
         )
         subject = preview['subject']
         body = preview['body']
@@ -1466,7 +1504,9 @@ def manager_ordini_email_preview(
             order,
             supplier=order.supplier,
             lang=lang,
-            delivery_label=destination_label,
+            delivery_data=delivery_data,
+            delivery_site=site,
+            delivery_depot=depot,
         )
         recipient_email = _order_email_recipient(order)
 
