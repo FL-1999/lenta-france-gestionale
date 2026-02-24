@@ -50,7 +50,7 @@ from models import (
     MagazzinoMovimentoTipoEnum,
 )
 from routers import users, sites, machines, reports, fiches, notifications
-from routes import manager_personale, manager_veicoli, magazzino, ordini, audit, reportistica, backup
+from routes import manager_personale, manager_veicoli, manager_depositi, magazzino, ordini, audit, reportistica, backup
 
 from template_context import (
     build_template_context,
@@ -2999,6 +2999,7 @@ app.include_router(fiches.router)     # /fiches
 app.include_router(notifications.router)
 app.include_router(manager_personale.router)
 app.include_router(manager_veicoli.router)
+app.include_router(manager_depositi.router)
 app.include_router(magazzino.router)
 app.include_router(ordini.router)
 app.include_router(audit.router)

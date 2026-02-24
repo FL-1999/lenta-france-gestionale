@@ -1,0 +1,69 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}{% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %} – Manager{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">{% if lang == 'fr' %}Gestion logistique{% else %}Gestione logistica{% endif %}</p>
+    <h1 class="page-title">📦 {% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</h1>
+    <p class="page-subtitle">{% if lang == 'fr' %}Points de livraison indépendants des chantiers.{% else %}Punti di consegna separati dai cantieri.{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('manager_depositi_new') }}" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouveau dépôt{% else %}Nuovo deposito{% endif %}</a>
+    <button type="button" id="open-depots-map" class="btn btn-secondary">🗺️ {% if lang == 'fr' %}Ouvrir carte{% else %}Apri mappa{% endif %}</button>
+  </div>
+</div>
+
+<div class="card table-card">
+  <div class="card-header"><div class="card-title">{% if lang == 'fr' %}Liste des dépôts{% else %}Elenco depositi{% endif %}</div></div>
+  <div class="card-body list-table">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+          <th>{% if lang == 'fr' %}Adresse{% else %}Indirizzo{% endif %}</th>
+          <th>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}</th>
+          <th>CAP</th>
+          <th>{% if lang == 'fr' %}Province{% else %}Provincia{% endif %}</th>
+          <th>{% if lang == 'fr' %}Pays{% else %}Paese{% endif %}</th>
+          <th class="text-center">📍</th>
+          <th class="text-center">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
+          <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for depot in depositi %}
+        <tr data-depot-item data-name="{{ depot.name }}" data-lat="{{ depot.lat if depot.lat is not none else '' }}" data-lng="{{ depot.lng if depot.lng is not none else '' }}">
+          <td><strong>{{ depot.name }}</strong></td>
+          <td>{{ depot.address or '-' }}</td>
+          <td>{{ depot.city or '-' }}</td>
+          <td>{{ depot.zip or '-' }}</td>
+          <td>{{ depot.province or '-' }}</td>
+          <td>{{ depot.country or '-' }}</td>
+          <td class="text-center"><span class="badge badge-secondary">{{ 'OK' if depot.lat is not none and depot.lng is not none else '—' }}</span></td>
+          <td class="text-center">{{ 'Sì' if depot.is_active else 'No' }}</td>
+          <td class="table-actions"><a class="btn btn-secondary btn-sm" href="{{ url_for('manager_depositi_edit', depot_id=depot.id) }}">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="table-empty">{% if lang == 'fr' %}Aucun dépôt enregistré.{% else %}Nessun deposito registrato.{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal" id="depot-map-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-depot-map-close></div>
+  <div class="modal-content card">
+    <div class="card-body">
+      <div class="modal-header">
+        <h3 class="card-title">🗺️ {% if lang == 'fr' %}Carte des dépôts{% else %}Mappa depositi{% endif %}</h3>
+        <button type="button" class="btn btn-secondary btn-sm" data-depot-map-close>✖</button>
+      </div>
+      <p id="depot-map-message" class="text-muted" style="display:none;"></p>
+      <div id="depot-map-canvas" style="height: 380px;"></div>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', path='/js/depot-map-preview.js') }}"></script>
+{% endblock %}

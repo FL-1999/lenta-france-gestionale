@@ -384,6 +384,21 @@ def _mailto_encode_cp1252(s: str) -> str:
     return quote(normalized, safe="", encoding="cp1252", errors="strict")
 
 
+
+
+def _compose_depot_full_address(depot: Depot | None) -> str:
+    if not depot:
+        return ""
+    parts = [
+        (depot.address or "").strip(),
+        (depot.zip or "").strip(),
+        (depot.city or "").strip(),
+        (depot.province or "").strip(),
+        (depot.country or "").strip(),
+    ]
+    return ", ".join([part for part in parts if part])
+
+
 def generate_email_preview(
     order: PurchaseOrder,
     supplier: Supplier | None,
@@ -404,8 +419,8 @@ def generate_email_preview(
     delivery_address = ""
     if order.delivery_type == DeliveryTypeEnum.SITE.value and order.delivery_site and order.delivery_site.address:
         delivery_address = order.delivery_site.address.strip()
-    elif order.delivery_type == DeliveryTypeEnum.DEPOT.value and order.delivery_depot and order.delivery_depot.address:
-        delivery_address = order.delivery_depot.address.strip()
+    elif order.delivery_type == DeliveryTypeEnum.DEPOT.value and order.delivery_depot:
+        delivery_address = _compose_depot_full_address(order.delivery_depot)
 
     order_lines = [
         f"- {(line.description or '-').strip() or '-'} : {_format_qty(line.qty_ordered)}"

@@ -1,0 +1,39 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}{% if depot %}{% if lang == 'fr' %}Modifier dépôt{% else %}Modifica deposito{% endif %}{% else %}{% if lang == 'fr' %}Nouveau dépôt{% else %}Nuovo deposito{% endif %}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">{% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</p>
+    <h1 class="page-title">📦 {% if depot %}{% if lang == 'fr' %}Modifier dépôt{% else %}Modifica deposito{% endif %}{% else %}{% if lang == 'fr' %}Nouveau dépôt{% else %}Nuovo deposito{% endif %}{% endif %}</h1>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('manager_depositi_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour liste{% else %}Torna elenco{% endif %}</a>
+  </div>
+</div>
+
+<form method="post" action="{{ form_action }}" class="card" style="max-width:900px; margin:0 auto;">
+  <div class="card-body form-grid form-grid-2">
+    <div class="form-field">
+      <label for="name">Nome deposito *</label>
+      <input id="name" name="name" class="form-control" value="{{ depot.name if depot else '' }}" required />
+    </div>
+    <div class="form-field">
+      <label for="is_active">Attivo</label>
+      <input id="is_active" name="is_active" type="checkbox" {% if depot is none or depot.is_active %}checked{% endif %} />
+    </div>
+    <div class="form-field form-field--full"><label for="address">Indirizzo</label><input id="address" name="address" class="form-control" value="{{ depot.address if depot else '' }}" /></div>
+    <div class="form-field"><label for="city">Città</label><input id="city" name="city" class="form-control" value="{{ depot.city if depot else '' }}" /></div>
+    <div class="form-field"><label for="zip">CAP</label><input id="zip" name="zip" class="form-control" value="{{ depot.zip if depot else '' }}" /></div>
+    <div class="form-field"><label for="province">Provincia</label><input id="province" name="province" class="form-control" value="{{ depot.province if depot else '' }}" /></div>
+    <div class="form-field"><label for="country">Paese</label><input id="country" name="country" class="form-control" value="{{ depot.country if depot else '' }}" /></div>
+    <div class="form-field"><label for="lat">Latitudine</label><input id="lat" name="lat" type="number" step="any" class="form-control" value="{{ depot.lat if depot and depot.lat is not none else '' }}" /></div>
+    <div class="form-field"><label for="lng">Longitudine</label><input id="lng" name="lng" type="number" step="any" class="form-control" value="{{ depot.lng if depot and depot.lng is not none else '' }}" /></div>
+    <div class="form-field form-field--full"><label for="note">Note</label><textarea id="note" name="note" class="form-control" rows="4">{{ depot.notes if depot and depot.notes else '' }}</textarea></div>
+  </div>
+  <div class="card-footer" style="display:flex; justify-content:flex-end; gap:12px;">
+    <a href="{{ url_for('manager_depositi_list') }}" class="btn btn-secondary">Annulla</a>
+    <button type="submit" class="btn btn-primary">💾 Salva</button>
+  </div>
+</form>
+{% endblock %}
