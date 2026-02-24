@@ -55,7 +55,7 @@ class OrdiniRoutesTests(unittest.TestCase):
         response = self.client.get("/manager/ordini/nuovo", cookies={"lang": "it"})
         self.assertEqual(response.status_code, 200)
 
-    def test_manager_ordini_email_wizard_placeholder_renders(self) -> None:
+    def test_manager_ordini_email_wizard_requires_selected_order(self) -> None:
         app.dependency_overrides[get_current_active_user_html] = (
             lambda: SimpleNamespace(
                 id=1,
@@ -64,8 +64,26 @@ class OrdiniRoutesTests(unittest.TestCase):
                 is_magazzino_manager=False,
             )
         )
-        response = self.client.get("/manager/ordini/email-wizard", cookies={"lang": "it"})
+        response = self.client.get("/manager/ordini/" "email-wizard", cookies={"lang": "it"})
         self.assertEqual(response.status_code, 200)
+        self.assertIn('Devi prima aprire un ordine.', response.text)
+
+    def test_manager_ordini_email_wizard_redirects_with_order_id(self) -> None:
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=1,
+                role=RoleEnum.manager,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+        response = self.client.get(
+            "/manager/ordini/" "email-wizard?order_id=123",
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "http://testserver/manager/ordini/123/email")
 
     def test_manager_ordini_closed_list_renders(self) -> None:
         app.dependency_overrides[get_current_active_user_html] = (

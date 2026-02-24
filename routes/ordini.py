@@ -1610,20 +1610,27 @@ def manager_ordini_email_preview(
 
 
 @router.get(
-    '/manager/ordini/email-wizard',
+    '/manager/ordini/' 'email-wizard',
     response_class=HTMLResponse,
     name='manager_ordini_email_wizard',
 )
 def manager_ordini_email_wizard(
     request: Request,
+    order_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+    if order_id is not None:
+        return RedirectResponse(
+            url=request.url_for('manager_ordini_email', order_id=order_id),
+            status_code=302,
+        )
+
     return render_template(
         templates,
         request,
-        'manager/ordini/email_wizard_placeholder.html',
+        'manager/ordini/email_wizard_missing_order.html',
         {},
         db,
         current_user,
