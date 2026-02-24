@@ -1,16 +1,17 @@
 {% extends "shared/base.html" %}
-{% block title %}Email wizard{% endblock %}
+{% block title %}Email ordine{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
     <p class="page-eyebrow">Acquisti</p>
-    <h1 class="page-title">✉️ Email wizard</h1>
+    <h1 class="page-title">✉️ Email ordine</h1>
   </div>
 </div>
 
 <div class="card">
   <div class="card-body">
-    <p>Email wizard in arrivo.</p>
+    <p>Devi prima aprire un ordine.</p>
+    <a href="{{ url_for('manager_ordini_list') }}" class="btn btn-primary">Vai alla lista ordini</a>
   </div>
 </div>
 {% endblock %}
