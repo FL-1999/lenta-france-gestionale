@@ -13,6 +13,7 @@ from models import (
     MagazzinoCategoria,
     MagazzinoItem,
     MagazzinoMacro,
+    Depot,
     PurchaseDelivery,
     PurchaseOrder,
     PurchaseOrderLine,
@@ -779,11 +780,87 @@ class OrdiniRoutesTests(unittest.TestCase):
         payload = preview_response.json()
         self.assertEqual(payload.get("to"), f"contact-{unique_token}@example.com")
         self.assertIn("Commande", payload.get("subject", ""))
-        self.assertIn("Ritiro dal fornitore", payload.get("subject", ""))
-        self.assertIn("Lieu de livraison : Ritiro dal fornitore", payload.get("body", ""))
+        self.assertIn("Enlèvement chez le fournisseur", payload.get("subject", ""))
+        self.assertNotIn("Ritiro dal fornitore", payload.get("subject", ""))
+        self.assertIn("Lieu de livraison : Enlèvement chez le fournisseur", payload.get("body", ""))
+        self.assertNotIn("Ritiro dal fornitore", payload.get("body", ""))
         self.assertIn("mailto:", payload.get("mailto_url", ""))
-        self.assertIn("n%C2%B0", payload.get("mailto_url", ""))
-        self.assertIn("D%C3%A9tail", payload.get("mailto_url", ""))
+        self.assertIn("n%B0", payload.get("mailto_url", ""))
+        self.assertIn("D%E9tail", payload.get("mailto_url", ""))
+
+
+    def test_order_email_preview_includes_depot_full_address_in_it_and_fr(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-email-depot-{unique_token}@example.com",
+                full_name="Ordini Email Depot Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            supplier = Supplier(
+                name=f"Fornitore Depot {unique_token}",
+                email=f"supplier-depot-{unique_token}@example.com",
+                contact_email=f"contact-depot-{unique_token}@example.com",
+                is_active=True,
+            )
+            depot = Depot(
+                name=f"Depot Test {unique_token}",
+                address="12 Rue de Test",
+                city="Paris",
+                zip_code="75001",
+                province="Ile-de-France",
+                country="France",
+                is_active=True,
+            )
+            session.add_all([requester, supplier, depot])
+            session.flush()
+
+            order = PurchaseOrder(
+                order_number=f"ORD-DEPOT-{unique_token[:6]}",
+                supplier_name=supplier.name,
+                supplier_id=supplier.id,
+                requester_user_id=requester.id,
+                status="APERTO",
+                order_kind="warehouse",
+            )
+            session.add(order)
+            session.flush()
+
+            line = PurchaseOrderLine(order_id=order.id, description="Bulloni", qty_ordered=2)
+            session.add(line)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
+            depot_id = depot.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        it_response = self.client.post(
+            f"/manager/ordini/{order_id}/email/preview",
+            json={"lang": "it", "delivery_type": "DEPOT", "delivery_depot_id": depot_id},
+        )
+        self.assertEqual(it_response.status_code, 200)
+        self.assertIn("Indirizzo: 12 Rue de Test, 75001 Paris, Ile-de-France, France", it_response.json().get("body", ""))
+
+        fr_response = self.client.post(
+            f"/manager/ordini/{order_id}/email/preview",
+            json={"lang": "fr", "delivery_type": "DEPOT", "delivery_depot_id": depot_id},
+        )
+        self.assertEqual(fr_response.status_code, 200)
+        self.assertIn("Adresse : 12 Rue de Test, 75001 Paris, Ile-de-France, France", fr_response.json().get("body", ""))
 
     def test_order_email_preview_uses_override_fields(self) -> None:
         unique_token = uuid4().hex
