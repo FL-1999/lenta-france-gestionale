@@ -941,6 +941,42 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertIn("subject=Oggetto%20custom", payload.get("mailto_url", ""))
 
 
+    def test_order_email_preview_returns_json_when_order_not_found(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-email-missing-{unique_token}@example.com",
+                full_name="Ordini Email Missing Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            session.add(requester)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            "/manager/ordini/999999/email/preview",
+            json={"lang": "it", "delivery_type": "PICKUP"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {"error": "order_not_found"})
+
+
     def test_api_can_create_macro_and_tipologia_for_new_order_form(self) -> None:
         unique_token = uuid4().hex
         session = SessionLocal()
