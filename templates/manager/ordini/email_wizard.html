@@ -16,6 +16,7 @@
             <div class="card-title">Impostazioni</div>
         </div>
         <div class="card-body">
+            <div id="preview_error" class="alert alert-danger" style="display:none"></div>
             <div class="form-field">
                 <label for="lang">Lingua</label>
                 <select id="lang" name="lang">
@@ -77,6 +78,7 @@
             <div class="card-title">Anteprima</div>
         </div>
         <div class="card-body">
+            <div id="preview_error" class="alert alert-danger" style="display:none"></div>
             <div class="form-field">
                 <label for="subject">Subject</label>
                 <input id="subject" type="text" placeholder="Oggetto email">
@@ -122,17 +124,23 @@ function updateDeliveryFieldsVisibility() {
 }
 
 async function refreshPreview(useOverrides = false) {
+  const subject = document.getElementById('subject');
+  const body = document.getElementById('body');
+  const recipient = document.getElementById('to_override');
+  const mailLink = document.getElementById('mailto_link');
+  const previewError = document.getElementById('preview_error');
+
   const payload = {
     lang: document.getElementById('lang').value,
     delivery_type: document.getElementById('delivery_type').value,
     delivery_site_id: document.getElementById('delivery_site_id').value,
     delivery_depot_id: document.getElementById('delivery_depot_id').value,
-    to_override: document.getElementById('to_override').value,
+    to_override: recipient.value,
   };
 
   if (useOverrides) {
-    payload.subject_override = document.getElementById('subject').value;
-    payload.body_override = document.getElementById('body').value;
+    payload.subject_override = subject.value;
+    payload.body_override = body.value;
   }
 
   const response = await fetch(`/manager/ordini/${orderId}/email/preview`, {
@@ -142,20 +150,34 @@ async function refreshPreview(useOverrides = false) {
   });
 
   if (!response.ok) {
+    const txt = await response.text();
+    console.error('email preview failed', response.status, txt);
+    previewError.textContent = `Anteprima email non disponibile (${response.status}). Controlla i dati inseriti o riprova.`;
+    previewError.style.display = '';
+    mailLink.href = '#';
+    mailLink.dataset.mailto = '#';
+    mailLink.classList.add('disabled');
+    mailLink.setAttribute('aria-disabled', 'true');
     return;
   }
 
+  previewError.style.display = 'none';
+  previewError.textContent = '';
+
   const data = await response.json();
-  if (!useOverrides || !document.getElementById('subject').value) {
-    document.getElementById('subject').value = data.subject || '';
+  subject.value = data.subject || '';
+  body.value = data.body || '';
+  recipient.value = data.to || '';
+  const url = data.mailto_url || '#';
+  mailLink.href = url;
+  mailLink.dataset.mailto = url;
+  if (url.startsWith('mailto:')) {
+    mailLink.classList.remove('disabled');
+    mailLink.removeAttribute('aria-disabled');
+  } else {
+    mailLink.classList.add('disabled');
+    mailLink.setAttribute('aria-disabled', 'true');
   }
-  if (!useOverrides || !document.getElementById('body').value) {
-    document.getElementById('body').value = data.body || '';
-  }
-  if (data.to !== undefined) {
-    document.getElementById('to_override').value = data.to || '';
-  }
-  document.getElementById('mailto_link').href = data.mailto_url || '#';
 }
 
 document.getElementById('delivery_type').addEventListener('change', () => {
@@ -169,6 +191,15 @@ document.getElementById('to_override').addEventListener('change', () => refreshP
 document.getElementById('refresh_preview').addEventListener('click', () => refreshPreview(true));
 document.getElementById('subject').addEventListener('change', () => refreshPreview(true));
 document.getElementById('body').addEventListener('change', () => refreshPreview(true));
+
+document.getElementById('mailto_link').addEventListener('click', (e) => {
+  const url = e.currentTarget.getAttribute('href') || '#';
+  if (!url.startsWith('mailto:')) {
+    e.preventDefault();
+    alert('Email non pronta: controlla anteprima/errore.');
+    return;
+  }
+});
 
 document.getElementById('copy_text').addEventListener('click', async () => {
   const subject = document.getElementById('subject').value || '';

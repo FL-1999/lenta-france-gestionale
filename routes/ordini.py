@@ -1520,93 +1520,97 @@ def manager_ordini_email_preview(
     _ensure_manager(current_user)
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
-        raise HTTPException(status_code=404, detail='Ordine non trovato')
+        return JSONResponse({'error': 'order_not_found'}, status_code=404)
 
-    lang = (payload.get('lang') or 'it').strip().lower()
-    delivery_type = (payload.get('delivery_type') or order.delivery_type or DeliveryTypeEnum.PICKUP.value).strip().upper()
+    try:
+        lang = (payload.get('lang') or 'it').strip().lower()
+        delivery_type = (payload.get('delivery_type') or order.delivery_type or DeliveryTypeEnum.PICKUP.value).strip().upper()
 
-    site = None
-    depot = None
-    if delivery_type == DeliveryTypeEnum.SITE.value:
-        raw_site_id = payload.get('delivery_site_id') or order.delivery_site_id
-        try:
-            site_id = int(raw_site_id)
-        except (TypeError, ValueError):
-            site_id = None
-        site = db.query(Site).filter(Site.id == site_id, Site.is_active.is_(True)).first() if site_id else None
-    elif delivery_type == DeliveryTypeEnum.DEPOT.value:
-        raw_depot_id = payload.get('delivery_depot_id') or order.delivery_depot_id
-        try:
-            depot_id = int(raw_depot_id)
-        except (TypeError, ValueError):
-            depot_id = None
-        depot = db.query(Depot).filter(Depot.id == depot_id, Depot.is_active.is_(True)).first() if depot_id else None
-    else:
-        delivery_type = DeliveryTypeEnum.PICKUP.value
+        site = None
+        depot = None
+        if delivery_type == DeliveryTypeEnum.SITE.value:
+            raw_site_id = payload.get('delivery_site_id') or order.delivery_site_id
+            try:
+                site_id = int(raw_site_id)
+            except (TypeError, ValueError):
+                site_id = None
+            site = db.query(Site).filter(Site.id == site_id, Site.is_active.is_(True)).first() if site_id else None
+        elif delivery_type == DeliveryTypeEnum.DEPOT.value:
+            raw_depot_id = payload.get('delivery_depot_id') or order.delivery_depot_id
+            try:
+                depot_id = int(raw_depot_id)
+            except (TypeError, ValueError):
+                depot_id = None
+            depot = db.query(Depot).filter(Depot.id == depot_id, Depot.is_active.is_(True)).first() if depot_id else None
+        else:
+            delivery_type = DeliveryTypeEnum.PICKUP.value
 
-    delivery_data = {"delivery_type": delivery_type}
+        delivery_data = {"delivery_type": delivery_type}
 
-    if lang == 'fr':
-        preview = generate_email_preview(
-            order,
-            order.supplier,
-            lang=lang,
-            delivery_data=delivery_data,
-            delivery_site=site,
-            delivery_depot=depot,
-            sender_name='Lenta France',
+        if lang == 'fr':
+            preview = generate_email_preview(
+                order,
+                order.supplier,
+                lang=lang,
+                delivery_data=delivery_data,
+                delivery_site=site,
+                delivery_depot=depot,
+                sender_name='Lenta France',
+            )
+            if not preview:
+                fallback_subject = f"Commande n° {order.order_number or order.id}"
+                fallback_body = "Bonjour,\n\nVeuillez trouver notre commande.\n\nCordialement,\nLenta France"
+                fallback_subject_encoded = _mailto_encode_cp1252(fallback_subject)
+                fallback_body_encoded = _mailto_encode_cp1252(fallback_body)
+                preview = {
+                    'to': '',
+                    'subject': fallback_subject,
+                    'body': fallback_body,
+                    'mailto_url': f"mailto:?subject={fallback_subject_encoded}&body={fallback_body_encoded}",
+                }
+            subject = preview['subject']
+            body = preview['body']
+            recipient_email = preview['to']
+        else:
+            subject, body = build_order_email(
+                order,
+                supplier=order.supplier,
+                lang=lang,
+                delivery_data=delivery_data,
+                delivery_site=site,
+                delivery_depot=depot,
+            )
+            recipient_email = _order_email_recipient(order)
+
+        recipient_email = (payload.get('to_override') or '').strip() or recipient_email
+        subject = (payload.get('subject_override') or '').strip() or subject
+        body_override = payload.get('body_override')
+        if isinstance(body_override, str) and body_override.strip():
+            body = body_override
+
+        logger.info("Order email preview pre-mailto subject=%r body=%r", subject, body)
+        subject = fix_mojibake_if_needed(subject)
+        body = fix_mojibake_if_needed(body)
+        subject_encoded = _mailto_encode_cp1252(subject)
+        body_encoded = _mailto_encode_cp1252(body)
+
+        mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
+        logger.info(
+            "Order email preview encoded checks has_recap=%s has_numero=%s",
+            "%E9" in mailto_url,
+            "%B0" in mailto_url,
         )
-        if not preview:
-            fallback_subject = f"Commande n° {order.order_number or order.id}"
-            fallback_body = "Bonjour,\n\nVeuillez trouver notre commande.\n\nCordialement,\nLenta France"
-            fallback_subject_encoded = _mailto_encode_cp1252(fallback_subject)
-            fallback_body_encoded = _mailto_encode_cp1252(fallback_body)
-            preview = {
-                'to': '',
-                'subject': fallback_subject,
-                'body': fallback_body,
-                'mailto_url': f"mailto:?subject={fallback_subject_encoded}&body={fallback_body_encoded}",
-            }
-        subject = preview['subject']
-        body = preview['body']
-        recipient_email = preview['to']
-    else:
-        subject, body = build_order_email(
-            order,
-            supplier=order.supplier,
-            lang=lang,
-            delivery_data=delivery_data,
-            delivery_site=site,
-            delivery_depot=depot,
-        )
-        recipient_email = _order_email_recipient(order)
+        logger.info("Order email preview mailto_url=%s", mailto_url)
 
-    recipient_email = (payload.get('to_override') or '').strip() or recipient_email
-    subject = (payload.get('subject_override') or '').strip() or subject
-    body_override = payload.get('body_override')
-    if isinstance(body_override, str) and body_override.strip():
-        body = body_override
-
-    logger.info("Order email preview pre-mailto subject=%r body=%r", subject, body)
-    subject = fix_mojibake_if_needed(subject)
-    body = fix_mojibake_if_needed(body)
-    subject_encoded = _mailto_encode_cp1252(subject)
-    body_encoded = _mailto_encode_cp1252(body)
-
-    mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
-    logger.info(
-        "Order email preview encoded checks has_recap=%s has_numero=%s",
-        "%E9" in mailto_url,
-        "%B0" in mailto_url,
-    )
-    logger.info("Order email preview mailto_url=%s", mailto_url)
-
-    return {
-        'to': recipient_email,
-        'subject': subject,
-        'body': body,
-        'mailto_url': mailto_url,
-    }
+        return {
+            'to': recipient_email,
+            'subject': subject,
+            'body': body,
+            'mailto_url': mailto_url,
+        }
+    except Exception as exc:
+        logger.exception("Order email preview failed for order_id=%s", order_id)
+        return JSONResponse({'error': 'preview_failed', 'details': str(exc)}, status_code=500)
 
 
 @router.get(
