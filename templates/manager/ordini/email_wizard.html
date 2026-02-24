@@ -16,7 +16,6 @@
             <div class="card-title">Impostazioni</div>
         </div>
         <div class="card-body">
-            <div id="preview_error" class="alert alert-danger" style="display:none"></div>
             <div class="form-field">
                 <label for="lang">Lingua</label>
                 <select id="lang" name="lang">
@@ -143,40 +142,51 @@ async function refreshPreview(useOverrides = false) {
     payload.body_override = body.value;
   }
 
-  const response = await fetch(`/manager/ordini/${orderId}/email/preview`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const txt = await response.text();
-    console.error('email preview failed', response.status, txt);
-    previewError.textContent = `Anteprima email non disponibile (${response.status}). Controlla i dati inseriti o riprova.`;
-    previewError.style.display = '';
+  const disableMailLink = () => {
     mailLink.href = '#';
     mailLink.dataset.mailto = '#';
     mailLink.classList.add('disabled');
     mailLink.setAttribute('aria-disabled', 'true');
-    return;
-  }
+  };
 
-  previewError.style.display = 'none';
-  previewError.textContent = '';
+  try {
+    const response = await fetch(`/manager/ordini/${orderId}/email/preview`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
 
-  const data = await response.json();
-  subject.value = data.subject || '';
-  body.value = data.body || '';
-  recipient.value = data.to || '';
-  const url = data.mailto_url || '#';
-  mailLink.href = url;
-  mailLink.dataset.mailto = url;
-  if (url.startsWith('mailto:')) {
-    mailLink.classList.remove('disabled');
-    mailLink.removeAttribute('aria-disabled');
-  } else {
-    mailLink.classList.add('disabled');
-    mailLink.setAttribute('aria-disabled', 'true');
+    if (!response.ok) {
+      const txt = await response.text();
+      console.error('email preview failed', response.status, txt);
+      previewError.textContent = `Anteprima email non disponibile (${response.status}). Controlla i dati inseriti o riprova.`;
+      previewError.style.display = '';
+      disableMailLink();
+      return;
+    }
+
+    previewError.style.display = 'none';
+    previewError.textContent = '';
+
+    const data = await response.json();
+    subject.value = data.subject || '';
+    body.value = data.body || '';
+    recipient.value = data.to || '';
+    const url = data.mailto_url || '#';
+    mailLink.href = url;
+    mailLink.dataset.mailto = url;
+    if (url.startsWith('mailto:')) {
+      mailLink.classList.remove('disabled');
+      mailLink.removeAttribute('aria-disabled');
+    } else {
+      mailLink.classList.add('disabled');
+      mailLink.setAttribute('aria-disabled', 'true');
+    }
+  } catch (err) {
+    console.error('email preview failed', err);
+    previewError.textContent = 'Anteprima email non disponibile per un errore inatteso. Riprova.';
+    previewError.style.display = '';
+    disableMailLink();
   }
 }
 
