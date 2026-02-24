@@ -24,7 +24,7 @@
     </div>
     <div class="form-field form-field--full"><label for="address">Indirizzo</label><input id="address" name="address" class="form-control" value="{{ depot.address if depot else '' }}" /></div>
     <div class="form-field"><label for="city">Città</label><input id="city" name="city" class="form-control" value="{{ depot.city if depot else '' }}" /></div>
-    <div class="form-field"><label for="zip">CAP</label><input id="zip" name="zip" class="form-control" value="{{ depot.zip if depot else '' }}" /></div>
+    <div class="form-field"><label for="zip_code">CAP</label><input id="zip_code" name="zip_code" class="form-control" value="{{ depot.zip_code if depot else '' }}" /></div>
     <div class="form-field"><label for="province">Provincia</label><input id="province" name="province" class="form-control" value="{{ depot.province if depot else '' }}" /></div>
     <div class="form-field"><label for="country">Paese</label><input id="country" name="country" class="form-control" value="{{ depot.country if depot else '' }}" /></div>
     <div class="form-field"><label for="lat">Latitudine</label><input id="lat" name="lat" type="number" step="any" class="form-control" value="{{ depot.lat if depot and depot.lat is not none else '' }}" /></div>

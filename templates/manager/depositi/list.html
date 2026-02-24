@@ -37,7 +37,7 @@
           <td><strong>{{ depot.name }}</strong></td>
           <td>{{ depot.address or '-' }}</td>
           <td>{{ depot.city or '-' }}</td>
-          <td>{{ depot.zip or '-' }}</td>
+          <td>{{ depot.zip_code or '-' }}</td>
           <td>{{ depot.province or '-' }}</td>
           <td>{{ depot.country or '-' }}</td>
           <td class="text-center"><span class="badge badge-secondary">{{ 'OK' if depot.lat is not none and depot.lng is not none else '—' }}</span></td>

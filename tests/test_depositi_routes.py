@@ -41,7 +41,7 @@ class DepositiRoutesTests(unittest.TestCase):
                 "name": f"Deposito test {unique}",
                 "address": "Via Roma 10",
                 "city": "Lille",
-                "zip": "59000",
+                "zip_code": "59000",
                 "province": "Nord",
                 "country": "France",
                 "lat": "50.6292",
@@ -69,7 +69,7 @@ class DepositiRoutesTests(unittest.TestCase):
                 "name": f"Deposito test {unique} aggiornato",
                 "address": "Via Milano 20",
                 "city": "Paris",
-                "zip": "75001",
+                "zip_code": "75001",
                 "province": "Ile-de-France",
                 "country": "France",
                 "lat": "48.8566",
@@ -85,7 +85,7 @@ class DepositiRoutesTests(unittest.TestCase):
             updated = session.query(Depot).filter(Depot.id == depot_id).first()
             self.assertIsNotNone(updated)
             self.assertEqual(updated.city, "Paris")
-            self.assertEqual(updated.zip, "75001")
+            self.assertEqual(updated.zip_code, "75001")
             self.assertFalse(updated.is_active)
         finally:
             session.close()

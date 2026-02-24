@@ -433,7 +433,7 @@ def _compose_depot_full_address(depot: Depot | None) -> str:
         return ""
     parts = [
         (depot.address or "").strip(),
-        (depot.zip or "").strip(),
+        (depot.zip_code or "").strip(),
         (depot.city or "").strip(),
         (depot.province or "").strip(),
         (depot.country or "").strip(),

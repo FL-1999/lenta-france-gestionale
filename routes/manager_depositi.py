@@ -115,7 +115,8 @@ def manager_depositi_create(
     name: str = Form(...),
     address: str | None = Form(None),
     city: str | None = Form(None),
-    zip: str | None = Form(None),
+    zip_code: str | None = Form(None),
+    legacy_zip: str | None = Form(None, alias="zip"),
     province: str | None = Form(None),
     country: str | None = Form(None),
     note: str | None = Form(None),
@@ -133,7 +134,7 @@ def manager_depositi_create(
         name=depot_name,
         address=_clean_optional(address),
         city=_clean_optional(city),
-        zip=_clean_optional(zip),
+        zip_code=_clean_optional(zip_code or legacy_zip),
         province=_clean_optional(province),
         country=_clean_optional(country),
         notes=_clean_optional(note),
@@ -179,7 +180,8 @@ def manager_depositi_update(
     name: str = Form(...),
     address: str | None = Form(None),
     city: str | None = Form(None),
-    zip: str | None = Form(None),
+    zip_code: str | None = Form(None),
+    legacy_zip: str | None = Form(None, alias="zip"),
     province: str | None = Form(None),
     country: str | None = Form(None),
     note: str | None = Form(None),
@@ -197,7 +199,7 @@ def manager_depositi_update(
     depot.name = _validate_name(name)
     depot.address = _clean_optional(address)
     depot.city = _clean_optional(city)
-    depot.zip = _clean_optional(zip)
+    depot.zip_code = _clean_optional(zip_code or legacy_zip)
     depot.province = _clean_optional(province)
     depot.country = _clean_optional(country)
     depot.notes = _clean_optional(note)
