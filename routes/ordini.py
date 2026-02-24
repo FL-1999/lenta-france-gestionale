@@ -1620,12 +1620,17 @@ def manager_ordini_email_preview(
 )
 def manager_ordini_email_wizard(
     request: Request,
-    order_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+    order_id = request.query_params.get('order_id')
     if order_id is not None:
+        try:
+            order_id = int(order_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=404, detail='Ordine non valido')
+
         return RedirectResponse(
             url=request.url_for('manager_ordini_email', order_id=order_id),
             status_code=302,
