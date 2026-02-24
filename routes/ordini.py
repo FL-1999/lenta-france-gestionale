@@ -426,6 +426,21 @@ def _mailto_encode_cp1252(s: str) -> str:
     return quote(normalized, safe="", encoding="cp1252", errors="strict")
 
 
+
+
+def _compose_depot_full_address(depot: Depot | None) -> str:
+    if not depot:
+        return ""
+    parts = [
+        (depot.address or "").strip(),
+        (depot.zip or "").strip(),
+        (depot.city or "").strip(),
+        (depot.province or "").strip(),
+        (depot.country or "").strip(),
+    ]
+    return ", ".join([part for part in parts if part])
+
+
 def generate_email_preview(
     order: PurchaseOrder,
     supplier: Supplier | None,
@@ -445,6 +460,23 @@ def generate_email_preview(
         or None
     )
 
+resolved_delivery_type = (
+    str((delivery_data or {}).get("delivery_type") or order.delivery_type or DeliveryTypeEnum.PICKUP.value)
+    .strip()
+    .upper()
+)
+
+clean_delivery_label, delivery_address = build_delivery_label(
+    lang,  # "fr" o "it"
+    resolved_delivery_type,
+    site=delivery_site or order.delivery_site,
+    depot=delivery_depot or order.delivery_depot,
+)
+
+delivery_address_line = ""
+if delivery_address:
+    prefix = "Adresse : " if lang == "fr" else "Indirizzo: "
+    delivery_address_line = f"{prefix}{delivery_address}"
 
     order_lines = [
         f"- {(line.description or '-').strip() or '-'} : {_format_qty(line.qty_ordered)}"
