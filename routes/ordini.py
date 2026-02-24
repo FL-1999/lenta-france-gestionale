@@ -460,32 +460,32 @@ def generate_email_preview(
         or None
     )
 
-resolved_delivery_type = (
-    str((delivery_data or {}).get("delivery_type") or order.delivery_type or DeliveryTypeEnum.PICKUP.value)
-    .strip()
-    .upper()
-)
+    resolved_delivery_type = (
+        str((delivery_data or {}).get("delivery_type") or order.delivery_type or DeliveryTypeEnum.PICKUP.value)
+        .strip()
+        .upper()
+    )
 
-clean_delivery_label, delivery_address = build_delivery_label(
-    lang,  # "fr" o "it"
-    resolved_delivery_type,
-    site=delivery_site or order.delivery_site,
-    depot=delivery_depot or order.delivery_depot,
-)
+    clean_delivery_label, delivery_address = build_delivery_label(
+        lang,  # "fr" o "it"
+        resolved_delivery_type,
+        site=delivery_site or order.delivery_site,
+        depot=delivery_depot or order.delivery_depot,
+    )
 
-delivery_address_line = ""
-if delivery_address:
-    prefix = "Adresse : " if lang == "fr" else "Indirizzo: "
-    delivery_address_line = f"{prefix}{delivery_address}"
+    delivery_address_line = ""
+    if delivery_address:
+        prefix = "Adresse : " if lang == "fr" else "Indirizzo: "
+        delivery_address_line = f"{prefix}{delivery_address}"
 
-    order_lines = [
-        f"- {(line.description or '-').strip() or '-'} : {_format_qty(line.qty_ordered)}"
-        for line in order.lines
-    ]
-    order_lines_text = "\n".join(order_lines) if order_lines else "-"
+        order_lines = [
+            f"- {(line.description or '-').strip() or '-'} : {_format_qty(line.qty_ordered)}"
+            for line in order.lines
+        ]
+        order_lines_text = "\n".join(order_lines) if order_lines else "-"
 
-    subject = f"Commande n° {order_id} - {clean_delivery_label} - {order_date}"
-    body = f"""Bonjour {contact_name if contact_name else ''},
+        subject = f"Commande n° {order_id} - {clean_delivery_label} - {order_date}"
+        body = f"""Bonjour {contact_name if contact_name else ''},
 
 Nous vous transmettons notre commande n° {order_id} du {order_date}.
 
@@ -502,31 +502,31 @@ Cordialement,
 Lenta France
 """
 
-    logger.info("Email preview FR pre-mailto subject=%r body=%r", subject, body)
-    subject = fix_mojibake_if_needed(subject)
-    body = fix_mojibake_if_needed(body)
+        logger.info("Email preview FR pre-mailto subject=%r body=%r", subject, body)
+        subject = fix_mojibake_if_needed(subject)
+        body = fix_mojibake_if_needed(body)
 
-    recipient_email = (
-        (order.contact_email_override or "").strip()
-        or ((supplier.contact_email if supplier and supplier.contact_email else "").strip())
-        or ((supplier.email if supplier and supplier.email else "").strip())
-    )
-    subject_encoded = _mailto_encode_cp1252(subject)
-    body_encoded = _mailto_encode_cp1252(body)
-    mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
-    logger.info(
-        "Email preview FR encoded checks has_recap=%s has_numero=%s",
-        "%E9" in mailto_url,
-        "%B0" in mailto_url,
-    )
-    logger.info("Email preview FR mailto_url=%s", mailto_url)
+        recipient_email = (
+            (order.contact_email_override or "").strip()
+            or ((supplier.contact_email if supplier and supplier.contact_email else "").strip())
+            or ((supplier.email if supplier and supplier.email else "").strip())
+        )
+        subject_encoded = _mailto_encode_cp1252(subject)
+        body_encoded = _mailto_encode_cp1252(body)
+        mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
+        logger.info(
+            "Email preview FR encoded checks has_recap=%s has_numero=%s",
+            "%E9" in mailto_url,
+            "%B0" in mailto_url,
+        )
+        logger.info("Email preview FR mailto_url=%s", mailto_url)
 
-    return {
-        "to": recipient_email,
-        "subject": subject,
-        "body": body,
-        "mailto_url": mailto_url,
-    }
+        return {
+            "to": recipient_email,
+            "subject": subject,
+            "body": body,
+            "mailto_url": mailto_url,
+        }
 
 
 def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str | None:
