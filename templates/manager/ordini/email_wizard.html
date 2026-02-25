@@ -62,8 +62,8 @@
             </div>
 
             <div class="form-field">
-                <label for="to_override">Destinatario</label>
-                <input id="to_override" type="email" value="{{ default_to }}" placeholder="email@fornitore.com">
+                <label for="recipient_email">Destinatario</label>
+                <input id="recipient_email" type="email" value="{{ default_to }}" placeholder="email@fornitore.com">
             </div>
 
             <div class="form-actions">
@@ -122,69 +122,67 @@ function updateDeliveryFieldsVisibility() {
   updateDepotAddressCard();
 }
 
-async function refreshPreview(useOverrides = false) {
+async function refreshPreview() {
   const subject = document.getElementById('subject');
   const body = document.getElementById('body');
-  const recipient = document.getElementById('to_override');
+  const recipient = document.getElementById('recipient_email');
   const mailLink = document.getElementById('mailto_link');
   const previewError = document.getElementById('preview_error');
 
-  const payload = {
-    lang: document.getElementById('lang').value,
-    delivery_type: document.getElementById('delivery_type').value,
-    delivery_site_id: document.getElementById('delivery_site_id').value,
-    delivery_depot_id: document.getElementById('delivery_depot_id').value,
-    to_override: recipient.value,
-  };
-
-  if (useOverrides) {
-    payload.subject_override = subject.value;
-    payload.body_override = body.value;
-  }
-
   const disableMailLink = () => {
     mailLink.href = '#';
-    mailLink.dataset.mailto = '#';
     mailLink.classList.add('disabled');
     mailLink.setAttribute('aria-disabled', 'true');
   };
 
   try {
+    console.log('🔄 preview call');
+
     const response = await fetch(`/manager/ordini/${orderId}/email/preview`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        lang: document.getElementById('lang').value,
+        delivery_type: document.getElementById('delivery_type').value,
+        delivery_site_id: document.getElementById('delivery_site_id')?.value || null,
+        delivery_depot_id: document.getElementById('delivery_depot_id')?.value || null,
+        to_override: recipient?.value || '',
+      }),
     });
 
+    console.log('STATUS:', response.status);
+
     if (!response.ok) {
-      const txt = await response.text();
-      console.error('email preview failed', response.status, txt);
-      previewError.textContent = `Anteprima email non disponibile (${response.status}). Controlla i dati inseriti o riprova.`;
-      previewError.style.display = '';
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('DATA:', data);
+
+    if (!data) {
       disableMailLink();
       return;
     }
 
-    previewError.style.display = 'none';
-    previewError.textContent = '';
-
-    const data = await response.json();
     subject.value = data.subject || '';
     body.value = data.body || '';
-    recipient.value = data.to || '';
-    const url = data.mailto_url || '#';
-    mailLink.href = url;
-    mailLink.dataset.mailto = url;
-    if (url.startsWith('mailto:')) {
+
+    if (data.mailto_url && data.mailto_url.startsWith('mailto:')) {
+      mailLink.href = data.mailto_url;
       mailLink.classList.remove('disabled');
       mailLink.removeAttribute('aria-disabled');
     } else {
-      mailLink.classList.add('disabled');
-      mailLink.setAttribute('aria-disabled', 'true');
+      disableMailLink();
     }
+
+    previewError.style.display = 'none';
+    previewError.textContent = '';
   } catch (err) {
-    console.error('email preview failed', err);
-    previewError.textContent = 'Anteprima email non disponibile per un errore inatteso. Riprova.';
+    console.error('Errore preview:', err);
+    previewError.textContent = 'Anteprima email non disponibile. Verifica i dati inseriti e riprova.';
     previewError.style.display = '';
     disableMailLink();
   }
@@ -197,10 +195,8 @@ document.getElementById('delivery_type').addEventListener('change', () => {
 document.getElementById('delivery_site_id').addEventListener('change', () => refreshPreview());
 document.getElementById('delivery_depot_id').addEventListener('change', () => { updateDepotAddressCard(); refreshPreview(); });
 document.getElementById('lang').addEventListener('change', () => refreshPreview());
-document.getElementById('to_override').addEventListener('change', () => refreshPreview());
-document.getElementById('refresh_preview').addEventListener('click', () => refreshPreview(true));
-document.getElementById('subject').addEventListener('change', () => refreshPreview(true));
-document.getElementById('body').addEventListener('change', () => refreshPreview(true));
+document.getElementById('recipient_email').addEventListener('input', () => refreshPreview());
+document.getElementById('refresh_preview').addEventListener('click', () => refreshPreview());
 
 document.getElementById('mailto_link').addEventListener('click', (e) => {
   const url = e.currentTarget.getAttribute('href') || '#';
@@ -217,8 +213,10 @@ document.getElementById('copy_text').addEventListener('click', async () => {
   await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
 });
 
-updateDeliveryFieldsVisibility();
-updateDepotAddressCard();
-refreshPreview();
+document.addEventListener('DOMContentLoaded', () => {
+  updateDeliveryFieldsVisibility();
+  updateDepotAddressCard();
+  refreshPreview();
+});
 </script>
 {% endblock %}
