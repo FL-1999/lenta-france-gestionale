@@ -286,7 +286,7 @@ def build_delivery_label(
     if normalized_type == DeliveryTypeEnum.DEPOT.value:
         depot_name = depot.name if depot and depot.name else "-"
         label = f"Dépôt : {depot_name}" if normalized_lang == "fr" else f"Deposito: {depot_name}"
-        address = (depot.address or "").strip() if depot and depot.address else ""
+        address = _format_depot_full_address(depot) if depot else ""
         return label, address
 
     if normalized_type == DeliveryTypeEnum.SITE.value:
@@ -327,6 +327,9 @@ def build_order_email(
     order: PurchaseOrder,
     supplier: Supplier | None,
     lang: str,
+    delivery_type: str | None = None,
+    delivery_site_id: int | None = None,
+    delivery_depot_id: int | None = None,
 ) -> tuple[str, str]:
     normalized_lang = (lang or "it").strip().lower()
     if normalized_lang not in {"it", "fr"}:
@@ -342,12 +345,20 @@ def build_order_email(
         or (order.contact_name or "").strip()
         or ((resolved_supplier.contact_name or "").strip() if resolved_supplier else "")
     )
-    delivery_type = (order.delivery_type or DeliveryTypeEnum.PICKUP.value).strip().upper()
+    resolved_site = order.delivery_site
+    resolved_depot = order.delivery_depot
+
+    if delivery_site_id and resolved_site and resolved_site.id != delivery_site_id:
+        resolved_site = None
+    if delivery_depot_id and resolved_depot and resolved_depot.id != delivery_depot_id:
+        resolved_depot = None
+
+    normalized_delivery_type = (delivery_type or order.delivery_type or DeliveryTypeEnum.PICKUP.value).strip().upper()
     destination_label, destination_address = build_delivery_label(
         normalized_lang,
-        delivery_type,
-        site=order.delivery_site,
-        depot=order.delivery_depot,
+        normalized_delivery_type,
+        site=resolved_site,
+        depot=resolved_depot,
     )
     order_number = order.order_number or str(order.id or "-")
     order_date_text = order.order_date.strftime("%d/%m/%Y") if order.order_date else "-"
@@ -366,7 +377,7 @@ def build_order_email(
             f"Livraison: {destination_label}.",
         ]
         if destination_address:
-            body_parts.append(f"Adresse: {destination_address}.")
+            body_parts.append(f"Adresse : {destination_address}.")
         body_parts.extend(
             [
                 "",
@@ -1394,39 +1405,67 @@ def manager_ordini_email_preview(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
         return JSONResponse({'error': 'order_not_found'}, status_code=404)
 
-    try:
-        lang = (payload.get("lang") or "it").lower()
-        recipient_email = (payload.get("to_override") or "").strip() or _order_email_recipient(order)
-        subject, body = build_order_email(order, order.supplier, lang)
-        subject = fix_mojibake_if_needed(subject)
-        body = fix_mojibake_if_needed(body)
-        subject_encoded = _mailto_encode_cp1252(subject)
-        body_encoded = _mailto_encode_cp1252(body)
-        mailto_url = f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
-        return JSONResponse(
-            {
-                "to": recipient_email,
-                "subject": subject,
-                "body": body,
-                "mailto_url": mailto_url,
-            },
-            status_code=200,
-        )
-    except Exception as e:
-        logger.exception("Order email preview failed for order_id=%s", order_id)
-        return JSONResponse(
-            {
-                "to": "",
-                "subject": "Errore generazione email",
-                "body": str(e),
-                "mailto_url": "",
-            },
-            status_code=200,
-        )
+    lang = payload.get("lang", "it")
+    delivery_type = payload.get("delivery_type")
+    delivery_site_id = payload.get("delivery_site_id")
+    delivery_depot_id = payload.get("delivery_depot_id")
+    to_override = payload.get("to_override")
+
+    recipient = to_override or _order_email_recipient(order)
+
+    if delivery_site_id:
+        try:
+            order.delivery_site = db.query(Site).filter(Site.id == int(delivery_site_id)).first()
+        except (TypeError, ValueError):
+            order.delivery_site = None
+    if delivery_depot_id:
+        try:
+            order.delivery_depot = db.query(Depot).filter(Depot.id == int(delivery_depot_id)).first()
+        except (TypeError, ValueError):
+            order.delivery_depot = None
+
+    subject, body = build_order_email(
+        order=order,
+        supplier=order.supplier,
+        lang=lang,
+        delivery_type=delivery_type,
+        delivery_site_id=delivery_site_id,
+        delivery_depot_id=delivery_depot_id,
+    )
+
+    subject_override = payload.get("subject_override")
+    body_override = payload.get("body_override")
+    if isinstance(subject_override, str) and subject_override.strip():
+        subject = subject_override
+    if isinstance(body_override, str) and body_override.strip():
+        body = body_override
+
+    subject = fix_mojibake_if_needed(subject)
+    body = fix_mojibake_if_needed(body)
+
+    subject_encoded = _mailto_encode_cp1252(subject)
+    body_encoded = _mailto_encode_cp1252(body)
+
+    mailto_url = f"mailto:{recipient}?subject={subject_encoded}&body={body_encoded}"
+
+    logger.info("EMAIL PREVIEW", extra={
+        "order_id": order.id,
+        "recipient": recipient,
+        "subject": subject,
+        "body_len": len(body)
+    })
+
+    return JSONResponse({
+        "to": recipient,
+        "subject": subject,
+        "body": body,
+        "mailto_url": mailto_url,
+    })
 
 
 @router.get(
