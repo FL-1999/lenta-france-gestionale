@@ -803,8 +803,8 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertIn("Lieu de livraison : Enlèvement chez le fournisseur", payload.get("body", ""))
         self.assertNotIn("Ritiro dal fornitore", payload.get("body", ""))
         self.assertIn("mailto:", payload.get("mailto_url", ""))
-        self.assertIn("n%B0", payload.get("mailto_url", ""))
-        self.assertIn("D%E9tail", payload.get("mailto_url", ""))
+        self.assertIn("n%C2%B0", payload.get("mailto_url", ""))
+        self.assertIn("D%C3%A9tail", payload.get("mailto_url", ""))
 
 
     def test_order_email_preview_includes_depot_full_address_in_it_and_fr(self) -> None:
@@ -939,6 +939,66 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertEqual(payload.get("subject"), "Oggetto custom")
         self.assertEqual(payload.get("body"), "Corpo custom")
         self.assertIn("subject=Oggetto%20custom", payload.get("mailto_url", ""))
+
+
+    def test_order_email_preview_handles_emoji_with_utf8_mailto(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-email-emoji-{unique_token}@example.com",
+                full_name="Ordini Email Emoji Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            supplier = Supplier(
+                name=f"Fornitore Emoji {unique_token}",
+                email=f"supplier-emoji-{unique_token}@example.com",
+                is_active=True,
+            )
+            session.add_all([requester, supplier])
+            session.flush()
+            order = PurchaseOrder(
+                order_number=f"ORD-EMJ-{unique_token[:6]}",
+                supplier_name=supplier.name,
+                supplier_id=supplier.id,
+                requester_user_id=requester.id,
+                status="APERTO",
+            )
+            session.add(order)
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            order_id = order.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/ordini/{order_id}/email/preview",
+            json={
+                "lang": "it",
+                "delivery_type": "PICKUP",
+                "subject_override": "Oggetto 🚀",
+                "body_override": "Corpo con emoji 🚀",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload.get("subject"), "Oggetto 🚀")
+        self.assertEqual(payload.get("body"), "Corpo con emoji 🚀")
+        self.assertIn("Oggetto%20%F0%9F%9A%80", payload.get("mailto_url", ""))
+        self.assertIn("Corpo%20con%20emoji%20%F0%9F%9A%80", payload.get("mailto_url", ""))
 
 
     def test_order_email_preview_returns_json_when_order_not_found(self) -> None:
