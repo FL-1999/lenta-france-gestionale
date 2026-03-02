@@ -428,10 +428,11 @@ def fix_mojibake_if_needed(s: str) -> str:
     return s
 
 
-def _mailto_encode_cp1252(s: str) -> str:
-    normalized = s.replace("\r\n", "\n").replace("\n", "\r\n")
-    return quote(normalized, safe="", encoding="cp1252", errors="strict")
-
+def _mailto_encode(value: str) -> str:
+    if not value:
+        return ""
+    normalized = value.replace("\r\n", "\n").replace("\n", "\r\n")
+    return quote(normalized, safe="", encoding="utf-8", errors="replace")
 
 
 
@@ -453,8 +454,12 @@ def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str:
     subject = fix_mojibake_if_needed(subject)
     body = fix_mojibake_if_needed(body)
     recipient_email = _order_email_recipient(order)
-    subject_encoded = _mailto_encode_cp1252(subject)
-    body_encoded = _mailto_encode_cp1252(body)
+    try:
+        subject_encoded = _mailto_encode(subject)
+        body_encoded = _mailto_encode(body)
+    except Exception:
+        subject_encoded = quote(subject or "", safe="", encoding="utf-8", errors="replace")
+        body_encoded = quote(body or "", safe="", encoding="utf-8", errors="replace")
     return f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
 
 
@@ -1448,8 +1453,12 @@ def manager_ordini_email_preview(
     subject = fix_mojibake_if_needed(subject)
     body = fix_mojibake_if_needed(body)
 
-    subject_encoded = _mailto_encode_cp1252(subject)
-    body_encoded = _mailto_encode_cp1252(body)
+    try:
+        subject_encoded = _mailto_encode(subject)
+        body_encoded = _mailto_encode(body)
+    except Exception:
+        subject_encoded = quote(subject or "", safe="", encoding="utf-8", errors="replace")
+        body_encoded = quote(body or "", safe="", encoding="utf-8", errors="replace")
 
     mailto_url = f"mailto:{recipient}?subject={subject_encoded}&body={body_encoded}"
 
