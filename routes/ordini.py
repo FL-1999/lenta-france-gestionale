@@ -419,23 +419,6 @@ def build_order_email(
     return subject, "\n".join(body_parts)
 
 
-def fix_mojibake_if_needed(s: str) -> str:
-    if "Ã" in s or "Â" in s:
-        try:
-            return s.encode("latin1").decode("utf-8")
-        except Exception:
-            return s
-    return s
-
-
-def _mailto_encode(value: str) -> str:
-    if not value:
-        return ""
-    normalized = value.replace("\r\n", "\n").replace("\n", "\r\n")
-    return quote(normalized, safe="", encoding="utf-8", errors="replace")
-
-
-
 def _compose_depot_full_address(depot: Depot | None) -> str:
     if not depot:
         return ""
@@ -451,15 +434,9 @@ def _compose_depot_full_address(depot: Depot | None) -> str:
 
 def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str:
     subject, body = build_order_email(order, supplier=order.supplier, lang=lang)
-    subject = fix_mojibake_if_needed(subject)
-    body = fix_mojibake_if_needed(body)
     recipient_email = _order_email_recipient(order)
-    try:
-        subject_encoded = _mailto_encode(subject)
-        body_encoded = _mailto_encode(body)
-    except Exception:
-        subject_encoded = quote(subject or "", safe="", encoding="utf-8", errors="replace")
-        body_encoded = quote(body or "", safe="", encoding="utf-8", errors="replace")
+    subject_encoded = quote(subject, safe="", encoding="utf-8")
+    body_encoded = quote(body, safe="", encoding="utf-8")
     return f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
 
 
@@ -1450,15 +1427,8 @@ def manager_ordini_email_preview(
     if isinstance(body_override, str) and body_override.strip():
         body = body_override
 
-    subject = fix_mojibake_if_needed(subject)
-    body = fix_mojibake_if_needed(body)
-
-    try:
-        subject_encoded = _mailto_encode(subject)
-        body_encoded = _mailto_encode(body)
-    except Exception:
-        subject_encoded = quote(subject or "", safe="", encoding="utf-8", errors="replace")
-        body_encoded = quote(body or "", safe="", encoding="utf-8", errors="replace")
+    subject_encoded = quote(subject, safe="", encoding="utf-8")
+    body_encoded = quote(body, safe="", encoding="utf-8")
 
     mailto_url = f"mailto:{recipient}?subject={subject_encoded}&body={body_encoded}"
 
