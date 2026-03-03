@@ -117,7 +117,9 @@ function updateDepotAddressCard() {
   card.style.display = '';
   const selectedDepotId = document.getElementById('delivery_depot_id').value;
   const depot = depotsById[String(selectedDepotId)];
-  text.textContent = (depot && depot.address) ? depot.address : 'Seleziona un deposito per vedere l'indirizzo completo.';
+  text.textContent = (depot && depot.address)
+    ? depot.address
+    : "Seleziona un deposito per vedere l'indirizzo completo.";
 }
 
 
