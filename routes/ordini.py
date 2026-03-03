@@ -323,6 +323,13 @@ def _format_qty(value: float | int | None) -> str:
     return f"{as_float:.2f}".rstrip("0").rstrip(".")
 
 
+def fix_mojibake(text: str) -> str:
+    try:
+        return text.encode("latin1").decode("utf-8")
+    except Exception:
+        return text
+
+
 def build_order_email(
     order: PurchaseOrder,
     supplier: Supplier | None,
@@ -391,7 +398,12 @@ def build_order_email(
                 "Lenta France",
             ]
         )
-        return subject, "\n".join(body_parts)
+        body = "\n".join(body_parts)
+        subject = fix_mojibake(subject)
+        body = fix_mojibake(body)
+        print("DEBUG SUBJECT RAW:", repr(subject))
+        print("DEBUG BODY RAW:", repr(body))
+        return subject, body
 
     subject = f"Ordine n. {order_number} - {supplier_name}"
     greeting = f"Gentile {contact_name}," if contact_name else "Gentili,"
@@ -416,7 +428,12 @@ def build_order_email(
             "Lenta France",
         ]
     )
-    return subject, "\n".join(body_parts)
+    body = "\n".join(body_parts)
+    subject = fix_mojibake(subject)
+    body = fix_mojibake(body)
+    print("DEBUG SUBJECT RAW:", repr(subject))
+    print("DEBUG BODY RAW:", repr(body))
+    return subject, body
 
 
 def _compose_depot_full_address(depot: Depot | None) -> str:
