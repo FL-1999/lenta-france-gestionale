@@ -95,7 +95,13 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
 <script>
+console.log("EMAIL SCRIPT CARICATO");
+
 const orderId = {{ order.id }};
 
 const depotsById = Object.fromEntries(({{ depots_json | tojson }}).map((depot) => [String(depot.id), depot]));
@@ -210,7 +216,9 @@ document.getElementById('mailto_link').addEventListener('click', (e) => {
 document.getElementById('copy_text').addEventListener('click', async () => {
   const subject = document.getElementById('subject').value || '';
   const body = document.getElementById('body').value || '';
-  await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+  await navigator.clipboard.writeText(`Subject: ${subject}
+
+${body}`);
 });
 
 document.addEventListener('DOMContentLoaded', () => {
