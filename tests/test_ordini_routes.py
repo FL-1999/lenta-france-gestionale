@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from auth import get_current_active_user_html
 from database import Base, SessionLocal, engine
 from main import app
-from routes.ordini import build_order_email, build_order_mailto_link
+from routes.ordini import build_order_email, build_order_mailto_link, fix_mojibake
 from models import (
     MagazzinoCategoria,
     MagazzinoItem,
@@ -30,6 +30,12 @@ class OrdiniRoutesTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         app.dependency_overrides = {}
+
+
+    def test_fix_mojibake_recovers_latin1_decoded_utf8_text(self) -> None:
+        broken = "Commande nÂ° 1\nRÃ©capitulatif\nQuantitÃ©\ndÃ©lais"
+        fixed = fix_mojibake(broken)
+        self.assertEqual(fixed, "Commande n° 1\nRécapitulatif\nQuantité\ndélais")
 
     def test_manager_ordini_list_renders(self) -> None:
         app.dependency_overrides[get_current_active_user_html] = (

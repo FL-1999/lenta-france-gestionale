@@ -401,40 +401,34 @@ def build_order_email(
             ]
         )
         body = "\n".join(body_parts)
-        subject = fix_mojibake(subject)
-        body = fix_mojibake(body)
-        print("DEBUG SUBJECT RAW:", repr(subject))
-        print("DEBUG BODY RAW:", repr(body))
-        return subject, body
-
-    subject = f"Ordine n. {order_number} - {supplier_name}"
-    greeting = f"Gentile {contact_name}," if contact_name else "Gentili,"
-    body_parts = [
-        greeting,
-        "",
-        f"Vi trasmettiamo il nostro ordine n. {order_number} del {order_date_text}.",
-        f"Consegna: {destination_label}.",
-    ]
-    if destination_address:
-        body_parts.append(f"Indirizzo: {destination_address}.")
-    body_parts.extend(
-        [
+    else:
+        subject = f"Ordine n. {order_number} - {supplier_name}"
+        greeting = f"Gentile {contact_name}," if contact_name else "Gentili,"
+        body_parts = [
+            greeting,
             "",
-            "Riepilogo righe ordine:",
-            "",
-            *[line.replace(":", " - Quantità:") for line in (lines or ["-"])],
-            "",
-            "Vi chiediamo conferma di presa in carico e indicazione dei tempi di consegna.",
-            "",
-            "Cordiali saluti,",
-            "Lenta France",
+            f"Vi trasmettiamo il nostro ordine n. {order_number} del {order_date_text}.",
+            f"Consegna: {destination_label}.",
         ]
-    )
-    body = "\n".join(body_parts)
+        if destination_address:
+            body_parts.append(f"Indirizzo: {destination_address}.")
+        body_parts.extend(
+            [
+                "",
+                "Riepilogo righe ordine:",
+                "",
+                *[line.replace(":", " - Quantità:") for line in (lines or ["-"])],
+                "",
+                "Vi chiediamo conferma di presa in carico e indicazione dei tempi di consegna.",
+                "",
+                "Cordiali saluti,",
+                "Lenta France",
+            ]
+        )
+        body = "\n".join(body_parts)
+
     subject = fix_mojibake(subject)
     body = fix_mojibake(body)
-    print("DEBUG SUBJECT RAW:", repr(subject))
-    print("DEBUG BODY RAW:", repr(body))
     return subject, body
 
 
