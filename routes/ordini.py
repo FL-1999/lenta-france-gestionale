@@ -324,6 +324,8 @@ def _format_qty(value: float | int | None) -> str:
 
 
 def fix_mojibake(text: str) -> str:
+    if not text:
+        return text
     try:
         return text.encode("latin1").decode("utf-8")
     except Exception:
@@ -1443,6 +1445,9 @@ def manager_ordini_email_preview(
         subject = subject_override
     if isinstance(body_override, str) and body_override.strip():
         body = body_override
+
+    subject = fix_mojibake(subject)
+    body = fix_mojibake(body)
 
     subject_encoded = quote(subject, safe="", encoding="utf-8")
     body_encoded = quote(body, safe="", encoding="utf-8")
