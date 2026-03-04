@@ -9,6 +9,7 @@
 <div class="page-header">
     <div class="page-header-main">
         <h1 class="page-title">📦 {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</h1>
+        {% include "shared/orders_navigation.html" %}
         <p class="page-subtitle">
             {% if lang == 'fr' %}
                 Gérez les articles du magasin et les niveaux de stock.
