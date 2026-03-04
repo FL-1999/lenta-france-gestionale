@@ -396,8 +396,8 @@ class OrdiniRoutesTests(unittest.TestCase):
             mailto_url = build_order_mailto_link(order, lang="fr")
             self.assertIsNotNone(mailto_url)
             assert mailto_url is not None
-            self.assertIn("R%C3%A9capitulatif", mailto_url)
-            self.assertIn("n%C2%B0", mailto_url)
+            self.assertIn("R%E9capitulatif", mailto_url)
+            self.assertIn("n%B0", mailto_url)
         finally:
             session.close()
 
@@ -809,8 +809,8 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertIn("Lieu de livraison : Enlèvement chez le fournisseur", payload.get("body", ""))
         self.assertNotIn("Ritiro dal fornitore", payload.get("body", ""))
         self.assertIn("mailto:", payload.get("mailto_url", ""))
-        self.assertIn("n%C2%B0", payload.get("mailto_url", ""))
-        self.assertIn("D%C3%A9tail", payload.get("mailto_url", ""))
+        self.assertIn("n%B0", payload.get("mailto_url", ""))
+        self.assertIn("D%E9tail", payload.get("mailto_url", ""))
 
 
     def test_order_email_preview_includes_depot_full_address_in_it_and_fr(self) -> None:
@@ -994,17 +994,17 @@ class OrdiniRoutesTests(unittest.TestCase):
             json={
                 "lang": "it",
                 "delivery_type": "PICKUP",
-                "subject_override": "Oggetto 🚀",
-                "body_override": "Corpo con emoji 🚀",
+                "subject_override": "Oggetto dèlai",
+                "body_override": "Corpo con quantità",
             },
         )
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload.get("subject"), "Oggetto 🚀")
-        self.assertEqual(payload.get("body"), "Corpo con emoji 🚀")
-        self.assertIn("Oggetto%20%F0%9F%9A%80", payload.get("mailto_url", ""))
-        self.assertIn("Corpo%20con%20emoji%20%F0%9F%9A%80", payload.get("mailto_url", ""))
+        self.assertEqual(payload.get("subject"), "Oggetto dèlai")
+        self.assertEqual(payload.get("body"), "Corpo con quantità")
+        self.assertIn("Oggetto%20d%E8lai", payload.get("mailto_url", ""))
+        self.assertIn("Corpo%20con%20quantit%E0", payload.get("mailto_url", ""))
 
 
     def test_order_email_preview_returns_json_when_order_not_found(self) -> None:

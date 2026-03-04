@@ -448,8 +448,8 @@ def _compose_depot_full_address(depot: Depot | None) -> str:
 def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str:
     subject, body = build_order_email(order, supplier=order.supplier, lang=lang)
     recipient_email = _order_email_recipient(order)
-    subject_encoded = quote(subject, safe="", encoding="utf-8")
-    body_encoded = quote(body, safe="", encoding="utf-8")
+    subject_encoded = quote(subject.encode("cp1252"), safe="")
+    body_encoded = quote(body.encode("cp1252"), safe="")
     return f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
 
 
@@ -1443,8 +1443,8 @@ def manager_ordini_email_preview(
     subject = fix_mojibake(subject)
     body = fix_mojibake(body)
 
-    subject_encoded = quote(subject, safe="", encoding="utf-8")
-    body_encoded = quote(body, safe="", encoding="utf-8")
+    subject_encoded = quote(subject.encode("cp1252"), safe="")
+    body_encoded = quote(body.encode("cp1252"), safe="")
 
     mailto_url = f"mailto:{recipient}?subject={subject_encoded}&body={body_encoded}"
 
