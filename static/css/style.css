@@ -3519,3 +3519,9 @@ label.form-label[for="profondita_totale"]{
   z-index: 1;
 }
 
+
+.orders-navigation{
+    display:flex;
+    gap:16px;
+    margin-bottom:20px;
+}
