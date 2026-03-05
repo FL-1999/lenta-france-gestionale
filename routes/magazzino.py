@@ -28,6 +28,7 @@ from models import (
     RoleEnum,
     Site,
     User,
+    PurchaseOrder,
 )
 from audit_utils import log_audit_event
 from template_context import (
@@ -118,6 +119,32 @@ def _parse_status(value: str | None) -> MagazzinoRichiestaStatusEnum | None:
         if value.lower() in (status.value.lower(), status.name.lower()):
             return status
     return None
+
+
+def _orders_navigation_counts(db: Session) -> dict[str, int]:
+    ordini_aperti_count = (
+        db.query(func.count(PurchaseOrder.id))
+        .filter(
+            or_(
+                PurchaseOrder.status.is_(None),
+                ~func.lower(PurchaseOrder.status).in_(["chiuso", "completato"]),
+            )
+        )
+        .scalar()
+        or 0
+    )
+    ordini_chiusi_count = (
+        db.query(func.count(PurchaseOrder.id))
+        .filter(func.lower(PurchaseOrder.status).in_(["chiuso", "completato"]))
+        .scalar()
+        or 0
+    )
+    magazzino_count = db.query(func.count(MagazzinoItem.id)).scalar() or 0
+    return {
+        "ordini_aperti_count": ordini_aperti_count,
+        "ordini_chiusi_count": ordini_chiusi_count,
+        "magazzino_count": magazzino_count,
+    }
 
 
 def _parse_categoria_id(value: str | None) -> int | None:
@@ -1058,6 +1085,7 @@ def _render_magazzino_items_list(
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             "success_message": success_message,
             "error_message": error_message,
+            **_orders_navigation_counts(db),
             **badges,
         },
         db,

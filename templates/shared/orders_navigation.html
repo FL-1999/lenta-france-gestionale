@@ -2,14 +2,17 @@
 
     <a href="{{ url_for('manager_ordini_list') }}" class="btn btn-secondary">
         🧾 Ordini generali
+        <span class="nav-count">{{ ordini_aperti_count or 0 }}</span>
     </a>
 
     <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
         📦 Magazzino
+        <span class="nav-count">{{ magazzino_count or 0 }}</span>
     </a>
 
     <a href="{{ url_for('manager_ordini_closed') }}" class="btn btn-secondary">
         ✅ Ordini chiusi
+        <span class="nav-count">{{ ordini_chiusi_count or 0 }}</span>
     </a>
 
 </div>
