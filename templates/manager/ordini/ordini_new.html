@@ -73,12 +73,16 @@
           </div>
         </div>
         <div class="form-field">
-          <label for="warehouse_category_id">Tipologia</label>
+          <label for="warehouse_category_id">Categoria</label>
           <div style="display:flex; gap:8px; align-items:center;">
             <select name="warehouse_category_id" id="warehouse_category_id">
               <option value="">Seleziona</option>
-              {% for category in warehouse_categories %}
-              <option value="{{ category.id }}" data-macro-id="{{ category.macro_id or '' }}" {% if form_data.warehouse_category_id == category.id|string %}selected{% endif %}>{{ category.nome }}</option>
+              {% for group in grouped_warehouse_categories %}
+              <optgroup label="{{ group.macro_name }}">
+                {% for category in group.categories %}
+                <option value="{{ category.id }}" data-macro-id="{{ category.macro_id or '' }}" {% if form_data.warehouse_category_id == category.id|string %}selected{% endif %}>{{ category.nome }}</option>
+                {% endfor %}
+              </optgroup>
               {% endfor %}
             </select>
             <button type="button" class="btn btn-secondary btn-sm" id="open-new-tipologia-modal">＋ Nuova tipologia</button>

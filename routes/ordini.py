@@ -266,7 +266,7 @@ def _order_destination_label(order: PurchaseOrder) -> str:
         if order.warehouse_category and order.warehouse_category.macro_ref
         else (order.warehouse_category.macro if order.warehouse_category else "-")
     )
-    return f"MAGAZZINO: {category_name} / {macro_name}"
+    return f"MAGAZZINO: {macro_name} → {category_name}"
 
 
 def _order_supplier_label(order: PurchaseOrder) -> str:
@@ -479,6 +479,26 @@ def build_order_mailto_link(order: PurchaseOrder, lang: str = "it") -> str:
     return f"mailto:{recipient_email}?subject={subject_encoded}&body={body_encoded}"
 
 
+
+def _group_warehouse_categories_by_macro(
+    warehouse_categories: list[MagazzinoCategoria],
+) -> list[dict[str, object]]:
+    grouped: dict[str, list[MagazzinoCategoria]] = {}
+    for category in warehouse_categories:
+        macro_name = (
+            category.macro_ref.name
+            if category.macro_ref and category.macro_ref.name
+            else (category.macro or "Senza macro")
+        )
+        grouped.setdefault(macro_name, []).append(category)
+
+    ordered_groups: list[dict[str, object]] = []
+    for macro_name in sorted(grouped.keys(), key=lambda value: value.lower()):
+        categories = sorted(grouped[macro_name], key=lambda c: ((c.ordine or 0), c.nome.lower()))
+        ordered_groups.append({"macro_name": macro_name, "categories": categories})
+    return ordered_groups
+
+
 def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], list[Site], list[MagazzinoCategoria], list[User], list[MagazzinoMacro], list[Supplier], list[Depot]]:
     magazzino_items = (
         db.query(MagazzinoItem)
@@ -490,7 +510,11 @@ def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], lis
     warehouse_categories = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.attiva.is_(True))
-        .order_by(MagazzinoCategoria.nome.asc())
+        .order_by(
+            func.coalesce(MagazzinoCategoria.macro, "").asc(),
+            MagazzinoCategoria.ordine.asc(),
+            MagazzinoCategoria.nome.asc(),
+        )
         .all()
     )
     requesters = (
@@ -514,6 +538,7 @@ def _render_order_form(
     form_data: dict | None = None,
 ):
     magazzino_items, sites, warehouse_categories, requesters, macros, suppliers, depots = _load_order_form_dependencies(db)
+    grouped_warehouse_categories = _group_warehouse_categories_by_macro(warehouse_categories)
     if form_data is None:
         form_data = {
             "supplier_id": "",
@@ -540,6 +565,7 @@ def _render_order_form(
             "magazzino_items": magazzino_items,
             "sites": sites,
             "warehouse_categories": warehouse_categories,
+            "grouped_warehouse_categories": grouped_warehouse_categories,
             "requesters": requesters,
             "macros": macros,
             "suppliers": suppliers,
@@ -676,9 +702,18 @@ def _get_or_create_category_for_name(
     category_name: str,
     selected_macro: MagazzinoMacro,
 ) -> MagazzinoCategoria:
+    normalized_name = category_name.strip()
+    macro_name = (selected_macro.name or "").strip()
+    if macro_name and normalized_name.lower().startswith(macro_name.lower()):
+        remainder = normalized_name[len(macro_name):].strip(" -_/→")
+        if remainder:
+            normalized_name = remainder
+    if not normalized_name:
+        raise HTTPException(status_code=400, detail="Nome categoria non valido.")
+
     existing_category = (
         db.query(MagazzinoCategoria)
-        .filter(func.lower(MagazzinoCategoria.nome) == category_name.lower())
+        .filter(func.lower(MagazzinoCategoria.nome) == normalized_name.lower())
         .first()
     )
     if existing_category:
@@ -686,8 +721,8 @@ def _get_or_create_category_for_name(
 
     max_order = db.query(func.max(MagazzinoCategoria.ordine)).scalar() or 0
     categoria = MagazzinoCategoria(
-        nome=category_name,
-        slug=_build_unique_category_slug(db, category_name),
+        nome=normalized_name,
+        slug=_build_unique_category_slug(db, normalized_name),
         ordine=max_order + 1,
         attiva=True,
         macro=selected_macro.name,
