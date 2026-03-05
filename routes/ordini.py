@@ -69,6 +69,32 @@ def _parse_float(value: str | None) -> float | None:
         return None
 
 
+def _orders_navigation_counts(db: Session) -> dict[str, int]:
+    ordini_aperti_count = (
+        db.query(func.count(PurchaseOrder.id))
+        .filter(
+            or_(
+                PurchaseOrder.status.is_(None),
+                ~func.lower(PurchaseOrder.status).in_(["chiuso", "completato"]),
+            )
+        )
+        .scalar()
+        or 0
+    )
+    ordini_chiusi_count = (
+        db.query(func.count(PurchaseOrder.id))
+        .filter(func.lower(PurchaseOrder.status).in_(["chiuso", "completato"]))
+        .scalar()
+        or 0
+    )
+    magazzino_count = db.query(func.count(MagazzinoItem.id)).scalar() or 0
+    return {
+        "ordini_aperti_count": ordini_aperti_count,
+        "ordini_chiusi_count": ordini_chiusi_count,
+        "magazzino_count": magazzino_count,
+    }
+
+
 def _get_next_order_number(db: Session, order_date: date | None) -> str:
     target_year = (order_date or date.today()).year
     year_prefix = f"{target_year}-"
@@ -1670,6 +1696,7 @@ def manager_ordini_list(
             "completion_map": completion_map,
             "destination_map": destination_map,
             "supplier_label_map": {order.id: _order_supplier_label(order) for order in orders},
+            **_orders_navigation_counts(db),
         },
         db,
         current_user,
