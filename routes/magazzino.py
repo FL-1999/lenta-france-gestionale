@@ -1582,6 +1582,11 @@ def manager_magazzino_report_consumi(
 
 
 @router.get(
+    "/manager/magazzino/macros",
+    response_class=HTMLResponse,
+    name="manager_magazzino_macros_list",
+)
+@router.get(
     "/manager/magazzino/categorie",
     response_class=HTMLResponse,
     name="manager_magazzino_categorie_list",
@@ -1883,10 +1888,7 @@ def manager_magazzino_macro_create(
                 status_code=303,
             )
 
-    return RedirectResponse(
-        url=request.url_for("manager_magazzino_categorie_list").include_query_params(ok="macro"),
-        status_code=303,
-    )
+    return RedirectResponse(url="/manager/magazzino/macros", status_code=303)
 
 
 @router.get(

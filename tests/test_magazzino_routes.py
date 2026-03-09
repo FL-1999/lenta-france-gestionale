@@ -152,7 +152,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 303)
         self.assertIn(
-            "/manager/magazzino/categorie?ok=macro",
+            "/manager/magazzino/macros",
             response.headers.get("location", ""),
         )
 
