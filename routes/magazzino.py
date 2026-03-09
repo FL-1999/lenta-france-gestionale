@@ -1597,6 +1597,11 @@ def manager_magazzino_categorie_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    macros = (
+        db.query(MagazzinoMacro)
+        .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
+        .all()
+    )
     categorie, _, _ = _load_categorie(
         db,
         include_inactive=True,
@@ -1612,6 +1617,7 @@ def manager_magazzino_categorie_list(
         "manager/magazzino/categorie_list.html",
         {
             "categorie": categorie,
+            "macros": macros,
             "first_active_id": first_active_id,
             "last_active_id": last_active_id,
             **badges,
@@ -1761,19 +1767,17 @@ def manager_magazzino_categorie_create(
             slug=slug,
             ordine=ordine_value,
             attiva=attiva,
-            macro=selected_macro.name,
             macro_id=selected_macro.id,
             icon=selected_macro.icon or DEFAULT_CATEGORIA_ICON,
             color=selected_macro.color or DEFAULT_CATEGORIA_COLOR,
         )
         db.add(categoria)
-        db.flush()
         _log_audit(
             db,
             current_user,
             "CATEGORIA_CREATE",
             "MagazzinoCategoria",
-            categoria.id,
+            None,
             {
                 "nome": categoria.nome,
                 "ordine": categoria.ordine,
@@ -1783,6 +1787,7 @@ def manager_magazzino_categorie_create(
             },
         )
         db.commit()
+        db.refresh(categoria)
         _invalidate_magazzino_cache()
     except Exception:
         db.rollback()
@@ -1835,9 +1840,7 @@ def manager_magazzino_macro_create(
     macro_name = (name or nome or "").strip()
     if not macro_name:
         return RedirectResponse(
-            url=request.url_for("manager_magazzino_categorie_new").include_query_params(
-                err="operazione_fallita"
-            ),
+            url="/manager/magazzino/macros",
             status_code=303,
         )
 
@@ -1863,14 +1866,12 @@ def manager_magazzino_macro_create(
                 color=color_value,
             )
             db.add(macro)
-            db.commit()
-            db.refresh(macro)
             _log_audit(
                 db,
                 current_user,
                 "MACRO_CREATE",
                 "MagazzinoMacro",
-                macro.id,
+                None,
                 {
                     "name": macro.name,
                     "ordine": macro.ordine,
@@ -1879,12 +1880,11 @@ def manager_magazzino_macro_create(
                 },
             )
             db.commit()
+            db.refresh(macro)
         except Exception:
             db.rollback()
             return RedirectResponse(
-                url=request.url_for("manager_magazzino_categorie_new").include_query_params(
-                    err="operazione_fallita"
-                ),
+                url="/manager/magazzino/macros",
                 status_code=303,
             )
 
