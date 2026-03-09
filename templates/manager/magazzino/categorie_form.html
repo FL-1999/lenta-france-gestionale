@@ -1,8 +1,7 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
-{% set is_edit = categoria is not none %}
-{% set selected_macro_id = categoria.macro_id|string if categoria and categoria.macro_id else (categoria.macro_id if categoria and categoria.macro_id == new_macro_sentinel else '') %}
-{% set selected_new_macro_name = categoria.new_macro_name if categoria and categoria.new_macro_name else '' %}
+{% set is_edit = categoria is not none and categoria.id is defined and categoria.id %}
+{% set selected_macro_id = categoria.macro_id|string if categoria and categoria.macro_id else '' %}
 
 {% block title %}
     {% if lang == 'fr' %}
@@ -63,18 +62,9 @@
                         {% for macro in macros %}
                             <option value="{{ macro.id }}" {% if selected_macro_id == macro.id|string %}selected{% endif %}>{{ macro.name }}</option>
                         {% endfor %}
-                        {% if not is_edit %}
-                        <option value="{{ new_macro_sentinel }}" {% if selected_macro_id == new_macro_sentinel %}selected{% endif %}>➕ Crea nuova macro</option>
-                        {% endif %}
                     </select>
                 </div>
             </div>
-            {% if not is_edit %}
-                <div class="form-field" id="new-macro-name-field" style="display:none;">
-                    <label>{% if lang == 'fr' %}Nom nouvelle macro{% else %}Nome nuova macro{% endif %}</label>
-                    <input type="text" name="new_macro_name" value="{{ selected_new_macro_name }}">
-                </div>
-            {% endif %}
 
             <div class="form-field">
                 <label class="checkbox">
@@ -94,18 +84,4 @@
         </div>
     </div>
 </form>
-<script>
-const macroSelect = document.getElementById('macro_id');
-const newMacroNameField = document.getElementById('new-macro-name-field');
-const newMacroSentinel = "{{ new_macro_sentinel }}";
-
-function updateNewMacroField() {
-    if (!newMacroNameField) return;
-    const show = macroSelect?.value === newMacroSentinel;
-    newMacroNameField.style.display = show ? 'block' : 'none';
-}
-
-macroSelect?.addEventListener('change', updateNewMacroField);
-updateNewMacroField();
-</script>
 {% endblock %}
