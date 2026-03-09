@@ -1586,6 +1586,31 @@ def manager_magazzino_report_consumi(
     response_class=HTMLResponse,
     name="manager_magazzino_macros_list",
 )
+def manager_magazzino_macros_list(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    macros = (
+        db.query(MagazzinoMacro)
+        .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
+        .all()
+    )
+    badges = build_magazzino_badges(db, current_user)
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/macros_list.html",
+        {
+            "macros": macros,
+            **badges,
+        },
+        db,
+        current_user,
+    )
+
+
 @router.get(
     "/manager/magazzino/categorie",
     response_class=HTMLResponse,
