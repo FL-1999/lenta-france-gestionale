@@ -1,7 +1,7 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set is_edit = categoria is not none and categoria.id is defined and categoria.id %}
-{% set selected_macro_id = categoria.macro_id|string if categoria and categoria.macro_id else '' %}
+{% set selected_macro_id = selected_macro_id if selected_macro_id is defined else (categoria.macro_id|string if categoria and categoria.macro_id else '') %}
 
 {% block title %}
     {% if lang == 'fr' %}

@@ -171,7 +171,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 303)
         self.assertIn(
-            "/manager/magazzino/macros",
+            "/manager/magazzino/categorie/nuova?macro_id=",
             response.headers.get("location", ""),
         )
 
@@ -203,6 +203,10 @@ class MagazzinoRoutesTests(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303)
+        self.assertIn(
+            "/manager/magazzino/categorie/nuova?macro_id=",
+            response.headers.get("location", ""),
+        )
 
         with SessionLocal() as db:
             created_macro = (
@@ -213,6 +217,31 @@ class MagazzinoRoutesTests(unittest.TestCase):
             self.assertEqual(created_macro.ordine, 8)
             self.assertEqual(created_macro.icon, "📦")
             self.assertEqual(created_macro.color, "green")
+
+    def test_categorie_new_autoselects_macro_from_query_param(self) -> None:
+        macro_name = f"Macro Selected {self.unique}"
+        with SessionLocal() as db:
+            macro = MagazzinoMacro(name=macro_name)
+            db.add(macro)
+            db.commit()
+            db.refresh(macro)
+            macro_id = macro.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get(
+            f"/manager/magazzino/categorie/nuova?macro_id={macro_id}",
+            cookies={"lang": "it"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(f'<option value="{macro_id}" selected>{macro_name}</option>', response.text)
 
 
 if __name__ == "__main__":

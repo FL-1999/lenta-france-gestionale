@@ -1667,6 +1667,11 @@ def manager_magazzino_categorie_new(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    macro_id_raw = (request.query_params.get("macro_id") or "").strip()
+    try:
+        selected_macro_id = str(int(macro_id_raw)) if macro_id_raw else ""
+    except ValueError:
+        selected_macro_id = ""
     macros = (
         db.query(MagazzinoMacro)
         .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
@@ -1684,6 +1689,7 @@ def manager_magazzino_categorie_new(
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             "macros": macros,
+            "selected_macro_id": selected_macro_id,
             "new_macro_sentinel": "__new__",
         },
         db,
@@ -1922,7 +1928,10 @@ def manager_magazzino_macro_create(
                 status_code=303,
             )
 
-    return RedirectResponse(url="/manager/magazzino/macros", status_code=303)
+    return RedirectResponse(
+        url=f"/manager/magazzino/categorie/nuova?macro_id={macro.id}",
+        status_code=303,
+    )
 
 
 @router.get(
