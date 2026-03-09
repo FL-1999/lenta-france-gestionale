@@ -529,6 +529,30 @@ def _build_categoria_sections(
     return sections
 
 
+def _build_macro_category_groups(
+    categorie: list[MagazzinoCategoria | SimpleNamespace],
+) -> list[dict[str, object]]:
+    grouped: dict[str, dict[str, object]] = {}
+    for categoria in categorie:
+        macro_ref = getattr(categoria, "macro_ref", None)
+        macro_name = (
+            (getattr(macro_ref, "name", None) if macro_ref else None)
+            or getattr(categoria, "macro", None)
+            or "Senza macro"
+        )
+        macro_key = macro_name.lower().strip()
+        macro_icon = (getattr(macro_ref, "icon", None) if macro_ref else None) or getattr(categoria, "icon", None) or DEFAULT_CATEGORIA_ICON
+        if macro_key not in grouped:
+            grouped[macro_key] = {
+                "name": macro_name,
+                "icon": macro_icon,
+                "categories": [],
+            }
+        grouped[macro_key]["categories"].append(categoria)
+
+    return sorted(grouped.values(), key=lambda item: str(item["name"]).lower())
+
+
 @router.get(
     "/capo/magazzino",
     response_class=HTMLResponse,
@@ -601,6 +625,7 @@ def capo_magazzino_list(
     )
     categorie_display = _order_categorie_for_display(categorie)
     categorie_sections = _build_categoria_sections(categorie_display, items_by_categoria)
+    macro_category_groups = _build_macro_category_groups(categorie_display)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -614,6 +639,7 @@ def capo_magazzino_list(
         {
             "categorie": categorie_display,
             "categorie_sections": categorie_sections,
+            "macro_category_groups": macro_category_groups,
             "fallback_categoria": fallback_categoria,
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
@@ -1059,6 +1085,7 @@ def _render_magazzino_items_list(
     )
     categorie_display = _order_categorie_for_display(categorie)
     categorie_sections = _build_categoria_sections(categorie_display, items_by_categoria)
+    macro_category_groups = _build_macro_category_groups(categorie_display)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -1074,6 +1101,7 @@ def _render_magazzino_items_list(
         {
             "categorie": categorie_display,
             "categorie_sections": categorie_sections,
+            "macro_category_groups": macro_category_groups,
             "fallback_categoria": fallback_categoria,
             "default_categoria_id": fallback_categoria_id,
             "items_by_categoria": items_by_categoria,

@@ -107,6 +107,29 @@
     </div>
 </div>
 
+
+<div class="card" style="margin-bottom: var(--space-3);">
+    <div class="card-header">
+        <div class="card-title">
+            🧭 {% if lang == 'fr' %}Navigation par macro-catégorie{% else %}Navigazione per macro categoria{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        {% for macro in macro_category_groups %}
+            <div class="macro-block">
+                <h2 class="macro-title">{{ macro.icon }} {{ macro.name }}</h2>
+                <div class="category-grid">
+                    {% for category in macro.categories %}
+                        <a class="category-card" href="#categoria-{{ category.id if category.id is not none else 'none' }}">
+                            {{ category.nome }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
 {% if items_count == 0 %}
     <div class="card" style="margin-bottom: var(--space-3);">
         <div class="card-body">
@@ -124,7 +147,7 @@
 {% for section in categorie_sections %}
     {% set category_items = section["items"] %}
     {% if category_items %}
-        <section class="magazzino-category">
+        <section class="magazzino-category" id="categoria-{{ section.cat.id if section.cat.id is not none else 'none' }}">
             <div class="magazzino-category-header" style="display: flex; flex-direction: column; gap: var(--space-2);">
                 <div style="display: flex; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; align-items: center;">
                     <h2 style="display: flex; align-items: center; gap: var(--space-2);">
