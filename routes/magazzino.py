@@ -297,8 +297,9 @@ def _get_or_create_category_for_macro(db: Session, selected_macro: MagazzinoMacr
         slug=_ensure_unique_slug(db, _slugify(selected_macro.name)),
         ordine=max_order + 1,
         attiva=True,
-        macro=selected_macro.name,
         macro_id=selected_macro.id,
+        icon=selected_macro.icon or DEFAULT_CATEGORIA_ICON,
+        color=selected_macro.color or DEFAULT_CATEGORIA_COLOR,
     )
     db.add(categoria)
     db.flush()
@@ -541,7 +542,6 @@ def _build_macro_category_groups(
         macro_ref = getattr(categoria, "macro_ref", None)
         macro_name = (
             (getattr(macro_ref, "name", None) if macro_ref else None)
-            or getattr(categoria, "macro", None)
             or "Senza macro"
         )
         macro_key = macro_name.lower().strip()
@@ -1807,7 +1807,6 @@ def manager_magazzino_categorie_create(
             ordine=ordine_value,
             attiva=attiva,
             macro_id=selected_macro.id,
-            macro=selected_macro.name,
             icon=selected_macro.icon or DEFAULT_CATEGORIA_ICON,
             color=selected_macro.color or DEFAULT_CATEGORIA_COLOR,
         )
@@ -2085,7 +2084,6 @@ def manager_magazzino_categorie_update(
                 current_user,
             )
         categoria.macro_id = selected_macro.id
-        categoria.macro = selected_macro.name
         categoria.icon = selected_macro.icon or DEFAULT_CATEGORIA_ICON
         categoria.color = selected_macro.color or DEFAULT_CATEGORIA_COLOR
     try:
