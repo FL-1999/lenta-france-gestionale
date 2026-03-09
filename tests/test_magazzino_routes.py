@@ -151,7 +151,10 @@ class MagazzinoRoutesTests(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303)
-        self.assertIn("/manager/magazzino?ok=macro", response.headers.get("location", ""))
+        self.assertIn(
+            "/manager/magazzino/categorie?ok=macro",
+            response.headers.get("location", ""),
+        )
 
         with SessionLocal() as db:
             created_macro = (
@@ -162,6 +165,35 @@ class MagazzinoRoutesTests(unittest.TestCase):
             self.assertEqual(created_macro.ordine, 4)
             self.assertEqual(created_macro.icon, "🧰")
             self.assertEqual(created_macro.color, "blue")
+
+    def test_macro_create_accepts_macros_endpoint_and_order_field(self) -> None:
+        macro_name = f"Macro Endpoint {self.unique}"
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            "/manager/magazzino/macros",
+            data={"name": macro_name, "order": "8", "icon": "📦", "color": "green"},
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        with SessionLocal() as db:
+            created_macro = (
+                db.query(MagazzinoMacro).filter(MagazzinoMacro.name == macro_name).first()
+            )
+            self.assertIsNotNone(created_macro)
+            assert created_macro is not None
+            self.assertEqual(created_macro.ordine, 8)
+            self.assertEqual(created_macro.icon, "📦")
+            self.assertEqual(created_macro.color, "green")
 
 
 if __name__ == "__main__":

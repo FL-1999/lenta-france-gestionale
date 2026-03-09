@@ -1806,6 +1806,11 @@ def manager_magazzino_categorie_create(
 
 
 @router.post(
+    "/manager/magazzino/macros",
+    response_class=HTMLResponse,
+    name="manager_magazzino_macros_create",
+)
+@router.post(
     "/manager/magazzino/macro/nuova",
     response_class=HTMLResponse,
     name="manager_magazzino_macro_create",
@@ -1814,6 +1819,7 @@ def manager_magazzino_macro_create(
     request: Request,
     name: str = Form(""),
     nome: str = Form(""),
+    order: str | None = Form(None),
     ordine: str | None = Form("0"),
     icon: str | None = Form(""),
     color: str | None = Form(""),
@@ -1830,8 +1836,9 @@ def manager_magazzino_macro_create(
             status_code=303,
         )
 
+    order_raw = (order if order is not None else ordine) or "0"
     try:
-        ordine_value = int(ordine or 0)
+        ordine_value = int(order_raw)
     except ValueError:
         ordine_value = 0
     icon_value = (icon or "").strip() or None
@@ -1851,7 +1858,8 @@ def manager_magazzino_macro_create(
                 color=color_value,
             )
             db.add(macro)
-            db.flush()
+            db.commit()
+            db.refresh(macro)
             _log_audit(
                 db,
                 current_user,
@@ -1876,7 +1884,7 @@ def manager_magazzino_macro_create(
             )
 
     return RedirectResponse(
-        url=request.url_for("manager_magazzino_list").include_query_params(ok="macro"),
+        url=request.url_for("manager_magazzino_categorie_list").include_query_params(ok="macro"),
         status_code=303,
     )
 
