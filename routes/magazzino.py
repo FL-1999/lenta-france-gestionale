@@ -1657,7 +1657,6 @@ def manager_magazzino_categorie_create(
     nome: str = Form(...),
     ordine: str | None = Form("0"),
     macro_id: str = Form(""),
-    new_macro_name: str = Form(""),
     attiva: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -1714,80 +1713,40 @@ def manager_magazzino_categorie_create(
     except ValueError:
         ordine_value = 0
     macro_value = (macro_id or "").strip()
-    selected_macro: MagazzinoMacro | None = None
-    if macro_value == "__new__":
-        macro_name_clean = (new_macro_name or "").strip()
-        if not macro_name_clean:
-            categoria_preview = SimpleNamespace(
-                nome=nome_value,
-                ordine=ordine_value,
-                attiva=attiva,
-                macro_id=macro_value,
-                new_macro_name="",
-            )
-            return render_template(
-                templates,
-                request,
-                "manager/magazzino/categorie_form.html",
-                {
-                    "categoria": categoria_preview,
-                    "form_action": "manager_magazzino_categorie_create",
-                    "title": "Nuova categoria",
-                    "error_message": "Inserisci il nome della nuova macro.",
-                    "color_options": CATEGORIA_COLOR_OPTIONS,
-                    "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
-                    "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
-                    "macros": macros,
-                    "new_macro_sentinel": "__new__",
-                },
-                db,
-                current_user,
-            )
-        selected_macro = (
-            db.query(MagazzinoMacro)
-            .filter(func.lower(MagazzinoMacro.name) == macro_name_clean.lower())
-            .first()
+    try:
+        macro_id_int = int(macro_value)
+    except ValueError:
+        macro_id_int = 0
+    selected_macro = (
+        db.query(MagazzinoMacro)
+        .filter(MagazzinoMacro.id == macro_id_int)
+        .first()
+    )
+    if not selected_macro:
+        categoria_preview = SimpleNamespace(
+            nome=nome_value,
+            ordine=ordine_value,
+            attiva=attiva,
+            macro_id=macro_value,
         )
-        if not selected_macro:
-            selected_macro = MagazzinoMacro(name=macro_name_clean)
-            db.add(selected_macro)
-            db.flush()
-    else:
-        try:
-            macro_id_int = int(macro_value)
-        except ValueError:
-            macro_id_int = 0
-        selected_macro = (
-            db.query(MagazzinoMacro)
-            .filter(MagazzinoMacro.id == macro_id_int)
-            .first()
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/categorie_form.html",
+            {
+                "categoria": categoria_preview,
+                "form_action": "manager_magazzino_categorie_create",
+                "title": "Nuova categoria",
+                "error_message": "Seleziona una macro valida.",
+                "color_options": CATEGORIA_COLOR_OPTIONS,
+                "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
+                "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
+                "macros": macros,
+                "new_macro_sentinel": "__new__",
+            },
+            db,
+            current_user,
         )
-        if not selected_macro:
-            categoria_preview = SimpleNamespace(
-                nome=nome_value,
-                ordine=ordine_value,
-                attiva=attiva,
-                macro_id=macro_value,
-                new_macro_name=(new_macro_name or "").strip(),
-            )
-            return render_template(
-                templates,
-                request,
-                "manager/magazzino/categorie_form.html",
-                {
-                    "categoria": categoria_preview,
-                    "form_action": "manager_magazzino_categorie_create",
-                    "title": "Nuova categoria",
-                    "error_message": "Seleziona una macro valida.",
-                    "color_options": CATEGORIA_COLOR_OPTIONS,
-                    "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
-                    "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
-                    "macros": macros,
-                    "new_macro_sentinel": "__new__",
-                },
-                db,
-                current_user,
-            )
 
     base_slug = _slugify(nome_value)
     slug = _ensure_unique_slug(db, base_slug)
@@ -1888,6 +1847,8 @@ def manager_magazzino_macro_create(
             macro = MagazzinoMacro(
                 name=macro_name,
                 ordine=ordine_value,
+                icon=icon_value,
+                color=color_value,
             )
             db.add(macro)
             db.flush()
@@ -1915,7 +1876,7 @@ def manager_magazzino_macro_create(
             )
 
     return RedirectResponse(
-        url=request.url_for("manager_magazzino_categorie_new").include_query_params(ok="macro"),
+        url=request.url_for("manager_magazzino_list").include_query_params(ok="macro"),
         status_code=303,
     )
 

@@ -52,7 +52,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn(macro_name, response.text)
-        self.assertIn("➕ Crea nuova macro", response.text)
+        self.assertNotIn("➕ Crea nuova macro", response.text)
 
     def test_categorie_create_with_existing_macro(self) -> None:
         macro_name = f"Macro Existing {self.unique}"
@@ -99,9 +99,8 @@ class MagazzinoRoutesTests(unittest.TestCase):
             self.assertEqual(created.macro_id, macro_id)
             self.assertEqual(created.macro, macro_name)
 
-    def test_categorie_create_with_new_macro(self) -> None:
-        macro_name = f"Macro New {self.unique}"
-        category_name = f"Categoria New {self.unique}"
+    def test_categorie_create_requires_existing_macro(self) -> None:
+        category_name = f"Categoria Invalid Macro {self.unique}"
         app.dependency_overrides[get_current_active_user_html] = (
             lambda: SimpleNamespace(
                 role=RoleEnum.manager,
@@ -116,31 +115,23 @@ class MagazzinoRoutesTests(unittest.TestCase):
             data={
                 "nome": category_name,
                 "ordine": "2",
-                "icon": "📦",
-                "color": "indigo",
                 "macro_id": "__new__",
-                "new_macro_name": macro_name,
+                "new_macro_name": f"Should not create {self.unique}",
                 "attiva": "on",
             },
             cookies={"lang": "it"},
             follow_redirects=False,
         )
-        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Seleziona una macro valida.", response.text)
 
         with SessionLocal() as db:
-            created_macro = (
-                db.query(MagazzinoMacro).filter(MagazzinoMacro.name == macro_name).first()
-            )
-            self.assertIsNotNone(created_macro)
             created_category = (
                 db.query(MagazzinoCategoria)
                 .filter(MagazzinoCategoria.nome == category_name)
                 .first()
             )
-            self.assertIsNotNone(created_category)
-            assert created_macro is not None and created_category is not None
-            self.assertEqual(created_category.macro_id, created_macro.id)
-            self.assertEqual(created_category.macro, created_macro.name)
+            self.assertIsNone(created_category)
 
     def test_macro_create_route_creates_macro(self) -> None:
         macro_name = f"Macro Modal {self.unique}"
@@ -160,7 +151,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303)
-        self.assertIn("/manager/magazzino/categorie/nuova", response.headers.get("location", ""))
+        self.assertIn("/manager/magazzino?ok=macro", response.headers.get("location", ""))
 
         with SessionLocal() as db:
             created_macro = (
