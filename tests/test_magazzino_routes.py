@@ -132,6 +132,26 @@ class MagazzinoRoutesTests(unittest.TestCase):
             )
             self.assertIsNone(created_category)
 
+
+    def test_macros_list_renders_created_macros(self) -> None:
+        macro_name = f"Macro List {self.unique}"
+        with SessionLocal() as db:
+            db.add(MagazzinoMacro(name=macro_name, ordine=3))
+            db.commit()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get("/manager/magazzino/macros", cookies={"lang": "it"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(macro_name, response.text)
+
     def test_macro_create_route_creates_macro(self) -> None:
         macro_name = f"Macro Modal {self.unique}"
         app.dependency_overrides[get_current_active_user_html] = (

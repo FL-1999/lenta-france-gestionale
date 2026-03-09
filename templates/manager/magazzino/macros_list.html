@@ -1,0 +1,70 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Macro-catégories magasin{% else %}Macro categorie magazzino{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">
+            🗂️ {% if lang == 'fr' %}Macro-catégories{% else %}Macro categorie{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Gérez les macro-catégories du magasin.
+            {% else %}
+                Gestisci le macro categorie del magazzino.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="magazzino-pill-bar">
+    {% include "manager/magazzino/_nav_pills.html" %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if macros %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Icône{% else %}Icona{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Couleur{% else %}Colore{% endif %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for macro in macros %}
+                            <tr>
+                                <td>{{ macro.ordine }}</td>
+                                <td>{{ macro.name }}</td>
+                                <td>{{ macro.icon or '—' }}</td>
+                                <td>{{ macro.color or '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="magazzino-item-desc">
+                {% if lang == 'fr' %}
+                    Aucune macro-catégorie configurée.
+                {% else %}
+                    Nessuna macro categoria configurata.
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
