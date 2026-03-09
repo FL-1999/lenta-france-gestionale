@@ -157,7 +157,11 @@ def _parse_categoria_id(value: str | None) -> int | None:
 
 
 def _load_magazzino_macros(db: Session) -> list[MagazzinoMacro]:
-    return db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
+    return (
+        db.query(MagazzinoMacro)
+        .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
+        .all()
+    )
 
 
 def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
@@ -1663,7 +1667,11 @@ def manager_magazzino_categorie_new(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
-    macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
+    macros = (
+        db.query(MagazzinoMacro)
+        .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
+        .all()
+    )
     return render_template(
         templates,
         request,
@@ -1793,6 +1801,7 @@ def manager_magazzino_categorie_create(
             ordine=ordine_value,
             attiva=attiva,
             macro_id=selected_macro.id,
+            macro=selected_macro.name,
             icon=selected_macro.icon or DEFAULT_CATEGORIA_ICON,
             color=selected_macro.color or DEFAULT_CATEGORIA_COLOR,
         )
