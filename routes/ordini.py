@@ -264,7 +264,7 @@ def _order_destination_label(order: PurchaseOrder) -> str:
     macro_name = (
         order.warehouse_category.macro_ref.name
         if order.warehouse_category and order.warehouse_category.macro_ref
-        else (order.warehouse_category.macro if order.warehouse_category else "-")
+        else "-"
     )
     return f"MAGAZZINO: {macro_name} → {category_name}"
 
@@ -488,7 +488,7 @@ def _group_warehouse_categories_by_macro(
         macro_name = (
             category.macro_ref.name
             if category.macro_ref and category.macro_ref.name
-            else (category.macro or "Senza macro")
+            else "Senza macro"
         )
         grouped.setdefault(macro_name, []).append(category)
 
@@ -511,7 +511,7 @@ def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], lis
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.attiva.is_(True))
         .order_by(
-            func.coalesce(MagazzinoCategoria.macro, "").asc(),
+            MagazzinoCategoria.macro_id.asc(),
             MagazzinoCategoria.ordine.asc(),
             MagazzinoCategoria.nome.asc(),
         )
@@ -725,8 +725,9 @@ def _get_or_create_category_for_name(
         slug=_build_unique_category_slug(db, normalized_name),
         ordine=max_order + 1,
         attiva=True,
-        macro=selected_macro.name,
         macro_id=selected_macro.id,
+        icon=selected_macro.icon,
+        color=selected_macro.color,
     )
     db.add(categoria)
     db.flush()
