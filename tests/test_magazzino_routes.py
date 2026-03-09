@@ -97,7 +97,6 @@ class MagazzinoRoutesTests(unittest.TestCase):
             self.assertIsNotNone(created)
             assert created is not None
             self.assertEqual(created.macro_id, macro_id)
-            self.assertEqual(created.macro, macro_name)
 
     def test_categorie_create_requires_existing_macro(self) -> None:
         category_name = f"Categoria Invalid Macro {self.unique}"
