@@ -53,8 +53,23 @@ class MagazzinoRoutesTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(macro_name, response.text)
         self.assertIn('name="macro_id"', response.text)
-        self.assertIn("Senza categoria", response.text)
-        self.assertNotIn("➕ Crea nuova macro", response.text)
+        self.assertIn("Seleziona macro", response.text)
+
+
+    def test_macro_new_form_renders(self) -> None:
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get("/manager/magazzino/macro/nuova", cookies={"lang": "it"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Nome macro", response.text)
+        self.assertIn('name="ordine"', response.text)
 
     def test_categorie_create_with_existing_macro(self) -> None:
         macro_name = f"Macro Existing {self.unique}"
