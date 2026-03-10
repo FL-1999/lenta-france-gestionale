@@ -52,6 +52,8 @@ class MagazzinoRoutesTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn(macro_name, response.text)
+        self.assertIn('name="macro_id"', response.text)
+        self.assertIn("Senza categoria", response.text)
         self.assertNotIn("➕ Crea nuova macro", response.text)
 
     def test_categorie_create_with_existing_macro(self) -> None:
