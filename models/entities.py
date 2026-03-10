@@ -507,7 +507,7 @@ class MagazzinoCategoria(Base, TimestampMixin):
     icon = Column(String(32), nullable=True, default="📦")
     color = Column(String(20), nullable=True, default="indigo")
 
-    macro_ref = relationship("MagazzinoMacro", back_populates="categorie")
+    macro = relationship("MagazzinoMacro", back_populates="categorie")
 
     def __repr__(self) -> str:
         return f"<MagazzinoCategoria id={self.id} nome={self.nome} slug={self.slug}>"
@@ -547,7 +547,7 @@ class MagazzinoMacro(Base):
     color = Column(String(40), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    categorie = relationship("MagazzinoCategoria", back_populates="macro_ref")
+    categorie = relationship("MagazzinoCategoria", back_populates="macro")
 
     def __repr__(self) -> str:
         return f"<MagazzinoMacro id={self.id} name={self.name}>"

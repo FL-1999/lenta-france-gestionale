@@ -156,10 +156,12 @@ def _parse_categoria_id(value: str | None) -> int | None:
         return None
 
 
-def _load_magazzino_macros(db: Session) -> list[MagazzinoMacro]:
+def _load_magazzino_macros(db: Session, only_with_categories: bool = False) -> list[MagazzinoMacro]:
+    query = db.query(MagazzinoMacro).options(joinedload(MagazzinoMacro.categorie))
+    if only_with_categories:
+        query = query.join(MagazzinoCategoria).group_by(MagazzinoMacro.id)
     macros = (
-        db.query(MagazzinoMacro)
-        .options(joinedload(MagazzinoMacro.categorie))
+        query
         .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
         .all()
     )
@@ -432,7 +434,7 @@ def _load_categorie(
     include_inactive: bool = False,
     include_fallback: bool = True,
 ) -> tuple[list[MagazzinoCategoria | SimpleNamespace], SimpleNamespace, int | None]:
-    query = db.query(MagazzinoCategoria).options(selectinload(MagazzinoCategoria.macro_ref))
+    query = db.query(MagazzinoCategoria).options(selectinload(MagazzinoCategoria.macro))
     if not include_inactive:
         query = query.filter(MagazzinoCategoria.attiva.is_(True))
     categorie = query.order_by(
@@ -518,9 +520,9 @@ def _build_categoria_sections(
             if item.quantita_disponibile is not None
             and item.quantita_disponibile <= 0
         )
-        macro_ref = getattr(categoria, "macro_ref", None)
-        icon_value = (getattr(macro_ref, "icon", None) if macro_ref else None) or getattr(categoria, "icon", None) or DEFAULT_CATEGORIA_ICON
-        color_value = (getattr(macro_ref, "color", None) if macro_ref else None) or getattr(categoria, "color", None) or DEFAULT_CATEGORIA_COLOR
+        macro_rel = getattr(categoria, "macro", None)
+        icon_value = (getattr(macro_rel, "icon", None) if macro_rel else None) or getattr(categoria, "icon", None) or DEFAULT_CATEGORIA_ICON
+        color_value = (getattr(macro_rel, "color", None) if macro_rel else None) or getattr(categoria, "color", None) or DEFAULT_CATEGORIA_COLOR
         sections.append(
             {
                 "cat": categoria,
@@ -610,7 +612,7 @@ def capo_magazzino_list(
     )
     categorie_display = _order_categorie_for_display(categorie)
     categorie_sections = _build_categoria_sections(categorie_display, items_by_categoria)
-    macros = _load_magazzino_macros(db)
+    macros = _load_magazzino_macros(db, only_with_categories=True)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -1070,7 +1072,7 @@ def _render_magazzino_items_list(
     )
     categorie_display = _order_categorie_for_display(categorie)
     categorie_sections = _build_categoria_sections(categorie_display, items_by_categoria)
-    macros = _load_magazzino_macros(db)
+    macros = _load_magazzino_macros(db, only_with_categories=True)
     filters = {
         "q": q_value,
         "categoria": categoria or "",

@@ -58,7 +58,6 @@
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Macro{% else %}Macro categoria{% endif %}*</label>
                     <select name="macro_id" id="macro_id" required>
-                        <option value="">Seleziona macro</option>
                         {% for macro in macros %}
                             <option value="{{ macro.id }}" {% if selected_macro_id == macro.id|string %}selected{% endif %}>{{ macro.name }}</option>
                         {% endfor %}
