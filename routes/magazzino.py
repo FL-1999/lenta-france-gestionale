@@ -1684,7 +1684,11 @@ def manager_magazzino_categorie_create(
 ):
     ensure_magazzino_manager(current_user)
     lang = get_lang_from_request(request)
-    macros = _load_magazzino_macros(db)
+    macros = (
+        db.query(MagazzinoMacro)
+        .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
+        .all()
+    )
     nome_value = nome.strip()
     if not nome_value:
         return render_template(
