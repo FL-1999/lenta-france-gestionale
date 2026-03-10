@@ -599,7 +599,7 @@ def login_api(
     elif user.role == RoleEnum.caposquadra:
         redirect_url = "/capo/dashboard"
     elif has_perm(user, "inventory.read"):
-        redirect_url = "/manager/magazzino/dashboard"
+        redirect_url = "/manager/magazzino"
     elif has_perm(user, "reports.read_all"):
         redirect_url = "/manager/rapportini"
     elif has_perm(user, "users.read"):
