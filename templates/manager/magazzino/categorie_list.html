@@ -16,6 +16,7 @@
         background: rgba(255, 255, 255, 0.04);
         border-radius: 12px;
         padding: 14px 16px;
+        overflow: visible;
     }
 
     .macro-header {
@@ -70,28 +71,23 @@
     }
 
     .dropdown-menu {
-        display: none;
         position: absolute;
         right: 0;
-        top: calc(100% + 4px);
+        top: 34px;
         background: #1e293b;
         border-radius: 10px;
         padding: 8px;
-        min-width: 200px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        z-index: 20;
-    }
-
-    .dropdown:hover .dropdown-menu,
-    .dropdown:focus-within .dropdown-menu {
-        display: block;
+        min-width: 180px;
+        display: none;
+        z-index: 10000;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
     }
 
     .dropdown-menu a,
     .dropdown-menu button {
         display: block;
         width: 100%;
-        padding: 6px 10px;
+        padding: 8px 10px;
         text-align: left;
         background: none;
         border: none;
@@ -99,12 +95,12 @@
         color: inherit;
         text-decoration: none;
         font-size: 0.95rem;
-        border-radius: 8px;
     }
 
     .dropdown-menu a:hover,
     .dropdown-menu button:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 6px;
     }
 
     .macro-empty {
@@ -146,7 +142,7 @@
                         <div class="macro-header">
                             <h2 class="macro-title">📂 {{ macro.name }}</h2>
                             <div class="dropdown">
-                                <button type="button" class="settings-btn" title="Azioni macro" aria-label="Azioni macro">⚙️</button>
+                                <button type="button" class="settings-btn" title="Azioni macro" aria-label="Azioni macro" onclick="toggleDropdown(this)">⚙️</button>
                                 <div class="dropdown-menu">
                                     <a href="/manager/magazzino/categorie/nuova?macro_id={{ macro.id }}">➕ Nuova categoria</a>
                                     <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}">✏️ Modifica macro</a>
@@ -168,7 +164,7 @@
                                             {% endif %}
                                         </span>
                                         <div class="dropdown">
-                                            <button type="button" class="settings-btn" title="Azioni categoria" aria-label="Azioni categoria">⚙️</button>
+                                            <button type="button" class="settings-btn" title="Azioni categoria" aria-label="Azioni categoria" onclick="toggleDropdown(this)">⚙️</button>
                                             <div class="dropdown-menu">
                                                 <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}">✏️ Modifica categoria</a>
                                                 <a href="{{ url_for('manager_magazzino_categorie_move', categoria_id=categoria.id) }}">📂 Sposta in altra macro</a>
@@ -194,4 +190,27 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    function toggleDropdown(btn) {
+        const dropdown = btn.parentElement;
+        const menu = dropdown.querySelector('.dropdown-menu');
+
+        document.querySelectorAll('.dropdown-menu').forEach((currentMenu) => {
+            if (currentMenu !== menu) {
+                currentMenu.style.display = 'none';
+            }
+        });
+
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-menu').forEach((menu) => {
+                menu.style.display = 'none';
+            });
+        }
+    });
+</script>
 {% endblock %}
