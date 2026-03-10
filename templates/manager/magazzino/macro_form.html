@@ -1,48 +1,49 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
+{% set is_edit = macro is not none and macro.id is defined and macro.id %}
 
 {% block title %}
-    {% if lang == 'fr' %}Modifier macro-catégorie{% else %}Modifica macro categoria{% endif %}
+    {{ title if title is defined else ('Modifica macro categoria' if is_edit else 'Nuova macro') }}
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
-        <h1 class="page-title">✏️ {% if lang == 'fr' %}Modifier macro-catégorie{% else %}Modifica macro categoria{% endif %}</h1>
+        <h1 class="page-title">🧩 {{ title if title is defined else ('Modifica macro categoria' if is_edit else 'Nuova macro') }}</h1>
     </div>
     <div class="header-actions">
         <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
     </div>
 </div>
 
-<form method="post" action="{{ url_for(form_action, macro_id=macro.id) }}">
+<form method="post" action="{{ url_for(form_action, macro_id=macro.id) if is_edit else url_for(form_action) }}">
     <div class="card large-form-card">
         <div class="card-body">
             {% if error_message %}<div class="form-error">{{ error_message }}</div>{% endif %}
             <div class="form-grid-2">
                 <div class="form-field">
-                    <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
-                    <input type="text" name="name" value="{{ macro.name }}" required>
+                    <label>Nome macro*</label>
+                    <input type="text" name="name" value="{{ macro.name if macro else '' }}" required>
                 </div>
                 <div class="form-field">
-                    <label>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</label>
-                    <input type="number" name="ordine" value="{{ macro.ordine or 0 }}" min="0">
+                    <label>Ordine</label>
+                    <input type="number" name="ordine" value="{{ macro.ordine if macro else 0 }}" min="0">
                 </div>
             </div>
             <div class="form-grid-2">
                 <div class="form-field">
-                    <label>Icon</label>
-                    <input type="text" name="icon" value="{{ macro.icon or '' }}">
+                    <label>Icona</label>
+                    <input type="text" name="icon" value="{{ macro.icon if macro else '' }}">
                 </div>
                 <div class="form-field">
-                    <label>Color</label>
-                    <input type="text" name="color" value="{{ macro.color or '' }}">
+                    <label>Colore</label>
+                    <input type="text" name="color" value="{{ macro.color if macro else '' }}">
                 </div>
             </div>
             <div class="form-actions">
-                <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
-                <button type="submit" class="btn btn-primary">{% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+                <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">Annulla</a>
+                <button type="submit" class="btn btn-primary">Salva</button>
             </div>
         </div>
     </div>

@@ -12,21 +12,12 @@
         <h1 class="page-title">
             🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
         </h1>
-        <p class="page-subtitle">
-            {% if lang == 'fr' %}
-                Gérez les catégories regroupées par macro-catégorie.
-            {% else %}
-                Gestisci le categorie raggruppate per macro categoria.
-            {% endif %}
-        </p>
     </div>
     <div class="header-actions">
         <a href="{{ url_for('manager_magazzino_home') }}" class="btn btn-secondary">
             ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
         </a>
-        <a href="{{ url_for('manager_magazzino_categorie_new') }}" class="btn btn-primary">
-            ➕ {% if lang == 'fr' %}Nouvelle catégorie{% else %}Nuova categoria{% endif %}
-        </a>
+        <a href="/manager/magazzino/macro/nuova" class="btn btn-primary">➕ Nuova macro</a>
     </div>
 </div>
 
@@ -45,7 +36,15 @@
         {% if macros %}
             {% for macro in macros %}
                 <section style="margin-bottom: var(--space-5);">
-                    <h2 style="margin-bottom: var(--space-2);">Macro: {{ macro.name }}</h2>
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2);">
+                        <h2 style="margin: 0;">{{ macro.name }}</h2>
+                        <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+                            <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}" class="btn btn-secondary btn-sm">✏️ Edit</a>
+                            <form method="post" action="{{ url_for('manager_magazzino_macro_delete', macro_id=macro.id) }}" onsubmit="return confirm('Confermi eliminazione macro?');">
+                                <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+                            </form>
+                        </div>
+                    </div>
                     {% if macro.categorie %}
                         <ul style="margin: 0; padding-left: 1.2rem;">
                             {% for categoria in macro.categorie|sort(attribute='ordine') %}
@@ -57,11 +56,9 @@
                                         {% endif %}
                                     </span>
                                     <div style="display: flex; gap: var(--space-2);">
-                                        <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn btn-secondary btn-sm">
-                                            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-                                        </a>
+                                        <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn btn-secondary btn-sm">✏️ Edit</a>
                                         <form method="post" action="{{ url_for('manager_magazzino_categorie_delete', categoria_id=categoria.id) }}" onsubmit="return confirm('Confermi eliminazione categoria?');">
-                                            <button type="submit" class="btn btn-danger btn-sm">🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
+                                            <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
                                         </form>
                                     </div>
                                 </li>
@@ -69,30 +66,16 @@
                         </ul>
                     {% else %}
                         <p class="magazzino-item-desc" style="margin: 0;">
-                            {% if lang == 'fr' %}
-                                Aucune catégorie associée.
-                            {% else %}
-                                Nessuna categoria associata.
-                            {% endif %}
+                            {% if lang == 'fr' %}Aucune catégorie associée.{% else %}Nessuna categoria associata.{% endif %}
                         </p>
                     {% endif %}
-                    <div style="display: flex; gap: var(--space-2); margin-top: var(--space-2); flex-wrap: wrap;">
-                        <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}" class="btn btn-secondary btn-sm">✏️ {% if lang == 'fr' %}Modifier macro{% else %}Modifica macro{% endif %}</a>
-                        <form method="post" action="{{ url_for('manager_magazzino_macro_delete', macro_id=macro.id) }}" onsubmit="return confirm('Confermi eliminazione macro?');">
-                            <button type="submit" class="btn btn-danger btn-sm">🗑️ {% if lang == 'fr' %}Supprimer macro{% else %}Elimina macro{% endif %}</button>
-                        </form>
-                        <a href="{{ url_for('manager_magazzino_categorie_new') }}?macro_id={{ macro.id }}" class="btn btn-primary btn-sm">➕ {% if lang == 'fr' %}Nouvelle catégorie{% else %}Nuova categoria{% endif %}</a>
+                    <div style="margin-top: var(--space-2);">
+                        <a href="/manager/magazzino/categorie/nuova?macro_id={{ macro.id }}" class="btn btn-primary btn-sm">➕ Nuova categoria</a>
                     </div>
                 </section>
             {% endfor %}
         {% else %}
-            <p class="magazzino-item-desc">
-                {% if lang == 'fr' %}
-                    Aucune macro configurée.
-                {% else %}
-                    Nessuna macro configurata.
-                {% endif %}
-            </p>
+            <p class="magazzino-item-desc">{% if lang == 'fr' %}Aucune macro configurée.{% else %}Nessuna macro configurata.{% endif %}</p>
         {% endif %}
     </div>
 </div>

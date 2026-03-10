@@ -1877,6 +1877,31 @@ def manager_magazzino_categorie_create(
     )
 
 
+@router.get(
+    "/manager/magazzino/macro/nuova",
+    response_class=HTMLResponse,
+    name="manager_magazzino_macro_new",
+)
+def manager_magazzino_macro_new(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/macro_form.html",
+        {
+            "macro": None,
+            "title": "Nuova macro",
+            "form_action": "manager_magazzino_macro_create",
+        },
+        db,
+        current_user,
+    )
+
+
 @router.post(
     "/manager/magazzino/macros",
     response_class=HTMLResponse,
