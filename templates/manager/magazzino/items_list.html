@@ -115,17 +115,19 @@
         </div>
     </div>
     <div class="card-body">
-        {% for macro in macro_category_groups %}
-            <div class="macro-block">
-                <h2 class="macro-title">{{ macro.icon }} {{ macro.name }}</h2>
-                <div class="category-grid">
-                    {% for category in macro.categories %}
-                        <a class="category-card" href="#categoria-{{ category.id if category.id is not none else 'none' }}">
-                            {{ category.nome }}
-                        </a>
-                    {% endfor %}
+        {% for macro in macros %}
+            {% if macro.categorie %}
+                <div class="macro-block">
+                    <h2 class="macro-title">{{ macro.icon or '📦' }} {{ macro.name }}</h2>
+                    <div class="category-grid">
+                        {% for category in macro.categorie %}
+                            <a class="category-card" href="#categoria-{{ category.id }}">
+                                {{ category.nome }}
+                            </a>
+                        {% endfor %}
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         {% endfor %}
     </div>
 </div>
