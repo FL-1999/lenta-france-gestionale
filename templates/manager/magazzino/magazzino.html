@@ -12,14 +12,14 @@
         <h1 class="page-title">📦 {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</h1>
         <p class="page-subtitle">
             {% if lang == 'fr' %}
-                Structure macro et catégories du magasin.
+                Vue des articles du magasin.
             {% else %}
-                Struttura macro e categorie del magazzino.
+                Vista articoli del magazzino.
             {% endif %}
         </p>
     </div>
     <div class="header-actions">
-        <a href="{{ url_for('manager_magazzino_categorie_new') }}" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouvelle catégorie{% else %}Nuova categoria{% endif %}</a>
+        <a href="{{ url_for('manager_magazzino_new') }}" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouvel article{% else %}Nuovo articolo{% endif %}</a>
     </div>
 </div>
 
@@ -36,35 +36,36 @@
 
 <div class="card">
     <div class="card-body">
-        {% for macro in macros %}
-            <section style="margin-bottom: var(--space-5);">
-                <h2 style="margin-bottom: var(--space-2);">{{ macro.name }}</h2>
-
-                <ul style="margin: 0; padding-left: 1.2rem;">
-                    {% for categoria in macro.categorie %}
-                        <li style="margin-bottom: var(--space-2); display:flex; align-items:center; justify-content:space-between; gap:var(--space-3);">
-                            <span>{{ categoria.nome }}</span>
-                            <div style="display:flex; gap: var(--space-2);">
-                                <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn btn-secondary btn-sm">✏️</a>
-                                <form method="post" action="{{ url_for('manager_magazzino_categorie_delete', categoria_id=categoria.id) }}" onsubmit="return confirm('Confermi eliminazione categoria?');">
-                                    <button type="submit" class="btn btn-danger btn-sm">🗑</button>
-                                </form>
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-
-                <div style="display:flex; gap: var(--space-2); flex-wrap:wrap;">
-                    <a href="{{ url_for('manager_magazzino_categorie_new') }}?macro_id={{ macro.id }}" class="btn btn-primary btn-sm">➕ {% if lang == 'fr' %}Nouvelle catégorie{% else %}Nuova categoria{% endif %}</a>
-                    <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}" class="btn btn-secondary btn-sm">✏️ {% if lang == 'fr' %}Modifier macro{% else %}Modifica macro{% endif %}</a>
-                    <form method="post" action="{{ url_for('manager_magazzino_macro_delete', macro_id=macro.id) }}" onsubmit="return confirm('Confermi eliminazione macro?');">
-                        <button type="submit" class="btn btn-danger btn-sm">🗑 {% if lang == 'fr' %}Supprimer macro{% else %}Elimina macro{% endif %}</button>
-                    </form>
-                </div>
-            </section>
+        {% if items %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Disponible{% else %}Disponibile{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td>{{ item.nome }}</td>
+                                <td>{{ item.codice or '—' }}</td>
+                                <td>{{ item.categoria.nome if item.categoria else '—' }}</td>
+                                <td>{{ item.quantita_disponibile }}</td>
+                                <td>
+                                    <a href="{{ url_for('manager_magazzino_edit', item_id=item.id) }}" class="btn btn-secondary btn-sm">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
-            <p class="magazzino-item-desc">{% if lang == 'fr' %}Aucune macro configurée.{% else %}Nessuna macro configurata.{% endif %}</p>
-        {% endfor %}
+            <p class="magazzino-item-desc">{% if lang == 'fr' %}Aucun article disponible.{% else %}Nessun articolo disponibile.{% endif %}</p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
