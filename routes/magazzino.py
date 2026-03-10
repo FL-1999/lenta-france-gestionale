@@ -1628,27 +1628,17 @@ def manager_magazzino_categorie_list(
     ensure_magazzino_manager(current_user)
     macros = (
         db.query(MagazzinoMacro)
+        .options(joinedload(MagazzinoMacro.categorie))
         .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
         .all()
     )
-    categorie, _, _ = _load_categorie(
-        db,
-        include_inactive=True,
-        include_fallback=False,
-    )
-    active_ids = [categoria.id for categoria in categorie if categoria.attiva]
-    first_active_id = active_ids[0] if active_ids else None
-    last_active_id = active_ids[-1] if active_ids else None
     badges = build_magazzino_badges(db, current_user)
     return render_template(
         templates,
         request,
         "manager/magazzino/categorie_list.html",
         {
-            "categorie": categorie,
             "macros": macros,
-            "first_active_id": first_active_id,
-            "last_active_id": last_active_id,
             **badges,
         },
         db,
@@ -1928,7 +1918,7 @@ def manager_magazzino_macro_create(
             )
 
     return RedirectResponse(
-        url=f"/manager/magazzino/categorie/nuova?macro_id={macro.id}",
+        url="/manager/magazzino/macros",
         status_code=303,
     )
 
