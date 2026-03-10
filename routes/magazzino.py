@@ -1903,7 +1903,7 @@ def manager_magazzino_macro_create(
             )
 
     return RedirectResponse(
-        url="/manager/magazzino/macros",
+        url=f"/manager/magazzino/categorie/nuova?macro_id={macro.id}",
         status_code=303,
     )
 
