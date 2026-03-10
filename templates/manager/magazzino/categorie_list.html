@@ -15,11 +15,19 @@
     .macro-card {
         background: rgba(255, 255, 255, 0.04);
         border-radius: 12px;
-        padding: 20px;
+        padding: 14px 16px;
+    }
+
+    .macro-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-2);
+        margin-bottom: var(--space-2);
     }
 
     .macro-title {
-        margin: 0 0 var(--space-2);
+        margin: 0;
         font-size: 1.1rem;
     }
 
@@ -43,39 +51,64 @@
         gap: 6px;
     }
 
-    .categoria-actions {
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .btn-icon {
+    .settings-btn {
         background: none;
         border: none;
         cursor: pointer;
-        font-size: 16px;
-        margin-left: 8px;
-        padding: 0;
-        text-decoration: none;
+        font-size: 18px;
+        padding: 2px 6px;
         line-height: 1;
+        opacity: 0.8;
     }
 
-    .btn-icon.danger {
-        color: #ff6b6b;
+    .settings-btn:hover {
+        opacity: 1;
     }
 
-    .macro-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-2);
-        margin-top: var(--space-2);
+    .dropdown {
+        position: relative;
+    }
+
+    .dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        background: #1e293b;
+        border-radius: 10px;
+        padding: 8px;
+        min-width: 200px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 20;
+    }
+
+    .dropdown:hover .dropdown-menu,
+    .dropdown:focus-within .dropdown-menu {
+        display: block;
+    }
+
+    .dropdown-menu a,
+    .dropdown-menu button {
+        display: block;
+        width: 100%;
+        padding: 6px 10px;
+        text-align: left;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: inherit;
+        text-decoration: none;
+        font-size: 0.95rem;
+        border-radius: 8px;
+    }
+
+    .dropdown-menu a:hover,
+    .dropdown-menu button:hover {
+        background: rgba(255, 255, 255, 0.08);
     }
 
     .macro-empty {
-        margin: 0 0 var(--space-2);
-    }
-
-    .macro-add-category {
-        margin-top: var(--space-2);
+        margin-bottom: 0;
     }
 </style>
 
@@ -110,7 +143,19 @@
             <div class="macro-list">
                 {% for macro in macros %}
                     <section class="macro-card">
-                        <h2 class="macro-title">📂 {{ macro.name }}</h2>
+                        <div class="macro-header">
+                            <h2 class="macro-title">📂 {{ macro.name }}</h2>
+                            <div class="dropdown">
+                                <button type="button" class="settings-btn" title="Azioni macro" aria-label="Azioni macro">⚙️</button>
+                                <div class="dropdown-menu">
+                                    <a href="/manager/magazzino/categorie/nuova?macro_id={{ macro.id }}">➕ Nuova categoria</a>
+                                    <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}">✏️ Modifica macro</a>
+                                    <form method="post" action="{{ url_for('manager_magazzino_macro_delete', macro_id=macro.id) }}" onsubmit="return confirm('Confermi eliminazione macro?');">
+                                        <button type="submit">🗑 Elimina macro</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
 
                         {% if macro.categorie %}
                             <ul class="categorie-list">
@@ -122,11 +167,15 @@
                                                 <span class="badge badge-muted">{% if lang == 'fr' %}Inactive{% else %}Disattiva{% endif %}</span>
                                             {% endif %}
                                         </span>
-                                        <div class="categoria-actions">
-                                            <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn-icon" title="Modifica categoria" aria-label="Modifica categoria">✏️</a>
-                                            <form method="post" action="{{ url_for('manager_magazzino_categorie_delete', categoria_id=categoria.id) }}" onsubmit="return confirm('Confermi eliminazione categoria?');">
-                                                <button type="submit" class="btn-icon danger" title="Elimina categoria" aria-label="Elimina categoria">🗑</button>
-                                            </form>
+                                        <div class="dropdown">
+                                            <button type="button" class="settings-btn" title="Azioni categoria" aria-label="Azioni categoria">⚙️</button>
+                                            <div class="dropdown-menu">
+                                                <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}">✏️ Modifica categoria</a>
+                                                <a href="{{ url_for('manager_magazzino_categorie_move', categoria_id=categoria.id) }}">📂 Sposta in altra macro</a>
+                                                <form method="post" action="{{ url_for('manager_magazzino_categorie_delete', categoria_id=categoria.id) }}" onsubmit="return confirm('Confermi eliminazione categoria?');">
+                                                    <button type="submit">🗑 Elimina categoria</button>
+                                                </form>
+                                            </div>
                                         </div>
                                     </li>
                                 {% endfor %}
@@ -137,16 +186,6 @@
                             </p>
                         {% endif %}
 
-                        <div class="macro-add-category">
-                            <a href="/manager/magazzino/categorie/nuova?macro_id={{ macro.id }}" class="btn btn-secondary btn-sm">+ Nuova categoria</a>
-                        </div>
-
-                        <div class="macro-actions">
-                            <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}" class="btn btn-secondary btn-sm">✏️ Modifica macro</a>
-                            <form method="post" action="{{ url_for('manager_magazzino_macro_delete', macro_id=macro.id) }}" onsubmit="return confirm('Confermi eliminazione macro?');">
-                                <button type="submit" class="btn btn-danger btn-sm">🗑 Elimina macro</button>
-                            </form>
-                        </div>
                     </section>
                 {% endfor %}
             </div>

@@ -1,0 +1,48 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Déplacer catégorie{% else %}Sposta categoria{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">📂 {% if lang == 'fr' %}Déplacer catégorie{% else %}Sposta categoria{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Choisissez la macro catégorie de destination pour {{ categoria.nome }}.
+            {% else %}
+                Seleziona la macro categoria di destinazione per {{ categoria.nome }}.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+    </div>
+</div>
+
+<div class="card" style="max-width: 520px; margin: 0 auto;">
+    <div class="card-body">
+        <form method="post" action="{{ url_for('manager_magazzino_categorie_move_submit', categoria_id=categoria.id) }}">
+            <div class="form-field">
+                <label>{% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}</label>
+                <select name="macro_id" required>
+                    {% for macro in macros %}
+                        <option value="{{ macro.id }}" {% if selected_macro_id == macro.id %}selected{% endif %}>{{ macro.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-actions" style="margin-top: var(--space-3);">
+                <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if lang == 'fr' %}Déplacer{% else %}Sposta{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
