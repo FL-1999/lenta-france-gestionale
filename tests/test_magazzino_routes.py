@@ -243,6 +243,41 @@ class MagazzinoRoutesTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(f'<option value="{macro_id}" selected>{macro_name}</option>', response.text)
 
+    def test_macros_list_is_not_polluted_by_category_names(self) -> None:
+        macro_name = f"Filtri {self.unique}"
+        category_name = f"Filtri Bauer {self.unique}"
+        with SessionLocal() as db:
+            macro = MagazzinoMacro(name=macro_name)
+            db.add(macro)
+            db.commit()
+            db.refresh(macro)
+
+            category = MagazzinoCategoria(
+                nome=category_name,
+                slug=f"filtri-bauer-{self.unique}",
+                ordine=1,
+                attiva=True,
+                macro_id=macro.id,
+            )
+            db.add(category)
+            db.commit()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get(
+            "/manager/magazzino/categorie/nuova", cookies={"lang": "it"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(macro_name, response.text)
+        self.assertNotIn(category_name, response.text)
+
 
 if __name__ == "__main__":
     unittest.main()

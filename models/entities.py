@@ -503,7 +503,6 @@ class MagazzinoCategoria(Base, TimestampMixin):
     slug = Column(String(255), nullable=False, unique=True)
     ordine = Column(Integer, nullable=False, default=0)
     attiva = Column(Boolean, default=True, nullable=False)
-    macro = Column(String(120), nullable=False, default="Generale")
     macro_id = Column(Integer, ForeignKey("magazzino_macro.id"), nullable=True)
     icon = Column(String(32), nullable=True, default="📦")
     color = Column(String(20), nullable=True, default="indigo")
@@ -695,4 +694,3 @@ class PersonalePresenza(SQLModel, table=True):
             nullable=False,
         )
     )
-
