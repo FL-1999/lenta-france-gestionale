@@ -2356,6 +2356,99 @@ def manager_magazzino_categorie_update(
 
 
 @router.post(
+    "/manager/magazzino/categorie/{categoria_id}/sposta",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_move_submit",
+)
+def manager_magazzino_categorie_move_submit(
+    categoria_id: int,
+    request: Request,
+    macro_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == categoria_id)
+        .first()
+    )
+    if not categoria:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_list"),
+            status_code=303,
+        )
+    selected_macro = (
+        db.query(MagazzinoMacro)
+        .filter(MagazzinoMacro.id == macro_id)
+        .first()
+    )
+    if not selected_macro:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_move", categoria_id=categoria_id),
+            status_code=303,
+        )
+    categoria.macro_id = selected_macro.id
+    db.add(categoria)
+    _log_audit(
+        db,
+        current_user,
+        "CATEGORIA_MOVE",
+        "MagazzinoCategoria",
+        categoria.id,
+        {
+            "nome": categoria.nome,
+            "macro_id": selected_macro.id,
+            "macro_name": selected_macro.name,
+        },
+    )
+    db.commit()
+    _invalidate_magazzino_cache()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.get(
+    "/manager/magazzino/categorie/{categoria_id}/sposta",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_move",
+)
+def manager_magazzino_categorie_move(
+    categoria_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .options(joinedload(MagazzinoCategoria.macro))
+        .filter(MagazzinoCategoria.id == categoria_id)
+        .first()
+    )
+    if not categoria:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_list"),
+            status_code=303,
+        )
+    macros = _load_magazzino_macros(db)
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/categorie_move.html",
+        {
+            "categoria": categoria,
+            "macros": macros,
+            "selected_macro_id": categoria.macro_id,
+        },
+        db,
+        current_user,
+    )
+
+
+@router.post(
     "/manager/magazzino/categorie/{categoria_id}/disattiva",
     response_class=HTMLResponse,
     name="manager_magazzino_categorie_disable",
