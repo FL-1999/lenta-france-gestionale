@@ -1659,6 +1659,8 @@ def manager_magazzino_categorie_list(
         .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
         .all()
     )
+    for macro in macros:
+        macro.categorie.sort(key=lambda categoria: (categoria.ordine, categoria.nome.lower()))
     badges = build_magazzino_badges(db, current_user)
     return render_template(
         templates,
