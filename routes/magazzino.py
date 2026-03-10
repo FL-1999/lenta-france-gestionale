@@ -1607,6 +1607,8 @@ def manager_magazzino_categorie_list(
     current_user: User = Depends(get_current_active_user_html),
 ):
     ensure_magazzino_manager(current_user)
+    error_message = (request.query_params.get("error") or "").strip() or None
+    success_message = (request.query_params.get("success") or "").strip() or None
     macros = (
         db.query(MagazzinoMacro)
         .options(joinedload(MagazzinoMacro.categorie))
@@ -1620,6 +1622,8 @@ def manager_magazzino_categorie_list(
         "manager/magazzino/categorie_list.html",
         {
             "macros": macros,
+            "error_message": error_message,
+            "success_message": success_message,
             **badges,
         },
         db,
@@ -1866,44 +1870,219 @@ def manager_magazzino_macro_create(
     icon_value = (icon or "").strip() or None
     color_value = (color or "").strip().lower() or None
 
-    macro = (
+    existing_macro = (
         db.query(MagazzinoMacro)
         .filter(func.lower(MagazzinoMacro.name) == macro_name.lower())
         .first()
     )
-    if not macro:
-        try:
-            macro = MagazzinoMacro(
-                name=macro_name,
-                ordine=ordine_value,
-                icon=icon_value,
-                color=color_value,
-            )
-            db.add(macro)
-            _log_audit(
-                db,
-                current_user,
-                "MACRO_CREATE",
-                "MagazzinoMacro",
-                None,
-                {
-                    "name": macro.name,
-                    "ordine": macro.ordine,
-                    "icon": macro.icon,
-                    "color": macro.color,
-                },
-            )
-            db.commit()
-            db.refresh(macro)
-        except Exception:
-            db.rollback()
-            return RedirectResponse(
-                url="/manager/magazzino/macros",
-                status_code=303,
-            )
+    if existing_macro:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_list"),
+            status_code=303,
+        )
+    try:
+        macro = MagazzinoMacro(
+            name=macro_name,
+            ordine=ordine_value,
+            icon=icon_value,
+            color=color_value,
+        )
+        db.add(macro)
+        _log_audit(
+            db,
+            current_user,
+            "MACRO_CREATE",
+            "MagazzinoMacro",
+            None,
+            {
+                "name": macro.name,
+                "ordine": macro.ordine,
+                "icon": macro.icon,
+                "color": macro.color,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        return RedirectResponse(
+            url="/manager/magazzino/macros",
+            status_code=303,
+        )
 
     return RedirectResponse(
-        url=f"/manager/magazzino/categorie/nuova?macro_id={macro.id}",
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.get(
+    "/manager/magazzino/macro/{macro_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_magazzino_macro_edit",
+)
+def manager_magazzino_macro_edit(
+    macro_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id).first()
+    if not macro:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_list"),
+            status_code=303,
+        )
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/macro_form.html",
+        {
+            "macro": macro,
+            "title": "Modifica macro",
+            "form_action": "manager_magazzino_macro_update",
+        },
+        db,
+        current_user,
+    )
+
+
+@router.post(
+    "/manager/magazzino/macro/{macro_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_magazzino_macro_update",
+)
+def manager_magazzino_macro_update(
+    macro_id: int,
+    request: Request,
+    name: str = Form(""),
+    ordine: str | None = Form("0"),
+    icon: str | None = Form(""),
+    color: str | None = Form(""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id).first()
+    if not macro:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_list"),
+            status_code=303,
+        )
+    name_value = (name or "").strip()
+    if not name_value:
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/macro_form.html",
+            {
+                "macro": macro,
+                "title": "Modifica macro",
+                "form_action": "manager_magazzino_macro_update",
+                "error_message": "Il nome della macro è obbligatorio.",
+            },
+            db,
+            current_user,
+        )
+    existing = (
+        db.query(MagazzinoMacro)
+        .filter(
+            func.lower(MagazzinoMacro.name) == name_value.lower(),
+            MagazzinoMacro.id != macro.id,
+        )
+        .first()
+    )
+    if existing:
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/macro_form.html",
+            {
+                "macro": macro,
+                "title": "Modifica macro",
+                "form_action": "manager_magazzino_macro_update",
+                "error_message": "Esiste già una macro con questo nome.",
+            },
+            db,
+            current_user,
+        )
+    try:
+        ordine_value = int(ordine or 0)
+    except ValueError:
+        ordine_value = macro.ordine or 0
+    macro.name = name_value
+    macro.ordine = ordine_value
+    macro.icon = (icon or "").strip() or None
+    macro.color = (color or "").strip().lower() or None
+    try:
+        db.add(macro)
+        _log_audit(
+            db,
+            current_user,
+            "MACRO_EDIT",
+            "MagazzinoMacro",
+            macro.id,
+            {
+                "name": macro.name,
+                "ordine": macro.ordine,
+                "icon": macro.icon,
+                "color": macro.color,
+            },
+        )
+        db.commit()
+        _invalidate_magazzino_cache()
+    except Exception:
+        db.rollback()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/macro/{macro_id}/delete",
+    response_class=HTMLResponse,
+    name="manager_magazzino_macro_delete",
+)
+def manager_magazzino_macro_delete(
+    macro_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id).first()
+    if not macro:
+        return RedirectResponse(
+            url=request.url_for("manager_magazzino_categorie_list"),
+            status_code=303,
+        )
+    categorie_count = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.macro_id == macro_id)
+        .count()
+    )
+    if categorie_count:
+        return RedirectResponse(
+            url=f"{request.url_for('manager_magazzino_categorie_list')}?error=La+macro+ha+categorie+associate.",
+            status_code=303,
+        )
+    try:
+        db.delete(macro)
+        _log_audit(
+            db,
+            current_user,
+            "MACRO_DELETE",
+            "MagazzinoMacro",
+            macro.id,
+            {"name": macro.name},
+        )
+        db.commit()
+        _invalidate_magazzino_cache()
+    except Exception:
+        db.rollback()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
         status_code=303,
     )
 
@@ -2166,6 +2345,44 @@ def manager_magazzino_categorie_toggle(
         )
         db.commit()
         _invalidate_magazzino_cache()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_categorie_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/categorie/{categoria_id}/delete",
+    response_class=HTMLResponse,
+    name="manager_magazzino_categorie_delete",
+)
+def manager_magazzino_categorie_delete(
+    categoria_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == categoria_id)
+        .first()
+    )
+    if categoria:
+        try:
+            db.delete(categoria)
+            _log_audit(
+                db,
+                current_user,
+                "CATEGORIA_DELETE",
+                "MagazzinoCategoria",
+                categoria.id,
+                {"nome": categoria.nome},
+            )
+            db.commit()
+            _invalidate_magazzino_cache()
+        except Exception:
+            db.rollback()
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),
         status_code=303,

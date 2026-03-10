@@ -1,0 +1,50 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Modifier macro-catégorie{% else %}Modifica macro categoria{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">✏️ {% if lang == 'fr' %}Modifier macro-catégorie{% else %}Modifica macro categoria{% endif %}</h1>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for(form_action, macro_id=macro.id) }}">
+    <div class="card large-form-card">
+        <div class="card-body">
+            {% if error_message %}<div class="form-error">{{ error_message }}</div>{% endif %}
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
+                    <input type="text" name="name" value="{{ macro.name }}" required>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</label>
+                    <input type="number" name="ordine" value="{{ macro.ordine or 0 }}" min="0">
+                </div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>Icon</label>
+                    <input type="text" name="icon" value="{{ macro.icon or '' }}">
+                </div>
+                <div class="form-field">
+                    <label>Color</label>
+                    <input type="text" name="color" value="{{ macro.color or '' }}">
+                </div>
+            </div>
+            <div class="form-actions">
+                <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
+                <button type="submit" class="btn btn-primary">{% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
