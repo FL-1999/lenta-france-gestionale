@@ -262,8 +262,8 @@ def _order_destination_label(order: PurchaseOrder) -> str:
         return f"CHIUSO/CANTIERE: {site_name}"
     category_name = order.warehouse_category.nome if order.warehouse_category else "-"
     macro_name = (
-        order.warehouse_category.macro_ref.name
-        if order.warehouse_category and order.warehouse_category.macro_ref
+        order.warehouse_category.macro.name
+        if order.warehouse_category and order.warehouse_category.macro
         else "-"
     )
     return f"MAGAZZINO: {macro_name} → {category_name}"
@@ -486,8 +486,8 @@ def _group_warehouse_categories_by_macro(
     grouped: dict[str, list[MagazzinoCategoria]] = {}
     for category in warehouse_categories:
         macro_name = (
-            category.macro_ref.name
-            if category.macro_ref and category.macro_ref.name
+            category.macro.name
+            if category.macro and category.macro.name
             else "Senza macro"
         )
         grouped.setdefault(macro_name, []).append(category)
@@ -523,7 +523,7 @@ def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], lis
         .order_by(User.full_name.asc(), User.email.asc())
         .all()
     )
-    macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.name.asc()).all()
+    macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc()).all()
     suppliers = db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name.asc(), Supplier.id.asc()).all()
     depots = db.query(Depot).filter(Depot.is_active.is_(True)).order_by(Depot.name.asc()).all()
     return magazzino_items, sites, warehouse_categories, requesters, macros, suppliers, depots
