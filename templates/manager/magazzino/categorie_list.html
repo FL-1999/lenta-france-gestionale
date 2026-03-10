@@ -6,6 +6,79 @@
 {% endblock %}
 
 {% block content %}
+<style>
+    .macro-list {
+        display: grid;
+        gap: var(--space-3);
+    }
+
+    .macro-card {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .macro-title {
+        margin: 0 0 var(--space-2);
+        font-size: 1.1rem;
+    }
+
+    .categorie-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .categoria-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-2);
+        padding: 6px 0;
+    }
+
+    .categoria-name {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .categoria-actions {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 8px;
+        padding: 0;
+        text-decoration: none;
+        line-height: 1;
+    }
+
+    .btn-icon.danger {
+        color: #ff6b6b;
+    }
+
+    .macro-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        margin-top: var(--space-2);
+    }
+
+    .macro-empty {
+        margin: 0 0 var(--space-2);
+    }
+
+    .macro-add-category {
+        margin-top: var(--space-2);
+    }
+</style>
+
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
@@ -34,46 +107,49 @@
             <div class="form-success" style="margin-bottom: var(--space-3);">{{ success_message }}</div>
         {% endif %}
         {% if macros %}
-            {% for macro in macros %}
-                <section style="margin-bottom: var(--space-5);">
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2);">
-                        <h2 style="margin: 0;">{{ macro.name }}</h2>
-                        <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+            <div class="macro-list">
+                {% for macro in macros %}
+                    <section class="macro-card">
+                        <h2 class="macro-title">📂 {{ macro.name }}</h2>
+
+                        {% if macro.categorie %}
+                            <ul class="categorie-list">
+                                {% for categoria in macro.categorie|sort(attribute='ordine') %}
+                                    <li class="categoria-row">
+                                        <span class="categoria-name">
+                                            <span>• {{ categoria.nome }}</span>
+                                            {% if not categoria.attiva %}
+                                                <span class="badge badge-muted">{% if lang == 'fr' %}Inactive{% else %}Disattiva{% endif %}</span>
+                                            {% endif %}
+                                        </span>
+                                        <div class="categoria-actions">
+                                            <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn-icon" title="Modifica categoria" aria-label="Modifica categoria">✏️</a>
+                                            <form method="post" action="{{ url_for('manager_magazzino_categorie_delete', categoria_id=categoria.id) }}" onsubmit="return confirm('Confermi eliminazione categoria?');">
+                                                <button type="submit" class="btn-icon danger" title="Elimina categoria" aria-label="Elimina categoria">🗑</button>
+                                            </form>
+                                        </div>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="magazzino-item-desc macro-empty">
+                                {% if lang == 'fr' %}Aucune catégorie associée.{% else %}Nessuna categoria associata.{% endif %}
+                            </p>
+                        {% endif %}
+
+                        <div class="macro-add-category">
+                            <a href="/manager/magazzino/categorie/nuova?macro_id={{ macro.id }}" class="btn btn-secondary btn-sm">+ Nuova categoria</a>
+                        </div>
+
+                        <div class="macro-actions">
                             <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}" class="btn btn-secondary btn-sm">✏️ Modifica macro</a>
                             <form method="post" action="{{ url_for('manager_magazzino_macro_delete', macro_id=macro.id) }}" onsubmit="return confirm('Confermi eliminazione macro?');">
                                 <button type="submit" class="btn btn-danger btn-sm">🗑 Elimina macro</button>
                             </form>
                         </div>
-                    </div>
-                    {% if macro.categorie %}
-                        <ul style="margin: 0; padding-left: 1.2rem;">
-                            {% for categoria in macro.categorie|sort(attribute='ordine') %}
-                                <li style="margin-bottom: var(--space-2); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);">
-                                    <span>
-                                        - {{ categoria.nome }}
-                                        {% if not categoria.attiva %}
-                                            <span class="badge badge-muted" style="margin-left: var(--space-2);">{% if lang == 'fr' %}Inactive{% else %}Disattiva{% endif %}</span>
-                                        {% endif %}
-                                    </span>
-                                    <div style="display: flex; gap: var(--space-2);">
-                                        <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn btn-secondary btn-sm">✏️ Modifica categoria</a>
-                                        <form method="post" action="{{ url_for('manager_magazzino_categorie_delete', categoria_id=categoria.id) }}" onsubmit="return confirm('Confermi eliminazione categoria?');">
-                                            <button type="submit" class="btn btn-danger btn-sm">🗑 Elimina categoria</button>
-                                        </form>
-                                    </div>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="magazzino-item-desc" style="margin: 0;">
-                            {% if lang == 'fr' %}Aucune catégorie associée.{% else %}Nessuna categoria associata.{% endif %}
-                        </p>
-                    {% endif %}
-                    <div style="margin-top: var(--space-2);">
-                        <a href="/manager/magazzino/categorie/nuova?macro_id={{ macro.id }}" class="btn btn-primary btn-sm">➕ Nuova categoria</a>
-                    </div>
-                </section>
-            {% endfor %}
+                    </section>
+                {% endfor %}
+            </div>
         {% else %}
             <p class="magazzino-item-desc">{% if lang == 'fr' %}Aucune macro configurée.{% else %}Nessuna macro configurata.{% endif %}</p>
         {% endif %}
