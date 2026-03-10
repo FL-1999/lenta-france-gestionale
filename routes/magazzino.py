@@ -927,6 +927,12 @@ def manager_magazzino_home(
     ensure_magazzino_manager(current_user)
     error_message = (request.query_params.get("error") or "").strip() or None
     success_message = (request.query_params.get("success") or "").strip() or None
+    items = (
+        db.query(MagazzinoItem)
+        .options(joinedload(MagazzinoItem.categoria))
+        .order_by(MagazzinoItem.nome.asc())
+        .all()
+    )
     macros = (
         db.query(MagazzinoMacro)
         .options(joinedload(MagazzinoMacro.categorie))
@@ -941,6 +947,7 @@ def manager_magazzino_home(
         request,
         "manager/magazzino/magazzino.html",
         {
+            "items": items,
             "macros": macros,
             "error_message": error_message,
             "success_message": success_message,
@@ -1895,7 +1902,7 @@ def manager_magazzino_macro_create(
     macro_name = (name or nome or "").strip()
     if not macro_name:
         return RedirectResponse(
-            url="/manager/magazzino/macros",
+            url=request.url_for("manager_magazzino_categorie_list"),
             status_code=303,
         )
 
@@ -1942,7 +1949,7 @@ def manager_magazzino_macro_create(
     except Exception:
         db.rollback()
         return RedirectResponse(
-            url="/manager/magazzino/macros",
+            url=request.url_for("manager_magazzino_categorie_list"),
             status_code=303,
         )
 

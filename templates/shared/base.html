@@ -155,7 +155,7 @@
 
                 {% if show_magazzino_card %}
                     {% set manager_badges = manager_badge_counts(request, user) %}
-                    <a href="{{ url_for('manager_magazzino_list') }}" class="nav-link nav-right__item">
+                    <a href="{{ url_for('manager_magazzino_home') }}" class="nav-link nav-right__item">
                         📦
                         {% if lang == 'fr' %}
                             Magasin
