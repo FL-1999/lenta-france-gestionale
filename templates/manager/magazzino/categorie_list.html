@@ -14,9 +14,9 @@
         </h1>
         <p class="page-subtitle">
             {% if lang == 'fr' %}
-                Gérez les macro-catégories du magasin.
+                Gérez les catégories regroupées par macro-catégorie.
             {% else %}
-                Gestisci le macro categorie del magazzino.
+                Gestisci le categorie raggruppate per macro categoria.
             {% endif %}
         </p>
     </div>
@@ -36,74 +36,43 @@
 
 <div class="card">
     <div class="card-body">
-        {% if categorie %}
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</th>
-                            <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-                            <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
-                            <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for categoria in categorie %}
-                            <tr>
-                                <td>
-                                    {{ categoria.ordine }}
-                                </td>
-                                <td>{{ categoria.nome }}</td>
-                                <td>
-                                    {% if categoria.attiva %}
-                                        <span class="badge badge-success">{% if lang == 'fr' %}Active{% else %}Attiva{% endif %}</span>
-                                    {% else %}
-                                        <span class="badge badge-muted">{% if lang == 'fr' %}Inactive{% else %}Disattiva{% endif %}</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div style="display:flex; gap: var(--space-2); flex-wrap: wrap;">
-                                        <form method="post" action="{{ url_for('manager_magazzino_categorie_up', categoria_id=categoria.id) }}">
-                                            <button type="submit"
-                                                    class="btn btn-secondary btn-sm"
-                                                    {% if not categoria.attiva or categoria.id == first_active_id %}disabled{% endif %}>
-                                                ↑
-                                            </button>
-                                        </form>
-                                        <form method="post" action="{{ url_for('manager_magazzino_categorie_down', categoria_id=categoria.id) }}">
-                                            <button type="submit"
-                                                    class="btn btn-secondary btn-sm"
-                                                    {% if not categoria.attiva or categoria.id == last_active_id %}disabled{% endif %}>
-                                                ↓
-                                            </button>
-                                        </form>
-                                        <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn btn-secondary btn-sm">
-                                            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
-                                        </a>
-                                        <form method="post" action="{{ url_for('manager_magazzino_categorie_toggle', categoria_id=categoria.id) }}">
-                                            <button type="submit"
-                                                    class="btn {% if categoria.attiva %}btn-danger{% else %}btn-primary{% endif %} btn-sm"
-                                                    onclick="return confirm('{% if categoria.attiva %}{% if lang == 'fr' %}Désactiver cette catégorie ?{% else %}Disattivare questa categoria?{% endif %}{% else %}{% if lang == 'fr' %}Réactiver cette catégorie ?{% else %}Riattivare questa categoria?{% endif %}{% endif %}');">
-                                                {% if categoria.attiva %}
-                                                    📴 {% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}
-                                                {% else %}
-                                                    🔁 {% if lang == 'fr' %}Réactiver{% else %}Riattiva{% endif %}
-                                                {% endif %}
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        {% if macros %}
+            {% for macro in macros %}
+                <section style="margin-bottom: var(--space-5);">
+                    <h2 style="margin-bottom: var(--space-2);">{{ macro.name }}</h2>
+                    {% if macro.categorie %}
+                        <ul style="margin: 0; padding-left: 1.2rem;">
+                            {% for categoria in macro.categorie|sort(attribute='ordine') %}
+                                <li style="margin-bottom: var(--space-2); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);">
+                                    <span>
+                                        {{ categoria.nome }}
+                                        {% if not categoria.attiva %}
+                                            <span class="badge badge-muted" style="margin-left: var(--space-2);">{% if lang == 'fr' %}Inactive{% else %}Disattiva{% endif %}</span>
+                                        {% endif %}
+                                    </span>
+                                    <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}" class="btn btn-secondary btn-sm">
+                                        ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="magazzino-item-desc" style="margin: 0;">
+                            {% if lang == 'fr' %}
+                                Aucune catégorie associée.
+                            {% else %}
+                                Nessuna categoria associata.
+                            {% endif %}
+                        </p>
+                    {% endif %}
+                </section>
+            {% endfor %}
         {% else %}
             <p class="magazzino-item-desc">
                 {% if lang == 'fr' %}
-                    Aucune catégorie configurée.
+                    Aucune macro configurée.
                 {% else %}
-                    Nessuna categoria configurata.
+                    Nessuna macro configurata.
                 {% endif %}
             </p>
         {% endif %}
