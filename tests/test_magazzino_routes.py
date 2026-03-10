@@ -172,10 +172,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303)
-        self.assertIn(
-            "/manager/magazzino/categorie/nuova?macro_id=",
-            response.headers.get("location", ""),
-        )
+        self.assertEqual(response.headers.get("location", ""), "http://testserver/manager/magazzino/categorie")
 
         with SessionLocal() as db:
             created_macro = (
@@ -205,10 +202,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303)
-        self.assertIn(
-            "/manager/magazzino/categorie/nuova?macro_id=",
-            response.headers.get("location", ""),
-        )
+        self.assertEqual(response.headers.get("location", ""), "http://testserver/manager/magazzino/categorie")
 
         with SessionLocal() as db:
             created_macro = (
@@ -279,6 +273,83 @@ class MagazzinoRoutesTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(macro_name, response.text)
         self.assertNotIn(category_name, response.text)
+
+    def test_macro_delete_fails_if_categories_exist(self) -> None:
+        macro_name = f"Macro protected {self.unique}"
+        with SessionLocal() as db:
+            macro = MagazzinoMacro(name=macro_name)
+            db.add(macro)
+            db.commit()
+            db.refresh(macro)
+            db.add(
+                MagazzinoCategoria(
+                    nome=f"Cat {self.unique}",
+                    slug=f"cat-{self.unique}",
+                    ordine=1,
+                    attiva=True,
+                    macro_id=macro.id,
+                )
+            )
+            db.commit()
+            macro_id = macro.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/macro/{macro_id}/delete",
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("error=La+macro+ha+categorie+associate.", response.headers.get("location", ""))
+
+        with SessionLocal() as db:
+            macro_still_exists = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id).first()
+            self.assertIsNotNone(macro_still_exists)
+
+    def test_categoria_delete_route_removes_category(self) -> None:
+        with SessionLocal() as db:
+            macro = MagazzinoMacro(name=f"Macro delete cat {self.unique}")
+            db.add(macro)
+            db.commit()
+            db.refresh(macro)
+            categoria = MagazzinoCategoria(
+                nome=f"Cat delete {self.unique}",
+                slug=f"cat-delete-{self.unique}",
+                ordine=1,
+                attiva=True,
+                macro_id=macro.id,
+            )
+            db.add(categoria)
+            db.commit()
+            categoria_id = categoria.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/categorie/{categoria_id}/delete",
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        with SessionLocal() as db:
+            categoria_deleted = db.query(MagazzinoCategoria).filter(MagazzinoCategoria.id == categoria_id).first()
+            self.assertIsNone(categoria_deleted)
 
 
 if __name__ == "__main__":
