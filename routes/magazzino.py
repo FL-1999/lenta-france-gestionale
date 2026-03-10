@@ -156,12 +156,10 @@ def _parse_categoria_id(value: str | None) -> int | None:
         return None
 
 
-def _load_magazzino_macros(db: Session, only_with_categories: bool = False) -> list[MagazzinoMacro]:
-    query = db.query(MagazzinoMacro).options(joinedload(MagazzinoMacro.categorie))
-    if only_with_categories:
-        query = query.join(MagazzinoCategoria).group_by(MagazzinoMacro.id)
+def _load_magazzino_macros(db: Session) -> list[MagazzinoMacro]:
     macros = (
-        query
+        db.query(MagazzinoMacro)
+        .options(joinedload(MagazzinoMacro.categorie))
         .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
         .all()
     )
@@ -612,7 +610,7 @@ def capo_magazzino_list(
     )
     categorie_display = _order_categorie_for_display(categorie)
     categorie_sections = _build_categoria_sections(categorie_display, items_by_categoria)
-    macros = _load_magazzino_macros(db, only_with_categories=True)
+    macros = _load_magazzino_macros(db)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
@@ -1072,7 +1070,7 @@ def _render_magazzino_items_list(
     )
     categorie_display = _order_categorie_for_display(categorie)
     categorie_sections = _build_categoria_sections(categorie_display, items_by_categoria)
-    macros = _load_magazzino_macros(db, only_with_categories=True)
+    macros = _load_magazzino_macros(db)
     filters = {
         "q": q_value,
         "categoria": categoria or "",
