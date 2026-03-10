@@ -2,23 +2,12 @@
 
 {% set manager_badges = manager_badge_counts(request, user) %}
 
-<a href="{{ url_for('manager_magazzino_dashboard') }}" class="btn btn-secondary">
-  🧭 {% if lang == 'fr' %}Tableau de bord{% else %}Dashboard{% endif %}
-</a>
-
-<a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+<a href="{{ url_for('manager_magazzino_home') }}" class="btn btn-secondary">
   📦 {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}
 </a>
 
-<a href="{{ url_for('manager_magazzino_sotto_soglia') }}" class="btn btn-secondary">
-  <span class="nav-pill__label">{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
-
-  {% if manager_badges.low_stock and manager_badges.low_stock > 0 %}
-    <span class="badge-notification"
-          title="{% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}">
-      {{ '99+' if manager_badges.low_stock > 99 else manager_badges.low_stock }}
-    </span>
-  {% endif %}
+<a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
+  🗂️ {% if lang == 'fr' %}Catégories{% else %}Categorie{% endif %}
 </a>
 
 <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
@@ -27,15 +16,18 @@
 
 <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
   <span class="nav-pill__label">{% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}</span>
-
   {% if manager_badges.pending_requests and manager_badges.pending_requests > 0 %}
-    <span class="badge-notification"
-          title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
+    <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
       {{ '99+' if manager_badges.pending_requests > 99 else manager_badges.pending_requests }}
     </span>
   {% endif %}
 </a>
 
-<a href="{{ url_for('manager_magazzino_macros_list') }}" class="btn btn-secondary">
-  🗂️ {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
+<a href="{{ url_for('manager_magazzino_sotto_soglia') }}" class="btn btn-secondary">
+  <span class="nav-pill__label">{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
+  {% if manager_badges.low_stock and manager_badges.low_stock > 0 %}
+    <span class="badge-notification" title="{% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}">
+      {{ '99+' if manager_badges.low_stock > 99 else manager_badges.low_stock }}
+    </span>
+  {% endif %}
 </a>

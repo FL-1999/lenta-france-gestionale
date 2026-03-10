@@ -917,6 +917,43 @@ def manager_magazzino_dashboard(
 @router.get(
     "/manager/magazzino",
     response_class=HTMLResponse,
+    name="manager_magazzino_home",
+)
+def manager_magazzino_home(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    error_message = (request.query_params.get("error") or "").strip() or None
+    success_message = (request.query_params.get("success") or "").strip() or None
+    macros = (
+        db.query(MagazzinoMacro)
+        .options(joinedload(MagazzinoMacro.categorie))
+        .order_by(MagazzinoMacro.ordine.asc())
+        .all()
+    )
+    for macro in macros:
+        macro.categorie.sort(key=lambda categoria: (categoria.ordine, categoria.nome.lower()))
+    badges = build_magazzino_badges(db, current_user)
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/magazzino.html",
+        {
+            "macros": macros,
+            "error_message": error_message,
+            "success_message": success_message,
+            **badges,
+        },
+        db,
+        current_user,
+    )
+
+
+@router.get(
+    "/manager/magazzino/items",
+    response_class=HTMLResponse,
     name="manager_magazzino_list",
 )
 def manager_magazzino_list(
