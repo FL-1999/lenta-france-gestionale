@@ -1049,7 +1049,11 @@ def _render_magazzino_items_list(
         include_inactive=False,
         include_fallback=True,
     )
-    query = db.query(MagazzinoItem).options(selectinload(MagazzinoItem.categoria))
+    query = (
+        db.query(MagazzinoItem)
+        .options(selectinload(MagazzinoItem.categoria))
+        .filter(MagazzinoItem.attivo.is_(True))
+    )
     q_value = (q or "").strip()
     if q_value:
         like_pattern = f"%{q_value}%"
@@ -3352,6 +3356,10 @@ def manager_magazzino_scarico_rapido(
     "/manager/magazzino/{item_id}/elimina",
     response_class=HTMLResponse,
     name="manager_magazzino_delete",
+)
+@router.post(
+    "/manager/magazzino/items/{item_id}/delete",
+    response_class=HTMLResponse,
 )
 def manager_magazzino_delete(
     item_id: int,
