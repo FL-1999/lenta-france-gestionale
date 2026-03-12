@@ -299,8 +299,8 @@
                                 {% if has_perm(user, 'records.delete') %}
                                 <form method="post" action="{{ url_for('manager_magazzino_delete', item_id=item.id) }}">
                                     <button type="submit" class="btn btn-danger btn-sm"
-                                            onclick="return confirm('{% if lang == 'fr' %}Supprimer cet article ?{% else %}Eliminare questo articolo?{% endif %}');">
-                                        🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
+                                            onclick="return confirm('{% if lang == 'fr' %}Archiver cet article ?{% else %}Archiviare questo articolo?{% endif %}');">
+                                        🗑️ {% if lang == 'fr' %}Archiver l'article{% else %}Archivia articolo{% endif %}
                                     </button>
                                 </form>
                                 {% endif %}

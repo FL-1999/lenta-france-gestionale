@@ -7,7 +7,14 @@ from fastapi.testclient import TestClient
 from auth import get_current_active_user_html
 from database import Base, SessionLocal, engine
 from main import app
-from models import MagazzinoCategoria, MagazzinoMacro, RoleEnum
+from models import (
+    MagazzinoCategoria,
+    MagazzinoItem,
+    MagazzinoMacro,
+    MagazzinoMovimento,
+    MagazzinoMovimentoTipoEnum,
+    RoleEnum,
+)
 
 
 class MagazzinoRoutesTests(unittest.TestCase):
@@ -365,6 +372,97 @@ class MagazzinoRoutesTests(unittest.TestCase):
         with SessionLocal() as db:
             categoria_deleted = db.query(MagazzinoCategoria).filter(MagazzinoCategoria.id == categoria_id).first()
             self.assertIsNone(categoria_deleted)
+
+    def test_item_archive_creates_scarico_movement_and_sets_inactive(self) -> None:
+        with SessionLocal() as db:
+            item = MagazzinoItem(
+                nome=f"Item archive {self.unique}",
+                codice=f"ARCH-{self.unique}",
+                quantita_disponibile=7.5,
+                attivo=True,
+            )
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            item_id = item.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.admin,
+                id=1,
+                full_name="Test Admin",
+                is_magazzino_manager=True,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/{item_id}/elimina",
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        with SessionLocal() as db:
+            archived_item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+            self.assertIsNotNone(archived_item)
+            assert archived_item is not None
+            self.assertFalse(archived_item.attivo)
+            self.assertEqual(archived_item.quantita_disponibile, 0)
+
+            movement = (
+                db.query(MagazzinoMovimento)
+                .filter(MagazzinoMovimento.item_id == item_id)
+                .order_by(MagazzinoMovimento.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(movement)
+            assert movement is not None
+            self.assertEqual(movement.tipo, MagazzinoMovimentoTipoEnum.scarico)
+            self.assertEqual(movement.quantita, 7.5)
+            self.assertEqual(movement.note, "Eliminazione articolo")
+
+    def test_item_archive_with_zero_stock_does_not_create_movement(self) -> None:
+        with SessionLocal() as db:
+            item = MagazzinoItem(
+                nome=f"Item archive zero {self.unique}",
+                codice=f"ARCH-ZERO-{self.unique}",
+                quantita_disponibile=0,
+                attivo=True,
+            )
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            item_id = item.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.admin,
+                id=1,
+                full_name="Test Admin",
+                is_magazzino_manager=True,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/{item_id}/elimina",
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        with SessionLocal() as db:
+            archived_item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+            self.assertIsNotNone(archived_item)
+            assert archived_item is not None
+            self.assertFalse(archived_item.attivo)
+            self.assertEqual(archived_item.quantita_disponibile, 0)
+
+            movements_count = (
+                db.query(MagazzinoMovimento)
+                .filter(MagazzinoMovimento.item_id == item_id)
+                .count()
+            )
+            self.assertEqual(movements_count, 0)
 
 
 if __name__ == "__main__":

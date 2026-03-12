@@ -3364,8 +3364,32 @@ def manager_magazzino_delete(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if item:
+        quantita_da_archiviare = item.quantita_disponibile or 0.0
+        if quantita_da_archiviare > 0:
+            movimento = MagazzinoMovimento(
+                item_id=item.id,
+                tipo=MagazzinoMovimentoTipoEnum.scarico,
+                quantita=quantita_da_archiviare,
+                creato_da_user_id=current_user.id,
+                note="Eliminazione articolo",
+            )
+            db.add(movimento)
+
+        item.quantita_disponibile = 0
         item.attivo = False
         db.add(item)
+        _log_audit(
+            db,
+            current_user,
+            "MAGAZZINO_ITEM_ARCHIVE",
+            "MagazzinoItem",
+            item.id,
+            {
+                "codice": item.codice,
+                "quantita_precedente": quantita_da_archiviare,
+                "attivo": item.attivo,
+            },
+        )
         db.commit()
         _invalidate_magazzino_cache()
 
