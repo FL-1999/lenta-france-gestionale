@@ -43,33 +43,73 @@ def _ensure_driver(user: User) -> None:
 @router.get("/manager/trasporti", response_class=HTMLResponse, name="manager_trasporti_dashboard")
 def manager_trasporti_dashboard(
     request: Request,
+    autista_id: int | None = None,
+    mezzo_id: int | None = None,
+    stato: str | None = None,
+    destinazione: str | None = None,
+    data: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
     today = date.today()
+    selected_stato = None
+    if stato:
+        try:
+            selected_stato = TrasportoStatoEnum(stato)
+        except ValueError:
+            selected_stato = None
+
+    selected_data = None
+    if data:
+        try:
+            selected_data = datetime.strptime(data, "%Y-%m-%d").date()
+        except ValueError:
+            selected_data = None
+
+    def _apply_filters(query):
+        if autista_id:
+            query = query.filter(TrasportoViaggio.autista_id == autista_id)
+        if mezzo_id:
+            query = query.filter(TrasportoViaggio.mezzo_id == mezzo_id)
+        if selected_stato:
+            query = query.filter(TrasportoViaggio.stato == selected_stato)
+        if destinazione:
+            query = query.filter(TrasportoViaggio.destinazione.ilike(f"%{destinazione.strip()}%"))
+        if selected_data:
+            query = query.filter(TrasportoViaggio.data_partenza == selected_data)
+        return query
+
     future_trips = (
-        db.query(TrasportoViaggio)
+        _apply_filters(
+            db.query(TrasportoViaggio)
         .options(joinedload(TrasportoViaggio.autista), joinedload(TrasportoViaggio.mezzo))
         .filter(TrasportoViaggio.data_partenza >= today)
+        )
         .order_by(TrasportoViaggio.data_partenza.asc())
         .all()
     )
     active_trips = (
-        db.query(TrasportoViaggio)
+        _apply_filters(
+            db.query(TrasportoViaggio)
         .options(joinedload(TrasportoViaggio.autista), joinedload(TrasportoViaggio.mezzo))
         .filter(TrasportoViaggio.stato.in_([TrasportoStatoEnum.in_carico, TrasportoStatoEnum.in_viaggio, TrasportoStatoEnum.arrivato]))
+        )
         .order_by(TrasportoViaggio.data_partenza.desc())
         .all()
     )
     completed_trips = (
-        db.query(TrasportoViaggio)
+        _apply_filters(
+            db.query(TrasportoViaggio)
         .options(joinedload(TrasportoViaggio.autista), joinedload(TrasportoViaggio.mezzo))
         .filter(TrasportoViaggio.stato == TrasportoStatoEnum.completato)
+        )
         .order_by(TrasportoViaggio.data_partenza.desc())
         .limit(20)
         .all()
     )
+    autisti = db.query(User).filter(User.role == RoleEnum.driver).order_by(User.full_name, User.email).all()
+    mezzi = db.query(Veicolo).filter(Veicolo.visibile_trasporti.is_(True)).order_by(Veicolo.marca, Veicolo.modello).all()
     return render_template(
         templates,
         request,
@@ -78,12 +118,23 @@ def manager_trasporti_dashboard(
             "future_trips": future_trips,
             "active_trips": active_trips,
             "completed_trips": completed_trips,
+            "autisti": autisti,
+            "mezzi": mezzi,
+            "stati": list(TrasportoStatoEnum),
+            "filters": {
+                "autista_id": autista_id,
+                "mezzo_id": mezzo_id,
+                "stato": selected_stato.value if selected_stato else "",
+                "destinazione": destinazione or "",
+                "data": data or "",
+            },
         },
         db,
         current_user,
     )
 
 
+@router.get("/manager/trasporti/nuovo", response_class=HTMLResponse)
 @router.get("/manager/trasporti/viaggi/nuovo", response_class=HTMLResponse, name="manager_trasporti_viaggi_new")
 def manager_trasporti_viaggi_new(
     request: Request,
@@ -108,6 +159,7 @@ def manager_trasporti_viaggi_new(
     )
 
 
+@router.post("/manager/trasporti/nuovo", response_class=HTMLResponse)
 @router.post("/manager/trasporti/viaggi/nuovo", response_class=HTMLResponse, name="manager_trasporti_viaggi_create")
 def manager_trasporti_viaggi_create(
     request: Request,
@@ -202,14 +254,47 @@ def driver_trasporti_viaggi(
         .order_by(TrasportoViaggio.data_partenza.desc())
         .all()
     )
+    viaggi_disponibili = (
+        db.query(TrasportoViaggio)
+        .options(joinedload(TrasportoViaggio.mezzo))
+        .filter(
+            TrasportoViaggio.autista_id.is_(None),
+            TrasportoViaggio.stato == TrasportoStatoEnum.programmato,
+        )
+        .order_by(TrasportoViaggio.data_partenza.asc())
+        .all()
+    )
     return render_template(
         templates,
         request,
         "driver/trasporti/assigned_trips.html",
-        {"viaggi": viaggi},
+        {"viaggi": viaggi, "viaggi_disponibili": viaggi_disponibili},
         db,
         current_user,
     )
+
+
+@router.post("/driver/trasporti/viaggi/{viaggio_id}/prendi", response_class=HTMLResponse, name="driver_trasporti_viaggi_take")
+def driver_trasporti_viaggi_take(
+    viaggio_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_driver(current_user)
+    viaggio = (
+        db.query(TrasportoViaggio)
+        .filter(
+            TrasportoViaggio.id == viaggio_id,
+            TrasportoViaggio.autista_id.is_(None),
+            TrasportoViaggio.stato == TrasportoStatoEnum.programmato,
+        )
+        .first()
+    )
+    if viaggio:
+        viaggio.autista_id = current_user.id
+        db.commit()
+    return RedirectResponse(url=request.url_for("driver_trasporti_viaggi"), status_code=303)
 
 
 @router.get("/driver/trasporti/viaggi/{viaggio_id}", response_class=HTMLResponse, name="driver_trasporti_viaggi_detail")

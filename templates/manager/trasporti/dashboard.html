@@ -13,6 +13,46 @@
   </div>
 </div>
 
+<form method="get" class="card card-body" style="margin-bottom:1rem;">
+  <h3 style="margin-top:0;">Filtri</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;align-items:end;">
+    <label>Autista
+      <select name="autista_id">
+        <option value="">Tutti</option>
+        {% for a in autisti %}
+          <option value="{{ a.id }}" {% if filters.autista_id == a.id %}selected{% endif %}>{{ a.full_name or a.email }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Mezzo
+      <select name="mezzo_id">
+        <option value="">Tutti</option>
+        {% for m in mezzi %}
+          <option value="{{ m.id }}" {% if filters.mezzo_id == m.id %}selected{% endif %}>{{ m.marca }} {{ m.modello }} ({{ m.targa }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Stato
+      <select name="stato">
+        <option value="">Tutti</option>
+        {% for s in stati %}
+          <option value="{{ s.value }}" {% if filters.stato == s.value %}selected{% endif %}>{{ s.value }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Destinazione
+      <input type="text" name="destinazione" value="{{ filters.destinazione }}" placeholder="Es. Marsiglia">
+    </label>
+    <label>Data
+      <input type="date" name="data" value="{{ filters.data }}">
+    </label>
+    <div style="display:flex; gap:0.5rem;">
+      <button class="btn btn-primary" type="submit">Applica</button>
+      <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_dashboard') }}">Reset</a>
+    </div>
+  </div>
+</form>
+
 <div class="dashboard-kpi-grid" style="margin-bottom: 1rem;">
   <div class="kpi-card"><p class="kpi-label">Futuri</p><p class="kpi-value">{{ future_trips|length }}</p></div>
   <div class="kpi-card"><p class="kpi-label">Attivi</p><p class="kpi-value">{{ active_trips|length }}</p></div>
@@ -36,6 +76,52 @@
       </tr>
       {% else %}
       <tr><td colspan="6">Nessun viaggio pianificato.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card table-card" style="margin-top:1rem;">
+  <div class="card-body">
+    <h3>Viaggi in corso</h3>
+    <table class="data-table">
+      <thead><tr><th>Codice</th><th>Data</th><th>Autista</th><th>Mezzo</th><th>Tratta</th><th>Stato</th></tr></thead>
+      <tbody>
+      {% for v in active_trips %}
+      <tr>
+        <td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td>
+        <td>{{ v.data_partenza }}</td>
+        <td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td>
+        <td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td>
+        <td>{{ v.origine }} → {{ v.destinazione }}</td>
+        <td>{{ v.stato.value }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Nessun viaggio in corso.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card table-card" style="margin-top:1rem;">
+  <div class="card-body">
+    <h3>Viaggi completati</h3>
+    <table class="data-table">
+      <thead><tr><th>Codice</th><th>Data</th><th>Autista</th><th>Mezzo</th><th>Tratta</th><th>Stato</th></tr></thead>
+      <tbody>
+      {% for v in completed_trips %}
+      <tr>
+        <td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td>
+        <td>{{ v.data_partenza }}</td>
+        <td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td>
+        <td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td>
+        <td>{{ v.origine }} → {{ v.destinazione }}</td>
+        <td>{{ v.stato.value }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Nessun viaggio completato.</td></tr>
       {% endfor %}
       </tbody>
     </table>
