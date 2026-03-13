@@ -30,7 +30,7 @@
         <td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td>
         <td>{{ v.data_partenza }}</td>
         <td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td>
-        <td>{{ v.mezzo.nome if v.mezzo else '-' }}</td>
+        <td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td>
         <td>{{ v.origine }} → {{ v.destinazione }}</td>
         <td>{{ v.stato.value }}</td>
       </tr>

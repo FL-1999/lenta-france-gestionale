@@ -22,5 +22,6 @@ CREATE TABLE IF NOT EXISTS veicoli (
     assicurazione_scadenza DATE,
     revisione_scadenza DATE,
     assegnato_a_id INTEGER REFERENCES personale(id),
-    note TEXT
+    note TEXT,
+    visibile_trasporti BOOLEAN NOT NULL DEFAULT 0
 );
