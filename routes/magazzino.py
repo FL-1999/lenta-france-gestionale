@@ -921,88 +921,10 @@ def manager_magazzino_dashboard(
 )
 def manager_magazzino_home(
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
-):
-    ensure_magazzino_manager(current_user)
-    error_message = (request.query_params.get("error") or "").strip() or None
-    success_message = (request.query_params.get("success") or "").strip() or None
-    items = (
-        db.query(MagazzinoItem)
-        .options(joinedload(MagazzinoItem.categoria))
-        .filter(MagazzinoItem.attivo.is_(True))
-        .order_by(MagazzinoItem.nome.asc())
-        .all()
-    )
-    macros = (
-        db.query(MagazzinoMacro)
-        .options(joinedload(MagazzinoMacro.categorie))
-        .order_by(MagazzinoMacro.ordine.asc())
-        .all()
-    )
-    for macro in macros:
-        macro.categorie.sort(key=lambda categoria: (categoria.ordine, categoria.nome.lower()))
-    badges = build_magazzino_badges(db, current_user)
-    return render_template(
-        templates,
-        request,
-        "manager/magazzino/magazzino.html",
-        {
-            "items": items,
-            "macros": macros,
-            "error_message": error_message,
-            "success_message": success_message,
-            **badges,
-        },
-        db,
-        current_user,
-    )
-
-
-@router.get(
-    "/manager/magazzino/archiviati",
-    response_class=HTMLResponse,
-    name="manager_magazzino_archiviati",
-)
-def manager_magazzino_archiviati(
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
-):
-    ensure_magazzino_manager(current_user)
-    items = (
-        db.query(MagazzinoItem)
-        .options(joinedload(MagazzinoItem.categoria))
-        .filter(MagazzinoItem.attivo.is_(False))
-        .order_by(MagazzinoItem.nome.asc())
-        .all()
-    )
-    badges = build_magazzino_badges(db, current_user)
-    return render_template(
-        templates,
-        request,
-        "manager/magazzino/archiviati.html",
-        {
-            "items": items,
-            **badges,
-        },
-        db,
-        current_user,
-    )
-
-
-@router.get(
-    "/manager/magazzino/items",
-    response_class=HTMLResponse,
-    name="manager_magazzino_list",
-)
-def manager_magazzino_list(
-    request: Request,
     q: str | None = None,
-    categoria: str | None = None,
-    attivi: int | None = None,
-    sotto_soglia: int | None = None,
-    esauriti: int | None = None,
+    macro_id: int | None = None,
+    categoria_id: int | None = None,
+    stock_status: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -1035,10 +957,125 @@ def manager_magazzino_list(
         db,
         current_user,
         q=q,
-        categoria=categoria,
-        attivi=attivi,
-        sotto_soglia=sotto_soglia,
-        esauriti=esauriti,
+        macro_id=macro_id,
+        categoria_id=categoria_id,
+        stock_status=stock_status,
+        success_message=success_message,
+        error_message=error_message,
+    )
+
+
+@router.get(
+    "/manager/magazzino/archiviati",
+    response_class=HTMLResponse,
+    name="manager_magazzino_archiviati",
+)
+def manager_magazzino_archiviati(
+    request: Request,
+    q: str | None = None,
+    macro_id: int | None = None,
+    categoria_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    query = (
+        db.query(MagazzinoItem)
+        .join(MagazzinoCategoria, MagazzinoItem.categoria_id == MagazzinoCategoria.id, isouter=True)
+        .join(MagazzinoMacro, MagazzinoCategoria.macro_id == MagazzinoMacro.id, isouter=True)
+        .options(joinedload(MagazzinoItem.categoria).joinedload(MagazzinoCategoria.macro))
+        .filter(MagazzinoItem.attivo.is_(False))
+    )
+    q_value = (q or "").strip()
+    if q_value:
+        like_pattern = f"%{q_value}%"
+        query = query.filter(
+            or_(
+                MagazzinoItem.nome.ilike(like_pattern),
+                MagazzinoItem.codice.ilike(like_pattern),
+                MagazzinoCategoria.nome.ilike(like_pattern),
+                MagazzinoMacro.name.ilike(like_pattern),
+            )
+        )
+    if macro_id:
+        query = query.filter(MagazzinoCategoria.macro_id == macro_id)
+    if categoria_id:
+        query = query.filter(MagazzinoItem.categoria_id == categoria_id)
+    items = query.order_by(MagazzinoItem.nome.asc()).all()
+    categorie = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.attiva.is_(True))
+        .order_by(MagazzinoCategoria.nome.asc())
+        .all()
+    )
+    macros = _load_magazzino_macros(db)
+    badges = build_magazzino_badges(db, current_user)
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/archiviati.html",
+        {
+            "items": items,
+            "categorie": categorie,
+            "macros": macros,
+            "filters": {
+                "q": q_value,
+                "macro_id": macro_id,
+                "categoria_id": categoria_id,
+            },
+            **badges,
+        },
+        db,
+        current_user,
+    )
+
+
+@router.get(
+    "/manager/magazzino/items",
+    response_class=HTMLResponse,
+    name="manager_magazzino_list",
+)
+def manager_magazzino_list(
+    request: Request,
+    q: str | None = None,
+    macro_id: int | None = None,
+    categoria_id: int | None = None,
+    stock_status: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    lang = get_lang_from_request(request)
+    ok = request.query_params.get("ok")
+    err = request.query_params.get("err")
+    success_message = None
+    if ok == "carico":
+        success_message = (
+            "Chargement enregistré avec succès."
+            if lang == "fr"
+            else "Carico registrato con successo."
+        )
+    elif ok == "scarico":
+        success_message = (
+            "Déchargement enregistré avec succès."
+            if lang == "fr"
+            else "Scarico registrato con successo."
+        )
+    elif ok:
+        success_message = (
+            "Opération terminée avec succès."
+            if lang == "fr"
+            else "Operazione completata con successo."
+        )
+    error_message = _magazzino_error_message(lang, err) if err else None
+    return _render_magazzino_items_list(
+        request,
+        db,
+        current_user,
+        q=q,
+        macro_id=macro_id,
+        categoria_id=categoria_id,
+        stock_status=stock_status,
         success_message=success_message,
         error_message=error_message,
     )
@@ -1070,10 +1107,9 @@ def _render_magazzino_items_list(
     current_user: User,
     *,
     q: str | None = None,
-    categoria: str | None = None,
-    attivi: int | None = None,
-    sotto_soglia: int | None = None,
-    esauriti: int | None = None,
+    macro_id: int | None = None,
+    categoria_id: int | None = None,
+    stock_status: str | None = None,
     success_message: str | None = None,
     error_message: str | None = None,
 ):
@@ -1084,7 +1120,9 @@ def _render_magazzino_items_list(
     )
     query = (
         db.query(MagazzinoItem)
-        .options(selectinload(MagazzinoItem.categoria))
+        .join(MagazzinoCategoria, MagazzinoItem.categoria_id == MagazzinoCategoria.id, isouter=True)
+        .join(MagazzinoMacro, MagazzinoCategoria.macro_id == MagazzinoMacro.id, isouter=True)
+        .options(selectinload(MagazzinoItem.categoria).selectinload(MagazzinoCategoria.macro))
         .filter(MagazzinoItem.attivo.is_(True))
     )
     q_value = (q or "").strip()
@@ -1094,33 +1132,26 @@ def _render_magazzino_items_list(
             or_(
                 MagazzinoItem.codice.ilike(like_pattern),
                 MagazzinoItem.nome.ilike(like_pattern),
+                MagazzinoCategoria.nome.ilike(like_pattern),
+                MagazzinoMacro.name.ilike(like_pattern),
             )
         )
-    categoria_id = _parse_categoria_id(categoria)
-    if categoria == "none":
-        query = query.filter(MagazzinoItem.categoria_id.is_(None))
-    elif categoria_id is not None:
-        if fallback_categoria_id and categoria_id == fallback_categoria_id:
-            query = query.filter(
-                or_(
-                    MagazzinoItem.categoria_id == categoria_id,
-                    MagazzinoItem.categoria_id.is_(None),
-                )
-            )
-        else:
-            query = query.filter(MagazzinoItem.categoria_id == categoria_id)
-    if attivi == 1:
-        query = query.filter(MagazzinoItem.attivo.is_(True))
-    if sotto_soglia == 1:
+    if macro_id:
+        query = query.filter(MagazzinoCategoria.macro_id == macro_id)
+    if categoria_id:
+        query = query.filter(MagazzinoItem.categoria_id == categoria_id)
+    if stock_status == "disponibili":
+        query = query.filter(MagazzinoItem.quantita_disponibile > 0)
+    elif stock_status == "esauriti":
+        query = query.filter(MagazzinoItem.quantita_disponibile == 0)
+    elif stock_status == "sotto_soglia":
         query = query.filter(
             MagazzinoItem.soglia_minima.isnot(None),
-            MagazzinoItem.quantita_disponibile <= MagazzinoItem.soglia_minima,
+            MagazzinoItem.quantita_disponibile < MagazzinoItem.soglia_minima,
         )
-    if esauriti == 1:
-        query = query.filter(MagazzinoItem.quantita_disponibile <= 0)
+
     items = (
-        query.outerjoin(MagazzinoCategoria)
-        .order_by(
+        query.order_by(
             MagazzinoCategoria.ordine.asc(),
             MagazzinoCategoria.nome.asc(),
             MagazzinoItem.preferito.desc(),
@@ -1154,10 +1185,9 @@ def _render_magazzino_items_list(
     macros = _load_magazzino_macros(db)
     filters = {
         "q": q_value,
-        "categoria": categoria or "",
-        "attivi": attivi == 1,
-        "sotto_soglia": sotto_soglia == 1,
-        "esauriti": esauriti == 1,
+        "macro_id": macro_id,
+        "categoria_id": categoria_id,
+        "stock_status": stock_status or "",
     }
     badges = build_magazzino_badges(db, current_user)
     return render_template(
@@ -3412,7 +3442,7 @@ def manager_magazzino_delete(
                 tipo=MagazzinoMovimentoTipoEnum.scarico,
                 quantita=quantita_da_archiviare,
                 creato_da_user_id=current_user.id,
-                note="Eliminazione articolo",
+                note="Archiviazione articolo",
             )
             db.add(movimento)
 
@@ -3440,6 +3470,10 @@ def manager_magazzino_delete(
     )
 
 
+@router.post(
+    "/manager/magazzino/items/{item_id}/restore",
+    response_class=HTMLResponse,
+)
 @router.post(
     "/manager/magazzino/items/{item_id}/riattiva",
     response_class=HTMLResponse,
