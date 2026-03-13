@@ -419,7 +419,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
             assert movement is not None
             self.assertEqual(movement.tipo, MagazzinoMovimentoTipoEnum.scarico)
             self.assertEqual(movement.quantita, 7.5)
-            self.assertEqual(movement.note, "Eliminazione articolo")
+            self.assertEqual(movement.note, "Archiviazione articolo")
 
     def test_item_archive_with_zero_stock_does_not_create_movement(self) -> None:
         with SessionLocal() as db:
@@ -463,6 +463,69 @@ class MagazzinoRoutesTests(unittest.TestCase):
                 .count()
             )
             self.assertEqual(movements_count, 0)
+
+
+
+    def test_manager_magazzino_home_supports_global_search_and_filters(self) -> None:
+        suffix = self.unique
+        with SessionLocal() as db:
+            macro = MagazzinoMacro(name=f"Macro Search {suffix}")
+            db.add(macro)
+            db.commit()
+            db.refresh(macro)
+
+            categoria = MagazzinoCategoria(
+                nome=f"Categoria Search {suffix}",
+                slug=f"categoria-search-{suffix}",
+                ordine=1,
+                attiva=True,
+                macro_id=macro.id,
+            )
+            db.add(categoria)
+            db.commit()
+            db.refresh(categoria)
+            macro_id = macro.id
+            categoria_id = categoria.id
+
+            visible_item = MagazzinoItem(
+                nome=f"Trapano professionale {suffix}",
+                codice=f"TP-{suffix}",
+                categoria_id=categoria.id,
+                quantita_disponibile=3,
+                soglia_minima=5,
+                attivo=True,
+            )
+            hidden_item = MagazzinoItem(
+                nome=f"Martello {suffix}",
+                codice=f"MT-{suffix}",
+                quantita_disponibile=0,
+                attivo=True,
+            )
+            db.add_all([visible_item, hidden_item])
+            db.commit()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=True,
+            )
+        )
+
+        response = self.client.get(
+            "/manager/magazzino",
+            params={
+                "q": f"Macro Search {suffix}",
+                "macro_id": str(macro_id),
+                "categoria_id": str(categoria_id),
+                "stock_status": "sotto_soglia",
+            },
+            cookies={"lang": "it"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(f"Trapano professionale {suffix}", response.text)
+        self.assertNotIn(f"Martello {suffix}", response.text)
 
     def test_archived_items_page_lists_only_inactive_items(self) -> None:
         with SessionLocal() as db:
