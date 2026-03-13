@@ -659,6 +659,124 @@ class MagazzinoRoutesTests(unittest.TestCase):
             deleted = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
             self.assertIsNone(deleted)
 
+    def test_rettifica_form_renders_item_data(self) -> None:
+        with SessionLocal() as db:
+            item = MagazzinoItem(
+                nome=f"Item rettifica {self.unique}",
+                codice=f"RET-FORM-{self.unique}",
+                quantita_disponibile=100,
+                attivo=True,
+            )
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            item_id = item.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=True,
+            )
+        )
+
+        response = self.client.get(
+            f"/manager/magazzino/items/{item_id}/rettifica",
+            cookies={"lang": "it"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Rettifica inventario", response.text)
+        self.assertIn(f"RET-FORM-{self.unique}", response.text)
+        self.assertIn('name="quantita_reale"', response.text)
+
+    def test_rettifica_submit_creates_movement_and_updates_stock(self) -> None:
+        with SessionLocal() as db:
+            item = MagazzinoItem(
+                nome=f"Item rettifica submit {self.unique}",
+                codice=f"RET-SUB-{self.unique}",
+                quantita_disponibile=100,
+                attivo=True,
+            )
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            item_id = item.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=True,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/items/{item_id}/rettifica",
+            data={"quantita_reale": "92", "note": ""},
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("ok=rettifica", response.headers.get("location", ""))
+
+        with SessionLocal() as db:
+            refreshed = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+            self.assertIsNotNone(refreshed)
+            assert refreshed is not None
+            self.assertEqual(refreshed.quantita_disponibile, 92)
+
+            movimento = (
+                db.query(MagazzinoMovimento)
+                .filter(MagazzinoMovimento.item_id == item_id)
+                .order_by(MagazzinoMovimento.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(movimento)
+            assert movimento is not None
+            self.assertEqual(movimento.tipo, MagazzinoMovimentoTipoEnum.rettifica)
+            self.assertEqual(movimento.quantita, 8)
+            self.assertEqual(movimento.note, "Rettifica inventario")
+
+    def test_rettifica_submit_no_difference_creates_no_movement(self) -> None:
+        with SessionLocal() as db:
+            item = MagazzinoItem(
+                nome=f"Item rettifica no diff {self.unique}",
+                codice=f"RET-NODIFF-{self.unique}",
+                quantita_disponibile=20,
+                attivo=True,
+            )
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            item_id = item.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=True,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/items/{item_id}/rettifica",
+            data={"quantita_reale": "20", "note": "conteggio allineato"},
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        with SessionLocal() as db:
+            movements_count = (
+                db.query(MagazzinoMovimento)
+                .filter(MagazzinoMovimento.item_id == item_id)
+                .count()
+            )
+            self.assertEqual(movements_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

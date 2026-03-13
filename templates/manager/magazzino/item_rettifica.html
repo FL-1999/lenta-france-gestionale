@@ -1,0 +1,88 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Ajustement inventaire{% else %}Rettifica inventario{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
+        <h1 class="page-title">
+            📊 {% if lang == 'fr' %}Ajustement inventaire{% else %}Rettifica inventario{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Corrigez la différence entre la quantité système et l'inventaire réel.
+            {% else %}
+                Correggi la differenza tra quantità di sistema e inventario reale.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+        </a>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('manager_magazzino_rettifica_submit', item_id=item.id) }}" id="rettifica-form">
+    <div class="card large-form-card">
+        <div class="card-body">
+            {% if error_message %}
+                <div class="form-error">{{ error_message }}</div>
+            {% endif %}
+
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</label>
+                    <input type="text" value="{{ item.codice or '—' }} - {{ item.nome }}" readonly>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Quantité système{% else %}Quantità sistema{% endif %}</label>
+                    <input type="number" value="{{ quantita_sistema }}" readonly>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Quantité inventaire réelle{% else %}Quantità reale inventario{% endif %}*</label>
+                    <input type="number" name="quantita_reale" step="0.01" min="0" required>
+                </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
+                    <input type="text" name="note" placeholder="{% if lang == 'fr' %}Optionnel{% else %}Opzionale{% endif %}">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('manager_magazzino_list') }}" class="btn btn-secondary">
+                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if lang == 'fr' %}Enregistrer ajustement{% else %}Salva rettifica{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+(function () {
+    const form = document.getElementById('rettifica-form');
+    if (!form) return;
+    form.addEventListener('submit', function (event) {
+        const currentQty = Number({{ quantita_sistema|tojson }});
+        const realInput = form.querySelector('input[name="quantita_reale"]');
+        if (!realInput) return;
+        const realQty = Number(realInput.value);
+        if (!Number.isFinite(realQty) || currentQty <= 0) return;
+        const diffRatio = Math.abs(realQty - currentQty) / currentQty;
+        if (diffRatio > 0.5) {
+            const message = "{% if lang == 'fr' %}Vous corrigez une différence très élevée. Confirmer ?{% else %}Stai rettificando una differenza molto alta. Confermare?{% endif %}";
+            if (!window.confirm(message)) {
+                event.preventDefault();
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}
