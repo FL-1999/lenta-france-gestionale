@@ -712,6 +712,18 @@ class PersonalePresenza(SQLModel, table=True):
     )
 
 
+class VeicoloTrasporto(Base):
+    __tablename__ = "veicoli"
+
+    id = Column(Integer, primary_key=True, index=True)
+    marca = Column(String(120), nullable=False)
+    modello = Column(String(120), nullable=False)
+    targa = Column(String(50), nullable=False, unique=True, index=True)
+    visibile_trasporti = Column(Boolean, nullable=False, default=False)
+
+    viaggi = relationship("TrasportoViaggio", back_populates="mezzo")
+
+
 class TrasportoMezzo(Base, TimestampMixin):
     __tablename__ = "trasporti_mezzi"
 
@@ -720,7 +732,6 @@ class TrasportoMezzo(Base, TimestampMixin):
     targa = Column(String(20), nullable=False, unique=True, index=True)
     tipo = Column(String(100), nullable=True)
 
-    viaggi = relationship("TrasportoViaggio", back_populates="mezzo")
 
 
 class Attrezzatura(Base, TimestampMixin):
@@ -746,7 +757,7 @@ class TrasportoViaggio(Base, TimestampMixin):
     data_partenza = Column(Date, nullable=False, index=True)
     data_arrivo_prevista = Column(Date, nullable=True)
     autista_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    mezzo_id = Column(Integer, ForeignKey("trasporti_mezzi.id"), nullable=True, index=True)
+    mezzo_id = Column(Integer, ForeignKey("veicoli.id"), nullable=True, index=True)
     origine = Column(String(255), nullable=False)
     destinazione = Column(String(255), nullable=False)
     stato = Column(
@@ -757,7 +768,7 @@ class TrasportoViaggio(Base, TimestampMixin):
     )
 
     autista = relationship("User")
-    mezzo = relationship("TrasportoMezzo", back_populates="viaggi")
+    mezzo = relationship("VeicoloTrasporto", back_populates="viaggi")
     richieste_attrezzature = relationship(
         "TrasportoRichiestaAttrezzatura",
         back_populates="viaggio",

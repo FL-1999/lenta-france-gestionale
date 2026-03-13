@@ -16,13 +16,13 @@ from models import (
     MovimentoAttrezzatura,
     RoleEnum,
     TrasportoAttrezzaturaViaggio,
-    TrasportoMezzo,
     TrasportoRichiestaAttrezzatura,
     TrasportoStatoEnum,
     TrasportoViaggio,
     User,
 )
 from permissions import has_perm
+from models.veicoli import Veicolo
 from template_context import register_manager_badges, render_template
 
 templates = Jinja2Templates(directory="templates")
@@ -92,7 +92,12 @@ def manager_trasporti_viaggi_new(
 ):
     _ensure_manager(current_user)
     autisti = db.query(User).filter(User.role == RoleEnum.driver, User.is_active.is_(True)).order_by(User.full_name, User.email).all()
-    mezzi = db.query(TrasportoMezzo).order_by(TrasportoMezzo.nome.asc()).all()
+    mezzi = (
+        db.query(Veicolo)
+        .filter(Veicolo.visibile_trasporti.is_(True))
+        .order_by(Veicolo.marca.asc(), Veicolo.modello.asc(), Veicolo.targa.asc())
+        .all()
+    )
     return render_template(
         templates,
         request,

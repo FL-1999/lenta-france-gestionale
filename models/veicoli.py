@@ -31,6 +31,7 @@ class Veicolo(SQLModel, table=True):
     )
 
     note: Optional[str] = None
+    visibile_trasporti: bool = Field(default=False)
 
     def __repr__(self) -> str:
         return f"<Veicolo id={self.id} targa={self.targa}>"

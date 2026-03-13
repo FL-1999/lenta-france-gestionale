@@ -8,7 +8,7 @@
   </div>
 </div>
 <div class="card card-body">
-  <p><strong>Camion:</strong> {{ viaggio.mezzo.nome if viaggio.mezzo else '-' }}</p>
+  <p><strong>Camion:</strong> {{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
   <p><strong>Destinazione:</strong> {{ viaggio.destinazione }}</p>
   <p><strong>Stato:</strong> {{ viaggio.stato.value }}</p>
 
