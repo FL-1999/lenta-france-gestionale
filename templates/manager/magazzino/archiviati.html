@@ -1,0 +1,68 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}
+    {% if lang == 'fr' %}Articles archivés{% else %}Articoli archiviati{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}ERP{% else %}ERP{% endif %}</p>
+        <h1 class="page-title">🗄️ {% if lang == 'fr' %}Articles archivés{% else %}Articoli archiviati{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Liste des articles désactivés du magasin.
+            {% else %}
+                Elenco degli articoli disattivati del magazzino.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="magazzino-pill-bar">
+    {% include "manager/magazzino/_nav_pills.html" %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if items %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Dernière quantité{% else %}Ultima quantità{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td>{{ item.nome }}</td>
+                                <td>{{ item.codice or '—' }}</td>
+                                <td>{{ item.categoria.nome if item.categoria else '—' }}</td>
+                                <td>{{ item.quantita_disponibile }}</td>
+                                <td>
+                                    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+                                        <form method="post" action="{{ url_for('manager_magazzino_item_riattiva', item_id=item.id) }}">
+                                            <button type="submit" class="btn btn-secondary btn-sm">↩️ {% if lang == 'fr' %}Réactiver{% else %}Riattiva articolo{% endif %}</button>
+                                        </form>
+                                        <form method="post" action="{{ url_for('manager_magazzino_item_delete_permanent', item_id=item.id) }}" onsubmit="return confirm('{% if lang == 'fr' %}Confirmer la suppression définitive ?{% else %}Confermi eliminazione definitiva?{% endif %}');">
+                                            <button type="submit" class="btn btn-danger btn-sm" {% if (item.quantita_disponibile or 0) != 0 %}disabled title="{% if lang == 'fr' %}Quantité doit être 0{% else %}La quantità deve essere 0{% endif %}"{% endif %}>🗑️ {% if lang == 'fr' %}Supprimer définitivement{% else %}Elimina definitivamente{% endif %}</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="magazzino-item-desc">{% if lang == 'fr' %}Aucun article archivé.{% else %}Nessun articolo archiviato.{% endif %}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

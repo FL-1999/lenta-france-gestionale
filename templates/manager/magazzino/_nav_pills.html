@@ -31,3 +31,7 @@
     </span>
   {% endif %}
 </a>
+
+<a href="{{ url_for('manager_magazzino_archiviati') }}" class="btn btn-secondary">
+  🗄️ {% if lang == 'fr' %}Archivés{% else %}Archiviati{% endif %}
+</a>

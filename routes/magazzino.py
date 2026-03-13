@@ -930,6 +930,7 @@ def manager_magazzino_home(
     items = (
         db.query(MagazzinoItem)
         .options(joinedload(MagazzinoItem.categoria))
+        .filter(MagazzinoItem.attivo.is_(True))
         .order_by(MagazzinoItem.nome.asc())
         .all()
     )
@@ -951,6 +952,38 @@ def manager_magazzino_home(
             "macros": macros,
             "error_message": error_message,
             "success_message": success_message,
+            **badges,
+        },
+        db,
+        current_user,
+    )
+
+
+@router.get(
+    "/manager/magazzino/archiviati",
+    response_class=HTMLResponse,
+    name="manager_magazzino_archiviati",
+)
+def manager_magazzino_archiviati(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    items = (
+        db.query(MagazzinoItem)
+        .options(joinedload(MagazzinoItem.categoria))
+        .filter(MagazzinoItem.attivo.is_(False))
+        .order_by(MagazzinoItem.nome.asc())
+        .all()
+    )
+    badges = build_magazzino_badges(db, current_user)
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/archiviati.html",
+        {
+            "items": items,
             **badges,
         },
         db,
@@ -3403,6 +3436,65 @@ def manager_magazzino_delete(
 
     return RedirectResponse(
         url=request.url_for("manager_magazzino_list"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/items/{item_id}/riattiva",
+    response_class=HTMLResponse,
+    name="manager_magazzino_item_riattiva",
+)
+def manager_magazzino_item_riattiva(
+    item_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Articolo non trovato")
+
+    item.attivo = True
+    db.add(item)
+    db.commit()
+    _invalidate_magazzino_cache()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_archiviati"),
+        status_code=303,
+    )
+
+
+@router.post(
+    "/manager/magazzino/items/{item_id}/delete-permanent",
+    response_class=HTMLResponse,
+    name="manager_magazzino_item_delete_permanent",
+)
+def manager_magazzino_item_delete_permanent(
+    item_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    if not has_perm(current_user, "records.delete"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Articolo non trovato")
+    if (item.quantita_disponibile or 0) != 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Puoi eliminare definitivamente solo articoli con quantità 0.",
+        )
+
+    db.delete(item)
+    db.commit()
+    _invalidate_magazzino_cache()
+    return RedirectResponse(
+        url=request.url_for("manager_magazzino_archiviati"),
         status_code=303,
     )
 
