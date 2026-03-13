@@ -464,6 +464,138 @@ class MagazzinoRoutesTests(unittest.TestCase):
             )
             self.assertEqual(movements_count, 0)
 
+    def test_archived_items_page_lists_only_inactive_items(self) -> None:
+        with SessionLocal() as db:
+            active = MagazzinoItem(
+                nome=f"Item active {self.unique}",
+                codice=f"ACT-{self.unique}",
+                quantita_disponibile=2,
+                attivo=True,
+            )
+            archived = MagazzinoItem(
+                nome=f"Item archived {self.unique}",
+                codice=f"ARC-{self.unique}",
+                quantita_disponibile=0,
+                attivo=False,
+            )
+            db.add_all([active, archived])
+            db.commit()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get("/manager/magazzino/archiviati", cookies={"lang": "it"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(f"Item archived {self.unique}", response.text)
+        self.assertNotIn(f"Item active {self.unique}", response.text)
+
+    def test_riattiva_item_sets_item_active(self) -> None:
+        with SessionLocal() as db:
+            item = MagazzinoItem(
+                nome=f"Item restore {self.unique}",
+                codice=f"RST-{self.unique}",
+                quantita_disponibile=0,
+                attivo=False,
+            )
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            item_id = item.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/items/{item_id}/riattiva",
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        with SessionLocal() as db:
+            refreshed = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+            self.assertIsNotNone(refreshed)
+            assert refreshed is not None
+            self.assertTrue(refreshed.attivo)
+
+    def test_delete_permanent_requires_zero_quantity(self) -> None:
+        with SessionLocal() as db:
+            item = MagazzinoItem(
+                nome=f"Item no delete {self.unique}",
+                codice=f"DEL-NO-{self.unique}",
+                quantita_disponibile=3,
+                attivo=False,
+            )
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            item_id = item.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.admin,
+                id=1,
+                full_name="Test Admin",
+                is_magazzino_manager=True,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/items/{item_id}/delete-permanent",
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 400)
+
+        with SessionLocal() as db:
+            still_exists = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+            self.assertIsNotNone(still_exists)
+
+    def test_delete_permanent_deletes_zero_quantity_item(self) -> None:
+        with SessionLocal() as db:
+            item = MagazzinoItem(
+                nome=f"Item delete ok {self.unique}",
+                codice=f"DEL-OK-{self.unique}",
+                quantita_disponibile=0,
+                attivo=False,
+            )
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            item_id = item.id
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.admin,
+                id=1,
+                full_name="Test Admin",
+                is_magazzino_manager=True,
+            )
+        )
+
+        response = self.client.post(
+            f"/manager/magazzino/items/{item_id}/delete-permanent",
+            cookies={"lang": "it"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        with SessionLocal() as db:
+            deleted = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+            self.assertIsNone(deleted)
+
 
 if __name__ == "__main__":
     unittest.main()
