@@ -33,6 +33,7 @@
     {% set can_access_inventory = user and has_perm(user, 'inventory.read') %}
     {% set can_access_reports = user and (has_perm(user, 'reports.read_all') or is_manager or is_capo) %}
     {% set can_access_personale = user and has_perm(user, 'users.read') %}
+    {% set can_access_driver_trasporti = user and has_perm(user, 'trasporti.assigned.read') %}
     {% set is_authenticated = user is not none %}
     {% set home_path = "/" %}
     {% if is_manager %}
@@ -45,6 +46,8 @@
         {% set home_path = "/manager/rapportini" %}
     {% elif can_access_personale %}
         {% set home_path = "/manager/personale" %}
+    {% elif can_access_driver_trasporti %}
+        {% set home_path = "/driver/trasporti/viaggi" %}
     {% endif %}
     {% set show_cantieri = is_manager %}
     {% set cantieri_path = "/manager/cantieri" %}
@@ -73,9 +76,12 @@
     {% set is_magazzino_active = current_path.startswith('/manager/magazzino') or current_path.startswith('/capo/magazzino') %}
     {% set is_report_active = current_path.startswith('/manager/report') or current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') %}
     {% set is_profile_active = current_path.startswith('/manager/utenti') or (section == 'profilo') %}
+    {% set is_trasporti_active = current_path.startswith('/manager/trasporti') or current_path.startswith('/driver/trasporti') %}
     {% set show_profile = can_manage_users or is_capo %}
     {% set show_users_link = is_manager and can_read_users %}
     {% set show_reports = can_access_reports %}
+    {% set show_trasporti = is_manager or can_access_driver_trasporti %}
+    {% set trasporti_path = '/manager/trasporti' if is_manager else '/driver/trasporti/viaggi' %}
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="nav-left">
@@ -226,6 +232,11 @@
                         {% endif %}
                     </a>
                 {% endif %}
+                {% if show_trasporti %}
+                    <a href="{{ trasporti_path }}" class="nav-link nav-right__item">
+                        🚚 Trasporti
+                    </a>
+                {% endif %}
                 <div class="nav-lang-switch nav-right__item">
                     <a href="/set-language/it"
                        class="lang-flag {% if request.cookies.get('lang', 'it') == 'it' %}lang-flag--active{% endif %}">
@@ -286,6 +297,12 @@
                 <a href="{{ report_path }}" class="bottom-nav__link {% if is_report_active %}bottom-nav__link--active{% endif %}">
                     <span class="bottom-nav__icon" aria-hidden="true">📊</span>
                     <span class="bottom-nav__label">{% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</span>
+                </a>
+            {% endif %}
+            {% if show_trasporti %}
+                <a href="{{ trasporti_path }}" class="bottom-nav__link {% if is_trasporti_active %}bottom-nav__link--active{% endif %}">
+                    <span class="bottom-nav__icon" aria-hidden="true">🚚</span>
+                    <span class="bottom-nav__label">Trasporti</span>
                 </a>
             {% endif %}
 

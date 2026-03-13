@@ -1,0 +1,19 @@
+{% extends "shared/base.html" %}
+{% block title %}Dettaglio viaggio{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">VIAGGIO {{ viaggio.codice_viaggio }}</p>
+    <h1 class="page-title">{{ viaggio.origine }} → {{ viaggio.destinazione }}</h1>
+  </div>
+</div>
+<div class="card card-body">
+  <p><strong>Stato:</strong> {{ viaggio.stato.value }}</p>
+  <p><strong>Autista:</strong> {{ viaggio.autista.full_name if viaggio.autista and viaggio.autista.full_name else (viaggio.autista.email if viaggio.autista else '-') }}</p>
+  <p><strong>Mezzo:</strong> {{ viaggio.mezzo.nome if viaggio.mezzo else '-' }}</p>
+  <h3>Richieste manager</h3>
+  <ul>{% for r in viaggio.richieste_attrezzature %}<li>{{ r.tipo_attrezzatura }} × {{ r.quantita }}</li>{% else %}<li>Nessuna</li>{% endfor %}</ul>
+  <h3>Assegnazioni autista</h3>
+  <ul>{% for a in viaggio.assegnazioni_attrezzature %}<li>{{ a.attrezzatura.tipo }} → {{ a.attrezzatura.codice }} {% if a.caricato %}✔{% endif %}</li>{% else %}<li>Nessuna</li>{% endfor %}</ul>
+</div>
+{% endblock %}

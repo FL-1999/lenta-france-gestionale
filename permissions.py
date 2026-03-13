@@ -34,6 +34,13 @@ HR_PERMISSIONS: FrozenSet[str] = frozenset(
     }
 )
 
+DRIVER_PERMISSIONS: FrozenSet[str] = frozenset(
+    {
+        "trasporti.assigned.read",
+        "trasporti.assigned.update",
+    }
+)
+
 ADMIN_EXTRA_PERMISSIONS: FrozenSet[str] = frozenset(
     {
         "sites.delete",
@@ -55,6 +62,7 @@ ROLE_PERMISSIONS: dict[RoleEnum, FrozenSet[str]] = {
     RoleEnum.magazzino: MAGAZZINO_PERMISSIONS,
     RoleEnum.contabilita: CONTABILITA_PERMISSIONS,
     RoleEnum.hr: HR_PERMISSIONS,
+    RoleEnum.driver: DRIVER_PERMISSIONS,
 }
 
 

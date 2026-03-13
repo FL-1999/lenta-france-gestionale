@@ -35,6 +35,22 @@ class RoleEnum(PyEnum):
     magazzino = "magazzino"
     contabilita = "contabilita"
     hr = "hr"
+    driver = "driver"
+
+
+class TrasportoStatoEnum(PyEnum):
+    programmato = "programmato"
+    in_carico = "in_carico"
+    in_viaggio = "in_viaggio"
+    arrivato = "arrivato"
+    completato = "completato"
+
+
+class AttrezzaturaStatoEnum(PyEnum):
+    disponibile = "disponibile"
+    in_uso = "in_uso"
+    in_trasporto = "in_trasporto"
+    manutenzione = "manutenzione"
 
 
 # Questi tre servono perché vengono importati in schemas.py
@@ -694,3 +710,103 @@ class PersonalePresenza(SQLModel, table=True):
             nullable=False,
         )
     )
+
+
+class TrasportoMezzo(Base, TimestampMixin):
+    __tablename__ = "trasporti_mezzi"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(255), nullable=False)
+    targa = Column(String(20), nullable=False, unique=True, index=True)
+    tipo = Column(String(100), nullable=True)
+
+    viaggi = relationship("TrasportoViaggio", back_populates="mezzo")
+
+
+class Attrezzatura(Base, TimestampMixin):
+    __tablename__ = "attrezzature"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codice = Column(String(50), nullable=False, unique=True, index=True)
+    nome = Column(String(255), nullable=False)
+    tipo = Column(String(100), nullable=False, index=True)
+    stato = Column(
+        Enum(AttrezzaturaStatoEnum),
+        nullable=False,
+        default=AttrezzaturaStatoEnum.disponibile,
+    )
+    posizione_attuale = Column(String(255), nullable=True)
+
+
+class TrasportoViaggio(Base, TimestampMixin):
+    __tablename__ = "trasporti_viaggi"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codice_viaggio = Column(String(50), nullable=False, unique=True, index=True)
+    data_partenza = Column(Date, nullable=False, index=True)
+    data_arrivo_prevista = Column(Date, nullable=True)
+    autista_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    mezzo_id = Column(Integer, ForeignKey("trasporti_mezzi.id"), nullable=True, index=True)
+    origine = Column(String(255), nullable=False)
+    destinazione = Column(String(255), nullable=False)
+    stato = Column(
+        Enum(TrasportoStatoEnum),
+        nullable=False,
+        default=TrasportoStatoEnum.programmato,
+        index=True,
+    )
+
+    autista = relationship("User")
+    mezzo = relationship("TrasportoMezzo", back_populates="viaggi")
+    richieste_attrezzature = relationship(
+        "TrasportoRichiestaAttrezzatura",
+        back_populates="viaggio",
+        cascade="all, delete-orphan",
+    )
+    assegnazioni_attrezzature = relationship(
+        "TrasportoAttrezzaturaViaggio",
+        back_populates="viaggio",
+        cascade="all, delete-orphan",
+    )
+
+
+class TrasportoRichiestaAttrezzatura(Base):
+    __tablename__ = "trasporto_richiesta_attrezzature"
+
+    id = Column(Integer, primary_key=True, index=True)
+    viaggio_id = Column(Integer, ForeignKey("trasporti_viaggi.id"), nullable=False, index=True)
+    tipo_attrezzatura = Column(String(100), nullable=False, index=True)
+    quantita = Column(Integer, nullable=False, default=1)
+
+    viaggio = relationship("TrasportoViaggio", back_populates="richieste_attrezzature")
+
+
+class TrasportoAttrezzaturaViaggio(Base):
+    __tablename__ = "trasporto_attrezzature_viaggio"
+    __table_args__ = (
+        UniqueConstraint("viaggio_id", "attrezzatura_id", name="uq_trasporto_viaggio_attrezzatura"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    viaggio_id = Column(Integer, ForeignKey("trasporti_viaggi.id"), nullable=False, index=True)
+    attrezzatura_id = Column(Integer, ForeignKey("attrezzature.id"), nullable=False, index=True)
+    caricato = Column(Boolean, nullable=False, default=False)
+
+    viaggio = relationship("TrasportoViaggio", back_populates="assegnazioni_attrezzature")
+    attrezzatura = relationship("Attrezzatura")
+
+
+class MovimentoAttrezzatura(Base):
+    __tablename__ = "movimenti_attrezzature"
+
+    id = Column(Integer, primary_key=True, index=True)
+    attrezzatura_id = Column(Integer, ForeignKey("attrezzature.id"), nullable=False, index=True)
+    viaggio_id = Column(Integer, ForeignKey("trasporti_viaggi.id"), nullable=False, index=True)
+    origine = Column(String(255), nullable=False)
+    destinazione = Column(String(255), nullable=False)
+    data = Column(DateTime, nullable=False, default=datetime.utcnow)
+    autista_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    attrezzatura = relationship("Attrezzatura")
+    viaggio = relationship("TrasportoViaggio")
+    autista = relationship("User")
