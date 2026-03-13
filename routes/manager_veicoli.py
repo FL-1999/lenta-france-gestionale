@@ -150,6 +150,7 @@ def manager_veicoli_create(
     assicurazione_scadenza: str | None = Form(None),
     revisione_scadenza: str | None = Form(None),
     assegnato_a_id: str | None = Form(None),
+    visibile_trasporti: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -169,6 +170,7 @@ def manager_veicoli_create(
         assicurazione_scadenza=_parse_date(assicurazione_scadenza),
         revisione_scadenza=_parse_date(revisione_scadenza),
         assegnato_a_id=_parse_int(assegnato_a_id),
+        visibile_trasporti=visibile_trasporti == "on",
     )
     db.add(veicolo)
     db.commit()
@@ -238,6 +240,7 @@ def manager_veicoli_update(
     assicurazione_scadenza: str | None = Form(None),
     revisione_scadenza: str | None = Form(None),
     assegnato_a_id: str | None = Form(None),
+    visibile_trasporti: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -263,6 +266,7 @@ def manager_veicoli_update(
     veicolo.assicurazione_scadenza = _parse_date(assicurazione_scadenza)
     veicolo.revisione_scadenza = _parse_date(revisione_scadenza)
     veicolo.assegnato_a_id = _parse_int(assegnato_a_id)
+    veicolo.visibile_trasporti = visibile_trasporti == "on"
 
     db.add(veicolo)
     db.commit()

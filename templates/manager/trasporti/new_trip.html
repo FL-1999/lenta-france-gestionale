@@ -9,7 +9,7 @@
   <label>Autista</label>
   <select name="autista_id"><option value="">--</option>{% for a in autisti %}<option value="{{ a.id }}">{{ a.full_name or a.email }}</option>{% endfor %}</select>
   <label>Mezzo</label>
-  <select name="mezzo_id"><option value="">--</option>{% for m in mezzi %}<option value="{{ m.id }}">{{ m.nome }} ({{ m.targa }})</option>{% endfor %}</select>
+  <select name="mezzo_id"><option value="">--</option>{% for m in mezzi %}<option value="{{ m.id }}">{{ m.marca }} {{ m.modello }} ({{ m.targa }})</option>{% endfor %}</select>
   <label>Origine</label><input name="origine" required />
   <label>Destinazione</label><input name="destinazione" required />
 

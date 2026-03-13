@@ -10,7 +10,7 @@
 <div class="card card-body">
   <p><strong>Stato:</strong> {{ viaggio.stato.value }}</p>
   <p><strong>Autista:</strong> {{ viaggio.autista.full_name if viaggio.autista and viaggio.autista.full_name else (viaggio.autista.email if viaggio.autista else '-') }}</p>
-  <p><strong>Mezzo:</strong> {{ viaggio.mezzo.nome if viaggio.mezzo else '-' }}</p>
+  <p><strong>Mezzo:</strong> {{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
   <h3>Richieste manager</h3>
   <ul>{% for r in viaggio.richieste_attrezzature %}<li>{{ r.tipo_attrezzatura }} × {{ r.quantita }}</li>{% else %}<li>Nessuna</li>{% endfor %}</ul>
   <h3>Assegnazioni autista</h3>
