@@ -945,6 +945,12 @@ def manager_magazzino_home(
             if lang == "fr"
             else "Scarico registrato con successo."
         )
+    elif ok == "rettifica":
+        success_message = (
+            "Ajustement d'inventaire enregistré avec succès."
+            if lang == "fr"
+            else "Rettifica inventario registrata con successo."
+        )
     elif ok:
         success_message = (
             "Opération terminée avec succès."
@@ -1060,6 +1066,12 @@ def manager_magazzino_list(
             "Déchargement enregistré avec succès."
             if lang == "fr"
             else "Scarico registrato con successo."
+        )
+    elif ok == "rettifica":
+        success_message = (
+            "Ajustement d'inventaire enregistré avec succès."
+            if lang == "fr"
+            else "Rettifica inventario registrata con successo."
         )
     elif ok:
         success_message = (
@@ -3128,6 +3140,122 @@ def manager_magazzino_duplicate_create(
 
     return RedirectResponse(
         url=request.url_for("manager_magazzino_list"),
+        status_code=303,
+    )
+
+
+@router.get(
+    "/manager/magazzino/items/{item_id}/rettifica",
+    response_class=HTMLResponse,
+    name="manager_magazzino_rettifica_form",
+)
+def manager_magazzino_rettifica_form(
+    item_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item:
+        return RedirectResponse(
+            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
+            status_code=303,
+        )
+
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/item_rettifica.html",
+        {
+            "item": item,
+            "quantita_sistema": item.quantita_disponibile or 0.0,
+            "error_message": None,
+        },
+        db,
+        current_user,
+    )
+
+
+@router.post(
+    "/manager/magazzino/items/{item_id}/rettifica",
+    response_class=HTMLResponse,
+    name="manager_magazzino_rettifica_submit",
+)
+def manager_magazzino_rettifica_submit(
+    item_id: int,
+    request: Request,
+    quantita_reale: str = Form(...),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_manager(current_user)
+    lang = get_lang_from_request(request)
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    if not item:
+        return RedirectResponse(
+            url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
+            status_code=303,
+        )
+
+    quantita_reale_valore = _parse_float(quantita_reale)
+    if quantita_reale_valore is None or quantita_reale_valore < 0:
+        return render_template(
+            templates,
+            request,
+            "manager/magazzino/item_rettifica.html",
+            {
+                "item": item,
+                "quantita_sistema": item.quantita_disponibile or 0.0,
+                "error_message": _magazzino_error_message(lang, "quantita_non_valida"),
+            },
+            db,
+            current_user,
+        )
+
+    quantita_sistema = item.quantita_disponibile or 0.0
+    differenza = quantita_reale_valore - quantita_sistema
+    note_pulite = (note or "").strip()
+
+    if differenza != 0:
+        movimento = MagazzinoMovimento(
+            item_id=item.id,
+            tipo=(
+                MagazzinoMovimentoTipoEnum.carico
+                if differenza > 0
+                else MagazzinoMovimentoTipoEnum.rettifica
+            ),
+            quantita=abs(differenza),
+            creato_da_user_id=current_user.id,
+            note=note_pulite or "Rettifica inventario",
+        )
+        db.add(movimento)
+        db.flush()
+        _log_audit(
+            db,
+            current_user,
+            "STOCK_RETTIFICA_INVENTARIO",
+            "MagazzinoMovimento",
+            movimento.id,
+            {
+                "item_id": item.id,
+                "codice": item.codice,
+                "quantita_sistema": quantita_sistema,
+                "quantita_reale": quantita_reale_valore,
+                "differenza": differenza,
+                "tipo": movimento.tipo.value,
+                "note": movimento.note,
+            },
+        )
+
+    item.quantita_disponibile = quantita_reale_valore
+    db.add(item)
+    db.commit()
+    _invalidate_magazzino_cache()
+
+    return RedirectResponse(
+        url=f"{request.url_for('manager_magazzino_list')}?ok=rettifica",
         status_code=303,
     )
 

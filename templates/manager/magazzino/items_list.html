@@ -296,6 +296,9 @@
                                 <a href="{{ url_for('manager_magazzino_edit', item_id=item.id) }}" class="btn btn-secondary btn-sm">
                                     ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                                 </a>
+                                <a href="{{ url_for('manager_magazzino_rettifica_form', item_id=item.id) }}" class="btn btn-secondary btn-sm">
+                                    📊 {% if lang == 'fr' %}Ajustement inventaire{% else %}Rettifica inventario{% endif %}
+                                </a>
                                 {% if has_perm(user, 'records.delete') %}
                                 <form method="post" action="{{ url_for('manager_magazzino_delete', item_id=item.id) }}">
                                     <button type="submit" class="btn btn-danger btn-sm"
