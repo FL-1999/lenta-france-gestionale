@@ -1,10 +1,13 @@
 {% extends "shared/base.html" %}
-{% block title %}Viaggi assegnati{% endblock %}
+{% block title %}Viaggi autista{% endblock %}
 {% block content %}
-<div class="page-header"><h1 class="page-title">🚛 Viaggi assegnati</h1></div>
+<meta http-equiv="refresh" content="10">
+<div class="page-header"><h1 class="page-title">🚛 Viaggi autista</h1></div>
+
 <div class="card table-card"><div class="card-body">
+<h2 style="margin-top:0;">Viaggi assegnati</h2>
 <table class="data-table"><thead><tr><th>Codice</th><th>Tratta</th><th>Data</th><th>Stato</th></tr></thead><tbody>
-{% for v in viaggi %}
+{% for v in viaggi_assegnati %}
 <tr>
 <td><a href="{{ url_for('driver_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td>
 <td>{{ v.origine }} → {{ v.destinazione }}</td>
@@ -12,6 +15,25 @@
 <td>{{ v.stato.value }}</td>
 </tr>
 {% else %}<tr><td colspan="4">Nessun viaggio assegnato</td></tr>{% endfor %}
+</tbody></table>
+</div></div>
+
+<div class="card table-card" style="margin-top:1rem;"><div class="card-body">
+<h2 style="margin-top:0;">Viaggi disponibili</h2>
+<table class="data-table"><thead><tr><th>Codice</th><th>Tratta</th><th>Data</th><th>Stato</th><th></th></tr></thead><tbody>
+{% for v in viaggi_disponibili %}
+<tr>
+<td>{{ v.codice_viaggio }}</td>
+<td>{{ v.origine }} → {{ v.destinazione }}</td>
+<td>{{ v.data_partenza }}</td>
+<td>{{ v.stato.value }}</td>
+<td>
+  <form method="post" action="{{ url_for('driver_trasporti_viaggi_prendi', viaggio_id=v.id) }}">
+    <button type="submit" class="btn btn-primary">Prendi viaggio</button>
+  </form>
+</td>
+</tr>
+{% else %}<tr><td colspan="5">Nessun viaggio disponibile</td></tr>{% endfor %}
 </tbody></table>
 </div></div>
 {% endblock %}
