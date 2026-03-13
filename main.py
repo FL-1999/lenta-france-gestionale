@@ -50,7 +50,7 @@ from models import (
     MagazzinoMovimentoTipoEnum,
 )
 from routers import users, sites, machines, reports, fiches, notifications
-from routes import manager_personale, manager_veicoli, manager_depositi, magazzino, ordini, audit, reportistica, backup
+from routes import manager_personale, manager_veicoli, manager_depositi, magazzino, ordini, audit, reportistica, backup, trasporti
 
 from template_context import (
     build_template_context,
@@ -604,6 +604,8 @@ def login_api(
         redirect_url = "/manager/rapportini"
     elif has_perm(user, "users.read"):
         redirect_url = "/manager/personale"
+    elif has_perm(user, "trasporti.assigned.read"):
+        redirect_url = "/driver/trasporti/viaggi"
     else:
         redirect_url = "/"
 
@@ -3005,3 +3007,4 @@ app.include_router(ordini.router)
 app.include_router(audit.router)
 app.include_router(reportistica.router)
 app.include_router(backup.router)
+app.include_router(trasporti.router)
