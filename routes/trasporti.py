@@ -159,6 +159,7 @@ def manager_trasporti_viaggi_detail(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+    autisti = db.query(User).filter(User.role == RoleEnum.driver, User.is_active.is_(True)).order_by(User.full_name, User.email).all()
     viaggio = (
         db.query(TrasportoViaggio)
         .options(
@@ -177,10 +178,43 @@ def manager_trasporti_viaggi_detail(
         templates,
         request,
         "manager/trasporti/trip_detail.html",
-        {"viaggio": viaggio},
+        {"viaggio": viaggio, "autisti": autisti},
         db,
         current_user,
     )
+
+
+@router.post(
+    "/manager/trasporti/viaggi/{viaggio_id}/autista",
+    response_class=HTMLResponse,
+    name="manager_trasporti_viaggi_autista_update",
+)
+def manager_trasporti_viaggi_autista_update(
+    viaggio_id: int,
+    request: Request,
+    autista_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).first()
+    if not viaggio:
+        return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+
+    if autista_id is None:
+        viaggio.autista_id = None
+    else:
+        autista = (
+            db.query(User)
+            .filter(User.id == autista_id, User.role == RoleEnum.driver, User.is_active.is_(True))
+            .first()
+        )
+        if not autista:
+            raise HTTPException(status_code=400, detail="Autista non valido")
+        viaggio.autista_id = autista.id
+
+    db.commit()
+    return RedirectResponse(url=request.url_for("manager_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
 
 
 @router.get("/driver/trasporti/viaggi", response_class=HTMLResponse, name="driver_trasporti_viaggi")
@@ -190,10 +224,17 @@ def driver_trasporti_viaggi(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_driver(current_user)
-    viaggi = (
+    viaggi_assegnati = (
         db.query(TrasportoViaggio)
         .options(joinedload(TrasportoViaggio.mezzo), joinedload(TrasportoViaggio.richieste_attrezzature))
         .filter(TrasportoViaggio.autista_id == current_user.id)
+        .order_by(TrasportoViaggio.data_partenza.desc())
+        .all()
+    )
+    viaggi_disponibili = (
+        db.query(TrasportoViaggio)
+        .options(joinedload(TrasportoViaggio.mezzo), joinedload(TrasportoViaggio.richieste_attrezzature))
+        .filter(TrasportoViaggio.autista_id.is_(None))
         .order_by(TrasportoViaggio.data_partenza.desc())
         .all()
     )
@@ -201,10 +242,33 @@ def driver_trasporti_viaggi(
         templates,
         request,
         "driver/trasporti/assigned_trips.html",
-        {"viaggi": viaggi},
+        {"viaggi_assegnati": viaggi_assegnati, "viaggi_disponibili": viaggi_disponibili},
         db,
         current_user,
     )
+
+
+@router.post(
+    "/driver/trasporti/viaggi/{viaggio_id}/prendi",
+    response_class=HTMLResponse,
+    name="driver_trasporti_viaggi_prendi",
+)
+def driver_trasporti_viaggi_prendi(
+    viaggio_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_driver(current_user)
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).first()
+    if not viaggio:
+        return RedirectResponse(url=request.url_for("driver_trasporti_viaggi"), status_code=303)
+
+    if viaggio.autista_id is None:
+        viaggio.autista_id = current_user.id
+        db.commit()
+
+    return RedirectResponse(url=request.url_for("driver_trasporti_viaggi"), status_code=303)
 
 
 @router.get("/driver/trasporti/viaggi/{viaggio_id}", response_class=HTMLResponse, name="driver_trasporti_viaggi_detail")
@@ -222,7 +286,10 @@ def driver_trasporti_viaggi_detail(
             joinedload(TrasportoViaggio.richieste_attrezzature),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
         )
-        .filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id)
+        .filter(
+            TrasportoViaggio.id == viaggio_id,
+            func.coalesce(TrasportoViaggio.autista_id, current_user.id) == current_user.id,
+        )
         .first()
     )
     if not viaggio:

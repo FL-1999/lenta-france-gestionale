@@ -11,6 +11,18 @@
   <p><strong>Stato:</strong> {{ viaggio.stato.value }}</p>
   <p><strong>Autista:</strong> {{ viaggio.autista.full_name if viaggio.autista and viaggio.autista.full_name else (viaggio.autista.email if viaggio.autista else '-') }}</p>
   <p><strong>Mezzo:</strong> {{ viaggio.mezzo.nome if viaggio.mezzo else '-' }}</p>
+
+  <h3>Gestione autista</h3>
+  <form method="post" action="{{ url_for('manager_trasporti_viaggi_autista_update', viaggio_id=viaggio.id) }}" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+    <select name="autista_id">
+      <option value="">-- Nessun autista (viaggio aperto) --</option>
+      {% for a in autisti %}
+      <option value="{{ a.id }}" {% if viaggio.autista_id == a.id %}selected{% endif %}>{{ a.full_name if a.full_name else a.email }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">Salva assegnazione</button>
+  </form>
+
   <h3>Richieste manager</h3>
   <ul>{% for r in viaggio.richieste_attrezzature %}<li>{{ r.tipo_attrezzatura }} × {{ r.quantita }}</li>{% else %}<li>Nessuna</li>{% endfor %}</ul>
   <h3>Assegnazioni autista</h3>
