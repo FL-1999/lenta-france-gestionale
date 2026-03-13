@@ -278,6 +278,40 @@
             </div>
         </div>
 
+        <!-- Trasporti -->
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--machines" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="2.5" y="9" width="12.5" height="6.5" rx="1.3" />
+                            <path d="M15 10.5h3.2l2.3 2.4V15h-2.4" stroke-linecap="round" stroke-linejoin="round" />
+                            <circle cx="7" cy="17" r="1.7" />
+                            <circle cx="17" cy="17" r="1.7" />
+                        </svg>
+                    </div>
+                    <span>{% if lang == 'fr' %}Transports{% else %}Trasporti{% endif %}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>
+                    {% if lang == 'fr' %}
+                        Gérez les trajets des camions, les chauffeurs et le transport des équipements entre dépôt et chantiers.
+                    {% else %}
+                        Gestisci i viaggi dei camion, gli autisti e il trasporto delle attrezzature tra magazzino e cantieri.
+                    {% endif %}
+                </p>
+                <div class="page-actions-row">
+                    <a href="/manager/trasporti" class="btn btn-secondary">
+                        {% if lang == 'fr' %}Liste des transports{% else %}Lista trasporti{% endif %}
+                    </a>
+                    <a href="/manager/trasporti/nuovo" class="btn btn-primary">
+                        ➕ {% if lang == 'fr' %}Nouveau trajet{% else %}Nuovo viaggio{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <!-- Fiches -->
         <div class="card module-card">
             <div class="card-header">
