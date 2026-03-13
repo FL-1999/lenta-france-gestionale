@@ -4,50 +4,52 @@
 <div class="page-header">
   <div class="page-header-main">
     <p class="page-eyebrow">VIAGGIO {{ viaggio.codice_viaggio }}</p>
-    <h1 class="page-title">Checklist carico</h1>
+    <h1 class="page-title">📱 Modalità autista</h1>
   </div>
 </div>
 <div class="card card-body">
-  <p><strong>Camion:</strong> {{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
-  <p><strong>Destinazione:</strong> {{ viaggio.destinazione }}</p>
-  <p><strong>Stato:</strong> {{ viaggio.stato.value }}</p>
+  <p><strong>Camion</strong><br>{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
+  <p><strong>Destinazione</strong><br>{{ viaggio.destinazione }}</p>
+  <p><strong>Stato</strong><br>{{ viaggio.stato.value }}</p>
 
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     <h3>Materiale da caricare</h3>
     {% for req, disponibili in richieste_disponibili %}
       {% for idx in range(req.quantita) %}
-        <label>{{ req.tipo_attrezzatura|capitalize }} #{{ idx + 1 }}</label>
-        <select name="req_{{ req.id }}_{{ idx }}">
-          <option value="">-- seleziona unità --</option>
-          {% for a in disponibili %}
-            <option value="{{ a.id }}">{{ a.codice }} ({{ a.nome }})</option>
-          {% endfor %}
-        </select>
+        <div style="margin-bottom:0.8rem;">
+          <label style="display:block;font-weight:700;">☐ {{ req.tipo_attrezzatura|capitalize }} #{{ idx + 1 }}</label>
+          <select name="req_{{ req.id }}_{{ idx }}" style="width:100%;padding:0.7rem;font-size:1rem;">
+            <option value="">-- seleziona unità --</option>
+            {% for a in disponibili %}
+              <option value="{{ a.id }}">{{ a.codice }} ({{ a.nome }})</option>
+            {% endfor %}
+          </select>
+        </div>
       {% endfor %}
     {% endfor %}
-    <br><button class="btn btn-primary" type="submit">Conferma carico</button>
+    <button class="btn btn-primary" style="width:100%;padding:0.9rem;font-size:1.1rem;" type="submit">Conferma carico</button>
   </form>
 
   <h3>Assegnato</h3>
   <ul>
     {% for a in viaggio.assegnazioni_attrezzature %}
-      <li>{{ a.attrezzatura.tipo }} → {{ a.attrezzatura.codice }} {% if a.caricato %}✔{% else %}☐{% endif %}</li>
+      <li>✔ {{ a.attrezzatura.tipo }} {{ a.attrezzatura.codice }}</li>
     {% else %}
       <li>Nessuna attrezzatura ancora caricata</li>
     {% endfor %}
   </ul>
 
-  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:1rem;">
     <input type="hidden" name="nuovo_stato" value="in_viaggio">
-    <button class="btn btn-secondary" type="submit">Partito (in viaggio)</button>
+    <button class="btn btn-secondary" style="width:100%;padding:0.9rem;font-size:1.1rem;" type="submit">In viaggio</button>
   </form>
-  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:0.5rem;display:flex; gap:0.5rem; flex-wrap:wrap;">
+  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:0.5rem;">
     <input type="hidden" name="nuovo_stato" value="arrivato">
-    <button class="btn btn-secondary" type="submit">Arrivato</button>
+    <button class="btn btn-secondary" style="width:100%;padding:0.9rem;font-size:1.1rem;" type="submit">Arrivato</button>
   </form>
-  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:0.5rem;display:flex; gap:0.5rem; flex-wrap:wrap;">
+  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:0.5rem;">
     <input type="hidden" name="nuovo_stato" value="completato">
-    <button class="btn btn-primary" type="submit">Completa viaggio</button>
+    <button class="btn btn-primary" style="width:100%;padding:1rem;font-size:1.2rem;" type="submit">Completa viaggio</button>
   </form>
 </div>
 {% endblock %}
