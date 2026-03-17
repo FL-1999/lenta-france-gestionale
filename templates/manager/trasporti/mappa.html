@@ -1,0 +1,39 @@
+{% extends "shared/base.html" %}
+{% block title %}Mappa trasporti{% endblock %}
+{% block content %}
+<div class="page-header"><div class="page-header-main"><p class="page-eyebrow">Trasporti</p><h1 class="page-title">🗺 Mappa logistica</h1></div></div>
+<div class="card card-body">
+  <p><span style="color:#1d4ed8;font-weight:700">● Blu = sito</span> · <span style="color:#ea580c;font-weight:700">● Arancione = camion</span> · <span style="color:#16a34a;font-weight:700">● Verde = attrezzatura</span></p>
+  <div id="logistics-map" style="height:480px;border-radius:12px;"></div>
+</div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('logistics-map').setView([46.22, 2.21], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19}).addTo(map);
+
+const siteMarkers = {{ site_markers|tojson }};
+const truckMarkers = {{ truck_markers|tojson }};
+const equipmentMarkers = {{ equipment_markers|tojson }};
+
+function colorIcon(color){
+  return L.divIcon({className:'custom-dot',html:`<span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.3)"></span>`});
+}
+
+for (const m of siteMarkers){
+  L.marker([m.lat, m.lng], {icon: colorIcon('#2563eb')}).addTo(map).bindPopup(`<a href="${m.detail_url}">${m.label}</a>`);
+}
+for (const m of truckMarkers){
+  L.marker([m.lat, m.lng], {icon: colorIcon('#ea580c')}).addTo(map).bindPopup(`<a href="${m.detail_url}">${m.label}</a>`);
+}
+for (const m of equipmentMarkers){
+  L.marker([m.lat, m.lng], {icon: colorIcon('#16a34a')}).addTo(map).bindPopup(`<a href="${m.detail_url}">${m.label}</a>`);
+}
+
+const all = siteMarkers.concat(truckMarkers).concat(equipmentMarkers);
+if (all.length){
+  const group = L.featureGroup(all.map((m) => L.marker([m.lat,m.lng])));
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+</script>
+{% endblock %}

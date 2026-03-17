@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -15,19 +15,22 @@ from models import (
     AttrezzaturaStatoEnum,
     MovimentoAttrezzatura,
     RoleEnum,
+    Site,
     TrasportoAttrezzaturaViaggio,
     TrasportoRichiestaAttrezzatura,
     TrasportoStatoEnum,
     TrasportoViaggio,
     User,
 )
-from permissions import has_perm
 from models.veicoli import Veicolo
+from permissions import has_perm
 from template_context import register_manager_badges, render_template
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 router = APIRouter(tags=["trasporti"])
+
+WEEKDAY_LABELS = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
 
 
 def _ensure_manager(user: User) -> None:
@@ -38,6 +41,35 @@ def _ensure_manager(user: User) -> None:
 def _ensure_driver(user: User) -> None:
     if not has_perm(user, "trasporti.assigned.read"):
         raise HTTPException(status_code=403, detail="Accesso riservato agli autisti")
+
+
+def _trip_missing_equipment_alerts(viaggi: list[TrasportoViaggio]) -> list[dict[str, object]]:
+    alerts = []
+    for viaggio in viaggi:
+        ass_by_type: dict[str, int] = {}
+        for ass in viaggio.assegnazioni_attrezzature:
+            key = (ass.attrezzatura.tipo or "").strip().lower()
+            if not key:
+                continue
+            ass_by_type[key] = ass_by_type.get(key, 0) + 1
+
+        missing_types = []
+        for req in viaggio.richieste_attrezzature:
+            req_key = (req.tipo_attrezzatura or "").strip().lower()
+            selected = ass_by_type.get(req_key, 0)
+            if selected < req.quantita:
+                missing_types.append(req.tipo_attrezzatura)
+
+        if missing_types:
+            alerts.append(
+                {
+                    "trip_id": viaggio.id,
+                    "trip_code": viaggio.codice_viaggio,
+                    "missing_types": missing_types,
+                    "message": "Attrezzatura mancante",
+                }
+            )
+    return alerts
 
 
 @router.get("/manager/trasporti", response_class=HTMLResponse, name="manager_trasporti_dashboard")
@@ -80,36 +112,45 @@ def manager_trasporti_dashboard(
             query = query.filter(TrasportoViaggio.data_partenza == selected_data)
         return query
 
+    base_query = db.query(TrasportoViaggio).options(
+        joinedload(TrasportoViaggio.autista),
+        joinedload(TrasportoViaggio.mezzo),
+        joinedload(TrasportoViaggio.richieste_attrezzature),
+        joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+    )
+
     future_trips = (
-        _apply_filters(
-            db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.autista), joinedload(TrasportoViaggio.mezzo))
-        .filter(TrasportoViaggio.data_partenza >= today)
-        )
+        _apply_filters(base_query.filter(TrasportoViaggio.data_partenza >= today))
         .order_by(TrasportoViaggio.data_partenza.asc())
         .all()
     )
     active_trips = (
         _apply_filters(
-            db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.autista), joinedload(TrasportoViaggio.mezzo))
-        .filter(TrasportoViaggio.stato.in_([TrasportoStatoEnum.in_carico, TrasportoStatoEnum.in_viaggio, TrasportoStatoEnum.arrivato]))
+            base_query.filter(
+                TrasportoViaggio.stato.in_(
+                    [TrasportoStatoEnum.in_carico, TrasportoStatoEnum.in_viaggio, TrasportoStatoEnum.arrivato]
+                )
+            )
         )
         .order_by(TrasportoViaggio.data_partenza.desc())
         .all()
     )
     completed_trips = (
-        _apply_filters(
-            db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.autista), joinedload(TrasportoViaggio.mezzo))
-        .filter(TrasportoViaggio.stato == TrasportoStatoEnum.completato)
-        )
+        _apply_filters(base_query.filter(TrasportoViaggio.stato == TrasportoStatoEnum.completato))
         .order_by(TrasportoViaggio.data_partenza.desc())
         .limit(20)
         .all()
     )
     autisti = db.query(User).filter(User.role == RoleEnum.driver).order_by(User.full_name, User.email).all()
     mezzi = db.query(Veicolo).filter(Veicolo.visibile_trasporti.is_(True)).order_by(Veicolo.marca, Veicolo.modello).all()
+    equipment_alerts = _trip_missing_equipment_alerts(future_trips + active_trips)
+    logistics_overview = {
+        "trucks_in_travel": sum(1 for trip in active_trips if trip.stato == TrasportoStatoEnum.in_viaggio),
+        "equipment_moving": db.query(func.count(Attrezzatura.id)).filter(Attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto).scalar()
+        or 0,
+        "active_trips": len(active_trips),
+        "alerts": len(equipment_alerts),
+    }
     return render_template(
         templates,
         request,
@@ -121,6 +162,8 @@ def manager_trasporti_dashboard(
             "autisti": autisti,
             "mezzi": mezzi,
             "stati": list(TrasportoStatoEnum),
+            "equipment_alerts": equipment_alerts,
+            "logistics_overview": logistics_overview,
             "filters": {
                 "autista_id": autista_id,
                 "mezzo_id": mezzo_id,
@@ -129,6 +172,177 @@ def manager_trasporti_dashboard(
                 "data": data or "",
             },
         },
+        db,
+        current_user,
+    )
+
+
+@router.get("/manager/trasporti/planner", response_class=HTMLResponse, name="manager_trasporti_planner")
+def manager_trasporti_planner(
+    request: Request,
+    week_start: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    if week_start:
+        start = datetime.strptime(week_start, "%Y-%m-%d").date()
+    else:
+        today = date.today()
+        start = today - timedelta(days=today.weekday())
+    week_dates = [start + timedelta(days=i) for i in range(7)]
+
+    mezzi = db.query(Veicolo).filter(Veicolo.visibile_trasporti.is_(True)).order_by(Veicolo.marca, Veicolo.modello).all()
+    viaggi = (
+        db.query(TrasportoViaggio)
+        .filter(TrasportoViaggio.data_partenza >= week_dates[0], TrasportoViaggio.data_partenza <= week_dates[-1])
+        .order_by(TrasportoViaggio.data_partenza.asc())
+        .all()
+    )
+    trips_by_mezzo_date: dict[tuple[int, date], list[TrasportoViaggio]] = {}
+    unassigned_by_date: dict[date, list[TrasportoViaggio]] = {d: [] for d in week_dates}
+    for trip in viaggi:
+        if trip.mezzo_id:
+            key = (trip.mezzo_id, trip.data_partenza)
+            trips_by_mezzo_date.setdefault(key, []).append(trip)
+        else:
+            unassigned_by_date.setdefault(trip.data_partenza, []).append(trip)
+
+    return render_template(
+        templates,
+        request,
+        "manager/trasporti/planner.html",
+        {
+            "mezzi": mezzi,
+            "week_dates": week_dates,
+            "weekday_labels": WEEKDAY_LABELS,
+            "trips_by_mezzo_date": trips_by_mezzo_date,
+            "unassigned_by_date": unassigned_by_date,
+            "prev_week": (start - timedelta(days=7)).isoformat(),
+            "next_week": (start + timedelta(days=7)).isoformat(),
+        },
+        db,
+        current_user,
+    )
+
+
+@router.post("/manager/trasporti/viaggi/{viaggio_id}/sposta-data", name="manager_trasporti_viaggi_move_date")
+def manager_trasporti_viaggi_move_date(
+    viaggio_id: int,
+    request: Request,
+    target_date: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).first()
+    if viaggio:
+        viaggio.data_partenza = datetime.strptime(target_date, "%Y-%m-%d").date()
+        db.commit()
+    redirect_week = request.query_params.get("week_start") or target_date
+    return RedirectResponse(url=f"{request.url_for('manager_trasporti_planner')}?week_start={redirect_week}", status_code=303)
+
+
+@router.get("/manager/trasporti/mappa", response_class=HTMLResponse, name="manager_trasporti_mappa")
+def manager_trasporti_mappa(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    sites = (
+        db.query(Site)
+        .filter(Site.lat.isnot(None), Site.lng.isnot(None), Site.is_active.is_(True))
+        .order_by(Site.name.asc())
+        .all()
+    )
+    site_map = {s.name.strip().lower(): s for s in sites if s.name}
+
+    trucks_in_travel = (
+        db.query(TrasportoViaggio)
+        .options(joinedload(TrasportoViaggio.mezzo), joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura))
+        .filter(TrasportoViaggio.stato == TrasportoStatoEnum.in_viaggio)
+        .all()
+    )
+
+    truck_markers = []
+    equipment_markers = []
+    for trip in trucks_in_travel:
+        origin_site = site_map.get((trip.origine or "").strip().lower())
+        dest_site = site_map.get((trip.destinazione or "").strip().lower())
+        if origin_site and dest_site:
+            lat = (origin_site.lat + dest_site.lat) / 2
+            lng = (origin_site.lng + dest_site.lng) / 2
+        elif dest_site:
+            lat, lng = dest_site.lat, dest_site.lng
+        elif origin_site:
+            lat, lng = origin_site.lat, origin_site.lng
+        else:
+            continue
+        truck_markers.append(
+            {
+                "lat": float(lat),
+                "lng": float(lng),
+                "label": f"{trip.codice_viaggio} - {(trip.mezzo.targa if trip.mezzo else 'Senza mezzo')}",
+                "detail_url": str(request.url_for("manager_trasporti_viaggi_detail", viaggio_id=trip.id)),
+            }
+        )
+        for ass in trip.assegnazioni_attrezzature:
+            equipment_markers.append(
+                {
+                    "lat": float(lat),
+                    "lng": float(lng),
+                    "label": f"{ass.attrezzatura.codice} ({ass.attrezzatura.tipo}) su {trip.codice_viaggio}",
+                    "detail_url": str(request.url_for("manager_trasporti_viaggi_detail", viaggio_id=trip.id)),
+                }
+            )
+
+    site_markers = [
+        {
+            "lat": float(s.lat),
+            "lng": float(s.lng),
+            "label": s.name,
+            "detail_url": str(request.url_for("manager_site_detail", site_id=s.id)),
+        }
+        for s in sites
+    ]
+
+    return render_template(
+        templates,
+        request,
+        "manager/trasporti/mappa.html",
+        {"site_markers": site_markers, "truck_markers": truck_markers, "equipment_markers": equipment_markers},
+        db,
+        current_user,
+    )
+
+
+@router.get(
+    "/manager/trasporti/attrezzature-in-viaggio",
+    response_class=HTMLResponse,
+    name="manager_trasporti_attrezzature_in_viaggio",
+)
+def manager_trasporti_attrezzature_in_viaggio(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    assignments = (
+        db.query(TrasportoAttrezzaturaViaggio)
+        .options(
+            joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+            joinedload(TrasportoAttrezzaturaViaggio.viaggio).joinedload(TrasportoViaggio.autista),
+        )
+        .join(TrasportoAttrezzaturaViaggio.attrezzatura)
+        .filter(Attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto)
+        .all()
+    )
+    return render_template(
+        templates,
+        request,
+        "manager/trasporti/attrezzature_in_viaggio.html",
+        {"assignments": assignments},
         db,
         current_user,
     )
@@ -149,14 +363,7 @@ def manager_trasporti_viaggi_new(
         .order_by(Veicolo.marca.asc(), Veicolo.modello.asc(), Veicolo.targa.asc())
         .all()
     )
-    return render_template(
-        templates,
-        request,
-        "manager/trasporti/new_trip.html",
-        {"autisti": autisti, "mezzi": mezzi},
-        db,
-        current_user,
-    )
+    return render_template(templates, request, "manager/trasporti/new_trip.html", {"autisti": autisti, "mezzi": mezzi}, db, current_user)
 
 
 @router.post("/manager/trasporti/nuovo", response_class=HTMLResponse)
@@ -196,13 +403,7 @@ def manager_trasporti_viaggi_create(
             continue
         q_raw = quantita[idx] if idx < len(quantita) else "1"
         q = max(1, int(q_raw or 1))
-        db.add(
-            TrasportoRichiestaAttrezzatura(
-                viaggio_id=viaggio.id,
-                tipo_attrezzatura=tipo_clean,
-                quantita=q,
-            )
-        )
+        db.add(TrasportoRichiestaAttrezzatura(viaggio_id=viaggio.id, tipo_attrezzatura=tipo_clean, quantita=q))
 
     db.commit()
     return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
@@ -231,21 +432,36 @@ def manager_trasporti_viaggi_detail(
     if not viaggio:
         return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
 
+    assigned_counts: dict[str, list[str]] = {}
+    for ass in viaggio.assegnazioni_attrezzature:
+        key = (ass.attrezzatura.tipo or "").strip().lower()
+        assigned_counts.setdefault(key, []).append(ass.attrezzatura.codice)
+
+    equipment_panel = []
+    for req in viaggio.richieste_attrezzature:
+        key = (req.tipo_attrezzatura or "").strip().lower()
+        codes = assigned_counts.get(key, [])
+        for idx in range(req.quantita):
+            selected_code = codes[idx] if idx < len(codes) else None
+            equipment_panel.append(
+                {
+                    "tipo": req.tipo_attrezzatura,
+                    "selected_code": selected_code,
+                    "ok": bool(selected_code),
+                }
+            )
+
     return render_template(
         templates,
         request,
         "manager/trasporti/trip_detail.html",
-        {"viaggio": viaggio, "autisti": autisti},
+        {"viaggio": viaggio, "autisti": autisti, "equipment_panel": equipment_panel},
         db,
         current_user,
     )
 
 
-@router.post(
-    "/manager/trasporti/viaggi/{viaggio_id}/autista",
-    response_class=HTMLResponse,
-    name="manager_trasporti_viaggi_autista_update",
-)
+@router.post("/manager/trasporti/viaggi/{viaggio_id}/autista", response_class=HTMLResponse, name="manager_trasporti_viaggi_autista_update")
 def manager_trasporti_viaggi_autista_update(
     viaggio_id: int,
     request: Request,
@@ -261,11 +477,7 @@ def manager_trasporti_viaggi_autista_update(
     if autista_id is None:
         viaggio.autista_id = None
     else:
-        autista = (
-            db.query(User)
-            .filter(User.id == autista_id, User.role == RoleEnum.driver, User.is_active.is_(True))
-            .first()
-        )
+        autista = db.query(User).filter(User.id == autista_id, User.role == RoleEnum.driver, User.is_active.is_(True)).first()
         if not autista:
             raise HTTPException(status_code=400, detail="Autista non valido")
         viaggio.autista_id = autista.id
@@ -291,14 +503,6 @@ def driver_trasporti_viaggi(
 
     viaggi_disponibili = (
         db.query(TrasportoViaggio)
-        .options(
-            joinedload(TrasportoViaggio.mezzo),
-            joinedload(TrasportoViaggio.richieste_attrezzature),
-        )
-        .filter(
-            TrasportoViaggio.autista_id.is_(None),
-            TrasportoViaggio.stato == TrasportoStatoEnum.programmato,
-        )
         .order_by(TrasportoViaggio.data_partenza.asc())
         .all()
     )
@@ -306,49 +510,69 @@ def driver_trasporti_viaggi(
         templates,
         request,
         "driver/trasporti/assigned_trips.html",
-{
-    "viaggi_assegnati": viaggi_assegnati,
-    "viaggi_disponibili": viaggi_disponibili
-},
+        {"viaggi_assegnati": viaggi_assegnati, "viaggi_disponibili": viaggi_disponibili},
         db,
         current_user,
     )
 
 
-@router.post(
-    "/driver/trasporti/viaggi/{viaggio_id}/prendi",
-    response_class=HTMLResponse,
-    name="driver_trasporti_viaggi_prendi",
-)
+@router.get("/driver/trasporti/oggi", response_class=HTMLResponse, name="driver_trasporti_oggi")
+def driver_trasporti_oggi(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_driver(current_user)
+    today = date.today()
+    viaggio = (
+        db.query(TrasportoViaggio)
+        .options(
+            joinedload(TrasportoViaggio.mezzo),
+            joinedload(TrasportoViaggio.richieste_attrezzature),
+            joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+        )
+        .filter(TrasportoViaggio.autista_id == current_user.id, TrasportoViaggio.data_partenza == today)
+        .order_by(TrasportoViaggio.id.desc())
+        .first()
+    )
+    richieste = []
+    if viaggio:
+        for req in viaggio.richieste_attrezzature:
+            disponibili = (
+                db.query(Attrezzatura)
+                .filter(Attrezzatura.tipo == req.tipo_attrezzatura, Attrezzatura.stato == AttrezzaturaStatoEnum.disponibile)
+                .order_by(Attrezzatura.codice.asc())
+                .all()
+            )
+            richieste.append((req, disponibili))
+
+    return render_template(
+        templates,
+        request,
+        "driver/trasporti/oggi.html",
+        {"viaggio": viaggio, "richieste_disponibili": richieste},
+        db,
+        current_user,
+    )
+
+
+@router.post("/driver/trasporti/viaggi/{viaggio_id}/prendi", response_class=HTMLResponse, name="driver_trasporti_viaggi_prendi")
 def driver_trasporti_viaggi_prendi(
     viaggio_id: int,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-
     _ensure_driver(current_user)
 
-    viaggio = (
-        db.query(TrasportoViaggio)
-        .filter(TrasportoViaggio.id == viaggio_id)
-        .first()
-    )
-
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).first()
     if not viaggio:
-        return RedirectResponse(
-            url=request.url_for("driver_trasporti_viaggi"),
-            status_code=303,
-        )
+        return RedirectResponse(url=request.url_for("driver_trasporti_viaggi"), status_code=303)
 
     if viaggio.autista_id is None:
         viaggio.autista_id = current_user.id
         db.commit()
 
-    return RedirectResponse(
-        url=request.url_for("driver_trasporti_viaggi"),
-        status_code=303,
-    )
     return RedirectResponse(url=request.url_for("driver_trasporti_viaggi"), status_code=303)
 
 
@@ -428,13 +652,8 @@ async def driver_trasporti_viaggi_carico(
                 .first()
             )
             if attrezzatura:
-                db.add(
-                    TrasportoAttrezzaturaViaggio(
-                        viaggio_id=viaggio.id,
-                        attrezzatura_id=attrezzatura.id,
-                        caricato=True,
-                    )
-                )
+                attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
+                db.add(TrasportoAttrezzaturaViaggio(viaggio_id=viaggio.id, attrezzatura_id=attrezzatura.id, caricato=True))
 
     viaggio.stato = TrasportoStatoEnum.in_carico
     db.commit()
@@ -505,11 +724,4 @@ def manager_trasporti_movimenti(
         .limit(200)
         .all()
     )
-    return render_template(
-        templates,
-        request,
-        "manager/trasporti/movimenti.html",
-        {"movimenti": movimenti},
-        db,
-        current_user,
-    )
+    return render_template(templates, request, "manager/trasporti/movimenti.html", {"movimenti": movimenti}, db, current_user)

@@ -1,0 +1,31 @@
+{% extends "shared/base.html" %}
+{% block title %}Trasporti Oggi{% endblock %}
+{% block content %}
+<div class="page-header"><div class="page-header-main"><h1 class="page-title">VIAGGIO OGGI</h1></div></div>
+{% if not viaggio %}
+<div class="card card-body"><p>Nessun viaggio assegnato per oggi.</p></div>
+{% else %}
+<div class="card card-body" style="max-width:640px;margin:auto;">
+  <p style="font-size:1.2rem;font-weight:700;">{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim) if viaggio.mezzo else 'Camion non assegnato' }}</p>
+  <p style="font-size:1.2rem;">{{ viaggio.origine }} → {{ viaggio.destinazione }}</p>
+  <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
+    <h3>Materiale da caricare</h3>
+    {% for req, disponibili in richieste_disponibili %}
+      {% for idx in range(req.quantita) %}
+      <div style="border:1px solid #d9d9d9;border-radius:12px;padding:0.8rem;margin-bottom:0.7rem;">
+        <button class="btn btn-secondary" type="button" onclick="togglePicker('pick_{{ req.id }}_{{ idx }}')" style="width:100%;font-size:1.1rem;">☐ {{ req.tipo_attrezzatura|capitalize }} {{ idx + 1 }}</button>
+        <div id="pick_{{ req.id }}_{{ idx }}" style="display:none;margin-top:.5rem;">
+          <select name="req_{{ req.id }}_{{ idx }}" style="width:100%;font-size:1.1rem;padding:0.8rem;">
+            <option value="">Seleziona</option>
+            {% for a in disponibili %}<option value="{{ a.id }}">{{ a.codice }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      {% endfor %}
+    {% endfor %}
+    <button class="btn btn-primary" style="width:100%;font-size:1.25rem;padding:1rem;" type="submit">Conferma carico</button>
+  </form>
+</div>
+<script>function togglePicker(id){const el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}</script>
+{% endif %}
+{% endblock %}

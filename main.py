@@ -48,6 +48,12 @@ from models import (
     Veicolo,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
+    TrasportoViaggio,
+    TrasportoRichiestaAttrezzatura,
+    TrasportoStatoEnum,
+    Attrezzatura,
+    AttrezzaturaStatoEnum,
+    TrasportoAttrezzaturaViaggio,
 )
 from routers import users, sites, machines, reports, fiches, notifications
 from routes import manager_personale, manager_veicoli, manager_depositi, magazzino, ordini, audit, reportistica, backup, trasporti
@@ -792,6 +798,34 @@ def manager_dashboard(
             "manager_dashboard kpi_counts duration_ms=%.2f",
             (time.monotonic() - query_started) * 1000,
         )
+
+        logistics_active_trips = (
+            db.query(func.count(TrasportoViaggio.id))
+            .filter(
+                TrasportoViaggio.stato.in_(
+                    [TrasportoStatoEnum.in_carico, TrasportoStatoEnum.in_viaggio, TrasportoStatoEnum.arrivato]
+                )
+            )
+            .scalar()
+            or 0
+        )
+        logistics_trucks_in_travel = (
+            db.query(func.count(TrasportoViaggio.id)).filter(TrasportoViaggio.stato == TrasportoStatoEnum.in_viaggio).scalar() or 0
+        )
+        logistics_equipment_moving = (
+            db.query(func.count(Attrezzatura.id)).filter(Attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto).scalar() or 0
+        )
+        logistics_alerts = (
+            db.query(func.count(TrasportoViaggio.id))
+            .join(TrasportoRichiestaAttrezzatura, TrasportoRichiestaAttrezzatura.viaggio_id == TrasportoViaggio.id)
+            .outerjoin(
+                TrasportoAttrezzaturaViaggio,
+                TrasportoAttrezzaturaViaggio.viaggio_id == TrasportoViaggio.id,
+            )
+            .group_by(TrasportoViaggio.id)
+            .having(func.count(TrasportoAttrezzaturaViaggio.id) < func.sum(TrasportoRichiestaAttrezzatura.quantita))
+            .count()
+        )
         response = render_template(
             templates,
             request,
@@ -809,6 +843,12 @@ def manager_dashboard(
                 "cantieri_map_data": jsonable_encoder(sites_map_data),
                 "detail_url_template": detail_url_template,
                 "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
+                "logistics_overview": {
+                    "trucks_in_travel": logistics_trucks_in_travel,
+                    "equipment_moving": logistics_equipment_moving,
+                    "active_trips": logistics_active_trips,
+                    "alerts": logistics_alerts,
+                },
             },
             db,
             current_user,
