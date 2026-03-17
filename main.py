@@ -20,7 +20,7 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import joinedload, load_only, Session
 from sqlmodel import SQLModel
 
-from database import Base, engine, SessionLocal, get_db
+from database import Base, engine, SessionLocal, get_db, upgrade_db_schema
 from auth import (
     router as auth_router,
     hash_password,
@@ -96,6 +96,7 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
 # Crea tutte le tabelle definite in models.py
 Base.metadata.create_all(bind=engine)
 SQLModel.metadata.create_all(bind=engine)
+upgrade_db_schema()
 
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
