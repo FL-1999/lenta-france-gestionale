@@ -72,7 +72,7 @@ from permissions import has_perm
 from notifications import notify_site_status_change
 from audit_utils import log_audit_event
 from logging_config import configure_logging
-from db_upgrade import upgrade_db
+from db_upgrade import check_db_schema, upgrade_db
 
 
 configure_logging()
@@ -100,6 +100,8 @@ SQLModel.metadata.create_all(bind=engine)
 
 upgrade_db(engine)
 
+if os.getenv("DEBUG_DB_SCHEMA_CHECK", "0") == "1":
+    check_db_schema(engine)
 
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
