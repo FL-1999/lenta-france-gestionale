@@ -500,10 +500,9 @@ def driver_trasporti_viaggi(
         .order_by(TrasportoViaggio.data_partenza.desc())
         .all()
     )
+
     viaggi_disponibili = (
         db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.mezzo), joinedload(TrasportoViaggio.richieste_attrezzature))
-        .filter(TrasportoViaggio.autista_id.is_(None), TrasportoViaggio.stato == TrasportoStatoEnum.programmato)
         .order_by(TrasportoViaggio.data_partenza.asc())
         .all()
     )
