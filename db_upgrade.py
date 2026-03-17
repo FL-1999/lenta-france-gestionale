@@ -34,3 +34,4 @@ def upgrade_db(engine: Engine) -> None:
     safe_add_column(engine, "veicoli", "assicurazione_scadenza DATE")
     safe_add_column(engine, "veicoli", "revisione_scadenza DATE")
     safe_add_column(engine, "veicoli", "visibile_trasporti BOOLEAN DEFAULT 1")
+safe_add_column(engine, "veicoli", "assegnato_a_id INTEGER")
