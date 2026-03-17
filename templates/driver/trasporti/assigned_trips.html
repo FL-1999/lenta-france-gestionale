@@ -1,141 +1,63 @@
 {% extends "shared/base.html" %}
-
 {% block title %}I miei viaggi{% endblock %}
-
 {% block content %}
-
-<meta http-equiv="refresh" content="10">
-
 <div class="page-header">
     <h1 class="page-title">🚚 I miei viaggi</h1>
     <a class="btn btn-primary" href="{{ url_for('driver_trasporti_oggi') }}">Modalità oggi</a>
 </div>
 
-
-<!-- VIAGGI ASSEGNATI -->
-
 <div class="card table-card" style="margin-bottom:1rem;">
 <div class="card-body">
-
 <h3 style="margin-top:0;">Viaggi assegnati</h3>
-
-<table class="data-table">
-<thead>
-<tr>
-<th>Codice</th>
-<th>Tratta</th>
-<th>Data</th>
-<th>Stato</th>
-</tr>
-</thead>
-
-<tbody>
-
 {% for v in viaggi_assegnati %}
-
-<tr>
-
-<td>
-<a href="{{ url_for('driver_trasporti_viaggi_detail', viaggio_id=v.id) }}">
-<strong>{{ v.codice_viaggio }}</strong>
-</a>
-</td>
-
-<td>
-{{ v.origine }} → {{ v.destinazione }}
-</td>
-
-<td>
-{{ v.data_partenza }}
-</td>
-
-<td>
-{{ v.stato.value }}
-</td>
-
-</tr>
-
+  <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:0.75rem;">
+    <p><a href="{{ url_for('driver_trasporti_viaggi_detail', viaggio_id=v.id) }}"><strong>{{ v.codice_viaggio }}</strong></a> · {{ v.data_partenza }} · {{ v.stato.value }}</p>
+    <p>{{ v.origine }} → {{ v.destinazione }}</p>
+    {% for tappa in v.tappe %}
+      <div style="margin-left:1rem;">
+        <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione }}</strong>
+        <ul>
+          {% for req in v.richieste_attrezzature if req.tappa_id == tappa.id %}
+            <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>
+          {% else %}
+            <li>Nessun materiale richiesto</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </div>
 {% else %}
-
-<tr>
-<td colspan="4">Nessun viaggio assegnato</td>
-</tr>
-
+<p>Nessun viaggio assegnato</p>
 {% endfor %}
-
-</tbody>
-</table>
-
 </div>
 </div>
-
-
-
-<!-- VIAGGI DISPONIBILI -->
 
 <div class="card table-card">
-
 <div class="card-body">
-
 <h3 style="margin-top:0;">Viaggi disponibili</h3>
-
-<table class="data-table">
-
-<thead>
-<tr>
-<th>Codice</th>
-<th>Tratta</th>
-<th>Data</th>
-<th>Azione</th>
-</tr>
-</thead>
-
-<tbody>
-
 {% for v in viaggi_disponibili %}
-
-<tr>
-
-<td>
-<strong>{{ v.codice_viaggio }}</strong>
-</td>
-
-<td>
-{{ v.origine }} → {{ v.destinazione }}
-</td>
-
-<td>
-{{ v.data_partenza }}
-</td>
-
-<td>
-
-<form method="post"
-action="{{ url_for('driver_trasporti_viaggi_prendi', viaggio_id=v.id) }}">
-
-<button type="submit" class="btn btn-primary">
-Prendi viaggio
-</button>
-
-</form>
-
-</td>
-
-</tr>
-
+  <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:0.75rem;">
+    <p><strong>{{ v.codice_viaggio }}</strong> · {{ v.data_partenza }}</p>
+    <p>{{ v.origine }} → {{ v.destinazione }}</p>
+    {% for tappa in v.tappe %}
+      <div style="margin-left:1rem;">
+        <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione }}</strong>
+        <ul>
+          {% for req in v.richieste_attrezzature if req.tappa_id == tappa.id %}
+            <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>
+          {% else %}
+            <li>Nessun materiale richiesto</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+    <form method="post" action="{{ url_for('driver_trasporti_viaggi_prendi', viaggio_id=v.id) }}">
+      <button type="submit" class="btn btn-primary">Prendi viaggio</button>
+    </form>
+  </div>
 {% else %}
-
-<tr>
-<td colspan="4">Nessun viaggio disponibile</td>
-</tr>
-
+<p>Nessun viaggio disponibile</p>
 {% endfor %}
-
-</tbody>
-
-</table>
-
 </div>
 </div>
-
 {% endblock %}

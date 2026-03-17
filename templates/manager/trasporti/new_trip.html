@@ -1,7 +1,7 @@
 {% extends "shared/base.html" %}
 {% block title %}Nuovo viaggio{% endblock %}
 {% block content %}
-<div class="page-header"><h1 class="page-title">🧭 Nuovo viaggio</h1></div>
+<div class="page-header"><h1 class="page-title">🧭 Nuovo viaggio multi-tappa</h1></div>
 <form method="post" class="card card-body" action="{{ url_for('manager_trasporti_viaggi_create') }}">
   <label>Codice viaggio</label><input name="codice_viaggio" required placeholder="TR-0021" />
   <label>Data partenza</label><input type="date" name="data_partenza" required />
@@ -11,13 +11,26 @@
   <label>Mezzo</label>
   <select name="mezzo_id"><option value="">--</option>{% for m in mezzi %}<option value="{{ m.id }}">{{ m.marca }} {{ m.modello }} ({{ m.targa }})</option>{% endfor %}</select>
   <label>Origine</label><input name="origine" required />
-  <label>Destinazione</label><input name="destinazione" required />
+  <label>Destinazione principale</label><input name="destinazione" required />
 
-  <h3>Richiesta attrezzature (tipo + quantità)</h3>
-  <div class="grid grid-cols-2" style="display:grid;grid-template-columns:1fr 120px;gap:0.5rem;">
-    <input name="tipo_attrezzatura" placeholder="pompa" /> <input type="number" min="1" value="1" name="quantita" />
-    <input name="tipo_attrezzatura" placeholder="generatore" /> <input type="number" min="1" value="1" name="quantita" />
-    <input name="tipo_attrezzatura" placeholder="tubo" /> <input type="number" min="1" value="1" name="quantita" />
+  <h3>Tappe (una destinazione per riga)</h3>
+  <input name="tappa_destinazione" placeholder="Cantiere Milano" />
+  <input name="tappa_destinazione" placeholder="Cantiere Torino" />
+  <input name="tappa_destinazione" placeholder="Cantiere Lione" />
+
+  <h3>Richiesta attrezzature (tipo + quantità + tappa)</h3>
+  <div style="display:grid;grid-template-columns:1fr 120px 120px;gap:0.5rem;">
+    <input name="tipo_attrezzatura" placeholder="pompa" />
+    <input type="number" min="1" value="1" name="quantita" />
+    <input type="number" min="1" value="1" name="richiesta_tappa_idx" placeholder="Tappa" />
+
+    <input name="tipo_attrezzatura" placeholder="generatore" />
+    <input type="number" min="1" value="1" name="quantita" />
+    <input type="number" min="1" value="1" name="richiesta_tappa_idx" placeholder="Tappa" />
+
+    <input name="tipo_attrezzatura" placeholder="tubo" />
+    <input type="number" min="1" value="1" name="quantita" />
+    <input type="number" min="1" value="1" name="richiesta_tappa_idx" placeholder="Tappa" />
   </div>
   <br>
   <button class="btn btn-primary" type="submit">Salva viaggio</button>
