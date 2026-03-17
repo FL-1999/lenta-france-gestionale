@@ -73,6 +73,7 @@ from notifications import notify_site_status_change
 from audit_utils import log_audit_event
 from logging_config import configure_logging
 from db_upgrade import upgrade_db
+from utils.db_check import check_and_suggest_db_upgrade
 
 
 configure_logging()
@@ -100,6 +101,11 @@ SQLModel.metadata.create_all(bind=engine)
 
 upgrade_db(engine)
 
+AUTO_FIX = os.getenv("DB_AUTO_FIX", "false").lower() == "true"
+RUN_DB_CHECK = os.getenv("RUN_DB_CHECK", "false").lower() == "true"
+
+if RUN_DB_CHECK:
+    check_and_suggest_db_upgrade(engine, Base, auto_fix=AUTO_FIX)
 
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
