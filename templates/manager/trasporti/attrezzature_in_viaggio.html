@@ -1,0 +1,17 @@
+{% extends "shared/base.html" %}
+{% block title %}Attrezzature in viaggio{% endblock %}
+{% block content %}
+<div class="page-header"><div class="page-header-main"><p class="page-eyebrow">Trasporti</p><h1 class="page-title">🧰 Attrezzature in transito</h1></div></div>
+<div class="card table-card"><div class="card-body"><table class="data-table"><thead><tr><th>Attrezzatura</th><th>Viaggio</th><th>Origine</th><th>Destinazione</th><th>Autista</th><th>Status</th></tr></thead><tbody>
+{% for a in assignments %}
+<tr>
+  <td>{{ a.attrezzatura.codice }} · {{ a.attrezzatura.nome }}</td>
+  <td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=a.viaggio.id) }}">{{ a.viaggio.codice_viaggio }}</a></td>
+  <td>{{ a.viaggio.origine }}</td>
+  <td>{{ a.viaggio.destinazione }}</td>
+  <td>{{ a.viaggio.autista.full_name if a.viaggio.autista and a.viaggio.autista.full_name else (a.viaggio.autista.email if a.viaggio.autista else '-') }}</td>
+  <td>{{ a.attrezzatura.stato.value }}</td>
+</tr>
+{% else %}<tr><td colspan="6">Nessuna attrezzatura in trasporto.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

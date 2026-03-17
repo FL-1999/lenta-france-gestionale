@@ -1,0 +1,72 @@
+{% extends "shared/base.html" %}
+{% block title %}Planner Trasporti{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main"><p class="page-eyebrow">Trasporti</p><h1 class="page-title">🗓 Weekly Truck Planner</h1></div>
+  <div class="header-actions">
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}?week_start={{ prev_week }}">← Settimana precedente</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}?week_start={{ next_week }}">Settimana successiva →</a>
+  </div>
+</div>
+
+<div class="card card-body" style="overflow-x:auto;">
+  <table class="data-table" id="planner-table">
+    <thead><tr><th>Camion</th>{% for i in range(7) %}<th>{{ weekday_labels[i] }}<br><small>{{ week_dates[i] }}</small></th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for mezzo in mezzi %}
+      <tr>
+        <td><strong>{{ mezzo.marca }} {{ mezzo.modello }}</strong><br><small>{{ mezzo.targa }}</small></td>
+        {% for d in week_dates %}
+        <td class="planner-day" data-date="{{ d.isoformat() }}">
+          {% for trip in trips_by_mezzo_date.get((mezzo.id, d), []) %}
+          <a draggable="true" class="trip-block stato-{{ trip.stato.value }}" data-trip-id="{{ trip.id }}" href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=trip.id) }}">{{ trip.codice_viaggio }}</a>
+          {% endfor %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      <tr>
+        <td><strong>Senza camion</strong></td>
+        {% for d in week_dates %}
+        <td class="planner-day" data-date="{{ d.isoformat() }}">
+          {% for trip in unassigned_by_date.get(d, []) %}
+          <a draggable="true" class="trip-block stato-{{ trip.stato.value }}" data-trip-id="{{ trip.id }}" href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=trip.id) }}">{{ trip.codice_viaggio }}</a>
+          {% endfor %}
+        </td>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<style>
+.trip-block{display:block;padding:.35rem .5rem;border-radius:8px;margin-bottom:.35rem;color:#fff;font-weight:700;text-decoration:none}
+.stato-programmato{background:#2f80ed}.stato-in_carico{background:#f2a000}.stato-in_viaggio{background:#7b61ff}.stato-arrivato{background:#00a3a3}.stato-completato{background:#2d9d44}
+.planner-day{min-width:140px;vertical-align:top;background:#fafafa}.planner-day.drag-over{outline:2px dashed #2f80ed}
+</style>
+<script>
+let draggedTripId = null;
+for (const block of document.querySelectorAll('.trip-block')) {
+  block.addEventListener('dragstart', (ev) => { draggedTripId = ev.target.dataset.tripId; });
+}
+for (const day of document.querySelectorAll('.planner-day')) {
+  day.addEventListener('dragover', (ev) => { ev.preventDefault(); day.classList.add('drag-over'); });
+  day.addEventListener('dragleave', () => day.classList.remove('drag-over'));
+  day.addEventListener('drop', (ev) => {
+    ev.preventDefault();
+    day.classList.remove('drag-over');
+    if (!draggedTripId) return;
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = `/manager/trasporti/viaggi/${draggedTripId}/sposta-data?week_start={{ week_dates[0].isoformat() }}`;
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'target_date';
+    input.value = day.dataset.date;
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+  });
+}
+</script>
+{% endblock %}
