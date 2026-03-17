@@ -289,19 +289,19 @@ def driver_trasporti_viaggi(
         .all()
     )
 
-viaggi_disponibili = (
-    db.query(TrasportoViaggio)
-    .options(
-        joinedload(TrasportoViaggio.mezzo),
-        joinedload(TrasportoViaggio.richieste_attrezzature),
+    viaggi_disponibili = (
+        db.query(TrasportoViaggio)
+        .options(
+            joinedload(TrasportoViaggio.mezzo),
+            joinedload(TrasportoViaggio.richieste_attrezzature),
+        )
+        .filter(
+            TrasportoViaggio.autista_id.is_(None),
+            TrasportoViaggio.stato == TrasportoStatoEnum.programmato,
+        )
+        .order_by(TrasportoViaggio.data_partenza.asc())
+        .all()
     )
-    .filter(
-        TrasportoViaggio.autista_id.is_(None),
-        TrasportoViaggio.stato == TrasportoStatoEnum.programmato,
-    )
-    .order_by(TrasportoViaggio.data_partenza.asc())
-    .all()
-)
     return render_template(
         templates,
         request,
