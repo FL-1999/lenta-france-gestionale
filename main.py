@@ -72,6 +72,7 @@ from permissions import has_perm
 from notifications import notify_site_status_change
 from audit_utils import log_audit_event
 from logging_config import configure_logging
+from db_upgrade import upgrade_db
 
 
 configure_logging()
@@ -96,6 +97,7 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
 # Crea tutte le tabelle definite in models.py
 Base.metadata.create_all(bind=engine)
 SQLModel.metadata.create_all(bind=engine)
+upgrade_db(engine)
 
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
