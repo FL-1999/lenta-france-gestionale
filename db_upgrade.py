@@ -27,11 +27,9 @@ def safe_add_column(engine: Engine, table_name: str, column_definition: str) -> 
 
 
 def upgrade_db(engine: Engine) -> None:
-    """Esegue upgrade incrementale del database SQLite per la tabella veicoli."""
     safe_add_column(engine, "veicoli", "anno INTEGER")
     safe_add_column(engine, "veicoli", "km INTEGER")
     safe_add_column(engine, "veicoli", "carburante TEXT")
     safe_add_column(engine, "veicoli", "assicurazione_scadenza DATE")
     safe_add_column(engine, "veicoli", "revisione_scadenza DATE")
-    safe_add_column(engine, "veicoli", "visibile_trasporti BOOLEAN DEFAULT 1")
     safe_add_column(engine, "veicoli", "assegnato_a_id INTEGER")
