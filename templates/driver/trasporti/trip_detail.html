@@ -9,17 +9,16 @@
 </div>
 <div class="card card-body">
   <p><strong>Camion</strong><br>{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
-  <p><strong>Destinazione</strong><br>{{ viaggio.destinazione }}</p>
   <p><strong>Stato</strong><br>{{ viaggio.stato.value }}</p>
 
+  <h3>Materiale da caricare (reale o generico)</h3>
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
-    <h3>Materiale da caricare</h3>
     {% for req, disponibili in richieste_disponibili %}
       {% for idx in range(req.quantita) %}
         <div style="margin-bottom:0.8rem;">
-          <label style="display:block;font-weight:700;">☐ {{ req.tipo_attrezzatura|capitalize }} #{{ idx + 1 }}</label>
+          <label style="display:block;font-weight:700;">☐ {{ req.tipo_attrezzatura|capitalize }} #{{ idx + 1 }} (Tappa {{ req.tappa.ordine if req.tappa else 1 }})</label>
           <select name="req_{{ req.id }}_{{ idx }}" style="width:100%;padding:0.7rem;font-size:1rem;">
-            <option value="">-- seleziona unità --</option>
+            <option value="">-- generico / seleziona dopo --</option>
             {% for a in disponibili %}
               <option value="{{ a.id }}">{{ a.codice }} ({{ a.nome }})</option>
             {% endfor %}
@@ -27,13 +26,34 @@
         </div>
       {% endfor %}
     {% endfor %}
-    <button class="btn btn-primary" style="width:100%;padding:0.9rem;font-size:1.1rem;" type="submit">Conferma carico</button>
+    <button class="btn btn-primary" type="submit">Conferma carico</button>
   </form>
+
+  <h3>Tappe e materiali</h3>
+  {% for tappa in viaggio.tappe %}
+    <div style="border:1px solid #ddd;padding:0.7rem;margin-bottom:0.7rem;">
+      <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione }}</strong>
+      <ul>
+        {% for req in viaggio.richieste_attrezzature if req.tappa_id == tappa.id %}
+          <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>
+        {% else %}
+          <li>Nessun materiale</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+
+  <h3>Scanner QR</h3>
+  <div id="reader" style="width:320px;max-width:100%;"></div>
+  <div id="scan-result" style="margin-top:0.5rem;"></div>
 
   <h3>Assegnato</h3>
   <ul>
     {% for a in viaggio.assegnazioni_attrezzature %}
-      <li>✔ {{ a.attrezzatura.tipo }} {{ a.attrezzatura.codice }}</li>
+      <li>
+        {{ a.attrezzatura.codice }} - {{ a.attrezzatura.qr_code }}
+        {% if a.tappa_destinazione %}(dest: {{ a.tappa_destinazione.destinazione }}){% endif %}
+      </li>
     {% else %}
       <li>Nessuna attrezzatura ancora caricata</li>
     {% endfor %}
@@ -41,15 +61,40 @@
 
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:1rem;">
     <input type="hidden" name="nuovo_stato" value="in_viaggio">
-    <button class="btn btn-secondary" style="width:100%;padding:0.9rem;font-size:1.1rem;" type="submit">In viaggio</button>
+    <button class="btn btn-secondary" type="submit">In viaggio</button>
   </form>
-  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:0.5rem;">
-    <input type="hidden" name="nuovo_stato" value="arrivato">
-    <button class="btn btn-secondary" style="width:100%;padding:0.9rem;font-size:1.1rem;" type="submit">Arrivato</button>
-  </form>
-  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:0.5rem;">
+
+  <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:0.5rem;" onsubmit="return confirm('Hai scaricato tutto? Se premi Annulla seleziona cosa resta sul camion prima di confermare.')">
     <input type="hidden" name="nuovo_stato" value="completato">
-    <button class="btn btn-primary" style="width:100%;padding:1rem;font-size:1.2rem;" type="submit">Completa viaggio</button>
+    <details>
+      <summary>NO: seleziona cosa resta sul camion</summary>
+      {% for a in viaggio.assegnazioni_attrezzature %}
+        <label style="display:block;"><input type="checkbox" name="resta_sul_camion" value="{{ a.attrezzatura.id }}"> {{ a.attrezzatura.codice }}</label>
+      {% endfor %}
+    </details>
+    <button class="btn btn-primary" type="submit">Fine viaggio</button>
   </form>
 </div>
+<script src="https://unpkg.com/html5-qrcode" defer></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const result = document.getElementById('scan-result');
+  function handleCode(code) {
+    fetch(`/qr/${encodeURIComponent(code)}`)
+      .then(r => r.json())
+      .then(() => fetch(`{{ url_for('driver_trasporti_viaggi_scan', viaggio_id=viaggio.id) }}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `qr_code=${encodeURIComponent(code)}`
+      }))
+      .then(r => r.json())
+      .then(data => { result.textContent = `QR ${code}: ${data.action}`; })
+      .catch(() => { result.textContent = `QR ${code}: errore`; });
+  }
+  if (window.Html5Qrcode) {
+    const qr = new Html5Qrcode('reader');
+    qr.start({facingMode:'environment'}, {fps:10, qrbox:220}, (decodedText) => handleCode(decodedText));
+  }
+});
+</script>
 {% endblock %}

@@ -19,6 +19,7 @@ from models import (
     TrasportoAttrezzaturaViaggio,
     TrasportoRichiestaAttrezzatura,
     TrasportoStatoEnum,
+    TrasportoTappa,
     TrasportoViaggio,
     User,
 )
@@ -107,7 +108,8 @@ def manager_trasporti_dashboard(
         if selected_stato:
             query = query.filter(TrasportoViaggio.stato == selected_stato)
         if destinazione:
-            query = query.filter(TrasportoViaggio.destinazione.ilike(f"%{destinazione.strip()}%"))
+            pattern = f"%{destinazione.strip()}%"
+            query = query.filter((TrasportoViaggio.destinazione.ilike(pattern)) | (TrasportoViaggio.tappe.any(TrasportoTappa.destinazione.ilike(pattern))))
         if selected_data:
             query = query.filter(TrasportoViaggio.data_partenza == selected_data)
         return query
@@ -115,7 +117,8 @@ def manager_trasporti_dashboard(
     base_query = db.query(TrasportoViaggio).options(
         joinedload(TrasportoViaggio.autista),
         joinedload(TrasportoViaggio.mezzo),
-        joinedload(TrasportoViaggio.richieste_attrezzature),
+        joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
+        joinedload(TrasportoViaggio.tappe),
         joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
     )
 
@@ -377,8 +380,10 @@ def manager_trasporti_viaggi_create(
     mezzo_id: int | None = Form(None),
     origine: str = Form(...),
     destinazione: str = Form(...),
+    tappa_destinazione: list[str] = Form(default=[]),
     tipo_attrezzatura: list[str] = Form(default=[]),
     quantita: list[str] = Form(default=[]),
+    richiesta_tappa_idx: list[str] = Form(default=[]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -397,13 +402,34 @@ def manager_trasporti_viaggi_create(
     db.add(viaggio)
     db.flush()
 
+    tappe_clean = [t.strip() for t in tappa_destinazione if (t or "").strip()]
+    if not tappe_clean:
+        tappe_clean = [destinazione.strip()]
+
+    tappe: list[TrasportoTappa] = []
+    for idx, dest in enumerate(tappe_clean, start=1):
+        tappa = TrasportoTappa(viaggio_id=viaggio.id, ordine=idx, destinazione=dest)
+        db.add(tappa)
+        tappe.append(tappa)
+    db.flush()
+
     for idx, tipo in enumerate(tipo_attrezzatura):
         tipo_clean = (tipo or "").strip().lower()
         if not tipo_clean:
             continue
         q_raw = quantita[idx] if idx < len(quantita) else "1"
         q = max(1, int(q_raw or 1))
-        db.add(TrasportoRichiestaAttrezzatura(viaggio_id=viaggio.id, tipo_attrezzatura=tipo_clean, quantita=q))
+        tappa_idx_raw = richiesta_tappa_idx[idx] if idx < len(richiesta_tappa_idx) else "1"
+        tappa_idx = max(1, int(tappa_idx_raw or 1))
+        tappa = tappe[tappa_idx - 1] if tappa_idx <= len(tappe) else tappe[-1]
+        db.add(
+            TrasportoRichiestaAttrezzatura(
+                viaggio_id=viaggio.id,
+                tappa_id=tappa.id,
+                tipo_attrezzatura=tipo_clean,
+                quantita=q,
+            )
+        )
 
     db.commit()
     return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
@@ -423,8 +449,10 @@ def manager_trasporti_viaggi_detail(
         .options(
             joinedload(TrasportoViaggio.autista),
             joinedload(TrasportoViaggio.mezzo),
-            joinedload(TrasportoViaggio.richieste_attrezzature),
+            joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
+            joinedload(TrasportoViaggio.tappe),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+            joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.tappa_destinazione),
         )
         .filter(TrasportoViaggio.id == viaggio_id)
         .first()
@@ -495,7 +523,7 @@ def driver_trasporti_viaggi(
     _ensure_driver(current_user)
     viaggi_assegnati = (
         db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.mezzo), joinedload(TrasportoViaggio.richieste_attrezzature))
+        .options(joinedload(TrasportoViaggio.mezzo), joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa), joinedload(TrasportoViaggio.tappe))
         .filter(TrasportoViaggio.autista_id == current_user.id)
         .order_by(TrasportoViaggio.data_partenza.desc())
         .all()
@@ -503,6 +531,8 @@ def driver_trasporti_viaggi(
 
     viaggi_disponibili = (
         db.query(TrasportoViaggio)
+        .options(joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa), joinedload(TrasportoViaggio.tappe))
+        .filter(TrasportoViaggio.autista_id.is_(None))
         .order_by(TrasportoViaggio.data_partenza.asc())
         .all()
     )
@@ -528,8 +558,10 @@ def driver_trasporti_oggi(
         db.query(TrasportoViaggio)
         .options(
             joinedload(TrasportoViaggio.mezzo),
-            joinedload(TrasportoViaggio.richieste_attrezzature),
+            joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
+            joinedload(TrasportoViaggio.tappe),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+            joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.tappa_destinazione),
         )
         .filter(TrasportoViaggio.autista_id == current_user.id, TrasportoViaggio.data_partenza == today)
         .order_by(TrasportoViaggio.id.desc())
@@ -588,8 +620,10 @@ def driver_trasporti_viaggi_detail(
         db.query(TrasportoViaggio)
         .options(
             joinedload(TrasportoViaggio.mezzo),
-            joinedload(TrasportoViaggio.richieste_attrezzature),
+            joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
+            joinedload(TrasportoViaggio.tappe),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+            joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.tappa_destinazione),
         )
         .filter(
             TrasportoViaggio.id == viaggio_id,
@@ -640,7 +674,7 @@ async def driver_trasporti_viaggi_carico(
         for idx in range(req.quantita):
             field_name = f"req_{req.id}_{idx}"
             raw_attrezzatura_id = form.get(field_name)
-            if raw_attrezzatura_id is None:
+            if not raw_attrezzatura_id:
                 continue
             attrezzatura = (
                 db.query(Attrezzatura)
@@ -653,11 +687,62 @@ async def driver_trasporti_viaggi_carico(
             )
             if attrezzatura:
                 attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
-                db.add(TrasportoAttrezzaturaViaggio(viaggio_id=viaggio.id, attrezzatura_id=attrezzatura.id, caricato=True))
+                db.add(TrasportoAttrezzaturaViaggio(
+                    viaggio_id=viaggio.id,
+                    attrezzatura_id=attrezzatura.id,
+                    tappa_destinazione_id=req.tappa_id,
+                    caricato=True,
+                ))
 
     viaggio.stato = TrasportoStatoEnum.in_carico
     db.commit()
     return RedirectResponse(url=request.url_for("driver_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
+
+
+@router.post("/driver/trasporti/viaggi/{viaggio_id}/scan", name="driver_trasporti_viaggi_scan")
+def driver_trasporti_viaggi_scan(
+    viaggio_id: int,
+    qr_code: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_driver(current_user)
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id).first()
+    if not viaggio:
+        raise HTTPException(status_code=404, detail="Viaggio non trovato")
+
+    attrezzatura = db.query(Attrezzatura).filter(Attrezzatura.qr_code == qr_code.strip().upper()).first()
+    if not attrezzatura:
+        raise HTTPException(status_code=404, detail="Attrezzatura non trovata")
+
+    assignment = db.query(TrasportoAttrezzaturaViaggio).filter(
+        TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id,
+        TrasportoAttrezzaturaViaggio.attrezzatura_id == attrezzatura.id,
+    ).first()
+
+    action = "none"
+    if attrezzatura.stato == AttrezzaturaStatoEnum.disponibile:
+        if assignment is None:
+            first_tappa = db.query(TrasportoTappa).filter(TrasportoTappa.viaggio_id == viaggio.id).order_by(TrasportoTappa.ordine.asc()).first()
+            assignment = TrasportoAttrezzaturaViaggio(
+                viaggio_id=viaggio.id,
+                attrezzatura_id=attrezzatura.id,
+                tappa_destinazione_id=first_tappa.id if first_tappa else None,
+            )
+            db.add(assignment)
+        assignment.caricato = True
+        assignment.scaricato = False
+        attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
+        action = "caricato"
+    elif assignment and attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto:
+        assignment.scaricato = True
+        attrezzatura.stato = AttrezzaturaStatoEnum.disponibile
+        dest = assignment.tappa_destinazione.destinazione if assignment.tappa_destinazione else viaggio.destinazione
+        attrezzatura.posizione_attuale = dest
+        action = "scaricato"
+
+    db.commit()
+    return {"action": action, "attrezzatura_id": attrezzatura.id, "stato": attrezzatura.stato.value}
 
 
 @router.post("/driver/trasporti/viaggi/{viaggio_id}/stato", response_class=HTMLResponse, name="driver_trasporti_viaggi_stato")
@@ -671,7 +756,10 @@ async def driver_trasporti_viaggi_stato(
     _ensure_driver(current_user)
     viaggio = (
         db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura))
+        .options(
+            joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+            joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.tappa_destinazione),
+        )
         .filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id)
         .first()
     )
@@ -686,17 +774,27 @@ async def driver_trasporti_viaggi_stato(
             ass.attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
 
     if stato == TrasportoStatoEnum.completato:
+        form = await request.form()
+        remaining_ids = {int(v) for v in form.getlist("resta_sul_camion") if str(v).isdigit()}
         now = datetime.utcnow()
         for ass in viaggio.assegnazioni_attrezzature:
             att = ass.attrezzatura
-            att.posizione_attuale = viaggio.destinazione
+            tappa_dest = ass.tappa_destinazione.destinazione if ass.tappa_destinazione else viaggio.destinazione
+            if att.id in remaining_ids:
+                att.posizione_attuale = "camion"
+                ass.scaricato = False
+                movement_dest = "camion"
+            else:
+                att.posizione_attuale = tappa_dest
+                ass.scaricato = True
+                movement_dest = tappa_dest
             att.stato = AttrezzaturaStatoEnum.disponibile
             db.add(
                 MovimentoAttrezzatura(
                     attrezzatura_id=att.id,
                     viaggio_id=viaggio.id,
                     origine=viaggio.origine,
-                    destinazione=viaggio.destinazione,
+                    destinazione=movement_dest,
                     data=now,
                     autista_id=current_user.id,
                 )
@@ -704,6 +802,27 @@ async def driver_trasporti_viaggi_stato(
 
     db.commit()
     return RedirectResponse(url=request.url_for("driver_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
+
+
+@router.get("/qr/{code}", name="trasporti_qr_lookup")
+def trasporti_qr_lookup(
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "trasporti.assigned.read") and not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    attrezzatura = db.query(Attrezzatura).filter(Attrezzatura.qr_code == code.strip().upper()).first()
+    if not attrezzatura:
+        raise HTTPException(status_code=404, detail="Attrezzatura non trovata")
+    return {
+        "id": attrezzatura.id,
+        "codice": attrezzatura.codice,
+        "qr_code": attrezzatura.qr_code,
+        "stato": attrezzatura.stato.value,
+        "posizione_attuale": attrezzatura.posizione_attuale,
+        "tipo": attrezzatura.tipo,
+    }
 
 
 @router.get("/manager/trasporti/movimenti", response_class=HTMLResponse, name="manager_trasporti_movimenti")

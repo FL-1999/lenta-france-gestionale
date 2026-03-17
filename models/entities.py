@@ -739,6 +739,7 @@ class Attrezzatura(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     codice = Column(String(50), nullable=False, unique=True, index=True)
+    qr_code = Column(String(50), nullable=False, unique=True, index=True)
     nome = Column(String(255), nullable=False)
     tipo = Column(String(100), nullable=False, index=True)
     stato = Column(
@@ -779,6 +780,31 @@ class TrasportoViaggio(Base, TimestampMixin):
         back_populates="viaggio",
         cascade="all, delete-orphan",
     )
+    tappe = relationship(
+        "TrasportoTappa",
+        back_populates="viaggio",
+        cascade="all, delete-orphan",
+        order_by="TrasportoTappa.ordine",
+    )
+
+
+class TrasportoTappa(Base):
+    __tablename__ = "trasporto_tappe"
+    __table_args__ = (
+        UniqueConstraint("viaggio_id", "ordine", name="uq_trasporto_tappa_viaggio_ordine"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    viaggio_id = Column(Integer, ForeignKey("trasporti_viaggi.id"), nullable=False, index=True)
+    ordine = Column(Integer, nullable=False, default=1)
+    destinazione = Column(String(255), nullable=False)
+
+    viaggio = relationship("TrasportoViaggio", back_populates="tappe")
+    richieste_attrezzature = relationship(
+        "TrasportoRichiestaAttrezzatura",
+        back_populates="tappa",
+        cascade="all, delete-orphan",
+    )
 
 
 class TrasportoRichiestaAttrezzatura(Base):
@@ -786,10 +812,12 @@ class TrasportoRichiestaAttrezzatura(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     viaggio_id = Column(Integer, ForeignKey("trasporti_viaggi.id"), nullable=False, index=True)
+    tappa_id = Column(Integer, ForeignKey("trasporto_tappe.id"), nullable=True, index=True)
     tipo_attrezzatura = Column(String(100), nullable=False, index=True)
     quantita = Column(Integer, nullable=False, default=1)
 
     viaggio = relationship("TrasportoViaggio", back_populates="richieste_attrezzature")
+    tappa = relationship("TrasportoTappa", back_populates="richieste_attrezzature")
 
 
 class TrasportoAttrezzaturaViaggio(Base):
@@ -801,10 +829,13 @@ class TrasportoAttrezzaturaViaggio(Base):
     id = Column(Integer, primary_key=True, index=True)
     viaggio_id = Column(Integer, ForeignKey("trasporti_viaggi.id"), nullable=False, index=True)
     attrezzatura_id = Column(Integer, ForeignKey("attrezzature.id"), nullable=False, index=True)
+    tappa_destinazione_id = Column(Integer, ForeignKey("trasporto_tappe.id"), nullable=True, index=True)
     caricato = Column(Boolean, nullable=False, default=False)
+    scaricato = Column(Boolean, nullable=False, default=False)
 
     viaggio = relationship("TrasportoViaggio", back_populates="assegnazioni_attrezzature")
     attrezzatura = relationship("Attrezzatura")
+    tappa_destinazione = relationship("TrasportoTappa")
 
 
 class MovimentoAttrezzatura(Base):
