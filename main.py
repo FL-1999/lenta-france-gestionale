@@ -20,7 +20,7 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import joinedload, load_only, Session
 from sqlmodel import SQLModel
 
-from database import Base, engine, SessionLocal, get_db, upgrade_db_schema
+from database import Base, engine, SessionLocal, get_db
 from auth import (
     router as auth_router,
     hash_password,
@@ -96,25 +96,9 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
 # CREAZIONE TABELLE + ADMIN INIZIALE
 # -------------------------------------------------
 
-# Crea tutte le tabelle definite in models.py
-Base.metadata.create_all(bind=engine)
-SQLModel.metadata.create_all(bind=engine)
-
-upgrade_db(engine)
-
-upgrade_db(engine)
-
-# Controllo schema opzionale
-if os.getenv("DEBUG_DB_SCHEMA_CHECK", "0") == "1":
-    check_db_schema(engine)
-
-# Check avanzato + suggerimenti
 AUTO_FIX = os.getenv("DB_AUTO_FIX", "false").lower() == "true"
 RUN_DB_CHECK = os.getenv("RUN_DB_CHECK", "false").lower() == "true"
-
-if RUN_DB_CHECK:
-    check_and_suggest_db_upgrade(engine, Base, auto_fix=AUTO_FIX)
-
+DEBUG_DB_SCHEMA_CHECK = os.getenv("DEBUG_DB_SCHEMA_CHECK", "0") == "1"
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
@@ -166,7 +150,19 @@ def create_initial_admin():
         db.close()
 
 
-create_initial_admin()
+def initialize_application() -> None:
+    """Initialize database schema and bootstrap required data at startup."""
+    Base.metadata.create_all(bind=engine)
+    SQLModel.metadata.create_all(bind=engine)
+    upgrade_db(engine)
+
+    if DEBUG_DB_SCHEMA_CHECK:
+        check_db_schema(engine)
+
+    if RUN_DB_CHECK:
+        check_and_suggest_db_upgrade(engine, Base, auto_fix=AUTO_FIX)
+
+    create_initial_admin()
 
 
 # -------------------------------------------------
@@ -178,6 +174,11 @@ app = FastAPI(
     description="Gestionale cantieri, macchinari, fiches e rapportini.",
     version="1.0.0",
 )
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    initialize_application()
 
 app.add_middleware(
     CORSMiddleware,
