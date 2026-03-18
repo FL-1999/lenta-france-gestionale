@@ -24,9 +24,9 @@
         </h1>
         <p class="page-subtitle">
             {% if lang == 'fr' %}
-                Vue d'ensemble des comptes habilités au gestionnel, avec rôle, langue et statut.
+                Vue d'ensemble des comptes habilités au gestionnel, avec rôles assignés, rôle actif, langue et statut.
             {% else %}
-                Panoramica degli account abilitati al gestionale, con ruolo, lingua e stato.
+                Panoramica degli account abilitati al gestionale, con ruoli assegnati, ruolo attivo, lingua e stato.
             {% endif %}
         </p>
     </div>
@@ -51,8 +51,10 @@
                 <tr>
                     <th>Email</th>
                     <th>{% if lang == 'fr' %}Nom complet{% else %}Nome completo{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Rôles{% else %}Ruoli{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Rôle actif{% else %}Ruolo attivo{% endif %}</th>
                     <th>{% if lang == 'fr' %}Chantier assigné{% else %}Cantiere assegnato{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Switch rôle{% else %}Switch ruolo{% endif %}</th>
                     <th>{% if lang == 'fr' %}Langue{% else %}Lingua{% endif %}</th>
                     <th>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
                     <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
@@ -65,7 +67,8 @@
                 <tr>
                     <td>{{ u.email }}</td>
                     <td>{{ u.full_name or "-" }}</td>
-                    <td>{{ u.role.value if u.role else "-" }}</td>
+                    <td>{{ u.assigned_role_values | join(', ') if u.assigned_role_values else '-' }}</td>
+                    <td>{{ u.role.value if u.role else '-' }}</td>
                     <td>
                         {% if assigned_sites %}
                             {% for site in assigned_sites %}
@@ -83,7 +86,8 @@
                             —
                         {% endif %}
                     </td>
-                    <td>{{ u.language or "-" }}</td>
+                    <td>{{ 'Sì' if u.can_switch_roles else 'No' }}</td>
+                    <td>{{ u.language or '-' }}</td>
                     <td>
                         {% if u.is_active %}
                         <span class="badge badge-success">
@@ -121,7 +125,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="table-empty">
+                    <td colspan="9" class="table-empty">
                         {% if lang == 'fr' %}
                             Aucun utilisateur enregistré pour le moment.
                         {% else %}

@@ -14,7 +14,9 @@ from models import (
     Attrezzatura,
     AttrezzaturaStatoEnum,
     MovimentoAttrezzatura,
+    Role,
     RoleEnum,
+    UserRole,
     Site,
     TrasportoAttrezzaturaViaggio,
     TrasportoRichiestaAttrezzatura,
@@ -144,7 +146,7 @@ def manager_trasporti_dashboard(
         .limit(20)
         .all()
     )
-    autisti = db.query(User).filter(User.role == RoleEnum.driver).order_by(User.full_name, User.email).all()
+    autisti = db.query(User).join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.driver).distinct().order_by(User.full_name, User.email).all()
     mezzi = db.query(Veicolo).filter(Veicolo.visibile_trasporti.is_(True)).order_by(Veicolo.marca, Veicolo.modello).all()
     equipment_alerts = _trip_missing_equipment_alerts(future_trips + active_trips)
     logistics_overview = {
@@ -359,7 +361,7 @@ def manager_trasporti_viaggi_new(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    autisti = db.query(User).filter(User.role == RoleEnum.driver, User.is_active.is_(True)).order_by(User.full_name, User.email).all()
+    autisti = db.query(User).join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.driver, User.is_active.is_(True)).distinct().order_by(User.full_name, User.email).all()
     mezzi = (
         db.query(Veicolo)
         .filter(Veicolo.visibile_trasporti.is_(True))
@@ -443,7 +445,7 @@ def manager_trasporti_viaggi_detail(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    autisti = db.query(User).filter(User.role == RoleEnum.driver, User.is_active.is_(True)).order_by(User.full_name, User.email).all()
+    autisti = db.query(User).join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.driver, User.is_active.is_(True)).distinct().order_by(User.full_name, User.email).all()
     viaggio = (
         db.query(TrasportoViaggio)
         .options(
@@ -505,7 +507,7 @@ def manager_trasporti_viaggi_autista_update(
     if autista_id is None:
         viaggio.autista_id = None
     else:
-        autista = db.query(User).filter(User.id == autista_id, User.role == RoleEnum.driver, User.is_active.is_(True)).first()
+        autista = db.query(User).join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(User.id == autista_id, Role.name == RoleEnum.driver, User.is_active.is_(True)).distinct().first()
         if not autista:
             raise HTTPException(status_code=400, detail="Autista non valido")
         viaggio.autista_id = autista.id

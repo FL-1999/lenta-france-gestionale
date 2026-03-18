@@ -7,6 +7,7 @@ from threading import Lock
 
 from fastapi import Request
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 
 from database import SessionLocal
 from models import (
@@ -18,7 +19,7 @@ from models import (
     User,
 )
 from notifications import get_warehouse_notification_counts
-from permissions import has_perm
+from permissions import get_active_role, get_user_roles, has_perm
 
 
 def _can_view_manager_badges(user: User | None) -> bool:
@@ -72,11 +73,14 @@ _CACHE_TTL_LONG = 600
 
 
 def get_numero_richieste_nuove(db) -> int:
-    richieste_nuove = (
-        db.query(func.count(MagazzinoRichiesta.id))
-        .filter(MagazzinoRichiesta.stato == MagazzinoRichiestaStatusEnum.in_attesa)
-        .scalar()
-    )
+    try:
+        richieste_nuove = (
+            db.query(func.count(MagazzinoRichiesta.id))
+            .filter(MagazzinoRichiesta.stato == MagazzinoRichiestaStatusEnum.in_attesa)
+            .scalar()
+        )
+    except SQLAlchemyError:
+        return 0
     return int(richieste_nuove or 0)
 
 
@@ -224,8 +228,17 @@ def build_template_context(
     template_context.setdefault("has_perm", has_perm)
     template_context.setdefault("lang", get_lang_from_request(request))
 
+    active_role = get_active_role(user)
+    available_roles = list(get_user_roles(user)) if user else []
     is_manager = bool(user and has_perm(user, "manager.access"))
-    is_capo = bool(user and user.role == RoleEnum.caposquadra)
+    is_capo = bool(active_role == RoleEnum.caposquadra)
+    template_context.setdefault("active_role", active_role)
+    template_context.setdefault("available_roles", available_roles)
+    template_context.setdefault("available_role_values", [role.value for role in available_roles])
+    template_context.setdefault(
+        "show_role_switcher",
+        bool(user and getattr(user, "can_switch_roles", False) and len(available_roles) > 1),
+    )
     template_context.setdefault("is_manager", is_manager)
     template_context.setdefault("is_capo", is_capo)
     warehouse_notifications_context = get_warehouse_notifications_context(request, user)
@@ -272,15 +285,18 @@ def manager_badge_counts(request: Request, user: User | None = None) -> dict[str
     db = SessionLocal()
     try:
         pending_requests = get_cached_nuove_richieste_count(request, db)
-        low_stock = (
-            db.query(func.count(MagazzinoItem.id))
-            .filter(
-                MagazzinoItem.attivo.is_(True),
-                MagazzinoItem.soglia_minima.isnot(None),
-                MagazzinoItem.quantita_disponibile <= MagazzinoItem.soglia_minima,
+        try:
+            low_stock = (
+                db.query(func.count(MagazzinoItem.id))
+                .filter(
+                    MagazzinoItem.attivo.is_(True),
+                    MagazzinoItem.soglia_minima.isnot(None),
+                    MagazzinoItem.quantita_disponibile <= MagazzinoItem.soglia_minima,
+                )
+                .scalar()
             )
-            .scalar()
-        )
+        except SQLAlchemyError:
+            low_stock = 0
         counts = {
             "pending_requests": int(pending_requests or 0),
             "nuove_richieste_count": int(pending_requests or 0),

@@ -1,4 +1,4 @@
-{% if has_perm(user, "manager.access") %}
+{% if has_perm(user, "manager.access") and progress_summary is defined %}
 <section class="progress-section" id="progress-section">
   <h2 class="page-title">
     {% if lang == 'fr' %}Avancement chantier{% else %}Avanzamento lavori{% endif %}

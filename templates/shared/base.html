@@ -26,7 +26,8 @@
     {% set current_path = request.url.path %}
     {% set section = request.query_params.get('section') %}
     {% set is_manager = is_manager if is_manager is defined else (user and has_perm(user, 'manager.access')) %}
-    {% set is_capo = is_capo if is_capo is defined else (user and user.role.value == 'caposquadra') %}
+    {% set active_role_value = active_role.value if active_role is defined and active_role else (user.role.value if user and user.role else '') %}
+    {% set is_capo = is_capo if is_capo is defined else (user and active_role_value == 'caposquadra') %}
     {% set can_manage_users = user and has_perm(user, 'users.manage') %}
     {% set can_manage_settings = user and has_perm(user, 'settings.manage') %}
     {% set can_read_users = user and has_perm(user, 'users.read') %}
@@ -35,6 +36,7 @@
     {% set can_access_personale = user and has_perm(user, 'users.read') %}
     {% set can_access_driver_trasporti = user and has_perm(user, 'trasporti.assigned.read') %}
     {% set is_authenticated = user is not none %}
+    {% set can_show_role_switcher = show_role_switcher if show_role_switcher is defined else (user and user.can_switch_roles and (available_roles|default([])|length) > 1) %}
     {% set home_path = "/" %}
     {% if is_manager %}
         {% set home_path = "/manager/dashboard" %}
@@ -158,6 +160,23 @@
                         Home
                     {% endif %}
                 </a>
+
+                {% if can_show_role_switcher %}
+                    <div class="nav-dropdown nav-right__item" data-role-switcher>
+                        <button type="button" class="nav-link nav-dropdown__toggle" data-settings-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                            🔄
+                            {% if lang == 'fr' %}Entrer comme… ▾{% else %}Entra come… ▾{% endif %}
+                        </button>
+                        <div class="nav-dropdown__menu" data-settings-dropdown-menu>
+                            {% for role_item in available_roles %}
+                                {% set role_value = role_item.value if role_item.value is defined else role_item %}
+                                <a href="/switch-role/{{ role_value }}" class="nav-dropdown__item {% if role_value == active_role_value %}is-active{% endif %}">
+                                    {% if lang == 'fr' %}Entrer comme{% else %}Entra come{% endif %} {{ role_value|capitalize }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
 
                 {% if show_magazzino_card %}
                     {% set manager_badges = manager_badge_counts(request, user) %}

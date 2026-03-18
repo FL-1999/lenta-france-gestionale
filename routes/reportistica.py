@@ -18,7 +18,9 @@ from models import (
     FicheTypeEnum,
     Machine,
     Report,
+    Role,
     RoleEnum,
+    UserRole,
     Site,
     User,
 )
@@ -142,7 +144,7 @@ def _build_caposquadra_report(
 ) -> list[dict[str, Any]]:
     capi = (
         db.query(User)
-        .filter(User.role == RoleEnum.caposquadra)
+        .join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.caposquadra).distinct()
         .order_by(User.full_name.asc(), User.email.asc())
         .all()
     )
