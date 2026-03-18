@@ -37,6 +37,18 @@
     {% set can_access_driver_trasporti = user and has_perm(user, 'trasporti.assigned.read') %}
     {% set is_authenticated = user is not none %}
     {% set can_show_role_switcher = show_role_switcher if show_role_switcher is defined else (user and user.can_switch_roles and (available_roles|default([])|length) > 1) %}
+    {% set role_labels = {
+        'admin': 'Admin',
+        'manager': 'Manager',
+        'driver': 'Driver',
+        'caposquadra': 'Caposquadra',
+        'magazzino': 'Magazzino',
+        'contabilita': 'Contabilità',
+        'hr': 'HR'
+    } %}
+    {% set active_role_label = role_labels.get(active_role_value, active_role_value|replace('_', ' ')|title) %}
+    {% set user_display_name = user.full_name if user and user.full_name else (user.email if user else '') %}
+    {% set user_initials = (user_display_name[:2] if user_display_name else 'U')|upper %}
     {% set home_path = "/" %}
     {% if is_manager %}
         {% set home_path = "/manager/dashboard" %}
@@ -127,8 +139,8 @@
                 </div>
 
                 {% if show_settings_dropdown %}
-                    <div class="nav-dropdown nav-right__item" data-settings-dropdown>
-                        <button type="button" class="nav-link nav-dropdown__toggle" data-settings-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                    <div class="nav-dropdown nav-right__item" data-nav-dropdown>
+                        <button type="button" class="nav-link nav-dropdown__toggle" data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
                             ⚙
                             {% if lang == 'fr' %}
                                 Général ▾
@@ -136,7 +148,7 @@
                                 Generali ▾
                             {% endif %}
                         </button>
-                        <div class="nav-dropdown__menu" data-settings-dropdown-menu>
+                        <div class="nav-dropdown__menu" data-nav-dropdown-menu>
                             <a href="{{ audit_path }}" class="nav-dropdown__item">🧾 Audit</a>
                             <a href="/manager/utenti" class="nav-dropdown__item">👤 {% if lang == 'fr' %}Utilisateurs{% else %}Utenti{% endif %}</a>
                             <a href="{{ report_path }}" class="nav-dropdown__item">📊 {% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</a>
@@ -147,7 +159,6 @@
                             {% if show_api_docs %}
                                 <a href="/docs" class="nav-dropdown__item">📘 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
                             {% endif %}
-                            <a href="{{ url_for('logout') }}" class="nav-dropdown__item">🚪 {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
                         </div>
                     </div>
                 {% endif %}
@@ -161,22 +172,40 @@
                     {% endif %}
                 </a>
 
-                {% if can_show_role_switcher %}
-                    <div class="nav-dropdown nav-right__item" data-role-switcher>
-                        <button type="button" class="nav-link nav-dropdown__toggle" data-settings-dropdown-toggle aria-haspopup="true" aria-expanded="false">
-                            🔄
-                            {% if lang == 'fr' %}Entrer comme… ▾{% else %}Entra come… ▾{% endif %}
-                        </button>
-                        <div class="nav-dropdown__menu" data-settings-dropdown-menu>
+
+                <div class="nav-dropdown nav-dropdown--align-right nav-right__item" data-nav-dropdown>
+                    <button type="button" class="nav-link nav-dropdown__toggle nav-profile-toggle" data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                        <span class="nav-profile-toggle__avatar" aria-hidden="true">{{ user_initials }}</span>
+                        <span class="nav-profile-toggle__label">{{ user_display_name }}</span>
+                        <span aria-hidden="true">▾</span>
+                    </button>
+                    <div class="nav-dropdown__menu nav-dropdown__menu--profile" data-nav-dropdown-menu>
+                        <div class="nav-dropdown__section nav-dropdown__section--compact">
+                            <span class="nav-dropdown__label">{% if lang == 'fr' %}Rôle actif{% else %}Ruolo attivo{% endif %}</span>
+                            <span class="nav-dropdown__value">{{ active_role_label }}</span>
+                        </div>
+
+                        {% if can_show_role_switcher %}
+                            <div class="nav-dropdown__divider"></div>
+                            <div class="nav-dropdown__section nav-dropdown__section--compact">
+                                <span class="nav-dropdown__label">{% if lang == 'fr' %}Entrer comme{% else %}Entra come{% endif %}</span>
+                            </div>
                             {% for role_item in available_roles %}
                                 {% set role_value = role_item.value if role_item.value is defined else role_item %}
+                                {% set role_label = role_labels.get(role_value, role_value|replace('_', ' ')|title) %}
                                 <a href="/switch-role/{{ role_value }}" class="nav-dropdown__item {% if role_value == active_role_value %}is-active{% endif %}">
-                                    {% if lang == 'fr' %}Entrer comme{% else %}Entra come{% endif %} {{ role_value|capitalize }}
+                                    <span>{{ role_label }}</span>
+                                    {% if role_value == active_role_value %}
+                                        <span class="nav-dropdown__badge">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
+                                    {% endif %}
                                 </a>
                             {% endfor %}
-                        </div>
+                        {% endif %}
+
+                        <div class="nav-dropdown__divider"></div>
+                        <a href="{{ url_for('logout') }}" class="nav-dropdown__item nav-dropdown__item--danger">🚪 {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
                     </div>
-                {% endif %}
+                </div>
 
                 {% if show_magazzino_card %}
                     {% set manager_badges = manager_badge_counts(request, user) %}
@@ -234,13 +263,6 @@
                     </a>
                 {% endif %}
 
-                {% if show_personale %}
-                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
-                        📅
-                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
-                    </a>
-                {% endif %}
-
                 {% if show_reports %}
                     <a href="{{ report_path }}" class="nav-link nav-right__item">
                         📊
@@ -256,16 +278,7 @@
                         🚚 Trasporti
                     </a>
                 {% endif %}
-                <form method="get" action="{{ url_for('logout') }}" class="nav-logout-form nav-right__item">
-                    <button type="submit" class="nav-link nav-link--button nav-link--logout">
-                        🔓
-                        {% if lang == 'fr' %}
-                            Déconnexion
-                        {% else %}
-                            Logout
-                        {% endif %}
-                    </button>
-                </form>
+
                 <div class="nav-lang-switch nav-right__item">
                     <a href="/set-language/it"
                        class="lang-flag {% if request.cookies.get('lang', 'it') == 'it' %}lang-flag--active{% endif %}">
@@ -349,33 +362,45 @@
     <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260212c"></script>
     <script>
         (() => {
-            const dropdown = document.querySelector('[data-settings-dropdown]');
-            if (!dropdown) return;
-            const toggle = dropdown.querySelector('[data-settings-dropdown-toggle]');
-            const menu = dropdown.querySelector('[data-settings-dropdown-menu]');
-            if (!toggle || !menu) return;
+            const dropdowns = Array.from(document.querySelectorAll('[data-nav-dropdown]'));
+            if (!dropdowns.length) return;
 
-            const close = () => {
+            const closeDropdown = (dropdown) => {
+                const toggle = dropdown.querySelector('[data-nav-dropdown-toggle]');
                 dropdown.classList.remove('is-open');
-                toggle.setAttribute('aria-expanded', 'false');
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
             };
 
-            toggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const isOpen = dropdown.classList.toggle('is-open');
-                toggle.setAttribute('aria-expanded', String(isOpen));
+            dropdowns.forEach((dropdown) => {
+                const toggle = dropdown.querySelector('[data-nav-dropdown-toggle]');
+                const menu = dropdown.querySelector('[data-nav-dropdown-menu]');
+                if (!toggle || !menu) return;
+
+                toggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const willOpen = !dropdown.classList.contains('is-open');
+                    dropdowns.forEach((item) => closeDropdown(item));
+                    if (willOpen) {
+                        dropdown.classList.add('is-open');
+                        toggle.setAttribute('aria-expanded', 'true');
+                    }
+                });
+
+                menu.addEventListener('click', (e) => e.stopPropagation());
             });
 
             document.addEventListener('click', (e) => {
-                if (!dropdown.contains(e.target)) close();
+                dropdowns.forEach((dropdown) => {
+                    if (!dropdown.contains(e.target)) closeDropdown(dropdown);
+                });
             });
 
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') close();
+                if (e.key === 'Escape') {
+                    dropdowns.forEach((dropdown) => closeDropdown(dropdown));
+                }
             });
-
-            menu.addEventListener('click', (e) => e.stopPropagation());
         })();
     </script>
 
