@@ -3515,6 +3515,107 @@ label.form-label[for="profondita_totale"]{
   background: rgba(255,255,255,0.07);
 }
 
+.nav-dropdown__item.is-active {
+  background: rgba(59, 130, 246, 0.14);
+  color: #f8fafc;
+}
+
+.nav-dropdown--align-right .nav-dropdown__menu {
+  left: auto;
+  right: 0;
+}
+
+.nav-dropdown--align-right .nav-dropdown__menu::before {
+  left: auto;
+  right: 18px;
+}
+
+.nav-dropdown__menu--profile {
+  min-width: 260px;
+}
+
+.nav-dropdown__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.nav-dropdown__section--compact {
+  padding-bottom: 6px;
+}
+
+.nav-dropdown__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.92);
+}
+
+.nav-dropdown__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.nav-dropdown__divider {
+  height: 1px;
+  margin: 6px 0;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.nav-dropdown__badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.nav-dropdown__item--danger {
+  color: #fecaca;
+}
+
+.nav-dropdown__item--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fff;
+}
+
+.nav-profile-toggle {
+  margin-left: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.nav-profile-toggle:hover {
+  background: rgba(30, 41, 59, 0.72);
+}
+
+.nav-profile-toggle__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f8fafc;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(14, 165, 233, 0.7));
+}
+
+.nav-profile-toggle__label {
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Puntale (facoltativo ma bello) */
 .nav-dropdown__menu::before{
   content:"";
