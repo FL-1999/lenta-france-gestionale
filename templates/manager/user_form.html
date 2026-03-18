@@ -11,7 +11,7 @@
             {{ 'Nuovo utente' if mode == 'create' else 'Modifica utente' }}
         </h1>
         <p class="subtitle">
-            Gestisci i dati dell'utente e i permessi di accesso al gestionale.
+            Gestisci dati anagrafici, ruoli assegnati e ruolo attivo dell'utente.
         </p>
     </div>
 
@@ -25,6 +25,10 @@
             {% if error_message %}
             <div class="form-error">{{ error_message }}</div>
             {% endif %}
+
+            {% set selected_roles = form_roles or (user_obj.assigned_role_values if user_obj else []) %}
+            {% set current_active_role = form_active_role or (user_obj.role.value if user_obj and user_obj.role else '') %}
+            {% set current_switch_flag = form_can_switch_roles if form_can_switch_roles is not none else (user_obj.can_switch_roles if user_obj else False) %}
 
             <form method="post" class="form" action="{{ '/manager/utenti/nuovo' if mode == 'create' else '/manager/utenti/' + ((user_obj.id if user_obj else user_id) | string) + '/modifica' }}">
                 <div class="form-grid">
@@ -46,16 +50,6 @@
                     {% endif %}
 
                     <div class="form-group">
-                        <label class="form-label" for="role">Ruolo*</label>
-                        <select id="role" name="role" class="form-select" required>
-                            {% for r in role_choices %}
-                                {% set current_role = form_role or (user_obj.role.value if user_obj and user_obj.role else '') %}
-                                <option value="{{ r.value }}" {% if current_role == r.value %}selected{% endif %}>{{ r.value }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
                         <label class="form-label" for="language">Lingua</label>
                         <select id="language" name="language" class="form-select">
                             {% set current_lang = form_language or (user_obj.language if user_obj else '') %}
@@ -67,6 +61,41 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">Ruoli assegnati*</label>
+                    <div class="checkbox-grid">
+                        {% for r in role_choices %}
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="roles" value="{{ r.value }}" {% if r.value in selected_roles %}checked{% endif %}>
+                            <span>{{ r.value }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <p class="form-help">Seleziona uno o più ruoli. Solo i ruoli assegnati potranno diventare attivi.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="active_role">Ruolo attivo*</label>
+                        <select id="active_role" name="active_role" class="form-select" required>
+                            <option value="">Seleziona il ruolo attivo</option>
+                            {% for r in role_choices %}
+                                {% if r.value in selected_roles %}
+                                <option value="{{ r.value }}" {% if current_active_role == r.value %}selected{% endif %}>{{ r.value }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group form-group--checkbox">
+                        <label class="checkbox-option checkbox-option--single" for="can_switch_roles">
+                            <input id="can_switch_roles" type="checkbox" name="can_switch_roles" {% if current_switch_flag %}checked{% endif %}>
+                            <span>Può fare switch ruolo</span>
+                        </label>
+                        <p class="form-help">Se attivo, l'utente vedrà il menu “Entra come...” quando possiede più ruoli.</p>
+                    </div>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Salva</button>
                     <a href="/manager/utenti" class="btn btn-secondary">Annulla</a>
@@ -75,4 +104,30 @@
         </div>
     </div>
 </div>
+
+<script>
+(() => {
+    const roleCheckboxes = Array.from(document.querySelectorAll('input[name="roles"]'));
+    const activeRoleSelect = document.getElementById('active_role');
+    if (!roleCheckboxes.length || !activeRoleSelect) {
+        return;
+    }
+
+    function syncActiveRoleOptions() {
+        const selected = roleCheckboxes.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+        const currentValue = activeRoleSelect.value;
+        const placeholder = '<option value="">Seleziona il ruolo attivo</option>';
+        activeRoleSelect.innerHTML = placeholder + selected.map((value) => {
+            const isSelected = value === currentValue || (!currentValue && selected[0] === value);
+            return `<option value="${value}" ${isSelected ? 'selected' : ''}>${value}</option>`;
+        }).join('');
+        if (!selected.includes(activeRoleSelect.value)) {
+            activeRoleSelect.value = selected[0] || '';
+        }
+    }
+
+    roleCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', syncActiveRoleOptions));
+    syncActiveRoleOptions();
+})();
+</script>
 {% endblock %}

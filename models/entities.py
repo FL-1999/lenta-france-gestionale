@@ -135,8 +135,39 @@ class TimestampMixin:
 
 
 # ------------------------------------------------------------
-# MODELLO UTENTE
+# MODELLI RUOLO / UTENTE
 # ------------------------------------------------------------
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(Enum(RoleEnum), unique=True, nullable=False, index=True)
+    description = Column(String(255), nullable=True)
+
+    user_links = relationship("UserRole", back_populates="role", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<Role id={self.id} name={self.name}>"
+
+
+class UserRole(Base, TimestampMixin):
+    __tablename__ = "user_roles"
+    __table_args__ = (
+        UniqueConstraint("user_id", "role_id", name="uq_user_roles_user_role"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    user = relationship("User", back_populates="user_roles")
+    role = relationship("Role", back_populates="user_links")
+
+    @property
+    def role_name(self) -> RoleEnum | None:
+        return self.role.name if self.role else None
+
 
 class User(Base, TimestampMixin):
     __tablename__ = "users"
@@ -153,8 +184,15 @@ class User(Base, TimestampMixin):
 
     is_active = Column(Boolean, default=True, nullable=False)
     is_magazzino_manager = Column(Boolean, default=False, nullable=False)
+    can_switch_roles = Column(Boolean, default=False, nullable=False)
 
     # Relazioni
+    user_roles = relationship(
+        "UserRole",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
     reports = relationship("Report", back_populates="created_by", cascade="all, delete-orphan")
     fiches = relationship("Fiche", back_populates="created_by", cascade="all, delete-orphan")
     assigned_sites = relationship("Site", back_populates="caposquadra")
@@ -168,6 +206,40 @@ class User(Base, TimestampMixin):
         foreign_keys="MagazzinoMovimento.caposquadra_id",
         back_populates="caposquadra",
     )
+
+    @property
+    def active_role(self) -> RoleEnum | None:
+        return self.role
+
+    @property
+    def assigned_role_names(self) -> list[RoleEnum]:
+        roles: list[RoleEnum] = []
+        seen: set[RoleEnum] = set()
+        for user_role in self.user_roles or []:
+            role_name = user_role.role_name
+            if role_name is None or role_name in seen:
+                continue
+            seen.add(role_name)
+            roles.append(role_name)
+        if self.role and self.role not in seen:
+            roles.append(self.role)
+        return roles
+
+    @property
+    def assigned_role_values(self) -> list[str]:
+        return [role.value for role in self.assigned_role_names]
+
+    def has_role(self, role: RoleEnum | str | None) -> bool:
+        if role is None:
+            return False
+        try:
+            normalized = role if isinstance(role, RoleEnum) else RoleEnum(str(role))
+        except Exception:
+            try:
+                normalized = RoleEnum[str(role).split(".")[-1]]
+            except Exception:
+                return False
+        return normalized in self.assigned_role_names
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"

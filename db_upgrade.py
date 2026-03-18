@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 from sqlmodel import SQLModel
 
+from models import RoleEnum
 from models.base import Base
 
 logger = logging.getLogger("lenta_france_gestionale.db_upgrade")
@@ -27,8 +28,13 @@ VEICOLI_COLUMNS: tuple[str, ...] = (
     "visibile_trasporti INTEGER NOT NULL DEFAULT 0",
 )
 
+USERS_COLUMNS: tuple[str, ...] = (
+    "can_switch_roles BOOLEAN NOT NULL DEFAULT 0",
+)
+
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "veicoli": VEICOLI_COLUMNS,
+    "users": USERS_COLUMNS,
 }
 
 
@@ -89,6 +95,44 @@ def safe_add_column(engine: Engine, table_name: str, column_definition: str) -> 
         return True
 
 
+def _seed_roles_table(connection: Connection) -> None:
+    if not _table_exists(connection, "roles"):
+        logger.warning("Skipped roles seeding: roles table not found.")
+        return
+
+    for role in RoleEnum:
+        connection.execute(
+            text(
+                "INSERT OR IGNORE INTO roles (name, description) VALUES (:name, :description)"
+            ),
+            {
+                "name": role.value,
+                "description": f"Ruolo {role.value}",
+            },
+        )
+
+
+def _backfill_user_roles(connection: Connection) -> None:
+    if not _table_exists(connection, "user_roles"):
+        logger.warning("Skipped user_roles backfill: user_roles table not found.")
+        return
+    if not _table_exists(connection, "roles") or not _table_exists(connection, "users"):
+        logger.warning("Skipped user_roles backfill: prerequisite tables not found.")
+        return
+
+    connection.execute(
+        text(
+            """
+            INSERT OR IGNORE INTO user_roles (user_id, role_id, created_at, updated_at)
+            SELECT users.id, roles.id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            FROM users
+            JOIN roles ON roles.name = users.role
+            WHERE users.role IS NOT NULL
+            """
+        )
+    )
+
+
 def upgrade_db(engine: Engine) -> None:
     """Run idempotent SQLite schema upgrades for configured tables."""
     for table_name, column_definitions in UPGRADE_TARGETS.items():
@@ -108,6 +152,10 @@ def upgrade_db(engine: Engine) -> None:
                 "SQLite schema upgrade for '%s' found no missing columns.",
                 table_name,
             )
+
+    with engine.begin() as connection:
+        _seed_roles_table(connection)
+        _backfill_user_roles(connection)
 
 
 def check_db_schema(engine: Engine) -> dict[str, list[str]]:

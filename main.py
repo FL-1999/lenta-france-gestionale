@@ -29,12 +29,16 @@ from auth import (
     get_current_active_user,
     get_current_active_user_html,
     get_user_by_email,
+    resolve_user_active_role,
+    _generate_token_for_user,
     SECRET_KEY,
     ALGORITHM,
 )
 from deps import get_site_for_user, scope_sites_query
 from models import (
     User,
+    Role,
+    UserRole,
     RoleEnum,
     Report,
     Site,
@@ -68,7 +72,7 @@ from template_context import (
     register_static_helpers,
     render_template,
 )
-from permissions import has_perm
+from permissions import get_active_role, get_user_roles, has_perm, user_has_role
 from notifications import notify_site_status_change
 from audit_utils import log_audit_event
 from logging_config import configure_logging
@@ -90,6 +94,65 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
     page = max(1, page)
     per_page = max(1, min(per_page, MAX_PER_PAGE))
     return page, per_page
+
+
+def _role_dashboard_map(role: RoleEnum) -> str:
+    if role in (RoleEnum.admin, RoleEnum.manager):
+        return "/manager/dashboard"
+    if role == RoleEnum.driver:
+        return "/driver/trasporti/viaggi"
+    if role == RoleEnum.caposquadra:
+        return "/capo/dashboard"
+    if role == RoleEnum.magazzino:
+        return "/manager/magazzino/dashboard"
+    if role == RoleEnum.contabilita:
+        return "/manager/rapportini"
+    if role == RoleEnum.hr:
+        return "/manager/personale"
+    return "/"
+
+
+def _get_or_create_role(db: Session, role: RoleEnum) -> Role:
+    role_obj = db.query(Role).filter(Role.name == role).first()
+    if role_obj:
+        return role_obj
+    role_obj = Role(name=role, description=f"Ruolo {role.value}")
+    db.add(role_obj)
+    db.flush()
+    return role_obj
+
+
+def _sync_user_roles(db: Session, user: User, roles: list[RoleEnum]) -> list[RoleEnum]:
+    unique_roles: list[RoleEnum] = []
+    seen: set[RoleEnum] = set()
+    for role in roles:
+        if role in seen:
+            continue
+        seen.add(role)
+        unique_roles.append(role)
+
+    if not unique_roles:
+        raise ValueError("At least one role is required")
+
+    existing_links = {link.role.name: link for link in (user.user_roles or []) if link.role}
+    desired = set(unique_roles)
+
+    for role in list(existing_links):
+        if role not in desired:
+            db.delete(existing_links[role])
+
+    for role in unique_roles:
+        if role in existing_links:
+            continue
+        db.add(UserRole(user=user, role=_get_or_create_role(db, role)))
+
+    db.flush()
+    db.refresh(user)
+    return unique_roles
+
+
+def _resolve_post_login_role(user: User) -> RoleEnum:
+    return resolve_user_active_role(user)
 
 
 # -------------------------------------------------
@@ -137,10 +200,13 @@ def create_initial_admin():
                 language=admin_language,
                 hashed_password=hashed_password,
                 is_active=True,
+                can_switch_roles=False,
             )
             db.add(admin)
+            db.flush()
             message = "Admin iniziale creato."
 
+        _sync_user_roles(db, admin, [RoleEnum.admin])
         db.commit()
         print(message)
     except Exception as exc:
@@ -616,35 +682,25 @@ def login_api(
     if hasattr(user, "is_active") and not user.is_active:
         raise HTTPException(status_code=400, detail="Utente disattivato")
 
-    # Crea il token JWT (usa la stessa funzione di /auth/token)
-    access_token = create_access_token(data={"sub": user.email})
+    active_role = _resolve_post_login_role(user)
+    db.commit()
+    token_data = _generate_token_for_user(
+        user,
+        redirect_url=_role_dashboard_map(active_role),
+        requested_role=active_role,
+    )
 
-    if has_perm(user, "manager.access"):
-        redirect_url = "/manager/dashboard"
-    elif user.role == RoleEnum.caposquadra:
-        redirect_url = "/capo/dashboard"
-    elif has_perm(user, "inventory.read"):
-        redirect_url = "/manager/magazzino"
-    elif has_perm(user, "reports.read_all"):
-        redirect_url = "/manager/rapportini"
-    elif has_perm(user, "users.read"):
-        redirect_url = "/manager/personale"
-    elif has_perm(user, "trasporti.assigned.read"):
-        redirect_url = "/driver/trasporti/viaggi"
-    else:
-        redirect_url = "/"
-
-    # Puoi salvare il token in un cookie HttpOnly (così il JS può recuperarlo)
     response = RedirectResponse(
-        url=redirect_url,
+        url=token_data.redirect_url or "/",
         status_code=303,
     )
     response.set_cookie(
         key="access_token",
-        value=f"Bearer {access_token}",
+        value=f"Bearer {token_data.access_token}",
         httponly=True,
-        max_age=60 * 60,  # 1 ora
+        max_age=60 * 60,
         path="/",
+        samesite="lax",
     )
     return response
 
@@ -652,6 +708,49 @@ def login_api(
 def logout() -> RedirectResponse:
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(key="access_token", path="/")
+    return response
+
+
+@app.get("/switch-role/{role_name}")
+def switch_role(
+    role_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+) -> RedirectResponse:
+    if not getattr(current_user, "can_switch_roles", False):
+        raise HTTPException(status_code=403, detail="Cambio ruolo non consentito")
+
+    try:
+        requested_role = RoleEnum(role_name)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Ruolo non valido")
+
+    user_record = get_user_by_email(db, current_user.email)
+    if not user_record:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    if not getattr(user_record, "can_switch_roles", False):
+        raise HTTPException(status_code=403, detail="Cambio ruolo non consentito")
+    if not user_has_role(user_record, requested_role):
+        raise HTTPException(status_code=403, detail="Ruolo non assegnato all'utente")
+
+    user_record.role = requested_role
+    db.commit()
+    db.refresh(user_record)
+
+    token_data = _generate_token_for_user(
+        user_record,
+        redirect_url=_role_dashboard_map(requested_role),
+        requested_role=requested_role,
+    )
+    response = RedirectResponse(url=token_data.redirect_url or "/", status_code=303)
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {token_data.access_token}",
+        httponly=True,
+        max_age=60 * 60,
+        path="/",
+        samesite="lax",
+    )
     return response
 
 
@@ -1135,8 +1234,11 @@ def manager_users(
     try:
         users_list = (
             db.query(User)
-            .options(joinedload(User.assigned_sites))
-            .order_by(User.role, User.email)
+            .options(
+                joinedload(User.assigned_sites),
+                joinedload(User.user_roles).joinedload(UserRole.role),
+            )
+            .order_by(User.email)
             .all()
         )
         user_sites_map = {
@@ -1182,7 +1284,7 @@ def admin_magazzino_permissions(
 
     db = SessionLocal()
     try:
-        users_list = db.query(User).order_by(User.role, User.email).all()
+        users_list = db.query(User).options(joinedload(User.user_roles).joinedload(UserRole.role)).order_by(User.email).all()
     finally:
         db.close()
 
@@ -1268,8 +1370,10 @@ async def manager_new_user_get(
             error_message=None,
             form_email="",
             form_full_name="",
-            form_role="",
+            form_roles=[],
+            form_active_role="",
             form_language="",
+            form_can_switch_roles=False,
         ),
     )
 
@@ -1289,9 +1393,10 @@ async def manager_new_user_post(
     email = (form.get("email") or "").strip()
     full_name = (form.get("full_name") or "").strip()
     password = (form.get("password") or "").strip()
-    role_str = (form.get("role") or "").strip()
-    language = (form.get("language") or "").strip()
-    language = language or None
+    role_values = [str(value).strip() for value in form.getlist("roles") if str(value).strip()]
+    active_role_value = (form.get("active_role") or "").strip()
+    language = (form.get("language") or "").strip() or None
+    can_switch_roles = (form.get("can_switch_roles") or "").strip().lower() in {"1", "true", "on", "yes"}
 
     def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
@@ -1307,8 +1412,10 @@ async def manager_new_user_post(
                 error_message=error_message,
                 form_email=email,
                 form_full_name=full_name,
-                form_role=role_str,
+                form_roles=role_values,
+                form_active_role=active_role_value,
                 form_language=language or "",
+                form_can_switch_roles=can_switch_roles,
             ),
             status_code=status_code,
         )
@@ -1317,18 +1424,26 @@ async def manager_new_user_post(
         return render_form("Email obbligatoria.")
     if not password:
         return render_form("Password obbligatoria.")
-    if not role_str:
-        return render_form("Ruolo obbligatorio.")
+    if len(password) < 4:
+        return render_form("La password deve avere almeno 4 caratteri.")
+    if not role_values:
+        return render_form("Seleziona almeno un ruolo.")
 
-    role_enum = None
-    try:
-        role_enum = RoleEnum(role_str)
-    except Exception:
+    parsed_roles: list[RoleEnum] = []
+    for value in role_values:
         try:
-            cleaned_role = role_str.split(".")[-1]
-            role_enum = RoleEnum[cleaned_role]
+            parsed_roles.append(RoleEnum(value))
         except Exception:
-            return render_form("Ruolo non valido.")
+            return render_form(f"Ruolo non valido: {value}")
+
+    if not active_role_value:
+        active_role_value = role_values[0]
+    try:
+        active_role = RoleEnum(active_role_value)
+    except Exception:
+        return render_form("Ruolo attivo non valido.")
+    if active_role not in parsed_roles:
+        return render_form("Il ruolo attivo deve essere tra quelli assegnati.")
 
     db = SessionLocal()
     try:
@@ -1341,14 +1456,16 @@ async def manager_new_user_post(
             email=email,
             full_name=full_name or None,
             hashed_password=hashed_password,
-            role=role_enum,
+            role=active_role,
             language=language,
+            can_switch_roles=can_switch_roles,
         )
         if hasattr(User, "is_active"):
             new_user.is_active = True
 
         db.add(new_user)
         db.flush()
+        _sync_user_roles(db, new_user, parsed_roles)
         log_audit_event(
             db,
             current_user,
@@ -1357,7 +1474,9 @@ async def manager_new_user_post(
             new_user.id,
             {
                 "email": new_user.email,
-                "role": new_user.role.value if new_user.role else None,
+                "roles": [role.value for role in parsed_roles],
+                "active_role": active_role.value,
+                "can_switch_roles": new_user.can_switch_roles,
             },
         )
         db.commit()
@@ -1384,7 +1503,12 @@ async def manager_edit_user_get(
 
     db = SessionLocal()
     try:
-        user_to_edit = db.query(User).filter(User.id == user_id).first()
+        user_to_edit = (
+            db.query(User)
+            .options(joinedload(User.user_roles).joinedload(UserRole.role))
+            .filter(User.id == user_id)
+            .first()
+        )
         if not user_to_edit:
             raise HTTPException(status_code=404, detail="Utente non trovato")
     finally:
@@ -1403,8 +1527,10 @@ async def manager_edit_user_get(
             error_message=None,
             form_email=user_to_edit.email,
             form_full_name=user_to_edit.full_name or "",
-            form_role=user_to_edit.role.value if user_to_edit.role else "",
+            form_roles=[role.value for role in get_user_roles(user_to_edit)],
+            form_active_role=user_to_edit.role.value if user_to_edit.role else "",
             form_language=user_to_edit.language or "",
+            form_can_switch_roles=bool(getattr(user_to_edit, "can_switch_roles", False)),
         ),
     )
 
@@ -1424,8 +1550,10 @@ async def manager_edit_user_post(
     form = await request.form()
     email = (form.get("email") or "").strip()
     full_name = (form.get("full_name") or "").strip()
-    role_str = (form.get("role") or "").strip()
+    role_values = [str(value).strip() for value in form.getlist("roles") if str(value).strip()]
+    active_role_value = (form.get("active_role") or "").strip()
     language = (form.get("language") or "").strip() or None
+    can_switch_roles = (form.get("can_switch_roles") or "").strip().lower() in {"1", "true", "on", "yes"}
     user_obj = None
 
     def render_form(error_message: str, status_code: int = 400):
@@ -1442,30 +1570,43 @@ async def manager_edit_user_post(
                 error_message=error_message,
                 form_email=email,
                 form_full_name=full_name,
-                form_role=role_str,
+                form_roles=role_values,
+                form_active_role=active_role_value,
                 form_language=language or "",
+                form_can_switch_roles=can_switch_roles,
             ),
             status_code=status_code,
         )
 
     if not email:
         return render_form("Email obbligatoria.")
-    if not role_str:
-        return render_form("Ruolo obbligatorio.")
+    if not role_values:
+        return render_form("Seleziona almeno un ruolo.")
 
-    role_enum = None
-    try:
-        role_enum = RoleEnum(role_str)
-    except Exception:
+    parsed_roles: list[RoleEnum] = []
+    for value in role_values:
         try:
-            cleaned_role = role_str.split(".")[-1]
-            role_enum = RoleEnum[cleaned_role]
+            parsed_roles.append(RoleEnum(value))
         except Exception:
-            return render_form("Ruolo non valido.")
+            return render_form(f"Ruolo non valido: {value}")
+
+    if not active_role_value:
+        active_role_value = role_values[0]
+    try:
+        active_role = RoleEnum(active_role_value)
+    except Exception:
+        return render_form("Ruolo attivo non valido.")
+    if active_role not in parsed_roles:
+        return render_form("Il ruolo attivo deve essere tra quelli assegnati.")
 
     db = SessionLocal()
     try:
-        user_to_edit = db.query(User).filter(User.id == user_id).first()
+        user_to_edit = (
+            db.query(User)
+            .options(joinedload(User.user_roles).joinedload(UserRole.role))
+            .filter(User.id == user_id)
+            .first()
+        )
         if not user_to_edit:
             raise HTTPException(status_code=404, detail="Utente non trovato")
         user_obj = user_to_edit
@@ -1478,30 +1619,35 @@ async def manager_edit_user_post(
         if existing:
             return render_form("Esiste già un utente con questa email.", status_code=400)
 
-        if user_to_edit.role != role_enum and not has_perm(
-            current_user, "users.update_role"
-        ):
+        previous_active_role = user_to_edit.role.value if user_to_edit.role else None
+        previous_roles = [role.value for role in get_user_roles(user_to_edit)]
+
+        if previous_active_role != active_role.value and not has_perm(current_user, "users.update_role"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Permessi insufficienti",
             )
 
-        previous_role = user_to_edit.role.value if user_to_edit.role else None
         user_to_edit.email = email
         user_to_edit.full_name = full_name or None
-        user_to_edit.role = role_enum
+        user_to_edit.role = active_role
         user_to_edit.language = language
+        user_to_edit.can_switch_roles = can_switch_roles
+        _sync_user_roles(db, user_to_edit, parsed_roles)
 
         log_audit_event(
             db,
             current_user,
-            "USER_ROLE_CHANGED" if previous_role != role_enum.value else "USER_UPDATED",
+            "USER_ROLE_CHANGED" if previous_active_role != active_role.value or previous_roles != [role.value for role in parsed_roles] else "USER_UPDATED",
             "user",
             user_to_edit.id,
             {
                 "email": user_to_edit.email,
-                "previous_role": previous_role,
-                "new_role": role_enum.value,
+                "previous_role": previous_active_role,
+                "new_role": active_role.value,
+                "previous_roles": previous_roles,
+                "new_roles": [role.value for role in parsed_roles],
+                "can_switch_roles": user_to_edit.can_switch_roles,
             },
         )
 

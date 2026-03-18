@@ -43,6 +43,7 @@ DRIVER_PERMISSIONS: FrozenSet[str] = frozenset(
 
 ADMIN_EXTRA_PERMISSIONS: FrozenSet[str] = frozenset(
     {
+        "admin.access",
         "sites.delete",
         "users.manage",
         "users.create",
@@ -81,6 +82,42 @@ def _normalize_role(role: RoleEnum | str | None) -> RoleEnum | None:
             return None
 
 
+def get_active_role(user: User | None) -> RoleEnum | None:
+    if not user:
+        return None
+    return _normalize_role(getattr(user, "role", None))
+
+
+def get_user_roles(user: User | None) -> tuple[RoleEnum, ...]:
+    if not user:
+        return tuple()
+
+    collected: list[RoleEnum] = []
+    seen: set[RoleEnum] = set()
+
+    for user_role in getattr(user, "user_roles", []) or []:
+        role_obj = getattr(user_role, "role", None)
+        role_name = getattr(role_obj, "name", None)
+        normalized = _normalize_role(role_name)
+        if normalized is None or normalized in seen:
+            continue
+        seen.add(normalized)
+        collected.append(normalized)
+
+    active_role = get_active_role(user)
+    if active_role is not None and active_role not in seen:
+        collected.append(active_role)
+
+    return tuple(collected)
+
+
+def user_has_role(user: User | None, role: RoleEnum | str | None) -> bool:
+    normalized = _normalize_role(role)
+    if normalized is None:
+        return False
+    return normalized in get_user_roles(user)
+
+
 def _perm_matches(perm: str, granted: Iterable[str]) -> bool:
     if perm in granted:
         return True
@@ -96,7 +133,7 @@ def _perm_matches(perm: str, granted: Iterable[str]) -> bool:
 def has_perm(user: User | None, perm: str) -> bool:
     if not user:
         return False
-    role = _normalize_role(getattr(user, "role", None))
+    role = get_active_role(user)
     if role is None:
         return False
     permissions = ROLE_PERMISSIONS.get(role, frozenset())

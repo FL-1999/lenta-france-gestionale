@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user, get_current_active_user_html
 from database import get_db
-from models import RoleEnum, Report, Site, User
+from models import Role, RoleEnum, Report, Site, User, UserRole
 from notifications import notify_new_report
 from permissions import has_perm
 from template_context import build_template_context, register_manager_badges
@@ -216,7 +216,7 @@ def manager_reports_list(
     sites = db.query(Site).order_by(Site.name).all()
     capisquadra = (
         db.query(User)
-        .filter(User.role == RoleEnum.caposquadra)
+        .join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.caposquadra).distinct()
         .order_by(User.full_name)
         .all()
     )
