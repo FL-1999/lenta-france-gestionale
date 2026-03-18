@@ -650,7 +650,7 @@ def login_api(
 
 @app.get("/logout")
 def logout() -> RedirectResponse:
-    response = RedirectResponse(url="/", status_code=303)
+    response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(key="access_token", path="/")
     return response
 

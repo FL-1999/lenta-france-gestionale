@@ -145,7 +145,7 @@
                             {% if show_api_docs %}
                                 <a href="/docs" class="nav-dropdown__item">📘 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
                             {% endif %}
-                            <a href="/logout" class="nav-dropdown__item">🚪 {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
+                            <a href="{{ url_for('logout') }}" class="nav-dropdown__item">🚪 {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
                         </div>
                     </div>
                 {% endif %}
@@ -237,6 +237,16 @@
                         🚚 Trasporti
                     </a>
                 {% endif %}
+                <form method="get" action="{{ url_for('logout') }}" class="nav-logout-form nav-right__item">
+                    <button type="submit" class="nav-link nav-link--button nav-link--logout">
+                        🔓
+                        {% if lang == 'fr' %}
+                            Déconnexion
+                        {% else %}
+                            Logout
+                        {% endif %}
+                    </button>
+                </form>
                 <div class="nav-lang-switch nav-right__item">
                     <a href="/set-language/it"
                        class="lang-flag {% if request.cookies.get('lang', 'it') == 'it' %}lang-flag--active{% endif %}">
