@@ -165,3 +165,39 @@ def test_cantieri_map_data_is_json_serializable() -> None:
     serialized = json.dumps(payload)
 
     assert '"name": "Cantiere Lyon"' in serialized
+
+
+def test_new_trip_form_renders_with_unified_locations() -> None:
+    locations = [
+        SimpleNamespace(value="site:1", label="[Cantiere] Milano Centro"),
+        SimpleNamespace(value="depot:2", label="[Deposito] Magazzino Nord"),
+    ]
+    output = render_template(
+        "manager/trasporti/new_trip.html",
+        {
+            "request": build_request("/manager/trasporti/viaggi/nuovo"),
+            "user": build_manager_user(),
+            "mode": "create",
+            "viaggio": None,
+            "form_action": "/manager/trasporti/viaggi/nuovo",
+            "autisti": [],
+            "mezzi": [],
+            "locations": locations,
+            "form_data": {
+                "codice_viaggio": "",
+                "data_partenza": "",
+                "data_arrivo_prevista": "",
+                "autista_id": "",
+                "mezzo_id": "",
+                "origine_place": "",
+                "destinazione_place": "",
+                "tappa_destinazione": ["", "", ""],
+                "tipo_attrezzatura": ["", "", ""],
+                "quantita": ["1", "1", "1"],
+                "richiesta_tappa_idx": ["1", "1", "1"],
+            },
+        },
+    )
+
+    assert "Seleziona un luogo" in output
+    assert "[Deposito] Magazzino Nord" in output

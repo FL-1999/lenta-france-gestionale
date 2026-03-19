@@ -41,6 +41,7 @@ from template_context import (
 )
 from permissions import has_perm
 from notifications import notify_magazzino_richiesta
+from utils.places import format_place_label, get_place_by_value, get_selectable_places
 import magazzino_repository
 import warehouse_requests_repository
 
@@ -121,6 +122,14 @@ def _parse_status(value: str | None) -> MagazzinoRichiestaStatusEnum | None:
         if value.lower() in (status.value.lower(), status.name.lower()):
             return status
     return None
+
+
+def _magazzino_location_label(movimento: MagazzinoMovimento) -> str:
+    if movimento.cantiere:
+        return format_place_label("site", movimento.cantiere.name)
+    if movimento.deposito:
+        return format_place_label("depot", movimento.deposito.name)
+    return "—"
 
 
 def _orders_navigation_counts(db: Session) -> dict[str, int]:
@@ -1174,12 +1183,7 @@ def _render_magazzino_items_list(
         )
         .all()
     )
-    cantieri = (
-        db.query(Site)
-        .filter(Site.is_active.is_(True))
-        .order_by(Site.name.asc())
-        .all()
-    )
+    locations = get_selectable_places(db, include_inactive=False)
     personale = (
         db.query(User)
         .filter(
@@ -1217,7 +1221,7 @@ def _render_magazzino_items_list(
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
             "filters": filters,
-            "sites": cantieri,
+            "locations": locations,
             "personale": personale,
             "color_options": CATEGORIA_COLOR_OPTIONS,
             "default_categoria_icon": DEFAULT_CATEGORIA_ICON,
@@ -1422,6 +1426,7 @@ def manager_magazzino_richiesta_draft_sotto_soglia(
 def manager_magazzino_movimenti(
     request: Request,
     q: str | None = None,
+    location_id: str | None = None,
     cantiere_id: int | None = None,
     item_id: int | None = None,
     tipo: str | None = None,
@@ -1438,10 +1443,14 @@ def manager_magazzino_movimenti(
     page, per_page = _normalize_pagination(page, per_page)
     parsed_from = _parse_date(date_from)
     parsed_to = _parse_date(date_to)
+    selected_place = get_place_by_value(db, location_id, include_inactive=True) if location_id else None
+    selected_site_id = selected_place.id if selected_place and selected_place.kind == "site" else cantiere_id
+    selected_depot_id = selected_place.id if selected_place and selected_place.kind == "depot" else None
 
     query = db.query(MagazzinoMovimento).options(
         joinedload(MagazzinoMovimento.item),
         joinedload(MagazzinoMovimento.cantiere),
+        joinedload(MagazzinoMovimento.deposito),
         joinedload(MagazzinoMovimento.creato_da_user),
         joinedload(MagazzinoMovimento.caposquadra),
     )
@@ -1453,8 +1462,10 @@ def manager_magazzino_movimenti(
                 MagazzinoItem.nome.ilike(search),
             )
         )
-    if cantiere_id:
-        query = query.filter(MagazzinoMovimento.cantiere_id == cantiere_id)
+    if selected_site_id:
+        query = query.filter(MagazzinoMovimento.cantiere_id == selected_site_id)
+    if selected_depot_id:
+        query = query.filter(MagazzinoMovimento.deposito_id == selected_depot_id)
     if item_id:
         query = query.filter(MagazzinoMovimento.item_id == item_id)
     if tipo in (
@@ -1488,7 +1499,7 @@ def manager_magazzino_movimenti(
                 "Nome articolo",
                 "Tipo",
                 "Quantità",
-                "Cantiere",
+                "Luogo",
                 "Destinazione",
                 "Utente",
                 "Note",
@@ -1507,14 +1518,14 @@ def manager_magazzino_movimenti(
             if movimento.creato_da_user:
                 user_label = movimento.creato_da_user.full_name or movimento.creato_da_user.email
             destinazione_label = ""
-            cantiere_label = movimento.cantiere.name if movimento.cantiere else ""
+            luogo_label = _magazzino_location_label(movimento)
             personale_label = ""
             if movimento.caposquadra:
                 personale_label = movimento.caposquadra.full_name or movimento.caposquadra.email
-            if cantiere_label and personale_label:
-                destinazione_label = f"Cantiere: {cantiere_label} — Personale: {personale_label}"
+            if luogo_label != "—" and personale_label:
+                destinazione_label = f"{luogo_label} — Personale: {personale_label}"
             else:
-                destinazione_label = cantiere_label or personale_label
+                destinazione_label = luogo_label if luogo_label != "—" else personale_label
             writer.writerow(
                 [
                     created_at,
@@ -1522,7 +1533,7 @@ def manager_magazzino_movimenti(
                     item_name or "",
                     movimento.tipo.value if movimento.tipo else "",
                     movimento.quantita,
-                    movimento.cantiere.name if movimento.cantiere else "",
+                    _magazzino_location_label(movimento) if _magazzino_location_label(movimento) != "—" else "",
                     destinazione_label,
                     user_label or "",
                     movimento.note or "",
@@ -1554,8 +1565,10 @@ def manager_magazzino_movimenti(
                 MagazzinoItem.nome.ilike(search),
             )
         )
-    if cantiere_id:
-        summary_query = summary_query.filter(MagazzinoMovimento.cantiere_id == cantiere_id)
+    if selected_site_id:
+        summary_query = summary_query.filter(MagazzinoMovimento.cantiere_id == selected_site_id)
+    if selected_depot_id:
+        summary_query = summary_query.filter(MagazzinoMovimento.deposito_id == selected_depot_id)
     if item_id:
         summary_query = summary_query.filter(MagazzinoMovimento.item_id == item_id)
     if parsed_from:
@@ -1572,9 +1585,11 @@ def manager_magazzino_movimenti(
         .all()
     )
 
-    cantieri = db.query(Site).order_by(Site.name.asc()).all()
+    places = get_selectable_places(db, include_inactive=True)
     items = db.query(MagazzinoItem).order_by(MagazzinoItem.nome.asc()).all()
     badges = build_magazzino_badges(db, current_user)
+    for movimento in movimenti:
+        movimento.location_label = _magazzino_location_label(movimento)
 
     return render_template(
         templates,
@@ -1582,12 +1597,12 @@ def manager_magazzino_movimenti(
         "manager/magazzino/movimenti_list.html",
         {
             "movimenti": movimenti,
-            "cantieri": cantieri,
+            "locations": places,
             "items": items,
             "tipo_options": [tipo.value for tipo in MagazzinoMovimentoTipoEnum],
             "selected": {
                 "q": q or "",
-                "cantiere_id": cantiere_id,
+                "location_id": location_id or (f"site:{cantiere_id}" if cantiere_id else ""),
                 "item_id": item_id,
                 "tipo": tipo,
                 "date_from": parsed_from.isoformat() if parsed_from else "",
@@ -3307,7 +3322,7 @@ def manager_magazzino_scarico(
     request: Request,
     item_id: int = Form(...),
     quantita: str = Form(...),
-    cantiere_id: int | None = Form(None),
+    location_id: str | None = Form(None),
     caposquadra_id: int | None = Form(None),
     note: str = Form(""),
     db: Session = Depends(get_db),
@@ -3328,11 +3343,15 @@ def manager_magazzino_scarico(
         if quantita_valore > quantita_attuale:
             raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
-        if cantiere_id is None and caposquadra_id is None:
+        selected_place = get_place_by_value(db, location_id, include_inactive=False)
+        cantiere_id = selected_place.id if selected_place and selected_place.kind == "site" else None
+        deposito_id = selected_place.id if selected_place and selected_place.kind == "depot" else None
+
+        if selected_place is None and caposquadra_id is None:
             raise ValueError(
                 "Sélectionnez un chantier ou un chef d'équipe."
                 if lang == "fr"
-                else "Seleziona un cantiere o un caposquadra."
+                else "Seleziona un luogo o un caposquadra."
             )
 
         item.quantita_disponibile = quantita_attuale - quantita_valore
@@ -3343,6 +3362,7 @@ def manager_magazzino_scarico(
             tipo=MagazzinoMovimentoTipoEnum.scarico,
             quantita=quantita_valore,
             cantiere_id=cantiere_id,
+            deposito_id=deposito_id,
             caposquadra_id=caposquadra_id,
             creato_da_user_id=current_user.id,
             note=(note or "").strip() or None,
@@ -3360,6 +3380,7 @@ def manager_magazzino_scarico(
                 "codice": item.codice,
                 "quantita": quantita_valore,
                 "cantiere_id": cantiere_id,
+                "deposito_id": deposito_id,
                 "caposquadra_id": caposquadra_id,
                 "note": (note or "").strip() or None,
             },
@@ -3472,7 +3493,7 @@ def manager_magazzino_scarico_rapido(
     request: Request,
     quantita: str = Form(...),
     note: str = Form(""),
-    site_id: int | None = Form(None),
+    location_id: str | None = Form(None),
     caposquadra_id: int | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -3492,6 +3513,9 @@ def manager_magazzino_scarico_rapido(
         if quantita_valore > quantita_attuale:
             raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
+        selected_place = get_place_by_value(db, location_id, include_inactive=False)
+        site_id = selected_place.id if selected_place and selected_place.kind == "site" else None
+        deposito_id = selected_place.id if selected_place and selected_place.kind == "depot" else None
         item.quantita_disponibile = quantita_attuale - quantita_valore
         db.add(item)
         movimento = MagazzinoMovimento(
@@ -3499,6 +3523,7 @@ def manager_magazzino_scarico_rapido(
             tipo=MagazzinoMovimentoTipoEnum.scarico,
             quantita=quantita_valore,
             cantiere_id=site_id,
+            deposito_id=deposito_id,
             caposquadra_id=caposquadra_id,
             creato_da_user_id=current_user.id,
             note=(note or "").strip() or None,
@@ -3516,6 +3541,7 @@ def manager_magazzino_scarico_rapido(
                 "codice": item.codice,
                 "quantita": quantita_valore,
                 "cantiere_id": site_id,
+                "deposito_id": deposito_id,
                 "caposquadra_id": caposquadra_id,
                 "note": (note or "").strip() or None,
             },

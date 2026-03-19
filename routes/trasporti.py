@@ -13,6 +13,7 @@ from database import get_db
 from models import (
     Attrezzatura,
     AttrezzaturaStatoEnum,
+    Depot,
     MovimentoAttrezzatura,
     Role,
     RoleEnum,
@@ -28,6 +29,7 @@ from models import (
 from models.veicoli import Veicolo
 from permissions import has_perm
 from template_context import register_manager_badges, render_template
+from utils.places import format_place_label, get_place_by_value, get_selectable_places
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
@@ -44,6 +46,92 @@ def _ensure_manager(user: User) -> None:
 def _ensure_driver(user: User) -> None:
     if not has_perm(user, "trasporti.assigned.read"):
         raise HTTPException(status_code=403, detail="Accesso riservato agli autisti")
+
+
+def _load_trip_form_dependencies(db: Session) -> tuple[list[User], list[Veicolo], list]:
+    autisti = (
+        db.query(User)
+        .join(UserRole, UserRole.user_id == User.id)
+        .join(Role, Role.id == UserRole.role_id)
+        .filter(Role.name == RoleEnum.driver, User.is_active.is_(True))
+        .distinct()
+        .order_by(User.full_name, User.email)
+        .all()
+    )
+    mezzi = (
+        db.query(Veicolo)
+        .filter(Veicolo.visibile_trasporti.is_(True))
+        .order_by(Veicolo.marca.asc(), Veicolo.modello.asc(), Veicolo.targa.asc())
+        .all()
+    )
+    luoghi = get_selectable_places(db, include_inactive=False)
+    return autisti, mezzi, luoghi
+
+
+def _apply_trip_place(viaggio: TrasportoViaggio, field_name: str, place) -> None:
+    setattr(viaggio, field_name, place.name)
+    setattr(viaggio, f"{field_name}_site_id", place.id if place.kind == "site" else None)
+    setattr(viaggio, f"{field_name}_depot_id", place.id if place.kind == "depot" else None)
+
+
+def _trip_place_value(viaggio: TrasportoViaggio | None, field_name: str) -> str:
+    if not viaggio:
+        return ""
+    site_id = getattr(viaggio, f"{field_name}_site_id", None)
+    depot_id = getattr(viaggio, f"{field_name}_depot_id", None)
+    if site_id:
+        return f"site:{site_id}"
+    if depot_id:
+        return f"depot:{depot_id}"
+    return ""
+
+
+def _trip_place_label(viaggio: TrasportoViaggio, field_name: str) -> str:
+    site = getattr(viaggio, f"{field_name}_site", None)
+    depot = getattr(viaggio, f"{field_name}_depot", None)
+    legacy_value = getattr(viaggio, field_name, None)
+    if site:
+        return format_place_label("site", site.name)
+    if depot:
+        return format_place_label("depot", depot.name)
+    return legacy_value or "—"
+
+
+def _stop_place_value(tappa: TrasportoTappa | None) -> str:
+    if not tappa:
+        return ""
+    if tappa.site_id:
+        return f"site:{tappa.site_id}"
+    if tappa.depot_id:
+        return f"depot:{tappa.depot_id}"
+    return ""
+
+
+def _stop_place_label(tappa: TrasportoTappa) -> str:
+    if tappa.site:
+        return format_place_label("site", tappa.site.name)
+    if tappa.depot:
+        return format_place_label("depot", tappa.depot.name)
+    return tappa.destinazione or "—"
+
+
+def _movement_place_label(movimento: MovimentoAttrezzatura, field_name: str) -> str:
+    site = getattr(movimento, f"{field_name}_site", None)
+    depot = getattr(movimento, f"{field_name}_depot", None)
+    legacy_value = getattr(movimento, field_name, None)
+    if site:
+        return format_place_label("site", site.name)
+    if depot:
+        return format_place_label("depot", depot.name)
+    return legacy_value or "—"
+
+
+def _decorate_trip_locations(viaggio: TrasportoViaggio) -> TrasportoViaggio:
+    viaggio.origine_label = _trip_place_label(viaggio, "origine")
+    viaggio.destinazione_label = _trip_place_label(viaggio, "destinazione")
+    for tappa in viaggio.tappe or []:
+        tappa.destinazione_label = _stop_place_label(tappa)
+    return viaggio
 
 
 def _trip_missing_equipment_alerts(viaggi: list[TrasportoViaggio]) -> list[dict[str, object]]:
@@ -119,8 +207,13 @@ def manager_trasporti_dashboard(
     base_query = db.query(TrasportoViaggio).options(
         joinedload(TrasportoViaggio.autista),
         joinedload(TrasportoViaggio.mezzo),
+        joinedload(TrasportoViaggio.origine_site),
+        joinedload(TrasportoViaggio.origine_depot),
+        joinedload(TrasportoViaggio.destinazione_site),
+        joinedload(TrasportoViaggio.destinazione_depot),
         joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
-        joinedload(TrasportoViaggio.tappe),
+        joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site),
+        joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot),
         joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
     )
 
@@ -148,6 +241,9 @@ def manager_trasporti_dashboard(
     )
     autisti = db.query(User).join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.driver).distinct().order_by(User.full_name, User.email).all()
     mezzi = db.query(Veicolo).filter(Veicolo.visibile_trasporti.is_(True)).order_by(Veicolo.marca, Veicolo.modello).all()
+    future_trips = [_decorate_trip_locations(viaggio) for viaggio in future_trips]
+    active_trips = [_decorate_trip_locations(viaggio) for viaggio in active_trips]
+    completed_trips = [_decorate_trip_locations(viaggio) for viaggio in completed_trips]
     equipment_alerts = _trip_missing_equipment_alerts(future_trips + active_trips)
     logistics_overview = {
         "trucks_in_travel": sum(1 for trip in active_trips if trip.stato == TrasportoStatoEnum.in_viaggio),
@@ -261,11 +357,25 @@ def manager_trasporti_mappa(
         .order_by(Site.name.asc())
         .all()
     )
-    site_map = {s.name.strip().lower(): s for s in sites if s.name}
+    depots = (
+        db.query(Depot)
+        .filter(Depot.lat.isnot(None), Depot.lng.isnot(None), Depot.is_active.is_(True))
+        .order_by(Depot.name.asc())
+        .all()
+    )
+    place_map = {f"site:{site.id}": site for site in sites}
+    place_map.update({f"depot:{depot.id}": depot for depot in depots})
 
     trucks_in_travel = (
         db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.mezzo), joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura))
+        .options(
+            joinedload(TrasportoViaggio.mezzo),
+            joinedload(TrasportoViaggio.origine_site),
+            joinedload(TrasportoViaggio.origine_depot),
+            joinedload(TrasportoViaggio.destinazione_site),
+            joinedload(TrasportoViaggio.destinazione_depot),
+            joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+        )
         .filter(TrasportoViaggio.stato == TrasportoStatoEnum.in_viaggio)
         .all()
     )
@@ -273,22 +383,23 @@ def manager_trasporti_mappa(
     truck_markers = []
     equipment_markers = []
     for trip in trucks_in_travel:
-        origin_site = site_map.get((trip.origine or "").strip().lower())
-        dest_site = site_map.get((trip.destinazione or "").strip().lower())
-        if origin_site and dest_site:
-            lat = (origin_site.lat + dest_site.lat) / 2
-            lng = (origin_site.lng + dest_site.lng) / 2
-        elif dest_site:
-            lat, lng = dest_site.lat, dest_site.lng
-        elif origin_site:
-            lat, lng = origin_site.lat, origin_site.lng
+        _decorate_trip_locations(trip)
+        origin_place = place_map.get(_trip_place_value(trip, "origine"))
+        dest_place = place_map.get(_trip_place_value(trip, "destinazione"))
+        if origin_place and dest_place:
+            lat = (origin_place.lat + dest_place.lat) / 2
+            lng = (origin_place.lng + dest_place.lng) / 2
+        elif dest_place:
+            lat, lng = dest_place.lat, dest_place.lng
+        elif origin_place:
+            lat, lng = origin_place.lat, origin_place.lng
         else:
             continue
         truck_markers.append(
             {
                 "lat": float(lat),
                 "lng": float(lng),
-                "label": f"{trip.codice_viaggio} - {(trip.mezzo.targa if trip.mezzo else 'Senza mezzo')}",
+                "label": f"{trip.codice_viaggio} - {trip.origine_label} → {trip.destinazione_label}",
                 "detail_url": str(request.url_for("manager_trasporti_viaggi_detail", viaggio_id=trip.id)),
             }
         )
@@ -306,11 +417,20 @@ def manager_trasporti_mappa(
         {
             "lat": float(s.lat),
             "lng": float(s.lng),
-            "label": s.name,
+            "label": format_place_label("site", s.name),
             "detail_url": str(request.url_for("manager_site_detail", site_id=s.id)),
         }
         for s in sites
     ]
+    site_markers.extend(
+        {
+            "lat": float(d.lat),
+            "lng": float(d.lng),
+            "label": format_place_label("depot", d.name),
+            "detail_url": str(request.url_for("manager_depositi_edit", depot_id=d.id)),
+        }
+        for d in depots
+    )
 
     return render_template(
         templates,
@@ -338,11 +458,18 @@ def manager_trasporti_attrezzature_in_viaggio(
         .options(
             joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
             joinedload(TrasportoAttrezzaturaViaggio.viaggio).joinedload(TrasportoViaggio.autista),
+            joinedload(TrasportoAttrezzaturaViaggio.viaggio).joinedload(TrasportoViaggio.origine_site),
+            joinedload(TrasportoAttrezzaturaViaggio.viaggio).joinedload(TrasportoViaggio.origine_depot),
+            joinedload(TrasportoAttrezzaturaViaggio.viaggio).joinedload(TrasportoViaggio.destinazione_site),
+            joinedload(TrasportoAttrezzaturaViaggio.viaggio).joinedload(TrasportoViaggio.destinazione_depot),
         )
         .join(TrasportoAttrezzaturaViaggio.attrezzatura)
         .filter(Attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto)
         .all()
     )
+    for assignment in assignments:
+        if assignment.viaggio:
+            _decorate_trip_locations(assignment.viaggio)
     return render_template(
         templates,
         request,
@@ -361,14 +488,35 @@ def manager_trasporti_viaggi_new(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    autisti = db.query(User).join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.driver, User.is_active.is_(True)).distinct().order_by(User.full_name, User.email).all()
-    mezzi = (
-        db.query(Veicolo)
-        .filter(Veicolo.visibile_trasporti.is_(True))
-        .order_by(Veicolo.marca.asc(), Veicolo.modello.asc(), Veicolo.targa.asc())
-        .all()
+    autisti, mezzi, luoghi = _load_trip_form_dependencies(db)
+    return render_template(
+        templates,
+        request,
+        "manager/trasporti/new_trip.html",
+        {
+            "autisti": autisti,
+            "mezzi": mezzi,
+            "locations": luoghi,
+            "mode": "create",
+            "viaggio": None,
+            "form_action": request.url_for("manager_trasporti_viaggi_create"),
+            "form_data": {
+                "codice_viaggio": "",
+                "data_partenza": "",
+                "data_arrivo_prevista": "",
+                "autista_id": "",
+                "mezzo_id": "",
+                "origine_place": "",
+                "destinazione_place": "",
+                "tappa_destinazione": ["", "", ""],
+                "tipo_attrezzatura": ["", "", ""],
+                "quantita": ["1", "1", "1"],
+                "richiesta_tappa_idx": ["1", "1", "1"],
+            },
+        },
+        db,
+        current_user,
     )
-    return render_template(templates, request, "manager/trasporti/new_trip.html", {"autisti": autisti, "mezzi": mezzi}, db, current_user)
 
 
 @router.post("/manager/trasporti/nuovo", response_class=HTMLResponse)
@@ -380,8 +528,8 @@ def manager_trasporti_viaggi_create(
     data_arrivo_prevista: str | None = Form(None),
     autista_id: int | None = Form(None),
     mezzo_id: int | None = Form(None),
-    origine: str = Form(...),
-    destinazione: str = Form(...),
+    origine_place: str = Form(...),
+    destinazione_place: str = Form(...),
     tappa_destinazione: list[str] = Form(default=[]),
     tipo_attrezzatura: list[str] = Form(default=[]),
     quantita: list[str] = Form(default=[]),
@@ -390,27 +538,70 @@ def manager_trasporti_viaggi_create(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-
+    autisti, mezzi, luoghi = _load_trip_form_dependencies(db)
+    form_data = {
+        "codice_viaggio": codice_viaggio,
+        "data_partenza": data_partenza,
+        "data_arrivo_prevista": data_arrivo_prevista or "",
+        "autista_id": str(autista_id or ""),
+        "mezzo_id": str(mezzo_id or ""),
+        "origine_place": origine_place,
+        "destinazione_place": destinazione_place,
+        "tappa_destinazione": tappa_destinazione,
+        "tipo_attrezzatura": tipo_attrezzatura,
+        "quantita": quantita,
+        "richiesta_tappa_idx": richiesta_tappa_idx,
+    }
+    origine_obj = get_place_by_value(db, origine_place, include_inactive=False)
+    destinazione_obj = get_place_by_value(db, destinazione_place, include_inactive=False)
+    if not origine_obj or not destinazione_obj:
+        return render_template(
+            templates,
+            request,
+            "manager/trasporti/new_trip.html",
+            {
+                "autisti": autisti,
+                "mezzi": mezzi,
+                "locations": luoghi,
+                "mode": "create",
+                "viaggio": None,
+                "form_action": request.url_for("manager_trasporti_viaggi_create"),
+                "form_data": form_data,
+                "error_message": "Seleziona origine e destinazione da un luogo esistente.",
+            },
+            db,
+            current_user,
+            status_code=400,
+        )
     viaggio = TrasportoViaggio(
         codice_viaggio=codice_viaggio.strip().upper(),
         data_partenza=datetime.strptime(data_partenza, "%Y-%m-%d").date(),
         data_arrivo_prevista=datetime.strptime(data_arrivo_prevista, "%Y-%m-%d").date() if data_arrivo_prevista else None,
         autista_id=autista_id,
         mezzo_id=mezzo_id,
-        origine=origine.strip(),
-        destinazione=destinazione.strip(),
+        origine=origine_obj.name,
+        destinazione=destinazione_obj.name,
         stato=TrasportoStatoEnum.programmato,
     )
+    _apply_trip_place(viaggio, "origine", origine_obj)
+    _apply_trip_place(viaggio, "destinazione", destinazione_obj)
     db.add(viaggio)
     db.flush()
 
-    tappe_clean = [t.strip() for t in tappa_destinazione if (t or "").strip()]
+    tappe_clean = [get_place_by_value(db, raw, include_inactive=False) for raw in tappa_destinazione if (raw or "").strip()]
+    tappe_clean = [tappa for tappa in tappe_clean if tappa is not None]
     if not tappe_clean:
-        tappe_clean = [destinazione.strip()]
+        tappe_clean = [destinazione_obj]
 
     tappe: list[TrasportoTappa] = []
-    for idx, dest in enumerate(tappe_clean, start=1):
-        tappa = TrasportoTappa(viaggio_id=viaggio.id, ordine=idx, destinazione=dest)
+    for idx, place in enumerate(tappe_clean, start=1):
+        tappa = TrasportoTappa(
+            viaggio_id=viaggio.id,
+            ordine=idx,
+            destinazione=place.name,
+            site_id=place.id if place.kind == "site" else None,
+            depot_id=place.id if place.kind == "depot" else None,
+        )
         db.add(tappa)
         tappe.append(tappa)
     db.flush()
@@ -437,6 +628,194 @@ def manager_trasporti_viaggi_create(
     return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
 
 
+@router.get(
+    "/manager/trasporti/viaggi/{viaggio_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_trasporti_viaggi_edit",
+)
+def manager_trasporti_viaggi_edit(
+    viaggio_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    autisti, mezzi, luoghi = _load_trip_form_dependencies(db)
+    viaggio = (
+        db.query(TrasportoViaggio)
+        .options(
+            joinedload(TrasportoViaggio.richieste_attrezzature),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot),
+        )
+        .filter(TrasportoViaggio.id == viaggio_id)
+        .first()
+    )
+    if not viaggio:
+        return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+
+    form_data = {
+        "codice_viaggio": viaggio.codice_viaggio or "",
+        "data_partenza": viaggio.data_partenza.isoformat() if viaggio.data_partenza else "",
+        "data_arrivo_prevista": viaggio.data_arrivo_prevista.isoformat() if viaggio.data_arrivo_prevista else "",
+        "autista_id": str(viaggio.autista_id or ""),
+        "mezzo_id": str(viaggio.mezzo_id or ""),
+        "origine_place": _trip_place_value(viaggio, "origine"),
+        "destinazione_place": _trip_place_value(viaggio, "destinazione"),
+        "tappa_destinazione": [_stop_place_value(tappa) for tappa in viaggio.tappe] or [""],
+        "tipo_attrezzatura": [req.tipo_attrezzatura for req in viaggio.richieste_attrezzature] or ["", "", ""],
+        "quantita": [str(req.quantita) for req in viaggio.richieste_attrezzature] or ["1", "1", "1"],
+        "richiesta_tappa_idx": [
+            str(next((tappa.ordine for tappa in viaggio.tappe if tappa.id == req.tappa_id), 1))
+            for req in viaggio.richieste_attrezzature
+        ] or ["1", "1", "1"],
+    }
+    while len(form_data["tappa_destinazione"]) < 3:
+        form_data["tappa_destinazione"].append("")
+    while len(form_data["tipo_attrezzatura"]) < 3:
+        form_data["tipo_attrezzatura"].append("")
+        form_data["quantita"].append("1")
+        form_data["richiesta_tappa_idx"].append("1")
+
+    return render_template(
+        templates,
+        request,
+        "manager/trasporti/new_trip.html",
+        {
+            "autisti": autisti,
+            "mezzi": mezzi,
+            "locations": luoghi,
+            "mode": "edit",
+            "viaggio": viaggio,
+            "form_action": request.url_for("manager_trasporti_viaggi_update", viaggio_id=viaggio.id),
+            "form_data": form_data,
+        },
+        db,
+        current_user,
+    )
+
+
+@router.post(
+    "/manager/trasporti/viaggi/{viaggio_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_trasporti_viaggi_update",
+)
+def manager_trasporti_viaggi_update(
+    viaggio_id: int,
+    request: Request,
+    codice_viaggio: str = Form(...),
+    data_partenza: str = Form(...),
+    data_arrivo_prevista: str | None = Form(None),
+    autista_id: int | None = Form(None),
+    mezzo_id: int | None = Form(None),
+    origine_place: str = Form(...),
+    destinazione_place: str = Form(...),
+    tappa_destinazione: list[str] = Form(default=[]),
+    tipo_attrezzatura: list[str] = Form(default=[]),
+    quantita: list[str] = Form(default=[]),
+    richiesta_tappa_idx: list[str] = Form(default=[]),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_manager(current_user)
+    autisti, mezzi, luoghi = _load_trip_form_dependencies(db)
+    viaggio = (
+        db.query(TrasportoViaggio)
+        .options(joinedload(TrasportoViaggio.richieste_attrezzature), joinedload(TrasportoViaggio.tappe))
+        .filter(TrasportoViaggio.id == viaggio_id)
+        .first()
+    )
+    if not viaggio:
+        return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+
+    form_data = {
+        "codice_viaggio": codice_viaggio,
+        "data_partenza": data_partenza,
+        "data_arrivo_prevista": data_arrivo_prevista or "",
+        "autista_id": str(autista_id or ""),
+        "mezzo_id": str(mezzo_id or ""),
+        "origine_place": origine_place,
+        "destinazione_place": destinazione_place,
+        "tappa_destinazione": tappa_destinazione,
+        "tipo_attrezzatura": tipo_attrezzatura,
+        "quantita": quantita,
+        "richiesta_tappa_idx": richiesta_tappa_idx,
+    }
+    origine_obj = get_place_by_value(db, origine_place, include_inactive=False)
+    destinazione_obj = get_place_by_value(db, destinazione_place, include_inactive=False)
+    if not origine_obj or not destinazione_obj:
+        return render_template(
+            templates,
+            request,
+            "manager/trasporti/new_trip.html",
+            {
+                "autisti": autisti,
+                "mezzi": mezzi,
+                "locations": luoghi,
+                "mode": "edit",
+                "viaggio": viaggio,
+                "form_action": request.url_for("manager_trasporti_viaggi_update", viaggio_id=viaggio.id),
+                "form_data": form_data,
+                "error_message": "Seleziona origine e destinazione da un luogo esistente.",
+            },
+            db,
+            current_user,
+            status_code=400,
+        )
+
+    viaggio.codice_viaggio = codice_viaggio.strip().upper()
+    viaggio.data_partenza = datetime.strptime(data_partenza, "%Y-%m-%d").date()
+    viaggio.data_arrivo_prevista = datetime.strptime(data_arrivo_prevista, "%Y-%m-%d").date() if data_arrivo_prevista else None
+    viaggio.autista_id = autista_id
+    viaggio.mezzo_id = mezzo_id
+    _apply_trip_place(viaggio, "origine", origine_obj)
+    _apply_trip_place(viaggio, "destinazione", destinazione_obj)
+
+    db.query(TrasportoAttrezzaturaViaggio).filter(TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id).delete()
+    db.query(TrasportoRichiestaAttrezzatura).filter(TrasportoRichiestaAttrezzatura.viaggio_id == viaggio.id).delete()
+    db.query(TrasportoTappa).filter(TrasportoTappa.viaggio_id == viaggio.id).delete()
+    db.flush()
+
+    tappe_clean = [get_place_by_value(db, raw, include_inactive=False) for raw in tappa_destinazione if (raw or "").strip()]
+    tappe_clean = [tappa for tappa in tappe_clean if tappa is not None]
+    if not tappe_clean:
+        tappe_clean = [destinazione_obj]
+
+    tappe: list[TrasportoTappa] = []
+    for idx, place in enumerate(tappe_clean, start=1):
+        tappa = TrasportoTappa(
+            viaggio_id=viaggio.id,
+            ordine=idx,
+            destinazione=place.name,
+            site_id=place.id if place.kind == "site" else None,
+            depot_id=place.id if place.kind == "depot" else None,
+        )
+        db.add(tappa)
+        tappe.append(tappa)
+    db.flush()
+
+    for idx, tipo in enumerate(tipo_attrezzatura):
+        tipo_clean = (tipo or "").strip().lower()
+        if not tipo_clean:
+            continue
+        q_raw = quantita[idx] if idx < len(quantita) else "1"
+        q = max(1, int(q_raw or 1))
+        tappa_idx_raw = richiesta_tappa_idx[idx] if idx < len(richiesta_tappa_idx) else "1"
+        tappa_idx = max(1, int(tappa_idx_raw or 1))
+        tappa = tappe[tappa_idx - 1] if tappa_idx <= len(tappe) else tappe[-1]
+        db.add(
+            TrasportoRichiestaAttrezzatura(
+                viaggio_id=viaggio.id,
+                tappa_id=tappa.id,
+                tipo_attrezzatura=tipo_clean,
+                quantita=q,
+            )
+        )
+
+    db.commit()
+    return RedirectResponse(url=request.url_for("manager_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
+
+
 @router.get("/manager/trasporti/viaggi/{viaggio_id}", response_class=HTMLResponse, name="manager_trasporti_viaggi_detail")
 def manager_trasporti_viaggi_detail(
     viaggio_id: int,
@@ -451,8 +830,13 @@ def manager_trasporti_viaggi_detail(
         .options(
             joinedload(TrasportoViaggio.autista),
             joinedload(TrasportoViaggio.mezzo),
+            joinedload(TrasportoViaggio.origine_site),
+            joinedload(TrasportoViaggio.origine_depot),
+            joinedload(TrasportoViaggio.destinazione_site),
+            joinedload(TrasportoViaggio.destinazione_depot),
             joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
-            joinedload(TrasportoViaggio.tappe),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.tappa_destinazione),
         )
@@ -461,6 +845,7 @@ def manager_trasporti_viaggi_detail(
     )
     if not viaggio:
         return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+    _decorate_trip_locations(viaggio)
 
     assigned_counts: dict[str, list[str]] = {}
     for ass in viaggio.assegnazioni_attrezzature:
@@ -525,7 +910,16 @@ def driver_trasporti_viaggi(
     _ensure_driver(current_user)
     viaggi_assegnati = (
         db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.mezzo), joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa), joinedload(TrasportoViaggio.tappe))
+        .options(
+            joinedload(TrasportoViaggio.mezzo),
+            joinedload(TrasportoViaggio.origine_site),
+            joinedload(TrasportoViaggio.origine_depot),
+            joinedload(TrasportoViaggio.destinazione_site),
+            joinedload(TrasportoViaggio.destinazione_depot),
+            joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot),
+        )
         .filter(TrasportoViaggio.autista_id == current_user.id)
         .order_by(TrasportoViaggio.data_partenza.desc())
         .all()
@@ -533,11 +927,21 @@ def driver_trasporti_viaggi(
 
     viaggi_disponibili = (
         db.query(TrasportoViaggio)
-        .options(joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa), joinedload(TrasportoViaggio.tappe))
+        .options(
+            joinedload(TrasportoViaggio.origine_site),
+            joinedload(TrasportoViaggio.origine_depot),
+            joinedload(TrasportoViaggio.destinazione_site),
+            joinedload(TrasportoViaggio.destinazione_depot),
+            joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot),
+        )
         .filter(TrasportoViaggio.autista_id.is_(None))
         .order_by(TrasportoViaggio.data_partenza.asc())
         .all()
     )
+    viaggi_assegnati = [_decorate_trip_locations(viaggio) for viaggio in viaggi_assegnati]
+    viaggi_disponibili = [_decorate_trip_locations(viaggio) for viaggio in viaggi_disponibili]
     return render_template(
         templates,
         request,
@@ -560,8 +964,13 @@ def driver_trasporti_oggi(
         db.query(TrasportoViaggio)
         .options(
             joinedload(TrasportoViaggio.mezzo),
+            joinedload(TrasportoViaggio.origine_site),
+            joinedload(TrasportoViaggio.origine_depot),
+            joinedload(TrasportoViaggio.destinazione_site),
+            joinedload(TrasportoViaggio.destinazione_depot),
             joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
-            joinedload(TrasportoViaggio.tappe),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.tappa_destinazione),
         )
@@ -571,6 +980,7 @@ def driver_trasporti_oggi(
     )
     richieste = []
     if viaggio:
+        _decorate_trip_locations(viaggio)
         for req in viaggio.richieste_attrezzature:
             disponibili = (
                 db.query(Attrezzatura)
@@ -622,8 +1032,13 @@ def driver_trasporti_viaggi_detail(
         db.query(TrasportoViaggio)
         .options(
             joinedload(TrasportoViaggio.mezzo),
+            joinedload(TrasportoViaggio.origine_site),
+            joinedload(TrasportoViaggio.origine_depot),
+            joinedload(TrasportoViaggio.destinazione_site),
+            joinedload(TrasportoViaggio.destinazione_depot),
             joinedload(TrasportoViaggio.richieste_attrezzature).joinedload(TrasportoRichiestaAttrezzatura.tappa),
-            joinedload(TrasportoViaggio.tappe),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.tappa_destinazione),
         )
@@ -635,6 +1050,7 @@ def driver_trasporti_viaggi_detail(
     )
     if not viaggio:
         return RedirectResponse(url=request.url_for("driver_trasporti_viaggi"), status_code=303)
+    _decorate_trip_locations(viaggio)
 
     richieste = []
     for req in viaggio.richieste_attrezzature:
@@ -782,10 +1198,14 @@ async def driver_trasporti_viaggi_stato(
         for ass in viaggio.assegnazioni_attrezzature:
             att = ass.attrezzatura
             tappa_dest = ass.tappa_destinazione.destinazione if ass.tappa_destinazione else viaggio.destinazione
+            destinazione_site_id = ass.tappa_destinazione.site_id if ass.tappa_destinazione else viaggio.destinazione_site_id
+            destinazione_depot_id = ass.tappa_destinazione.depot_id if ass.tappa_destinazione else viaggio.destinazione_depot_id
             if att.id in remaining_ids:
                 att.posizione_attuale = "camion"
                 ass.scaricato = False
                 movement_dest = "camion"
+                destinazione_site_id = None
+                destinazione_depot_id = None
             else:
                 att.posizione_attuale = tappa_dest
                 ass.scaricato = True
@@ -795,6 +1215,10 @@ async def driver_trasporti_viaggi_stato(
                 MovimentoAttrezzatura(
                     attrezzatura_id=att.id,
                     viaggio_id=viaggio.id,
+                    origine_site_id=viaggio.origine_site_id,
+                    origine_depot_id=viaggio.origine_depot_id,
+                    destinazione_site_id=destinazione_site_id,
+                    destinazione_depot_id=destinazione_depot_id,
                     origine=viaggio.origine,
                     destinazione=movement_dest,
                     data=now,
@@ -840,9 +1264,16 @@ def manager_trasporti_movimenti(
             joinedload(MovimentoAttrezzatura.attrezzatura),
             joinedload(MovimentoAttrezzatura.viaggio),
             joinedload(MovimentoAttrezzatura.autista),
+            joinedload(MovimentoAttrezzatura.origine_site),
+            joinedload(MovimentoAttrezzatura.origine_depot),
+            joinedload(MovimentoAttrezzatura.destinazione_site),
+            joinedload(MovimentoAttrezzatura.destinazione_depot),
         )
         .order_by(MovimentoAttrezzatura.data.desc())
         .limit(200)
         .all()
     )
+    for movimento in movimenti:
+        movimento.origine_label = _movement_place_label(movimento, "origine")
+        movimento.destinazione_label = _movement_place_label(movimento, "destinazione")
     return render_template(templates, request, "manager/trasporti/movimenti.html", {"movimenti": movimenti}, db, current_user)

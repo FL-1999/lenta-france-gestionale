@@ -12,10 +12,10 @@
 {% for v in viaggi_assegnati %}
   <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:0.75rem;">
     <p><a href="{{ url_for('driver_trasporti_viaggi_detail', viaggio_id=v.id) }}"><strong>{{ v.codice_viaggio }}</strong></a> · {{ v.data_partenza }} · {{ v.stato.value }}</p>
-    <p>{{ v.origine }} → {{ v.destinazione }}</p>
+    <p>{{ v.origine_label }} → {{ v.destinazione_label }}</p>
     {% for tappa in v.tappe %}
       <div style="margin-left:1rem;">
-        <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione }}</strong>
+        <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
         <ul>
           {% for req in v.richieste_attrezzature if req.tappa_id == tappa.id %}
             <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>
@@ -38,10 +38,10 @@
 {% for v in viaggi_disponibili %}
   <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:0.75rem;">
     <p><strong>{{ v.codice_viaggio }}</strong> · {{ v.data_partenza }}</p>
-    <p>{{ v.origine }} → {{ v.destinazione }}</p>
+    <p>{{ v.origine_label }} → {{ v.destinazione_label }}</p>
     {% for tappa in v.tappe %}
       <div style="margin-left:1rem;">
-        <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione }}</strong>
+        <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
         <ul>
           {% for req in v.richieste_attrezzature if req.tappa_id == tappa.id %}
             <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>

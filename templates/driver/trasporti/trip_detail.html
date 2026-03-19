@@ -10,6 +10,8 @@
 <div class="card card-body">
   <p><strong>Camion</strong><br>{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
   <p><strong>Stato</strong><br>{{ viaggio.stato.value }}</p>
+  <p><strong>Origine</strong><br>{{ viaggio.origine_label }}</p>
+  <p><strong>Destinazione</strong><br>{{ viaggio.destinazione_label }}</p>
 
   <h3>Materiale da caricare (reale o generico)</h3>
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
@@ -32,7 +34,7 @@
   <h3>Tappe e materiali</h3>
   {% for tappa in viaggio.tappe %}
     <div style="border:1px solid #ddd;padding:0.7rem;margin-bottom:0.7rem;">
-      <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione }}</strong>
+      <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
       <ul>
         {% for req in viaggio.richieste_attrezzature if req.tappa_id == tappa.id %}
           <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>
@@ -52,7 +54,7 @@
     {% for a in viaggio.assegnazioni_attrezzature %}
       <li>
         {{ a.attrezzatura.codice }} - {{ a.attrezzatura.qr_code }}
-        {% if a.tappa_destinazione %}(dest: {{ a.tappa_destinazione.destinazione }}){% endif %}
+        {% if a.tappa_destinazione %}(dest: {{ a.tappa_destinazione.destinazione_label if a.tappa_destinazione.destinazione_label is defined else a.tappa_destinazione.destinazione }}){% endif %}
       </li>
     {% else %}
       <li>Nessuna attrezzatura ancora caricata</li>

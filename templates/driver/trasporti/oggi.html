@@ -7,7 +7,7 @@
 {% else %}
 <div class="card card-body" style="max-width:640px;margin:auto;">
   <p style="font-size:1.2rem;font-weight:700;">{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim) if viaggio.mezzo else 'Camion non assegnato' }}</p>
-  <p style="font-size:1.2rem;">{{ viaggio.origine }} → {{ viaggio.destinazione }}</p>
+  <p style="font-size:1.2rem;">{{ viaggio.origine_label }} → {{ viaggio.destinazione_label }}</p>
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     <h3>Materiale da caricare</h3>
     {% for req, disponibili in richieste_disponibili %}

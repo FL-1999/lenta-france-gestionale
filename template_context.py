@@ -20,6 +20,7 @@ from models import (
 )
 from notifications import get_warehouse_notification_counts
 from permissions import get_active_role, get_user_roles, has_perm
+from utils.places import format_place_label
 
 
 def _can_view_manager_badges(user: User | None) -> bool:
@@ -227,6 +228,7 @@ def build_template_context(
     template_context.setdefault("user", user)
     template_context.setdefault("has_perm", has_perm)
     template_context.setdefault("lang", get_lang_from_request(request))
+    template_context.setdefault("format_place_label", format_place_label)
 
     active_role = get_active_role(user)
     available_roles = list(get_user_roles(user)) if user else []

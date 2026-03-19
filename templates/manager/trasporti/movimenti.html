@@ -11,7 +11,7 @@
 <td>{{ m.data }}</td>
 <td>{{ m.attrezzatura.codice if m.attrezzatura else '-' }}</td>
 <td>{{ m.viaggio.codice_viaggio if m.viaggio else '-' }}</td>
-<td>{{ m.origine }} → {{ m.destinazione }}</td>
+<td>{{ m.origine_label }} → {{ m.destinazione_label }}</td>
 <td>{{ m.autista.full_name if m.autista and m.autista.full_name else (m.autista.email if m.autista else '-') }}</td>
 </tr>
 {% else %}<tr><td colspan="5">Nessun movimento</td></tr>{% endfor %}

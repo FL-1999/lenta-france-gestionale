@@ -32,9 +32,36 @@ USERS_COLUMNS: tuple[str, ...] = (
     "can_switch_roles BOOLEAN NOT NULL DEFAULT 0",
 )
 
+TRASPORTI_VIAGGI_COLUMNS: tuple[str, ...] = (
+    "origine_site_id INTEGER",
+    "origine_depot_id INTEGER",
+    "destinazione_site_id INTEGER",
+    "destinazione_depot_id INTEGER",
+)
+
+TRASPORTO_TAPPE_COLUMNS: tuple[str, ...] = (
+    "site_id INTEGER",
+    "depot_id INTEGER",
+)
+
+MOVIMENTI_ATTREZZATURE_COLUMNS: tuple[str, ...] = (
+    "origine_site_id INTEGER",
+    "origine_depot_id INTEGER",
+    "destinazione_site_id INTEGER",
+    "destinazione_depot_id INTEGER",
+)
+
+MAGAZZINO_MOVIMENTI_COLUMNS: tuple[str, ...] = (
+    "deposito_id INTEGER",
+)
+
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "veicoli": VEICOLI_COLUMNS,
     "users": USERS_COLUMNS,
+    "trasporti_viaggi": TRASPORTI_VIAGGI_COLUMNS,
+    "trasporto_tappe": TRASPORTO_TAPPE_COLUMNS,
+    "movimenti_attrezzature": MOVIMENTI_ATTREZZATURE_COLUMNS,
+    "magazzino_movimenti": MAGAZZINO_MOVIMENTI_COLUMNS,
 }
 
 

@@ -49,12 +49,12 @@
                     >
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="cantiere_id">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
-                    <select id="cantiere_id" name="cantiere_id" class="form-select">
+                    <label class="form-label" for="location_id">{% if lang == 'fr' %}Lieu{% else %}Luogo{% endif %}</label>
+                    <select id="location_id" name="location_id" class="form-select">
                         <option value="">—</option>
-                        {% for cantiere in cantieri %}
-                            <option value="{{ cantiere.id }}" {% if selected.cantiere_id == cantiere.id %}selected{% endif %}>
-                                {{ cantiere.name }}{% if cantiere.code %} ({{ cantiere.code }}){% endif %}
+                        {% for location in locations %}
+                            <option value="{{ location.value }}" {% if selected.location_id == location.value %}selected{% endif %}>
+                                {{ location.label }}
                             </option>
                         {% endfor %}
                     </select>
@@ -135,7 +135,7 @@
                         <th>{% if lang == 'fr' %}Article{% else %}Articolo{% endif %}</th>
                         <th>{% if lang == 'fr' %}Type{% else %}Tipo{% endif %}</th>
                         <th>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Lieu{% else %}Luogo{% endif %}</th>
                         <th>{% if lang == 'fr' %}Destination{% else %}Destinazione{% endif %}</th>
                         <th>{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</th>
                         <th>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</th>
@@ -155,15 +155,15 @@
                             </td>
                             <td>{{ movimento.tipo.value if movimento.tipo else '—' }}</td>
                             <td>{{ movimento.quantita }}</td>
-                            <td>{{ movimento.cantiere.name if movimento.cantiere else '—' }}</td>
+                            <td>{{ movimento.location_label }}</td>
                             <td>
-                                {% set cantiere_label = movimento.cantiere.name if movimento.cantiere else '' %}
+                                {% set cantiere_label = movimento.location_label if movimento.location_label != '—' else '' %}
                                 {% set personale_label = movimento.caposquadra.full_name if movimento.caposquadra and movimento.caposquadra.full_name else (movimento.caposquadra.email if movimento.caposquadra else '') %}
                                 {% if cantiere_label and personale_label %}
                                     {% if lang == 'fr' %}
-                                        Chantier: {{ cantiere_label }} — Personnel: {{ personale_label }}
+                                        Lieu: {{ cantiere_label }} — Personnel: {{ personale_label }}
                                     {% else %}
-                                        Cantiere: {{ cantiere_label }} — Personale: {{ personale_label }}
+                                        Luogo: {{ cantiere_label }} — Personale: {{ personale_label }}
                                     {% endif %}
                                 {% elif cantiere_label %}
                                     {{ cantiere_label }}
