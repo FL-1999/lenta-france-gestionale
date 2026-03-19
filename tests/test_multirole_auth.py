@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from auth import get_current_active_user_html
+from auth import get_current_active_user_html, hash_password
 from database import get_db
 from main import app
 from models import Base, Role, RoleEnum, User, UserRole
@@ -29,13 +29,14 @@ class TestMultiRoleAuth:
 
         admin_role = Role(name=RoleEnum.admin, description="Admin")
         driver_role = Role(name=RoleEnum.driver, description="Driver")
-        self.db.add_all([admin_role, driver_role])
+        magazzino_role = Role(name=RoleEnum.magazzino, description="Magazzino")
+        self.db.add_all([admin_role, driver_role, magazzino_role])
         self.db.flush()
 
         user = User(
             email="multi@example.com",
             full_name="Multi Role",
-            hashed_password="hashed",
+            hashed_password=hash_password("test-password"),
             role=RoleEnum.admin,
             can_switch_roles=True,
             is_active=True,
@@ -95,3 +96,74 @@ class TestMultiRoleAuth:
 
         assert response.status_code == 404 or response.status_code == 403
         assert updated_user.role == RoleEnum.admin
+
+    def test_switch_role_allows_authorized_non_admin_multirole_user(self):
+        driver_role = self.db.query(Role).filter(Role.name == RoleEnum.driver).first()
+        magazzino_role = self.db.query(Role).filter(Role.name == RoleEnum.magazzino).first()
+        user = User(
+            email="operations@example.com",
+            full_name="Operations Multi Role",
+            hashed_password=hash_password("test-password"),
+            role=RoleEnum.driver,
+            can_switch_roles=True,
+            is_active=True,
+        )
+        self.db.add(user)
+        self.db.flush()
+        self.db.add_all(
+            [
+                UserRole(user_id=user.id, role_id=driver_role.id),
+                UserRole(user_id=user.id, role_id=magazzino_role.id),
+            ]
+        )
+        self.db.commit()
+
+        app.dependency_overrides[get_current_active_user_html] = lambda: SimpleNamespace(
+            id=user.id,
+            email=user.email,
+            can_switch_roles=True,
+            role=RoleEnum.driver,
+        )
+
+        response = self.client.get("/switch-role/magazzino", follow_redirects=False)
+        updated_user = self.db.query(User).filter(User.id == user.id).first()
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/manager/magazzino/dashboard"
+        assert updated_user.role == RoleEnum.magazzino
+
+    def test_login_redirects_to_active_role_dashboard(self):
+        response = self.client.post(
+            "/auth/login",
+            data={"email": "multi@example.com", "password": "test-password"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/manager/dashboard"
+        assert "access_token" in response.headers.get("set-cookie", "")
+
+    def test_login_redirects_to_first_available_role_when_active_role_missing(self):
+        user = self.db.query(User).filter(User.id == self.user_id).first()
+        user.role = RoleEnum.magazzino
+        self.db.commit()
+
+        response = self.client.post(
+            "/auth/login",
+            data={"email": "multi@example.com", "password": "test-password"},
+            follow_redirects=False,
+        )
+        refreshed_user = self.db.query(User).filter(User.id == self.user_id).first()
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/manager/dashboard"
+        assert refreshed_user.role == RoleEnum.admin
+
+    def test_login_template_has_only_email_and_password_fields(self):
+        response = self.client.get("/login")
+
+        assert response.status_code == 200
+        assert 'name="email"' in response.text
+        assert 'name="password"' in response.text
+        assert 'name="role"' not in response.text
+        assert "selector manager/caposquadra" not in response.text

@@ -36,7 +36,7 @@
     {% set can_access_personale = is_manager %}
     {% set can_access_driver_trasporti = user and has_perm(user, 'trasporti.assigned.read') %}
     {% set is_authenticated = user is not none %}
-    {% set can_show_role_switcher = show_role_switcher if show_role_switcher is defined else (user and user.can_switch_roles and (available_roles|default([])|length) > 1 and user.has_role('admin')) %}
+    {% set can_show_role_switcher = show_role_switcher if show_role_switcher is defined else (user and user.can_switch_roles and (available_roles|default([])|length) > 1) %}
     {% set role_labels = {
         'admin': 'Admin',
         'manager': 'Manager',

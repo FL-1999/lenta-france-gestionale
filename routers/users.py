@@ -123,7 +123,6 @@ def create_user(
     can_switch_roles = bool(
         user_in.can_switch_roles
         and len(set(user_in.roles)) > 1
-        and RoleEnum.admin in user_in.roles
     )
 
     db_user = User(

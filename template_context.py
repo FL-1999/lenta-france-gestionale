@@ -242,7 +242,6 @@ def build_template_context(
             user
             and getattr(user, "can_switch_roles", False)
             and len(available_roles) > 1
-            and user_has_role(user, RoleEnum.admin)
         ),
     )
     template_context.setdefault("is_manager", is_manager)
