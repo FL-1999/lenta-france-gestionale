@@ -27,6 +27,11 @@
     </p>
   </div>
   <div class="page-actions">
+    {% if has_perm(user, 'economics.read') %}
+      <a href="{{ url_for('manager_economics_dashboard') }}" class="btn btn-secondary">
+        💶 {% if lang == 'fr' %}Économie{% else %}Economica{% endif %}
+      </a>
+    {% endif %}
     <a href="/manager/cantieri/nuovo" class="btn btn-primary">
       ➕ {% if lang == 'fr' %}Nouveau chantier{% else %}Nuovo cantiere{% endif %}
     </a>

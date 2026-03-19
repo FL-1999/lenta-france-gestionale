@@ -1,0 +1,158 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}Controllo economico cantieri – Manager{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">{% if lang == 'fr' %}Contrôle économique{% else %}Controllo economico{% endif %}</p>
+    <h1 class="page-title">💶 {% if lang == 'fr' %}Tableau économique chantiers{% else %}Dashboard economica cantieri{% endif %}</h1>
+    <p class="page-subtitle">
+      {% if lang == 'fr' %}
+        Vue consolidée des ricavi, coûts, main-d'œuvre forfaitaire et marginalité par chantier.
+      {% else %}
+        Vista consolidata di ricavi, costi, manodopera forfettaria e marginalità per cantiere.
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<form method="get" class="card" style="margin-bottom: 1rem;">
+  <div class="card-body economics-filter-grid">
+    <div>
+      <label class="form-label" for="timeframe">Periodo</label>
+      <select class="form-select" id="timeframe" name="timeframe">
+        {% for key, label in timeframe_options.items() %}
+          <option value="{{ key }}" {% if timeframe == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="start_date">Da</label>
+      <input class="form-control" type="date" id="start_date" name="start_date" value="{{ filters.start_date }}">
+    </div>
+    <div>
+      <label class="form-label" for="end_date">A</label>
+      <input class="form-control" type="date" id="end_date" name="end_date" value="{{ filters.end_date }}">
+    </div>
+    <div class="economics-filter-actions">
+      <button class="btn btn-primary" type="submit">Aggiorna</button>
+    </div>
+  </div>
+</form>
+
+<section class="economics-kpi-grid">
+  <article class="card"><div class="card-body"><div class="stat-label">Ricavi fatturati</div><div class="stat-value">€ {{ '%.2f'|format(totals.ricavi_fatturati) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Costi totali</div><div class="stat-value">€ {{ '%.2f'|format(totals.costi_totali) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Costo personale</div><div class="stat-value">€ {{ '%.2f'|format(totals.costo_personale) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Costo materiali</div><div class="stat-value">€ {{ '%.2f'|format(totals.costo_materiali) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Mezzi / trasporti</div><div class="stat-value">€ {{ '%.2f'|format(totals.costo_mezzi_trasporti) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Margine %</div><div class="stat-value">{{ '%.2f'|format(totals.margine_pct) }}%</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Utile / perdita</div><div class="stat-value {% if totals.utile_perdita < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(totals.utile_perdita) }}</div></div></article>
+</section>
+
+<div class="economics-layout">
+  <section class="card">
+    <div class="card-header"><div class="card-title">📊 Trend economico</div></div>
+    <div class="card-body">
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Periodo</th>
+              <th>Ricavi</th>
+              <th>Manodopera</th>
+              <th>Materiali</th>
+              <th>Mezzi / trasporti</th>
+              <th>Attrezzature</th>
+              <th>Costi totali</th>
+              <th>Utile / perdita</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in trend %}
+              <tr>
+                <td>{{ row.label }}</td>
+                <td>€ {{ '%.2f'|format(row.revenues) }}</td>
+                <td>€ {{ '%.2f'|format(row.labor) }}</td>
+                <td>€ {{ '%.2f'|format(row.materials) }}</td>
+                <td>€ {{ '%.2f'|format(row.logistics) }}</td>
+                <td>€ {{ '%.2f'|format(row.equipment) }}</td>
+                <td>€ {{ '%.2f'|format(row.total_costs) }}</td>
+                <td class="{% if row.profit < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(row.profit) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="8" class="table-empty">Nessun movimento economico nel periodo selezionato.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <aside class="economics-sidebar">
+    <section class="card">
+      <div class="card-header"><div class="card-title">🧮 Costi per categoria</div></div>
+      <div class="card-body economics-stacked-list">
+        <div><span>Materiali</span><strong>€ {{ '%.2f'|format(category_totals.materiali) }}</strong></div>
+        <div><span>Trasporti</span><strong>€ {{ '%.2f'|format(category_totals.trasporti) }}</strong></div>
+        <div><span>Mezzi</span><strong>€ {{ '%.2f'|format(category_totals.mezzi) }}</strong></div>
+        <div><span>Attrezzature</span><strong>€ {{ '%.2f'|format(category_totals.attrezzature) }}</strong></div>
+        <div><span>Manodopera</span><strong>€ {{ '%.2f'|format(category_totals.manodopera) }}</strong></div>
+        <div><span>Altri costi</span><strong>€ {{ '%.2f'|format(category_totals.altri_costi) }}</strong></div>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<section class="card" style="margin-top: 1rem;">
+  <div class="card-header"><div class="card-title">🏗️ Report marginalità per cantiere</div></div>
+  <div class="card-body">
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Cantiere</th>
+            <th>Ricavi fatturati</th>
+            <th>Costi totali</th>
+            <th>Costo personale</th>
+            <th>Margine %</th>
+            <th>Utile / perdita</th>
+            <th>SAL operativo</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in snapshots %}
+            <tr>
+              <td><strong>{{ item.site.name }}</strong><br><small>{{ item.site.code or '—' }}</small></td>
+              <td>€ {{ '%.2f'|format(item.metrics.ricavi_fatturati) }}</td>
+              <td>€ {{ '%.2f'|format(item.metrics.costi_totali) }}</td>
+              <td>€ {{ '%.2f'|format(item.metrics.costo_personale) }}</td>
+              <td>{{ '%.2f'|format(item.metrics.margine_pct) }}%</td>
+              <td class="{% if item.metrics.utile_perdita < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(item.metrics.utile_perdita) }}</td>
+              <td>{{ '%.2f'|format(item.sal.operational_progress_pct) }}%</td>
+              <td><a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=item.site.id) }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">Apri dettaglio</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" class="table-empty">Nessun cantiere disponibile.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<style>
+  .economics-filter-grid, .economics-kpi-grid { display:grid; gap:1rem; }
+  .economics-filter-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items:end; }
+  .economics-filter-actions { display:flex; align-items:end; }
+  .economics-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom:1rem; }
+  .economics-layout { display:grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap:1rem; }
+  .economics-sidebar { display:grid; gap:1rem; }
+  .economics-stacked-list { display:grid; gap:.75rem; }
+  .economics-stacked-list > div { display:flex; justify-content:space-between; gap:1rem; padding:.65rem 0; border-bottom:1px solid rgba(255,255,255,.08); }
+  .stat-label { font-size:.85rem; opacity:.8; margin-bottom:.35rem; }
+  .stat-value { font-size:1.35rem; font-weight:700; }
+  @media (max-width: 960px) { .economics-layout { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
