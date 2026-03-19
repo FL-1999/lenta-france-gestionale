@@ -1,13 +1,10 @@
 {# templates/manager/magazzino/_nav_pills.html #}
 
 {% set manager_badges = manager_badge_counts(request, user) %}
+{% set can_manage_catalog = user and has_perm(user, 'manager.access') %}
 
 <a href="{{ url_for('manager_magazzino_home') }}" class="btn btn-secondary">
-  📦 {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}
-</a>
-
-<a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
-  🗂️ {% if lang == 'fr' %}Catégories{% else %}Categorie{% endif %}
+  📦 {% if lang == 'fr' %}Magasin{% else %}Materiali{% endif %}
 </a>
 
 <a href="{{ url_for('manager_magazzino_movimenti') }}" class="btn btn-secondary">
@@ -15,12 +12,17 @@
 </a>
 
 <a href="{{ url_for('manager_magazzino_richieste') }}" class="btn btn-secondary">
-  <span class="nav-pill__label">{% if lang == 'fr' %}Demandes{% else %}Richieste{% endif %}</span>
+  <span class="nav-pill__label">{% if lang == 'fr' %}Demandes{% else %}Richieste viaggio{% endif %}</span>
   {% if manager_badges.pending_requests and manager_badges.pending_requests > 0 %}
     <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
       {{ '99+' if manager_badges.pending_requests > 99 else manager_badges.pending_requests }}
     </span>
   {% endif %}
+</a>
+
+{% if can_manage_catalog %}
+<a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
+  🗂️ {% if lang == 'fr' %}Catégories{% else %}Categorie{% endif %}
 </a>
 
 <a href="{{ url_for('manager_magazzino_sotto_soglia') }}" class="btn btn-secondary">
@@ -35,3 +37,4 @@
 <a href="{{ url_for('manager_magazzino_archiviati') }}" class="btn btn-secondary">
   🗄️ {% if lang == 'fr' %}Archivés{% else %}Archiviati{% endif %}
 </a>
+{% endif %}

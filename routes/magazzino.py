@@ -39,7 +39,7 @@ from template_context import (
     register_manager_badges,
     render_template,
 )
-from permissions import has_perm
+from permissions import can_access_manager_area, can_access_warehouse_area, can_manage_warehouse_requests, has_perm
 from notifications import notify_magazzino_richiesta
 from utils.places import format_place_label, get_place_by_value, get_selectable_places
 import magazzino_repository
@@ -96,8 +96,20 @@ def ensure_caposquadra_or_manager(user: User) -> None:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
 
-def ensure_magazzino_manager(user: User) -> None:
-    if has_perm(user, "manager.access") or has_perm(user, "inventory.manage"):
+def ensure_magazzino_access(user: User) -> None:
+    if can_access_warehouse_area(user):
+        return
+    raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def ensure_magazzino_catalog_manager(user: User) -> None:
+    if can_access_manager_area(user):
+        return
+    raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def ensure_magazzino_requests_operator(user: User) -> None:
+    if can_manage_warehouse_requests(user):
         return
     raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
@@ -357,7 +369,7 @@ def api_magazzino_ensure_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     macro_value = str((payload.get("macro_id") or "").strip())
     new_macro_name = (payload.get("new_macro_name") or "").strip()
@@ -860,7 +872,7 @@ def manager_magazzino_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     sotto_soglia_count = (
         db.query(func.count(MagazzinoItem.id))
@@ -939,7 +951,7 @@ def manager_magazzino_home(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     ok = request.query_params.get("ok")
     err = request.query_params.get("err")
@@ -995,7 +1007,7 @@ def manager_magazzino_archiviati(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_access(current_user)
     query = (
         db.query(MagazzinoItem)
         .join(MagazzinoCategoria, MagazzinoItem.categoria_id == MagazzinoCategoria.id, isouter=True)
@@ -1061,7 +1073,7 @@ def manager_magazzino_list(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     ok = request.query_params.get("ok")
     err = request.query_params.get("err")
@@ -1246,7 +1258,8 @@ def manager_magazzino_sotto_soglia(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     items = (
         db.query(MagazzinoItem)
@@ -1302,7 +1315,8 @@ def manager_magazzino_sotto_soglia_crea_richiesta(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     items = (
         db.query(MagazzinoItem)
@@ -1364,7 +1378,8 @@ def manager_magazzino_richiesta_draft_sotto_soglia(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     righe_map: dict[int, float] = {}
     for raw_item_id, raw_quantita in zip(item_id, quantita):
@@ -1438,7 +1453,7 @@ def manager_magazzino_movimenti(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     page, per_page = _normalize_pagination(page, per_page)
     parsed_from = _parse_date(date_from)
@@ -1634,7 +1649,8 @@ def manager_magazzino_report_consumi(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     if not cantiere_id:
         raise HTTPException(status_code=400, detail="Cantiere obbligatorio")
@@ -1716,7 +1732,8 @@ def manager_magazzino_macros_list(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     macros = (
         db.query(MagazzinoMacro)
         .order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc())
@@ -1746,7 +1763,8 @@ def manager_magazzino_categorie_list(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     error_message = (request.query_params.get("error") or "").strip() or None
     success_message = (request.query_params.get("success") or "").strip() or None
     macros = (
@@ -1783,7 +1801,8 @@ def manager_magazzino_categorie_new(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     macro_id_raw = (request.query_params.get("macro_id") or "").strip()
     try:
         selected_macro_id = str(int(macro_id_raw)) if macro_id_raw else ""
@@ -1828,7 +1847,8 @@ def manager_magazzino_categorie_create(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     macros = (
         db.query(MagazzinoMacro)
@@ -1985,7 +2005,8 @@ def manager_magazzino_macro_new(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     return render_template(
         templates,
         request,
@@ -2021,7 +2042,8 @@ def manager_magazzino_macro_create(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     macro_name = (name or nome or "").strip()
     if not macro_name:
         return RedirectResponse(
@@ -2093,7 +2115,8 @@ def manager_magazzino_macro_edit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id).first()
     if not macro:
         return RedirectResponse(
@@ -2129,7 +2152,8 @@ def manager_magazzino_macro_update(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id).first()
     if not macro:
         return RedirectResponse(
@@ -2217,7 +2241,8 @@ def manager_magazzino_macro_delete(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     macro = db.query(MagazzinoMacro).filter(MagazzinoMacro.id == macro_id).first()
     if not macro:
         return RedirectResponse(
@@ -2265,7 +2290,8 @@ def manager_magazzino_categorie_edit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id)
@@ -2311,7 +2337,8 @@ def manager_magazzino_categorie_update(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     macros = _load_magazzino_macros(db)
     categoria = (
@@ -2463,7 +2490,8 @@ def manager_magazzino_categorie_move_submit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id)
@@ -2517,7 +2545,8 @@ def manager_magazzino_categorie_move(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categoria = (
         db.query(MagazzinoCategoria)
         .options(joinedload(MagazzinoCategoria.macro))
@@ -2555,7 +2584,8 @@ def manager_magazzino_categorie_disable(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id)
@@ -2583,7 +2613,8 @@ def manager_magazzino_categorie_toggle(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id)
@@ -2622,7 +2653,8 @@ def manager_magazzino_categorie_delete(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id)
@@ -2660,7 +2692,8 @@ def manager_magazzino_categorie_up(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id, MagazzinoCategoria.attiva.is_(True))
@@ -2685,7 +2718,8 @@ def manager_magazzino_categorie_down(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categoria = (
         db.query(MagazzinoCategoria)
         .filter(MagazzinoCategoria.id == categoria_id, MagazzinoCategoria.attiva.is_(True))
@@ -2709,7 +2743,8 @@ def manager_magazzino_new(
     current_user: User = Depends(get_current_active_user_html),
     db: Session = Depends(get_db),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
         db,
         include_inactive=False,
@@ -2754,7 +2789,8 @@ def manager_magazzino_create(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     item = MagazzinoItem(
         nome=nome.strip(),
@@ -2825,7 +2861,8 @@ def manager_magazzino_edit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         return RedirectResponse(
@@ -2873,7 +2910,8 @@ def manager_magazzino_update(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
@@ -3016,7 +3054,8 @@ def manager_magazzino_duplicate(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     item = (
         db.query(MagazzinoItem)
         .options(joinedload(MagazzinoItem.categoria))
@@ -3055,7 +3094,8 @@ def manager_magazzino_duplicate_create(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     item = (
         db.query(MagazzinoItem)
         .options(joinedload(MagazzinoItem.categoria))
@@ -3172,7 +3212,8 @@ def manager_magazzino_rettifica_form(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_requests_operator(current_user)
+    ensure_magazzino_access(current_user)
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         return RedirectResponse(
@@ -3207,7 +3248,8 @@ def manager_magazzino_rettifica_submit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_requests_operator(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
@@ -3288,7 +3330,8 @@ def manager_magazzino_preferito_toggle(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         return RedirectResponse(
@@ -3328,7 +3371,8 @@ def manager_magazzino_scarico(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_requests_operator(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     try:
         item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
@@ -3423,7 +3467,8 @@ def manager_magazzino_carico_rapido(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_requests_operator(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     try:
         item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
@@ -3498,7 +3543,8 @@ def manager_magazzino_scarico_rapido(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_requests_operator(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     try:
         item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
@@ -3586,7 +3632,8 @@ def manager_magazzino_delete(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     if not has_perm(current_user, "records.delete"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
@@ -3641,7 +3688,8 @@ def manager_magazzino_item_riattiva(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Articolo non trovato")
@@ -3667,7 +3715,8 @@ def manager_magazzino_item_delete_permanent(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
     if not has_perm(current_user, "records.delete"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
@@ -3702,7 +3751,7 @@ def manager_magazzino_richieste(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_access(current_user)
 
     page, per_page = _normalize_pagination(page, per_page)
     stato_filtro = None
@@ -3759,7 +3808,7 @@ def manager_magazzino_richiesta_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_access(current_user)
     richiesta = (
         db.query(MagazzinoRichiesta)
         .options(
@@ -3801,7 +3850,8 @@ def manager_magazzino_richiesta_approva(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_requests_operator(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     richiesta = (
         db.query(MagazzinoRichiesta)
@@ -3892,7 +3942,8 @@ async def manager_magazzino_richiesta_evadi(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_requests_operator(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     richiesta = (
         db.query(MagazzinoRichiesta)
@@ -4115,7 +4166,8 @@ def manager_magazzino_richiesta_rifiuta(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    ensure_magazzino_manager(current_user)
+    ensure_magazzino_requests_operator(current_user)
+    ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     richiesta = db.query(MagazzinoRichiesta).filter(MagazzinoRichiesta.id == richiesta_id).first()
     if not richiesta:

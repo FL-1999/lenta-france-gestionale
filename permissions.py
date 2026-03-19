@@ -27,10 +27,28 @@ MAGAZZINO_PERMISSIONS: FrozenSet[str] = frozenset(
     {
         "inventory.read",
         "inventory.manage",
+        "inventory.movements.read",
         "warehouse.requests.read",
+        "warehouse.requests.manage",
         "warehouse.loads.prepare",
+        "equipment.read",
+        "trasporti.read",
+        "trasporti.loads.manage",
+        "trasporti.movements.read",
+        "depositi.read",
+        "logistics.places.read",
     }
 )
+
+
+WAREHOUSE_PERMISSION_MATRIX: dict[str, tuple[str, ...]] = {
+    "inventario_materiali": ("inventory.read", "inventory.manage"),
+    "attrezzature": ("equipment.read", "trasporti.read", "trasporti.loads.manage"),
+    "richieste_viaggio": ("warehouse.requests.read", "warehouse.requests.manage", "trasporti.read"),
+    "preparazione_carichi": ("warehouse.loads.prepare", "trasporti.loads.manage"),
+    "depositi_luoghi_logistici": ("depositi.read", "logistics.places.read"),
+    "movimenti_magazzino": ("inventory.movements.read",),
+}
 
 DRIVER_PERMISSIONS: FrozenSet[str] = frozenset(
     {
@@ -136,3 +154,36 @@ def has_perm(user: User | None, perm: str) -> bool:
         return False
     permissions = ROLE_PERMISSIONS.get(role, frozenset())
     return _perm_matches(perm, permissions)
+
+
+
+def has_any_perm(user: User | None, *perms: str) -> bool:
+    return any(has_perm(user, perm) for perm in perms)
+
+
+def can_access_manager_area(user: User | None) -> bool:
+    return has_perm(user, "manager.access")
+
+
+def can_access_warehouse_area(user: User | None) -> bool:
+    return has_any_perm(user, "manager.access", "inventory.read", "inventory.manage")
+
+
+def can_manage_warehouse_requests(user: User | None) -> bool:
+    return has_any_perm(user, "manager.access", "warehouse.requests.manage", "warehouse.loads.prepare")
+
+
+def can_access_depots(user: User | None) -> bool:
+    return has_any_perm(user, "manager.access", "depositi.read")
+
+
+def can_manage_depots(user: User | None) -> bool:
+    return has_any_perm(user, "manager.access", "depositi.create", "depositi.update")
+
+
+def can_access_logistics_area(user: User | None) -> bool:
+    return has_any_perm(user, "manager.access", "trasporti.read", "trasporti.loads.manage")
+
+
+def can_manage_trip_loads(user: User | None) -> bool:
+    return has_any_perm(user, "manager.access", "trasporti.loads.manage", "warehouse.loads.prepare")

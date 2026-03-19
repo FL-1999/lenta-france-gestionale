@@ -27,7 +27,7 @@ from models import (
     User,
 )
 from models.veicoli import Veicolo
-from permissions import has_perm
+from permissions import can_access_logistics_area, can_access_manager_area, can_manage_trip_loads, has_perm
 from template_context import register_manager_badges, render_template
 from utils.places import format_place_label, get_place_by_value, get_selectable_places
 
@@ -38,8 +38,18 @@ router = APIRouter(tags=["trasporti"])
 WEEKDAY_LABELS = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
 
 
+def _ensure_logistics_access(user: User) -> None:
+    if not can_access_logistics_area(user):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
 def _ensure_manager(user: User) -> None:
-    if not has_perm(user, "manager.access"):
+    if not can_access_manager_area(user):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def _ensure_trip_load_operator(user: User) -> None:
+    if not can_manage_trip_loads(user):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
 
@@ -174,7 +184,7 @@ def manager_trasporti_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_logistics_access(current_user)
     today = date.today()
     selected_stato = None
     if stato:
@@ -285,6 +295,7 @@ def manager_trasporti_planner(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    _ensure_logistics_access(current_user)
     _ensure_manager(current_user)
     if week_start:
         start = datetime.strptime(week_start, "%Y-%m-%d").date()
@@ -350,6 +361,7 @@ def manager_trasporti_mappa(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    _ensure_logistics_access(current_user)
     _ensure_manager(current_user)
     sites = (
         db.query(Site)
@@ -452,7 +464,7 @@ def manager_trasporti_attrezzature_in_viaggio(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_logistics_access(current_user)
     assignments = (
         db.query(TrasportoAttrezzaturaViaggio)
         .options(
@@ -823,7 +835,7 @@ def manager_trasporti_viaggi_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_logistics_access(current_user)
     autisti = db.query(User).join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.driver, User.is_active.is_(True)).distinct().order_by(User.full_name, User.email).all()
     viaggio = (
         db.query(TrasportoViaggio)
@@ -853,9 +865,17 @@ def manager_trasporti_viaggi_detail(
         assigned_counts.setdefault(key, []).append(ass.attrezzatura.codice)
 
     equipment_panel = []
+    richieste_disponibili = []
     for req in viaggio.richieste_attrezzature:
         key = (req.tipo_attrezzatura or "").strip().lower()
         codes = assigned_counts.get(key, [])
+        disponibili = (
+            db.query(Attrezzatura)
+            .filter(Attrezzatura.tipo == req.tipo_attrezzatura, Attrezzatura.stato == AttrezzaturaStatoEnum.disponibile)
+            .order_by(Attrezzatura.codice.asc())
+            .all()
+        )
+        richieste_disponibili.append((req, disponibili))
         for idx in range(req.quantita):
             selected_code = codes[idx] if idx < len(codes) else None
             equipment_panel.append(
@@ -870,7 +890,14 @@ def manager_trasporti_viaggi_detail(
         templates,
         request,
         "manager/trasporti/trip_detail.html",
-        {"viaggio": viaggio, "autisti": autisti, "equipment_panel": equipment_panel},
+        {
+            "viaggio": viaggio,
+            "autisti": autisti,
+            "equipment_panel": equipment_panel,
+            "richieste_disponibili": richieste_disponibili,
+            "can_manage_trip": can_access_manager_area(current_user),
+            "can_prepare_trip_load": can_manage_trip_loads(current_user),
+        },
         db,
         current_user,
     )
@@ -1072,6 +1099,51 @@ def driver_trasporti_viaggi_detail(
     )
 
 
+@router.post("/manager/trasporti/viaggi/{viaggio_id}/carico", response_class=HTMLResponse, name="manager_trasporti_viaggi_carico")
+async def manager_trasporti_viaggi_carico(
+    viaggio_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_trip_load_operator(current_user)
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).first()
+    if not viaggio:
+        return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+
+    db.query(TrasportoAttrezzaturaViaggio).filter(TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id).delete()
+
+    form = await request.form()
+    richieste = db.query(TrasportoRichiestaAttrezzatura).filter(TrasportoRichiestaAttrezzatura.viaggio_id == viaggio.id).all()
+    for req in richieste:
+        for idx in range(req.quantita):
+            field_name = f"req_{req.id}_{idx}"
+            raw_attrezzatura_id = form.get(field_name)
+            if not raw_attrezzatura_id:
+                continue
+            attrezzatura = (
+                db.query(Attrezzatura)
+                .filter(
+                    Attrezzatura.id == int(raw_attrezzatura_id),
+                    Attrezzatura.tipo == req.tipo_attrezzatura,
+                    Attrezzatura.stato == AttrezzaturaStatoEnum.disponibile,
+                )
+                .first()
+            )
+            if attrezzatura:
+                attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
+                db.add(TrasportoAttrezzaturaViaggio(
+                    viaggio_id=viaggio.id,
+                    attrezzatura_id=attrezzatura.id,
+                    tappa_destinazione_id=req.tappa_id,
+                    caricato=True,
+                ))
+
+    viaggio.stato = TrasportoStatoEnum.in_carico
+    db.commit()
+    return RedirectResponse(url=request.url_for("manager_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
+
+
 @router.post("/driver/trasporti/viaggi/{viaggio_id}/carico", response_class=HTMLResponse, name="driver_trasporti_viaggi_carico")
 async def driver_trasporti_viaggi_carico(
     viaggio_id: int,
@@ -1236,7 +1308,7 @@ def trasporti_qr_lookup(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "trasporti.assigned.read") and not has_perm(current_user, "manager.access"):
+    if not has_perm(current_user, "trasporti.assigned.read") and not can_manage_trip_loads(current_user) and not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     attrezzatura = db.query(Attrezzatura).filter(Attrezzatura.qr_code == code.strip().upper()).first()
     if not attrezzatura:
@@ -1257,7 +1329,7 @@ def manager_trasporti_movimenti(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_logistics_access(current_user)
     movimenti = (
         db.query(MovimentoAttrezzatura)
         .options(

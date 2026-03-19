@@ -1,16 +1,16 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
-{% block title %}Trasporti - Manager{% endblock %}
+{% block title %}Trasporti - Logistica{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
     <p class="page-eyebrow">Trasporti</p>
-    <h1 class="page-title">🚚 Dashboard Trasporti</h1>
+    <h1 class="page-title">🚚 Dashboard Logistica</h1>
   </div>
   <div class="header-actions">
-    <a class="btn btn-primary" href="{{ url_for('manager_trasporti_viaggi_new') }}">➕ Nuovo viaggio</a>
-    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}">🗓 Planner settimanale</a>
-    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_mappa') }}">🗺 Mappa logistica</a>
+    {% if has_perm(user, 'manager.access') %}<a class="btn btn-primary" href="{{ url_for('manager_trasporti_viaggi_new') }}">➕ Nuovo viaggio</a>{% endif %}
+    {% if has_perm(user, 'manager.access') %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}">🗓 Planner settimanale</a>{% endif %}
+    {% if has_perm(user, 'manager.access') %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_mappa') }}">🗺 Mappa logistica</a>{% endif %}
     <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_attrezzature_in_viaggio') }}">🧰 Attrezzature in viaggio</a>
     <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_movimenti') }}">📍 Storico movimenti</a>
   </div>
