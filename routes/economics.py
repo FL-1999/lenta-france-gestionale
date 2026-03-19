@@ -21,6 +21,19 @@ from models import (
 )
 from permissions import has_perm
 from template_context import build_template_context, register_manager_badges
+from utils.site_economics import (
+    build_daily_trend_series,
+    calculate_daily_totals,
+    calculate_monthly_totals,
+    calculate_period_totals,
+    calculate_weekly_totals,
+    compute_labor_flags,
+    parse_iso_date,
+    resolve_period,
+    serialize_timeframe_filters,
+    week_bounds,
+    month_bounds,
+)
 
 
 router = APIRouter(tags=["manager-economics"])
@@ -112,44 +125,6 @@ def _ensure_economics_manage(user: User) -> None:
         raise HTTPException(status_code=403, detail="Permessi insufficienti per modificare i dati economici")
 
 
-def _parse_iso_date(raw: str | None, fallback: date) -> date:
-    if not raw:
-        return fallback
-    try:
-        return datetime.strptime(raw, "%Y-%m-%d").date()
-    except ValueError:
-        return fallback
-
-
-def _resolve_period(
-    timeframe: str,
-    start_raw: str | None,
-    end_raw: str | None,
-    reference: date | None = None,
-) -> tuple[date, date, str]:
-    timeframe = timeframe if timeframe in TIMEFRAME_OPTIONS else "month"
-    today = reference or date.today()
-
-    if timeframe == "day":
-        start = end = _parse_iso_date(start_raw or end_raw, today)
-    elif timeframe == "week":
-        anchor = _parse_iso_date(start_raw or end_raw, today)
-        start = anchor - timedelta(days=anchor.weekday())
-        end = start + timedelta(days=6)
-    elif timeframe == "month":
-        anchor = _parse_iso_date(start_raw or end_raw, today)
-        start = anchor.replace(day=1)
-        next_month = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
-        end = next_month - timedelta(days=1)
-    else:
-        start = _parse_iso_date(start_raw, today.replace(day=1))
-        end = _parse_iso_date(end_raw, today)
-        if start > end:
-            start, end = end, start
-
-    return start, end, timeframe
-
-
 def _bucket_key(value: date, group_by: str) -> tuple[str, str]:
     if group_by == "day":
         return value.isoformat(), value.strftime("%d/%m/%Y")
@@ -217,14 +192,6 @@ def _normalize_entry_amount(raw_amount: str) -> float:
     return round(value, 2)
 
 
-def _serialize_timeframe_filters(start_date: date, end_date: date, timeframe: str) -> dict[str, str]:
-    return {
-        "start_date": start_date.isoformat(),
-        "end_date": end_date.isoformat(),
-        "timeframe": timeframe,
-    }
-
-
 def _label_for_category(category: SiteEconomicCategoryEnum | str) -> str:
     if isinstance(category, str):
         category = SiteEconomicCategoryEnum(category)
@@ -236,6 +203,7 @@ def _build_site_economic_snapshot(
     start_date: date,
     end_date: date,
     group_by: str,
+    timeframe: str,
 ) -> dict[str, Any]:
     entries = [
         entry for entry in (site.economic_entries or [])
@@ -330,11 +298,15 @@ def _build_site_economic_snapshot(
 
     recent_entries = sorted(entries, key=lambda item: (item.entry_date, item.id), reverse=True)
     recent_labor_entries = sorted(labor_entries, key=lambda item: (item.work_date, item.id), reverse=True)
+    today = date.today()
+    current_week_start, current_week_end = week_bounds(today)
+    current_month_start, current_month_end = month_bounds(today)
+    daily_trend = build_daily_trend_series(site.economic_entries or [], site.labor_cost_entries or [], start_date, end_date)
 
     return {
         "site": site,
         "period": {"start": start_date, "end": end_date, "label": f"{start_date:%d/%m/%Y} → {end_date:%d/%m/%Y}"},
-        "filters": _serialize_timeframe_filters(start_date, end_date, group_by),
+        "filters": serialize_timeframe_filters(start_date, end_date, timeframe),
         "metrics": {
             "ricavi_previsti": ricavi_previsti,
             "ricavi_fatturati": ricavi_fatturati,
@@ -347,6 +319,18 @@ def _build_site_economic_snapshot(
             "costo_materiali": cost_breakdown["materiali"],
             "costo_mezzi_trasporti": cost_breakdown["mezzi_trasporti"],
         },
+        "report_filters": {
+            "oggi": serialize_timeframe_filters(today, today, "day"),
+            "settimana_corrente": serialize_timeframe_filters(current_week_start, current_week_end, "week"),
+            "mese_corrente": serialize_timeframe_filters(current_month_start, current_month_end, "month"),
+            "intervallo_personalizzato": serialize_timeframe_filters(start_date, end_date, "custom"),
+        },
+        "period_summaries": {
+            "oggi": calculate_daily_totals(site.economic_entries or [], site.labor_cost_entries or [], today),
+            "settimana_corrente": calculate_weekly_totals(site.economic_entries or [], site.labor_cost_entries or [], today),
+            "mese_corrente": calculate_monthly_totals(site.economic_entries or [], site.labor_cost_entries or [], today),
+            "periodo_selezionato": calculate_period_totals(site.economic_entries or [], site.labor_cost_entries or [], start_date, end_date),
+        },
         "cost_breakdown": cost_breakdown,
         "sal": {
             "operational_progress_pct": operational_progress_pct,
@@ -358,6 +342,7 @@ def _build_site_economic_snapshot(
             "earned_revenues": ricavi_maturati or ricavi_fatturati,
         },
         "trend": trend,
+        "trend_series": daily_trend,
         "labor_entries": [
             {
                 "id": entry.id,
@@ -398,7 +383,7 @@ def manager_economics_dashboard(
     db: Session = Depends(get_db),
 ):
     _ensure_economics_access(current_user)
-    period_start, period_end, timeframe = _resolve_period(timeframe, start_date, end_date)
+    period_start, period_end, timeframe = resolve_period(timeframe, start_date, end_date)
     group_by = _default_group_for_timeframe(timeframe)
 
     sites = (
@@ -408,7 +393,7 @@ def manager_economics_dashboard(
         .all()
     )
 
-    snapshots = [_build_site_economic_snapshot(site, period_start, period_end, group_by) for site in sites]
+    snapshots = [_build_site_economic_snapshot(site, period_start, period_end, group_by, timeframe) for site in sites]
 
     totals = {
         "ricavi_previsti": round(sum(item["metrics"]["ricavi_previsti"] for item in snapshots), 2),
@@ -471,7 +456,7 @@ def manager_economics_dashboard(
             trend=trend,
             timeframe=timeframe,
             timeframe_options=TIMEFRAME_OPTIONS,
-            filters=_serialize_timeframe_filters(period_start, period_end, timeframe),
+            filters=serialize_timeframe_filters(period_start, period_end, timeframe),
         ),
     )
 
@@ -487,7 +472,7 @@ def manager_site_economics_detail(
     db: Session = Depends(get_db),
 ):
     _ensure_economics_access(current_user)
-    period_start, period_end, timeframe = _resolve_period(timeframe, start_date, end_date)
+    period_start, period_end, timeframe = resolve_period(timeframe, start_date, end_date)
     group_by = _default_group_for_timeframe(timeframe)
 
     site = (
@@ -499,7 +484,7 @@ def manager_site_economics_detail(
     if not site:
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
-    snapshot = _build_site_economic_snapshot(site, period_start, period_end, group_by)
+    snapshot = _build_site_economic_snapshot(site, period_start, period_end, group_by, timeframe)
 
     return templates.TemplateResponse(
         request,
@@ -511,12 +496,43 @@ def manager_site_economics_detail(
             site=site,
             timeframe=timeframe,
             timeframe_options=TIMEFRAME_OPTIONS,
-            filters=_serialize_timeframe_filters(period_start, period_end, timeframe),
+            filters=serialize_timeframe_filters(period_start, period_end, timeframe),
             category_labels={item.value: label for item, label in CATEGORY_LABELS.items()},
             cost_category_options=COST_CATEGORY_OPTIONS,
             revenue_category_options=REVENUE_CATEGORY_OPTIONS,
         ),
     )
+
+
+@router.get("/manager/cantieri/{site_id}/economics/trend-data", name="manager_site_economics_trend_data")
+def manager_site_economics_trend_data(
+    site_id: int,
+    timeframe: str = Query("month"),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    current_user: User = Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _ensure_economics_access(current_user)
+    period_start, period_end, _ = resolve_period(timeframe, start_date, end_date)
+
+    site = (
+        db.query(Site)
+        .options(joinedload(Site.economic_entries), joinedload(Site.labor_cost_entries))
+        .filter(Site.id == site_id)
+        .first()
+    )
+    if not site:
+        raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+    return {
+        "site_id": site.id,
+        "site_name": site.name,
+        "timeframe": timeframe,
+        "start_date": period_start.isoformat(),
+        "end_date": period_end.isoformat(),
+        "series": build_daily_trend_series(site.economic_entries or [], site.labor_cost_entries or [], period_start, period_end),
+    }
 
 
 @router.post("/manager/cantieri/{site_id}/economics/entries", name="manager_site_economics_entry_create")
@@ -594,8 +610,7 @@ def manager_site_economics_labor_create(
     if worker_count < 0:
         raise HTTPException(status_code=400, detail="Numero persone non valido")
 
-    parsed_is_weekend = parsed_date.weekday() >= 5
-    parsed_is_active = True if not parsed_is_weekend else is_active in {"1", "true", "True", "on", "yes"}
+    parsed_is_weekend, parsed_is_active = compute_labor_flags(parsed_date, is_active in {"1", "true", "True", "on", "yes"})
 
     record = (
         db.query(SiteLaborCostEntry)

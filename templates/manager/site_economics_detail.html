@@ -6,13 +6,26 @@
   <div class="page-header-main">
     <p class="page-eyebrow">Controllo economico cantiere</p>
     <h1 class="page-title">💶 {{ site.name }}</h1>
-    <p class="page-subtitle">Verifica ricavi, costi, manodopera semplificata, redditività e collegamento con il SAL operativo.</p>
+    <p class="page-subtitle">Verifica ricavi, costi, manodopera settimanale lun-ven, weekend opzionali e marginalità nel tempo.</p>
   </div>
   <div class="page-actions">
     <a class="btn btn-secondary" href="{{ url_for('manager_site_detail', site_id=site.id) }}">Torna al cantiere</a>
     <a class="btn btn-secondary" href="{{ url_for('manager_economics_dashboard') }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">Dashboard economica</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_site_economics_trend_data', site_id=site.id) }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">Serie trend JSON</a>
   </div>
 </div>
+
+<section class="card" style="margin-bottom: 1rem;">
+  <div class="card-body economics-report-filters">
+    <span class="stat-label">Report rapidi</span>
+    <div class="economics-filter-chips">
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=day&start_date={{ snapshot.report_filters.oggi.start_date }}&end_date={{ snapshot.report_filters.oggi.end_date }}">Oggi</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=week&start_date={{ snapshot.report_filters.settimana_corrente.start_date }}&end_date={{ snapshot.report_filters.settimana_corrente.end_date }}">Settimana corrente</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=month&start_date={{ snapshot.report_filters.mese_corrente.start_date }}&end_date={{ snapshot.report_filters.mese_corrente.end_date }}">Mese corrente</a>
+      <span class="text-muted">Intervallo personalizzato disponibile dal filtro qui sotto.</span>
+    </div>
+  </div>
+</section>
 
 <form method="get" class="card" style="margin-bottom: 1rem;">
   <div class="card-body economics-filter-grid">
@@ -37,19 +50,22 @@
 </form>
 
 <section class="economics-kpi-grid">
-  <article class="card"><div class="card-body"><div class="stat-label">Ricavi previsti</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.metrics.ricavi_previsti) }}</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Ricavi fatturati</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.metrics.ricavi_fatturati) }}</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Costi totali</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.metrics.costi_totali) }}</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Costo personale</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.metrics.costo_personale) }}</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Margine lordo</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.metrics.margine_lordo) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Costo oggi</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.period_summaries.oggi.costi) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Costo settimana corrente</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.period_summaries.settimana_corrente.costi) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Costo mese corrente</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.period_summaries.mese_corrente.costi) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Ricavi periodo</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.period_summaries.periodo_selezionato.ricavi) }}</div></div></article>
+  <article class="card"><div class="card-body"><div class="stat-label">Margine periodo</div><div class="stat-value {% if snapshot.period_summaries.periodo_selezionato.margine < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.period_summaries.periodo_selezionato.margine) }}</div></div></article>
   <article class="card"><div class="card-body"><div class="stat-label">Utile / perdita</div><div class="stat-value {% if snapshot.metrics.utile_perdita < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.metrics.utile_perdita) }}</div></div></article>
   <article class="card"><div class="card-body"><div class="stat-label">Margine %</div><div class="stat-value">{{ '%.2f'|format(snapshot.metrics.margine_pct) }}%</div></div></article>
 </section>
 
 <div class="economics-layout">
   <section class="card">
-    <div class="card-header"><div class="card-title">📈 Overview economica</div></div>
+    <div class="card-header"><div class="card-title">📈 Overview economica periodo selezionato</div></div>
     <div class="card-body economics-overview-grid">
+      <div class="economics-overview-item"><span>Ricavi previsti</span><strong>€ {{ '%.2f'|format(snapshot.metrics.ricavi_previsti) }}</strong></div>
+      <div class="economics-overview-item"><span>Ricavi fatturati</span><strong>€ {{ '%.2f'|format(snapshot.metrics.ricavi_fatturati) }}</strong></div>
+      <div class="economics-overview-item"><span>Ricavi maturati</span><strong>€ {{ '%.2f'|format(snapshot.metrics.ricavi_maturati) }}</strong></div>
       <div class="economics-overview-item"><span>Materiali</span><strong>€ {{ '%.2f'|format(snapshot.cost_breakdown.materiali) }}</strong></div>
       <div class="economics-overview-item"><span>Trasporti</span><strong>€ {{ '%.2f'|format(snapshot.cost_breakdown.trasporti) }}</strong></div>
       <div class="economics-overview-item"><span>Mezzi</span><strong>€ {{ '%.2f'|format(snapshot.cost_breakdown.mezzi) }}</strong></div>
@@ -73,6 +89,7 @@
   <section class="card">
     <div class="card-header"><div class="card-title">📊 Trend giornaliero / settimanale / mensile</div></div>
     <div class="card-body">
+      <p class="text-muted" style="margin-bottom: .75rem;">La settimana aggregata va da lunedì a domenica. I costi automatici includono solo lunedì-venerdì; sabato e domenica entrano nei calcoli solo se attivati.</p>
       <div class="table-wrapper">
         <table class="table">
           <thead>
@@ -109,6 +126,13 @@
   </section>
 
   <aside class="economics-sidebar">
+    <section class="card">
+      <div class="card-header"><div class="card-title">📦 Serie dati pronta per grafico JS</div></div>
+      <div class="card-body">
+        <p class="text-muted">Endpoint backend: <code>{{ url_for('manager_site_economics_trend_data', site_id=site.id) }}</code></p>
+        <pre class="economics-json-preview" id="trend-json-preview"></pre>
+      </div>
+    </section>
     <section class="card">
       <div class="card-header"><div class="card-title">➕ Nuova registrazione economica</div></div>
       <div class="card-body">
@@ -149,7 +173,7 @@
 
 <div class="economics-layout" style="margin-top: 1rem;">
   <section class="card" id="labor-costs">
-    <div class="card-header"><div class="card-title">👷 Gestione costo manodopera giornaliero</div></div>
+    <div class="card-header"><div class="card-title">👷 Giornata cantiere / costo manodopera</div></div>
     <div class="card-body">
       <form method="post" action="{{ url_for('manager_site_economics_labor_create', site_id=site.id) }}" class="economics-filter-grid" style="margin-bottom: 1rem;">
         <input type="hidden" name="timeframe" value="{{ timeframe }}">
@@ -169,7 +193,7 @@
         </div>
         <div class="economics-filter-actions"><button class="btn btn-primary" type="submit">Salva costo manodopera</button></div>
       </form>
-      <p class="text-muted" style="margin-bottom: 1rem;">Formula applicata automaticamente: <strong>numero persone × costo forfettario per persona = costo giornaliero</strong>. I giorni weekend non attivi restano fuori da costi, margini e report.</p>
+      <p class="text-muted" style="margin-bottom: 1rem;">Formula automatica: <strong>numero persone × costo forfettario per persona = costo totale</strong>. Se la data è sabato o domenica, il record nasce escluso dai calcoli finché non spunti il flag.</p>
       <div class="table-wrapper">
         <table class="table">
           <thead>
@@ -260,9 +284,12 @@
   .economics-overview-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:.75rem; }
   .economics-overview-item, .economics-stacked-list > div { display:flex; justify-content:space-between; gap:1rem; padding:.75rem; border-radius:12px; background:rgba(255,255,255,.04); }
   .economics-stacked-list { display:grid; gap:.75rem; }
+  .economics-report-filters { display:grid; gap:.5rem; }
+  .economics-filter-chips { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
   .economics-weekend-panel { display:grid; gap:.5rem; align-content:start; padding:.85rem 1rem; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:rgba(255,255,255,.03); }
   .economics-weekend-badge { margin:0; font-weight:600; }
   .economics-weekend-badge.is-warning { color:#f5c26b; }
+  .economics-json-preview { max-height: 260px; overflow:auto; margin:0; padding:.85rem; border-radius:12px; background:rgba(255,255,255,.04); font-size:.85rem; }
   .checkbox-inline { display:flex; align-items:center; gap:.5rem; font-weight:600; }
   .badge { display:inline-flex; align-items:center; justify-content:center; padding:.25rem .6rem; border-radius:999px; background:rgba(255,255,255,.12); font-size:.85rem; }
   .badge-success { background:rgba(46, 204, 113, .18); color:#7ee2a8; }
@@ -278,6 +305,12 @@
     const toggle = document.getElementById("labor-is-active");
     const toggleWrapper = document.getElementById("labor-active-toggle-wrapper");
     const help = document.getElementById("labor-weekend-help");
+    const trendPreview = document.getElementById("trend-json-preview");
+    const trendSeries = {{ snapshot.trend_series|tojson }};
+
+    if (trendPreview) {
+      trendPreview.textContent = JSON.stringify(trendSeries.slice(0, 10), null, 2);
+    }
 
     if (!dateInput || !dayType || !toggle || !toggleWrapper || !help) {
       return;
@@ -285,13 +318,13 @@
 
     const labels = {
       weekday: "Giornata feriale: inclusa automaticamente nei costi e nelle statistiche.",
-      saturday: "Questo giorno è sabato. Vuoi includerlo nei costi?",
-      sunday: "Questo giorno è domenica. Vuoi includerlo nei costi?",
+      saturday: "⚠️ Sabato rilevato: abilita la giornata solo se la squadra lavora davvero.",
+      sunday: "⚠️ Domenica rilevata: abilita la giornata solo se la squadra lavora davvero.",
     };
 
     const helpLabels = {
       weekday: "Dal lunedì al venerdì la giornata viene conteggiata automaticamente.",
-      weekend: "Weekend escluso di default: attiva il flag solo se la squadra lavora davvero quel giorno.",
+      weekend: "Weekend escluso di default: attiva il flag solo se vuoi includere il costo nei report e nel margine.",
     };
 
     function updateLaborDayState() {

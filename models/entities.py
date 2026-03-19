@@ -23,6 +23,7 @@ from sqlalchemy.orm import relationship
 from sqlmodel import SQLModel, Field
 
 from .base import Base
+from utils.site_economics import compute_labor_flags, compute_labor_total
 
 
 # ------------------------------------------------------------
@@ -849,19 +850,11 @@ class SiteLaborCostEntry(Base, TimestampMixin):
 
 def _sync_site_labor_flags_and_total(target: SiteLaborCostEntry) -> None:
     work_date = getattr(target, "work_date", None)
-    is_weekend = bool(work_date and work_date.weekday() >= 5)
-    target.is_weekend = is_weekend
+    if not work_date:
+        return
 
-    if not is_weekend:
-        target.is_active = True
-    else:
-        target.is_active = bool(target.is_active)
-
-    target.total_cost = (
-        float((target.worker_count or 0) * (target.unit_cost or 0.0))
-        if target.is_active
-        else 0.0
-    )
+    target.is_weekend, target.is_active = compute_labor_flags(work_date, bool(target.is_active))
+    target.total_cost = compute_labor_total(target.worker_count or 0, target.unit_cost or 0.0, bool(target.is_active))
 
 
 @event.listens_for(SiteLaborCostEntry, "before_insert")
