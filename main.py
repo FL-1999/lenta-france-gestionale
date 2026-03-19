@@ -31,7 +31,8 @@ from auth import (
     get_user_by_email,
     resolve_user_active_role,
     _generate_token_for_user,
-    get_role_redirect_url,
+    get_redirect_for_role,
+    can_switch_user_role,
     SECRET_KEY,
     ALGORITHM,
 )
@@ -98,7 +99,7 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
 
 
 def _role_dashboard_map(role: RoleEnum) -> str:
-    return get_role_redirect_url(role)
+    return get_redirect_for_role(role)
 
 
 def _get_or_create_role(db: Session, role: RoleEnum) -> Role:
@@ -142,6 +143,17 @@ def _sync_user_roles(db: Session, user: User, roles: list[RoleEnum]) -> list[Rol
 
 def _resolve_post_login_role(user: User) -> RoleEnum:
     return resolve_user_active_role(user)
+
+
+def _apply_access_token_cookie(response: RedirectResponse, access_token: str) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        max_age=60 * 60,
+        path="/",
+        samesite="lax",
+    )
 
 
 # -------------------------------------------------
@@ -654,7 +666,8 @@ def login_api(
     Endpoint usato dal form di login.
     - Verifica le credenziali
     - Se ok, crea un JWT
-    - Decide dove mandare l'utente (manager vs caposquadra)
+    - Reindirizza automaticamente l'utente alla dashboard corretta
+      in base al ruolo attivo
     """
     user = authenticate_user(db, email=email, password=password)
     if not user:
@@ -683,14 +696,7 @@ def login_api(
         url=token_data.redirect_url or "/",
         status_code=303,
     )
-    response.set_cookie(
-        key="access_token",
-        value=f"Bearer {token_data.access_token}",
-        httponly=True,
-        max_age=60 * 60,
-        path="/",
-        samesite="lax",
-    )
+    _apply_access_token_cookie(response, token_data.access_token)
     return response
 
 @app.get("/logout")
@@ -706,9 +712,6 @@ def switch_role(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ) -> RedirectResponse:
-    if not getattr(current_user, "can_switch_roles", False):
-        raise HTTPException(status_code=403, detail="Cambio ruolo non consentito")
-
     try:
         requested_role = RoleEnum(role_name)
     except Exception:
@@ -717,11 +720,9 @@ def switch_role(
     user_record = get_user_by_email(db, current_user.email)
     if not user_record:
         raise HTTPException(status_code=404, detail="Utente non trovato")
-    if not (
-        getattr(user_record, "can_switch_roles", False)
-        and len(get_user_roles(user_record)) > 1
-        and user_has_role(user_record, RoleEnum.admin)
-    ):
+    if not getattr(current_user, "can_switch_roles", False):
+        raise HTTPException(status_code=403, detail="Cambio ruolo non consentito")
+    if not can_switch_user_role(user_record):
         raise HTTPException(status_code=403, detail="Cambio ruolo non consentito")
     if not user_has_role(user_record, requested_role):
         raise HTTPException(status_code=403, detail="Ruolo non assegnato all'utente")
@@ -736,14 +737,7 @@ def switch_role(
         requested_role=requested_role,
     )
     response = RedirectResponse(url=token_data.redirect_url or "/", status_code=303)
-    response.set_cookie(
-        key="access_token",
-        value=f"Bearer {token_data.access_token}",
-        httponly=True,
-        max_age=60 * 60,
-        path="/",
-        samesite="lax",
-    )
+    _apply_access_token_cookie(response, token_data.access_token)
     return response
 
 
@@ -1440,7 +1434,6 @@ async def manager_new_user_post(
     can_switch_roles = bool(
         can_switch_roles
         and len(parsed_roles) > 1
-        and RoleEnum.admin in parsed_roles
     )
 
     db = SessionLocal()
@@ -1600,7 +1593,6 @@ async def manager_edit_user_post(
     can_switch_roles = bool(
         can_switch_roles
         and len(parsed_roles) > 1
-        and RoleEnum.admin in parsed_roles
     )
 
     db = SessionLocal()

@@ -58,7 +58,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-def get_role_redirect_url(role: RoleEnum | str | None) -> str:
+def get_redirect_for_role(role: RoleEnum | str | None) -> str:
     try:
         normalized_role = role if isinstance(role, RoleEnum) else RoleEnum(str(role))
     except Exception:
@@ -75,14 +75,14 @@ def get_role_redirect_url(role: RoleEnum | str | None) -> str:
     return "/"
 
 
+def get_role_redirect_url(role: RoleEnum | str | None) -> str:
+    return get_redirect_for_role(role)
+
+
 def can_switch_user_role(user: User | None) -> bool:
     if not user:
         return False
-    return bool(
-        getattr(user, "can_switch_roles", False)
-        and len(get_user_roles(user)) > 1
-        and user_has_role(user, RoleEnum.admin)
-    )
+    return bool(getattr(user, "can_switch_roles", False) and len(get_assigned_roles(user)) > 1)
 
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
@@ -92,6 +92,22 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
         .filter(User.email == email)
         .first()
     )
+
+
+def get_assigned_roles(user: User | None) -> tuple[RoleEnum, ...]:
+    if not user:
+        return tuple()
+
+    collected: list[RoleEnum] = []
+    seen: set[RoleEnum] = set()
+    for user_role in getattr(user, "user_roles", []) or []:
+        role_obj = getattr(user_role, "role", None)
+        role_name = getattr(role_obj, "name", None)
+        if role_name is None or role_name in seen:
+            continue
+        seen.add(role_name)
+        collected.append(role_name)
+    return tuple(collected)
 
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
@@ -116,7 +132,7 @@ def resolve_user_active_role(
     user: User,
     requested_role: RoleEnum | str | None = None,
 ) -> RoleEnum:
-    available_roles = list(get_user_roles(user))
+    available_roles = list(get_assigned_roles(user))
     if not available_roles:
         fallback_role = get_active_role(user)
         if fallback_role is not None:
@@ -274,7 +290,7 @@ def _generate_token_for_user(
         active_role=active_role.value,
         available_roles=available_roles,
         can_switch_roles=can_switch_user_role(user),
-        redirect_url=redirect_url or get_role_redirect_url(active_role),
+        redirect_url=redirect_url or get_redirect_for_role(active_role),
     )
 
 
