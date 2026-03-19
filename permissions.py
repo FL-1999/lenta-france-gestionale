@@ -20,6 +20,8 @@ MANAGER_BASE_PERMISSIONS: FrozenSet[str] = frozenset(
         "depositi.update",
         "assegnazioni.read",
         "assegnazioni.manage",
+        "economics.read",
+        "economics.manage",
     }
 )
 

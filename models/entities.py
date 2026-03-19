@@ -17,6 +17,7 @@ from sqlalchemy import (
     CheckConstraint,
     JSON,
     UniqueConstraint,
+    event,
 )
 from sqlalchemy.orm import relationship
 from sqlmodel import SQLModel, Field
@@ -116,6 +117,23 @@ class EmailLanguageEnum(PyEnum):
     EN = "EN"
 
 
+class SiteEconomicEntryTypeEnum(PyEnum):
+    revenue = "revenue"
+    cost = "cost"
+
+
+class SiteEconomicCategoryEnum(PyEnum):
+    ricavi_previsti = "ricavi_previsti"
+    ricavi_fatturati = "ricavi_fatturati"
+    ricavi_maturati = "ricavi_maturati"
+    materiali = "materiali"
+    trasporti = "trasporti"
+    mezzi = "mezzi"
+    attrezzature = "attrezzature"
+    manodopera = "manodopera"
+    altri_costi = "altri_costi"
+
+
 # ------------------------------------------------------------
 # MIXIN PER TIMESTAMP
 # ------------------------------------------------------------
@@ -203,6 +221,16 @@ class User(Base, TimestampMixin):
         "MagazzinoMovimento",
         foreign_keys="MagazzinoMovimento.caposquadra_id",
         back_populates="caposquadra",
+    )
+    economic_entries_created = relationship(
+        "SiteEconomicEntry",
+        back_populates="created_by",
+        foreign_keys="SiteEconomicEntry.created_by_id",
+    )
+    labor_cost_entries_created = relationship(
+        "SiteLaborCostEntry",
+        back_populates="created_by",
+        foreign_keys="SiteLaborCostEntry.created_by_id",
     )
 
     @property
@@ -342,6 +370,18 @@ class Site(Base):
         back_populates="site",
         cascade="all, delete-orphan",
         order_by="SiteStrutLevel.level_index",
+    )
+    economic_entries = relationship(
+        "SiteEconomicEntry",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        order_by="desc(SiteEconomicEntry.entry_date)",
+    )
+    labor_cost_entries = relationship(
+        "SiteLaborCostEntry",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        order_by="desc(SiteLaborCostEntry.work_date)",
     )
 
     def __repr__(self) -> str:
@@ -754,6 +794,67 @@ class Personale(SQLModel, table=True):
     note: Optional[str] = None
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class SiteEconomicEntry(Base, TimestampMixin):
+    __tablename__ = "site_economic_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    entry_date = Column(Date, nullable=False, index=True)
+    entry_type = Column(Enum(SiteEconomicEntryTypeEnum), nullable=False, index=True)
+    category = Column(Enum(SiteEconomicCategoryEnum), nullable=False, index=True)
+    amount = Column(Float, nullable=False, default=0.0)
+    description = Column(String(255), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    site = relationship("Site", back_populates="economic_entries")
+    created_by = relationship("User", back_populates="economic_entries_created", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        CheckConstraint("amount >= 0", name="ck_site_economic_entries_amount_positive"),
+    )
+
+
+class SiteLaborCostEntry(Base, TimestampMixin):
+    __tablename__ = "site_labor_cost_entries"
+    __table_args__ = (
+        UniqueConstraint("site_id", "work_date", name="uq_site_labor_cost_entries_site_work_date"),
+        CheckConstraint("worker_count >= 0", name="ck_site_labor_cost_entries_worker_count_positive"),
+        CheckConstraint("unit_cost >= 0", name="ck_site_labor_cost_entries_unit_cost_positive"),
+        CheckConstraint("total_cost >= 0", name="ck_site_labor_cost_entries_total_cost_positive"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    work_date = Column(Date, nullable=False, index=True)
+    worker_count = Column(Integer, nullable=False, default=0)
+    unit_cost = Column(Float, nullable=False, default=0.0)
+    total_cost = Column(Float, nullable=False, default=0.0)
+    notes = Column(Text, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    site = relationship("Site", back_populates="labor_cost_entries")
+    created_by = relationship("User", back_populates="labor_cost_entries_created", foreign_keys=[created_by_id])
+
+    @property
+    def computed_total_cost(self) -> float:
+        return float((self.worker_count or 0) * (self.unit_cost or 0.0))
+
+
+def _sync_site_labor_total(target: SiteLaborCostEntry) -> None:
+    target.total_cost = float((target.worker_count or 0) * (target.unit_cost or 0.0))
+
+
+@event.listens_for(SiteLaborCostEntry, "before_insert")
+def _site_labor_before_insert(_mapper, _connection, target: SiteLaborCostEntry) -> None:
+    _sync_site_labor_total(target)
+
+
+@event.listens_for(SiteLaborCostEntry, "before_update")
+def _site_labor_before_update(_mapper, _connection, target: SiteLaborCostEntry) -> None:
+    _sync_site_labor_total(target)
 
 
 class PersonalePresenza(SQLModel, table=True):

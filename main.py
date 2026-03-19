@@ -62,7 +62,7 @@ from models import (
     TrasportoAttrezzaturaViaggio,
 )
 from routers import users, sites, machines, reports, fiches, notifications
-from routes import manager_personale, manager_veicoli, manager_depositi, magazzino, ordini, audit, reportistica, backup, trasporti
+from routes import manager_personale, manager_veicoli, manager_depositi, magazzino, ordini, audit, reportistica, backup, trasporti, economics
 
 from template_context import (
     build_template_context,
@@ -3209,3 +3209,4 @@ app.include_router(audit.router)
 app.include_router(reportistica.router)
 app.include_router(backup.router)
 app.include_router(trasporti.router)
+app.include_router(economics.router)
