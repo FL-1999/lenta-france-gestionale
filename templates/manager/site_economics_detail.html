@@ -155,18 +155,28 @@
         <input type="hidden" name="timeframe" value="{{ timeframe }}">
         <input type="hidden" name="start_date" value="{{ filters.start_date }}">
         <input type="hidden" name="end_date" value="{{ filters.end_date }}">
-        <div><label class="form-label">Data</label><input class="form-control" type="date" name="work_date" value="{{ filters.end_date }}" required></div>
+        <div><label class="form-label">Data</label><input class="form-control" type="date" id="labor-work-date" name="work_date" value="{{ filters.end_date }}" required></div>
         <div><label class="form-label">Numero persone</label><input class="form-control" type="number" name="worker_count" min="0" step="1" required></div>
         <div><label class="form-label">Costo forfettario / persona</label><input class="form-control" type="number" name="unit_cost" min="0" step="0.01" required></div>
         <div><label class="form-label">Note</label><input class="form-control" type="text" name="notes"></div>
+        <div class="economics-weekend-panel" id="labor-weekend-panel">
+          <p class="economics-weekend-badge" id="labor-day-type">Giornata feriale: inclusa automaticamente nei costi e nelle statistiche.</p>
+          <label class="checkbox-inline" id="labor-active-toggle-wrapper" hidden>
+            <input type="checkbox" id="labor-is-active" name="is_active" value="1">
+            <span>Considera giornata lavorativa</span>
+          </label>
+          <p class="text-muted" id="labor-weekend-help">Sabato e domenica restano esclusi finché non attivi manualmente la giornata lavorativa.</p>
+        </div>
         <div class="economics-filter-actions"><button class="btn btn-primary" type="submit">Salva costo manodopera</button></div>
       </form>
-      <p class="text-muted" style="margin-bottom: 1rem;">Formula applicata automaticamente: <strong>numero persone × costo forfettario per persona = costo giornaliero</strong>.</p>
+      <p class="text-muted" style="margin-bottom: 1rem;">Formula applicata automaticamente: <strong>numero persone × costo forfettario per persona = costo giornaliero</strong>. I giorni weekend non attivi restano fuori da costi, margini e report.</p>
       <div class="table-wrapper">
         <table class="table">
           <thead>
             <tr>
               <th>Data</th>
+              <th>Tipo giorno</th>
+              <th>Stato</th>
               <th>Persone</th>
               <th>Costo / persona</th>
               <th>Costo giornata</th>
@@ -177,13 +187,29 @@
             {% for row in snapshot.labor_entries %}
               <tr>
                 <td>{{ row.work_date.strftime('%d/%m/%Y') }}</td>
+                <td>
+                  {% if row.day_type == 'sabato' %}
+                    <span class="badge badge-warning">Sabato</span>
+                  {% elif row.day_type == 'domenica' %}
+                    <span class="badge badge-warning">Domenica</span>
+                  {% else %}
+                    <span class="badge badge-success">Feriale</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.is_active %}
+                    <span class="badge badge-success">Inclusa</span>
+                  {% else %}
+                    <span class="badge">Esclusa</span>
+                  {% endif %}
+                </td>
                 <td>{{ row.worker_count }}</td>
                 <td>€ {{ '%.2f'|format(row.unit_cost) }}</td>
                 <td>€ {{ '%.2f'|format(row.total_cost) }}</td>
                 <td>{{ row.notes or '—' }}</td>
               </tr>
             {% else %}
-              <tr><td colspan="5" class="table-empty">Nessun costo manodopera registrato nel periodo.</td></tr>
+              <tr><td colspan="7" class="table-empty">Nessun costo manodopera registrato nel periodo.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -234,8 +260,72 @@
   .economics-overview-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:.75rem; }
   .economics-overview-item, .economics-stacked-list > div { display:flex; justify-content:space-between; gap:1rem; padding:.75rem; border-radius:12px; background:rgba(255,255,255,.04); }
   .economics-stacked-list { display:grid; gap:.75rem; }
+  .economics-weekend-panel { display:grid; gap:.5rem; align-content:start; padding:.85rem 1rem; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:rgba(255,255,255,.03); }
+  .economics-weekend-badge { margin:0; font-weight:600; }
+  .economics-weekend-badge.is-warning { color:#f5c26b; }
+  .checkbox-inline { display:flex; align-items:center; gap:.5rem; font-weight:600; }
+  .badge { display:inline-flex; align-items:center; justify-content:center; padding:.25rem .6rem; border-radius:999px; background:rgba(255,255,255,.12); font-size:.85rem; }
+  .badge-success { background:rgba(46, 204, 113, .18); color:#7ee2a8; }
+  .badge-warning { background:rgba(245, 194, 107, .18); color:#f5c26b; }
   .stat-label { font-size:.85rem; opacity:.8; margin-bottom:.35rem; }
   .stat-value { font-size:1.35rem; font-weight:700; }
   @media (max-width: 960px) { .economics-layout { grid-template-columns: 1fr; } }
 </style>
+<script>
+  (() => {
+    const dateInput = document.getElementById("labor-work-date");
+    const dayType = document.getElementById("labor-day-type");
+    const toggle = document.getElementById("labor-is-active");
+    const toggleWrapper = document.getElementById("labor-active-toggle-wrapper");
+    const help = document.getElementById("labor-weekend-help");
+
+    if (!dateInput || !dayType || !toggle || !toggleWrapper || !help) {
+      return;
+    }
+
+    const labels = {
+      weekday: "Giornata feriale: inclusa automaticamente nei costi e nelle statistiche.",
+      saturday: "Questo giorno è sabato. Vuoi includerlo nei costi?",
+      sunday: "Questo giorno è domenica. Vuoi includerlo nei costi?",
+    };
+
+    const helpLabels = {
+      weekday: "Dal lunedì al venerdì la giornata viene conteggiata automaticamente.",
+      weekend: "Weekend escluso di default: attiva il flag solo se la squadra lavora davvero quel giorno.",
+    };
+
+    function updateLaborDayState() {
+      if (!dateInput.value) {
+        dayType.textContent = labels.weekday;
+        dayType.classList.remove("is-warning");
+        toggle.checked = false;
+        toggleWrapper.hidden = true;
+        help.textContent = helpLabels.weekday;
+        return;
+      }
+
+      const dateValue = new Date(`${dateInput.value}T00:00:00`);
+      const day = dateValue.getDay();
+      const isWeekend = day === 0 || day === 6;
+
+      if (!isWeekend) {
+        dayType.textContent = labels.weekday;
+        dayType.classList.remove("is-warning");
+        toggle.checked = false;
+        toggleWrapper.hidden = true;
+        help.textContent = helpLabels.weekday;
+        return;
+      }
+
+      dayType.textContent = day === 6 ? labels.saturday : labels.sunday;
+      dayType.classList.add("is-warning");
+      toggle.checked = false;
+      toggleWrapper.hidden = false;
+      help.textContent = helpLabels.weekend;
+    }
+
+    dateInput.addEventListener("change", updateLaborDayState);
+    updateLaborDayState();
+  })();
+</script>
 {% endblock %}

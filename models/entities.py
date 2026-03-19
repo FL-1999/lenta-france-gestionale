@@ -832,6 +832,8 @@ class SiteLaborCostEntry(Base, TimestampMixin):
     worker_count = Column(Integer, nullable=False, default=0)
     unit_cost = Column(Float, nullable=False, default=0.0)
     total_cost = Column(Float, nullable=False, default=0.0)
+    is_weekend = Column(Boolean, nullable=False, default=False)
+    is_active = Column(Boolean, nullable=False, default=True)
     notes = Column(Text, nullable=True)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
@@ -840,21 +842,36 @@ class SiteLaborCostEntry(Base, TimestampMixin):
 
     @property
     def computed_total_cost(self) -> float:
+        if not self.is_active:
+            return 0.0
         return float((self.worker_count or 0) * (self.unit_cost or 0.0))
 
 
-def _sync_site_labor_total(target: SiteLaborCostEntry) -> None:
-    target.total_cost = float((target.worker_count or 0) * (target.unit_cost or 0.0))
+def _sync_site_labor_flags_and_total(target: SiteLaborCostEntry) -> None:
+    work_date = getattr(target, "work_date", None)
+    is_weekend = bool(work_date and work_date.weekday() >= 5)
+    target.is_weekend = is_weekend
+
+    if not is_weekend:
+        target.is_active = True
+    else:
+        target.is_active = bool(target.is_active)
+
+    target.total_cost = (
+        float((target.worker_count or 0) * (target.unit_cost or 0.0))
+        if target.is_active
+        else 0.0
+    )
 
 
 @event.listens_for(SiteLaborCostEntry, "before_insert")
 def _site_labor_before_insert(_mapper, _connection, target: SiteLaborCostEntry) -> None:
-    _sync_site_labor_total(target)
+    _sync_site_labor_flags_and_total(target)
 
 
 @event.listens_for(SiteLaborCostEntry, "before_update")
 def _site_labor_before_update(_mapper, _connection, target: SiteLaborCostEntry) -> None:
-    _sync_site_labor_total(target)
+    _sync_site_labor_flags_and_total(target)
 
 
 class PersonalePresenza(SQLModel, table=True):
