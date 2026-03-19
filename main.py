@@ -28,11 +28,15 @@ from auth import (
     create_access_token,
     get_current_active_user,
     get_current_active_user_html,
+    get_current_role_from_request,
+    get_default_route,
     get_user_by_email,
     resolve_user_active_role,
+    set_current_role_cookie,
     _generate_token_for_user,
     get_redirect_for_role,
     can_switch_user_role,
+    CURRENT_ROLE_COOKIE_NAME,
     SECRET_KEY,
     ALGORITHM,
 )
@@ -98,10 +102,6 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
     return page, per_page
 
 
-def _role_dashboard_map(role: RoleEnum) -> str:
-    return get_redirect_for_role(role)
-
-
 def _get_or_create_role(db: Session, role: RoleEnum) -> Role:
     role_obj = db.query(Role).filter(Role.name == role).first()
     if role_obj:
@@ -141,11 +141,18 @@ def _sync_user_roles(db: Session, user: User, roles: list[RoleEnum]) -> list[Rol
     return unique_roles
 
 
-def _resolve_post_login_role(user: User) -> RoleEnum:
-    return resolve_user_active_role(user)
+def _resolve_post_login_role(
+    user: User,
+    requested_role: RoleEnum | str | None = None,
+) -> RoleEnum:
+    return resolve_user_active_role(user, requested_role)
 
 
-def _apply_access_token_cookie(response: RedirectResponse, access_token: str) -> None:
+def _apply_access_token_cookie(
+    response: RedirectResponse,
+    access_token: str,
+    active_role: RoleEnum | str | None = None,
+) -> None:
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
@@ -154,6 +161,7 @@ def _apply_access_token_cookie(response: RedirectResponse, access_token: str) ->
         path="/",
         samesite="lax",
     )
+    set_current_role_cookie(response, active_role)
 
 
 # -------------------------------------------------
@@ -399,11 +407,8 @@ def homepage(request: Request):
     """
     current_user = _get_user_from_cookie(request)
     if current_user:
-        destination = (
-            "/manager/dashboard"
-            if has_perm(current_user, "manager.access")
-            else "/capo/dashboard"
-        )
+        requested_role = get_current_role_from_request(request)
+        destination = get_default_route(current_user, requested_role)
         return RedirectResponse(url=destination, status_code=303)
 
     lang = get_lang_from_request(request)
@@ -646,9 +651,16 @@ def _load_manager_form_collections() -> tuple[list[Site], list[Machine]]:
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     """
-    Pagina di login HTML (form).
-    Il JS dentro login.html può usare /auth/login o /auth/token per ottenere il JWT.
+    Pagina di login HTML unica per tutti gli utenti.
     """
+    current_user = _get_user_from_cookie(request)
+    if current_user:
+        requested_role = get_current_role_from_request(request)
+        return RedirectResponse(
+            url=get_default_route(current_user, requested_role),
+            status_code=303,
+        )
+
     return templates.TemplateResponse(
         "login.html",
         build_template_context(request, None),
@@ -684,11 +696,12 @@ def login_api(
     if hasattr(user, "is_active") and not user.is_active:
         raise HTTPException(status_code=400, detail="Utente disattivato")
 
-    active_role = _resolve_post_login_role(user)
+    requested_role = get_current_role_from_request(request)
+    active_role = _resolve_post_login_role(user, requested_role)
     db.commit()
     token_data = _generate_token_for_user(
         user,
-        redirect_url=_role_dashboard_map(active_role),
+        redirect_url=get_default_route(user, active_role),
         requested_role=active_role,
     )
 
@@ -696,13 +709,14 @@ def login_api(
         url=token_data.redirect_url or "/",
         status_code=303,
     )
-    _apply_access_token_cookie(response, token_data.access_token)
+    _apply_access_token_cookie(response, token_data.access_token, active_role)
     return response
 
 @app.get("/logout")
 def logout() -> RedirectResponse:
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key=CURRENT_ROLE_COOKIE_NAME, path="/")
     return response
 
 
@@ -733,11 +747,11 @@ def switch_role(
 
     token_data = _generate_token_for_user(
         user_record,
-        redirect_url=_role_dashboard_map(requested_role),
+        redirect_url=get_default_route(user_record, requested_role),
         requested_role=requested_role,
     )
     response = RedirectResponse(url=token_data.redirect_url or "/", status_code=303)
-    _apply_access_token_cookie(response, token_data.access_token)
+    _apply_access_token_cookie(response, token_data.access_token, requested_role)
     return response
 
 

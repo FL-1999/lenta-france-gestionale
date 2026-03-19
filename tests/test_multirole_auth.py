@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from auth import get_current_active_user_html, hash_password
+from auth import get_current_active_user_html, get_default_role, get_default_route, hash_password
 from database import get_db
 from main import app
 from models import Base, Role, RoleEnum, User, UserRole
@@ -72,6 +72,14 @@ class TestMultiRoleAuth:
         self.db.close()
         Base.metadata.drop_all(bind=self.engine)
         self.engine.dispose()
+
+    def test_get_default_route_uses_priority_for_multirole_users(self):
+        user = self.db.query(User).filter(User.id == self.user_id).first()
+        user.role = RoleEnum.magazzino
+        self.db.commit()
+
+        assert get_default_role(user) == RoleEnum.admin
+        assert get_default_route(user) == "/manager/dashboard"
 
     def test_permissions_helper_reads_all_assigned_roles(self):
         user = self.db.query(User).filter(User.id == self.user_id).first()
@@ -141,7 +149,9 @@ class TestMultiRoleAuth:
 
         assert response.status_code == 303
         assert response.headers["location"] == "/manager/dashboard"
-        assert "access_token" in response.headers.get("set-cookie", "")
+        set_cookie_header = response.headers.get("set-cookie", "")
+        assert "access_token" in set_cookie_header
+        assert "current_role=admin" in set_cookie_header
 
     def test_login_redirects_to_first_available_role_when_active_role_missing(self):
         user = self.db.query(User).filter(User.id == self.user_id).first()
@@ -167,3 +177,13 @@ class TestMultiRoleAuth:
         assert 'name="password"' in response.text
         assert 'name="role"' not in response.text
         assert "selector manager/caposquadra" not in response.text
+
+    def test_homepage_uses_single_access_button(self):
+        response = self.client.get("/")
+
+        assert response.status_code == 200
+        assert "Area Manager" not in response.text
+        assert "Area Caposquadra" not in response.text
+        assert "Login Manager" not in response.text
+        assert "Login Caposquadra" not in response.text
+        assert "Accedi" in response.text

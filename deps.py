@@ -1,17 +1,18 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
+from auth import ALGORITHM, SECRET_KEY, get_current_role_from_request, resolve_user_active_role
 from database import get_db
-from models import Site, User, RoleEnum
+from models import RoleEnum, Site, User
 from permissions import has_perm
-from auth import SECRET_KEY, ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 def get_current_user(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
@@ -33,6 +34,8 @@ def get_current_user(
     if user is None:
         raise credentials_exception
 
+    requested_role = get_current_role_from_request(request) or payload.get("role")
+    user.role = resolve_user_active_role(user, requested_role)
     return user
 
 

@@ -3,7 +3,7 @@ import warnings
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -24,6 +24,13 @@ if not SECRET_KEY:
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+CURRENT_ROLE_COOKIE_NAME = "current_role"
+ROLE_REDIRECT_PRIORITY: tuple[RoleEnum, ...] = (
+    RoleEnum.admin,
+    RoleEnum.manager,
+    RoleEnum.caposquadra,
+    RoleEnum.driver,
+)
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
@@ -58,10 +65,20 @@ class LoginRequest(BaseModel):
     password: str
 
 
-def get_redirect_for_role(role: RoleEnum | str | None) -> str:
+def normalize_role(role: RoleEnum | str | None) -> RoleEnum | None:
+    if role is None:
+        return None
+    if isinstance(role, RoleEnum):
+        return role
     try:
-        normalized_role = role if isinstance(role, RoleEnum) else RoleEnum(str(role))
+        return RoleEnum(str(role))
     except Exception:
+        return None
+
+
+def get_redirect_for_role(role: RoleEnum | str | None) -> str:
+    normalized_role = normalize_role(role)
+    if normalized_role is None:
         return "/"
 
     if normalized_role in (RoleEnum.admin, RoleEnum.manager):
@@ -77,6 +94,59 @@ def get_redirect_for_role(role: RoleEnum | str | None) -> str:
 
 def get_role_redirect_url(role: RoleEnum | str | None) -> str:
     return get_redirect_for_role(role)
+
+
+def get_default_role(user: User, requested_role: RoleEnum | str | None = None) -> RoleEnum:
+    available_roles = list(get_assigned_roles(user))
+    if not available_roles:
+        fallback_role = get_active_role(user)
+        if fallback_role is not None:
+            available_roles = [fallback_role]
+    if not available_roles:
+        return RoleEnum.caposquadra
+
+    normalized_requested_role = normalize_role(requested_role)
+    if normalized_requested_role and normalized_requested_role in available_roles:
+        return normalized_requested_role
+
+    current_role = get_active_role(user)
+    if current_role in available_roles:
+        return current_role
+
+    for prioritized_role in ROLE_REDIRECT_PRIORITY:
+        if prioritized_role in available_roles:
+            return prioritized_role
+
+    return available_roles[0]
+
+
+def get_default_route(
+    user: User,
+    requested_role: RoleEnum | str | None = None,
+) -> str:
+    return get_redirect_for_role(get_default_role(user, requested_role))
+
+
+def get_current_role_from_request(request: Request | None) -> RoleEnum | None:
+    if request is None:
+        return None
+    return normalize_role(request.cookies.get(CURRENT_ROLE_COOKIE_NAME))
+
+
+def set_current_role_cookie(response: Response, role: RoleEnum | str | None) -> None:
+    normalized_role = normalize_role(role)
+    if normalized_role is None:
+        response.delete_cookie(key=CURRENT_ROLE_COOKIE_NAME, path="/")
+        return
+
+    response.set_cookie(
+        key=CURRENT_ROLE_COOKIE_NAME,
+        value=normalized_role.value,
+        httponly=True,
+        max_age=60 * 60,
+        path="/",
+        samesite="lax",
+    )
 
 
 def can_switch_user_role(user: User | None) -> bool:
@@ -132,41 +202,14 @@ def resolve_user_active_role(
     user: User,
     requested_role: RoleEnum | str | None = None,
 ) -> RoleEnum:
-    available_roles = list(get_assigned_roles(user))
-    if not available_roles:
-        fallback_role = get_active_role(user)
-        if fallback_role is not None:
-            available_roles = [fallback_role]
-    if not available_roles:
-        return RoleEnum.caposquadra
-
-    normalized_requested_role = None
-    if requested_role is not None:
-        try:
-            normalized_requested_role = (
-                requested_role
-                if isinstance(requested_role, RoleEnum)
-                else RoleEnum(str(requested_role))
-            )
-        except Exception:
-            normalized_requested_role = None
-
-    if normalized_requested_role and normalized_requested_role in available_roles:
-        if user.role != normalized_requested_role:
-            user.role = normalized_requested_role
-        return normalized_requested_role
-
-    current_role = get_active_role(user)
-    if current_role in available_roles:
-        return current_role
-
-    first_role = available_roles[0]
-    if user.role != first_role:
-        user.role = first_role
-    return first_role
+    resolved_role = get_default_role(user, requested_role)
+    if user.role != resolved_role:
+        user.role = resolved_role
+    return resolved_role
 
 
 async def get_current_user(
+    request: Request,
     token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
@@ -188,7 +231,8 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
-    resolved_role = resolve_user_active_role(user, token_role)
+    requested_role = get_current_role_from_request(request) or normalize_role(token_role)
+    resolved_role = resolve_user_active_role(user, requested_role)
     if token_role and not user_has_role(user, token_role):
         raise credentials_exception
     user.role = resolved_role
@@ -237,7 +281,9 @@ async def get_current_user_html(
         raise redirect_exception
     if token_role and not user_has_role(user, token_role):
         raise redirect_exception
-    user.role = resolve_user_active_role(user, token_role)
+
+    requested_role = get_current_role_from_request(request) or normalize_role(token_role)
+    user.role = resolve_user_active_role(user, requested_role)
     return user
 
 
@@ -290,7 +336,7 @@ def _generate_token_for_user(
         active_role=active_role.value,
         available_roles=available_roles,
         can_switch_roles=can_switch_user_role(user),
-        redirect_url=redirect_url or get_redirect_for_role(active_role),
+        redirect_url=redirect_url or get_default_route(user, active_role),
     )
 
 
