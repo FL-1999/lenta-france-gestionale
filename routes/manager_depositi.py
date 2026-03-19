@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_active_user_html
 from database import get_db
 from models import Depot, User
-from permissions import has_perm
+from permissions import can_access_depots, can_manage_depots
 from template_context import register_manager_badges, render_template
 
 router = APIRouter(tags=["manager-depositi"])
@@ -20,8 +20,13 @@ DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
 
 
-def _ensure_manager(user: User) -> None:
-    if not has_perm(user, "manager.access"):
+def _ensure_depots_read(user: User) -> None:
+    if not can_access_depots(user):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def _ensure_depots_manage(user: User) -> None:
+    if not can_manage_depots(user):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
 
@@ -62,7 +67,7 @@ def manager_depositi_list(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_depots_read(current_user)
     page, per_page = _normalize_pagination(page, per_page)
 
     total_count = db.query(func.count(Depot.id)).scalar() or 0
@@ -95,7 +100,7 @@ def manager_depositi_new(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_depots_manage(current_user)
     return render_template(
         templates,
         request,
@@ -126,7 +131,7 @@ def manager_depositi_create(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_depots_manage(current_user)
 
     depot_name = _validate_name(name)
 
@@ -155,7 +160,7 @@ def manager_depositi_edit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_depots_manage(current_user)
     depot = db.query(Depot).filter(Depot.id == depot_id).first()
     if not depot:
         raise HTTPException(status_code=404, detail="Deposito non trovato")
@@ -191,7 +196,7 @@ def manager_depositi_update(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    _ensure_manager(current_user)
+    _ensure_depots_manage(current_user)
     depot = db.query(Depot).filter(Depot.id == depot_id).first()
     if not depot:
         raise HTTPException(status_code=404, detail="Deposito non trovato")

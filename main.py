@@ -759,6 +759,8 @@ def manager_dashboard(
     """
     Dashboard manager con accesso a cantieri, fiches, rapportini e macchinari.
     """
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
     db = SessionLocal()
     sites_map_data: list[dict[str, object]] = []
     try:
