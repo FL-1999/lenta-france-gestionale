@@ -6,12 +6,20 @@ from typing import FrozenSet
 from models import RoleEnum, User
 
 
-MANAGER_PERMISSIONS: FrozenSet[str] = frozenset(
+MANAGER_BASE_PERMISSIONS: FrozenSet[str] = frozenset(
     {
         "manager.access",
+        "trasporti.read",
+        "trasporti.create",
+        "trasporti.update",
+        "cantieri.read",
         "sites.create",
         "sites.update",
-        "users.read",
+        "depositi.read",
+        "depositi.create",
+        "depositi.update",
+        "assegnazioni.read",
+        "assegnazioni.manage",
     }
 )
 
@@ -19,18 +27,8 @@ MAGAZZINO_PERMISSIONS: FrozenSet[str] = frozenset(
     {
         "inventory.read",
         "inventory.manage",
-    }
-)
-
-CONTABILITA_PERMISSIONS: FrozenSet[str] = frozenset(
-    {
-        "reports.read_all",
-    }
-)
-
-HR_PERMISSIONS: FrozenSet[str] = frozenset(
-    {
-        "users.read",
+        "warehouse.requests.read",
+        "warehouse.loads.prepare",
     }
 )
 
@@ -45,11 +43,13 @@ ADMIN_EXTRA_PERMISSIONS: FrozenSet[str] = frozenset(
     {
         "admin.access",
         "sites.delete",
+        "users.read",
         "users.manage",
         "users.create",
         "users.update",
         "users.update_role",
         "users.delete",
+        "users.switch_role",
         "users.*",
         "settings.manage",
         "records.delete",
@@ -58,11 +58,9 @@ ADMIN_EXTRA_PERMISSIONS: FrozenSet[str] = frozenset(
 
 ROLE_PERMISSIONS: dict[RoleEnum, FrozenSet[str]] = {
     RoleEnum.caposquadra: frozenset(),
-    RoleEnum.manager: MANAGER_PERMISSIONS,
-    RoleEnum.admin: MANAGER_PERMISSIONS | ADMIN_EXTRA_PERMISSIONS,
+    RoleEnum.manager: MANAGER_BASE_PERMISSIONS,
+    RoleEnum.admin: MANAGER_BASE_PERMISSIONS | ADMIN_EXTRA_PERMISSIONS,
     RoleEnum.magazzino: MAGAZZINO_PERMISSIONS,
-    RoleEnum.contabilita: CONTABILITA_PERMISSIONS,
-    RoleEnum.hr: HR_PERMISSIONS,
     RoleEnum.driver: DRIVER_PERMISSIONS,
 }
 

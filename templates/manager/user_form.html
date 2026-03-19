@@ -12,6 +12,7 @@
         </h1>
         <p class="subtitle">
             Gestisci dati anagrafici, ruoli assegnati e ruolo attivo dell'utente.
+            I ruoli disponibili sono: admin, manager, driver, magazzino, caposquadra.
         </p>
     </div>
 
@@ -92,7 +93,7 @@
                             <input id="can_switch_roles" type="checkbox" name="can_switch_roles" {% if current_switch_flag %}checked{% endif %}>
                             <span>Può fare switch ruolo</span>
                         </label>
-                        <p class="form-help">Se attivo, l'utente vedrà il menu “Entra come...” quando possiede più ruoli.</p>
+                        <p class="form-help">Disponibile solo per utenti con più ruoli e profilo admin.</p>
                     </div>
                 </div>
 
@@ -109,6 +110,7 @@
 (() => {
     const roleCheckboxes = Array.from(document.querySelectorAll('input[name="roles"]'));
     const activeRoleSelect = document.getElementById('active_role');
+    const switchRoleCheckbox = document.getElementById('can_switch_roles');
     if (!roleCheckboxes.length || !activeRoleSelect) {
         return;
     }
@@ -123,6 +125,14 @@
         }).join('');
         if (!selected.includes(activeRoleSelect.value)) {
             activeRoleSelect.value = selected[0] || '';
+        }
+
+        if (switchRoleCheckbox) {
+            const canSwitch = selected.length > 1 && selected.includes('admin');
+            switchRoleCheckbox.disabled = !canSwitch;
+            if (!canSwitch) {
+                switchRoleCheckbox.checked = false;
+            }
         }
     }
 

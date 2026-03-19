@@ -31,6 +31,7 @@ from auth import (
     get_user_by_email,
     resolve_user_active_role,
     _generate_token_for_user,
+    get_role_redirect_url,
     SECRET_KEY,
     ALGORITHM,
 )
@@ -97,19 +98,7 @@ def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
 
 
 def _role_dashboard_map(role: RoleEnum) -> str:
-    if role in (RoleEnum.admin, RoleEnum.manager):
-        return "/manager/dashboard"
-    if role == RoleEnum.driver:
-        return "/driver/trasporti/viaggi"
-    if role == RoleEnum.caposquadra:
-        return "/capo/dashboard"
-    if role == RoleEnum.magazzino:
-        return "/manager/magazzino/dashboard"
-    if role == RoleEnum.contabilita:
-        return "/manager/rapportini"
-    if role == RoleEnum.hr:
-        return "/manager/personale"
-    return "/"
+    return get_role_redirect_url(role)
 
 
 def _get_or_create_role(db: Session, role: RoleEnum) -> Role:
@@ -728,7 +717,11 @@ def switch_role(
     user_record = get_user_by_email(db, current_user.email)
     if not user_record:
         raise HTTPException(status_code=404, detail="Utente non trovato")
-    if not getattr(user_record, "can_switch_roles", False):
+    if not (
+        getattr(user_record, "can_switch_roles", False)
+        and len(get_user_roles(user_record)) > 1
+        and user_has_role(user_record, RoleEnum.admin)
+    ):
         raise HTTPException(status_code=403, detail="Cambio ruolo non consentito")
     if not user_has_role(user_record, requested_role):
         raise HTTPException(status_code=403, detail="Ruolo non assegnato all'utente")
@@ -1221,10 +1214,7 @@ def manager_users(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not (
-        has_perm(current_user, "users.read")
-        and has_perm(current_user, "manager.access")
-    ):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permessi insufficienti",
@@ -1252,7 +1242,7 @@ def manager_users(
         build_template_context(
             request,
             current_user,
-            user_role="manager",
+            user_role="admin",
             users=users_list,
             user_sites_map=user_sites_map,
         ),
@@ -1445,6 +1435,12 @@ async def manager_new_user_post(
     if active_role not in parsed_roles:
         return render_form("Il ruolo attivo deve essere tra quelli assegnati.")
 
+    can_switch_roles = bool(
+        can_switch_roles
+        and len(parsed_roles) > 1
+        and RoleEnum.admin in parsed_roles
+    )
+
     db = SessionLocal()
     try:
         existing = db.query(User).filter(User.email == email).first()
@@ -1598,6 +1594,12 @@ async def manager_edit_user_post(
         return render_form("Ruolo attivo non valido.")
     if active_role not in parsed_roles:
         return render_form("Il ruolo attivo deve essere tra quelli assegnati.")
+
+    can_switch_roles = bool(
+        can_switch_roles
+        and len(parsed_roles) > 1
+        and RoleEnum.admin in parsed_roles
+    )
 
     db = SessionLocal()
     try:

@@ -1,11 +1,11 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Nuovo Utente – Manager{% endblock %}
+{% block title %}Nuovo Utente – Admin{% endblock %}
 
 {% block content %}
 <div class="form-page">
     <div class="form-page-header">
-        <p class="eyebrow">Area Manager</p>
+        <p class="eyebrow">Area Admin</p>
         <h1 class="page-title">
             <span class="page-icon page-icon--users" aria-hidden="true"></span>
             Nuovo utente
@@ -43,11 +43,10 @@
                         <label class="form-label" for="role">Ruolo</label>
                         <select id="role" name="role" class="form-select" required>
                             <option value="manager">Manager</option>
-                            <option value="caposquadra">Caposquadra</option>
-                            <option value="magazzino">Magazzino</option>
-                            <option value="contabilita">Contabilità</option>
-                            <option value="hr">HR</option>
                             <option value="admin">Admin</option>
+                            <option value="caposquadra">Caposquadra</option>
+                            <option value="driver">Driver</option>
+                            <option value="magazzino">Magazzino</option>
                         </select>
                     </div>
 

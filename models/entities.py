@@ -33,8 +33,6 @@ class RoleEnum(PyEnum):
     manager = "manager"
     caposquadra = "caposquadra"
     magazzino = "magazzino"
-    contabilita = "contabilita"
-    hr = "hr"
     driver = "driver"
 
 

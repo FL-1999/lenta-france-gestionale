@@ -160,6 +160,57 @@ def _backfill_user_roles(connection: Connection) -> None:
     )
 
 
+def _migrate_legacy_roles(connection: Connection) -> None:
+    legacy_roles = ("contabilita", "hr")
+    if not _table_exists(connection, "users") or not _table_exists(connection, "roles"):
+        logger.warning("Skipped legacy role migration: prerequisite tables not found.")
+        return
+
+    connection.execute(
+        text(
+            """
+            UPDATE users
+            SET role = 'manager'
+            WHERE role IN ('contabilita', 'hr')
+            """
+        )
+    )
+
+    if _table_exists(connection, "user_roles"):
+        connection.execute(
+            text(
+                """
+                INSERT OR IGNORE INTO user_roles (user_id, role_id, created_at, updated_at)
+                SELECT DISTINCT ur.user_id, manager_role.id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                FROM user_roles ur
+                JOIN roles legacy_role ON legacy_role.id = ur.role_id
+                JOIN roles manager_role ON manager_role.name = 'manager'
+                WHERE legacy_role.name IN ('contabilita', 'hr')
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                DELETE FROM user_roles
+                WHERE role_id IN (
+                    SELECT id FROM roles WHERE name IN ('contabilita', 'hr')
+                )
+                """
+            )
+        )
+
+    connection.execute(
+        text(
+            """
+            DELETE FROM roles
+            WHERE name IN ('contabilita', 'hr')
+            """
+        )
+    )
+    logger.info("Legacy roles migrated to 'manager': %s", ", ".join(legacy_roles))
+
+
 def upgrade_db(engine: Engine) -> None:
     """Run idempotent SQLite schema upgrades for configured tables."""
     for table_name, column_definitions in UPGRADE_TARGETS.items():
@@ -182,6 +233,7 @@ def upgrade_db(engine: Engine) -> None:
 
     with engine.begin() as connection:
         _seed_roles_table(connection)
+        _migrate_legacy_roles(connection)
         _backfill_user_roles(connection)
 
 

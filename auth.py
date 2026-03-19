@@ -58,6 +58,33 @@ class LoginRequest(BaseModel):
     password: str
 
 
+def get_role_redirect_url(role: RoleEnum | str | None) -> str:
+    try:
+        normalized_role = role if isinstance(role, RoleEnum) else RoleEnum(str(role))
+    except Exception:
+        return "/"
+
+    if normalized_role in (RoleEnum.admin, RoleEnum.manager):
+        return "/manager/dashboard"
+    if normalized_role == RoleEnum.driver:
+        return "/driver/trasporti/viaggi"
+    if normalized_role == RoleEnum.magazzino:
+        return "/manager/magazzino/dashboard"
+    if normalized_role == RoleEnum.caposquadra:
+        return "/capo/dashboard"
+    return "/"
+
+
+def can_switch_user_role(user: User | None) -> bool:
+    if not user:
+        return False
+    return bool(
+        getattr(user, "can_switch_roles", False)
+        and len(get_user_roles(user)) > 1
+        and user_has_role(user, RoleEnum.admin)
+    )
+
+
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
     return (
         db.query(User)
@@ -237,7 +264,7 @@ def _generate_token_for_user(
             "sub": user.email,
             "role": active_role.value,
             "roles": available_roles,
-            "can_switch_roles": bool(getattr(user, "can_switch_roles", False)),
+            "can_switch_roles": can_switch_user_role(user),
         },
         expires_delta=access_token_expires,
     )
@@ -246,8 +273,8 @@ def _generate_token_for_user(
         token_type="bearer",
         active_role=active_role.value,
         available_roles=available_roles,
-        can_switch_roles=bool(getattr(user, "can_switch_roles", False)),
-        redirect_url=redirect_url,
+        can_switch_roles=can_switch_user_role(user),
+        redirect_url=redirect_url or get_role_redirect_url(active_role),
     )
 
 
@@ -296,6 +323,6 @@ async def read_users_me(
         "full_name": getattr(current_user, "full_name", None),
         "role": active_role.value if active_role else None,
         "roles": [role.value for role in get_user_roles(current_user)],
-        "can_switch_roles": bool(getattr(current_user, "can_switch_roles", False)),
+        "can_switch_roles": can_switch_user_role(current_user),
         "language": getattr(current_user, "language", None),
     }
