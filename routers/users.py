@@ -69,10 +69,7 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    if not (
-        has_perm(current_user, "users.read")
-        and has_perm(current_user, "manager.access")
-    ):
+    if not has_perm(current_user, "users.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Non hai i permessi per vedere la lista utenti.",
@@ -123,12 +120,18 @@ def create_user(
             detail="Il ruolo attivo deve essere tra i ruoli assegnati.",
         )
 
+    can_switch_roles = bool(
+        user_in.can_switch_roles
+        and len(set(user_in.roles)) > 1
+        and RoleEnum.admin in user_in.roles
+    )
+
     db_user = User(
         email=user_in.email,
         full_name=user_in.full_name,
         role=user_in.active_role,
         language=user_in.language or "it",
-        can_switch_roles=user_in.can_switch_roles,
+        can_switch_roles=can_switch_roles,
         hashed_password=hash_password(user_in.password),
     )
 

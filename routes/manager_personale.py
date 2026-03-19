@@ -127,7 +127,7 @@ def manager_personale_list(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    if not has_perm(current_user, "users.read"):
+    if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     lang = request.cookies.get("lang", "it")
     page, per_page = _normalize_pagination(page, per_page)

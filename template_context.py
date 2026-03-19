@@ -19,7 +19,7 @@ from models import (
     User,
 )
 from notifications import get_warehouse_notification_counts
-from permissions import get_active_role, get_user_roles, has_perm
+from permissions import get_active_role, get_user_roles, has_perm, user_has_role
 from utils.places import format_place_label
 
 
@@ -29,7 +29,6 @@ def _can_view_manager_badges(user: User | None) -> bool:
     return bool(
         has_perm(user, "manager.access")
         or has_perm(user, "inventory.read")
-        or getattr(user, "is_magazzino_manager", False)
     )
 
 
@@ -239,7 +238,12 @@ def build_template_context(
     template_context.setdefault("available_role_values", [role.value for role in available_roles])
     template_context.setdefault(
         "show_role_switcher",
-        bool(user and getattr(user, "can_switch_roles", False) and len(available_roles) > 1),
+        bool(
+            user
+            and getattr(user, "can_switch_roles", False)
+            and len(available_roles) > 1
+            and user_has_role(user, RoleEnum.admin)
+        ),
     )
     template_context.setdefault("is_manager", is_manager)
     template_context.setdefault("is_capo", is_capo)

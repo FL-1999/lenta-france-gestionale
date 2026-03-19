@@ -2,7 +2,7 @@
 {% set lang = request.cookies.get('lang', 'it') %}
 
 {% block title %}
-    {% if lang == 'fr' %}Utilisateurs – Manager – Lenta France{% else %}Utenti – Manager – Lenta France{% endif %}
+{% if lang == 'fr' %}Utilisateurs – Admin – Lenta France{% else %}Utenti – Admin – Lenta France{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -26,7 +26,7 @@
             {% if lang == 'fr' %}
                 Vue d'ensemble des comptes habilités au gestionnel, avec rôles assignés, rôle actif, langue et statut.
             {% else %}
-                Panoramica degli account abilitati al gestionale, con ruoli assegnati, ruolo attivo, lingua e stato.
+                Panoramica degli account del gestionale, con ruoli assegnati, ruolo attivo, lingua e stato.
             {% endif %}
         </p>
     </div>

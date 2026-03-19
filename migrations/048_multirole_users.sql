@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
-    CHECK (name IN ('admin', 'manager', 'caposquadra', 'magazzino', 'contabilita', 'hr', 'driver'))
+    CHECK (name IN ('admin', 'manager', 'caposquadra', 'magazzino', 'driver'))
 );
 
 CREATE TABLE IF NOT EXISTS user_roles (
@@ -24,8 +24,6 @@ INSERT OR IGNORE INTO roles (name, description) VALUES
     ('manager', 'Ruolo manager'),
     ('caposquadra', 'Ruolo caposquadra'),
     ('magazzino', 'Ruolo magazzino'),
-    ('contabilita', 'Ruolo contabilita'),
-    ('hr', 'Ruolo hr'),
     ('driver', 'Ruolo driver');
 
 INSERT OR IGNORE INTO user_roles (user_id, role_id, created_at, updated_at)
