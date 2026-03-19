@@ -91,6 +91,16 @@ TREND_CATEGORY_MAP = {
     },
 }
 
+WEEKDAY_LABELS = {
+    0: "feriale",
+    1: "feriale",
+    2: "feriale",
+    3: "feriale",
+    4: "feriale",
+    5: "sabato",
+    6: "domenica",
+}
+
 
 def _ensure_economics_access(user: User) -> None:
     if not has_perm(user, "economics.read"):
@@ -235,6 +245,7 @@ def _build_site_economic_snapshot(
         entry for entry in (site.labor_cost_entries or [])
         if start_date <= entry.work_date <= end_date
     ]
+    active_labor_entries = [entry for entry in labor_entries if entry.is_active]
 
     revenue_totals = defaultdict(float)
     cost_totals = defaultdict(float)
@@ -243,7 +254,7 @@ def _build_site_economic_snapshot(
         bucket = revenue_totals if entry.entry_type == SiteEconomicEntryTypeEnum.revenue else cost_totals
         bucket[entry.category] += float(entry.amount or 0)
 
-    labor_total = round(sum(float(entry.total_cost or 0) for entry in labor_entries), 2)
+    labor_total = round(sum(float(entry.total_cost or 0) for entry in active_labor_entries), 2)
     cost_totals[SiteEconomicCategoryEnum.manodopera] += labor_total
 
     ricavi_previsti = round(revenue_totals[SiteEconomicCategoryEnum.ricavi_previsti], 2)
@@ -277,7 +288,7 @@ def _build_site_economic_snapshot(
             "category": entry.category,
             "amount": float(entry.amount or 0),
         })
-    for entry in labor_entries:
+    for entry in active_labor_entries:
         all_series.append({
             "date": entry.work_date,
             "category": SiteEconomicCategoryEnum.manodopera,
@@ -354,6 +365,9 @@ def _build_site_economic_snapshot(
                 "worker_count": entry.worker_count,
                 "unit_cost": round(float(entry.unit_cost or 0), 2),
                 "total_cost": round(float(entry.total_cost or 0), 2),
+                "is_weekend": bool(entry.is_weekend),
+                "is_active": bool(entry.is_active),
+                "day_type": WEEKDAY_LABELS.get(entry.work_date.weekday(), "feriale"),
                 "notes": entry.notes or "",
             }
             for entry in recent_labor_entries
@@ -558,6 +572,7 @@ def manager_site_economics_labor_create(
     work_date: str = Form(...),
     worker_count: int = Form(...),
     unit_cost: str = Form(...),
+    is_active: str | None = Form(None),
     notes: str | None = Form(None),
     timeframe: str = Form("month"),
     start_date: str | None = Form(None),
@@ -579,6 +594,9 @@ def manager_site_economics_labor_create(
     if worker_count < 0:
         raise HTTPException(status_code=400, detail="Numero persone non valido")
 
+    parsed_is_weekend = parsed_date.weekday() >= 5
+    parsed_is_active = True if not parsed_is_weekend else is_active in {"1", "true", "True", "on", "yes"}
+
     record = (
         db.query(SiteLaborCostEntry)
         .filter(SiteLaborCostEntry.site_id == site_id, SiteLaborCostEntry.work_date == parsed_date)
@@ -590,6 +608,8 @@ def manager_site_economics_labor_create(
 
     record.worker_count = worker_count
     record.unit_cost = parsed_unit_cost
+    record.is_weekend = parsed_is_weekend
+    record.is_active = parsed_is_active
     record.notes = (notes or "").strip() or None
     db.commit()
 

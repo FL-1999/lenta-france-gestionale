@@ -55,6 +55,11 @@ MAGAZZINO_MOVIMENTI_COLUMNS: tuple[str, ...] = (
     "deposito_id INTEGER",
 )
 
+SITE_LABOR_COST_ENTRIES_COLUMNS: tuple[str, ...] = (
+    "is_weekend BOOLEAN NOT NULL DEFAULT 0",
+    "is_active BOOLEAN NOT NULL DEFAULT 1",
+)
+
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "veicoli": VEICOLI_COLUMNS,
     "users": USERS_COLUMNS,
@@ -62,6 +67,7 @@ UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "trasporto_tappe": TRASPORTO_TAPPE_COLUMNS,
     "movimenti_attrezzature": MOVIMENTI_ATTREZZATURE_COLUMNS,
     "magazzino_movimenti": MAGAZZINO_MOVIMENTI_COLUMNS,
+    "site_labor_cost_entries": SITE_LABOR_COST_ENTRIES_COLUMNS,
 }
 
 
@@ -211,8 +217,44 @@ def _migrate_legacy_roles(connection: Connection) -> None:
     logger.info("Legacy roles migrated to 'manager': %s", ", ".join(legacy_roles))
 
 
+def _backfill_site_labor_weekend_flags(connection: Connection) -> None:
+    if not _table_exists(connection, "site_labor_cost_entries"):
+        logger.warning("Skipped site_labor_cost_entries backfill: table not found.")
+        return
+
+    existing_columns = _read_existing_columns(connection, "site_labor_cost_entries")
+    if not {"work_date", "is_weekend", "is_active"}.issubset(existing_columns):
+        logger.warning(
+            "Skipped site_labor_cost_entries backfill: required columns not found."
+        )
+        return
+
+    connection.execute(
+        text(
+            """
+            UPDATE site_labor_cost_entries
+            SET
+                is_weekend = CASE
+                    WHEN CAST(strftime('%w', work_date) AS INTEGER) IN (0, 6) THEN 1
+                    ELSE 0
+                END,
+                is_active = CASE
+                    WHEN CAST(strftime('%w', work_date) AS INTEGER) IN (0, 6) THEN 0
+                    ELSE 1
+                END,
+                total_cost = CASE
+                    WHEN CAST(strftime('%w', work_date) AS INTEGER) IN (0, 6) THEN 0
+                    ELSE COALESCE(worker_count, 0) * COALESCE(unit_cost, 0)
+                END
+            """
+        )
+    )
+    logger.info("Backfilled weekend flags for site_labor_cost_entries.")
+
+
 def upgrade_db(engine: Engine) -> None:
     """Run idempotent SQLite schema upgrades for configured tables."""
+    site_labor_columns_added = False
     for table_name, column_definitions in UPGRADE_TARGETS.items():
         added_columns: list[str] = []
         for column_definition in column_definitions:
@@ -231,7 +273,12 @@ def upgrade_db(engine: Engine) -> None:
                 table_name,
             )
 
+        if table_name == "site_labor_cost_entries" and added_columns:
+            site_labor_columns_added = True
+
     with engine.begin() as connection:
+        if site_labor_columns_added:
+            _backfill_site_labor_weekend_flags(connection)
         _seed_roles_table(connection)
         _migrate_legacy_roles(connection)
         _backfill_user_roles(connection)
