@@ -174,7 +174,9 @@ def test_manager_can_open_site_economics_detail() -> None:
     assert response.status_code == 200
     assert "Cantiere Economico" in response.text
     assert "€ 480.00" in response.text
-    assert "Formula applicata automaticamente" in response.text
+    assert "Costo oggi" in response.text
+    assert "Serie trend JSON" in response.text
+    assert "⚠️ Sabato rilevato" in response.text
     assert "€ 2980.00" in response.text
     assert "€ 4020.00" in response.text
 
@@ -199,6 +201,7 @@ def test_post_labor_cost_entry_computes_total() -> None:
             "worker_count": "3",
             "unit_cost": "110",
             "notes": "Turno ridotto",
+            "is_active": "1",
             "timeframe": "month",
             "start_date": "2026-03-01",
             "end_date": "2026-03-31",
@@ -215,3 +218,49 @@ def test_post_labor_cost_entry_computes_total() -> None:
         assert row.total_cost == 330
     finally:
         db.close()
+
+
+def test_weekend_labor_entry_stays_inactive_by_default() -> None:
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_manager_user
+
+    response = client.post(
+        f"/manager/cantieri/{site_id}/economics/labor",
+        data={
+            "work_date": "2026-03-07",
+            "worker_count": "2",
+            "unit_cost": "150",
+            "notes": "Weekend non confermato",
+            "timeframe": "month",
+            "start_date": "2026-03-01",
+            "end_date": "2026-03-31",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    db = TestingSessionLocal()
+    try:
+        row = db.query(SiteLaborCostEntry).filter(SiteLaborCostEntry.site_id == site_id, SiteLaborCostEntry.work_date == date(2026, 3, 7)).first()
+        assert row is not None
+        assert row.is_weekend is True
+        assert row.is_active is False
+        assert row.total_cost == 0
+    finally:
+        db.close()
+
+
+def test_trend_data_endpoint_returns_daily_series() -> None:
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_manager_user
+
+    response = client.get(
+        f"/manager/cantieri/{site_id}/economics/trend-data?timeframe=month&start_date=2026-03-01&end_date=2026-03-08"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["site_id"] == site_id
+    assert payload["series"][0] == {"data": "2026-03-01", "costi": 0.0, "ricavi": 10000.0, "margine": 10000.0}
+    assert any(row["data"] == "2026-03-06" and row["costi"] == 480.0 for row in payload["series"])
