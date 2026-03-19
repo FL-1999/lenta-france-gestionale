@@ -5,14 +5,12 @@
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">🔐 {% if lang == 'fr' %}Connexion{% else %}Login{% endif %}</h1>
+    <h1 class="page-title">🔐 {% if lang == 'fr' %}Connexion unique{% else %}Login unico{% endif %}</h1>
     <p class="page-subtitle">
         {% if lang == 'fr' %}
-            Connectez-vous au logiciel avec vos identifiants. Selon votre rôle, vous serez redirigé automatiquement vers la bonne zone.
+            Connectez-vous avec vos identifiants. Après l'authentification, le système sélectionne automatiquement la meilleure destination selon votre rôle actif.
         {% else %}
-            Accedi con email e password. Il sistema recupera automaticamente i tuoi
-            ruoli attivi e ti reindirizza nell’area corretta senza richiedere
-            la selezione manuale del profilo.
+            Accedi con email e password. Dopo l’autenticazione il sistema seleziona automaticamente la destinazione corretta in base al ruolo attivo e ai ruoli disponibili.
         {% endif %}
     </p>
 </div>

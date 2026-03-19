@@ -181,6 +181,10 @@
                     </button>
                     <div class="nav-dropdown__menu nav-dropdown__menu--profile" data-nav-dropdown-menu>
                         <div class="nav-dropdown__section nav-dropdown__section--compact">
+                            <span class="nav-dropdown__label">{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</span>
+                            <span class="nav-dropdown__value">{{ user_display_name }}</span>
+                        </div>
+                        <div class="nav-dropdown__section nav-dropdown__section--compact">
                             <span class="nav-dropdown__label">{% if lang == 'fr' %}Rôle actif{% else %}Ruolo attivo{% endif %}</span>
                             <span class="nav-dropdown__value">{{ active_role_label }}</span>
                         </div>
@@ -188,7 +192,7 @@
                         {% if can_show_role_switcher %}
                             <div class="nav-dropdown__divider"></div>
                             <div class="nav-dropdown__section nav-dropdown__section--compact">
-                                <span class="nav-dropdown__label">{% if lang == 'fr' %}Entrer comme{% else %}Entra come{% endif %}</span>
+                                <span class="nav-dropdown__label">{% if lang == 'fr' %}Changer de rôle{% else %}Cambia ruolo{% endif %}</span>
                             </div>
                             {% for role_item in available_roles %}
                                 {% set role_value = role_item.value if role_item.value is defined else role_item %}

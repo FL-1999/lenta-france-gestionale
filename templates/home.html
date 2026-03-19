@@ -8,101 +8,50 @@
     <div class="page-header-main">
         <p class="page-eyebrow">
             {% if lang == 'fr' %}
-                GESTION DES CHANTIERS ET RAPPORTS
+                GESTION MULTIRÔLE DES CHANTIERS
             {% else %}
-                Gestione dei cantieri e rapporti
+                Gestionale multi-ruolo per i cantieri
             {% endif %}
         </p>
 
         <h1 class="page-title">
             {% if lang == 'fr' %}
-                Lenta France – Gestionnaire de chantiers
+                Lenta France – Accès unique
             {% else %}
-                Lenta France – Gestionale Cantieri
+                Lenta France – Login unico
             {% endif %}
         </h1>
 
         <p class="page-subtitle">
             {% if lang == 'fr' %}
-                Gestion des chantiers, machines, fiches et rapports journaliers de Lenta France.
+                Un seul accès pour tous les profils : le système vous redirige automatiquement vers votre espace selon le rôle actif.
             {% else %}
-                Gestionale per cantieri, macchinari, fiches e rapportini giornalieri di Lenta France.
+                Un solo accesso per tutti i profili: dopo il login il sistema ti reindirizza automaticamente nell’area corretta in base al ruolo attivo.
             {% endif %}
         </p>
     </div>
 </div>
 
-<div class="home-card">
+<section class="home-card">
     <h2>
         {% if lang == 'fr' %}
-            Sélectionnez votre espace 👇
+            Connectez-vous à votre espace
         {% else %}
-            Seleziona la tua area 👇
+            Accedi al tuo spazio
         {% endif %}
     </h2>
     <p class="subtitle">
         {% if lang == 'fr' %}
-            Connectez-vous avec votre compte (manager ou chef d'équipe) et utilisez les fonctions dédiées.
+            Managers, chefs d'équipe, drivers et autres profils utilisent désormais la même page de connexion.
         {% else %}
-            Accedi con il tuo utente (manager o caposquadra) e usa le funzioni dedicate.
+            Manager, capisquadra, driver e gli altri ruoli usano ora la stessa pagina di accesso.
         {% endif %}
     </p>
 
-    <div class="dashboard-grid">
-
-        <!-- Area Manager -->
-        <section class="card">
-            <div class="card-header">
-                <div class="card-title">👔 {% if lang == 'fr' %}Espace Manager{% else %}Area Manager{% endif %}</div>
-                <span class="card-badge">{% if lang == 'fr' %}Administration{% else %}Amministrazione{% endif %}</span>
-            </div>
-            <div class="card-body">
-                <p>
-                    {% if lang == 'fr' %}
-                        Gestion complète des chantiers, machines, fiches et rapports.
-                    {% else %}
-                        Gestione completa di cantieri, macchinari, fiches e rapportini.
-                    {% endif %}
-                </p>
-                <div class="button-row">
-                    <a href="/login" class="btn btn-primary">🔐 {% if lang == 'fr' %}Login Manager{% else %}Login Manager{% endif %}</a>
-                    <a href="/manager/dashboard" class="btn btn-secondary">📊 {% if lang == 'fr' %}Aller au tableau de bord{% else %}Vai alla dashboard{% endif %}</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- Area Caposquadra -->
-        <section class="card">
-            <div class="card-header">
-                <div class="card-title">👷 {% if lang == 'fr' %}Espace Chef d'équipe{% else %}Area Caposquadra{% endif %}</div>
-                <span class="card-badge">{% if lang == 'fr' %}Opérationnel{% else %}Operativo{% endif %}</span>
-            </div>
-            <div class="card-body">
-                <p>
-                    {% if lang == 'fr' %}
-                        Saisie de fiches et rapports uniquement pour les chantiers attribués.
-                    {% else %}
-                        Compilazione di fiches e rapportini solo per i cantieri assegnati.
-                    {% endif %}
-                </p>
-                <div class="button-row">
-                    <a href="/login" class="btn btn-primary">🔐 {% if lang == 'fr' %}Login Chef d'équipe{% else %}Login Caposquadra{% endif %}</a>
-                    <a href="/capo/dashboard" class="btn btn-secondary">📋 {% if lang == 'fr' %}Aller à l’espace chef{% else %}Vai all’area capo{% endif %}</a>
-                </div>
-            </div>
-        </section>
-
-    </div>
-
     <div class="home-actions">
-        <p>
-            {% if lang == 'fr' %}
-                Ou accédez directement à la page d'authentification :
-            {% else %}
-                Oppure entra direttamente nella pagina di autenticazione:
-            {% endif %}
-        </p>
-        <a href="/login" class="btn btn-primary">🔐 {% if lang == 'fr' %}Aller au login{% else %}Vai al login{% endif %}</a>
+        <a href="/login" class="btn btn-primary">
+            🔐 {% if lang == 'fr' %}Accéder{% else %}Accedi{% endif %}
+        </a>
     </div>
-</div>
+</section>
 {% endblock %}
