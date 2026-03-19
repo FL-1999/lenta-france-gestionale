@@ -4,13 +4,27 @@
 <div class="page-header">
   <div class="page-header-main">
     <p class="page-eyebrow">VIAGGIO {{ viaggio.codice_viaggio }}</p>
-    <h1 class="page-title">{{ viaggio.origine }} → {{ viaggio.destinazione }}</h1>
+    <h1 class="page-title">{{ viaggio.origine_label }} → {{ viaggio.destinazione_label }}</h1>
+  </div>
+  <div class="header-actions">
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=viaggio.id) }}">✏️ Modifica viaggio</a>
   </div>
 </div>
 <div class="card card-body">
   <p><strong>Stato:</strong> {{ viaggio.stato.value }}</p>
   <p><strong>Autista:</strong> {{ viaggio.autista.full_name if viaggio.autista and viaggio.autista.full_name else (viaggio.autista.email if viaggio.autista else '-') }}</p>
   <p><strong>Mezzo:</strong>{{ (viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')' if viaggio.mezzo else '-' }}</p>
+  <p><strong>Origine:</strong> {{ viaggio.origine_label }}</p>
+  <p><strong>Destinazione:</strong> {{ viaggio.destinazione_label }}</p>
+
+  <h3>Tappe</h3>
+  <ul>
+    {% for tappa in viaggio.tappe %}
+    <li>Tappa {{ tappa.ordine }}: {{ tappa.destinazione_label }}</li>
+    {% else %}
+    <li>Nessuna tappa configurata.</li>
+    {% endfor %}
+  </ul>
 
   <h3>Gestione autista</h3>
   <form method="post" action="{{ url_for('manager_trasporti_viaggi_autista_update', viaggio_id=viaggio.id) }}" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">

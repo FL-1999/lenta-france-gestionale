@@ -710,6 +710,7 @@ class MagazzinoMovimento(Base, TimestampMixin):
     tipo = Column(Enum(MagazzinoMovimentoTipoEnum), nullable=False)
     quantita = Column(Float, nullable=False)
     cantiere_id = Column(Integer, ForeignKey("sites.id"), nullable=True)
+    deposito_id = Column(Integer, ForeignKey("depots.id"), nullable=True)
     riferimento_richiesta_id = Column(
         Integer, ForeignKey("magazzino_richieste.id"), nullable=True
     )
@@ -723,6 +724,7 @@ class MagazzinoMovimento(Base, TimestampMixin):
 
     item = relationship("MagazzinoItem")
     cantiere = relationship("Site")
+    deposito = relationship("Depot")
     creato_da_user = relationship(
         "User",
         foreign_keys=[creato_da_user_id],
@@ -831,6 +833,10 @@ class TrasportoViaggio(Base, TimestampMixin):
     data_arrivo_prevista = Column(Date, nullable=True)
     autista_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     mezzo_id = Column(Integer, ForeignKey("veicoli.id"), nullable=True, index=True)
+    origine_site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
+    origine_depot_id = Column(Integer, ForeignKey("depots.id"), nullable=True, index=True)
+    destinazione_site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
+    destinazione_depot_id = Column(Integer, ForeignKey("depots.id"), nullable=True, index=True)
     origine = Column(String(255), nullable=False)
     destinazione = Column(String(255), nullable=False)
     stato = Column(
@@ -842,6 +848,10 @@ class TrasportoViaggio(Base, TimestampMixin):
 
     autista = relationship("User")
     mezzo = relationship("VeicoloTrasporto", back_populates="viaggi")
+    origine_site = relationship("Site", foreign_keys=[origine_site_id])
+    origine_depot = relationship("Depot", foreign_keys=[origine_depot_id])
+    destinazione_site = relationship("Site", foreign_keys=[destinazione_site_id])
+    destinazione_depot = relationship("Depot", foreign_keys=[destinazione_depot_id])
     richieste_attrezzature = relationship(
         "TrasportoRichiestaAttrezzatura",
         back_populates="viaggio",
@@ -869,9 +879,13 @@ class TrasportoTappa(Base):
     id = Column(Integer, primary_key=True, index=True)
     viaggio_id = Column(Integer, ForeignKey("trasporti_viaggi.id"), nullable=False, index=True)
     ordine = Column(Integer, nullable=False, default=1)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
+    depot_id = Column(Integer, ForeignKey("depots.id"), nullable=True, index=True)
     destinazione = Column(String(255), nullable=False)
 
     viaggio = relationship("TrasportoViaggio", back_populates="tappe")
+    site = relationship("Site", foreign_keys=[site_id])
+    depot = relationship("Depot", foreign_keys=[depot_id])
     richieste_attrezzature = relationship(
         "TrasportoRichiestaAttrezzatura",
         back_populates="tappa",
@@ -916,6 +930,10 @@ class MovimentoAttrezzatura(Base):
     id = Column(Integer, primary_key=True, index=True)
     attrezzatura_id = Column(Integer, ForeignKey("attrezzature.id"), nullable=False, index=True)
     viaggio_id = Column(Integer, ForeignKey("trasporti_viaggi.id"), nullable=False, index=True)
+    origine_site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
+    origine_depot_id = Column(Integer, ForeignKey("depots.id"), nullable=True, index=True)
+    destinazione_site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
+    destinazione_depot_id = Column(Integer, ForeignKey("depots.id"), nullable=True, index=True)
     origine = Column(String(255), nullable=False)
     destinazione = Column(String(255), nullable=False)
     data = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -924,3 +942,7 @@ class MovimentoAttrezzatura(Base):
     attrezzatura = relationship("Attrezzatura")
     viaggio = relationship("TrasportoViaggio")
     autista = relationship("User")
+    origine_site = relationship("Site", foreign_keys=[origine_site_id])
+    origine_depot = relationship("Depot", foreign_keys=[origine_depot_id])
+    destinazione_site = relationship("Site", foreign_keys=[destinazione_site_id])
+    destinazione_depot = relationship("Depot", foreign_keys=[destinazione_depot_id])

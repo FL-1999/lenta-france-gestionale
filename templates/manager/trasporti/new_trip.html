@@ -1,38 +1,101 @@
 {% extends "shared/base.html" %}
-{% block title %}Nuovo viaggio{% endblock %}
+{% block title %}{{ "Modifica viaggio" if mode == "edit" else "Nuovo viaggio" }}{% endblock %}
 {% block content %}
-<div class="page-header"><h1 class="page-title">🧭 Nuovo viaggio multi-tappa</h1></div>
-<form method="post" class="card card-body" action="{{ url_for('manager_trasporti_viaggi_create') }}">
-  <label>Codice viaggio</label><input name="codice_viaggio" required placeholder="TR-0021" />
-  <label>Data partenza</label><input type="date" name="data_partenza" required />
-  <label>Data arrivo prevista</label><input type="date" name="data_arrivo_prevista" />
-  <label>Autista</label>
-  <select name="autista_id"><option value="">--</option>{% for a in autisti %}<option value="{{ a.id }}">{{ a.full_name or a.email }}</option>{% endfor %}</select>
-  <label>Mezzo</label>
-  <select name="mezzo_id"><option value="">--</option>{% for m in mezzi %}<option value="{{ m.id }}">{{ m.marca }} {{ m.modello }} ({{ m.targa }})</option>{% endfor %}</select>
-  <label>Origine</label><input name="origine" required />
-  <label>Destinazione principale</label><input name="destinazione" required />
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">Trasporti</p>
+    <h1 class="page-title">🧭 {{ "Modifica viaggio multi-tappa" if mode == "edit" else "Nuovo viaggio multi-tappa" }}</h1>
+    <p class="page-subtitle">Origine, destinazione e tappe usano l’elenco unificato di cantieri e depositi.</p>
+  </div>
+  <div class="header-actions">
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_dashboard') }}">← Dashboard</a>
+    {% if viaggio %}
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=viaggio.id) }}">Dettaglio viaggio</a>
+    {% endif %}
+  </div>
+</div>
 
-  <h3>Tappe (una destinazione per riga)</h3>
-  <input name="tappa_destinazione" placeholder="Cantiere Milano" />
-  <input name="tappa_destinazione" placeholder="Cantiere Torino" />
-  <input name="tappa_destinazione" placeholder="Cantiere Lione" />
+{% if error_message %}
+<div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
 
-  <h3>Richiesta attrezzature (tipo + quantità + tappa)</h3>
-  <div style="display:grid;grid-template-columns:1fr 120px 120px;gap:0.5rem;">
-    <input name="tipo_attrezzatura" placeholder="pompa" />
-    <input type="number" min="1" value="1" name="quantita" />
-    <input type="number" min="1" value="1" name="richiesta_tappa_idx" placeholder="Tappa" />
+<form method="post" class="card card-body" action="{{ form_action }}">
+  <div class="form-grid">
+    <div class="form-group">
+      <label class="form-label">Codice viaggio</label>
+      <input class="form-control" name="codice_viaggio" required placeholder="TR-0021" value="{{ form_data.codice_viaggio }}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Data partenza</label>
+      <input class="form-control" type="date" name="data_partenza" required value="{{ form_data.data_partenza }}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Data arrivo prevista</label>
+      <input class="form-control" type="date" name="data_arrivo_prevista" value="{{ form_data.data_arrivo_prevista }}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Autista</label>
+      <select class="form-select" name="autista_id">
+        <option value="">--</option>
+        {% for a in autisti %}
+        <option value="{{ a.id }}" {% if form_data.autista_id == a.id|string %}selected{% endif %}>{{ a.full_name or a.email }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mezzo</label>
+      <select class="form-select" name="mezzo_id">
+        <option value="">--</option>
+        {% for m in mezzi %}
+        <option value="{{ m.id }}" {% if form_data.mezzo_id == m.id|string %}selected{% endif %}>{{ m.marca }} {{ m.modello }} ({{ m.targa }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Origine</label>
+      <select class="form-select" name="origine_place" required>
+        <option value="">Seleziona un luogo</option>
+        {% for location in locations %}
+        <option value="{{ location.value }}" {% if form_data.origine_place == location.value %}selected{% endif %}>{{ location.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Destinazione principale</label>
+      <select class="form-select" name="destinazione_place" required>
+        <option value="">Seleziona un luogo</option>
+        {% for location in locations %}
+        <option value="{{ location.value }}" {% if form_data.destinazione_place == location.value %}selected{% endif %}>{{ location.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
 
-    <input name="tipo_attrezzatura" placeholder="generatore" />
-    <input type="number" min="1" value="1" name="quantita" />
-    <input type="number" min="1" value="1" name="richiesta_tappa_idx" placeholder="Tappa" />
+  <h3 style="margin-top:1.5rem;">Tappe</h3>
+  <p class="text-muted">Ogni tappa usa un luogo esistente. Se lasci vuoto, verrà usata la destinazione principale.</p>
+  <div class="form-grid">
+    {% for idx in range(0, form_data.tappa_destinazione|length) %}
+    <div class="form-group">
+      <label class="form-label">Tappa {{ idx + 1 }}</label>
+      <select class="form-select" name="tappa_destinazione">
+        <option value="">Seleziona tappa</option>
+        {% for location in locations %}
+        <option value="{{ location.value }}" {% if form_data.tappa_destinazione[idx] == location.value %}selected{% endif %}>{{ location.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endfor %}
+  </div>
 
-    <input name="tipo_attrezzatura" placeholder="tubo" />
-    <input type="number" min="1" value="1" name="quantita" />
-    <input type="number" min="1" value="1" name="richiesta_tappa_idx" placeholder="Tappa" />
+  <h3 style="margin-top:1.5rem;">Richiesta attrezzature</h3>
+  <div style="display:grid;grid-template-columns:minmax(180px,1fr) 120px 120px;gap:0.75rem;">
+    {% for idx in range(0, form_data.tipo_attrezzatura|length) %}
+    <input class="form-control" name="tipo_attrezzatura" placeholder="pompa" value="{{ form_data.tipo_attrezzatura[idx] }}" />
+    <input class="form-control" type="number" min="1" value="{{ form_data.quantita[idx] }}" name="quantita" />
+    <input class="form-control" type="number" min="1" value="{{ form_data.richiesta_tappa_idx[idx] }}" name="richiesta_tappa_idx" placeholder="Tappa" />
+    {% endfor %}
   </div>
   <br>
-  <button class="btn btn-primary" type="submit">Salva viaggio</button>
+  <button class="btn btn-primary" type="submit">{{ "Salva modifiche" if mode == "edit" else "Salva viaggio" }}</button>
 </form>
 {% endblock %}

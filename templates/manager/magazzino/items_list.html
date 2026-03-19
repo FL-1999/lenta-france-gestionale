@@ -257,11 +257,11 @@
                                                 </label>
                                                 <div class="form-grid-2">
                                                     <div class="form-field">
-                                                        <label>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
-                                                        <select name="site_id">
+                                                        <label>{% if lang == 'fr' %}Lieu{% else %}Luogo{% endif %}</label>
+                                                        <select name="location_id">
                                                             <option value="">Nessuno</option>
-                                                            {% for site in sites %}
-                                                                <option value="{{ site.id }}">{{ site.name }}{% if site.code %} ({{ site.code }}){% endif %}</option>
+                                                            {% for location in locations %}
+                                                                <option value="{{ location.value }}">{{ location.label }}</option>
                                                             {% endfor %}
                                                         </select>
                                                     </div>

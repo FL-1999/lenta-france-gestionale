@@ -30,6 +30,9 @@
     <a href="/manager/cantieri/nuovo" class="btn btn-primary">
       ➕ {% if lang == 'fr' %}Nouveau chantier{% else %}Nuovo cantiere{% endif %}
     </a>
+    <a href="{{ url_for('manager_depositi_new') }}" class="btn btn-secondary">
+      📦 {% if lang == 'fr' %}Nouveau dépôt{% else %}Nuovo deposito{% endif %}
+    </a>
   </div>
 </div>
 
