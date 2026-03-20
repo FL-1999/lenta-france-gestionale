@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -142,6 +143,106 @@ def _decorate_trip_locations(viaggio: TrasportoViaggio) -> TrasportoViaggio:
     for tappa in viaggio.tappe or []:
         tappa.destinazione_label = _stop_place_label(tappa)
     return viaggio
+
+
+def _build_trip_point(*, name: str | None, place_type: str | None, role: str, lat: float | None, lng: float | None) -> dict[str, object]:
+    role_labels = {
+        "origin": "Origine",
+        "stop": "Tappa",
+        "destination": "Destinazione",
+    }
+    type_labels = {
+        "site": "Cantiere",
+        "depot": "Deposito",
+        None: "Luogo",
+    }
+    return {
+        "name": name or "—",
+        "type": place_type or "unknown",
+        "type_label": type_labels.get(place_type, "Luogo"),
+        "role": role,
+        "role_label": role_labels.get(role, "Tappa"),
+        "lat": lat,
+        "lng": lng,
+    }
+
+
+def _trip_point_from_place(site: Site | None, depot: Depot | None, *, role: str, fallback_name: str | None) -> dict[str, object]:
+    if site:
+        return _build_trip_point(name=site.name, place_type="site", role=role, lat=site.lat, lng=site.lng)
+    if depot:
+        return _build_trip_point(name=depot.name, place_type="depot", role=role, lat=depot.lat, lng=depot.lng)
+    return _build_trip_point(name=fallback_name, place_type=None, role=role, lat=None, lng=None)
+
+
+def _stop_trip_point(tappa: TrasportoTappa) -> dict[str, object]:
+    if tappa.site:
+        return _build_trip_point(name=tappa.site.name, place_type="site", role="stop", lat=tappa.site.lat, lng=tappa.site.lng)
+    if tappa.depot:
+        return _build_trip_point(name=tappa.depot.name, place_type="depot", role="stop", lat=tappa.depot.lat, lng=tappa.depot.lng)
+    return _build_trip_point(name=tappa.destinazione, place_type=None, role="stop", lat=None, lng=None)
+
+
+def _build_trip_route_points(viaggio: TrasportoViaggio) -> list[dict[str, object]]:
+    points = [
+        _trip_point_from_place(viaggio.origine_site, viaggio.origine_depot, role="origin", fallback_name=viaggio.origine),
+        *[_stop_trip_point(tappa) for tappa in (viaggio.tappe or [])],
+        _trip_point_from_place(viaggio.destinazione_site, viaggio.destinazione_depot, role="destination", fallback_name=viaggio.destinazione),
+    ]
+    for index, point in enumerate(points, start=1):
+        point["sequence"] = index
+    return points
+
+
+def _trip_has_any_coordinates(points: list[dict[str, object]]) -> bool:
+    return any(point.get("lat") is not None and point.get("lng") is not None for point in points)
+
+
+def _trip_has_mappable_route(points: list[dict[str, object]]) -> bool:
+    return sum(1 for point in points if point.get("lat") is not None and point.get("lng") is not None) >= 2
+
+
+def _google_maps_location_value(point: dict[str, object]) -> str | None:
+    lat = point.get("lat")
+    lng = point.get("lng")
+    if lat is not None and lng is not None:
+        return f"{lat},{lng}"
+    name = str(point.get("name") or "").strip()
+    return name or None
+
+
+def _build_trip_google_maps_url(points: list[dict[str, object]]) -> str | None:
+    if len(points) < 2:
+        return None
+    origin = _google_maps_location_value(points[0])
+    destination = _google_maps_location_value(points[-1])
+    if not origin or not destination:
+        return None
+
+    params: list[tuple[str, str]] = [
+        ("api", "1"),
+        ("travelmode", "driving"),
+        ("origin", origin),
+        ("destination", destination),
+    ]
+    waypoints = [
+        value
+        for value in (_google_maps_location_value(point) for point in points[1:-1])
+        if value
+    ]
+    if waypoints:
+        params.append(("waypoints", "|".join(waypoints)))
+    return f"https://www.google.com/maps/dir/?{urlencode(params, quote_via=quote, safe='|,')}"
+
+
+def _build_trip_map_context(viaggio: TrasportoViaggio) -> dict[str, object]:
+    points = _build_trip_route_points(viaggio)
+    return {
+        "trip_route_points": points,
+        "trip_has_any_coordinates": _trip_has_any_coordinates(points),
+        "trip_has_mappable_route": _trip_has_mappable_route(points),
+        "trip_google_maps_url": _build_trip_google_maps_url(points),
+    }
 
 
 def _trip_missing_equipment_alerts(viaggi: list[TrasportoViaggio]) -> list[dict[str, object]]:
@@ -897,6 +998,7 @@ def manager_trasporti_viaggi_detail(
             "richieste_disponibili": richieste_disponibili,
             "can_manage_trip": can_access_manager_area(current_user),
             "can_prepare_trip_load": can_manage_trip_loads(current_user),
+            **_build_trip_map_context(viaggio),
         },
         db,
         current_user,
@@ -1093,7 +1195,11 @@ def driver_trasporti_viaggi_detail(
         templates,
         request,
         "driver/trasporti/trip_detail.html",
-        {"viaggio": viaggio, "richieste_disponibili": richieste},
+        {
+            "viaggio": viaggio,
+            "richieste_disponibili": richieste,
+            **_build_trip_map_context(viaggio),
+        },
         db,
         current_user,
     )

@@ -41,7 +41,7 @@
       {% set form_capo = form_data.get('caposquadra_id') %}
       {% set form_active = form_data.get('is_active') %}
       {% set form_confirm_unverified = form_data.get('confirm_unverified') %}
-      <form method="post" data-mode="{{ mode }}" class="cantiere-form">
+      <form method="post" data-mode="{{ mode }}" class="cantiere-form" data-place-picker>
         {% set has_coordinates = (form_lat is not none and form_lng is not none) or (site and site.lat is not none and site.lng is not none) %}
         {% set has_address = (form_address is not none and form_address | trim != '') or (site and (site.address or site.indirizzo)) %}
         {% set address_status_class = 'badge-success' if has_coordinates else 'badge-danger' %}
@@ -82,12 +82,12 @@
 
             <div class="form-group">
               <label class="form-label" for="city">Città</label>
-              <input type="text" id="city" name="city" class="form-control" value="{{ form_city if form_city is not none else (site.city if site else '') }}">
+              <input type="text" id="city" name="city" class="form-control" data-map-field="city" value="{{ form_city if form_city is not none else (site.city if site else '') }}">
             </div>
 
             <div class="form-group">
               <label class="form-label" for="country">Nazione</label>
-              <input type="text" id="country" name="country" class="form-control" value="{{ form_country if form_country is not none else (site.country if site else '') }}">
+              <input type="text" id="country" name="country" class="form-control" data-map-field="country" value="{{ form_country if form_country is not none else (site.country if site else '') }}">
             </div>
 
             <div class="form-group">
@@ -108,7 +108,7 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="cantiere-address">Indirizzo</label>
-              <input id="cantiere-address"
+              <input id="cantiere-address" data-map-field="address"
                      name="address"
                      type="text"
                      class="form-control"
@@ -122,13 +122,13 @@
                 </small>
 
                 <div class="form-text" style="margin-top: 0.35rem;">
-                  <span id="cantiere-address-status"
+                  <span data-map-status-badge
                         class="badge address-status-badge {{ address_status_class }}">
                     {{ address_status_label }}
                   </span>
                 </div>
 
-                <div id="cantiere-address-alert"
+                <div data-map-alert
                      class="alert alert-warning"
                      role="alert"
                      style="margin-top: 0.5rem; {{ address_alert_style }}">
@@ -173,17 +173,17 @@
               <div class="form-group" style="grid-column: 1 / -1;">
                 <label class="form-label">Posizione su mappa</label>
                 <div id="cantiere-pick-map"
+                     data-place-picker-map
                      style="height: 320px;"
                      aria-label="Mappa posizione cantiere"
                      {% if google_maps_api_key %}data-google-maps-api-key="{{ google_maps_api_key }}"{% endif %}></div>
                 {% if google_maps_api_key %}
                   <small class="form-text text-muted">Clicca sulla mappa o trascina il pin.</small>
                 {% endif %}
-                <div id="cantiere-address-status" class="form-text text-muted" aria-live="polite"></div>
-                <div id="cantiere-address-alert" class="alert alert-warning" role="alert" style="display: none;"></div>
+                <div class="form-text text-muted" data-map-status-text aria-live="polite"></div>
               </div>
 
-              <div id="cantiere-unverified-confirm-wrapper"
+              <div data-map-confirm-wrapper
                    class="form-group form-group-inline"
                    style="grid-column: 1 / -1; {{ address_confirm_style }}">
                 <input type="checkbox"
@@ -196,9 +196,9 @@
                   Confermo salvataggio senza coordinate.
                 </label>
               </div>
-              <input id="cantiere_place_id" name="place_id" type="hidden" value="{{ form_place_id if form_place_id is not none else (site.place_id if site else '') }}">
-              <input id="lat" name="lat" type="hidden" value="{{ form_lat if form_lat is not none else (site.lat if site and site.lat is not none else '') }}">
-              <input id="lng" name="lng" type="hidden" value="{{ form_lng if form_lng is not none else (site.lng if site and site.lng is not none else '') }}">
+              <input id="cantiere_place_id" name="place_id" type="hidden" data-map-field="place_id" value="{{ form_place_id if form_place_id is not none else (site.place_id if site else '') }}">
+              <input id="lat" name="lat" type="hidden" data-map-field="lat" value="{{ form_lat if form_lat is not none else (site.lat if site and site.lat is not none else '') }}">
+              <input id="lng" name="lng" type="hidden" data-map-field="lng" value="{{ form_lng if form_lng is not none else (site.lng if site and site.lng is not none else '') }}">
             {% endif %}
           </div>
         </div>
@@ -318,8 +318,17 @@
 {% endif %}
 
 <script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
+<script src="{{ url_for('static', path='/js/place-form-map.js') }}"></script>
 <script src="{{ url_for('static', path='/js/cantiere_form_map.js') }}"></script>
 <script src="{{ url_for('static', path='/js/cantiere-form-stepper.js') }}"></script>
-<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initMap" async defer></script>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.loadGoogleMapsScriptOnce === 'function') {
+      window.loadGoogleMapsScriptOnce('initMap', ['places']);
+    } else if (typeof window.initMap === 'function') {
+      window.initMap();
+    }
+  });
+</script>
 
 {% endblock %}
