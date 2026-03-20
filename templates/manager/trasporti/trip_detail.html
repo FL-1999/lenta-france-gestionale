@@ -7,6 +7,7 @@
     <h1 class="page-title">{{ viaggio.origine_label }} → {{ viaggio.destinazione_label }}</h1>
   </div>
   <div class="header-actions">
+    {% if trip_google_maps_url %}<a class="btn btn-secondary" href="{{ trip_google_maps_url }}" target="_blank" rel="noopener">🧭 Apri in Google Maps</a>{% endif %}
     {% if can_manage_trip %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=viaggio.id) }}">✏️ Modifica viaggio</a>{% endif %}
   </div>
 </div>
@@ -18,13 +19,25 @@
   <p><strong>Destinazione:</strong> {{ viaggio.destinazione_label }}</p>
 
   <h3>Tappe</h3>
-  <ul>
-    {% for tappa in viaggio.tappe %}
-    <li>Tappa {{ tappa.ordine }}: {{ tappa.destinazione_label }}</li>
+  <ol style="padding-left: 1.2rem;">
+    {% for point in trip_route_points %}
+      <li>{{ point.role_label }}: {{ point.name }} <small class="text-muted">({{ point.type_label }})</small></li>
     {% else %}
-    <li>Nessuna tappa configurata.</li>
+      <li>Nessun punto configurato.</li>
     {% endfor %}
-  </ul>
+  </ol>
+
+  {% if trip_has_any_coordinates and google_maps_api_key %}
+    <div data-trip-map data-trip-points='{{ trip_route_points | tojson }}' style="margin-top: 1rem;">
+      <h3>🗺️ Mappa percorso</h3>
+      <p class="text-muted" data-trip-map-notice {% if trip_has_mappable_route %}hidden{% endif %}>Coordinate non disponibili per tutte le tappe: mostro solo i punti presenti.</p>
+      <div data-trip-map-canvas style="height: 320px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
+    </div>
+  {% elif trip_has_any_coordinates %}
+    <div class="alert alert-warning" role="alert" style="margin-top: 1rem;">Mappa interna non disponibile: manca la configurazione Google Maps.</div>
+  {% else %}
+    <div class="alert alert-warning" role="alert" style="margin-top: 1rem;">Coordinate non disponibili per questo viaggio.</div>
+  {% endif %}
 
   {% if can_manage_trip %}<h3>Gestione autista</h3>
   <form method="post" action="{{ url_for('manager_trasporti_viaggi_autista_update', viaggio_id=viaggio.id) }}" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
@@ -75,4 +88,6 @@
   </form>
   {% endif %}
 </div>
+<script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
+<script src="{{ url_for('static', path='/js/trip-map.js') }}"></script>
 {% endblock %}

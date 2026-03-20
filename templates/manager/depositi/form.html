@@ -1,39 +1,169 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
+{% set form_data = form_data or {} %}
+{% set form_name = form_data.get('name') %}
+{% set form_address = form_data.get('address') %}
+{% set form_city = form_data.get('city') %}
+{% set form_zip_code = form_data.get('zip_code') %}
+{% set form_province = form_data.get('province') %}
+{% set form_country = form_data.get('country') %}
+{% set form_lat = form_data.get('lat') %}
+{% set form_lng = form_data.get('lng') %}
+{% set form_note = form_data.get('note') %}
+{% set form_active = form_data.get('is_active') %}
+{% set has_coordinates = (form_lat is not none and form_lat|string|trim != '' and form_lng is not none and form_lng|string|trim != '') or (depot and depot.lat is not none and depot.lng is not none) %}
+{% set has_address = (form_address is not none and form_address|string|trim != '') or (depot and depot.address) %}
+{% set address_status_class = 'badge-success' if has_coordinates else 'badge-danger' %}
+{% set address_status_label = 'Verificato ✅' if has_coordinates else 'Non verificato ⚠️' %}
+{% set address_alert_style = 'display:block;' if has_address and not has_coordinates else 'display:none;' %}
+{% set address_confirm_style = 'display:flex;' if has_address and not has_coordinates else 'display:none;' %}
 {% block title %}{% if depot %}{% if lang == 'fr' %}Modifier dépôt{% else %}Modifica deposito{% endif %}{% else %}{% if lang == 'fr' %}Nouveau dépôt{% else %}Nuovo deposito{% endif %}{% endif %}{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div class="page-header-main">
-    <p class="page-eyebrow">{% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</p>
-    <h1 class="page-title">📦 {% if depot %}{% if lang == 'fr' %}Modifier dépôt{% else %}Modifica deposito{% endif %}{% else %}{% if lang == 'fr' %}Nouveau dépôt{% else %}Nuovo deposito{% endif %}{% endif %}</h1>
+<div class="form-page">
+  <div class="form-page-header">
+    <p class="eyebrow">{% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</p>
+    <h1 class="page-title">
+      <span class="page-icon page-icon--sites" aria-hidden="true"></span>
+      {% if depot %}{% if lang == 'fr' %}Modifier dépôt{% else %}Modifica deposito{% endif %}{% else %}{% if lang == 'fr' %}Nouveau dépôt{% else %}Nuovo deposito{% endif %}{% endif %}
+    </h1>
+    <p class="subtitle">{% if lang == 'fr' %}Gérez l’adresse, les coordonnées et les notes du dépôt.{% else %}Gestisci indirizzo, coordinate e note del deposito.{% endif %}</p>
   </div>
-  <div class="page-actions">
-    <a href="{{ url_for('manager_depositi_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour liste{% else %}Torna elenco{% endif %}</a>
+
+  <div class="card form-card">
+    <div class="card-header">
+      <div class="card-title">
+        <span>{% if lang == 'fr' %}Détails du dépôt{% else %}Dettagli deposito{% endif %}</span>
+      </div>
+    </div>
+    <div class="card-body">
+      {% if error_message %}
+        <div class="alert alert-danger" role="alert" style="margin-bottom: 1rem;">
+          {{ error_message }}
+        </div>
+      {% endif %}
+
+      <form method="post" action="{{ form_action }}" class="cantiere-form" data-place-picker>
+        <div class="cantiere-stepper">
+          <div class="cantiere-stepper-item is-active">
+            <span class="cantiere-stepper-index">1</span>
+            <span class="cantiere-stepper-label">{% if lang == 'fr' %}Données{% else %}Dati base{% endif %}</span>
+          </div>
+          <div class="cantiere-stepper-item is-active">
+            <span class="cantiere-stepper-index">2</span>
+            <span class="cantiere-stepper-label">{% if lang == 'fr' %}Adresse + carte{% else %}Indirizzo + mappa{% endif %}</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="name">Nome deposito *</label>
+            <input id="name" name="name" class="form-control" value="{{ form_name if form_name is not none else (depot.name if depot else '') }}" required />
+          </div>
+
+          <div class="form-group form-group-inline">
+            <input id="is_active" name="is_active" type="checkbox" class="form-control" {% if (form_active is not none and form_active) or (form_active is none and (depot is none or depot.is_active)) %}checked{% endif %} />
+            <label class="form-label" for="is_active">Attivo</label>
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label" for="depot-address">Indirizzo</label>
+            <input id="depot-address"
+                   name="address"
+                   type="text"
+                   class="form-control"
+                   data-map-field="address"
+                   placeholder="Inizia a scrivere l’indirizzo…"
+                   autocomplete="off"
+                   value="{{ form_address if form_address is not none else (depot.address if depot else '') }}" />
+            <small class="form-text text-muted">Ricerca testuale con autocomplete oppure clic diretto sulla mappa.</small>
+            <div class="form-text" style="margin-top: 0.35rem;">
+              <span class="badge address-status-badge {{ address_status_class }}" data-map-status-badge>{{ address_status_label }}</span>
+            </div>
+            <div class="form-text text-muted" data-map-status-text aria-live="polite">
+              {% if has_coordinates %}Posizione verificata sulla mappa.{% else %}Seleziona un indirizzo dai suggerimenti o clicca sulla mappa.{% endif %}
+            </div>
+            <div class="alert alert-warning" role="alert" data-map-alert style="margin-top: 0.5rem; {{ address_alert_style }}">
+              Seleziona un indirizzo dai suggerimenti o clicca sulla mappa per impostare la posizione del deposito.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="city">Città</label>
+            <input id="city" name="city" class="form-control" data-map-field="city" value="{{ form_city if form_city is not none else (depot.city if depot else '') }}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="zip_code">CAP</label>
+            <input id="zip_code" name="zip_code" class="form-control" data-map-field="postal_code" value="{{ form_zip_code if form_zip_code is not none else (depot.zip_code if depot else '') }}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="province">Provincia</label>
+            <input id="province" name="province" class="form-control" data-map-field="province" value="{{ form_province if form_province is not none else (depot.province if depot else '') }}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="country">Paese</label>
+            <input id="country" name="country" class="form-control" data-map-field="country" value="{{ form_country if form_country is not none else (depot.country if depot else '') }}" />
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">Posizione su mappa</label>
+            {% if google_maps_api_key %}
+              <div id="depot-pick-map"
+                   data-place-picker-map
+                   data-google-maps-api-key="{{ google_maps_api_key }}"
+                   style="height: 320px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"
+                   aria-label="Mappa posizione deposito"></div>
+              <small class="form-text text-muted">Clicca sulla mappa o trascina il pin. Se disponibile viene compilato anche l’indirizzo via reverse geocoding.</small>
+            {% else %}
+              <div class="alert alert-warning" role="alert">Mappa/Autocomplete non disponibili (manca configurazione GOOGLE_MAPS_API_KEY).</div>
+            {% endif %}
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lat">Latitudine</label>
+            <input id="lat" name="lat" type="number" step="any" class="form-control" data-map-field="lat" value="{{ form_lat if form_lat is not none else (depot.lat if depot and depot.lat is not none else '') }}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lng">Longitudine</label>
+            <input id="lng" name="lng" type="number" step="any" class="form-control" data-map-field="lng" value="{{ form_lng if form_lng is not none else (depot.lng if depot and depot.lng is not none else '') }}" />
+          </div>
+
+          <div class="form-group form-group-inline" data-map-confirm-wrapper style="grid-column: 1 / -1; {{ address_confirm_style }}">
+            <input type="checkbox" id="depot-unverified-confirm" class="form-control" disabled>
+            <label class="form-label" for="depot-unverified-confirm">Indirizzo inserito ma coordinate non ancora verificate sulla mappa.</label>
+          </div>
+
+          <div class="form-group form-group--full" style="grid-column: 1 / -1;">
+            <label class="form-label" for="note">Note</label>
+            <textarea id="note" name="note" class="form-control" rows="4">{{ form_note if form_note is not none else (depot.notes if depot and depot.notes else '') }}</textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="{{ url_for('manager_depositi_list') }}" class="btn btn-secondary">Annulla</a>
+          {% set current_lat = form_lat if form_lat is not none else (depot.lat if depot and depot.lat is not none else none) %}
+          {% set current_lng = form_lng if form_lng is not none else (depot.lng if depot and depot.lng is not none else none) %}
+          {% set current_address = form_address if form_address is not none else (depot.address if depot else '') %}
+          {% if current_lat is not none and current_lat|string|trim != '' and current_lng is not none and current_lng|string|trim != '' %}
+            <a class="btn btn-primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination={{ current_lat }},{{ current_lng }}">🧭 Apri in Google Maps</a>
+          {% elif current_address %}
+            <a class="btn btn-primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination={{ current_address | urlencode }}">🧭 Apri in Google Maps</a>
+          {% endif %}
+          <button type="submit" class="btn btn-primary">💾 Salva</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
-<form method="post" action="{{ form_action }}" class="card" style="max-width:900px; margin:0 auto;">
-  <div class="card-body form-grid form-grid-2">
-    <div class="form-field">
-      <label for="name">Nome deposito *</label>
-      <input id="name" name="name" class="form-control" value="{{ depot.name if depot else '' }}" required />
-    </div>
-    <div class="form-field">
-      <label for="is_active">Attivo</label>
-      <input id="is_active" name="is_active" type="checkbox" {% if depot is none or depot.is_active %}checked{% endif %} />
-    </div>
-    <div class="form-field form-field--full"><label for="address">Indirizzo</label><input id="address" name="address" class="form-control" value="{{ depot.address if depot else '' }}" /></div>
-    <div class="form-field"><label for="city">Città</label><input id="city" name="city" class="form-control" value="{{ depot.city if depot else '' }}" /></div>
-    <div class="form-field"><label for="zip_code">CAP</label><input id="zip_code" name="zip_code" class="form-control" value="{{ depot.zip_code if depot else '' }}" /></div>
-    <div class="form-field"><label for="province">Provincia</label><input id="province" name="province" class="form-control" value="{{ depot.province if depot else '' }}" /></div>
-    <div class="form-field"><label for="country">Paese</label><input id="country" name="country" class="form-control" value="{{ depot.country if depot else '' }}" /></div>
-    <div class="form-field"><label for="lat">Latitudine</label><input id="lat" name="lat" type="number" step="any" class="form-control" value="{{ depot.lat if depot and depot.lat is not none else '' }}" /></div>
-    <div class="form-field"><label for="lng">Longitudine</label><input id="lng" name="lng" type="number" step="any" class="form-control" value="{{ depot.lng if depot and depot.lng is not none else '' }}" /></div>
-    <div class="form-field form-field--full"><label for="note">Note</label><textarea id="note" name="note" class="form-control" rows="4">{{ depot.notes if depot and depot.notes else '' }}</textarea></div>
-  </div>
-  <div class="card-footer" style="display:flex; justify-content:flex-end; gap:12px;">
-    <a href="{{ url_for('manager_depositi_list') }}" class="btn btn-secondary">Annulla</a>
-    <button type="submit" class="btn btn-primary">💾 Salva</button>
-  </div>
-</form>
+<script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
+<script src="{{ url_for('static', path='/js/place-form-map.js') }}"></script>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.loadGoogleMapsScriptOnce === 'function') {
+      window.loadGoogleMapsScriptOnce('initPlaceFormMaps', ['places']);
+    } else if (typeof window.initPlaceFormMaps === 'function') {
+      window.initPlaceFormMaps();
+    }
+  });
+</script>
 {% endblock %}

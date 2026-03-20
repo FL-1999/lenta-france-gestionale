@@ -228,6 +228,7 @@ def build_template_context(
     template_context.setdefault("has_perm", has_perm)
     template_context.setdefault("lang", get_lang_from_request(request))
     template_context.setdefault("format_place_label", format_place_label)
+    template_context.setdefault("google_maps_api_key", os.getenv("GOOGLE_MAPS_API_KEY"))
 
     active_role = get_active_role(user)
     available_roles = list(get_user_roles(user)) if user else []

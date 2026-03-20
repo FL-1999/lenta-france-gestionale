@@ -43,13 +43,13 @@ def _clean_optional(value: str | None) -> str | None:
     return cleaned or None
 
 
-def _parse_float(value: str | None) -> float | None:
+def _parse_coordinate(value: str | None, field_label: str) -> float | None:
     if value in (None, ""):
         return None
     try:
         return float(value)
-    except (TypeError, ValueError):
-        return None
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"{field_label} non valida") from exc
 
 
 def _validate_name(name: str | None) -> str:
@@ -57,6 +57,55 @@ def _validate_name(name: str | None) -> str:
     if not cleaned:
         raise HTTPException(status_code=400, detail="Nome deposito obbligatorio")
     return cleaned
+
+
+def _build_form_context(request: Request, *, depot: Depot | None, form_action: str, form_data: dict | None = None, error_message: str | None = None) -> dict:
+    return {
+        "depot": depot,
+        "form_action": form_action,
+        "form_data": form_data or {},
+        "error_message": error_message,
+    }
+
+
+def _extract_depot_form_payload(
+    name: str,
+    address: str | None,
+    city: str | None,
+    zip_code: str | None,
+    legacy_zip: str | None,
+    province: str | None,
+    country: str | None,
+    note: str | None,
+    lat: str | None,
+    lng: str | None,
+    is_active: str | None,
+) -> dict:
+    return {
+        "name": name,
+        "address": address or "",
+        "city": city or "",
+        "zip_code": zip_code or legacy_zip or "",
+        "province": province or "",
+        "country": country or "",
+        "note": note or "",
+        "lat": lat or "",
+        "lng": lng or "",
+        "is_active": bool(is_active == "on"),
+    }
+
+
+def _apply_depot_payload(depot: Depot, payload: dict) -> None:
+    depot.name = _validate_name(payload.get("name"))
+    depot.address = _clean_optional(payload.get("address"))
+    depot.city = _clean_optional(payload.get("city"))
+    depot.zip_code = _clean_optional(payload.get("zip_code"))
+    depot.province = _clean_optional(payload.get("province"))
+    depot.country = _clean_optional(payload.get("country"))
+    depot.notes = _clean_optional(payload.get("note"))
+    depot.lat = _parse_coordinate(payload.get("lat"), "Latitudine")
+    depot.lng = _parse_coordinate(payload.get("lng"), "Longitudine")
+    depot.is_active = bool(payload.get("is_active"))
 
 
 @router.get("/manager/depositi", response_class=HTMLResponse, name="manager_depositi_list")
@@ -105,10 +154,11 @@ def manager_depositi_new(
         templates,
         request,
         "manager/depositi/form.html",
-        {
-            "depot": None,
-            "form_action": request.url_for("manager_depositi_create"),
-        },
+        _build_form_context(
+            request,
+            depot=None,
+            form_action=str(request.url_for("manager_depositi_create")),
+        ),
         db,
         current_user,
     )
@@ -133,20 +183,27 @@ def manager_depositi_create(
 ):
     _ensure_depots_manage(current_user)
 
-    depot_name = _validate_name(name)
+    payload = _extract_depot_form_payload(name, address, city, zip_code, legacy_zip, province, country, note, lat, lng, is_active)
+    depot = Depot()
+    try:
+        _apply_depot_payload(depot, payload)
+    except HTTPException as exc:
+        return render_template(
+            templates,
+            request,
+            "manager/depositi/form.html",
+            _build_form_context(
+                request,
+                depot=None,
+                form_action=str(request.url_for("manager_depositi_create")),
+                form_data=payload,
+                error_message=exc.detail,
+            ),
+            db,
+            current_user,
+            status_code=exc.status_code,
+        )
 
-    depot = Depot(
-        name=depot_name,
-        address=_clean_optional(address),
-        city=_clean_optional(city),
-        zip_code=_clean_optional(zip_code or legacy_zip),
-        province=_clean_optional(province),
-        country=_clean_optional(country),
-        notes=_clean_optional(note),
-        lat=_parse_float(lat),
-        lng=_parse_float(lng),
-        is_active=is_active == "on",
-    )
     db.add(depot)
     db.commit()
 
@@ -169,10 +226,11 @@ def manager_depositi_edit(
         templates,
         request,
         "manager/depositi/form.html",
-        {
-            "depot": depot,
-            "form_action": request.url_for("manager_depositi_update", depot_id=depot.id),
-        },
+        _build_form_context(
+            request,
+            depot=depot,
+            form_action=str(request.url_for("manager_depositi_update", depot_id=depot.id)),
+        ),
         db,
         current_user,
     )
@@ -201,16 +259,25 @@ def manager_depositi_update(
     if not depot:
         raise HTTPException(status_code=404, detail="Deposito non trovato")
 
-    depot.name = _validate_name(name)
-    depot.address = _clean_optional(address)
-    depot.city = _clean_optional(city)
-    depot.zip_code = _clean_optional(zip_code or legacy_zip)
-    depot.province = _clean_optional(province)
-    depot.country = _clean_optional(country)
-    depot.notes = _clean_optional(note)
-    depot.lat = _parse_float(lat)
-    depot.lng = _parse_float(lng)
-    depot.is_active = is_active == "on"
+    payload = _extract_depot_form_payload(name, address, city, zip_code, legacy_zip, province, country, note, lat, lng, is_active)
+    try:
+        _apply_depot_payload(depot, payload)
+    except HTTPException as exc:
+        return render_template(
+            templates,
+            request,
+            "manager/depositi/form.html",
+            _build_form_context(
+                request,
+                depot=depot,
+                form_action=str(request.url_for("manager_depositi_update", depot_id=depot.id)),
+                form_data=payload,
+                error_message=exc.detail,
+            ),
+            db,
+            current_user,
+            status_code=exc.status_code,
+        )
 
     db.add(depot)
     db.commit()

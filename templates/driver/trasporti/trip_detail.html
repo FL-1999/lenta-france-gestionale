@@ -6,13 +6,67 @@
     <p class="page-eyebrow">VIAGGIO {{ viaggio.codice_viaggio }}</p>
     <h1 class="page-title">📱 Modalità autista</h1>
   </div>
+  <div class="header-actions">
+    {% if trip_has_any_coordinates and google_maps_api_key %}
+      <a class="btn btn-secondary" href="#trip-map-panel">🗺️ Vedi su mappa</a>
+    {% endif %}
+    {% if trip_google_maps_url %}
+      <a class="btn btn-primary" href="{{ trip_google_maps_url }}" target="_blank" rel="noopener">🧭 Apri in Google Maps</a>
+    {% endif %}
+  </div>
 </div>
-<div class="card card-body">
-  <p><strong>Camion</strong><br>{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
-  <p><strong>Stato</strong><br>{{ viaggio.stato.value }}</p>
-  <p><strong>Origine</strong><br>{{ viaggio.origine_label }}</p>
-  <p><strong>Destinazione</strong><br>{{ viaggio.destinazione_label }}</p>
 
+<div class="card card-body">
+  <div class="form-grid" style="gap: 1rem;">
+    <div>
+      <p><strong>Camion</strong><br>{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
+      <p><strong>Stato</strong><br>{{ viaggio.stato.value }}</p>
+      <p><strong>Origine</strong><br>{{ viaggio.origine_label }}</p>
+      <p><strong>Destinazione</strong><br>{{ viaggio.destinazione_label }}</p>
+    </div>
+    <div>
+      <h3 style="margin-top: 0;">Tappe viaggio</h3>
+      <ol style="padding-left: 1.2rem; margin: 0;">
+        {% for point in trip_route_points %}
+          <li style="margin-bottom: 0.45rem;">
+            <strong>{{ point.role_label }}</strong> — {{ point.name }}
+            <small class="text-muted">({{ point.type_label }})</small>
+            {% if point.lat is none or point.lng is none %}
+              <div class="text-muted">Coordinate non disponibili</div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="card card-body" id="trip-map-panel" style="margin-top: 1rem;">
+  <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:center; flex-wrap:wrap; margin-bottom:0.75rem;">
+    <div>
+      <h3 style="margin:0;">🗺️ Mappa viaggio</h3>
+      <p class="text-muted" style="margin:0.3rem 0 0 0;">Origine, tappe intermedie e destinazione in sequenza.</p>
+    </div>
+    {% if trip_google_maps_url %}
+      <a class="btn btn-secondary btn-sm" href="{{ trip_google_maps_url }}" target="_blank" rel="noopener">Apri in Google Maps</a>
+    {% endif %}
+  </div>
+
+  {% if trip_has_any_coordinates and google_maps_api_key %}
+    <div data-trip-map data-trip-points='{{ trip_route_points | tojson }}'>
+      <div class="text-muted" data-trip-map-notice {% if trip_has_mappable_route %}hidden{% endif %} style="margin-bottom: 0.75rem;">
+        Coordinate non disponibili per tutte le tappe: mostro solo i punti geolocalizzati.
+      </div>
+      <div data-trip-map-canvas style="height: 360px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
+    </div>
+  {% elif trip_has_any_coordinates %}
+    <div class="alert alert-warning" role="alert">Mappa interna non disponibile: manca la configurazione Google Maps.</div>
+  {% else %}
+    <div class="alert alert-warning" role="alert">Coordinate non disponibili per questo viaggio.</div>
+  {% endif %}
+</div>
+
+<div class="card card-body" style="margin-top: 1rem;">
   <h3>Materiale da caricare (reale o generico)</h3>
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     {% for req, disponibili in richieste_disponibili %}
@@ -33,7 +87,7 @@
 
   <h3>Tappe e materiali</h3>
   {% for tappa in viaggio.tappe %}
-    <div style="border:1px solid #ddd;padding:0.7rem;margin-bottom:0.7rem;">
+    <div style="border:1px solid #ddd;padding:0.7rem;margin-bottom:0.7rem; border-radius: 12px;">
       <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
       <ul>
         {% for req in viaggio.richieste_attrezzature if req.tappa_id == tappa.id %}
@@ -77,6 +131,8 @@
     <button class="btn btn-primary" type="submit">Fine viaggio</button>
   </form>
 </div>
+<script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
+<script src="{{ url_for('static', path='/js/trip-map.js') }}"></script>
 <script src="https://unpkg.com/html5-qrcode" defer></script>
 <script>
 window.addEventListener('DOMContentLoaded', () => {

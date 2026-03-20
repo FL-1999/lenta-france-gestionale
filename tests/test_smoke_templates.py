@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from starlette.requests import Request
 
 from main import _build_sites_map_data, app, templates
-from models import RoleEnum, Site, SiteStatusEnum, User
+from models import Depot, RoleEnum, Site, SiteStatusEnum, User
 
 
 def build_request(path: str) -> Request:
@@ -201,3 +201,64 @@ def test_new_trip_form_renders_with_unified_locations() -> None:
 
     assert "Seleziona un luogo" in output
     assert "[Deposito] Magazzino Nord" in output
+
+
+def test_deposito_form_renders_with_map_section() -> None:
+    depot = Depot(
+        id=1,
+        name="Deposito Lille",
+        address="Rue de Test 12",
+        city="Lille",
+        zip_code="59000",
+        province="Nord",
+        country="France",
+        lat=50.6292,
+        lng=3.0573,
+        is_active=True,
+    )
+
+    output = render_template(
+        "manager/depositi/form.html",
+        {
+            "request": build_request("/manager/depositi/1"),
+            "user": build_manager_user(),
+            "depot": depot,
+            "form_action": "/manager/depositi/1",
+            "google_maps_api_key": None,
+        },
+    )
+
+    assert "Modifica deposito" in output
+    assert "Posizione su mappa" in output
+
+
+def test_driver_trip_detail_renders_map_section() -> None:
+    output = render_template(
+        "driver/trasporti/trip_detail.html",
+        {
+            "request": build_request("/driver/trasporti/viaggi/1"),
+            "user": SimpleNamespace(role=RoleEnum.driver, full_name="Autista Demo", is_magazzino_manager=False),
+            "viaggio": SimpleNamespace(
+                id=1,
+                codice_viaggio="TR-001",
+                mezzo=None,
+                stato=SimpleNamespace(value="programmato"),
+                origine_label="[Deposito] Nord",
+                destinazione_label="[Cantiere] Centro",
+                tappe=[],
+                richieste_attrezzature=[],
+                assegnazioni_attrezzature=[],
+            ),
+            "richieste_disponibili": [],
+            "trip_route_points": [
+                {"name": "Deposito Nord", "role_label": "Origine", "type_label": "Deposito", "lat": 45.0, "lng": 9.0},
+                {"name": "Cantiere Centro", "role_label": "Destinazione", "type_label": "Cantiere", "lat": 45.5, "lng": 9.5},
+            ],
+            "trip_has_any_coordinates": True,
+            "trip_has_mappable_route": True,
+            "trip_google_maps_url": "https://www.google.com/maps/dir/?api=1",
+        },
+    )
+
+    assert "Mappa viaggio" in output
+    assert "Apri in Google Maps" in output
