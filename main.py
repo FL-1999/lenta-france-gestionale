@@ -359,9 +359,17 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         request.url.path,
         request_id,
     )
+    context = _build_error_context(
+        request, status.HTTP_500_INTERNAL_SERVER_ERROR
+    ) or {}
+    if not isinstance(context, dict):
+        context = dict(context)
+    context.setdefault("request", request)
+
     response = templates.TemplateResponse(
+        request=request,
         name="errors/500.html",
-        context=_build_error_context(request, status.HTTP_500_INTERNAL_SERVER_ERROR),
+        context=context,
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
     response.headers["X-Request-ID"] = request_id
