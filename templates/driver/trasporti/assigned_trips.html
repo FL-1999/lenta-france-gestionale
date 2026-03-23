@@ -11,8 +11,9 @@
 <h3 style="margin-top:0;">Viaggi assegnati</h3>
 {% for v in viaggi_assegnati %}
   <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:0.75rem;">
-    <p><a href="{{ url_for('driver_trasporti_viaggi_detail', viaggio_id=v.id) }}"><strong>{{ v.codice_viaggio }}</strong></a> · {{ v.data_partenza }} · {{ v.stato.value }}</p>
-    <p>{{ v.origine_label }} → {{ v.destinazione_label }}</p>
+    <p><a href="{{ url_for('driver_trasporti_viaggi_detail', viaggio_id=v.id) }}"><strong>{{ v.codice_viaggio }}</strong></a> · {{ v.departure_display }} · {{ v.stato.value }}</p>
+    <p><strong>Arrivo stimato:</strong> {{ v.arrival_estimate_display }}</p>
+    <p><strong>Tratta:</strong> {{ v.route_summary }}</p>
     {% for tappa in v.tappe %}
       <div style="margin-left:1rem;">
         <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
@@ -37,8 +38,9 @@
 <h3 style="margin-top:0;">Viaggi disponibili</h3>
 {% for v in viaggi_disponibili %}
   <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:0.75rem;">
-    <p><strong>{{ v.codice_viaggio }}</strong> · {{ v.data_partenza }}</p>
-    <p>{{ v.origine_label }} → {{ v.destinazione_label }}</p>
+    <p><strong>{{ v.codice_viaggio }}</strong> · {{ v.departure_display }}</p>
+    <p><strong>Arrivo stimato:</strong> {{ v.arrival_estimate_display }}</p>
+    <p><strong>Tratta:</strong> {{ v.route_summary }}</p>
     {% for tappa in v.tappe %}
       <div style="margin-left:1rem;">
         <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>

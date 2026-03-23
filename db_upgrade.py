@@ -37,6 +37,12 @@ TRASPORTI_VIAGGI_COLUMNS: tuple[str, ...] = (
     "origine_depot_id INTEGER",
     "destinazione_site_id INTEGER",
     "destinazione_depot_id INTEGER",
+    "orario_partenza TIME",
+    "arrivo_stimato TIME",
+    "arrivo_stimato_manuale BOOLEAN NOT NULL DEFAULT 0",
+    "durata_stimata_minuti INTEGER",
+    "materiali_attrezzature TEXT",
+    "note TEXT",
 )
 
 TRASPORTO_TAPPE_COLUMNS: tuple[str, ...] = (

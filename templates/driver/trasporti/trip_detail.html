@@ -21,8 +21,12 @@
     <div>
       <p><strong>Camion</strong><br>{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
       <p><strong>Stato</strong><br>{{ viaggio.stato.value }}</p>
+      <p><strong>Partenza prevista</strong><br>{{ viaggio.departure_display }}</p>
+      <p><strong>Arrivo stimato</strong><br>{{ viaggio.arrival_estimate_display }}{% if viaggio.arrival_estimate_status == 'manuale' %} <span class="text-muted">(manuale)</span>{% elif viaggio.arrival_estimate_status == 'automatico' %} <span class="text-muted">(Google Maps)</span>{% endif %}</p>
       <p><strong>Origine</strong><br>{{ viaggio.origine_label }}</p>
       <p><strong>Destinazione</strong><br>{{ viaggio.destinazione_label }}</p>
+      <p><strong>Materiali / attrezzature</strong><br>{{ viaggio.materiali_attrezzature or '—' }}</p>
+      <p><strong>Note</strong><br>{{ viaggio.note or '—' }}</p>
     </div>
     <div>
       <h3 style="margin-top: 0;">Tappe viaggio</h3>
