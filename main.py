@@ -302,12 +302,20 @@ def _get_request_id(request: Request) -> str:
 
 
 def _build_error_context(request: Request, status_code: int) -> dict:
-    return build_template_context(
+    context = build_template_context(
         request,
         None,
         status_code=status_code,
         request_id=_get_request_id(request),
     )
+    if not isinstance(context, dict):
+        context = dict(context or {})
+    else:
+        context = dict(context)
+    context["request"] = request
+    context["status_code"] = status_code
+    context["request_id"] = _get_request_id(request)
+    return context
 
 
 @app.middleware("http")
@@ -333,12 +341,14 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
     if status_code == status.HTTP_403_FORBIDDEN:
         response = templates.TemplateResponse(
+            request,
             "errors/403.html",
             _build_error_context(request, status_code),
             status_code=status_code,
         )
     elif status_code == status.HTTP_404_NOT_FOUND:
         response = templates.TemplateResponse(
+            request,
             "errors/404.html",
             _build_error_context(request, status_code),
             status_code=status_code,
@@ -359,12 +369,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         request.url.path,
         request_id,
     )
-    context = _build_error_context(
-        request, status.HTTP_500_INTERNAL_SERVER_ERROR
-    ) or {}
-    if not isinstance(context, dict):
-        context = dict(context)
-    context.setdefault("request", request)
+    context = _build_error_context(request, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     response = templates.TemplateResponse(
         request,
