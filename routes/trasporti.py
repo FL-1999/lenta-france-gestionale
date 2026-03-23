@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -30,13 +30,52 @@ from models import (
 from models.veicoli import Veicolo
 from permissions import can_access_logistics_area, can_access_manager_area, can_manage_trip_loads, has_perm
 from template_context import register_manager_badges, render_template
+from utils.google_maps import estimate_trip_eta
 from utils.places import format_place_label, get_place_by_value, get_selectable_places
+from utils.trips import can_edit_trip, format_trip_datetime_parts, format_trip_time
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 router = APIRouter(tags=["trasporti"])
 
 WEEKDAY_LABELS = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
+
+
+def _parse_optional_time(raw_value: str | None) -> time | None:
+    value = (raw_value or "").strip()
+    if not value:
+        return None
+    return datetime.strptime(value, "%H:%M").time()
+
+
+def _build_trip_route_summary(viaggio: TrasportoViaggio) -> str:
+    route_labels = [viaggio.origine_label]
+    route_labels.extend(tappa.destinazione_label for tappa in (viaggio.tappe or []))
+    if not route_labels or route_labels[-1] != viaggio.destinazione_label:
+        route_labels.append(viaggio.destinazione_label)
+    return " → ".join(label for label in route_labels if label and label != "—")
+
+
+def _sync_trip_eta(viaggio: TrasportoViaggio) -> str:
+    if viaggio.arrivo_stimato_manuale:
+        viaggio.durata_stimata_minuti = None
+        return "Arrivo stimato inserito manualmente"
+
+    viaggio.arrivo_stimato = None
+    viaggio.durata_stimata_minuti = None
+    route_points = _build_trip_route_points(viaggio)
+    eta_result = estimate_trip_eta(viaggio, route_points)
+    if eta_result.available:
+        viaggio.arrivo_stimato = eta_result.arrival_time
+        viaggio.durata_stimata_minuti = eta_result.duration_minutes
+    return eta_result.message
+
+
+def _trip_locked_redirect(request: Request, viaggio_id: int) -> RedirectResponse:
+    return RedirectResponse(
+        url=f"{request.url_for('manager_trasporti_viaggi_detail', viaggio_id=viaggio_id)}?err=trip_locked",
+        status_code=303,
+    )
 
 
 def _ensure_logistics_access(user: User) -> None:
@@ -142,6 +181,13 @@ def _decorate_trip_locations(viaggio: TrasportoViaggio) -> TrasportoViaggio:
     viaggio.destinazione_label = _trip_place_label(viaggio, "destinazione")
     for tappa in viaggio.tappe or []:
         tappa.destinazione_label = _stop_place_label(tappa)
+    viaggio.can_edit = can_edit_trip(viaggio)
+    viaggio.departure_display = format_trip_datetime_parts(viaggio.data_partenza, viaggio.orario_partenza)
+    viaggio.arrival_estimate_display = format_trip_time(viaggio.arrivo_stimato)
+    viaggio.route_summary = _build_trip_route_summary(viaggio)
+    viaggio.arrival_estimate_status = (
+        "manuale" if viaggio.arrivo_stimato_manuale and viaggio.arrivo_stimato else "automatico" if viaggio.arrivo_stimato else "non_disponibile"
+    )
     return viaggio
 
 
@@ -184,9 +230,17 @@ def _stop_trip_point(tappa: TrasportoTappa) -> dict[str, object]:
 
 
 def _build_trip_route_points(viaggio: TrasportoViaggio) -> list[dict[str, object]]:
+    destination_key = _trip_place_value(viaggio, "destinazione")
+    filtered_stops: list[TrasportoTappa] = []
+    for tappa in viaggio.tappe or []:
+        current_key = _stop_place_value(tappa)
+        is_duplicate_destination = bool(destination_key and current_key and current_key == destination_key and tappa.ordine == max((stop.ordine for stop in viaggio.tappe), default=tappa.ordine))
+        if is_duplicate_destination:
+            continue
+        filtered_stops.append(tappa)
     points = [
         _trip_point_from_place(viaggio.origine_site, viaggio.origine_depot, role="origin", fallback_name=viaggio.origine),
-        *[_stop_trip_point(tappa) for tappa in (viaggio.tappe or [])],
+        *[_stop_trip_point(tappa) for tappa in filtered_stops],
         _trip_point_from_place(viaggio.destinazione_site, viaggio.destinazione_depot, role="destination", fallback_name=viaggio.destinazione),
     ]
     for index, point in enumerate(points, start=1):
@@ -412,6 +466,7 @@ def manager_trasporti_planner(
         .order_by(TrasportoViaggio.data_partenza.asc())
         .all()
     )
+    viaggi = [_decorate_trip_locations(trip) for trip in viaggi]
     trips_by_mezzo_date: dict[tuple[int, date], list[TrasportoViaggio]] = {}
     unassigned_by_date: dict[date, list[TrasportoViaggio]] = {d: [] for d in week_dates}
     for trip in viaggi:
@@ -450,7 +505,10 @@ def manager_trasporti_viaggi_move_date(
     _ensure_manager(current_user)
     viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).first()
     if viaggio:
+        if not can_edit_trip(viaggio):
+            return _trip_locked_redirect(request, viaggio.id)
         viaggio.data_partenza = datetime.strptime(target_date, "%Y-%m-%d").date()
+        _sync_trip_eta(viaggio)
         db.commit()
     redirect_week = request.query_params.get("week_start") or target_date
     return RedirectResponse(url=f"{request.url_for('manager_trasporti_planner')}?week_start={redirect_week}", status_code=303)
@@ -616,11 +674,15 @@ def manager_trasporti_viaggi_new(
             "form_data": {
                 "codice_viaggio": "",
                 "data_partenza": "",
+                "orario_partenza": "",
                 "data_arrivo_prevista": "",
+                "arrivo_stimato_manuale": "",
                 "autista_id": "",
                 "mezzo_id": "",
                 "origine_place": "",
                 "destinazione_place": "",
+                "materiali_attrezzature": "",
+                "note": "",
                 "tappa_destinazione": ["", "", ""],
                 "tipo_attrezzatura": ["", "", ""],
                 "quantita": ["1", "1", "1"],
@@ -638,11 +700,15 @@ def manager_trasporti_viaggi_create(
     request: Request,
     codice_viaggio: str = Form(...),
     data_partenza: str = Form(...),
+    orario_partenza: str | None = Form(None),
     data_arrivo_prevista: str | None = Form(None),
+    arrivo_stimato_manuale: str | None = Form(None),
     autista_id: int | None = Form(None),
     mezzo_id: int | None = Form(None),
     origine_place: str = Form(...),
     destinazione_place: str = Form(...),
+    materiali_attrezzature: str | None = Form(None),
+    note: str | None = Form(None),
     tappa_destinazione: list[str] = Form(default=[]),
     tipo_attrezzatura: list[str] = Form(default=[]),
     quantita: list[str] = Form(default=[]),
@@ -655,16 +721,42 @@ def manager_trasporti_viaggi_create(
     form_data = {
         "codice_viaggio": codice_viaggio,
         "data_partenza": data_partenza,
+        "orario_partenza": orario_partenza or "",
         "data_arrivo_prevista": data_arrivo_prevista or "",
+        "arrivo_stimato_manuale": arrivo_stimato_manuale or "",
         "autista_id": str(autista_id or ""),
         "mezzo_id": str(mezzo_id or ""),
         "origine_place": origine_place,
         "destinazione_place": destinazione_place,
+        "materiali_attrezzature": materiali_attrezzature or "",
+        "note": note or "",
         "tappa_destinazione": tappa_destinazione,
         "tipo_attrezzatura": tipo_attrezzatura,
         "quantita": quantita,
         "richiesta_tappa_idx": richiesta_tappa_idx,
     }
+    try:
+        parsed_orario_partenza = _parse_optional_time(orario_partenza)
+        parsed_arrivo_manuale = _parse_optional_time(arrivo_stimato_manuale)
+    except ValueError:
+        return render_template(
+            templates,
+            request,
+            "manager/trasporti/new_trip.html",
+            {
+                "autisti": autisti,
+                "mezzi": mezzi,
+                "locations": luoghi,
+                "mode": "create",
+                "viaggio": None,
+                "form_action": request.url_for("manager_trasporti_viaggi_create"),
+                "form_data": form_data,
+                "error_message": "Formato orario non valido. Usa HH:MM.",
+            },
+            db,
+            current_user,
+            status_code=400,
+        )
     origine_obj = get_place_by_value(db, origine_place, include_inactive=False)
     destinazione_obj = get_place_by_value(db, destinazione_place, include_inactive=False)
     if not origine_obj or not destinazione_obj:
@@ -689,11 +781,16 @@ def manager_trasporti_viaggi_create(
     viaggio = TrasportoViaggio(
         codice_viaggio=codice_viaggio.strip().upper(),
         data_partenza=datetime.strptime(data_partenza, "%Y-%m-%d").date(),
+        orario_partenza=parsed_orario_partenza,
         data_arrivo_prevista=datetime.strptime(data_arrivo_prevista, "%Y-%m-%d").date() if data_arrivo_prevista else None,
+        arrivo_stimato=parsed_arrivo_manuale,
+        arrivo_stimato_manuale=parsed_arrivo_manuale is not None,
         autista_id=autista_id,
         mezzo_id=mezzo_id,
         origine=origine_obj.name,
         destinazione=destinazione_obj.name,
+        materiali_attrezzature=(materiali_attrezzature or "").strip() or None,
+        note=(note or "").strip() or None,
         stato=TrasportoStatoEnum.programmato,
     )
     _apply_trip_place(viaggio, "origine", origine_obj)
@@ -737,8 +834,9 @@ def manager_trasporti_viaggi_create(
             )
         )
 
+    eta_message = _sync_trip_eta(viaggio)
     db.commit()
-    return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+    return RedirectResponse(url=f"{request.url_for('manager_trasporti_dashboard')}?msg={quote(eta_message)}", status_code=303)
 
 
 @router.get(
@@ -766,15 +864,21 @@ def manager_trasporti_viaggi_edit(
     )
     if not viaggio:
         return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+    if not can_edit_trip(viaggio):
+        return _trip_locked_redirect(request, viaggio.id)
 
     form_data = {
         "codice_viaggio": viaggio.codice_viaggio or "",
         "data_partenza": viaggio.data_partenza.isoformat() if viaggio.data_partenza else "",
+        "orario_partenza": viaggio.orario_partenza.strftime("%H:%M") if viaggio.orario_partenza else "",
         "data_arrivo_prevista": viaggio.data_arrivo_prevista.isoformat() if viaggio.data_arrivo_prevista else "",
+        "arrivo_stimato_manuale": viaggio.arrivo_stimato.strftime("%H:%M") if viaggio.arrivo_stimato and viaggio.arrivo_stimato_manuale else "",
         "autista_id": str(viaggio.autista_id or ""),
         "mezzo_id": str(viaggio.mezzo_id or ""),
         "origine_place": _trip_place_value(viaggio, "origine"),
         "destinazione_place": _trip_place_value(viaggio, "destinazione"),
+        "materiali_attrezzature": viaggio.materiali_attrezzature or "",
+        "note": viaggio.note or "",
         "tappa_destinazione": [_stop_place_value(tappa) for tappa in viaggio.tappe] or [""],
         "tipo_attrezzatura": [req.tipo_attrezzatura for req in viaggio.richieste_attrezzature] or ["", "", ""],
         "quantita": [str(req.quantita) for req in viaggio.richieste_attrezzature] or ["1", "1", "1"],
@@ -802,6 +906,7 @@ def manager_trasporti_viaggi_edit(
             "viaggio": viaggio,
             "form_action": request.url_for("manager_trasporti_viaggi_update", viaggio_id=viaggio.id),
             "form_data": form_data,
+            "eta_message": "Arrivo stimato inserito manualmente" if viaggio.arrivo_stimato_manuale and viaggio.arrivo_stimato else ("Arrivo stimato calcolato automaticamente" if viaggio.arrivo_stimato else "Arrivo stimato non disponibile"),
         },
         db,
         current_user,
@@ -818,11 +923,15 @@ def manager_trasporti_viaggi_update(
     request: Request,
     codice_viaggio: str = Form(...),
     data_partenza: str = Form(...),
+    orario_partenza: str | None = Form(None),
     data_arrivo_prevista: str | None = Form(None),
+    arrivo_stimato_manuale: str | None = Form(None),
     autista_id: int | None = Form(None),
     mezzo_id: int | None = Form(None),
     origine_place: str = Form(...),
     destinazione_place: str = Form(...),
+    materiali_attrezzature: str | None = Form(None),
+    note: str | None = Form(None),
     tappa_destinazione: list[str] = Form(default=[]),
     tipo_attrezzatura: list[str] = Form(default=[]),
     quantita: list[str] = Form(default=[]),
@@ -840,20 +949,48 @@ def manager_trasporti_viaggi_update(
     )
     if not viaggio:
         return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+    if not can_edit_trip(viaggio):
+        return _trip_locked_redirect(request, viaggio.id)
 
     form_data = {
         "codice_viaggio": codice_viaggio,
         "data_partenza": data_partenza,
+        "orario_partenza": orario_partenza or "",
         "data_arrivo_prevista": data_arrivo_prevista or "",
+        "arrivo_stimato_manuale": arrivo_stimato_manuale or "",
         "autista_id": str(autista_id or ""),
         "mezzo_id": str(mezzo_id or ""),
         "origine_place": origine_place,
         "destinazione_place": destinazione_place,
+        "materiali_attrezzature": materiali_attrezzature or "",
+        "note": note or "",
         "tappa_destinazione": tappa_destinazione,
         "tipo_attrezzatura": tipo_attrezzatura,
         "quantita": quantita,
         "richiesta_tappa_idx": richiesta_tappa_idx,
     }
+    try:
+        parsed_orario_partenza = _parse_optional_time(orario_partenza)
+        parsed_arrivo_manuale = _parse_optional_time(arrivo_stimato_manuale)
+    except ValueError:
+        return render_template(
+            templates,
+            request,
+            "manager/trasporti/new_trip.html",
+            {
+                "autisti": autisti,
+                "mezzi": mezzi,
+                "locations": luoghi,
+                "mode": "edit",
+                "viaggio": viaggio,
+                "form_action": request.url_for("manager_trasporti_viaggi_update", viaggio_id=viaggio.id),
+                "form_data": form_data,
+                "error_message": "Formato orario non valido. Usa HH:MM.",
+            },
+            db,
+            current_user,
+            status_code=400,
+        )
     origine_obj = get_place_by_value(db, origine_place, include_inactive=False)
     destinazione_obj = get_place_by_value(db, destinazione_place, include_inactive=False)
     if not origine_obj or not destinazione_obj:
@@ -878,9 +1015,14 @@ def manager_trasporti_viaggi_update(
 
     viaggio.codice_viaggio = codice_viaggio.strip().upper()
     viaggio.data_partenza = datetime.strptime(data_partenza, "%Y-%m-%d").date()
+    viaggio.orario_partenza = parsed_orario_partenza
     viaggio.data_arrivo_prevista = datetime.strptime(data_arrivo_prevista, "%Y-%m-%d").date() if data_arrivo_prevista else None
+    viaggio.arrivo_stimato = parsed_arrivo_manuale
+    viaggio.arrivo_stimato_manuale = parsed_arrivo_manuale is not None
     viaggio.autista_id = autista_id
     viaggio.mezzo_id = mezzo_id
+    viaggio.materiali_attrezzature = (materiali_attrezzature or "").strip() or None
+    viaggio.note = (note or "").strip() or None
     _apply_trip_place(viaggio, "origine", origine_obj)
     _apply_trip_place(viaggio, "destinazione", destinazione_obj)
 
@@ -925,8 +1067,12 @@ def manager_trasporti_viaggi_update(
             )
         )
 
+    eta_message = _sync_trip_eta(viaggio)
     db.commit()
-    return RedirectResponse(url=request.url_for("manager_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
+    return RedirectResponse(
+        url=f"{request.url_for('manager_trasporti_viaggi_detail', viaggio_id=viaggio.id)}?msg={quote(eta_message)}",
+        status_code=303,
+    )
 
 
 @router.get("/manager/trasporti/viaggi/{viaggio_id}", response_class=HTMLResponse, name="manager_trasporti_viaggi_detail")
@@ -997,7 +1143,10 @@ def manager_trasporti_viaggi_detail(
             "equipment_panel": equipment_panel,
             "richieste_disponibili": richieste_disponibili,
             "can_manage_trip": can_access_manager_area(current_user),
+            "trip_editable": can_edit_trip(viaggio),
             "can_prepare_trip_load": can_manage_trip_loads(current_user),
+            "trip_eta_message": request.query_params.get("msg") or ("Arrivo stimato inserito manualmente" if viaggio.arrivo_stimato_manuale and viaggio.arrivo_stimato else ("Arrivo stimato calcolato automaticamente" if viaggio.arrivo_stimato else "Arrivo stimato non disponibile")),
+            "trip_error": request.query_params.get("err"),
             **_build_trip_map_context(viaggio),
         },
         db,
@@ -1017,6 +1166,8 @@ def manager_trasporti_viaggi_autista_update(
     viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).first()
     if not viaggio:
         return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
+    if not can_edit_trip(viaggio):
+        return _trip_locked_redirect(request, viaggio.id)
 
     if autista_id is None:
         viaggio.autista_id = None
@@ -1123,7 +1274,7 @@ def driver_trasporti_oggi(
         templates,
         request,
         "driver/trasporti/oggi.html",
-        {"viaggio": viaggio, "richieste_disponibili": richieste},
+        {"viaggio": viaggio, "richieste_disponibili": richieste, **(_build_trip_map_context(viaggio) if viaggio else {})},
         db,
         current_user,
     )

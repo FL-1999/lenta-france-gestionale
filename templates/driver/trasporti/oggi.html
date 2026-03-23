@@ -8,6 +8,9 @@
 <div class="card card-body" style="max-width:640px;margin:auto;">
   <p style="font-size:1.2rem;font-weight:700;">{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim) if viaggio.mezzo else 'Camion non assegnato' }}</p>
   <p style="font-size:1.2rem;">{{ viaggio.origine_label }} → {{ viaggio.destinazione_label }}</p>
+  <p><strong>Partenza prevista:</strong> {{ viaggio.departure_display }}</p>
+  <p><strong>Arrivo stimato:</strong> {{ viaggio.arrival_estimate_display }}</p>
+  {% if trip_google_maps_url %}<p><a class="btn btn-secondary" href="{{ trip_google_maps_url }}" target="_blank" rel="noopener">🧭 Apri in Google Maps</a></p>{% endif %}
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     <h3>Materiale da caricare</h3>
     {% for req, disponibili in richieste_disponibili %}

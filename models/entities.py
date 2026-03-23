@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     DateTime,
+    Time,
     CheckConstraint,
     JSON,
     UniqueConstraint,
@@ -939,7 +940,11 @@ class TrasportoViaggio(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     codice_viaggio = Column(String(50), nullable=False, unique=True, index=True)
     data_partenza = Column(Date, nullable=False, index=True)
+    orario_partenza = Column(Time, nullable=True)
     data_arrivo_prevista = Column(Date, nullable=True)
+    arrivo_stimato = Column(Time, nullable=True)
+    arrivo_stimato_manuale = Column(Boolean, nullable=False, default=False)
+    durata_stimata_minuti = Column(Integer, nullable=True)
     autista_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     mezzo_id = Column(Integer, ForeignKey("veicoli.id"), nullable=True, index=True)
     origine_site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
@@ -948,6 +953,8 @@ class TrasportoViaggio(Base, TimestampMixin):
     destinazione_depot_id = Column(Integer, ForeignKey("depots.id"), nullable=True, index=True)
     origine = Column(String(255), nullable=False)
     destinazione = Column(String(255), nullable=False)
+    materiali_attrezzature = Column(Text, nullable=True)
+    note = Column(Text, nullable=True)
     stato = Column(
         Enum(TrasportoStatoEnum),
         nullable=False,
