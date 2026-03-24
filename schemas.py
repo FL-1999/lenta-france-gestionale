@@ -24,8 +24,7 @@ class UserRead(UserBase):
     role: RoleEnum
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- AUTH ----------
@@ -57,8 +56,7 @@ class SiteCreate(SiteBase):
 class SiteRead(SiteBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- MACCHINARI ----------
@@ -111,8 +109,7 @@ class DailyReportRead(DailyReportBase):
     id: int
     author_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- FICHES + STRATIGRAFIA ----------

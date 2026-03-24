@@ -10,10 +10,11 @@ EDITABLE_TRIP_STATUSES = {
     "da_confermare",
     "non iniziato",
     "non_iniziato",
-    "in_carico",
 }
 
 NON_EDITABLE_TRIP_STATUSES = {
+    # "in_carico" è trattato come viaggio già partito/in esecuzione.
+    "in_carico",
     "in corso",
     "in_corso",
     "in viaggio",
@@ -35,6 +36,7 @@ def trip_status_value(viaggio: Any) -> str:
 
 
 def can_edit_trip(viaggio: Any) -> bool:
+    """Trip modificabile solo se non ancora partito."""
     stato = trip_status_value(viaggio)
     if not stato:
         return False

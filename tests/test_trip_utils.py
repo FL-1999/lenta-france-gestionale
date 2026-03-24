@@ -6,7 +6,7 @@ from utils.trips import can_edit_trip, compute_arrival_time, format_trip_datetim
 
 def test_can_edit_trip_allows_only_pre_departure_states() -> None:
     assert can_edit_trip(SimpleNamespace(stato=SimpleNamespace(value="programmato"))) is True
-    assert can_edit_trip(SimpleNamespace(stato=SimpleNamespace(value="in_carico"))) is True
+    assert can_edit_trip(SimpleNamespace(stato=SimpleNamespace(value="in_carico"))) is False
     assert can_edit_trip(SimpleNamespace(stato=SimpleNamespace(value="in_viaggio"))) is False
     assert can_edit_trip(SimpleNamespace(stato=SimpleNamespace(value="completato"))) is False
 

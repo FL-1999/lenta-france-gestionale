@@ -3,6 +3,7 @@ import os
 import time
 import re
 import uuid
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from math import ceil
 from typing import List
@@ -94,6 +95,13 @@ perf_logger = logging.getLogger("lenta_france_gestionale.performance")
 
 DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
+APP_ENV = (
+    os.getenv("APP_ENV")
+    or os.getenv("ENVIRONMENT")
+    or os.getenv("FASTAPI_ENV")
+    or "development"
+).strip().lower()
+IS_PRODUCTION = APP_ENV in {"prod", "production"}
 
 
 def _normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
@@ -240,28 +248,84 @@ def initialize_application() -> None:
     create_initial_admin()
 
 
+def _parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_cors_origins(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    if raw.strip() == "*":
+        return ["*"]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+def build_cors_settings() -> dict:
+    raw_origins = os.getenv("CORS_ALLOW_ORIGINS")
+    allow_origins = _parse_cors_origins(raw_origins)
+    allow_credentials = _parse_bool_env("CORS_ALLOW_CREDENTIALS", True)
+    allow_methods = _parse_cors_origins(os.getenv("CORS_ALLOW_METHODS")) or ["*"]
+    allow_headers = _parse_cors_origins(os.getenv("CORS_ALLOW_HEADERS")) or ["*"]
+
+    if IS_PRODUCTION:
+        if not allow_origins or allow_origins == ["*"]:
+            logger.error(
+                "CORS produzione non valido: CORS_ALLOW_ORIGINS deve contenere origini esplicite (APP_ENV=%s).",
+                APP_ENV,
+            )
+            raise RuntimeError("CORS_ALLOW_ORIGINS obbligatoria e non wildcard in production.")
+    else:
+        if not allow_origins:
+            allow_origins = ["*"]
+
+    if allow_credentials and "*" in allow_origins:
+        if IS_PRODUCTION:
+            logger.error(
+                "CORS produzione incoerente: allow_credentials=true non compatibile con wildcard origin."
+            )
+            raise RuntimeError("Configurazione CORS non valida in production.")
+        logger.warning(
+            "CORS sviluppo: disabilito allow_credentials perché allow_origins contiene wildcard."
+        )
+        allow_credentials = False
+
+    logger.info(
+        "CORS configurato (env=%s, origins=%s, credentials=%s)",
+        APP_ENV,
+        ",".join(allow_origins),
+        allow_credentials,
+    )
+    return {
+        "allow_origins": allow_origins,
+        "allow_credentials": allow_credentials,
+        "allow_methods": allow_methods,
+        "allow_headers": allow_headers,
+    }
+
+
 # -------------------------------------------------
 # APP FASTAPI
 # -------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Startup applicazione avviato (env=%s).", APP_ENV)
+    initialize_application()
+    logger.info("Startup applicazione completato.")
+    yield
 
 app = FastAPI(
     title="Lenta France Gestionale",
     description="Gestionale cantieri, macchinari, fiches e rapportini.",
     version="1.0.0",
+    lifespan=lifespan,
 )
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    initialize_application()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],        # se vuoi, in futuro, restringi ai tuoi domini
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_settings = build_cors_settings()
+app.add_middleware(CORSMiddleware, **cors_settings)
 
 _HASHED_ASSET_RE = re.compile(r"\\.[0-9a-f]{8,}\\.")
 
