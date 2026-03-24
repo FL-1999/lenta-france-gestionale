@@ -426,6 +426,7 @@ def homepage(request: Request):
 
     lang = get_lang_from_request(request)
     return templates.TemplateResponse(
+        request,
         "home.html",
         build_template_context(
             request,
@@ -441,6 +442,7 @@ def offline(request: Request):
     """
     lang = get_lang_from_request(request)
     return templates.TemplateResponse(
+        request,
         "offline.html",
         build_template_context(
             request,
@@ -675,6 +677,7 @@ def login_page(request: Request):
         )
 
     return templates.TemplateResponse(
+        request,
         "login.html",
         build_template_context(request, None),
     )
@@ -698,6 +701,7 @@ def login_api(
     if not user:
         # Torniamo la pagina di login con errore
         return templates.TemplateResponse(
+            request,
             "login.html",
             build_template_context(
                 request,
@@ -1035,6 +1039,7 @@ def manager_fiche_new_form(
     sites, machines = _load_manager_form_collections()
 
     return templates.TemplateResponse(
+        request,
         "manager/fiches_form.html",
         build_template_context(
             request,
@@ -1176,6 +1181,7 @@ async def manager_fiche_create(
         )
         sites, machines = _load_manager_form_collections()
         return templates.TemplateResponse(
+            request,
             "manager/fiches_form.html",
             build_template_context(
                 request,
@@ -1214,6 +1220,7 @@ async def manager_fiche_create(
         )
         sites, machines = _load_manager_form_collections()
         return templates.TemplateResponse(
+            request,
             "manager/fiches_form.html",
             build_template_context(
                 request,
@@ -1261,6 +1268,7 @@ def manager_users(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/users.html",
         build_template_context(
             request,
@@ -1302,6 +1310,7 @@ def admin_magazzino_permissions(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "admin/permessi_magazzino.html",
         build_template_context(
             request,
@@ -1371,6 +1380,7 @@ async def manager_new_user_get(
         )
 
     return templates.TemplateResponse(
+        request,
         "manager/user_form.html",
         build_template_context(
             request,
@@ -1413,6 +1423,7 @@ async def manager_new_user_post(
 
     def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
+            request,
             "manager/user_form.html",
             build_template_context(
                 request,
@@ -1533,6 +1544,7 @@ async def manager_edit_user_get(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/user_form.html",
         build_template_context(
             request,
@@ -1576,6 +1588,7 @@ async def manager_edit_user_post(
 
     def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
+            request,
             "manager/user_form.html",
             build_template_context(
                 request,
@@ -1760,6 +1773,7 @@ async def manager_reset_password_get(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/user_reset_password.html",
         build_template_context(
             request,
@@ -1789,6 +1803,7 @@ async def manager_reset_password_post(
 
     def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
+            request,
             "manager/user_reset_password.html",
             build_template_context(
                 request,
@@ -1890,6 +1905,7 @@ def manager_cantieri(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/cantieri.html",
         build_template_context(
             request,
@@ -2270,6 +2286,7 @@ def manager_cantiere_nuovo_get(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/cantiere_form.html",
         build_template_context(
             request,
@@ -2398,6 +2415,7 @@ def manager_cantiere_nuovo_post(
                 .all()
             )
             return templates.TemplateResponse(
+                request,
                 "manager/cantiere_form.html",
                 build_template_context(
                     request,
@@ -2486,6 +2504,7 @@ def manager_site_detail(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/site_detail.html",
         build_template_context(
             request,
@@ -2552,6 +2571,7 @@ def manager_cantiere_modifica_get(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/cantiere_form.html",
         build_template_context(
             request,
@@ -2738,6 +2758,7 @@ def capo_site_detail(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "capo/site_detail.html",
         build_template_context(
             request,
@@ -2848,6 +2869,7 @@ def capo_dashboard(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "capo/home_capo.html",
         build_template_context(
             request,
@@ -2886,6 +2908,7 @@ def pagina_nuovo_rapportino_capo(
     Il JS della pagina chiamerà l'API POST /reports con il token JWT.
     """
     return templates.TemplateResponse(
+        request,
         "capo_nuovo_rapportino.html",
         build_template_context(
             request,
@@ -2905,6 +2928,7 @@ def capo_fiche_nuova_get(
     sites, machines = _load_capo_form_collections(current_user)
 
     return templates.TemplateResponse(
+        request,
         "capo/fiches_form.html",
         build_template_context(
             request,
@@ -3042,6 +3066,7 @@ async def capo_fiche_nuova_post(
         )
         sites, machines = _load_capo_form_collections(current_user)
         return templates.TemplateResponse(
+            request,
             "capo/fiches_form.html",
             build_template_context(
                 request,
@@ -3079,6 +3104,7 @@ async def capo_fiche_nuova_post(
         )
         sites, machines = _load_capo_form_collections(current_user)
         return templates.TemplateResponse(
+            request,
             "capo/fiches_form.html",
             build_template_context(
                 request,
@@ -3162,6 +3188,7 @@ def manager_fiches(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/fiches_list.html",
         build_template_context(
             request,
@@ -3207,6 +3234,7 @@ def manager_fiche_dettaglio(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "manager/fiches/fiche_detail.html",
         build_template_context(
             request,
