@@ -1742,11 +1742,6 @@ def manager_ordini_list(
 @router.get(
     "/manager/ordini/chiusi",
     response_class=HTMLResponse,
-    name="manager_ordini_list_chiusi",
-)
-@router.get(
-    "/manager/ordini/chiusi",
-    response_class=HTMLResponse,
     name="manager_ordini_closed",
 )
 def manager_ordini_list_chiusi(

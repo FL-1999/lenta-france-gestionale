@@ -1,5 +1,6 @@
 import os
 import warnings
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
@@ -14,13 +15,37 @@ from database import get_db
 from models import RoleEnum, User, UserRole
 from permissions import get_active_role, get_user_roles, has_perm, user_has_role
 
+logger = logging.getLogger("lenta_france_gestionale.auth")
+
+APP_ENV = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("FASTAPI_ENV") or "development").strip().lower()
+ALLOW_DEV_INSECURE_SECRET = os.getenv("ALLOW_DEV_INSECURE_SECRET", "false").strip().lower() in {"1", "true", "yes", "on"}
+IS_PRODUCTION = APP_ENV in {"prod", "production"}
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    warnings.warn(
-        "SECRET_KEY non impostata: utilizzare una variabile d'ambiente in produzione",
-        RuntimeWarning,
-    )
-    SECRET_KEY = "changeme"
+    if IS_PRODUCTION:
+        logger.error(
+            "SECRET_KEY non impostata in ambiente production (APP_ENV=%s). Avvio bloccato.",
+            APP_ENV,
+        )
+        raise RuntimeError("SECRET_KEY obbligatoria in production.")
+    if ALLOW_DEV_INSECURE_SECRET:
+        warnings.warn(
+            "SECRET_KEY non impostata: uso fallback solo in ambiente locale di sviluppo.",
+            RuntimeWarning,
+        )
+        logger.warning(
+            "SECRET_KEY mancante in ambiente non-production (APP_ENV=%s): fallback temporaneo attivo.",
+            APP_ENV,
+        )
+        SECRET_KEY = "changeme"
+    else:
+        logger.error(
+            "SECRET_KEY non impostata e fallback locale non consentito (ALLOW_DEV_INSECURE_SECRET=false)."
+        )
+        raise RuntimeError(
+            "SECRET_KEY non impostata. In locale abilita ALLOW_DEV_INSECURE_SECRET=true solo per sviluppo."
+        )
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
@@ -357,7 +382,7 @@ async def login_for_access_token_form(
     return _generate_token_for_user(user)
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login/json", response_model=Token)
 async def login_json(
     login_data: LoginRequest,
     db: Annotated[Session, Depends(get_db)],
