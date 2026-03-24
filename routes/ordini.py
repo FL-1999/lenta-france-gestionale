@@ -403,20 +403,20 @@ def build_order_email(
     ]
 
     if normalized_lang == "fr":
-        subject = f"Commande n° {order_number} - {supplier_name}"
+        subject = f"Commande n° {order_number} - {supplier_name} · {destination_label}"
         greeting = f"Bonjour {contact_name}," if contact_name else "Bonjour,"
         body_parts = [
             greeting,
             "",
             f"Nous vous transmettons notre commande n° {order_number} du {order_date_text}.",
-            f"Livraison: {destination_label}.",
+            f"Lieu de livraison : {destination_label}.",
         ]
         if destination_address:
             body_parts.append(f"Adresse : {destination_address}.")
         body_parts.extend(
             [
                 "",
-                "Récapitulatif des lignes:",
+                "Détail des lignes de commande :",
                 "",
                 *[line.replace(":", " - Quantité:") for line in (lines or ["-"])],
                 "",
@@ -428,7 +428,7 @@ def build_order_email(
         )
         body = "\n".join(body_parts)
     else:
-        subject = f"Ordine n. {order_number} - {supplier_name}"
+        subject = f"Ordine n. {order_number} - {supplier_name} · {destination_label}"
         greeting = f"Gentile {contact_name}," if contact_name else "Gentili,"
         body_parts = [
             greeting,
@@ -1119,7 +1119,8 @@ def manager_ordini_create(
     contact_email_override_clean = (contact_email_override or "").strip() or None
 
     supplier_id_raw = (supplier_id or "").strip()
-    if not supplier_id_raw:
+    supplier_name_raw = (supplier_name or "").strip()
+    if not supplier_id_raw and not supplier_name_raw:
         return _render_order_form(request, db, current_user, error_message="Seleziona un fornitore.", form_data=form_data)
 
     if supplier_id_raw == "__new__":
@@ -1144,9 +1145,9 @@ def manager_ordini_create(
         if not supplier:
             return _render_order_form(request, db, current_user, error_message="Fornitore non trovato.", form_data=form_data)
         selected_supplier = supplier
-    elif (supplier_name or "").strip():
+    elif supplier_name_raw:
         fallback_supplier = Supplier(
-            name=(supplier_name or "").strip() or None,
+            name=supplier_name_raw or None,
             email=(new_supplier_email or "").strip() or None,
             phone=(new_supplier_phone or "").strip() or None,
             is_active=True,
@@ -1212,7 +1213,7 @@ def manager_ordini_create(
         if not categoria:
             db.rollback()
             return _render_order_form(request, db, current_user, error_message="Per ordine magazzino devi selezionare una categoria valida.", form_data=form_data)
-        if macro_id:
+        if macro_id and not (category_mode == "new" or warehouse_category_id == "__new__"):
             try:
                 selected_macro_id = int(macro_id)
             except (TypeError, ValueError):
@@ -1574,6 +1575,11 @@ def manager_ordini_email(
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail='Ordine non trovato')
+    recipient = _order_email_recipient(order)
+    if not recipient:
+        query_string = urlencode({"err": "Email fornitore non disponibile"})
+        url = f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{query_string}"
+        return RedirectResponse(url=url, status_code=303)
 
     sites = db.query(Site).filter(Site.is_active.is_(True)).order_by(Site.name.asc()).all()
     depots = db.query(Depot).filter(Depot.is_active.is_(True)).order_by(Depot.name.asc()).all()
@@ -1608,7 +1614,7 @@ def manager_ordini_email(
             'default_delivery_type': default_delivery_type,
             'default_delivery_site_id': order.delivery_site_id,
             'default_delivery_depot_id': order.delivery_depot_id,
-            'default_to': _order_email_recipient(order),
+            'default_to': recipient,
         },
         db,
         current_user,
@@ -1742,6 +1748,7 @@ def manager_ordini_list(
 @router.get(
     "/manager/ordini/chiusi",
     response_class=HTMLResponse,
+
     name="manager_ordini_closed",
 )
 def manager_ordini_list_chiusi(
@@ -1810,6 +1817,8 @@ def manager_ordini_detail(
         _collect_pending_discharge_requirements(db, order)
     )
     error_message = request.query_params.get("err")
+    email_recipient = _order_email_recipient(order)
+    can_send_email = bool(email_recipient)
 
     return render_template(
         templates,
@@ -1823,6 +1832,12 @@ def manager_ordini_detail(
             "error_message": error_message,
             "destination_label": _order_destination_label(order),
             "supplier_label": _order_supplier_label(order),
+            "can_send_email": can_send_email,
+            "email_disabled_message": (
+                "Email fornitore non disponibile"
+                if not can_send_email
+                else ""
+            ),
             "can_discharge": order.order_kind == "closed" and order.site_id is not None,
             "has_pending_discharge": bool(pending_discharge_deliveries),
             "pending_discharge_qty": round(

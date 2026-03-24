@@ -396,10 +396,68 @@ class OrdiniRoutesTests(unittest.TestCase):
             mailto_url = build_order_mailto_link(order, lang="fr")
             self.assertIsNotNone(mailto_url)
             assert mailto_url is not None
-            self.assertIn("R%E9capitulatif", mailto_url)
+            self.assertIn("D%E9tail", mailto_url)
             self.assertIn("n%B0", mailto_url)
         finally:
             session.close()
+
+    def test_create_order_with_inline_new_supplier_and_new_category_redirects(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-inline-{unique_token}@example.com",
+                full_name="Ordini Inline Tester",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            macro = MagazzinoMacro(name=f"Macro inline {unique_token}")
+            session.add_all([requester, macro])
+            session.commit()
+            requester_id = requester.id
+            requester_name = requester.full_name
+            macro_id = macro.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.post(
+            "/manager/ordini/nuovo",
+            data={
+                "supplier_name": "",
+                "supplier_id": "__new__",
+                "new_supplier_name": f"Supplier inline {unique_token}",
+                "new_supplier_email": f"inline-{unique_token}@example.com",
+                "new_supplier_phone": "",
+                "order_date": "2026-02-01",
+                "requester_user_id": str(requester_id),
+                "description_text": "Ordine inline completo",
+                "order_kind": "warehouse",
+                "warehouse_category_id": "__new__",
+                "site_id": "",
+                "new_category_name": "Categoria inline",
+                "category_mode": "new",
+                "macro_id": str(macro_id),
+                "macro": "",
+                "new_category_macro_id": "",
+                "new_macro_name": "",
+                "description": ["Viti inox"],
+                "qty_ordered": ["6"],
+                "magazzino_item_id": [""],
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
 
     def test_manager_fornitori_crud_pages(self) -> None:
         unique_token = uuid4().hex
@@ -1116,7 +1174,7 @@ class OrdiniRoutesTests(unittest.TestCase):
                 slug=f"tipologia-b-{unique_token}",
                 ordine=1,
                 attiva=True,
-                macro=macro_b.name,
+                macro=macro_b,
                 macro_id=macro_b.id,
             )
             session.add(categoria_b)
