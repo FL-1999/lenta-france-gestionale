@@ -56,15 +56,16 @@ from models import (
     Fiche,
     FicheStratigrafia,
     Personale,
-    Veicolo,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
     TrasportoViaggio,
+    TrasportoTappa,
     TrasportoRichiestaAttrezzatura,
     TrasportoStatoEnum,
     Attrezzatura,
     AttrezzaturaStatoEnum,
     TrasportoAttrezzaturaViaggio,
+    Depot,
 )
 from routers import users, sites, machines, reports, fiches, notifications
 from routes import manager_personale, manager_veicoli, manager_depositi, magazzino, ordini, audit, reportistica, backup, trasporti, economics
@@ -852,6 +853,8 @@ def manager_dashboard(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     db = SessionLocal()
     sites_map_data: list[dict[str, object]] = []
+    depots_map_data: list[dict[str, object]] = []
+    transports_map_data: list[dict[str, object]] = []
     try:
         detail_url_template = str(
             request.url_for("manager_site_detail", site_id="__SITE_ID__")
@@ -891,6 +894,45 @@ def manager_dashboard(
             (time.monotonic() - query_started) * 1000,
         )
         sites_map_data = _build_sites_map_data(sites_with_coords)
+        depots_with_coords = (
+            db.query(Depot)
+            .filter(Depot.lat.isnot(None), Depot.lng.isnot(None))
+            .order_by(Depot.name.asc())
+            .all()
+        )
+        depots_map_data = _build_depots_map_data(depots_with_coords)
+        active_trips = (
+            db.query(TrasportoViaggio)
+            .options(
+                joinedload(TrasportoViaggio.autista).load_only(User.id, User.full_name, User.email),
+                joinedload(TrasportoViaggio.mezzo),
+                joinedload(TrasportoViaggio.origine_site).load_only(Site.id, Site.name, Site.lat, Site.lng),
+                joinedload(TrasportoViaggio.origine_depot).load_only(Depot.id, Depot.name, Depot.lat, Depot.lng),
+                joinedload(TrasportoViaggio.destinazione_site).load_only(Site.id, Site.name, Site.lat, Site.lng),
+                joinedload(TrasportoViaggio.destinazione_depot).load_only(Depot.id, Depot.name, Depot.lat, Depot.lng),
+                joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site).load_only(Site.id, Site.name, Site.lat, Site.lng),
+                joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot).load_only(Depot.id, Depot.name, Depot.lat, Depot.lng),
+            )
+            .filter(
+                TrasportoViaggio.stato.in_(
+                    [
+                        TrasportoStatoEnum.programmato,
+                        TrasportoStatoEnum.in_carico,
+                        TrasportoStatoEnum.in_viaggio,
+                        TrasportoStatoEnum.arrivato,
+                    ]
+                )
+            )
+            .order_by(TrasportoViaggio.data_partenza.desc(), TrasportoViaggio.id.desc())
+            .limit(250)
+            .all()
+        )
+        transports_map_data = _build_transports_map_data(
+            active_trips,
+            trip_detail_url_template=str(
+                request.url_for("manager_trasporti_viaggi_detail", viaggio_id="__TRIP_ID__")
+            ),
+        )
         query_started = time.monotonic()
         reports_list = (
             db.query(Report)
@@ -1043,6 +1085,13 @@ def manager_dashboard(
                 "chart_hours_per_site_30_days": jsonable_encoder(hours_per_site_30_days),
                 "chart_reports_by_status": jsonable_encoder(reports_by_status),
                 "cantieri_map_data": jsonable_encoder(sites_map_data),
+                "operations_map_data": jsonable_encoder(
+                    {
+                        "sites": sites_map_data,
+                        "depots": depots_map_data,
+                        "transports": transports_map_data,
+                    }
+                ),
                 "detail_url_template": detail_url_template,
                 "google_maps_api_key": os.getenv("GOOGLE_MAPS_API_KEY"),
                 "logistics_overview": {
@@ -1086,6 +1135,139 @@ def _build_sites_map_data(sites: list[Site]) -> list[dict[str, object]]:
             }
         )
     return sites_map_data
+
+
+def _build_depots_map_data(depots: list[Depot]) -> list[dict[str, object]]:
+    depots_map_data: list[dict[str, object]] = []
+    for depot in depots:
+        address_parts = [part for part in [depot.address, depot.city, depot.province, depot.country] if part]
+        depots_map_data.append(
+            {
+                "id": int(depot.id) if depot.id is not None else None,
+                "name": str(depot.name) if depot.name is not None else "",
+                "lat": float(depot.lat) if depot.lat is not None else None,
+                "lng": float(depot.lng) if depot.lng is not None else None,
+                "address": ", ".join(str(part) for part in address_parts),
+                "is_active": bool(depot.is_active),
+                "type": "depot",
+            }
+        )
+    return depots_map_data
+
+
+def _build_trip_route_points_for_dashboard(viaggio: TrasportoViaggio) -> list[dict[str, object]]:
+    def _point_from_place(
+        *,
+        site: Site | None,
+        depot: Depot | None,
+        fallback_name: str | None,
+        role: str,
+        sequence: int,
+    ) -> dict[str, object]:
+        if site:
+            return {
+                "id": int(site.id) if site.id is not None else None,
+                "sequence": sequence,
+                "role": role,
+                "name": site.name or "—",
+                "type": "site",
+                "lat": site.lat,
+                "lng": site.lng,
+            }
+        if depot:
+            return {
+                "id": int(depot.id) if depot.id is not None else None,
+                "sequence": sequence,
+                "role": role,
+                "name": depot.name or "—",
+                "type": "depot",
+                "lat": depot.lat,
+                "lng": depot.lng,
+            }
+        return {
+            "id": None,
+            "sequence": sequence,
+            "role": role,
+            "name": fallback_name or "—",
+            "type": "unknown",
+            "lat": None,
+            "lng": None,
+        }
+
+    points = [
+        _point_from_place(
+            site=viaggio.origine_site,
+            depot=viaggio.origine_depot,
+            fallback_name=viaggio.origine,
+            role="origin",
+            sequence=1,
+        )
+    ]
+    for index, tappa in enumerate(viaggio.tappe or [], start=2):
+        points.append(
+            _point_from_place(
+                site=tappa.site,
+                depot=tappa.depot,
+                fallback_name=tappa.destinazione,
+                role="stop",
+                sequence=index,
+            )
+        )
+    points.append(
+        _point_from_place(
+            site=viaggio.destinazione_site,
+            depot=viaggio.destinazione_depot,
+            fallback_name=viaggio.destinazione,
+            role="destination",
+            sequence=len(points) + 1,
+        )
+    )
+    return points
+
+
+def _build_transports_map_data(
+    viaggi: list[TrasportoViaggio],
+    *,
+    trip_detail_url_template: str,
+) -> list[dict[str, object]]:
+    transports_map_data: list[dict[str, object]] = []
+    for viaggio in viaggi:
+        route_points = _build_trip_route_points_for_dashboard(viaggio)
+        has_coords = any(
+            point.get("lat") is not None and point.get("lng") is not None for point in route_points
+        )
+        if not has_coords:
+            continue
+        autista_name = None
+        if viaggio.autista:
+            autista_name = viaggio.autista.full_name or viaggio.autista.email
+        mezzo_label = None
+        if viaggio.mezzo:
+            mezzo_label = " ".join(
+                part
+                for part in [
+                    (viaggio.mezzo.marca or "").strip(),
+                    (viaggio.mezzo.modello or "").strip(),
+                    f"({viaggio.mezzo.targa})" if viaggio.mezzo.targa else "",
+                ]
+                if part
+            )
+        trip_detail_url = trip_detail_url_template.replace("__TRIP_ID__", str(viaggio.id))
+        transports_map_data.append(
+            {
+                "id": int(viaggio.id),
+                "code": viaggio.codice_viaggio or f"V-{viaggio.id}",
+                "status": viaggio.stato.value if viaggio.stato else None,
+                "date": viaggio.data_partenza.isoformat() if viaggio.data_partenza else None,
+                "driver_id": int(viaggio.autista_id) if viaggio.autista_id else None,
+                "driver_name": autista_name,
+                "vehicle_id": int(viaggio.mezzo_id) if viaggio.mezzo_id else None,
+                "vehicle_name": mezzo_label,
+                "route_points": route_points,
+                "detail_url": trip_detail_url,
+            }
+        )
+    return transports_map_data
 
 
 @app.get(
