@@ -1033,7 +1033,6 @@ def manager_magazzino_archiviati(
     items = query.order_by(MagazzinoItem.nome.asc()).all()
     categorie = (
         db.query(MagazzinoCategoria)
-        .filter(MagazzinoCategoria.attiva.is_(True))
         .order_by(MagazzinoCategoria.nome.asc())
         .all()
     )
