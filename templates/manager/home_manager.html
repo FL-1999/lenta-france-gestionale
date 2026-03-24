@@ -679,7 +679,7 @@
                         <path d="M10 20v-5h4v5" stroke-linecap="round" />
                     </svg>
                 </div>
-                <span>{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}</span>
+                <span>{% if lang == 'fr' %}Carte opérationnelle{% else %}Mappa operativa centrale{% endif %}</span>
             </div>
         </div>
         <div class="card-body">
@@ -695,29 +695,55 @@
                 <div id="cantieri-map-wrapper" class="cantieri-map-wrapper">
                     <div class="map-filters" aria-label="{% if lang == 'fr' %}Filtres carte{% else %}Filtri mappa{% endif %}">
                         <label class="map-filter">
-                            <span class="map-filter-label">{% if lang == 'fr' %}Statut{% else %}Stato cantiere{% endif %}</span>
-                            <select id="map-filter-status" class="form-select">
+                            <span class="map-filter-label">{% if lang == 'fr' %}Vue{% else %}Vista{% endif %}</span>
+                            <select id="map-filter-view" class="form-select">
+                                <option value="general">{% if lang == 'fr' %}Vue générale{% else %}Vista generale{% endif %}</option>
+                                <option value="transport">{% if lang == 'fr' %}Transports{% else %}Trasporti{% endif %}</option>
+                                <option value="sites_active">{% if lang == 'fr' %}Chantiers actifs{% else %}Cantieri attivi{% endif %}</option>
+                                <option value="sites_closed">{% if lang == 'fr' %}Chantiers fermés{% else %}Cantieri chiusi{% endif %}</option>
+                                <option value="depots">{% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</option>
+                                <option value="vehicles">{% if lang == 'fr' %}Véhicules{% else %}Mezzi{% endif %}</option>
+                                <option value="drivers">{% if lang == 'fr' %}Chauffeurs{% else %}Autisti{% endif %}</option>
+                            </select>
+                        </label>
+                        <label class="map-filter">
+                            <span class="map-filter-label">{% if lang == 'fr' %}Période{% else %}Periodo{% endif %}</span>
+                            <select id="map-filter-date" class="form-select">
+                                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
+                                <option value="today">{% if lang == 'fr' %}Aujourd'hui{% else %}Oggi{% endif %}</option>
+                                <option value="7d">{% if lang == 'fr' %}7 prochains jours{% else %}Prossimi 7 giorni{% endif %}</option>
+                                <option value="30d">{% if lang == 'fr' %}30 prochains jours{% else %}Prossimi 30 giorni{% endif %}</option>
+                            </select>
+                        </label>
+                        <label class="map-filter">
+                            <span class="map-filter-label">{% if lang == 'fr' %}État trajet{% else %}Stato viaggio{% endif %}</span>
+                            <select id="map-filter-trip-status" class="form-select">
                                 <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
                             </select>
                         </label>
                         <label class="map-filter">
-                            <span class="map-filter-label">{% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}</span>
-                            <select id="map-filter-caposquadra" class="form-select">
+                            <span class="map-filter-label">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</span>
+                            <select id="map-filter-site" class="form-select">
                                 <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
                             </select>
                         </label>
                         <label class="map-filter">
-                            <span class="map-filter-label">{% if lang == 'fr' %}Actifs{% else %}Attivi{% endif %}</span>
-                            <select id="map-filter-active" class="form-select">
+                            <span class="map-filter-label">{% if lang == 'fr' %}Chauffeur{% else %}Autista{% endif %}</span>
+                            <select id="map-filter-driver" class="form-select">
                                 <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
-                                <option value="true">{% if lang == 'fr' %}Actifs uniquement{% else %}Solo attivi{% endif %}</option>
-                                <option value="false">{% if lang == 'fr' %}Inactifs uniquement{% else %}Solo non attivi{% endif %}</option>
+                            </select>
+                        </label>
+                        <label class="map-filter">
+                            <span class="map-filter-label">{% if lang == 'fr' %}Véhicule{% else %}Mezzo{% endif %}</span>
+                            <select id="map-filter-vehicle" class="form-select">
+                                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
                             </select>
                         </label>
                     </div>
+                    <div class="map-legend" id="operations-map-legend" aria-label="{% if lang == 'fr' %}Légende{% else %}Legenda{% endif %}"></div>
                     <div id="cantieri-map"
                          class="cantieri-map cantieri-map--preview"
-                         aria-label="{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}"
+                         aria-label="{% if lang == 'fr' %}Carte opérationnelle{% else %}Mappa operativa{% endif %}"
                          data-google-maps-api-key="{{ google_maps_api_key }}"></div>
                 </div>
             {% else %}
@@ -758,21 +784,15 @@
     };
 </script>
 {% if google_maps_api_key %}
-{% set enable_clustering = true %}
 <script type="application/json" id="cantieri-map-config">
     {{ {
-        "sites": cantieri_map_data,
+        "dataset": operations_map_data,
         "detailUrlTemplate": detail_url_template,
-        "coloredMarkers": true,
-        "clustering": enable_clustering,
         "filters": true
     } | tojson | safe }}
 </script>
-    {% if enable_clustering %}
-    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
-    {% endif %}
 <script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
-<script src="{{ url_for('static', path='/js/cantieri-map.js') }}?v=20260212a"></script>
+<script src="{{ url_for('static', path='/js/operations-map.js') }}?v=20260324a"></script>
 <script src="{{ url_for('static', path='/js/cantieri-map-modal.js') }}"></script>
 
 {% endif %}

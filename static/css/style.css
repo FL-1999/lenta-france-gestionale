@@ -1992,6 +1992,26 @@ body {
     margin-bottom: 1rem;
 }
 
+.map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.map-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.84rem;
+    color: var(--color-text-muted);
+}
+
+.map-legend__item img {
+    width: 14px;
+    height: 14px;
+}
+
 .cantieri-map-wrapper {
     display: flex;
     flex-direction: column;
@@ -2100,6 +2120,13 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+}
+
+.map-infowindow-list {
+    margin: 0.4rem 0 0.65rem;
+    padding-left: 1rem;
+    color: #334155;
+    font-size: 0.85rem;
 }
 
 @media (max-width: 768px) {
