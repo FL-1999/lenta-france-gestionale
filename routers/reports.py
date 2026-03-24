@@ -222,6 +222,7 @@ def manager_reports_list(
     )
 
     return templates.TemplateResponse(
+        request,
         "manager/rapportini_list.html",
         build_template_context(
             request,
@@ -263,6 +264,7 @@ def manager_report_detail(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rapportino non trovato")
 
     return templates.TemplateResponse(
+        request,
         "manager/rapportino_detail.html",
         build_template_context(
             request,

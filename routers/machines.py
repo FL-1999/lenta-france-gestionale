@@ -480,6 +480,7 @@ def manager_machines_page(
     error_message = request.query_params.get("error_message")
 
     return templates.TemplateResponse(
+        request,
         "manager/macchinari_list.html",
         build_template_context(
             request,
@@ -513,6 +514,7 @@ def manager_machine_types_page(
     tipologie = _build_machine_types_from_machines(db)
 
     return templates.TemplateResponse(
+        request,
         "manager/macchinari_tipologie_list.html",
         build_template_context(
             request,
@@ -626,6 +628,7 @@ def manager_machine_types_detail_page(
     )
 
     return templates.TemplateResponse(
+        request,
         "manager/macchinari_list.html",
         build_template_context(
             request,
@@ -663,6 +666,7 @@ def manager_machine_new_get(
     selected_machine_type = request.query_params.get("machine_type")
 
     return templates.TemplateResponse(
+        request,
         "manager/macchinari_form.html",
         build_template_context(
             request,
@@ -750,6 +754,7 @@ def manager_machine_detail(
     assignment_rows = _build_assignment_rows(machine.assignments or [], now)
 
     return templates.TemplateResponse(
+        request,
         "manager/macchinari_detail.html",
         build_template_context(
             request,
@@ -779,6 +784,7 @@ def manager_machine_edit_get(
     selected_machine_type = request.query_params.get("machine_type")
 
     return templates.TemplateResponse(
+        request,
         "manager/macchinari_form.html",
         build_template_context(
             request,
@@ -962,6 +968,7 @@ def manager_machine_assign_get(
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
 
     return templates.TemplateResponse(
+        request,
         "manager/macchinario_assegna.html",
         build_template_context(
             request,

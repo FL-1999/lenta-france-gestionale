@@ -203,6 +203,7 @@ def render_template(
         )
 
         return templates.TemplateResponse(
+            request,
             template_name, template_context, **response_kwargs
         )
     finally:
