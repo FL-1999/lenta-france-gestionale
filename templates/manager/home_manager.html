@@ -551,76 +551,124 @@
         </div>
     </div>
 
-    <div class="dashboard-analytics-grid">
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">
-                    <div class="card-icon card-icon--reports" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" />
-                            <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
-                        </svg>
-                    </div>
-                    <span>
-                        {% if lang == 'fr' %}
-                            Rapports des 30 derniers jours
-                        {% else %}
-                            Rapportini ultimi 30 giorni
-                        {% endif %}
-                    </span>
-                </div>
-            </div>
-            <div class="card-body">
-                <canvas id="chartReportsLast30Days"></canvas>
+    <section class="dashboard-reporting-suite" aria-label="Dashboard reportistica">
+        <div class="dashboard-reporting-head">
+            <div>
+                <p class="eyebrow">{% if lang == 'fr' %}Business insight{% else %}Business insight{% endif %}</p>
+                <h2>{% if lang == 'fr' %}Vue analytique 30 jours{% else %}Vista analitica 30 giorni{% endif %}</h2>
+                <p>{% if lang == 'fr' %}Contrôle immédiat des volumes, heures et efficacité des rapports.{% else %}Controllo immediato su volumi, ore e stato operativo dei rapportini.{% endif %}</p>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">
-                    <div class="card-icon card-icon--sites" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
-                            <path d="M10 20v-5h4v5" stroke-linecap="round" />
-                        </svg>
-                    </div>
-                    <span>
-                        {% if lang == 'fr' %}
-                            Heures par chantier (30 jours)
-                        {% else %}
-                            Ore per cantiere (30 giorni)
-                        {% endif %}
-                    </span>
+        <div class="dashboard-reporting-kpis" id="dashboardReportingKpis">
+            <article class="kpi-card kpi-accent-1 report-kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-icon" aria-hidden="true">📄</span>
+                    <span class="kpi-label">{% if lang == 'fr' %}Rapports 30j{% else %}Rapportini 30g{% endif %}</span>
                 </div>
-            </div>
-            <div class="card-body">
-                <canvas id="chartHoursPerSite"></canvas>
-            </div>
+                <div class="kpi-value" id="kpiReports30Days">0</div>
+                <div class="kpi-sub">{% if lang == 'fr' %}Total des envois{% else %}Totale invii nel periodo{% endif %}</div>
+            </article>
+
+            <article class="kpi-card kpi-accent-2 report-kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-icon" aria-hidden="true">⏱️</span>
+                    <span class="kpi-label">{% if lang == 'fr' %}Heures 30j{% else %}Ore 30g{% endif %}</span>
+                </div>
+                <div class="kpi-value" id="kpiHours30Days">0</div>
+                <div class="kpi-sub">{% if lang == 'fr' %}Charge totale des chantiers{% else %}Carico totale sui cantieri{% endif %}</div>
+            </article>
+
+            <article class="kpi-card kpi-accent-3 report-kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-icon" aria-hidden="true">🏗️</span>
+                    <span class="kpi-label">{% if lang == 'fr' %}Chantiers actifs{% else %}Cantieri attivi{% endif %}</span>
+                </div>
+                <div class="kpi-value" id="kpiActiveSites">{{ cantieri_totali }}</div>
+                <div class="kpi-sub">{% if lang == 'fr' %}Sites actuellement actifs{% else %}Cantieri operativi al momento{% endif %}</div>
+            </article>
+
+            <article class="kpi-card kpi-accent-4 report-kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-icon" aria-hidden="true">✅</span>
+                    <span class="kpi-label">{% if lang == 'fr' %}Rapports clôturés{% else %}Rapportini chiusi{% endif %}</span>
+                </div>
+                <div class="kpi-value" id="kpiClosedReportsPct">0%</div>
+                <div class="kpi-sub">{% if lang == 'fr' %}Taux de fermeture{% else %}Percentuale di chiusura{% endif %}</div>
+            </article>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">
-                    <div class="card-icon card-icon--reports" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" />
-                            <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
-                        </svg>
+        <div class="dashboard-analytics-grid dashboard-analytics-grid--premium">
+            <div class="card analytics-card analytics-card--trend">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon card-icon--reports" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" />
+                                <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <span>
+                            {% if lang == 'fr' %}
+                                Rapports des 30 derniers jours
+                            {% else %}
+                                Rapportini ultimi 30 giorni
+                            {% endif %}
+                        </span>
                     </div>
-                    <span>
-                        {% if lang == 'fr' %}
-                            Statut des rapports
-                        {% else %}
-                            Stato rapportini
-                        {% endif %}
-                    </span>
+                </div>
+                <div class="card-body">
+                    <div id="chartReportsLast30Days" class="analytics-chart" aria-label="trend rapportini ultimi 30 giorni"></div>
                 </div>
             </div>
-            <div class="card-body">
-                <canvas id="chartReportsByStatus"></canvas>
+
+            <div class="card analytics-card analytics-card--hours">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon card-icon--sites" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
+                                <path d="M10 20v-5h4v5" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <span>
+                            {% if lang == 'fr' %}
+                                Heures par chantier (30 jours)
+                            {% else %}
+                                Ore per cantiere (30 giorni)
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="chartHoursPerSite" class="analytics-chart" aria-label="ore per cantiere ultimi 30 giorni"></div>
+                </div>
+            </div>
+
+            <div class="card analytics-card analytics-card--status">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon card-icon--reports" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="4.5" y="3.5" width="15" height="17" rx="2" ry="2" />
+                                <path d="M8 8.5h8M8 12h8M8 15.5h5" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <span>
+                            {% if lang == 'fr' %}
+                                Statut des rapports
+                            {% else %}
+                                Stato rapportini
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="chartReportsByStatus" class="analytics-chart analytics-chart--donut" aria-label="stato rapportini aperti e chiusi"></div>
+                </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <div class="card dashboard-map-card">
         <div class="card-header">
@@ -701,7 +749,7 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
     window.managerDashboardData = {
         reportsLast30Days: {{ chart_reports_last_30_days | tojson | safe }},

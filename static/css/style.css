@@ -1868,6 +1868,101 @@ body {
     margin-top: 1.5rem;
 }
 
+.dashboard-reporting-suite {
+    margin-top: 1.75rem;
+    padding: 1.2rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(129, 140, 248, 0.2);
+    background:
+        radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.18), transparent 34%),
+        radial-gradient(circle at 85% 15%, rgba(56, 189, 248, 0.14), transparent 36%),
+        rgba(2, 6, 23, 0.6);
+    box-shadow: 0 24px 50px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dashboard-reporting-head h2 {
+    margin: 0;
+    font-size: 1.35rem;
+    color: var(--color-text-strong);
+}
+
+.dashboard-reporting-head p {
+    margin: 0.35rem 0 0;
+    color: var(--color-text-subtle);
+}
+
+.dashboard-reporting-kpis {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.report-kpi-card {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(148, 163, 184, 0.26);
+}
+
+.report-kpi-card .kpi-value {
+    font-size: clamp(1.35rem, 2.4vw, 1.95rem);
+    letter-spacing: 0.02em;
+}
+
+.dashboard-analytics-grid--premium {
+    margin-top: 1.15rem;
+    align-items: stretch;
+}
+
+.analytics-card {
+    background: linear-gradient(160deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.62));
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 20px 35px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.analytics-card:hover {
+    border-color: rgba(129, 140, 248, 0.45);
+    box-shadow: 0 24px 42px rgba(2, 6, 23, 0.58), 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+
+.analytics-chart {
+    width: 100%;
+    min-height: 290px;
+}
+
+.analytics-chart--donut {
+    max-width: 460px;
+    margin: 0 auto;
+}
+
+:root[data-theme="light"] .dashboard-reporting-suite {
+    background:
+        radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.1), transparent 34%),
+        radial-gradient(circle at 85% 15%, rgba(56, 189, 248, 0.12), transparent 36%),
+        rgba(255, 255, 255, 0.78);
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 18px 34px rgba(148, 163, 184, 0.2);
+}
+
+:root[data-theme="light"] .analytics-card {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.86), rgba(241, 245, 249, 0.82));
+    border-color: rgba(148, 163, 184, 0.34);
+}
+
+@media (max-width: 768px) {
+    .dashboard-reporting-suite {
+        padding: 0.95rem;
+    }
+
+    .dashboard-reporting-head h2 {
+        font-size: 1.1rem;
+    }
+
+    .analytics-chart {
+        min-height: 250px;
+    }
+}
+
 .map-filters {
     display: flex;
     flex-wrap: wrap;
