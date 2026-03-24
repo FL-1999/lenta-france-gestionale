@@ -558,6 +558,37 @@ class MagazzinoRoutesTests(unittest.TestCase):
         self.assertIn(f"Item archived {self.unique}", response.text)
         self.assertNotIn(f"Item active {self.unique}", response.text)
 
+    def test_archived_items_page_shows_items_in_inactive_categories(self) -> None:
+        with SessionLocal() as db:
+            categoria = MagazzinoCategoria(
+                nome=f"Categoria inattiva {self.unique}",
+                slug=f"categoria-inattiva-{self.unique}",
+                ordine=1,
+                attiva=False,
+            )
+            archived = MagazzinoItem(
+                nome=f"Item archived inactive category {self.unique}",
+                codice=f"ARCI-{self.unique}",
+                quantita_disponibile=0,
+                attivo=False,
+                categoria=categoria,
+            )
+            db.add_all([categoria, archived])
+            db.commit()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                role=RoleEnum.manager,
+                id=1,
+                full_name="Test Manager",
+                is_magazzino_manager=False,
+            )
+        )
+
+        response = self.client.get("/manager/magazzino/archiviati", cookies={"lang": "it"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(f"Item archived inactive category {self.unique}", response.text)
+
     def test_riattiva_item_sets_item_active(self) -> None:
         with SessionLocal() as db:
             item = MagazzinoItem(
