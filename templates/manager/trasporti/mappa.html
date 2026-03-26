@@ -1,39 +1,64 @@
 {% extends "shared/base.html" %}
-{% block title %}Mappa trasporti{% endblock %}
+{% block title %}Mappa operativa{% endblock %}
 {% block content %}
-<div class="page-header"><div class="page-header-main"><p class="page-eyebrow">Trasporti</p><h1 class="page-title">🗺 Mappa logistica</h1></div></div>
-<div class="card card-body">
-  <p><span style="color:#1d4ed8;font-weight:700">● Blu = sito</span> · <span style="color:#ea580c;font-weight:700">● Arancione = camion</span> · <span style="color:#16a34a;font-weight:700">● Verde = attrezzatura</span></p>
-  <div id="logistics-map" style="height:480px;border-radius:12px;"></div>
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">Trasporti · Operatività</p>
+    <h1 class="page-title">🗺️ Mappa operativa centrale</h1>
+    <p class="text-muted" style="margin:0;max-width:80ch;">Vista unica di cantieri, depositi, viaggi, mezzi e autisti con filtri rapidi per controllo operativo quotidiano.</p>
+  </div>
 </div>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-const map = L.map('logistics-map').setView([46.22, 2.21], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19}).addTo(map);
 
-const siteMarkers = {{ site_markers|tojson }};
-const truckMarkers = {{ truck_markers|tojson }};
-const equipmentMarkers = {{ equipment_markers|tojson }};
+<div class="card card-body" data-operational-map data-map-payload='{{ map_payload|tojson }}' data-google-maps-api-key="{{ google_maps_api_key or '' }}">
+  <div class="map-toolbar">
+    <div class="map-view-toggle" role="group" aria-label="Viste mappa">
+      <button type="button" class="btn btn-secondary" data-view="generale">Generale</button>
+      <button type="button" class="btn btn-secondary" data-view="trasporti">Trasporti</button>
+      <button type="button" class="btn btn-secondary" data-view="cantieri_attivi">Cantieri attivi</button>
+      <button type="button" class="btn btn-secondary" data-view="cantieri_chiusi">Cantieri chiusi</button>
+      <button type="button" class="btn btn-secondary" data-view="depositi">Depositi</button>
+      <button type="button" class="btn btn-secondary" data-view="mezzi">Mezzi</button>
+      <button type="button" class="btn btn-secondary" data-view="autisti">Autisti / viaggi</button>
+    </div>
 
-function colorIcon(color){
-  return L.divIcon({className:'custom-dot',html:`<span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.3)"></span>`});
-}
+    <div class="map-extra-filters">
+      <label>Dal <input type="date" data-filter="date_from"></label>
+      <label>Al <input type="date" data-filter="date_to"></label>
+      <label>Stato viaggio
+        <select data-filter="stato_viaggio"></select>
+      </label>
+      <label>Cantiere
+        <select data-filter="cantiere_id"></select>
+      </label>
+      <label>Mezzo
+        <select data-filter="mezzo_id"></select>
+      </label>
+      <label>Autista
+        <select data-filter="autista_id"></select>
+      </label>
+    </div>
+  </div>
 
-for (const m of siteMarkers){
-  L.marker([m.lat, m.lng], {icon: colorIcon('#2563eb')}).addTo(map).bindPopup(`<a href="${m.detail_url}">${m.label}</a>`);
-}
-for (const m of truckMarkers){
-  L.marker([m.lat, m.lng], {icon: colorIcon('#ea580c')}).addTo(map).bindPopup(`<a href="${m.detail_url}">${m.label}</a>`);
-}
-for (const m of equipmentMarkers){
-  L.marker([m.lat, m.lng], {icon: colorIcon('#16a34a')}).addTo(map).bindPopup(`<a href="${m.detail_url}">${m.label}</a>`);
-}
+  <div class="map-legend" data-map-legend></div>
+  <p class="text-muted" data-map-warning style="margin:0.6rem 0;"></p>
 
-const all = siteMarkers.concat(truckMarkers).concat(equipmentMarkers);
-if (all.length){
-  const group = L.featureGroup(all.map((m) => L.marker([m.lat,m.lng])));
-  map.fitBounds(group.getBounds().pad(0.2));
-}
-</script>
+  {% if google_maps_api_key %}
+    <div data-operational-map-canvas style="height:560px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);"></div>
+  {% else %}
+    <div class="alert alert-warning" role="alert">Mappa non disponibile: manca GOOGLE_MAPS_API_KEY.</div>
+  {% endif %}
+</div>
+
+<style>
+.map-toolbar {display:flex;flex-direction:column;gap:.9rem;margin-bottom:.85rem}
+.map-view-toggle {display:flex;flex-wrap:wrap;gap:.5rem}
+.map-extra-filters {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.65rem;align-items:end}
+.map-extra-filters label {display:flex;flex-direction:column;font-size:.82rem;color:rgba(255,255,255,.78);gap:.3rem}
+.map-extra-filters input,.map-extra-filters select {background:#0f172a;border:1px solid rgba(255,255,255,.14);border-radius:8px;color:#f8fafc;padding:.42rem .5rem}
+.map-legend {display:flex;flex-wrap:wrap;gap:.6rem 1.1rem;font-size:.86rem;color:rgba(255,255,255,.86)}
+.map-legend .dot {display:inline-flex;width:10px;height:10px;border-radius:999px;margin-right:.35rem;box-shadow:0 0 0 2px rgba(15,23,42,.9)}
+</style>
+
+<script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
+<script src="{{ url_for('static', path='/js/operational-map.js') }}"></script>
 {% endblock %}
