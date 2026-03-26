@@ -39,6 +39,15 @@
     </div>
   </div>
 
+      <div class="map-sync-row">
+      <form method="post" action="{{ url_for('manager_trasporti_gps_sync') }}">
+        <button type="submit" class="btn btn-secondary">🔄 Sincronizza GPS camion</button>
+      </form>
+      {% if map_payload.gps_sync and map_payload.gps_sync.status == 'ok' %}
+        <span class="text-muted">Sync completata: {{ map_payload.gps_sync.updated or 0 }} camion aggiornati su {{ map_payload.gps_sync.trucks or 0 }} configurati.</span>
+      {% endif %}
+    </div>
+
   <div class="map-legend" data-map-legend></div>
   <p class="text-muted" data-map-warning style="margin:0.6rem 0;"></p>
 
@@ -55,6 +64,7 @@
 .map-extra-filters {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.65rem;align-items:end}
 .map-extra-filters label {display:flex;flex-direction:column;font-size:.82rem;color:rgba(255,255,255,.78);gap:.3rem}
 .map-extra-filters input,.map-extra-filters select {background:#0f172a;border:1px solid rgba(255,255,255,.14);border-radius:8px;color:#f8fafc;padding:.42rem .5rem}
+.map-sync-row{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:.5rem}
 .map-legend {display:flex;flex-wrap:wrap;gap:.6rem 1.1rem;font-size:.86rem;color:rgba(255,255,255,.86)}
 .map-legend .dot {display:inline-flex;width:10px;height:10px;border-radius:999px;margin-right:.35rem;box-shadow:0 0 0 2px rgba(15,23,42,.9)}
 </style>

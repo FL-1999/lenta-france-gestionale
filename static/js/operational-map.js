@@ -16,6 +16,9 @@
     trip: "#eab308",
     vehicle: "#a855f7",
     driver: "#14b8a6",
+    gps_real: "#22c55e",
+    gps_fallback: "#f97316",
+    estimated: "#eab308",
   };
 
   const parsePayload = (container) => {
@@ -212,9 +215,14 @@
 
       if (cfg.trips) {
         visibleTrips.forEach((trip) => {
-          const tripColor = cfg.tripMode === "vehicle" ? COLORS.vehicle : cfg.tripMode === "driver" ? COLORS.driver : COLORS.trip;
+          let tripColor = cfg.tripMode === "vehicle" ? COLORS.vehicle : cfg.tripMode === "driver" ? COLORS.driver : COLORS.trip;
+          if (cfg.tripMode === "transport") {
+            if (trip.marker_source === "gps_reale") tripColor = COLORS.gps_real;
+            else if (trip.marker_source === "gps_non_disponibile") tripColor = COLORS.gps_fallback;
+            else tripColor = COLORS.estimated;
+          }
           const markerTitle = cfg.tripMode === "vehicle" ? (trip.vehicle_label || `Mezzo viaggio ${trip.code}`) : cfg.tripMode === "driver" ? (trip.driver_name || `Autista viaggio ${trip.code}`) : `Viaggio ${trip.code}`;
-          const marker = addMarker({ lat: trip.marker.lat, lng: trip.marker.lng }, markerTitle, tripColor, buildInfo(markerTitle, [`<strong>Tipo:</strong> Viaggio`, `<strong>Codice:</strong> ${trip.code}`, `<strong>Stato:</strong> ${trip.state_label}`, `<strong>Origine:</strong> ${trip.origin}`, `<strong>Destinazione:</strong> ${trip.destination}`], trip.detail_url));
+          const marker = addMarker({ lat: trip.marker.lat, lng: trip.marker.lng }, markerTitle, tripColor, buildInfo(markerTitle, [`<strong>Tipo:</strong> Viaggio`, `<strong>Codice:</strong> ${trip.code}`, `<strong>Stato:</strong> ${trip.state_label}`, `<strong>Mezzo:</strong> ${trip.vehicle_label || "-"}`, `<strong>Autista:</strong> ${trip.driver_name || "-"}`, `<strong>GPS:</strong> ${trip.gps?.gps_status_label || "Stima"}`, trip.gps?.timestamp ? `<strong>Ultimo update:</strong> ${trip.gps.timestamp}` : "", trip.gps?.speed_kmh !== undefined && trip.gps?.speed_kmh !== null ? `<strong>Velocità:</strong> ${trip.gps.speed_kmh.toFixed(1)} km/h` : "", trip.gps?.status ? `<strong>Stato mezzo:</strong> ${trip.gps.status}` : "", `<strong>Origine:</strong> ${trip.origin}`, `<strong>Destinazione:</strong> ${trip.destination}`], trip.detail_url));
           bounds.extend(marker.getPosition());
           if (cfg.tripMode === "transport") {
             drawTripRoute(trip, true);
@@ -241,13 +249,15 @@
       if (!bounds.isEmpty()) map.fitBounds(bounds, 70);
 
       const stats = payload.stats || {};
-      warningEl.textContent = `Record senza coordinate ignorati: cantieri ${stats.sites_missing_coordinates || 0}, depositi ${stats.depots_missing_coordinates || 0}, viaggi ${stats.trips_missing_coordinates || 0}.`;
+      warningEl.textContent = `Record senza coordinate ignorati: cantieri ${stats.sites_missing_coordinates || 0}, depositi ${stats.depots_missing_coordinates || 0}, viaggi ${stats.trips_missing_coordinates || 0}. Camion con GPS reale: ${stats.trips_with_real_gps || 0}. Camion in fallback: ${stats.trips_with_gps_fallback || 0}.`;
 
       legendEl.innerHTML = [
         [COLORS.site_active, "Cantiere attivo"],
         [COLORS.site_closed, "Cantiere chiuso"],
         [COLORS.depot, "Deposito"],
-        [COLORS.trip, "Trasporto"],
+        [COLORS.gps_real, "Camion con GPS reale"],
+        [COLORS.gps_fallback, "Camion fallback GPS"],
+        [COLORS.estimated, "Viaggio stimato"],
         [COLORS.vehicle, "Mezzo"],
         [COLORS.driver, "Autista"],
       ].map(([color, label]) => `<span><span class="dot" style="background:${color}"></span>${label}</span>`).join("");

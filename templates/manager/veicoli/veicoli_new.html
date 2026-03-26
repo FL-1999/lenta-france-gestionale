@@ -109,6 +109,15 @@
           </div>
 
           <div class="form-field">
+            <label>Categoria mezzo</label>
+            <select name="categoria">
+              <option value="altro">Altro mezzo</option>
+              <option value="camion">Camion (tracking GPS reale)</option>
+            </select>
+            <small>Solo i camion useranno l'integrazione GPS reale.</small>
+          </div>
+
+          <div class="form-field">
             <label>{% if lang == 'fr' %}Carburant{% else %}Carburante{% endif %}</label>
             <select name="carburante">
               <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
@@ -166,6 +175,16 @@
           <div class="form-field" style="display:flex; align-items:center; gap:.5rem;">
             <input type="checkbox" id="visibile_trasporti" name="visibile_trasporti" >
             <label for="visibile_trasporti">Disponibile nei trasporti</label>
+          </div>
+
+          <div class="form-field">
+            <label>GPS Device ID</label>
+            <input type="text" name="gps_device_id" value="{{ veicolo.gps_device_id if veicolo else '' }}" placeholder="es. DEV-001">
+          </div>
+
+          <div class="form-field">
+            <label>Provider Vehicle ID</label>
+            <input type="text" name="provider_vehicle_id" value="{{ veicolo.provider_vehicle_id if veicolo else '' }}" placeholder="es. TRUCK-42">
           </div>
 
           <div class="form-field">

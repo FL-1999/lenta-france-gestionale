@@ -151,6 +151,9 @@ def manager_veicoli_create(
     revisione_scadenza: str | None = Form(None),
     assegnato_a_id: str | None = Form(None),
     visibile_trasporti: str | None = Form(None),
+    categoria: str | None = Form("altro"),
+    gps_device_id: str | None = Form(None),
+    provider_vehicle_id: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -171,6 +174,9 @@ def manager_veicoli_create(
         revisione_scadenza=_parse_date(revisione_scadenza),
         assegnato_a_id=_parse_int(assegnato_a_id),
         visibile_trasporti=visibile_trasporti == "on",
+        categoria=(categoria or "altro").strip().lower(),
+        gps_device_id=(gps_device_id or "").strip() or None,
+        provider_vehicle_id=(provider_vehicle_id or "").strip() or None,
     )
     db.add(veicolo)
     db.commit()
@@ -241,6 +247,9 @@ def manager_veicoli_update(
     revisione_scadenza: str | None = Form(None),
     assegnato_a_id: str | None = Form(None),
     visibile_trasporti: str | None = Form(None),
+    categoria: str | None = Form("altro"),
+    gps_device_id: str | None = Form(None),
+    provider_vehicle_id: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -267,6 +276,9 @@ def manager_veicoli_update(
     veicolo.revisione_scadenza = _parse_date(revisione_scadenza)
     veicolo.assegnato_a_id = _parse_int(assegnato_a_id)
     veicolo.visibile_trasporti = visibile_trasporti == "on"
+    veicolo.categoria = (categoria or "altro").strip().lower()
+    veicolo.gps_device_id = (gps_device_id or "").strip() or None
+    veicolo.provider_vehicle_id = (provider_vehicle_id or "").strip() or None
 
     db.add(veicolo)
     db.commit()

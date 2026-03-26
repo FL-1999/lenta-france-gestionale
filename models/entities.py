@@ -904,8 +904,38 @@ class VeicoloTrasporto(Base):
     modello = Column(String(120), nullable=False)
     targa = Column(String(50), nullable=False, unique=True, index=True)
     visibile_trasporti = Column(Boolean, nullable=False, default=False)
+    categoria = Column(String(50), nullable=False, default="altro")
+    gps_device_id = Column(String(100), nullable=True, index=True)
+    provider_vehicle_id = Column(String(100), nullable=True, index=True)
+    gps_last_latitude = Column(Float, nullable=True)
+    gps_last_longitude = Column(Float, nullable=True)
+    gps_last_timestamp = Column(DateTime, nullable=True)
+    gps_last_speed_kmh = Column(Float, nullable=True)
+    gps_last_status = Column(String(100), nullable=True)
 
     viaggi = relationship("TrasportoViaggio", back_populates="mezzo")
+    gps_track_points = relationship(
+        "VehicleGpsTrackPoint",
+        back_populates="vehicle",
+        cascade="all, delete-orphan",
+        order_by="VehicleGpsTrackPoint.recorded_at.desc()",
+    )
+
+
+class VehicleGpsTrackPoint(Base, TimestampMixin):
+    __tablename__ = "vehicle_gps_track_points"
+
+    id = Column(Integer, primary_key=True, index=True)
+    vehicle_id = Column(Integer, ForeignKey("veicoli.id"), nullable=False, index=True)
+    provider = Column(String(50), nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    recorded_at = Column(DateTime, nullable=False, index=True)
+    speed_kmh = Column(Float, nullable=True)
+    vehicle_status = Column(String(100), nullable=True)
+    payload = Column(JSON, nullable=True)
+
+    vehicle = relationship("VeicoloTrasporto", back_populates="gps_track_points")
 
 
 class TrasportoMezzo(Base, TimestampMixin):
