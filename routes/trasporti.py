@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 from urllib.parse import quote, urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
@@ -29,9 +29,11 @@ from models import (
     User,
 )
 from models.veicoli import Veicolo
+from services import GPSIntegrationService, get_gps_provider_adapter
 from permissions import can_access_logistics_area, can_access_manager_area, can_manage_trip_loads, has_perm
 from template_context import register_manager_badges, render_template
 from utils.google_maps import estimate_trip_eta
+from utils.gps import trip_gps_marker_context
 from utils.places import format_place_label, get_place_by_value, get_selectable_places
 from utils.trips import can_edit_trip, format_trip_datetime_parts, format_trip_time
 
@@ -311,6 +313,8 @@ def _build_trip_map_context(viaggio: TrasportoViaggio) -> dict[str, object]:
     }
 
 
+
+
 def _trip_missing_equipment_alerts(viaggi: list[TrasportoViaggio]) -> list[dict[str, object]]:
     alerts = []
     for viaggio in viaggi:
@@ -526,6 +530,39 @@ def manager_trasporti_viaggi_move_date(
     return RedirectResponse(url=f"{request.url_for('manager_trasporti_planner')}?week_start={redirect_week}", status_code=303)
 
 
+@router.post("/manager/trasporti/gps/sync", name="manager_trasporti_gps_sync")
+def manager_trasporti_gps_sync(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_logistics_access(current_user)
+    _ensure_manager(current_user)
+
+    provider = get_gps_provider_adapter()
+    service = GPSIntegrationService(provider)
+    sync_result = service.sync_truck_positions(db)
+    query = urlencode(
+        {
+            "gps_sync": "ok",
+            "gps_updated": sync_result.get("updated", 0),
+            "gps_trucks": sync_result.get("trucks", 0),
+        }
+    )
+    return RedirectResponse(url=f"{request.url_for('manager_trasporti_mappa')}?{query}", status_code=303)
+
+
+@router.post("/api/trasporti/gps/webhook", name="api_trasporti_gps_webhook")
+def api_trasporti_gps_webhook(
+    payload: dict = Body(default_factory=dict),
+    db: Session = Depends(get_db),
+):
+    provider = get_gps_provider_adapter()
+    service = GPSIntegrationService(provider)
+    result = service.ingest_webhook_positions(db, payload)
+    return result
+
+
 @router.get("/manager/trasporti/mappa", response_class=HTMLResponse, name="manager_trasporti_mappa")
 def manager_trasporti_mappa(
     request: Request,
@@ -536,6 +573,9 @@ def manager_trasporti_mappa(
     cantiere_id: int | None = None,
     mezzo_id: int | None = None,
     autista_id: int | None = None,
+    gps_sync: str | None = None,
+    gps_updated: int | None = None,
+    gps_trucks: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -638,15 +678,20 @@ def manager_trasporti_mappa(
 
     map_trips = []
     skipped_trip_points = 0
+    trips_with_real_gps = 0
+    trips_with_gps_fallback = 0
     for trip in trips:
         _decorate_trip_locations(trip)
         route_points = _build_trip_route_points(trip)
         points_with_coords = [point for point in route_points if point.get("lat") is not None and point.get("lng") is not None]
-        if not points_with_coords:
+        gps_context = trip_gps_marker_context(trip)
+        if not points_with_coords and not gps_context.get("gps_available"):
             skipped_trip_points += 1
             continue
 
-        center_point = points_with_coords[min(len(points_with_coords) // 2, len(points_with_coords) - 1)]
+        center_point = points_with_coords[min(len(points_with_coords) // 2, len(points_with_coords) - 1)] if points_with_coords else None
+        marker_lat = float(gps_context["lat"]) if gps_context.get("gps_available") else float(center_point["lat"])
+        marker_lng = float(gps_context["lng"]) if gps_context.get("gps_available") else float(center_point["lng"])
         autista_name = None
         if trip.autista:
             autista_name = trip.autista.full_name or trip.autista.email
@@ -654,6 +699,11 @@ def manager_trasporti_mappa(
         mezzo_label = None
         if trip.mezzo:
             mezzo_label = f"{(trip.mezzo.marca or '').strip()} {(trip.mezzo.modello or '').strip()} ({trip.mezzo.targa})".strip()
+
+        if gps_context.get("source") == "gps_reale":
+            trips_with_real_gps += 1
+        elif (trip.mezzo and (trip.mezzo.categoria or "").strip().lower() == "camion"):
+            trips_with_gps_fallback += 1
 
         map_trips.append(
             {
@@ -669,9 +719,11 @@ def manager_trasporti_mappa(
                 "vehicle_id": trip.mezzo_id,
                 "vehicle_label": mezzo_label,
                 "marker": {
-                    "lat": float(center_point["lat"]),
-                    "lng": float(center_point["lng"]),
+                    "lat": marker_lat,
+                    "lng": marker_lng,
                 },
+                "marker_source": gps_context.get("source", "stimata"),
+                "gps": gps_context,
                 "route_points": points_with_coords,
                 "has_full_route": len(points_with_coords) == len(route_points),
                 "detail_url": str(request.url_for("manager_trasporti_viaggi_detail", viaggio_id=trip.id)),
@@ -744,6 +796,13 @@ def manager_trasporti_mappa(
             "sites_missing_coordinates": skipped_sites,
             "depots_missing_coordinates": skipped_depots,
             "trips_missing_coordinates": skipped_trip_points,
+            "trips_with_real_gps": trips_with_real_gps,
+            "trips_with_gps_fallback": trips_with_gps_fallback,
+        },
+        "gps_sync": {
+            "status": gps_sync,
+            "updated": gps_updated,
+            "trucks": gps_trucks,
         },
     }
 
