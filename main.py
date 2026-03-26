@@ -3,7 +3,8 @@ import os
 import time
 import re
 import uuid
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timedelta
 from math import ceil
 from typing import List
@@ -238,6 +239,12 @@ def initialize_application() -> None:
     """Initialize database schema and bootstrap required data at startup."""
     Base.metadata.create_all(bind=engine)
     SQLModel.metadata.create_all(bind=engine)
+    logger.info("Schema di base inizializzato.")
+
+
+def run_post_startup_tasks() -> None:
+    """Run idempotent maintenance tasks that are not required for port readiness."""
+    logger.info("Avvio post-startup tasks (non bloccanti).")
     upgrade_db(engine)
 
     if DEBUG_DB_SCHEMA_CHECK:
@@ -247,6 +254,7 @@ def initialize_application() -> None:
         check_and_suggest_db_upgrade(engine, Base, auto_fix=AUTO_FIX)
 
     create_initial_admin()
+    logger.info("Post-startup tasks completati.")
 
 
 def _parse_bool_env(name: str, default: bool) -> bool:
@@ -316,8 +324,17 @@ def build_cors_settings() -> dict:
 async def lifespan(app: FastAPI):
     logger.info("Startup applicazione avviato (env=%s).", APP_ENV)
     initialize_application()
-    logger.info("Startup applicazione completato.")
-    yield
+    post_startup_task = asyncio.create_task(asyncio.to_thread(run_post_startup_tasks))
+    app.state.post_startup_task = post_startup_task
+    logger.info("Startup applicazione completato (task pesanti deferiti in background).")
+    try:
+        yield
+    finally:
+        task = getattr(app.state, "post_startup_task", None)
+        if task and not task.done():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
 
 app = FastAPI(
     title="Lenta France Gestionale",
