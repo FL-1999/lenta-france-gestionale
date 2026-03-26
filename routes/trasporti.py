@@ -20,6 +20,7 @@ from models import (
     RoleEnum,
     UserRole,
     Site,
+    SiteStatusEnum,
     TrasportoAttrezzaturaViaggio,
     TrasportoRichiestaAttrezzatura,
     TrasportoStatoEnum,
@@ -191,7 +192,16 @@ def _decorate_trip_locations(viaggio: TrasportoViaggio) -> TrasportoViaggio:
     return viaggio
 
 
-def _build_trip_point(*, name: str | None, place_type: str | None, role: str, lat: float | None, lng: float | None) -> dict[str, object]:
+def _build_trip_point(
+    *,
+    name: str | None,
+    place_type: str | None,
+    role: str,
+    lat: float | None,
+    lng: float | None,
+    site_id: int | None = None,
+    depot_id: int | None = None,
+) -> dict[str, object]:
     role_labels = {
         "origin": "Origine",
         "stop": "Tappa",
@@ -210,22 +220,24 @@ def _build_trip_point(*, name: str | None, place_type: str | None, role: str, la
         "role_label": role_labels.get(role, "Tappa"),
         "lat": lat,
         "lng": lng,
+        "site_id": site_id,
+        "depot_id": depot_id,
     }
 
 
 def _trip_point_from_place(site: Site | None, depot: Depot | None, *, role: str, fallback_name: str | None) -> dict[str, object]:
     if site:
-        return _build_trip_point(name=site.name, place_type="site", role=role, lat=site.lat, lng=site.lng)
+        return _build_trip_point(name=site.name, place_type="site", role=role, lat=site.lat, lng=site.lng, site_id=site.id)
     if depot:
-        return _build_trip_point(name=depot.name, place_type="depot", role=role, lat=depot.lat, lng=depot.lng)
+        return _build_trip_point(name=depot.name, place_type="depot", role=role, lat=depot.lat, lng=depot.lng, depot_id=depot.id)
     return _build_trip_point(name=fallback_name, place_type=None, role=role, lat=None, lng=None)
 
 
 def _stop_trip_point(tappa: TrasportoTappa) -> dict[str, object]:
     if tappa.site:
-        return _build_trip_point(name=tappa.site.name, place_type="site", role="stop", lat=tappa.site.lat, lng=tappa.site.lng)
+        return _build_trip_point(name=tappa.site.name, place_type="site", role="stop", lat=tappa.site.lat, lng=tappa.site.lng, site_id=tappa.site.id)
     if tappa.depot:
-        return _build_trip_point(name=tappa.depot.name, place_type="depot", role="stop", lat=tappa.depot.lat, lng=tappa.depot.lng)
+        return _build_trip_point(name=tappa.depot.name, place_type="depot", role="stop", lat=tappa.depot.lat, lng=tappa.depot.lng, depot_id=tappa.depot.id)
     return _build_trip_point(name=tappa.destinazione, place_type=None, role="stop", lat=None, lng=None)
 
 
@@ -517,100 +529,233 @@ def manager_trasporti_viaggi_move_date(
 @router.get("/manager/trasporti/mappa", response_class=HTMLResponse, name="manager_trasporti_mappa")
 def manager_trasporti_mappa(
     request: Request,
+    view: str = "generale",
+    date_from: str | None = None,
+    date_to: str | None = None,
+    stato_viaggio: str = "all",
+    cantiere_id: int | None = None,
+    mezzo_id: int | None = None,
+    autista_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_logistics_access(current_user)
     _ensure_manager(current_user)
-    sites = (
-        db.query(Site)
-        .filter(Site.lat.isnot(None), Site.lng.isnot(None), Site.is_active.is_(True))
-        .order_by(Site.name.asc())
-        .all()
-    )
-    depots = (
-        db.query(Depot)
-        .filter(Depot.lat.isnot(None), Depot.lng.isnot(None), Depot.is_active.is_(True))
-        .order_by(Depot.name.asc())
-        .all()
-    )
-    place_map = {f"site:{site.id}": site for site in sites}
-    place_map.update({f"depot:{depot.id}": depot for depot in depots})
 
-    trucks_in_travel = (
+    sites = db.query(Site).order_by(Site.name.asc()).all()
+    depots = db.query(Depot).order_by(Depot.name.asc()).all()
+
+    trip_query = (
         db.query(TrasportoViaggio)
         .options(
+            joinedload(TrasportoViaggio.autista),
             joinedload(TrasportoViaggio.mezzo),
             joinedload(TrasportoViaggio.origine_site),
             joinedload(TrasportoViaggio.origine_depot),
             joinedload(TrasportoViaggio.destinazione_site),
             joinedload(TrasportoViaggio.destinazione_depot),
-            joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.attrezzatura),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.site),
+            joinedload(TrasportoViaggio.tappe).joinedload(TrasportoTappa.depot),
         )
-        .filter(TrasportoViaggio.stato == TrasportoStatoEnum.in_viaggio)
-        .all()
+        .order_by(TrasportoViaggio.data_partenza.desc(), TrasportoViaggio.id.desc())
     )
 
-    truck_markers = []
-    equipment_markers = []
-    for trip in trucks_in_travel:
-        _decorate_trip_locations(trip)
-        origin_place = place_map.get(_trip_place_value(trip, "origine"))
-        dest_place = place_map.get(_trip_place_value(trip, "destinazione"))
-        if origin_place and dest_place:
-            lat = (origin_place.lat + dest_place.lat) / 2
-            lng = (origin_place.lng + dest_place.lng) / 2
-        elif dest_place:
-            lat, lng = dest_place.lat, dest_place.lng
-        elif origin_place:
-            lat, lng = origin_place.lat, origin_place.lng
+    if date_from:
+        try:
+            trip_query = trip_query.filter(TrasportoViaggio.data_partenza >= datetime.strptime(date_from, "%Y-%m-%d").date())
+        except ValueError:
+            date_from = None
+    if date_to:
+        try:
+            trip_query = trip_query.filter(TrasportoViaggio.data_partenza <= datetime.strptime(date_to, "%Y-%m-%d").date())
+        except ValueError:
+            date_to = None
+
+    if stato_viaggio != "all":
+        allowed_states = {state.value for state in TrasportoStatoEnum}
+        if stato_viaggio in allowed_states:
+            trip_query = trip_query.filter(TrasportoViaggio.stato == TrasportoStatoEnum(stato_viaggio))
         else:
+            stato_viaggio = "all"
+
+    if mezzo_id:
+        trip_query = trip_query.filter(TrasportoViaggio.mezzo_id == mezzo_id)
+    if autista_id:
+        trip_query = trip_query.filter(TrasportoViaggio.autista_id == autista_id)
+    if cantiere_id:
+        trip_query = trip_query.filter(
+            (TrasportoViaggio.origine_site_id == cantiere_id)
+            | (TrasportoViaggio.destinazione_site_id == cantiere_id)
+            | (TrasportoViaggio.tappe.any(TrasportoTappa.site_id == cantiere_id))
+        )
+
+    trips = trip_query.all()
+
+    map_sites = []
+    skipped_sites = 0
+    for site in sites:
+        if site.lat is None or site.lng is None:
+            skipped_sites += 1
             continue
-        truck_markers.append(
+        map_sites.append(
             {
-                "lat": float(lat),
-                "lng": float(lng),
-                "label": f"{trip.codice_viaggio} - {trip.origine_label} → {trip.destinazione_label}",
+                "id": site.id,
+                "name": site.name,
+                "city": site.city,
+                "status": site.status.value if site.status else None,
+                "status_label": "Attivo" if site.status == SiteStatusEnum.aperto else "Chiuso",
+                "lat": float(site.lat),
+                "lng": float(site.lng),
+                "detail_url": str(request.url_for("manager_site_detail", site_id=site.id)),
+            }
+        )
+
+    map_depots = []
+    skipped_depots = 0
+    for depot in depots:
+        if depot.lat is None or depot.lng is None:
+            skipped_depots += 1
+            continue
+        map_depots.append(
+            {
+                "id": depot.id,
+                "name": depot.name,
+                "city": depot.city,
+                "is_active": bool(depot.is_active),
+                "lat": float(depot.lat),
+                "lng": float(depot.lng),
+                "detail_url": str(request.url_for("manager_depositi_edit", depot_id=depot.id)),
+            }
+        )
+
+    trip_state_labels = {
+        TrasportoStatoEnum.programmato.value: "Programmato",
+        TrasportoStatoEnum.in_carico.value: "In carico",
+        TrasportoStatoEnum.in_viaggio.value: "In viaggio",
+        TrasportoStatoEnum.arrivato.value: "Arrivato",
+        TrasportoStatoEnum.completato.value: "Completato",
+    }
+
+    map_trips = []
+    skipped_trip_points = 0
+    for trip in trips:
+        _decorate_trip_locations(trip)
+        route_points = _build_trip_route_points(trip)
+        points_with_coords = [point for point in route_points if point.get("lat") is not None and point.get("lng") is not None]
+        if not points_with_coords:
+            skipped_trip_points += 1
+            continue
+
+        center_point = points_with_coords[min(len(points_with_coords) // 2, len(points_with_coords) - 1)]
+        autista_name = None
+        if trip.autista:
+            autista_name = trip.autista.full_name or trip.autista.email
+
+        mezzo_label = None
+        if trip.mezzo:
+            mezzo_label = f"{(trip.mezzo.marca or '').strip()} {(trip.mezzo.modello or '').strip()} ({trip.mezzo.targa})".strip()
+
+        map_trips.append(
+            {
+                "id": trip.id,
+                "code": trip.codice_viaggio,
+                "state": trip.stato.value,
+                "state_label": trip_state_labels.get(trip.stato.value, trip.stato.value),
+                "date": trip.data_partenza.isoformat() if trip.data_partenza else None,
+                "origin": trip.origine_label,
+                "destination": trip.destinazione_label,
+                "driver_id": trip.autista_id,
+                "driver_name": autista_name,
+                "vehicle_id": trip.mezzo_id,
+                "vehicle_label": mezzo_label,
+                "marker": {
+                    "lat": float(center_point["lat"]),
+                    "lng": float(center_point["lng"]),
+                },
+                "route_points": points_with_coords,
+                "has_full_route": len(points_with_coords) == len(route_points),
                 "detail_url": str(request.url_for("manager_trasporti_viaggi_detail", viaggio_id=trip.id)),
             }
         )
-        for ass in trip.assegnazioni_attrezzature:
-            equipment_markers.append(
-                {
-                    "lat": float(lat),
-                    "lng": float(lng),
-                    "label": f"{ass.attrezzatura.codice} ({ass.attrezzatura.tipo}) su {trip.codice_viaggio}",
-                    "detail_url": str(request.url_for("manager_trasporti_viaggi_detail", viaggio_id=trip.id)),
-                }
-            )
 
-    site_markers = [
-        {
-            "lat": float(s.lat),
-            "lng": float(s.lng),
-            "label": format_place_label("site", s.name),
-            "detail_url": str(request.url_for("manager_site_detail", site_id=s.id)),
-        }
-        for s in sites
-    ]
-    site_markers.extend(
-        {
-            "lat": float(d.lat),
-            "lng": float(d.lng),
-            "label": format_place_label("depot", d.name),
-            "detail_url": str(request.url_for("manager_depositi_edit", depot_id=d.id)),
-        }
-        for d in depots
+    available_drivers = sorted(
+        [
+            {"id": trip.autista_id, "label": (trip.autista.full_name or trip.autista.email) if trip.autista else f"ID {trip.autista_id}"}
+            for trip in trips
+            if trip.autista_id
+        ],
+        key=lambda item: item["label"].lower(),
     )
+    unique_drivers = []
+    seen_driver_ids = set()
+    for item in available_drivers:
+        if item["id"] in seen_driver_ids:
+            continue
+        seen_driver_ids.add(item["id"])
+        unique_drivers.append(item)
+
+    available_vehicles = sorted(
+        [
+            {
+                "id": trip.mezzo_id,
+                "label": (
+                    f"{(trip.mezzo.marca or '').strip()} {(trip.mezzo.modello or '').strip()} ({trip.mezzo.targa})".strip()
+                    if trip.mezzo
+                    else f"Mezzo {trip.mezzo_id}"
+                ),
+            }
+            for trip in trips
+            if trip.mezzo_id
+        ],
+        key=lambda item: item["label"].lower(),
+    )
+    unique_vehicles = []
+    seen_vehicle_ids = set()
+    for item in available_vehicles:
+        if item["id"] in seen_vehicle_ids:
+            continue
+        seen_vehicle_ids.add(item["id"])
+        unique_vehicles.append(item)
+
+    selected_view = view if view in {"generale", "trasporti", "cantieri_attivi", "cantieri_chiusi", "depositi", "mezzi", "autisti"} else "generale"
+
+    map_payload = {
+        "sites": map_sites,
+        "depots": map_depots,
+        "trips": map_trips,
+        "filters": {
+            "selected_view": selected_view,
+            "selected": {
+                "stato_viaggio": stato_viaggio,
+                "date_from": date_from,
+                "date_to": date_to,
+                "cantiere_id": cantiere_id,
+                "mezzo_id": mezzo_id,
+                "autista_id": autista_id,
+            },
+            "drivers": unique_drivers,
+            "vehicles": unique_vehicles,
+            "sites": [{"id": site.id, "name": site.name} for site in sites],
+            "trip_states": [{"value": "all", "label": "Tutti"}] + [
+                {"value": state.value, "label": trip_state_labels[state.value]} for state in TrasportoStatoEnum
+            ],
+        },
+        "stats": {
+            "sites_missing_coordinates": skipped_sites,
+            "depots_missing_coordinates": skipped_depots,
+            "trips_missing_coordinates": skipped_trip_points,
+        },
+    }
 
     return render_template(
         templates,
         request,
         "manager/trasporti/mappa.html",
-        {"site_markers": site_markers, "truck_markers": truck_markers, "equipment_markers": equipment_markers},
+        {"map_payload": map_payload},
         db,
         current_user,
     )
+
 
 
 @router.get(
