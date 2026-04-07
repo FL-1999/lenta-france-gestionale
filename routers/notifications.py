@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from auth import get_current_active_user_html
+from auth import get_current_active_user_api
 from database import get_db
 from models import Notification, User
 
@@ -74,7 +74,7 @@ def _serialize_notification(notification: Notification) -> NotificationListItem:
 @router.get("/unread-count", response_model=UnreadCountResponse)
 def unread_count(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     base_query = _notifications_base_query(db, current_user)
     unread_count = (
@@ -87,7 +87,7 @@ def unread_count(
 def list_latest_notifications(
     limit: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     limit = max(1, min(limit, 50))
     base_query = _notifications_base_query(db, current_user)
@@ -109,7 +109,7 @@ def list_latest_notifications(
 def mark_notifications_read(
     payload: MarkReadRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     base_query = _notifications_base_query(db, current_user)
     if payload.mark_all:
@@ -143,7 +143,7 @@ def list_notifications(
     unread_only: bool = False,
     limit: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     limit = max(1, min(limit, 50))
     since_date = datetime.utcnow() - timedelta(days=30)
@@ -169,7 +169,7 @@ def list_notifications(
 @router.get("/poll", response_model=NotificationListResponse)
 def poll_notifications(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     base_query = _notifications_base_query(db, current_user)
     unread_count = (
@@ -190,7 +190,7 @@ def poll_notifications(
 def mark_notification_read(
     notification_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     notification = (
         _notifications_base_query(db, current_user)
