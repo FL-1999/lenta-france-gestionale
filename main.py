@@ -88,6 +88,7 @@ from logging_config import configure_logging
 
 from db_upgrade import upgrade_db, check_db_schema
 from utils.db_check import check_and_suggest_db_upgrade
+from utils.trips import compute_trip_progress
 
 
 configure_logging()
@@ -1269,6 +1270,53 @@ def _build_trip_route_points_for_dashboard(viaggio: TrasportoViaggio) -> list[di
     return points
 
 
+def _format_duration_for_map(value: timedelta | None) -> str:
+    if not value:
+        return "0 min"
+    total_minutes = max(int(value.total_seconds() // 60), 0)
+    hours, minutes = divmod(total_minutes, 60)
+    if hours and minutes:
+        return f"{hours}h {minutes} min"
+    if hours:
+        return f"{hours}h"
+    return f"{minutes} min"
+
+
+def _trip_progress_for_map(viaggio: TrasportoViaggio) -> dict[str, object]:
+    progress_data = compute_trip_progress(viaggio)
+    if not progress_data["is_available"]:
+        return {
+            "percent": None,
+            "status": "non_disponibile",
+            "status_label": "Stima non disponibile",
+            "timing_text": "Stima non disponibile",
+            "color": "unknown",
+        }
+
+    status = str(progress_data["status"])
+    if status == "non_partito":
+        color = "green"
+        timing_text = "Non ancora partito"
+    elif status == "in_ritardo":
+        color = "red"
+        timing_text = f"In ritardo di {_format_duration_for_map(progress_data['tempo_ritardo'])}"
+    else:
+        percent = int(progress_data["progress_percent"] or 0)
+        color = "orange" if percent >= 80 else "green"
+        timing_text = (
+            f"Partito da {_format_duration_for_map(progress_data['tempo_trascorso'])} · "
+            f"Arrivo stimato tra {_format_duration_for_map(progress_data['tempo_rimanente'])}"
+        )
+
+    return {
+        "percent": progress_data["progress_percent"],
+        "status": status,
+        "status_label": progress_data["status_label"],
+        "timing_text": timing_text,
+        "color": color,
+    }
+
+
 def _build_transports_map_data(
     viaggi: list[TrasportoViaggio],
     *,
@@ -1297,6 +1345,7 @@ def _build_transports_map_data(
                 if part
             )
         trip_detail_url = trip_detail_url_template.replace("__TRIP_ID__", str(viaggio.id))
+        progress = _trip_progress_for_map(viaggio)
         transports_map_data.append(
             {
                 "id": int(viaggio.id),
@@ -1309,6 +1358,7 @@ def _build_transports_map_data(
                 "vehicle_name": mezzo_label,
                 "route_points": route_points,
                 "detail_url": trip_detail_url,
+                "progress": progress,
             }
         )
     return transports_map_data

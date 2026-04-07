@@ -35,7 +35,7 @@ from template_context import register_manager_badges, render_template
 from utils.google_maps import estimate_trip_eta
 from utils.gps import trip_gps_marker_context
 from utils.places import format_place_label, get_place_by_value, get_selectable_places
-from utils.trips import can_edit_trip, format_trip_datetime_parts, format_trip_time
+from utils.trips import can_edit_trip, compute_trip_progress, format_trip_datetime_parts, format_trip_time
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
@@ -49,6 +49,18 @@ def _parse_optional_time(raw_value: str | None) -> time | None:
     if not value:
         return None
     return datetime.strptime(value, "%H:%M").time()
+
+
+def _format_duration_minutes(value: timedelta | None) -> str:
+    if not value:
+        return "0 min"
+    total_minutes = max(int(value.total_seconds() // 60), 0)
+    hours, minutes = divmod(total_minutes, 60)
+    if hours and minutes:
+        return f"{hours}h {minutes} min"
+    if hours:
+        return f"{hours}h"
+    return f"{minutes} min"
 
 
 def _build_trip_route_summary(viaggio: TrasportoViaggio) -> str:
@@ -191,6 +203,22 @@ def _decorate_trip_locations(viaggio: TrasportoViaggio) -> TrasportoViaggio:
     viaggio.arrival_estimate_status = (
         "manuale" if viaggio.arrivo_stimato_manuale and viaggio.arrivo_stimato else "automatico" if viaggio.arrivo_stimato else "non_disponibile"
     )
+    progress_data = compute_trip_progress(viaggio)
+    viaggio.progress_data = progress_data
+    viaggio.progress_percent = progress_data["progress_percent"]
+    viaggio.progress_status = progress_data["status"]
+    viaggio.progress_status_label = progress_data["status_label"]
+    if not progress_data["is_available"]:
+        viaggio.progress_timing_text = "Stima non disponibile"
+    elif progress_data["status"] == "non_partito":
+        viaggio.progress_timing_text = "Non ancora partito"
+    elif progress_data["status"] == "in_ritardo":
+        viaggio.progress_timing_text = f"In ritardo di {_format_duration_minutes(progress_data['tempo_ritardo'])}"
+    else:
+        viaggio.progress_timing_text = (
+            f"Partito da {_format_duration_minutes(progress_data['tempo_trascorso'])} · "
+            f"Arrivo stimato tra {_format_duration_minutes(progress_data['tempo_rimanente'])}"
+        )
     return viaggio
 
 

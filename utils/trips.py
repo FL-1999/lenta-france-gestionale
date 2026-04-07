@@ -61,6 +61,73 @@ def compute_arrival_time(viaggio: Any, *, duration_minutes: int | None = None) -
     return (departure + timedelta(minutes=int(minutes))).time().replace(second=0, microsecond=0)
 
 
+def combine_trip_arrival(viaggio: Any) -> datetime | None:
+    trip_date: date | None = getattr(viaggio, "data_arrivo_prevista", None) or getattr(viaggio, "data_partenza", None)
+    arrival_time: time | None = getattr(viaggio, "arrivo_stimato", None)
+    if arrival_time is None:
+        arrival_time = compute_arrival_time(viaggio)
+    if not trip_date or not arrival_time:
+        return None
+    return datetime.combine(trip_date, arrival_time)
+
+
+def compute_trip_progress(viaggio: Any, *, now: datetime | None = None) -> dict[str, Any]:
+    current_time = now or datetime.utcnow()
+    departure_dt = combine_trip_departure(viaggio)
+    arrival_dt = combine_trip_arrival(viaggio)
+    fallback = {
+        "progress_percent": None,
+        "status": "non_disponibile",
+        "status_label": "Stima non disponibile",
+        "tempo_trascorso": None,
+        "tempo_rimanente": None,
+        "tempo_ritardo": None,
+        "timing_text": "Stima non disponibile",
+        "is_available": False,
+    }
+    if departure_dt is None or arrival_dt is None:
+        return fallback
+    total_seconds = int((arrival_dt - departure_dt).total_seconds())
+    if total_seconds <= 0:
+        return fallback
+
+    elapsed_seconds = int((current_time - departure_dt).total_seconds())
+    progress_ratio = max(0.0, min(1.0, elapsed_seconds / total_seconds))
+    progress_percent = int(round(progress_ratio * 100))
+
+    elapsed_delta = max(current_time - departure_dt, timedelta(0))
+    remaining_delta = max(arrival_dt - current_time, timedelta(0))
+    delay_delta = max(current_time - arrival_dt, timedelta(0))
+
+    if current_time < departure_dt:
+        status = "non_partito"
+        status_label = "Non ancora partito"
+        timing_text = "Non ancora partito"
+    elif current_time > arrival_dt:
+        status = "in_ritardo"
+        status_label = "Arrivo stimato superato"
+        timing_text = "In ritardo"
+    elif progress_percent >= 100:
+        status = "completato"
+        status_label = "Arrivo stimato raggiunto"
+        timing_text = "Arrivo stimato raggiunto"
+    else:
+        status = "in_corso"
+        status_label = "In corso"
+        timing_text = "Nei tempi"
+
+    return {
+        "progress_percent": progress_percent,
+        "status": status,
+        "status_label": status_label,
+        "tempo_trascorso": elapsed_delta,
+        "tempo_rimanente": remaining_delta,
+        "tempo_ritardo": delay_delta,
+        "timing_text": timing_text,
+        "is_available": True,
+    }
+
+
 def format_trip_time(value: time | None) -> str:
     if value is None:
         return "—"
