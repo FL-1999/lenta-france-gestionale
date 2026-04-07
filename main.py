@@ -910,14 +910,22 @@ def manager_dashboard(
             len(sites_with_coords),
             (time.monotonic() - query_started) * 1000,
         )
-        sites_map_data = _build_sites_map_data(sites_with_coords)
+        sites_map_data = _build_sites_map_data(
+            sites_with_coords,
+            detail_url_template=detail_url_template,
+        )
         depots_with_coords = (
             db.query(Depot)
             .filter(Depot.lat.isnot(None), Depot.lng.isnot(None))
             .order_by(Depot.name.asc())
             .all()
         )
-        depots_map_data = _build_depots_map_data(depots_with_coords)
+        depots_map_data = _build_depots_map_data(
+            depots_with_coords,
+            detail_url_template=str(
+                request.url_for("manager_depositi_edit", depot_id="__DEPOT_ID__")
+            ),
+        )
         active_trips = (
             db.query(TrasportoViaggio)
             .options(
@@ -1126,7 +1134,11 @@ def manager_dashboard(
     return response
 
 
-def _build_sites_map_data(sites: list[Site]) -> list[dict[str, object]]:
+def _build_sites_map_data(
+    sites: list[Site],
+    *,
+    detail_url_template: str | None = None,
+) -> list[dict[str, object]]:
     sites_map_data = []
     for site in sites:
         address_parts = [part for part in [site.address, site.city, site.country] if part]
@@ -1149,12 +1161,22 @@ def _build_sites_map_data(sites: list[Site]) -> list[dict[str, object]]:
                 "caposquadra_name": (
                     str(caposquadra_name) if caposquadra_name is not None else None
                 ),
+                "type": "site",
+                "detail_url": (
+                    detail_url_template.replace("__SITE_ID__", str(site.id))
+                    if detail_url_template and site.id is not None
+                    else None
+                ),
             }
         )
     return sites_map_data
 
 
-def _build_depots_map_data(depots: list[Depot]) -> list[dict[str, object]]:
+def _build_depots_map_data(
+    depots: list[Depot],
+    *,
+    detail_url_template: str | None = None,
+) -> list[dict[str, object]]:
     depots_map_data: list[dict[str, object]] = []
     for depot in depots:
         address_parts = [part for part in [depot.address, depot.city, depot.province, depot.country] if part]
@@ -1167,6 +1189,11 @@ def _build_depots_map_data(depots: list[Depot]) -> list[dict[str, object]]:
                 "address": ", ".join(str(part) for part in address_parts),
                 "is_active": bool(depot.is_active),
                 "type": "depot",
+                "detail_url": (
+                    detail_url_template.replace("__DEPOT_ID__", str(depot.id))
+                    if detail_url_template and depot.id is not None
+                    else None
+                ),
             }
         )
     return depots_map_data
