@@ -702,17 +702,6 @@
                                 <option value="sites_active">{% if lang == 'fr' %}Chantiers actifs{% else %}Cantieri attivi{% endif %}</option>
                                 <option value="sites_closed">{% if lang == 'fr' %}Chantiers fermés{% else %}Cantieri chiusi{% endif %}</option>
                                 <option value="depots">{% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</option>
-                                <option value="vehicles">{% if lang == 'fr' %}Véhicules{% else %}Mezzi{% endif %}</option>
-                                <option value="drivers">{% if lang == 'fr' %}Chauffeurs{% else %}Autisti{% endif %}</option>
-                            </select>
-                        </label>
-                        <label class="map-filter">
-                            <span class="map-filter-label">{% if lang == 'fr' %}Période{% else %}Periodo{% endif %}</span>
-                            <select id="map-filter-date" class="form-select">
-                                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
-                                <option value="today">{% if lang == 'fr' %}Aujourd'hui{% else %}Oggi{% endif %}</option>
-                                <option value="7d">{% if lang == 'fr' %}7 prochains jours{% else %}Prossimi 7 giorni{% endif %}</option>
-                                <option value="30d">{% if lang == 'fr' %}30 prochains jours{% else %}Prossimi 30 giorni{% endif %}</option>
                             </select>
                         </label>
                         <label class="map-filter">
@@ -724,18 +713,6 @@
                         <label class="map-filter">
                             <span class="map-filter-label">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</span>
                             <select id="map-filter-site" class="form-select">
-                                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
-                            </select>
-                        </label>
-                        <label class="map-filter">
-                            <span class="map-filter-label">{% if lang == 'fr' %}Chauffeur{% else %}Autista{% endif %}</span>
-                            <select id="map-filter-driver" class="form-select">
-                                <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
-                            </select>
-                        </label>
-                        <label class="map-filter">
-                            <span class="map-filter-label">{% if lang == 'fr' %}Véhicule{% else %}Mezzo{% endif %}</span>
-                            <select id="map-filter-vehicle" class="form-select">
                                 <option value="">{% if lang == 'fr' %}Tous{% else %}Tutti{% endif %}</option>
                             </select>
                         </label>
@@ -763,7 +740,7 @@
     <div class="map-modal__backdrop" data-cantieri-map-close></div>
     <div class="map-modal__panel" role="dialog" aria-modal="true">
         <div class="map-modal__header">
-            <div class="map-modal__title">{% if lang == 'fr' %}Carte des chantiers{% else %}Mappa cantieri{% endif %}</div>
+            <div class="map-modal__title">{% if lang == 'fr' %}Carte opérationnelle{% else %}Mappa operativa{% endif %}</div>
             <div class="map-modal__actions">
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-cantieri-map-external>
                     {% if lang == 'fr' %}Ouvrir dans Google Maps{% else %}Apri in Google Maps{% endif %}
@@ -792,7 +769,7 @@
     } | tojson | safe }}
 </script>
 <script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
-<script src="{{ url_for('static', path='/js/operations-map.js') }}?v=20260324a"></script>
+<script src="{{ url_for('static', path='/js/operations-map.js') }}?v=20260407a"></script>
 <script src="{{ url_for('static', path='/js/cantieri-map-modal.js') }}"></script>
 
 {% endif %}
