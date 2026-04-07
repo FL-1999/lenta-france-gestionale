@@ -323,6 +323,66 @@ async def get_current_active_user_html(
     return current_user
 
 
+def _extract_token_from_request(request: Request) -> str | None:
+    authorization_header = request.headers.get("Authorization")
+    if authorization_header:
+        scheme, _, token_value = authorization_header.partition(" ")
+        if scheme.lower() == "bearer" and token_value:
+            return token_value.strip()
+
+    cookie_token = request.cookies.get("access_token")
+    if not cookie_token:
+        return None
+    if cookie_token.startswith("Bearer "):
+        return cookie_token[len("Bearer ") :].strip()
+    return cookie_token.strip()
+
+
+async def get_current_user_api(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    unauthorized_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenziali non valide o token mancante",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    token = _extract_token_from_request(request)
+    if not token:
+        raise unauthorized_exception
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: Optional[str] = payload.get("sub")
+        token_role = payload.get("role")
+        if email is None:
+            raise unauthorized_exception
+    except JWTError:
+        raise unauthorized_exception
+
+    user = get_user_by_email(db, email=email)
+    if user is None:
+        raise unauthorized_exception
+    if token_role and not user_has_role(user, token_role):
+        raise unauthorized_exception
+
+    requested_role = get_current_role_from_request(request) or normalize_role(token_role)
+    user.role = resolve_user_active_role(user, requested_role)
+    return user
+
+
+async def get_current_active_user_api(
+    current_user: Annotated[User, Depends(get_current_user_api)],
+) -> User:
+    if hasattr(current_user, "is_active") and current_user.is_active is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Utente disattivato",
+        )
+    return current_user
+
+
 async def get_current_manager_user(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> User:

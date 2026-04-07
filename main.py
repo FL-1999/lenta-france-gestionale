@@ -422,7 +422,15 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         request_id,
     )
 
-    if status_code == status.HTTP_403_FORBIDDEN:
+    exception_headers = dict(getattr(exc, "headers", {}) or {})
+
+    if 300 <= status_code < 400 and exception_headers.get("Location"):
+        response = RedirectResponse(
+            url=exception_headers["Location"],
+            status_code=status_code,
+            headers=exception_headers,
+        )
+    elif status_code == status.HTTP_403_FORBIDDEN:
         response = templates.TemplateResponse(
             request,
             "errors/403.html",
@@ -437,7 +445,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             status_code=status_code,
         )
     else:
-        response = JSONResponse(status_code=status_code, content={"detail": exc.detail})
+        response = JSONResponse(
+            status_code=status_code,
+            content={"detail": exc.detail},
+            headers=exception_headers,
+        )
 
     response.headers["X-Request-ID"] = request_id
     return response
