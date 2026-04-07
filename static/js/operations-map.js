@@ -27,6 +27,12 @@
       transportStop: "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png",
       transportDestination: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
     };
+    const transportProgressColors = {
+      green: "#16a34a",
+      orange: "#f97316",
+      red: "#dc2626",
+      unknown: "#6b7280",
+    };
 
     const legendItems = [
       ["Cantieri attivi", icons.siteActive],
@@ -35,6 +41,9 @@
       ["Trasporto · origine", icons.transportOrigin],
       ["Trasporto · tappa", icons.transportStop],
       ["Trasporto · destinazione", icons.transportDestination],
+      ["Avanzamento nei tempi", "https://maps.google.com/mapfiles/ms/icons/green-dot.png"],
+      ["Avanzamento quasi arrivo", "https://maps.google.com/mapfiles/ms/icons/orange-dot.png"],
+      ["Avanzamento in ritardo", "https://maps.google.com/mapfiles/ms/icons/red-dot.png"],
     ];
 
     const legend = document.getElementById("operations-map-legend");
@@ -140,10 +149,16 @@
       return "Tappa";
     }
 
-    function transportRoleIcon(role) {
-      if (role === "origin") return icons.transportOrigin;
-      if (role === "destination") return icons.transportDestination;
-      return icons.transportStop;
+    function transportProgressIcon(progressColor) {
+      const fillColor = transportProgressColors[progressColor] || transportProgressColors.unknown;
+      return {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        fillColor,
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 1.5,
+        scale: 6,
+      };
     }
 
     function infoHtml({ title, type, status, details, link }) {
@@ -229,16 +244,22 @@
 
             routePoints.forEach((point) => {
               const pointType = point.type === "depot" ? "Deposito" : point.type === "site" ? "Cantiere" : "Punto";
+              const progress = trip.progress || {};
+              const progressLabel =
+                typeof progress.percent === "number" ? `${progress.percent}%` : "Stima non disponibile";
               addMarker({
                 lat: point.lat,
                 lng: point.lng,
-                icon: transportRoleIcon(point.role),
+                icon: transportProgressIcon(progress.color),
                 html: infoHtml({
                   title: `${trip.code} · ${point.name || "—"}`,
                   type: `Trasporto (${transportRoleLabel(point.role)})`,
                   status: trip.status,
                   details: [
                     pointType,
+                    `Avanzamento: ${progressLabel}`,
+                    progress.status_label || "Stima non disponibile",
+                    progress.timing_text || "Stima non disponibile",
                     trip.driver_name ? `Autista: ${trip.driver_name}` : null,
                     trip.vehicle_name ? `Mezzo: ${trip.vehicle_name}` : null,
                     trip.date ? `Data: ${trip.date}` : null,
