@@ -1013,7 +1013,7 @@ def manager_magazzino_archiviati(
         .join(MagazzinoCategoria, MagazzinoItem.categoria_id == MagazzinoCategoria.id, isouter=True)
         .join(MagazzinoMacro, MagazzinoCategoria.macro_id == MagazzinoMacro.id, isouter=True)
         .options(joinedload(MagazzinoItem.categoria).joinedload(MagazzinoCategoria.macro))
-        .filter(MagazzinoItem.attivo.is_(False))
+        .filter(MagazzinoItem.attivo == False)  # noqa: E712 - confronto booleano SQLAlchemy
     )
     q_value = (q or "").strip()
     if q_value:

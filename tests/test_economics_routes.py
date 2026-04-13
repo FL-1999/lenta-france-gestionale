@@ -162,7 +162,7 @@ def setup_function() -> None:
 
 
 def teardown_function() -> None:
-    app.dependency_overrides = {get_db: override_get_db}
+    app.dependency_overrides = {}
 
 
 def test_manager_can_open_site_economics_detail() -> None:
