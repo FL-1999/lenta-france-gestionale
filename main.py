@@ -779,6 +779,7 @@ def login_page(request: Request):
 
 
 @app.post("/login")
+@app.post("/auth/login", include_in_schema=False)
 def login_api(
     request: Request,
     email: str = Form(...),
