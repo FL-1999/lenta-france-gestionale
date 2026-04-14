@@ -66,6 +66,13 @@ SITE_LABOR_COST_ENTRIES_COLUMNS: tuple[str, ...] = (
     "is_active BOOLEAN NOT NULL DEFAULT 1",
 )
 
+SITE_ECONOMIC_ENTRIES_COLUMNS: tuple[str, ...] = (
+    "created_at DATETIME",
+    "updated_at DATETIME",
+    "created_by_id INTEGER",
+    "updated_by_id INTEGER",
+)
+
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "veicoli": VEICOLI_COLUMNS,
     "users": USERS_COLUMNS,
@@ -74,6 +81,7 @@ UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "movimenti_attrezzature": MOVIMENTI_ATTREZZATURE_COLUMNS,
     "magazzino_movimenti": MAGAZZINO_MOVIMENTI_COLUMNS,
     "site_labor_cost_entries": SITE_LABOR_COST_ENTRIES_COLUMNS,
+    "site_economic_entries": SITE_ECONOMIC_ENTRIES_COLUMNS,
 }
 
 

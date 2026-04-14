@@ -239,6 +239,16 @@ class User(Base, TimestampMixin):
         back_populates="created_by",
         foreign_keys="SiteLaborCostEntry.created_by_id",
     )
+    economic_budgets_created = relationship(
+        "SiteEconomicBudget",
+        back_populates="created_by",
+        foreign_keys="SiteEconomicBudget.created_by_id",
+    )
+    economic_budgets_updated = relationship(
+        "SiteEconomicBudget",
+        back_populates="updated_by",
+        foreign_keys="SiteEconomicBudget.updated_by_id",
+    )
 
     @property
     def active_role(self) -> RoleEnum | None:
@@ -389,6 +399,12 @@ class Site(Base):
         back_populates="site",
         cascade="all, delete-orphan",
         order_by="desc(SiteLaborCostEntry.work_date)",
+    )
+    economic_budget = relationship(
+        "SiteEconomicBudget",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
     def __repr__(self) -> str:
@@ -824,6 +840,37 @@ class SiteEconomicEntry(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("amount >= 0", name="ck_site_economic_entries_amount_positive"),
     )
+
+
+class SiteEconomicBudget(Base, TimestampMixin):
+    __tablename__ = "site_economic_budgets"
+    __table_args__ = (
+        UniqueConstraint("site_id", name="uq_site_economic_budgets_site"),
+        CheckConstraint("ricavo_previsto >= 0", name="ck_site_economic_budgets_ricavo_previsto_positive"),
+        CheckConstraint("materiali_previsti >= 0", name="ck_site_economic_budgets_materiali_previsti_positive"),
+        CheckConstraint("manodopera_prevista >= 0", name="ck_site_economic_budgets_manodopera_prevista_positive"),
+        CheckConstraint("trasporti_previsti >= 0", name="ck_site_economic_budgets_trasporti_previsti_positive"),
+        CheckConstraint("mezzi_previsti >= 0", name="ck_site_economic_budgets_mezzi_previsti_positive"),
+        CheckConstraint("attrezzature_previste >= 0", name="ck_site_economic_budgets_attrezzature_previste_positive"),
+        CheckConstraint("altri_costi_previsti >= 0", name="ck_site_economic_budgets_altri_costi_previsti_positive"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    ricavo_previsto = Column(Float, nullable=False, default=0.0)
+    materiali_previsti = Column(Float, nullable=False, default=0.0)
+    manodopera_prevista = Column(Float, nullable=False, default=0.0)
+    trasporti_previsti = Column(Float, nullable=False, default=0.0)
+    mezzi_previsti = Column(Float, nullable=False, default=0.0)
+    attrezzature_previste = Column(Float, nullable=False, default=0.0)
+    altri_costi_previsti = Column(Float, nullable=False, default=0.0)
+    note = Column(Text, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    site = relationship("Site", back_populates="economic_budget")
+    created_by = relationship("User", back_populates="economic_budgets_created", foreign_keys=[created_by_id])
+    updated_by = relationship("User", back_populates="economic_budgets_updated", foreign_keys=[updated_by_id])
 
 
 class SiteLaborCostEntry(Base, TimestampMixin):

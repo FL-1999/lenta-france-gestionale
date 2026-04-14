@@ -13,6 +13,7 @@ from auth import get_current_active_user_html
 from database import get_db
 from models import (
     Site,
+    SiteEconomicBudget,
     SiteEconomicCategoryEnum,
     SiteEconomicEntry,
     SiteEconomicEntryTypeEnum,
@@ -58,6 +59,15 @@ CATEGORY_LABELS = {
     SiteEconomicCategoryEnum.manodopera: "Manodopera",
     SiteEconomicCategoryEnum.altri_costi: "Altri costi",
 }
+
+BUDGET_CATEGORY_FIELDS = [
+    ("materiali", "materiali_previsti", "Materiali"),
+    ("manodopera", "manodopera_prevista", "Manodopera"),
+    ("trasporti", "trasporti_previsti", "Trasporti"),
+    ("mezzi", "mezzi_previsti", "Mezzi"),
+    ("attrezzature", "attrezzature_previste", "Attrezzature"),
+    ("altri_costi", "altri_costi_previsti", "Altri costi"),
+]
 
 COST_CATEGORY_OPTIONS = [
     SiteEconomicCategoryEnum.materiali,
@@ -225,6 +235,54 @@ def _serialize_economic_entry(entry: SiteEconomicEntry) -> dict[str, Any]:
     }
 
 
+def _serialize_site_budget(budget: SiteEconomicBudget | None) -> dict[str, Any]:
+    if not budget:
+        return {
+            "exists": False,
+            "ricavo_previsto": 0.0,
+            "materiali_previsti": 0.0,
+            "manodopera_prevista": 0.0,
+            "trasporti_previsti": 0.0,
+            "mezzi_previsti": 0.0,
+            "attrezzature_previste": 0.0,
+            "altri_costi_previsti": 0.0,
+            "totale_costi_previsti": 0.0,
+            "margine_previsto": 0.0,
+            "note": "",
+            "created_at": None,
+            "updated_at": None,
+            "created_by_name": "—",
+            "updated_by_name": "—",
+        }
+    totale_costi_previsti = round(
+        float(budget.materiali_previsti or 0)
+        + float(budget.manodopera_prevista or 0)
+        + float(budget.trasporti_previsti or 0)
+        + float(budget.mezzi_previsti or 0)
+        + float(budget.attrezzature_previste or 0)
+        + float(budget.altri_costi_previsti or 0),
+        2,
+    )
+    ricavo_previsto = round(float(budget.ricavo_previsto or 0), 2)
+    return {
+        "exists": True,
+        "ricavo_previsto": ricavo_previsto,
+        "materiali_previsti": round(float(budget.materiali_previsti or 0), 2),
+        "manodopera_prevista": round(float(budget.manodopera_prevista or 0), 2),
+        "trasporti_previsti": round(float(budget.trasporti_previsti or 0), 2),
+        "mezzi_previsti": round(float(budget.mezzi_previsti or 0), 2),
+        "attrezzature_previste": round(float(budget.attrezzature_previste or 0), 2),
+        "altri_costi_previsti": round(float(budget.altri_costi_previsti or 0), 2),
+        "totale_costi_previsti": totale_costi_previsti,
+        "margine_previsto": round(ricavo_previsto - totale_costi_previsti, 2),
+        "note": budget.note or "",
+        "created_at": budget.created_at,
+        "updated_at": budget.updated_at,
+        "created_by_name": (budget.created_by.full_name or budget.created_by.email) if budget.created_by else "Sistema",
+        "updated_by_name": (budget.updated_by.full_name or budget.updated_by.email) if budget.updated_by else "—",
+    }
+
+
 def _build_site_economic_snapshot(
     site: Site,
     start_date: date,
@@ -241,6 +299,7 @@ def _build_site_economic_snapshot(
         if start_date <= entry.work_date <= end_date
     ]
     active_labor_entries = [entry for entry in labor_entries if entry.is_active]
+    budget_data = _serialize_site_budget(getattr(site, "economic_budget", None))
 
     revenue_totals = defaultdict(float)
     cost_totals = defaultdict(float)
@@ -269,7 +328,7 @@ def _build_site_economic_snapshot(
     total_costs = round(sum(cost_breakdown[key] for key in ["materiali", "trasporti", "mezzi", "attrezzature", "manodopera", "altri_costi"]), 2)
     gross_margin = round(ricavi_maturati - (total_costs - cost_breakdown["altri_costi"]), 2)
     net_profit = round(ricavi_fatturati - total_costs, 2)
-    margin_pct = _safe_pct(net_profit, ricavi_fatturati or ricavi_maturati or ricavi_previsti)
+    margin_pct = _safe_pct(net_profit, ricavi_fatturati or ricavi_maturati or budget_data["ricavo_previsto"])
 
     progress_summary = _build_progress_summary(site)
     operational_progress_pct = _sum_progress_percent(progress_summary)
@@ -329,6 +388,40 @@ def _build_site_economic_snapshot(
     current_week_start, current_week_end = week_bounds(today)
     current_month_start, current_month_end = month_bounds(today)
     daily_trend = build_daily_trend_series(site.economic_entries or [], site.labor_cost_entries or [], start_date, end_date)
+    real_revenue_total = round(ricavi_fatturati + ricavi_maturati, 2)
+    real_total_cost = round(total_costs, 2)
+    scostamento_rows = []
+    for cost_key, budget_key, label in BUDGET_CATEGORY_FIELDS:
+        previsto = round(float(budget_data.get(budget_key, 0) or 0), 2)
+        reale = round(float(cost_breakdown.get(cost_key, 0) or 0), 2)
+        delta = round(reale - previsto, 2)
+        scostamento_rows.append(
+            {
+                "label": label,
+                "previsto": previsto,
+                "reale": reale,
+                "scostamento": delta,
+                "scostamento_pct": _safe_pct(delta, previsto),
+            }
+        )
+
+    overall_variances = {
+        "ricavi": {
+            "previsto": budget_data["ricavo_previsto"],
+            "reale": real_revenue_total,
+        },
+        "costi": {
+            "previsto": budget_data["totale_costi_previsti"],
+            "reale": real_total_cost,
+        },
+        "margine": {
+            "previsto": budget_data["margine_previsto"],
+            "reale": round(real_revenue_total - real_total_cost, 2),
+        },
+    }
+    for payload in overall_variances.values():
+        payload["scostamento"] = round(payload["reale"] - payload["previsto"], 2)
+        payload["scostamento_pct"] = _safe_pct(payload["scostamento"], payload["previsto"])
 
     return {
         "site": site,
@@ -359,6 +452,16 @@ def _build_site_economic_snapshot(
             "periodo_selezionato": calculate_period_totals(site.economic_entries or [], site.labor_cost_entries or [], start_date, end_date),
         },
         "cost_breakdown": cost_breakdown,
+        "budget": budget_data,
+        "real_summary": {
+            "ricavi_reali": real_revenue_total,
+            "costi_reali": real_total_cost,
+            "margine_reale": round(real_revenue_total - real_total_cost, 2),
+        },
+        "variances": {
+            "by_category": scostamento_rows,
+            "overall": overall_variances,
+        },
         "sal": {
             "operational_progress_pct": operational_progress_pct,
             "cost_vs_expected_pct": cost_vs_expected_pct,
@@ -406,7 +509,13 @@ def manager_economics_dashboard(
 
     sites = (
         db.query(Site)
-        .options(joinedload(Site.strut_levels), joinedload(Site.economic_entries), joinedload(Site.labor_cost_entries))
+        .options(
+            joinedload(Site.strut_levels),
+            joinedload(Site.economic_entries),
+            joinedload(Site.labor_cost_entries),
+            joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.created_by),
+            joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.updated_by),
+        )
         .order_by(Site.name.asc())
         .all()
     )
@@ -495,7 +604,14 @@ def manager_site_economics_detail(
 
     site = (
         db.query(Site)
-        .options(joinedload(Site.strut_levels), joinedload(Site.economic_entries), joinedload(Site.labor_cost_entries))
+        .options(
+            joinedload(Site.strut_levels),
+            joinedload(Site.economic_entries).joinedload(SiteEconomicEntry.created_by),
+            joinedload(Site.economic_entries).joinedload(SiteEconomicEntry.updated_by),
+            joinedload(Site.labor_cost_entries),
+            joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.created_by),
+            joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.updated_by),
+        )
         .filter(Site.id == site_id)
         .first()
     )
@@ -553,6 +669,82 @@ def manager_site_economics_trend_data(
         "end_date": period_end.isoformat(),
         "series": build_daily_trend_series(site.economic_entries or [], site.labor_cost_entries or [], period_start, period_end),
     }
+
+
+@router.post("/manager/cantieri/{site_id}/economics/budget", name="manager_site_economics_budget_upsert")
+def manager_site_economics_budget_upsert(
+    site_id: int,
+    ricavo_previsto: str = Form("0"),
+    materiali_previsti: str = Form("0"),
+    manodopera_prevista: str = Form("0"),
+    trasporti_previsti: str = Form("0"),
+    mezzi_previsti: str = Form("0"),
+    attrezzature_previste: str = Form("0"),
+    altri_costi_previsti: str = Form("0"),
+    note: str | None = Form(None),
+    timeframe: str = Form("month"),
+    start_date: str | None = Form(None),
+    end_date: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _ensure_economics_manage(current_user)
+    site = db.query(Site).options(joinedload(Site.economic_budget)).filter(Site.id == site_id).first()
+    if not site:
+        raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+    try:
+        values = {
+            "ricavo_previsto": _normalize_entry_amount(ricavo_previsto),
+            "materiali_previsti": _normalize_entry_amount(materiali_previsti),
+            "manodopera_prevista": _normalize_entry_amount(manodopera_prevista),
+            "trasporti_previsti": _normalize_entry_amount(trasporti_previsti),
+            "mezzi_previsti": _normalize_entry_amount(mezzi_previsti),
+            "attrezzature_previste": _normalize_entry_amount(attrezzature_previste),
+            "altri_costi_previsti": _normalize_entry_amount(altri_costi_previsti),
+        }
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Dati budget non validi")
+
+    budget = site.economic_budget
+    if not budget:
+        budget = SiteEconomicBudget(
+            site_id=site_id,
+            created_by_id=getattr(current_user, "id", None),
+        )
+        db.add(budget)
+
+    for field_name, value in values.items():
+        setattr(budget, field_name, value)
+    budget.note = (note or "").strip() or None
+    budget.updated_by_id = getattr(current_user, "id", None)
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}/economics?timeframe={timeframe}&start_date={start_date or ''}&end_date={end_date or ''}",
+        status_code=303,
+    )
+
+
+@router.post("/manager/cantieri/{site_id}/economics/budget/delete", name="manager_site_economics_budget_delete")
+def manager_site_economics_budget_delete(
+    site_id: int,
+    timeframe: str = Form("month"),
+    start_date: str | None = Form(None),
+    end_date: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _ensure_economics_manage(current_user)
+    budget = db.query(SiteEconomicBudget).filter(SiteEconomicBudget.site_id == site_id).first()
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget non trovato")
+    db.delete(budget)
+    db.commit()
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}/economics?timeframe={timeframe}&start_date={start_date or ''}&end_date={end_date or ''}",
+        status_code=303,
+    )
 
 
 @router.post("/manager/cantieri/{site_id}/economics/entries", name="manager_site_economics_entry_create")
