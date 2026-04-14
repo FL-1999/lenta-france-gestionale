@@ -15,6 +15,9 @@ from main import app
 import template_context
 from models import (
     Base,
+    Fiche,
+    FicheTypeEnum,
+    PersonalePresenza,
     RoleEnum,
     Site,
     SiteEconomicCategoryEnum,
@@ -63,9 +66,21 @@ def seed_site_with_economics() -> int:
     SQLModel.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     try:
+        db.add(
+            User(
+                id=99,
+                email="manager@example.com",
+                full_name="Manager Test",
+                hashed_password="fake",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+        )
         site = Site(
             name="Cantiere Economico",
             code="ECO-001",
+            labor_cost_per_person=120,
+            material_unit_prices='{"cemento": 120}',
             status=SiteStatusEnum.aperto,
             is_active=True,
             installazione_cantiere_pct=40,
@@ -81,6 +96,12 @@ def seed_site_with_economics() -> int:
         db.add(SiteStrutLevel(site_id=site.id, level_index=1, total_struts_level=10, done_struts_level=5))
         db.add_all(
             [
+                PersonalePresenza(
+                    personale_id=1,
+                    attendance_date=date(2026, 3, 6),
+                    site_id=site.id,
+                    status="WORK",
+                ),
                 SiteEconomicEntry(
                     site_id=site.id,
                     entry_date=date(2026, 3, 1),
@@ -129,6 +150,18 @@ def seed_site_with_economics() -> int:
             ]
         )
         db.add(
+            Fiche(
+                date=date(2026, 3, 6),
+                site_id=site.id,
+                fiche_type=FicheTypeEnum.produzione,
+                description="Getto cemento",
+                hours=8,
+                materiale="cemento",
+                metri_cubi_gettati=10,
+                created_by_id=99,
+            )
+        )
+        db.add(
             SiteLaborCostEntry(
                 site_id=site.id,
                 work_date=date(2026, 3, 6),
@@ -174,11 +207,11 @@ def test_manager_can_open_site_economics_detail() -> None:
     assert response.status_code == 200
     assert "Cantiere Economico" in response.text
     assert "€ 480.00" in response.text
-    assert "Costo oggi" in response.text
+    assert "Configurazione costi automatici" in response.text
     assert "Serie trend JSON" in response.text
     assert "⚠️ Sabato rilevato" in response.text
-    assert "€ 2980.00" in response.text
-    assert "€ 4020.00" in response.text
+    assert "€ 4180.00" in response.text
+    assert "Fiche #1" in response.text
 
 
 def test_non_manager_cannot_access_economics_area() -> None:
@@ -329,5 +362,35 @@ def test_manager_can_delete_economic_entry() -> None:
     try:
         deleted = db.query(SiteEconomicEntry).filter(SiteEconomicEntry.id == entry_id).first()
         assert deleted is None
+    finally:
+        db.close()
+
+
+def test_auto_cost_config_update_endpoint() -> None:
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_manager_user
+
+    response = client.post(
+        f"/manager/cantieri/{site_id}/economics/auto-cost-config",
+        data={
+            "labor_cost_per_person": "145",
+            "material_prices_json": '{"cemento": 130, "acciaio": 2.5}',
+            "auto_cost_labor_enabled": "1",
+            "auto_cost_materials_enabled": "1",
+            "manual_material_entries_override_auto": "1",
+            "timeframe": "month",
+            "start_date": "2026-03-01",
+            "end_date": "2026-03-31",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+    db = TestingSessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        assert site is not None
+        assert site.labor_cost_per_person == 145
+        assert "acciaio" in (site.material_unit_prices or "")
     finally:
         db.close()

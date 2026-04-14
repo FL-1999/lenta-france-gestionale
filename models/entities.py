@@ -374,6 +374,11 @@ class Site(Base):
     installazione_cantiere_pct = Column(Integer, nullable=False, default=0)
     rabotage_pct = Column(Integer, nullable=False, default=0)
     pozzi_pompaggio_pct = Column(Integer, nullable=False, default=0)
+    labor_cost_per_person = Column(Float, nullable=False, default=0.0)
+    material_unit_prices = Column(Text, nullable=True)
+    auto_cost_materials_enabled = Column(Boolean, nullable=False, default=True)
+    auto_cost_labor_enabled = Column(Boolean, nullable=False, default=True)
+    manual_material_entries_override_auto = Column(Boolean, nullable=False, default=True)
 
     caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     caposquadra = relationship("User", back_populates="assigned_sites")

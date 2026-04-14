@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
@@ -12,6 +13,8 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user_html
 from database import get_db
 from models import (
+    Fiche,
+    PersonalePresenza,
     Site,
     SiteEconomicBudget,
     SiteEconomicCategoryEnum,
@@ -283,8 +286,139 @@ def _serialize_site_budget(budget: SiteEconomicBudget | None) -> dict[str, Any]:
     }
 
 
+def _normalize_material_key(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def _parse_material_prices(raw: str | None) -> dict[str, float]:
+    if not raw:
+        return {}
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    parsed: dict[str, float] = {}
+    for key, value in payload.items():
+        material_key = _normalize_material_key(str(key))
+        if not material_key:
+            continue
+        try:
+            parsed[material_key] = round(max(float(value), 0.0), 2)
+        except (TypeError, ValueError):
+            continue
+    return parsed
+
+
+def _serialize_material_prices(prices: dict[str, float]) -> str:
+    normalized = {key: round(max(float(value), 0.0), 2) for key, value in prices.items() if key}
+    return json.dumps(normalized, ensure_ascii=False, sort_keys=True)
+
+
+def _compute_auto_labor_costs(
+    site: Site,
+    attendance_rows: list[PersonalePresenza],
+    start_date: date,
+    end_date: date,
+) -> tuple[list[dict[str, Any]], dict[date, float], float]:
+    if not bool(site.auto_cost_labor_enabled):
+        return [], {}, 0.0
+
+    default_unit_cost = round(float(site.labor_cost_per_person or 0.0), 2)
+    if default_unit_cost <= 0:
+        return [], {}, 0.0
+
+    attendance = [row for row in attendance_rows if row.status == "WORK" and row.site_id == site.id]
+    per_day_workers: dict[date, int] = defaultdict(int)
+    for row in attendance:
+        per_day_workers[row.attendance_date] += 1
+
+    overrides = {
+        row.work_date: row
+        for row in (site.labor_cost_entries or [])
+        if row.work_date and start_date <= row.work_date <= end_date
+    }
+    rows: list[dict[str, Any]] = []
+    totals_by_day: dict[date, float] = {}
+    all_days = sorted(set(per_day_workers) | set(overrides))
+    for work_day in all_days:
+        worker_count = int(per_day_workers.get(work_day, 0) or 0)
+        unit_cost = default_unit_cost
+        total_cost = round(worker_count * unit_cost, 2)
+        source = "presenze"
+        override_entry = overrides.get(work_day)
+        is_active = True
+        if override_entry is not None:
+            total_cost = round(float(override_entry.total_cost or 0), 2)
+            worker_count = int(override_entry.worker_count or 0)
+            unit_cost = round(float(override_entry.unit_cost or 0), 2)
+            is_active = bool(override_entry.is_active)
+            source = "override_manuale"
+        if is_active:
+            totals_by_day[work_day] = round(float(totals_by_day.get(work_day, 0)) + total_cost, 2)
+        rows.append(
+            {
+                "work_date": work_day,
+                "worker_count": worker_count,
+                "unit_cost": unit_cost,
+                "total_cost": total_cost if is_active else 0.0,
+                "is_active": is_active,
+                "source": source,
+            }
+        )
+
+    return rows, totals_by_day, round(sum(totals_by_day.values()), 2)
+
+
+def _compute_auto_material_costs(
+    site: Site,
+    start_date: date,
+    end_date: date,
+    manual_material_entries: list[SiteEconomicEntry],
+) -> tuple[list[dict[str, Any]], dict[date, float], float]:
+    if not bool(site.auto_cost_materials_enabled):
+        return [], {}, 0.0
+
+    prices = _parse_material_prices(site.material_unit_prices)
+    if not prices:
+        return [], {}, 0.0
+
+    manual_days = {entry.entry_date for entry in manual_material_entries}
+    rows: list[dict[str, Any]] = []
+    totals_by_day: dict[date, float] = defaultdict(float)
+    for fiche in (site.fiches or []):
+        if not fiche.date or fiche.date < start_date or fiche.date > end_date:
+            continue
+        material_key = _normalize_material_key(fiche.materiale)
+        qty = round(float(fiche.metri_cubi_gettati or 0.0), 2)
+        if not material_key or qty <= 0:
+            continue
+        price = prices.get(material_key)
+        if price is None:
+            continue
+        if bool(site.manual_material_entries_override_auto) and fiche.date in manual_days:
+            continue
+        total = round(qty * price, 2)
+        totals_by_day[fiche.date] += total
+        rows.append(
+            {
+                "date": fiche.date,
+                "material": fiche.materiale,
+                "quantity": qty,
+                "unit_price": price,
+                "total_cost": total,
+                "source": "fiches",
+                "fiche_id": fiche.id,
+            }
+        )
+
+    return rows, dict(totals_by_day), round(sum(totals_by_day.values()), 2)
+
+
 def _build_site_economic_snapshot(
     site: Site,
+    attendance_rows: list[PersonalePresenza],
     start_date: date,
     end_date: date,
     group_by: str,
@@ -294,11 +428,7 @@ def _build_site_economic_snapshot(
         entry for entry in (site.economic_entries or [])
         if start_date <= entry.entry_date <= end_date
     ]
-    labor_entries = [
-        entry for entry in (site.labor_cost_entries or [])
-        if start_date <= entry.work_date <= end_date
-    ]
-    active_labor_entries = [entry for entry in labor_entries if entry.is_active]
+    labor_entries = [entry for entry in (site.labor_cost_entries or []) if start_date <= entry.work_date <= end_date]
     budget_data = _serialize_site_budget(getattr(site, "economic_budget", None))
 
     revenue_totals = defaultdict(float)
@@ -308,7 +438,19 @@ def _build_site_economic_snapshot(
         bucket = revenue_totals if entry.entry_type == SiteEconomicEntryTypeEnum.revenue else cost_totals
         bucket[entry.category] += float(entry.amount or 0)
 
-    labor_total = round(sum(float(entry.total_cost or 0) for entry in active_labor_entries), 2)
+    manual_material_entries = [
+        entry for entry in entries
+        if entry.entry_type == SiteEconomicEntryTypeEnum.cost and entry.category == SiteEconomicCategoryEnum.materiali
+    ]
+    auto_labor_rows, auto_labor_daily, labor_total = _compute_auto_labor_costs(site, attendance_rows, start_date, end_date)
+    auto_material_rows, auto_material_daily, auto_material_total = _compute_auto_material_costs(
+        site,
+        start_date,
+        end_date,
+        manual_material_entries,
+    )
+
+    cost_totals[SiteEconomicCategoryEnum.materiali] += auto_material_total
     cost_totals[SiteEconomicCategoryEnum.manodopera] += labor_total
 
     ricavi_previsti = round(revenue_totals[SiteEconomicCategoryEnum.ricavi_previsti], 2)
@@ -342,11 +484,17 @@ def _build_site_economic_snapshot(
             "category": entry.category,
             "amount": float(entry.amount or 0),
         })
-    for entry in active_labor_entries:
+    for day_value, amount in auto_labor_daily.items():
         all_series.append({
-            "date": entry.work_date,
+            "date": day_value,
             "category": SiteEconomicCategoryEnum.manodopera,
-            "amount": float(entry.total_cost or 0),
+            "amount": float(amount or 0),
+        })
+    for day_value, amount in auto_material_daily.items():
+        all_series.append({
+            "date": day_value,
+            "category": SiteEconomicCategoryEnum.materiali,
+            "amount": float(amount or 0),
         })
 
     buckets: dict[str, dict[str, Any]] = {}
@@ -383,11 +531,33 @@ def _build_site_economic_snapshot(
         )
 
     recent_entries = sorted(entries, key=lambda item: (item.entry_date, item.id), reverse=True)
-    recent_labor_entries = sorted(labor_entries, key=lambda item: (item.work_date, item.id), reverse=True)
     today = date.today()
     current_week_start, current_week_end = week_bounds(today)
     current_month_start, current_month_end = month_bounds(today)
-    daily_trend = build_daily_trend_series(site.economic_entries or [], site.labor_cost_entries or [], start_date, end_date)
+    enriched_economic_entries = list(site.economic_entries or [])
+    enriched_labor_entries = [entry for entry in (site.labor_cost_entries or []) if False]
+    for day_value, amount in auto_labor_daily.items():
+        enriched_labor_entries.append(
+            SiteLaborCostEntry(
+                site_id=site.id,
+                work_date=day_value,
+                worker_count=0,
+                unit_cost=0,
+                total_cost=amount,
+                is_active=True,
+            )
+        )
+    for day_value, amount in auto_material_daily.items():
+        enriched_economic_entries.append(
+            SiteEconomicEntry(
+                site_id=site.id,
+                entry_date=day_value,
+                entry_type=SiteEconomicEntryTypeEnum.cost,
+                category=SiteEconomicCategoryEnum.materiali,
+                amount=amount,
+            )
+        )
+    daily_trend = build_daily_trend_series(enriched_economic_entries, enriched_labor_entries, start_date, end_date)
     real_revenue_total = round(ricavi_fatturati + ricavi_maturati, 2)
     real_total_cost = round(total_costs, 2)
     scostamento_rows = []
@@ -446,10 +616,10 @@ def _build_site_economic_snapshot(
             "intervallo_personalizzato": serialize_timeframe_filters(start_date, end_date, "custom"),
         },
         "period_summaries": {
-            "oggi": calculate_daily_totals(site.economic_entries or [], site.labor_cost_entries or [], today),
-            "settimana_corrente": calculate_weekly_totals(site.economic_entries or [], site.labor_cost_entries or [], today),
-            "mese_corrente": calculate_monthly_totals(site.economic_entries or [], site.labor_cost_entries or [], today),
-            "periodo_selezionato": calculate_period_totals(site.economic_entries or [], site.labor_cost_entries or [], start_date, end_date),
+            "oggi": calculate_daily_totals(enriched_economic_entries, enriched_labor_entries, today),
+            "settimana_corrente": calculate_weekly_totals(enriched_economic_entries, enriched_labor_entries, today),
+            "mese_corrente": calculate_monthly_totals(enriched_economic_entries, enriched_labor_entries, today),
+            "periodo_selezionato": calculate_period_totals(enriched_economic_entries, enriched_labor_entries, start_date, end_date),
         },
         "cost_breakdown": cost_breakdown,
         "budget": budget_data,
@@ -475,18 +645,30 @@ def _build_site_economic_snapshot(
         "trend_series": daily_trend,
         "labor_entries": [
             {
-                "id": entry.id,
-                "work_date": entry.work_date,
-                "worker_count": entry.worker_count,
-                "unit_cost": round(float(entry.unit_cost or 0), 2),
-                "total_cost": round(float(entry.total_cost or 0), 2),
-                "is_weekend": bool(entry.is_weekend),
-                "is_active": bool(entry.is_active),
-                "day_type": WEEKDAY_LABELS.get(entry.work_date.weekday(), "feriale"),
-                "notes": entry.notes or "",
+                "work_date": row["work_date"],
+                "worker_count": row["worker_count"],
+                "unit_cost": row["unit_cost"],
+                "total_cost": row["total_cost"],
+                "is_active": row["is_active"],
+                "day_type": WEEKDAY_LABELS.get(row["work_date"].weekday(), "feriale"),
+                "source": row["source"],
             }
-            for entry in recent_labor_entries
+            for row in sorted(auto_labor_rows, key=lambda item: item["work_date"], reverse=True)
         ],
+        "material_auto_entries": [
+            {
+                **row,
+                "day_type": WEEKDAY_LABELS.get(row["date"].weekday(), "feriale"),
+            }
+            for row in sorted(auto_material_rows, key=lambda item: (item["date"], item["fiche_id"]), reverse=True)
+        ],
+        "auto_cost_config": {
+            "labor_cost_per_person": round(float(site.labor_cost_per_person or 0), 2),
+            "material_prices": _parse_material_prices(site.material_unit_prices),
+            "auto_cost_labor_enabled": bool(site.auto_cost_labor_enabled),
+            "auto_cost_materials_enabled": bool(site.auto_cost_materials_enabled),
+            "manual_material_entries_override_auto": bool(site.manual_material_entries_override_auto),
+        },
         "economic_entries": [
             _serialize_economic_entry(entry)
             for entry in recent_entries
@@ -512,6 +694,7 @@ def manager_economics_dashboard(
         .options(
             joinedload(Site.strut_levels),
             joinedload(Site.economic_entries),
+            joinedload(Site.fiches),
             joinedload(Site.labor_cost_entries),
             joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.created_by),
             joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.updated_by),
@@ -519,8 +702,23 @@ def manager_economics_dashboard(
         .order_by(Site.name.asc())
         .all()
     )
+    attendance_rows = (
+        db.query(PersonalePresenza)
+        .filter(
+            PersonalePresenza.attendance_date >= period_start,
+            PersonalePresenza.attendance_date <= period_end,
+        )
+        .all()
+    )
+    attendance_by_site: dict[int, list[PersonalePresenza]] = defaultdict(list)
+    for row in attendance_rows:
+        if row.site_id is not None:
+            attendance_by_site[int(row.site_id)].append(row)
 
-    snapshots = [_build_site_economic_snapshot(site, period_start, period_end, group_by, timeframe) for site in sites]
+    snapshots = [
+        _build_site_economic_snapshot(site, attendance_by_site.get(site.id, []), period_start, period_end, group_by, timeframe)
+        for site in sites
+    ]
 
     totals = {
         "ricavi_previsti": round(sum(item["metrics"]["ricavi_previsti"] for item in snapshots), 2),
@@ -608,6 +806,7 @@ def manager_site_economics_detail(
             joinedload(Site.strut_levels),
             joinedload(Site.economic_entries).joinedload(SiteEconomicEntry.created_by),
             joinedload(Site.economic_entries).joinedload(SiteEconomicEntry.updated_by),
+            joinedload(Site.fiches),
             joinedload(Site.labor_cost_entries),
             joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.created_by),
             joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.updated_by),
@@ -618,7 +817,16 @@ def manager_site_economics_detail(
     if not site:
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
-    snapshot = _build_site_economic_snapshot(site, period_start, period_end, group_by, timeframe)
+    attendance_rows = (
+        db.query(PersonalePresenza)
+        .filter(
+            PersonalePresenza.site_id == site_id,
+            PersonalePresenza.attendance_date >= period_start,
+            PersonalePresenza.attendance_date <= period_end,
+        )
+        .all()
+    )
+    snapshot = _build_site_economic_snapshot(site, attendance_rows, period_start, period_end, group_by, timeframe)
     can_manage = has_perm(current_user, "economics.manage")
 
     return templates.TemplateResponse(
@@ -911,5 +1119,43 @@ def manager_site_economics_labor_create(
 
     return RedirectResponse(
         url=f"/manager/cantieri/{site_id}/economics?timeframe={timeframe}&start_date={start_date or ''}&end_date={end_date or ''}#labor-costs",
+        status_code=303,
+    )
+
+
+@router.post("/manager/cantieri/{site_id}/economics/auto-cost-config", name="manager_site_economics_auto_cost_config")
+def manager_site_economics_auto_cost_config(
+    site_id: int,
+    labor_cost_per_person: str = Form("0"),
+    material_prices_json: str = Form("{}"),
+    auto_cost_labor_enabled: str | None = Form(None),
+    auto_cost_materials_enabled: str | None = Form(None),
+    manual_material_entries_override_auto: str | None = Form(None),
+    timeframe: str = Form("month"),
+    start_date: str | None = Form(None),
+    end_date: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _ensure_economics_manage(current_user)
+    site = db.query(Site).filter(Site.id == site_id).first()
+    if not site:
+        raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+    try:
+        parsed_labor = _normalize_entry_amount(labor_cost_per_person)
+        parsed_prices = _parse_material_prices(material_prices_json)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Configurazione prezzi non valida")
+
+    site.labor_cost_per_person = parsed_labor
+    site.material_unit_prices = _serialize_material_prices(parsed_prices)
+    site.auto_cost_labor_enabled = auto_cost_labor_enabled in {"1", "true", "True", "on", "yes"}
+    site.auto_cost_materials_enabled = auto_cost_materials_enabled in {"1", "true", "True", "on", "yes"}
+    site.manual_material_entries_override_auto = manual_material_entries_override_auto in {"1", "true", "True", "on", "yes"}
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}/economics?timeframe={timeframe}&start_date={start_date or ''}&end_date={end_date or ''}",
         status_code=303,
     )
