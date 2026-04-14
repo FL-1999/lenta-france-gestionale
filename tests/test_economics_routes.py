@@ -23,6 +23,7 @@ from models import (
     SiteEconomicCategoryEnum,
     SiteEconomicEntry,
     SiteEconomicEntryTypeEnum,
+    SiteEconomicAutoParams,
     SiteLaborCostEntry,
     SiteStatusEnum,
     SiteStrutLevel,
@@ -148,6 +149,15 @@ def seed_site_with_economics() -> int:
                     amount=400,
                 ),
             ]
+        )
+        db.add(
+            SiteEconomicAutoParams(
+                site_id=site.id,
+                costo_manodopera_persona_giorno=120,
+                costo_cemento_mc=120,
+                created_by_id=99,
+                updated_by_id=99,
+            )
         )
         db.add(
             Fiche(

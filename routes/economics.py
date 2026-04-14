@@ -16,6 +16,7 @@ from models import (
     Fiche,
     PersonalePresenza,
     Site,
+    SiteEconomicAutoParams,
     SiteEconomicBudget,
     SiteEconomicCategoryEnum,
     SiteEconomicEntry,
@@ -311,6 +312,36 @@ def _parse_material_prices(raw: str | None) -> dict[str, float]:
     return parsed
 
 
+def _serialize_auto_params(params: SiteEconomicAutoParams | None) -> dict[str, Any]:
+    if not params:
+        return {
+            "configured": False,
+            "costo_manodopera_persona_giorno": 0.0,
+            "costo_cemento_mc": 0.0,
+            "costo_ferro_ton": 0.0,
+            "costo_ferro_kg": 0.0,
+            "altri_prezzi": {},
+            "manual_material_entries_override_auto": True,
+            "created_at": None,
+            "updated_at": None,
+            "created_by_name": "—",
+            "updated_by_name": "—",
+        }
+    return {
+        "configured": True,
+        "costo_manodopera_persona_giorno": round(float(params.costo_manodopera_persona_giorno or 0), 2),
+        "costo_cemento_mc": round(float(params.costo_cemento_mc or 0), 2),
+        "costo_ferro_ton": round(float(params.costo_ferro_ton or 0), 2),
+        "costo_ferro_kg": round(float(params.costo_ferro_kg or 0), 2),
+        "altri_prezzi": _parse_material_prices(params.altri_prezzi_json),
+        "manual_material_entries_override_auto": bool(params.manual_material_entries_override_auto),
+        "created_at": params.created_at,
+        "updated_at": params.updated_at,
+        "created_by_name": (params.created_by.full_name or params.created_by.email) if params.created_by else "Sistema",
+        "updated_by_name": (params.updated_by.full_name or params.updated_by.email) if params.updated_by else "—",
+    }
+
+
 def _serialize_material_prices(prices: dict[str, float]) -> str:
     normalized = {key: round(max(float(value), 0.0), 2) for key, value in prices.items() if key}
     return json.dumps(normalized, ensure_ascii=False, sort_keys=True)
@@ -318,18 +349,16 @@ def _serialize_material_prices(prices: dict[str, float]) -> str:
 
 def _compute_auto_labor_costs(
     site: Site,
+    auto_params: SiteEconomicAutoParams | None,
     attendance_rows: list[PersonalePresenza],
     start_date: date,
     end_date: date,
 ) -> tuple[list[dict[str, Any]], dict[date, float], float]:
-    if not bool(site.auto_cost_labor_enabled):
-        return [], {}, 0.0
-
-    default_unit_cost = round(float(site.labor_cost_per_person or 0.0), 2)
+    default_unit_cost = round(float(getattr(auto_params, "costo_manodopera_persona_giorno", 0.0) or 0.0), 2)
     if default_unit_cost <= 0:
         return [], {}, 0.0
 
-    attendance = [row for row in attendance_rows if row.status == "WORK" and row.site_id == site.id]
+    attendance = [row for row in attendance_rows if row.status == "WORK"]
     per_day_workers: dict[date, int] = defaultdict(int)
     for row in attendance:
         per_day_workers[row.attendance_date] += 1
@@ -373,15 +402,13 @@ def _compute_auto_labor_costs(
 
 def _compute_auto_material_costs(
     site: Site,
+    auto_params: SiteEconomicAutoParams | None,
     start_date: date,
     end_date: date,
     manual_material_entries: list[SiteEconomicEntry],
 ) -> tuple[list[dict[str, Any]], dict[date, float], float]:
-    if not bool(site.auto_cost_materials_enabled):
-        return [], {}, 0.0
-
-    prices = _parse_material_prices(site.material_unit_prices)
-    if not prices:
+    unit_price = round(float(getattr(auto_params, "costo_cemento_mc", 0.0) or 0.0), 2)
+    if unit_price <= 0:
         return [], {}, 0.0
 
     manual_days = {entry.entry_date for entry in manual_material_entries}
@@ -390,23 +417,19 @@ def _compute_auto_material_costs(
     for fiche in (site.fiches or []):
         if not fiche.date or fiche.date < start_date or fiche.date > end_date:
             continue
-        material_key = _normalize_material_key(fiche.materiale)
         qty = round(float(fiche.metri_cubi_gettati or 0.0), 2)
-        if not material_key or qty <= 0:
+        if qty <= 0:
             continue
-        price = prices.get(material_key)
-        if price is None:
+        if bool(getattr(auto_params, "manual_material_entries_override_auto", True)) and fiche.date in manual_days:
             continue
-        if bool(site.manual_material_entries_override_auto) and fiche.date in manual_days:
-            continue
-        total = round(qty * price, 2)
+        total = round(qty * unit_price, 2)
         totals_by_day[fiche.date] += total
         rows.append(
             {
                 "date": fiche.date,
-                "material": fiche.materiale,
+                "material": "cemento",
                 "quantity": qty,
-                "unit_price": price,
+                "unit_price": unit_price,
                 "total_cost": total,
                 "source": "fiches",
                 "fiche_id": fiche.id,
@@ -430,6 +453,19 @@ def _build_site_economic_snapshot(
     ]
     labor_entries = [entry for entry in (site.labor_cost_entries or []) if start_date <= entry.work_date <= end_date]
     budget_data = _serialize_site_budget(getattr(site, "economic_budget", None))
+    auto_params_model = getattr(site, "economic_auto_params", None)
+    if auto_params_model is None and (
+        float(site.labor_cost_per_person or 0) > 0
+        or bool(_parse_material_prices(site.material_unit_prices).get("cemento"))
+    ):
+        legacy = SiteEconomicAutoParams(
+            site_id=site.id,
+            costo_manodopera_persona_giorno=round(float(site.labor_cost_per_person or 0), 2),
+            costo_cemento_mc=round(float(_parse_material_prices(site.material_unit_prices).get("cemento", 0)), 2),
+            manual_material_entries_override_auto=bool(site.manual_material_entries_override_auto),
+        )
+        auto_params_model = legacy
+    auto_params = _serialize_auto_params(auto_params_model)
 
     revenue_totals = defaultdict(float)
     cost_totals = defaultdict(float)
@@ -442,16 +478,29 @@ def _build_site_economic_snapshot(
         entry for entry in entries
         if entry.entry_type == SiteEconomicEntryTypeEnum.cost and entry.category == SiteEconomicCategoryEnum.materiali
     ]
-    auto_labor_rows, auto_labor_daily, labor_total = _compute_auto_labor_costs(site, attendance_rows, start_date, end_date)
+    auto_labor_rows, auto_labor_daily, labor_total = _compute_auto_labor_costs(site, auto_params_model, attendance_rows, start_date, end_date)
     auto_material_rows, auto_material_daily, auto_material_total = _compute_auto_material_costs(
         site,
+        auto_params_model,
         start_date,
         end_date,
         manual_material_entries,
     )
-
-    cost_totals[SiteEconomicCategoryEnum.materiali] += auto_material_total
-    cost_totals[SiteEconomicCategoryEnum.manodopera] += labor_total
+    manual_cost_breakdown = {
+        "materiali": round(cost_totals[SiteEconomicCategoryEnum.materiali], 2),
+        "trasporti": round(cost_totals[SiteEconomicCategoryEnum.trasporti], 2),
+        "mezzi": round(cost_totals[SiteEconomicCategoryEnum.mezzi], 2),
+        "attrezzature": round(cost_totals[SiteEconomicCategoryEnum.attrezzature], 2),
+        "manodopera": round(cost_totals[SiteEconomicCategoryEnum.manodopera], 2),
+        "altri_costi": round(cost_totals[SiteEconomicCategoryEnum.altri_costi], 2),
+    }
+    auto_cost_breakdown = {
+        "manodopera": round(labor_total, 2),
+        "cemento": round(auto_material_total, 2),
+        "altri_automatici": 0.0,
+    }
+    cost_totals[SiteEconomicCategoryEnum.materiali] += auto_cost_breakdown["cemento"]
+    cost_totals[SiteEconomicCategoryEnum.manodopera] += auto_cost_breakdown["manodopera"]
 
     ricavi_previsti = round(revenue_totals[SiteEconomicCategoryEnum.ricavi_previsti], 2)
     ricavi_fatturati = round(revenue_totals[SiteEconomicCategoryEnum.ricavi_fatturati], 2)
@@ -593,6 +642,14 @@ def _build_site_economic_snapshot(
         payload["scostamento"] = round(payload["reale"] - payload["previsto"], 2)
         payload["scostamento_pct"] = _safe_pct(payload["scostamento"], payload["previsto"])
 
+    warnings: list[str] = []
+    if not auto_params["configured"]:
+        warnings.append("Parametri economici automatici non ancora configurati.")
+    elif auto_params["costo_manodopera_persona_giorno"] <= 0:
+        warnings.append("Costo manodopera automatico non configurato: calcolo manodopera a 0.")
+    if auto_params["configured"] and auto_params["costo_cemento_mc"] <= 0:
+        warnings.append("Costo cemento €/m³ non configurato: calcolo cemento automatico non disponibile.")
+
     return {
         "site": site,
         "period": {"start": start_date, "end": end_date, "label": f"{start_date:%d/%m/%Y} → {end_date:%d/%m/%Y}"},
@@ -622,12 +679,21 @@ def _build_site_economic_snapshot(
             "periodo_selezionato": calculate_period_totals(enriched_economic_entries, enriched_labor_entries, start_date, end_date),
         },
         "cost_breakdown": cost_breakdown,
+        "auto_cost_breakdown": auto_cost_breakdown,
+        "manual_cost_breakdown": manual_cost_breakdown,
         "budget": budget_data,
         "real_summary": {
             "ricavi_reali": real_revenue_total,
             "costi_reali": real_total_cost,
             "margine_reale": round(real_revenue_total - real_total_cost, 2),
         },
+        "automatic_real_summary": {
+            "costi_automatici": round(sum(auto_cost_breakdown.values()), 2),
+        },
+        "manual_real_summary": {
+            "costi_manuali": round(sum(manual_cost_breakdown.values()), 2),
+        },
+        "warnings": warnings,
         "variances": {
             "by_category": scostamento_rows,
             "overall": overall_variances,
@@ -662,13 +728,7 @@ def _build_site_economic_snapshot(
             }
             for row in sorted(auto_material_rows, key=lambda item: (item["date"], item["fiche_id"]), reverse=True)
         ],
-        "auto_cost_config": {
-            "labor_cost_per_person": round(float(site.labor_cost_per_person or 0), 2),
-            "material_prices": _parse_material_prices(site.material_unit_prices),
-            "auto_cost_labor_enabled": bool(site.auto_cost_labor_enabled),
-            "auto_cost_materials_enabled": bool(site.auto_cost_materials_enabled),
-            "manual_material_entries_override_auto": bool(site.manual_material_entries_override_auto),
-        },
+        "auto_cost_config": auto_params,
         "economic_entries": [
             _serialize_economic_entry(entry)
             for entry in recent_entries
@@ -698,6 +758,8 @@ def manager_economics_dashboard(
             joinedload(Site.labor_cost_entries),
             joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.created_by),
             joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.updated_by),
+            joinedload(Site.economic_auto_params).joinedload(SiteEconomicAutoParams.created_by),
+            joinedload(Site.economic_auto_params).joinedload(SiteEconomicAutoParams.updated_by),
         )
         .order_by(Site.name.asc())
         .all()
@@ -810,6 +872,8 @@ def manager_site_economics_detail(
             joinedload(Site.labor_cost_entries),
             joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.created_by),
             joinedload(Site.economic_budget).joinedload(SiteEconomicBudget.updated_by),
+            joinedload(Site.economic_auto_params).joinedload(SiteEconomicAutoParams.created_by),
+            joinedload(Site.economic_auto_params).joinedload(SiteEconomicAutoParams.updated_by),
         )
         .filter(Site.id == site_id)
         .first()
@@ -1124,12 +1188,14 @@ def manager_site_economics_labor_create(
 
 
 @router.post("/manager/cantieri/{site_id}/economics/auto-cost-config", name="manager_site_economics_auto_cost_config")
+@router.patch("/manager/cantieri/{site_id}/economics/auto-cost-config")
 def manager_site_economics_auto_cost_config(
     site_id: int,
-    labor_cost_per_person: str = Form("0"),
-    material_prices_json: str = Form("{}"),
-    auto_cost_labor_enabled: str | None = Form(None),
-    auto_cost_materials_enabled: str | None = Form(None),
+    costo_manodopera_persona_giorno: str = Form("0"),
+    costo_cemento_mc: str = Form("0"),
+    costo_ferro_ton: str = Form("0"),
+    costo_ferro_kg: str = Form("0"),
+    altri_prezzi_json: str = Form("{}"),
     manual_material_entries_override_auto: str | None = Form(None),
     timeframe: str = Form("month"),
     start_date: str | None = Form(None),
@@ -1138,24 +1204,57 @@ def manager_site_economics_auto_cost_config(
     db: Session = Depends(get_db),
 ):
     _ensure_economics_manage(current_user)
-    site = db.query(Site).filter(Site.id == site_id).first()
+    site = db.query(Site).options(joinedload(Site.economic_auto_params)).filter(Site.id == site_id).first()
     if not site:
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
     try:
-        parsed_labor = _normalize_entry_amount(labor_cost_per_person)
-        parsed_prices = _parse_material_prices(material_prices_json)
+        parsed_labor = _normalize_entry_amount(costo_manodopera_persona_giorno)
+        parsed_cemento = _normalize_entry_amount(costo_cemento_mc)
+        parsed_ferro_ton = _normalize_entry_amount(costo_ferro_ton)
+        parsed_ferro_kg = _normalize_entry_amount(costo_ferro_kg)
+        parsed_altri_prezzi = _parse_material_prices(altri_prezzi_json)
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Configurazione prezzi non valida")
 
-    site.labor_cost_per_person = parsed_labor
-    site.material_unit_prices = _serialize_material_prices(parsed_prices)
-    site.auto_cost_labor_enabled = auto_cost_labor_enabled in {"1", "true", "True", "on", "yes"}
-    site.auto_cost_materials_enabled = auto_cost_materials_enabled in {"1", "true", "True", "on", "yes"}
-    site.manual_material_entries_override_auto = manual_material_entries_override_auto in {"1", "true", "True", "on", "yes"}
+    params = site.economic_auto_params
+    if params is None:
+        params = SiteEconomicAutoParams(site_id=site.id, created_by_id=getattr(current_user, "id", None))
+        db.add(params)
+    params.costo_manodopera_persona_giorno = parsed_labor
+    params.costo_cemento_mc = parsed_cemento
+    params.costo_ferro_ton = parsed_ferro_ton
+    params.costo_ferro_kg = parsed_ferro_kg
+    params.altri_prezzi_json = _serialize_material_prices(parsed_altri_prezzi)
+    params.manual_material_entries_override_auto = manual_material_entries_override_auto in {"1", "true", "True", "on", "yes"}
+    params.updated_by_id = getattr(current_user, "id", None)
     db.commit()
 
     return RedirectResponse(
         url=f"/manager/cantieri/{site_id}/economics?timeframe={timeframe}&start_date={start_date or ''}&end_date={end_date or ''}",
         status_code=303,
     )
+
+
+@router.get("/manager/cantieri/{site_id}/economics/auto-cost-config", name="manager_site_economics_auto_cost_config_get")
+def manager_site_economics_auto_cost_config_get(
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _ensure_economics_access(current_user)
+    site = (
+        db.query(Site)
+        .options(
+            joinedload(Site.economic_auto_params).joinedload(SiteEconomicAutoParams.created_by),
+            joinedload(Site.economic_auto_params).joinedload(SiteEconomicAutoParams.updated_by),
+        )
+        .filter(Site.id == site_id)
+        .first()
+    )
+    if not site:
+        raise HTTPException(status_code=404, detail="Cantiere non trovato")
+    return {
+        "site_id": site.id,
+        "params": _serialize_auto_params(site.economic_auto_params),
+    }
