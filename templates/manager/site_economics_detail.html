@@ -136,6 +136,9 @@
     <section class="card">
       <div class="card-header"><div class="card-title">➕ Nuova registrazione economica</div></div>
       <div class="card-body">
+        {% if not can_manage %}
+          <p class="text-muted">Hai solo permessi in lettura: creazione/modifica/eliminazione non consentite.</p>
+        {% endif %}
         <form method="post" action="{{ url_for('manager_site_economics_entry_create', site_id=site.id) }}">
           <input type="hidden" name="timeframe" value="{{ timeframe }}">
           <input type="hidden" name="start_date" value="{{ filters.start_date }}">
@@ -164,7 +167,7 @@
           <div class="form-group"><label class="form-label">Importo</label><input class="form-control" type="number" step="0.01" min="0" name="amount" required></div>
           <div class="form-group"><label class="form-label">Descrizione</label><input class="form-control" type="text" name="description"></div>
           <div class="form-group"><label class="form-label">Note</label><textarea class="form-control" name="notes" rows="3"></textarea></div>
-          <button class="btn btn-primary" type="submit">Salva movimento</button>
+          <button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>Salva movimento</button>
         </form>
       </div>
     </section>
@@ -253,6 +256,8 @@
               <th>Categoria</th>
               <th>Importo</th>
               <th>Descrizione</th>
+              <th>Tracking</th>
+              <th>Azioni</th>
             </tr>
           </thead>
           <tbody>
@@ -263,12 +268,77 @@
                 <td>{{ row.category_label }}</td>
                 <td>€ {{ '%.2f'|format(row.amount) }}</td>
                 <td>{{ row.description or row.notes or '—' }}</td>
+                <td>
+                  <small>
+                    Creato da: {{ row.created_by_name }} - {{ row.created_at.strftime('%d/%m/%Y %H:%M') if row.created_at else '—' }}<br>
+                    Modificato da: {{ row.updated_by_name or row.created_by_name }} - {{ row.updated_at.strftime('%d/%m/%Y %H:%M') if row.updated_at else '—' }}
+                  </small>
+                </td>
+                <td>
+                  {% if can_manage %}
+                    <div class="table-actions">
+                      <button
+                        class="btn btn-secondary btn-sm js-entry-edit-btn"
+                        type="button"
+                        data-entry-id="{{ row.id }}"
+                        data-entry-date="{{ row.entry_date.isoformat() }}"
+                        data-entry-type="{{ row.entry_type }}"
+                        data-category="{{ row.category }}"
+                        data-amount="{{ '%.2f'|format(row.amount) }}"
+                        data-description="{{ row.description }}"
+                        data-notes="{{ row.notes }}"
+                      >Modifica</button>
+                      <button class="btn btn-danger btn-sm js-entry-delete-btn" type="button" data-entry-id="{{ row.id }}">Elimina</button>
+                    </div>
+                  {% else %}
+                    <span class="text-muted">Solo lettura</span>
+                  {% endif %}
+                </td>
               </tr>
             {% else %}
-              <tr><td colspan="5" class="table-empty">Nessun movimento economico registrato.</td></tr>
+              <tr><td colspan="7" class="table-empty">Nessun movimento economico registrato.</td></tr>
             {% endfor %}
           </tbody>
         </table>
+      </div>
+
+      <div class="card-body" id="entry-edit-panel" hidden>
+        <h3 style="margin-top:0;">Modifica movimento economico</h3>
+        <form id="entry-edit-form">
+          <input type="hidden" name="entry_id" id="entry-edit-id">
+          <div class="economics-filter-grid">
+            <div><label class="form-label">Data</label><input class="form-control" type="date" name="entry_date" id="entry-edit-date" required></div>
+            <div>
+              <label class="form-label">Tipo</label>
+              <select class="form-select" name="entry_type" id="entry-edit-type" required>
+                <option value="revenue">Ricavo</option>
+                <option value="cost">Costo</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Categoria</label>
+              <select class="form-select" name="category" id="entry-edit-category" required>
+                <optgroup label="Ricavi">
+                  {% for item in revenue_category_options %}
+                    <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
+                  {% endfor %}
+                </optgroup>
+                <optgroup label="Costi">
+                  {% for item in cost_category_options %}
+                    <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
+                  {% endfor %}
+                </optgroup>
+              </select>
+            </div>
+            <div><label class="form-label">Importo</label><input class="form-control" type="number" step="0.01" min="0" name="amount" id="entry-edit-amount" required></div>
+            <div><label class="form-label">Descrizione</label><input class="form-control" type="text" name="description" id="entry-edit-description"></div>
+            <div><label class="form-label">Note</label><input class="form-control" type="text" name="notes" id="entry-edit-notes"></div>
+          </div>
+          <div class="table-actions" style="margin-top:.75rem;">
+            <button class="btn btn-primary" type="submit">Salva modifica</button>
+            <button class="btn btn-secondary" type="button" id="entry-edit-cancel">Annulla</button>
+          </div>
+        </form>
       </div>
     </div>
   </section>
@@ -294,6 +364,7 @@
   .badge { display:inline-flex; align-items:center; justify-content:center; padding:.25rem .6rem; border-radius:999px; background:rgba(255,255,255,.12); font-size:.85rem; }
   .badge-success { background:rgba(46, 204, 113, .18); color:#7ee2a8; }
   .badge-warning { background:rgba(245, 194, 107, .18); color:#f5c26b; }
+  .table-actions { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
   .stat-label { font-size:.85rem; opacity:.8; margin-bottom:.35rem; }
   .stat-value { font-size:1.35rem; font-weight:700; }
   @media (max-width: 960px) { .economics-layout { grid-template-columns: 1fr; } }
@@ -307,6 +378,17 @@
     const help = document.getElementById("labor-weekend-help");
     const trendPreview = document.getElementById("trend-json-preview");
     const trendSeries = {{ snapshot.trend_series|tojson }};
+    const canManage = {{ can_manage|tojson }};
+    const editPanel = document.getElementById("entry-edit-panel");
+    const editForm = document.getElementById("entry-edit-form");
+    const editCancel = document.getElementById("entry-edit-cancel");
+    const editId = document.getElementById("entry-edit-id");
+    const editDate = document.getElementById("entry-edit-date");
+    const editType = document.getElementById("entry-edit-type");
+    const editCategory = document.getElementById("entry-edit-category");
+    const editAmount = document.getElementById("entry-edit-amount");
+    const editDescription = document.getElementById("entry-edit-description");
+    const editNotes = document.getElementById("entry-edit-notes");
 
     if (trendPreview) {
       trendPreview.textContent = JSON.stringify(trendSeries.slice(0, 10), null, 2);
@@ -359,6 +441,78 @@
 
     dateInput.addEventListener("change", updateLaborDayState);
     updateLaborDayState();
+
+    if (!canManage || !editPanel || !editForm) {
+      return;
+    }
+
+    document.querySelectorAll(".js-entry-edit-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        editId.value = button.dataset.entryId || "";
+        editDate.value = button.dataset.entryDate || "";
+        editType.value = button.dataset.entryType || "cost";
+        editCategory.value = button.dataset.category || "altri_costi";
+        editAmount.value = button.dataset.amount || "0.00";
+        editDescription.value = button.dataset.description || "";
+        editNotes.value = button.dataset.notes || "";
+        editPanel.hidden = false;
+        editPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    });
+
+    if (editCancel) {
+      editCancel.addEventListener("click", () => {
+        editPanel.hidden = true;
+      });
+    }
+
+    editForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const entryId = editId.value;
+      if (!entryId) {
+        return;
+      }
+
+      const formData = new FormData(editForm);
+      try {
+        const response = await fetch(`/manager/cantieri/{{ site.id }}/economics/entries/${entryId}`, {
+          method: "PUT",
+          body: formData,
+          credentials: "same-origin",
+        });
+        if (!response.ok) {
+          throw new Error("Salvataggio non riuscito");
+        }
+        window.location.reload();
+      } catch (error) {
+        alert("Impossibile salvare il movimento. Controlla i dati e riprova.");
+      }
+    });
+
+    document.querySelectorAll(".js-entry-delete-btn").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const entryId = button.dataset.entryId;
+        if (!entryId) {
+          return;
+        }
+        const confirmed = window.confirm("Confermi l'eliminazione del movimento economico?");
+        if (!confirmed) {
+          return;
+        }
+        try {
+          const response = await fetch(`/manager/cantieri/{{ site.id }}/economics/entries/${entryId}`, {
+            method: "DELETE",
+            credentials: "same-origin",
+          });
+          if (!response.ok) {
+            throw new Error("Eliminazione non riuscita");
+          }
+          window.location.reload();
+        } catch (error) {
+          alert("Impossibile eliminare il movimento. Riprova.");
+        }
+      });
+    });
   })();
 </script>
 {% endblock %}

@@ -264,3 +264,70 @@ def test_trend_data_endpoint_returns_daily_series() -> None:
     assert payload["site_id"] == site_id
     assert payload["series"][0] == {"data": "2026-03-01", "costi": 0.0, "ricavi": 10000.0, "margine": 10000.0}
     assert any(row["data"] == "2026-03-06" and row["costi"] == 480.0 for row in payload["series"])
+
+
+def test_manager_can_update_economic_entry_with_tracking() -> None:
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_manager_user
+    db = TestingSessionLocal()
+    try:
+        entry = (
+            db.query(SiteEconomicEntry)
+            .filter(SiteEconomicEntry.site_id == site_id, SiteEconomicEntry.category == SiteEconomicCategoryEnum.materiali)
+            .first()
+        )
+        assert entry is not None
+        entry_id = entry.id
+    finally:
+        db.close()
+
+    response = client.request(
+        "PUT",
+        f"/manager/cantieri/{site_id}/economics/entries/{entry_id}",
+        data={
+            "entry_date": "2026-03-10",
+            "entry_type": "cost",
+            "category": "attrezzature",
+            "amount": "1900.50",
+            "description": "Noleggio aggiornato",
+            "notes": "Aggiornato da test",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["entry"]["category"] == "attrezzature"
+    assert payload["entry"]["amount"] == 1900.5
+
+    db = TestingSessionLocal()
+    try:
+        updated = db.query(SiteEconomicEntry).filter(SiteEconomicEntry.id == entry_id).first()
+        assert updated is not None
+        assert updated.updated_by_id == 99
+        assert updated.category == SiteEconomicCategoryEnum.attrezzature
+    finally:
+        db.close()
+
+
+def test_manager_can_delete_economic_entry() -> None:
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_manager_user
+    db = TestingSessionLocal()
+    try:
+        entry = db.query(SiteEconomicEntry).filter(SiteEconomicEntry.site_id == site_id).first()
+        assert entry is not None
+        entry_id = entry.id
+    finally:
+        db.close()
+
+    response = client.request("DELETE", f"/manager/cantieri/{site_id}/economics/entries/{entry_id}")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "deleted_id": entry_id}
+
+    db = TestingSessionLocal()
+    try:
+        deleted = db.query(SiteEconomicEntry).filter(SiteEconomicEntry.id == entry_id).first()
+        assert deleted is None
+    finally:
+        db.close()

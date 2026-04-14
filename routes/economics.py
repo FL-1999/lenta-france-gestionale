@@ -198,6 +198,33 @@ def _label_for_category(category: SiteEconomicCategoryEnum | str) -> str:
     return CATEGORY_LABELS.get(category, category.value.replace("_", " ").title())
 
 
+def _validate_entry_type_and_category(
+    entry_type: SiteEconomicEntryTypeEnum,
+    category: SiteEconomicCategoryEnum,
+) -> None:
+    if entry_type == SiteEconomicEntryTypeEnum.revenue and category not in REVENUE_CATEGORY_OPTIONS:
+        raise ValueError("Categoria non valida per un ricavo")
+    if entry_type == SiteEconomicEntryTypeEnum.cost and category not in COST_CATEGORY_OPTIONS:
+        raise ValueError("Categoria non valida per un costo")
+
+
+def _serialize_economic_entry(entry: SiteEconomicEntry) -> dict[str, Any]:
+    return {
+        "id": entry.id,
+        "entry_date": entry.entry_date,
+        "entry_type": entry.entry_type.value,
+        "category": entry.category.value,
+        "category_label": _label_for_category(entry.category),
+        "amount": round(float(entry.amount or 0), 2),
+        "description": entry.description or "",
+        "notes": entry.notes or "",
+        "created_at": entry.created_at,
+        "created_by_name": (entry.created_by.full_name or entry.created_by.email) if entry.created_by else "Sistema",
+        "updated_at": entry.updated_at,
+        "updated_by_name": (entry.updated_by.full_name or entry.updated_by.email) if entry.updated_by else None,
+    }
+
+
 def _build_site_economic_snapshot(
     site: Site,
     start_date: date,
@@ -358,16 +385,7 @@ def _build_site_economic_snapshot(
             for entry in recent_labor_entries
         ],
         "economic_entries": [
-            {
-                "id": entry.id,
-                "entry_date": entry.entry_date,
-                "entry_type": entry.entry_type.value,
-                "category": entry.category.value,
-                "category_label": _label_for_category(entry.category),
-                "amount": round(float(entry.amount or 0), 2),
-                "description": entry.description or "",
-                "notes": entry.notes or "",
-            }
+            _serialize_economic_entry(entry)
             for entry in recent_entries
         ],
     }
@@ -485,6 +503,7 @@ def manager_site_economics_detail(
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
     snapshot = _build_site_economic_snapshot(site, period_start, period_end, group_by, timeframe)
+    can_manage = has_perm(current_user, "economics.manage")
 
     return templates.TemplateResponse(
         request,
@@ -500,6 +519,7 @@ def manager_site_economics_detail(
             category_labels={item.value: label for item, label in CATEGORY_LABELS.items()},
             cost_category_options=COST_CATEGORY_OPTIONS,
             revenue_category_options=REVENUE_CATEGORY_OPTIONS,
+            can_manage=can_manage,
         ),
     )
 
@@ -560,6 +580,7 @@ def manager_site_economics_entry_create(
         parsed_type = SiteEconomicEntryTypeEnum(entry_type)
         parsed_category = SiteEconomicCategoryEnum(category)
         parsed_amount = _normalize_entry_amount(amount)
+        _validate_entry_type_and_category(parsed_type, parsed_category)
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Dati economici non validi")
 
@@ -573,6 +594,7 @@ def manager_site_economics_entry_create(
             description=(description or "").strip() or None,
             notes=(notes or "").strip() or None,
             created_by_id=getattr(current_user, "id", None),
+            updated_by_id=getattr(current_user, "id", None),
         )
     )
     db.commit()
@@ -580,6 +602,73 @@ def manager_site_economics_entry_create(
         url=f"/manager/cantieri/{site_id}/economics?timeframe={timeframe}&start_date={start_date or ''}&end_date={end_date or ''}",
         status_code=303,
     )
+
+
+@router.put("/manager/cantieri/{site_id}/economics/entries/{entry_id}", name="manager_site_economics_entry_update")
+@router.patch("/manager/cantieri/{site_id}/economics/entries/{entry_id}")
+def manager_site_economics_entry_update(
+    site_id: int,
+    entry_id: int,
+    entry_date: str = Form(...),
+    entry_type: str = Form(...),
+    category: str = Form(...),
+    amount: str = Form(...),
+    description: str | None = Form(None),
+    notes: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _ensure_economics_manage(current_user)
+    entry = (
+        db.query(SiteEconomicEntry)
+        .options(joinedload(SiteEconomicEntry.created_by), joinedload(SiteEconomicEntry.updated_by))
+        .filter(SiteEconomicEntry.id == entry_id, SiteEconomicEntry.site_id == site_id)
+        .first()
+    )
+    if not entry:
+        raise HTTPException(status_code=404, detail="Movimento economico non trovato")
+
+    try:
+        parsed_date = datetime.strptime(entry_date, "%Y-%m-%d").date()
+        parsed_type = SiteEconomicEntryTypeEnum(entry_type)
+        parsed_category = SiteEconomicCategoryEnum(category)
+        parsed_amount = _normalize_entry_amount(amount)
+        _validate_entry_type_and_category(parsed_type, parsed_category)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Dati economici non validi")
+
+    entry.entry_date = parsed_date
+    entry.entry_type = parsed_type
+    entry.category = parsed_category
+    entry.amount = parsed_amount
+    entry.description = (description or "").strip() or None
+    entry.notes = (notes or "").strip() or None
+    entry.updated_by_id = getattr(current_user, "id", None)
+    db.commit()
+    db.refresh(entry)
+
+    return {"ok": True, "entry": _serialize_economic_entry(entry)}
+
+
+@router.delete("/manager/cantieri/{site_id}/economics/entries/{entry_id}", name="manager_site_economics_entry_delete")
+def manager_site_economics_entry_delete(
+    site_id: int,
+    entry_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _ensure_economics_manage(current_user)
+    entry = (
+        db.query(SiteEconomicEntry)
+        .filter(SiteEconomicEntry.id == entry_id, SiteEconomicEntry.site_id == site_id)
+        .first()
+    )
+    if not entry:
+        raise HTTPException(status_code=404, detail="Movimento economico non trovato")
+
+    db.delete(entry)
+    db.commit()
+    return {"ok": True, "deleted_id": entry_id}
 
 
 @router.post("/manager/cantieri/{site_id}/economics/labor", name="manager_site_economics_labor_create")
