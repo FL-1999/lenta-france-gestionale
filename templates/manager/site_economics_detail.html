@@ -199,6 +199,22 @@
       </div>
     </section>
     <section class="card">
+      <div class="card-header"><div class="card-title">⚙️ Configurazione costi automatici</div></div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('manager_site_economics_auto_cost_config', site_id=site.id) }}">
+          <input type="hidden" name="timeframe" value="{{ timeframe }}">
+          <input type="hidden" name="start_date" value="{{ filters.start_date }}">
+          <input type="hidden" name="end_date" value="{{ filters.end_date }}">
+          <div class="form-group"><label class="form-label">Costo manodopera per persona (€/giorno)</label><input class="form-control" type="number" step="0.01" min="0" name="labor_cost_per_person" value="{{ '%.2f'|format(snapshot.auto_cost_config.labor_cost_per_person) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">Prezzi materiali (JSON: {"cemento": 120, "acciaio": 3.2})</label><textarea class="form-control" name="material_prices_json" rows="4" {% if not can_manage %}disabled{% endif %}>{{ snapshot.auto_cost_config.material_prices|tojson }}</textarea></div>
+          <label class="checkbox-inline"><input type="checkbox" name="auto_cost_labor_enabled" value="1" {% if snapshot.auto_cost_config.auto_cost_labor_enabled %}checked{% endif %} {% if not can_manage %}disabled{% endif %}><span>Auto manodopera da presenze</span></label>
+          <label class="checkbox-inline"><input type="checkbox" name="auto_cost_materials_enabled" value="1" {% if snapshot.auto_cost_config.auto_cost_materials_enabled %}checked{% endif %} {% if not can_manage %}disabled{% endif %}><span>Auto materiali da fiches</span></label>
+          <label class="checkbox-inline"><input type="checkbox" name="manual_material_entries_override_auto" value="1" {% if snapshot.auto_cost_config.manual_material_entries_override_auto %}checked{% endif %} {% if not can_manage %}disabled{% endif %}><span>Movimento manuale materiali sostituisce auto dello stesso giorno</span></label>
+          <div class="table-actions" style="margin-top:.75rem;"><button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>Salva configurazione</button></div>
+        </form>
+      </div>
+    </section>
+    <section class="card">
       <div class="card-header"><div class="card-title">📦 Serie dati pronta per grafico JS</div></div>
       <div class="card-body">
         <p class="text-muted">Endpoint backend: <code>{{ url_for('manager_site_economics_trend_data', site_id=site.id) }}</code></p>
@@ -279,7 +295,7 @@
               <th>Persone</th>
               <th>Costo / persona</th>
               <th>Costo giornata</th>
-              <th>Note</th>
+              <th>Origine</th>
             </tr>
           </thead>
           <tbody>
@@ -305,10 +321,36 @@
                 <td>{{ row.worker_count }}</td>
                 <td>€ {{ '%.2f'|format(row.unit_cost) }}</td>
                 <td>€ {{ '%.2f'|format(row.total_cost) }}</td>
-                <td>{{ row.notes or '—' }}</td>
+                <td>{{ 'Presenze' if row.source == 'presenze' else 'Override manuale' }}</td>
               </tr>
             {% else %}
               <tr><td colspan="7" class="table-empty">Nessun costo manodopera registrato nel periodo.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><div class="card-title">🧱 Costi materiali automatici da fiches</div></div>
+    <div class="card-body">
+      <p class="text-muted" style="margin-bottom: .75rem;">Formula: quantità fiche × prezzo unitario configurato per materiale.</p>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead><tr><th>Data</th><th>Materiale</th><th>Quantità</th><th>Prezzo unitario</th><th>Costo</th><th>Origine</th></tr></thead>
+          <tbody>
+            {% for row in snapshot.material_auto_entries %}
+              <tr>
+                <td>{{ row.date.strftime('%d/%m/%Y') }}</td>
+                <td>{{ row.material }}</td>
+                <td>{{ row.quantity }}</td>
+                <td>€ {{ '%.2f'|format(row.unit_price) }}</td>
+                <td>€ {{ '%.2f'|format(row.total_cost) }}</td>
+                <td>Fiche #{{ row.fiche_id }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="table-empty">Nessun costo materiali automatico nel periodo.</td></tr>
             {% endfor %}
           </tbody>
         </table>

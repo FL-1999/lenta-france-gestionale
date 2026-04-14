@@ -72,6 +72,13 @@ SITE_ECONOMIC_ENTRIES_COLUMNS: tuple[str, ...] = (
     "created_by_id INTEGER",
     "updated_by_id INTEGER",
 )
+SITES_COLUMNS: tuple[str, ...] = (
+    "labor_cost_per_person FLOAT NOT NULL DEFAULT 0",
+    "material_unit_prices TEXT",
+    "auto_cost_materials_enabled BOOLEAN NOT NULL DEFAULT 1",
+    "auto_cost_labor_enabled BOOLEAN NOT NULL DEFAULT 1",
+    "manual_material_entries_override_auto BOOLEAN NOT NULL DEFAULT 1",
+)
 
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "veicoli": VEICOLI_COLUMNS,
@@ -82,6 +89,7 @@ UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "magazzino_movimenti": MAGAZZINO_MOVIMENTI_COLUMNS,
     "site_labor_cost_entries": SITE_LABOR_COST_ENTRIES_COLUMNS,
     "site_economic_entries": SITE_ECONOMIC_ENTRIES_COLUMNS,
+    "sites": SITES_COLUMNS,
 }
 
 
