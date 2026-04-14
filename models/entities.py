@@ -229,6 +229,11 @@ class User(Base, TimestampMixin):
         back_populates="created_by",
         foreign_keys="SiteEconomicEntry.created_by_id",
     )
+    economic_entries_updated = relationship(
+        "SiteEconomicEntry",
+        back_populates="updated_by",
+        foreign_keys="SiteEconomicEntry.updated_by_id",
+    )
     labor_cost_entries_created = relationship(
         "SiteLaborCostEntry",
         back_populates="created_by",
@@ -810,9 +815,11 @@ class SiteEconomicEntry(Base, TimestampMixin):
     description = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     site = relationship("Site", back_populates="economic_entries")
     created_by = relationship("User", back_populates="economic_entries_created", foreign_keys=[created_by_id])
+    updated_by = relationship("User", back_populates="economic_entries_updated", foreign_keys=[updated_by_id])
 
     __table_args__ = (
         CheckConstraint("amount >= 0", name="ck_site_economic_entries_amount_positive"),
