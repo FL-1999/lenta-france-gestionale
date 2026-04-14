@@ -249,6 +249,16 @@ class User(Base, TimestampMixin):
         back_populates="updated_by",
         foreign_keys="SiteEconomicBudget.updated_by_id",
     )
+    economic_auto_params_created = relationship(
+        "SiteEconomicAutoParams",
+        back_populates="created_by",
+        foreign_keys="SiteEconomicAutoParams.created_by_id",
+    )
+    economic_auto_params_updated = relationship(
+        "SiteEconomicAutoParams",
+        back_populates="updated_by",
+        foreign_keys="SiteEconomicAutoParams.updated_by_id",
+    )
 
     @property
     def active_role(self) -> RoleEnum | None:
@@ -407,6 +417,12 @@ class Site(Base):
     )
     economic_budget = relationship(
         "SiteEconomicBudget",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    economic_auto_params = relationship(
+        "SiteEconomicAutoParams",
         back_populates="site",
         cascade="all, delete-orphan",
         uselist=False,
@@ -925,6 +941,32 @@ def _site_labor_before_insert(_mapper, _connection, target: SiteLaborCostEntry) 
 @event.listens_for(SiteLaborCostEntry, "before_update")
 def _site_labor_before_update(_mapper, _connection, target: SiteLaborCostEntry) -> None:
     _sync_site_labor_flags_and_total(target)
+
+
+class SiteEconomicAutoParams(Base, TimestampMixin):
+    __tablename__ = "site_economic_auto_params"
+    __table_args__ = (
+        UniqueConstraint("site_id", name="uq_site_economic_auto_params_site"),
+        CheckConstraint("costo_manodopera_persona_giorno >= 0", name="ck_site_auto_params_labor_positive"),
+        CheckConstraint("costo_cemento_mc >= 0", name="ck_site_auto_params_cemento_positive"),
+        CheckConstraint("costo_ferro_ton >= 0", name="ck_site_auto_params_ferro_ton_positive"),
+        CheckConstraint("costo_ferro_kg >= 0", name="ck_site_auto_params_ferro_kg_positive"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    costo_manodopera_persona_giorno = Column(Float, nullable=False, default=0.0)
+    costo_cemento_mc = Column(Float, nullable=False, default=0.0)
+    costo_ferro_ton = Column(Float, nullable=False, default=0.0)
+    costo_ferro_kg = Column(Float, nullable=False, default=0.0)
+    altri_prezzi_json = Column(Text, nullable=True)
+    manual_material_entries_override_auto = Column(Boolean, nullable=False, default=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    site = relationship("Site", back_populates="economic_auto_params")
+    created_by = relationship("User", back_populates="economic_auto_params_created", foreign_keys=[created_by_id])
+    updated_by = relationship("User", back_populates="economic_auto_params_updated", foreign_keys=[updated_by_id])
 
 
 class PersonalePresenza(SQLModel, table=True):
