@@ -44,8 +44,15 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="cantiere">Cantiere</label>
-                            <input type="text" id="cantiere" name="cantiere" class="form-control" required placeholder="Nome o codice cantiere" />
+                            <label class="form-label" for="cantiere_id">Cantiere</label>
+                            <select id="cantiere_id" name="cantiere_id" class="form-control" required>
+                                <option value="">Seleziona cantiere</option>
+                                {% for cantiere in cantieri %}
+                                <option value="{{ cantiere.id }}" data-site-name="{{ cantiere.name }}">
+                                    {{ cantiere.code or ('#' ~ cantiere.id) }} - {{ cantiere.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
 
                         <div class="form-group">
@@ -57,6 +64,11 @@
                             <label class="form-label" for="numero_operai">Numero operai</label>
                             <input type="number" id="numero_operai" name="numero_operai" class="form-control" min="0" required placeholder="es. 3" />
                         </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label class="form-label">Operai presenti</label>
+                        <div id="workers-container"></div>
+                        <p class="form-help">Per ogni operaio puoi indicare ore lavorate, mansione e note.</p>
                     </div>
                 </section>
 
@@ -109,7 +121,10 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
     e.preventDefault();
 
     const data = document.getElementById("data").value;
-    const cantiere = (document.getElementById("cantiere").value || "").trim();
+    const cantiereSelect = document.getElementById("cantiere_id");
+    const cantiere_id = parseInt(cantiereSelect.value || "0", 10) || null;
+    const selectedSiteOption = cantiereSelect.options[cantiereSelect.selectedIndex];
+    const cantiere = selectedSiteOption ? (selectedSiteOption.dataset.siteName || "").trim() : "";
     const ore_totali = parseFloat(document.getElementById("ore_totali").value || "0");
     const numero_operai = parseInt(document.getElementById("numero_operai").value || "0", 10);
     const macchinari = (document.getElementById("macchinari").value || "").trim();
@@ -124,8 +139,15 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
     successBox.style.display = "none";
     successBox.textContent = "";
 
-    if (!data || !cantiere) {
+    if (!data || !cantiere || !cantiere_id) {
         errorBox.textContent = "Data e cantiere sono obbligatori.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    const workers = collectWorkers();
+    if (workers.error) {
+        errorBox.textContent = workers.error;
         errorBox.style.display = "block";
         return;
     }
@@ -146,12 +168,14 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
 
     const payload = {
         date: data,
+        site_id: cantiere_id,
         site_name_or_code: cantiere,
         total_hours: ore_totali,
         workers_count: numero_operai,
         machines_used: macchinari,
         activities: attivita,
         notes: note,
+        workers: workers.items,
     };
 
     try {
@@ -184,11 +208,87 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
 
         // Se vuoi, svuota il form dopo il salvataggio
         document.getElementById("rapportino-form").reset();
+        renderWorkerRows(0);
     } catch (err) {
         console.error(err);
         errorBox.textContent = "Errore di connessione al server durante il salvataggio del rapportino.";
         errorBox.style.display = "block";
     }
 });
+
+const WORKERS = [
+    {% for operaio in operai_attivi %}
+    { id: {{ operaio.id }}, label: {{ (operaio.cognome ~ " " ~ operaio.nome)|tojson }} },
+    {% endfor %}
+];
+
+const workersContainer = document.getElementById("workers-container");
+const workerCountInput = document.getElementById("numero_operai");
+
+function getWorkerOptions(selectedId) {
+    const base = ['<option value="">Seleziona operaio</option>'];
+    for (const worker of WORKERS) {
+        const selected = Number(selectedId) === Number(worker.id) ? "selected" : "";
+        base.push(`<option value="${worker.id}" ${selected}>${worker.label}</option>`);
+    }
+    return base.join("");
+}
+
+function renderWorkerRows(count) {
+    const safeCount = Math.max(0, Number(count) || 0);
+    const previous = Array.from(workersContainer.querySelectorAll(".worker-row")).map((row) => ({
+        personale_id: row.querySelector(".worker-select")?.value || "",
+        hours_worked: row.querySelector(".worker-hours")?.value || "8",
+        role_label: row.querySelector(".worker-role")?.value || "",
+        note: row.querySelector(".worker-note")?.value || "",
+    }));
+    workersContainer.innerHTML = "";
+    for (let i = 0; i < safeCount; i += 1) {
+        const preserved = previous[i] || {};
+        const row = document.createElement("div");
+        row.className = "worker-row";
+        row.style.cssText = "display:grid;grid-template-columns:2fr 1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;";
+        row.innerHTML = `
+            <select class="form-control worker-select" required>${getWorkerOptions(preserved.personale_id)}</select>
+            <input type="number" class="form-control worker-hours" min="0" step="0.5" value="${preserved.hours_worked || "8"}" required />
+            <input type="text" class="form-control worker-role" placeholder="Mansione (opzionale)" value="${preserved.role_label || ""}" />
+            <input type="text" class="form-control worker-note" placeholder="Note operaio (opzionale)" value="${preserved.note || ""}" style="grid-column: 1 / span 3;" />
+        `;
+        workersContainer.appendChild(row);
+    }
+}
+
+function collectWorkers() {
+    const rows = Array.from(workersContainer.querySelectorAll(".worker-row"));
+    if (rows.length !== (Number(workerCountInput.value) || 0)) {
+        return { error: "Numero operai non coerente con le righe nominative." };
+    }
+
+    const selected = new Set();
+    const items = [];
+    for (const row of rows) {
+        const personaleId = parseInt(row.querySelector(".worker-select").value || "0", 10);
+        if (!personaleId) {
+            return { error: "Seleziona tutti i nominativi operai prima di salvare." };
+        }
+        if (selected.has(personaleId)) {
+            return { error: "Non puoi selezionare lo stesso operaio due volte." };
+        }
+        selected.add(personaleId);
+        items.push({
+            personale_id: personaleId,
+            hours_worked: parseFloat(row.querySelector(".worker-hours").value || "8"),
+            role_label: (row.querySelector(".worker-role").value || "").trim() || null,
+            note: (row.querySelector(".worker-note").value || "").trim() || null,
+            day_type: "FULL",
+        });
+    }
+    return { items };
+}
+
+workerCountInput.addEventListener("input", (event) => {
+    renderWorkerRows(event.target.value);
+});
+renderWorkerRows(parseInt(workerCountInput.value || "0", 10));
 </script>
 {% endblock %}

@@ -573,6 +573,11 @@ class Report(Base, TimestampMixin):
     # Chi ha creato il rapportino
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_by = relationship("User", back_populates="reports")
+    workers = relationship(
+        "ReportWorker",
+        back_populates="report",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Report id={self.id} date={self.date} site={self.site_name_or_code}>"
@@ -840,6 +845,28 @@ class Personale(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class ReportWorker(Base, TimestampMixin):
+    __tablename__ = "report_workers"
+    __table_args__ = (
+        UniqueConstraint("report_id", "personale_id", name="uq_report_workers_report_personale"),
+        CheckConstraint("hours_worked >= 0", name="ck_report_workers_hours_worked_non_negative"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    personale_id = Column(Integer, ForeignKey("personale.id"), nullable=False, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
+    attendance_date = Column(Date, nullable=False, index=True)
+    role_label = Column(String(120), nullable=True)
+    note = Column(Text, nullable=True)
+    hours_worked = Column(Float, nullable=False, default=8.0)
+    day_type = Column(String(20), nullable=False, default="FULL")
+
+    report = relationship("Report", back_populates="workers")
+    worker = relationship("Personale")
+    site = relationship("Site")
+
+
 class SiteEconomicEntry(Base, TimestampMixin):
     __tablename__ = "site_economic_entries"
 
@@ -976,6 +1003,7 @@ class PersonalePresenza(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    report_id: Optional[int] = Field(default=None, foreign_key="reports.id", index=True)
     personale_id: int = Field(foreign_key="personale.id", index=True)
     attendance_date: date = Field(
         sa_column=Column("date", Date, index=True, nullable=False)

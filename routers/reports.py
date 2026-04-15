@@ -4,12 +4,23 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from sqlalchemy.orm import Session, joinedload
+from sqlmodel import select
 
 from auth import get_current_active_user, get_current_active_user_html
 from database import get_db
-from models import Role, RoleEnum, Report, Site, User, UserRole
+from models import (
+    Personale,
+    PersonalePresenza,
+    Report,
+    ReportWorker,
+    Role,
+    RoleEnum,
+    Site,
+    User,
+    UserRole,
+)
 from notifications import notify_new_report
 from permissions import has_perm
 from template_context import build_template_context, register_manager_badges
@@ -47,14 +58,174 @@ class ReportBase(BaseModel):
 
 class ReportCreate(ReportBase):
     """Schema usato in input (creazione rapportino)."""
-    pass
+    site_id: Optional[int] = None
+    workers: List["ReportWorkerIn"] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_workers_count(self) -> "ReportCreate":
+        if self.workers_count != len(self.workers):
+            raise ValueError("Numero operai non coerente con elenco nominativo.")
+        return self
+
+
+class ReportWorkerIn(BaseModel):
+    personale_id: int
+    role_label: Optional[str] = None
+    note: Optional[str] = None
+    hours_worked: float = Field(default=8.0, ge=0)
+    day_type: str = Field(default="FULL")
 
 
 class ReportOut(ReportBase):
     """Schema usato in output (risposta API)."""
     id: int
+    site_id: Optional[int] = None
+    workers: List["ReportWorkerOut"] = Field(default_factory=list)
     created_by_email: Optional[str] = None
     created_by_role: Optional[str] = None
+
+
+class ReportWorkerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    personale_id: int
+    role_label: Optional[str] = None
+    note: Optional[str] = None
+    hours_worked: float
+    day_type: str
+
+
+ReportCreate.model_rebuild()
+ReportOut.model_rebuild()
+
+
+def _validate_and_build_report_workers(
+    db: Session,
+    report_date: dt_date,
+    site_id: int | None,
+    workers_in: list[ReportWorkerIn],
+    report_id: int | None = None,
+) -> list[ReportWorker]:
+    personale_ids = [w.personale_id for w in workers_in]
+    if len(personale_ids) != len(set(personale_ids)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Lo stesso operaio non può comparire due volte nello stesso rapportino.",
+        )
+
+    workers_map = {
+        row.id: row
+        for row in db.exec(
+            select(Personale).where(
+                Personale.id.in_(personale_ids),
+                Personale.attivo.is_(True),
+            )
+        ).all()
+    }
+    if len(workers_map) != len(personale_ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Uno o più operai selezionati non esistono o non sono attivi.",
+        )
+
+    for worker_in in workers_in:
+        conflict_query = select(PersonalePresenza).where(
+            PersonalePresenza.personale_id == worker_in.personale_id,
+            PersonalePresenza.attendance_date == report_date,
+            PersonalePresenza.site_id.is_not(None),
+            PersonalePresenza.site_id != site_id,
+        )
+        if report_id is not None:
+            conflict_query = conflict_query.where(PersonalePresenza.report_id != report_id)
+        conflict = db.exec(conflict_query).first()
+        if conflict:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "L'operaio selezionato risulta già assegnato a un altro cantiere "
+                    "nello stesso giorno."
+                ),
+            )
+
+    return [
+        ReportWorker(
+            personale_id=worker.personale_id,
+            site_id=site_id,
+            attendance_date=report_date,
+            role_label=worker.role_label,
+            note=worker.note,
+            hours_worked=worker.hours_worked,
+            day_type=worker.day_type or "FULL",
+        )
+        for worker in workers_in
+    ]
+
+
+def _sync_attendance_from_report(db: Session, report: Report) -> None:
+    current_workers_by_personale = {worker.personale_id: worker for worker in report.workers}
+    linked_presenze = db.exec(
+        select(PersonalePresenza).where(PersonalePresenza.report_id == report.id)
+    ).all()
+    linked_by_personale = {pres.personale_id: pres for pres in linked_presenze}
+
+    # upsert presenze correnti
+    for worker in report.workers:
+        presenza = linked_by_personale.get(worker.personale_id)
+        if not presenza:
+            presenza = db.exec(
+                select(PersonalePresenza).where(
+                    PersonalePresenza.personale_id == worker.personale_id,
+                    PersonalePresenza.attendance_date == report.date,
+                )
+            ).first()
+        if not presenza:
+            presenza = PersonalePresenza(
+                report_id=report.id,
+                personale_id=worker.personale_id,
+                attendance_date=report.date,
+                site_id=report.site_id,
+                status="WORK",
+                hours=worker.hours_worked,
+                note=worker.note,
+            )
+        else:
+            presenza.report_id = report.id
+            presenza.attendance_date = report.date
+            presenza.site_id = report.site_id
+            presenza.status = "WORK"
+            presenza.hours = worker.hours_worked
+            presenza.note = worker.note
+        db.add(presenza)
+
+    # cleanup presenze non più presenti nel rapportino
+    for presenza in linked_presenze:
+        if presenza.personale_id not in current_workers_by_personale:
+            db.delete(presenza)
+
+
+def _report_to_out(report: Report) -> ReportOut:
+    return ReportOut(
+        id=report.id,
+        date=report.date,
+        site_id=report.site_id,
+        site_name_or_code=report.site_name_or_code,
+        total_hours=report.total_hours,
+        workers_count=report.workers_count,
+        machines_used=report.machines_used,
+        activities=report.activities,
+        notes=report.notes,
+        workers=[
+            ReportWorkerOut.model_validate(worker)
+            for worker in sorted(report.workers, key=lambda item: item.id or 0)
+        ],
+        created_by_email=report.created_by.email if report.created_by else None,
+        created_by_role=(
+            report.created_by.role.value
+            if report.created_by and hasattr(report.created_by.role, "value")
+            else None
+        ),
+    )
 
 
 # ---------------------------
@@ -86,6 +257,7 @@ def create_report(
 
     db_report = Report(
         date=report_in.date,
+        site_id=report_in.site_id,
         site_name_or_code=report_in.site_name_or_code,
         total_hours=report_in.total_hours,
         workers_count=report_in.workers_count,
@@ -94,29 +266,91 @@ def create_report(
         notes=report_in.notes,
         created_by_id=current_user.id,
     )
+    db_report.workers = _validate_and_build_report_workers(
+        db=db,
+        report_date=report_in.date,
+        site_id=report_in.site_id,
+        workers_in=report_in.workers,
+        report_id=None,
+    )
 
     db.add(db_report)
     db.flush()
+    _sync_attendance_from_report(db, db_report)
     notify_new_report(db, db_report, current_user)
     db.commit()
     db.refresh(db_report)
+    db.refresh(db_report, attribute_names=["workers", "created_by"])
 
-    return ReportOut(
-        id=db_report.id,
-        date=db_report.date,
-        site_name_or_code=db_report.site_name_or_code,
-        total_hours=db_report.total_hours,
-        workers_count=db_report.workers_count,
-        machines_used=db_report.machines_used,
-        activities=db_report.activities,
-        notes=db_report.notes,
-        created_by_email=current_user.email,
-        created_by_role=(
-            current_user.role.value
-            if hasattr(current_user.role, "value")
-            else str(current_user.role)
-        ),
+    return _report_to_out(db_report)
+
+
+@router.put("/reports/{report_id}", response_model=ReportOut)
+def update_report(
+    report_id: int,
+    report_in: ReportCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    report = (
+        db.query(Report)
+        .options(joinedload(Report.workers), joinedload(Report.created_by))
+        .filter(Report.id == report_id)
+        .first()
     )
+    if not report:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rapportino non trovato.")
+
+    is_owner = report.created_by_id == current_user.id
+    if not is_owner and current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato.")
+
+    report.date = report_in.date
+    report.site_id = report_in.site_id
+    report.site_name_or_code = report_in.site_name_or_code
+    report.total_hours = report_in.total_hours
+    report.workers_count = report_in.workers_count
+    report.machines_used = report_in.machines_used
+    report.activities = report_in.activities
+    report.notes = report_in.notes
+    report.workers = _validate_and_build_report_workers(
+        db=db,
+        report_date=report_in.date,
+        site_id=report_in.site_id,
+        workers_in=report_in.workers,
+        report_id=report.id,
+    )
+    db.add(report)
+    db.flush()
+    _sync_attendance_from_report(db, report)
+    db.commit()
+    db.refresh(report)
+    db.refresh(report, attribute_names=["workers", "created_by"])
+    return _report_to_out(report)
+
+
+@router.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rapportino non trovato.")
+
+    is_owner = report.created_by_id == current_user.id
+    if not is_owner and current_user.role not in (RoleEnum.admin, RoleEnum.manager):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato.")
+
+    linked_presenze = db.exec(
+        select(PersonalePresenza).where(PersonalePresenza.report_id == report.id)
+    ).all()
+    for presenza in linked_presenze:
+        db.delete(presenza)
+    db.delete(report)
+    db.commit()
+    return None
 
 
 @router.get("/reports", response_model=List[ReportOut])
@@ -131,35 +365,14 @@ def list_reports_for_manager(
     - Se sei caposquadra → vedi solo i tuoi
     """
 
-    query = db.query(Report)
+    query = db.query(Report).options(joinedload(Report.workers), joinedload(Report.created_by))
 
     if current_user.role == RoleEnum.caposquadra:
         query = query.filter(Report.created_by_id == current_user.id)
 
     reports = query.order_by(Report.date.desc(), Report.id.desc()).all()
 
-    result: List[ReportOut] = []
-    for r in reports:
-        result.append(
-            ReportOut(
-                id=r.id,
-                date=r.date,
-                site_name_or_code=r.site_name_or_code,
-                total_hours=r.total_hours,
-                workers_count=r.workers_count,
-                machines_used=r.machines_used,
-                activities=r.activities,
-                notes=r.notes,
-                created_by_email=r.created_by.email if r.created_by else None,
-                created_by_role=(
-                    r.created_by.role.value
-                    if r.created_by and hasattr(r.created_by.role, "value")
-                    else None
-                ),
-            )
-        )
-
-    return result
+    return [_report_to_out(r) for r in reports]
 
 
 @router.get("/manager/rapportini", include_in_schema=False)
@@ -255,7 +468,11 @@ def manager_report_detail(
 
     report = (
         db.query(Report)
-        .options(joinedload(Report.created_by), joinedload(Report.site))
+        .options(
+            joinedload(Report.created_by),
+            joinedload(Report.site),
+            joinedload(Report.workers).joinedload(ReportWorker.worker),
+        )
         .filter(Report.id == report_id)
         .first()
     )

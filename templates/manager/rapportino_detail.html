@@ -49,6 +49,41 @@
                 <p class="mb-3">{{ report.machines_used or '-' }}</p>
             </div>
             <div class="col-12">
+                <h4 class="mb-1">Operai presenti</h4>
+                {% if report.workers %}
+                <div class="table-responsive mb-3">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Operaio</th>
+                                <th>Ore</th>
+                                <th>Mansione</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for worker_entry in report.workers %}
+                            <tr>
+                                <td>
+                                    {% if worker_entry.worker %}
+                                        {{ worker_entry.worker.cognome }} {{ worker_entry.worker.nome }}
+                                    {% else %}
+                                        #{{ worker_entry.personale_id }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ "%.1f"|format(worker_entry.hours_worked or 0) }}</td>
+                                <td>{{ worker_entry.role_label or '-' }}</td>
+                                <td>{{ worker_entry.note or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="mb-3">Nessun operaio nominativo associato.</p>
+                {% endif %}
+            </div>
+            <div class="col-12">
                 <h4 class="mb-1">Attività</h4>
                 <p class="mb-3">{{ report.activities or '-' }}</p>
             </div>
