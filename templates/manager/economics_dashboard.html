@@ -7,10 +7,18 @@
     <p class="page-eyebrow">{% if lang == 'fr' %}Contrôle économique{% else %}Controllo economico{% endif %}</p>
     <h1 class="page-title">💶 {% if lang == 'fr' %}Tableau économique chantiers{% else %}Dashboard economica cantieri{% endif %}</h1>
     <p class="page-subtitle">
-      {% if lang == 'fr' %}
-        Vue consolidée des ricavi, coûts, main-d'œuvre forfaitaire et marginalité par chantier.
+      {% if can_view_site_margin %}
+        {% if lang == 'fr' %}
+          Vue consolidée des ricavi, coûts, main-d'œuvre forfaitaire et marginalité par chantier.
+        {% else %}
+          Vista consolidata di ricavi, costi, manodopera forfettaria e marginalità per cantiere.
+        {% endif %}
       {% else %}
-        Vista consolidata di ricavi, costi, manodopera forfettaria e marginalità per cantiere.
+        {% if lang == 'fr' %}
+          Vue consolidée opérationnelle des coûts, main-d'œuvre et avancement économique par chantier.
+        {% else %}
+          Vista consolidata operativa di costi, manodopera e avanzamento economico per cantiere.
+        {% endif %}
       {% endif %}
     </p>
   </div>
@@ -41,13 +49,17 @@
 </form>
 
 <section class="economics-kpi-grid">
-  <article class="card"><div class="card-body"><div class="stat-label">Ricavi fatturati</div><div class="stat-value">€ {{ '%.2f'|format(totals.ricavi_fatturati) }}</div></div></article>
+  {% if can_view_site_margin %}
+    <article class="card"><div class="card-body"><div class="stat-label">Ricavi fatturati</div><div class="stat-value">€ {{ '%.2f'|format(totals.ricavi_fatturati) }}</div></div></article>
+  {% endif %}
   <article class="card"><div class="card-body"><div class="stat-label">Costi totali</div><div class="stat-value">€ {{ '%.2f'|format(totals.costi_totali) }}</div></div></article>
   <article class="card"><div class="card-body"><div class="stat-label">Costo personale</div><div class="stat-value">€ {{ '%.2f'|format(totals.costo_personale) }}</div></div></article>
   <article class="card"><div class="card-body"><div class="stat-label">Costo materiali</div><div class="stat-value">€ {{ '%.2f'|format(totals.costo_materiali) }}</div></div></article>
   <article class="card"><div class="card-body"><div class="stat-label">Mezzi / trasporti</div><div class="stat-value">€ {{ '%.2f'|format(totals.costo_mezzi_trasporti) }}</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Margine %</div><div class="stat-value">{{ '%.2f'|format(totals.margine_pct) }}%</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Utile / perdita</div><div class="stat-value {% if totals.utile_perdita < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(totals.utile_perdita) }}</div></div></article>
+  {% if can_view_site_margin %}
+    <article class="card"><div class="card-body"><div class="stat-label">Margine %</div><div class="stat-value">{{ '%.2f'|format(totals.margine_pct) }}%</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">Utile / perdita</div><div class="stat-value {% if totals.utile_perdita < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(totals.utile_perdita) }}</div></div></article>
+  {% endif %}
 </section>
 
 <div class="economics-layout">
@@ -59,29 +71,29 @@
           <thead>
             <tr>
               <th>Periodo</th>
-              <th>Ricavi</th>
+              {% if can_view_site_margin %}<th>Ricavi</th>{% endif %}
               <th>Manodopera</th>
               <th>Materiali</th>
               <th>Mezzi / trasporti</th>
               <th>Attrezzature</th>
               <th>Costi totali</th>
-              <th>Utile / perdita</th>
+              {% if can_view_site_margin %}<th>Utile / perdita</th>{% endif %}
             </tr>
           </thead>
           <tbody>
             {% for row in trend %}
               <tr>
                 <td>{{ row.label }}</td>
-                <td>€ {{ '%.2f'|format(row.revenues) }}</td>
+                {% if can_view_site_margin %}<td>€ {{ '%.2f'|format(row.revenues) }}</td>{% endif %}
                 <td>€ {{ '%.2f'|format(row.labor) }}</td>
                 <td>€ {{ '%.2f'|format(row.materials) }}</td>
                 <td>€ {{ '%.2f'|format(row.logistics) }}</td>
                 <td>€ {{ '%.2f'|format(row.equipment) }}</td>
                 <td>€ {{ '%.2f'|format(row.total_costs) }}</td>
-                <td class="{% if row.profit < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(row.profit) }}</td>
+                {% if can_view_site_margin %}<td class="{% if row.profit < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(row.profit) }}</td>{% endif %}
               </tr>
             {% else %}
-              <tr><td colspan="8" class="table-empty">Nessun movimento economico nel periodo selezionato.</td></tr>
+              <tr><td colspan="{% if can_view_site_margin %}8{% else %}6{% endif %}" class="table-empty">Nessun movimento economico nel periodo selezionato.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -105,18 +117,18 @@
 </div>
 
 <section class="card" style="margin-top: 1rem;">
-  <div class="card-header"><div class="card-title">🏗️ Report marginalità per cantiere</div></div>
+  <div class="card-header"><div class="card-title">{% if can_view_site_margin %}🏗️ Report marginalità per cantiere{% else %}🏗️ Report operativo per cantiere{% endif %}</div></div>
   <div class="card-body">
     <div class="table-wrapper">
       <table class="table">
         <thead>
           <tr>
             <th>Cantiere</th>
-            <th>Ricavi fatturati</th>
+            {% if can_view_site_margin %}<th>Ricavi fatturati</th>{% endif %}
             <th>Costi totali</th>
             <th>Costo personale</th>
-            <th>Margine %</th>
-            <th>Utile / perdita</th>
+            {% if can_view_site_margin %}<th>Margine %</th>{% endif %}
+            {% if can_view_site_margin %}<th>Utile / perdita</th>{% endif %}
             <th>SAL operativo</th>
             <th></th>
           </tr>
@@ -125,16 +137,16 @@
           {% for item in snapshots %}
             <tr>
               <td><strong>{{ item.site.name }}</strong><br><small>{{ item.site.code or '—' }}</small></td>
-              <td>€ {{ '%.2f'|format(item.metrics.ricavi_fatturati) }}</td>
+              {% if can_view_site_margin %}<td>€ {{ '%.2f'|format(item.metrics.ricavi_fatturati) }}</td>{% endif %}
               <td>€ {{ '%.2f'|format(item.metrics.costi_totali) }}</td>
               <td>€ {{ '%.2f'|format(item.metrics.costo_personale) }}</td>
-              <td>{{ '%.2f'|format(item.metrics.margine_pct) }}%</td>
-              <td class="{% if item.metrics.utile_perdita < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(item.metrics.utile_perdita) }}</td>
+              {% if can_view_site_margin %}<td>{{ '%.2f'|format(item.metrics.margine_pct) }}%</td>{% endif %}
+              {% if can_view_site_margin %}<td class="{% if item.metrics.utile_perdita < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(item.metrics.utile_perdita) }}</td>{% endif %}
               <td>{{ '%.2f'|format(item.sal.operational_progress_pct) }}%</td>
               <td><a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=item.site.id) }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">Apri dettaglio</a></td>
             </tr>
           {% else %}
-            <tr><td colspan="8" class="table-empty">Nessun cantiere disponibile.</td></tr>
+            <tr><td colspan="{% if can_view_site_margin %}8{% else %}5{% endif %}" class="table-empty">Nessun cantiere disponibile.</td></tr>
           {% endfor %}
         </tbody>
       </table>

@@ -24,7 +24,7 @@ from models import (
     SiteLaborCostEntry,
     User,
 )
-from permissions import has_perm
+from permissions import can_view_site_margin, has_perm
 from template_context import build_template_context, register_manager_badges
 from utils.site_economics import (
     build_daily_trend_series,
@@ -736,6 +736,94 @@ def _build_site_economic_snapshot(
     }
 
 
+def _sanitize_trend_series_for_operational_view(series: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "data": row.get("data"),
+            "costi": round(float(row.get("costi", 0) or 0), 2),
+        }
+        for row in series
+    ]
+
+
+def _filter_snapshot_for_role(snapshot: dict[str, Any], *, include_margin: bool) -> dict[str, Any]:
+    if include_margin:
+        return snapshot
+
+    filtered_snapshot = dict(snapshot)
+
+    budget = dict(filtered_snapshot.get("budget", {}))
+    budget["ricavo_previsto"] = 0.0
+    budget["margine_previsto"] = 0.0
+    filtered_snapshot["budget"] = budget
+
+    real_summary = dict(filtered_snapshot.get("real_summary", {}))
+    real_summary["ricavi_reali"] = 0.0
+    real_summary["margine_reale"] = 0.0
+    filtered_snapshot["real_summary"] = real_summary
+
+    variances = dict(filtered_snapshot.get("variances", {}))
+    overall = dict(variances.get("overall", {}))
+    overall.pop("ricavi", None)
+    overall.pop("margine", None)
+    variances["overall"] = overall
+    filtered_snapshot["variances"] = variances
+
+    metrics = dict(filtered_snapshot.get("metrics", {}))
+    for key in ["ricavi_previsti", "ricavi_fatturati", "ricavi_maturati", "margine_lordo", "utile_perdita", "margine_pct"]:
+        metrics.pop(key, None)
+    filtered_snapshot["metrics"] = metrics
+
+    sal = dict(filtered_snapshot.get("sal", {}))
+    for key in ["earned_vs_expected_pct", "current_margin", "expected_revenues", "earned_revenues"]:
+        sal.pop(key, None)
+    filtered_snapshot["sal"] = sal
+
+    filtered_snapshot["trend"] = [
+        {
+            key: value
+            for key, value in row.items()
+            if key not in {"revenues", "profit"}
+        }
+        for row in filtered_snapshot.get("trend", [])
+    ]
+    filtered_snapshot["trend_series"] = _sanitize_trend_series_for_operational_view(filtered_snapshot.get("trend_series", []))
+
+    return filtered_snapshot
+
+
+def _filter_dashboard_data_for_role(
+    snapshots: list[dict[str, Any]],
+    totals: dict[str, Any],
+    trend: list[dict[str, Any]],
+    *,
+    include_margin: bool,
+) -> tuple[list[dict[str, Any]], dict[str, Any], list[dict[str, Any]]]:
+    if include_margin:
+        return snapshots, totals, trend
+
+    filtered_snapshots = [_filter_snapshot_for_role(snapshot, include_margin=False) for snapshot in snapshots]
+
+    filtered_totals = {
+        key: value
+        for key, value in totals.items()
+        if key not in {"ricavi_previsti", "ricavi_fatturati", "ricavi_maturati", "utile_perdita", "margine_pct"}
+    }
+
+    filtered_trend = [
+        {
+            key: value
+            for key, value in row.items()
+            if key not in {"revenues", "profit"}
+        }
+        for row in trend
+    ]
+
+    return filtered_snapshots, filtered_totals, filtered_trend
+
+
+
+
 @router.get("/manager/economics", response_class=HTMLResponse, name="manager_economics_dashboard")
 def manager_economics_dashboard(
     request: Request,
@@ -746,6 +834,7 @@ def manager_economics_dashboard(
     db: Session = Depends(get_db),
 ):
     _ensure_economics_access(current_user)
+    can_view_margin = can_view_site_margin(current_user)
     period_start, period_end, timeframe = resolve_period(timeframe, start_date, end_date)
     group_by = _default_group_for_timeframe(timeframe)
 
@@ -831,6 +920,13 @@ def manager_economics_dashboard(
         for _, row in sorted(trend_totals.items())
     ]
 
+    snapshots, totals, trend = _filter_dashboard_data_for_role(
+        snapshots,
+        totals,
+        trend,
+        include_margin=can_view_margin,
+    )
+
     return templates.TemplateResponse(
         request,
         "manager/economics_dashboard.html",
@@ -844,6 +940,7 @@ def manager_economics_dashboard(
             timeframe=timeframe,
             timeframe_options=TIMEFRAME_OPTIONS,
             filters=serialize_timeframe_filters(period_start, period_end, timeframe),
+            can_view_site_margin=can_view_margin,
         ),
     )
 
@@ -859,6 +956,7 @@ def manager_site_economics_detail(
     db: Session = Depends(get_db),
 ):
     _ensure_economics_access(current_user)
+    can_view_margin = can_view_site_margin(current_user)
     period_start, period_end, timeframe = resolve_period(timeframe, start_date, end_date)
     group_by = _default_group_for_timeframe(timeframe)
 
@@ -891,6 +989,7 @@ def manager_site_economics_detail(
         .all()
     )
     snapshot = _build_site_economic_snapshot(site, attendance_rows, period_start, period_end, group_by, timeframe)
+    snapshot = _filter_snapshot_for_role(snapshot, include_margin=can_view_margin)
     can_manage = has_perm(current_user, "economics.manage")
 
     return templates.TemplateResponse(
@@ -908,6 +1007,7 @@ def manager_site_economics_detail(
             cost_category_options=COST_CATEGORY_OPTIONS,
             revenue_category_options=REVENUE_CATEGORY_OPTIONS,
             can_manage=can_manage,
+            can_view_site_margin=can_view_margin,
         ),
     )
 
@@ -922,6 +1022,7 @@ def manager_site_economics_trend_data(
     db: Session = Depends(get_db),
 ):
     _ensure_economics_access(current_user)
+    can_view_margin = can_view_site_margin(current_user)
     period_start, period_end, _ = resolve_period(timeframe, start_date, end_date)
 
     site = (
@@ -933,13 +1034,17 @@ def manager_site_economics_trend_data(
     if not site:
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
+    series = build_daily_trend_series(site.economic_entries or [], site.labor_cost_entries or [], period_start, period_end)
+    if not can_view_margin:
+        series = _sanitize_trend_series_for_operational_view(series)
+
     return {
         "site_id": site.id,
         "site_name": site.name,
         "timeframe": timeframe,
         "start_date": period_start.isoformat(),
         "end_date": period_end.isoformat(),
-        "series": build_daily_trend_series(site.economic_entries or [], site.labor_cost_entries or [], period_start, period_end),
+        "series": series,
     }
 
 
@@ -1045,6 +1150,10 @@ def manager_site_economics_entry_create(
         parsed_category = SiteEconomicCategoryEnum(category)
         parsed_amount = _normalize_entry_amount(amount)
         _validate_entry_type_and_category(parsed_type, parsed_category)
+        if not can_view_site_margin(current_user) and parsed_type == SiteEconomicEntryTypeEnum.revenue:
+            raise HTTPException(status_code=403, detail="Solo admin possono registrare ricavi")
+    except HTTPException:
+        raise
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Dati economici non validi")
 
@@ -1098,6 +1207,10 @@ def manager_site_economics_entry_update(
         parsed_category = SiteEconomicCategoryEnum(category)
         parsed_amount = _normalize_entry_amount(amount)
         _validate_entry_type_and_category(parsed_type, parsed_category)
+        if not can_view_site_margin(current_user) and parsed_type == SiteEconomicEntryTypeEnum.revenue:
+            raise HTTPException(status_code=403, detail="Solo admin possono registrare ricavi")
+    except HTTPException:
+        raise
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Dati economici non validi")
 
@@ -1254,6 +1367,7 @@ def manager_site_economics_auto_cost_config_get(
     )
     if not site:
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
     return {
         "site_id": site.id,
         "params": _serialize_auto_params(site.economic_auto_params),

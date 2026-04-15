@@ -6,7 +6,13 @@
   <div class="page-header-main">
     <p class="page-eyebrow">Controllo economico cantiere</p>
     <h1 class="page-title">💶 {{ site.name }}</h1>
-    <p class="page-subtitle">Verifica ricavi, costi, manodopera settimanale lun-ven, weekend opzionali e marginalità nel tempo.</p>
+    <p class="page-subtitle">
+      {% if can_view_site_margin %}
+        Verifica ricavi, costi, manodopera settimanale lun-ven, weekend opzionali e marginalità nel tempo.
+      {% else %}
+        Verifica costi operativi, manodopera settimanale lun-ven, weekend opzionali e avanzamento economico operativo.
+      {% endif %}
+    </p>
   </div>
   <div class="page-actions">
     <a class="btn btn-secondary" href="{{ url_for('manager_site_detail', site_id=site.id) }}">Torna al cantiere</a>
@@ -50,17 +56,26 @@
 </form>
 
 <section class="economics-kpi-grid">
-  <article class="card"><div class="card-body"><div class="stat-label">Margine previsto</div><div class="stat-value {% if snapshot.budget.margine_previsto < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.budget.margine_previsto) }}</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Margine reale</div><div class="stat-value {% if snapshot.real_summary.margine_reale < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.real_summary.margine_reale) }}</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Scostamento margine</div><div class="stat-value {% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.margine.scostamento) }}</div></div></article>
-  <article class="card"><div class="card-body"><div class="stat-label">Ricavi reali periodo</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.real_summary.ricavi_reali) }}</div></div></article>
+  {% if can_view_site_margin %}
+    <article class="card"><div class="card-body"><div class="stat-label">Margine previsto</div><div class="stat-value {% if snapshot.budget.margine_previsto < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.budget.margine_previsto) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">Margine reale</div><div class="stat-value {% if snapshot.real_summary.margine_reale < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.real_summary.margine_reale) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">Scostamento margine</div><div class="stat-value {% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.margine.scostamento) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">Ricavi reali periodo</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.real_summary.ricavi_reali) }}</div></div></article>
+  {% else %}
+    <article class="card"><div class="card-body"><div class="stat-label">Costi reali periodo</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.real_summary.costi_reali) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">Manodopera reale</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.manodopera) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">Materiali reali</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.materiali) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">Trasporti + mezzi</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.mezzi_trasporti) }}</div></div></article>
+  {% endif %}
 </section>
 
 <div class="economics-layout">
   <section class="card">
     <div class="card-header"><div class="card-title">🧾 Budget cantiere (previsioni)</div></div>
     <div class="card-body economics-overview-grid">
-      <div class="economics-overview-item"><span>Ricavo previsto totale</span><strong>€ {{ '%.2f'|format(snapshot.budget.ricavo_previsto) }}</strong></div>
+      {% if can_view_site_margin %}
+        <div class="economics-overview-item"><span>Ricavo previsto totale</span><strong>€ {{ '%.2f'|format(snapshot.budget.ricavo_previsto) }}</strong></div>
+      {% endif %}
       <div class="economics-overview-item"><span>Materiali previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.materiali_previsti) }}</strong></div>
       <div class="economics-overview-item"><span>Manodopera prevista</span><strong>€ {{ '%.2f'|format(snapshot.budget.manodopera_prevista) }}</strong></div>
       <div class="economics-overview-item"><span>Trasporti previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.trasporti_previsti) }}</strong></div>
@@ -68,7 +83,9 @@
       <div class="economics-overview-item"><span>Attrezzature previste</span><strong>€ {{ '%.2f'|format(snapshot.budget.attrezzature_previste) }}</strong></div>
       <div class="economics-overview-item"><span>Altri costi previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.altri_costi_previsti) }}</strong></div>
       <div class="economics-overview-item"><span>Totale costi previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.totale_costi_previsti) }}</strong></div>
-      <div class="economics-overview-item"><span>Margine previsto</span><strong class="{% if snapshot.budget.margine_previsto < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.budget.margine_previsto) }}</strong></div>
+      {% if can_view_site_margin %}
+        <div class="economics-overview-item"><span>Margine previsto</span><strong class="{% if snapshot.budget.margine_previsto < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.budget.margine_previsto) }}</strong></div>
+      {% endif %}
     </div>
     <div class="card-body" style="padding-top:0;">
       <small>Creato da {{ snapshot.budget.created_by_name }} il {{ snapshot.budget.created_at.strftime('%d/%m/%Y %H:%M') if snapshot.budget.created_at else '—' }} · Ultima modifica: {{ snapshot.budget.updated_by_name }} {{ snapshot.budget.updated_at.strftime('%d/%m/%Y %H:%M') if snapshot.budget.updated_at else '—' }}</small>
@@ -77,11 +94,15 @@
   <section class="card">
     <div class="card-header"><div class="card-title">📘 Consuntivo reale</div></div>
     <div class="card-body economics-stacked-list">
-      <div><span>Ricavi reali (fatturati + maturati)</span><strong>€ {{ '%.2f'|format(snapshot.real_summary.ricavi_reali) }}</strong></div>
+      {% if can_view_site_margin %}
+        <div><span>Ricavi reali (fatturati + maturati)</span><strong>€ {{ '%.2f'|format(snapshot.real_summary.ricavi_reali) }}</strong></div>
+      {% endif %}
       <div><span>Costi reali</span><strong>€ {{ '%.2f'|format(snapshot.real_summary.costi_reali) }}</strong></div>
       <div><span>Costi reali automatici</span><strong>€ {{ '%.2f'|format(snapshot.automatic_real_summary.costi_automatici) }}</strong></div>
       <div><span>Costi reali manuali</span><strong>€ {{ '%.2f'|format(snapshot.manual_real_summary.costi_manuali) }}</strong></div>
-      <div><span>Margine reale</span><strong class="{% if snapshot.real_summary.margine_reale < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.real_summary.margine_reale) }}</strong></div>
+      {% if can_view_site_margin %}
+        <div><span>Margine reale</span><strong class="{% if snapshot.real_summary.margine_reale < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.real_summary.margine_reale) }}</strong></div>
+      {% endif %}
       <div><span>Manodopera reale</span><strong>€ {{ '%.2f'|format(snapshot.cost_breakdown.manodopera) }}</strong></div>
     </div>
   </section>
@@ -103,13 +124,15 @@
               <td class="{% if row.scostamento > 0 %}text-danger{% endif %}">{{ '%.2f'|format(row.scostamento_pct) }}%</td>
             </tr>
           {% endfor %}
-          <tr>
-            <td><strong>Ricavi</strong></td>
-            <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.previsto) }}</td>
-            <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.reale) }}</td>
-            <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.scostamento) }}</td>
-            <td>{{ '%.2f'|format(snapshot.variances.overall.ricavi.scostamento_pct) }}%</td>
-          </tr>
+          {% if can_view_site_margin %}
+            <tr>
+              <td><strong>Ricavi</strong></td>
+              <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.previsto) }}</td>
+              <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.reale) }}</td>
+              <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.scostamento) }}</td>
+              <td>{{ '%.2f'|format(snapshot.variances.overall.ricavi.scostamento_pct) }}%</td>
+            </tr>
+          {% endif %}
           <tr>
             <td><strong>Costi</strong></td>
             <td>€ {{ '%.2f'|format(snapshot.variances.overall.costi.previsto) }}</td>
@@ -117,13 +140,15 @@
             <td class="{% if snapshot.variances.overall.costi.scostamento > 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.costi.scostamento) }}</td>
             <td class="{% if snapshot.variances.overall.costi.scostamento > 0 %}text-danger{% endif %}">{{ '%.2f'|format(snapshot.variances.overall.costi.scostamento_pct) }}%</td>
           </tr>
-          <tr>
-            <td><strong>Margine</strong></td>
-            <td>€ {{ '%.2f'|format(snapshot.variances.overall.margine.previsto) }}</td>
-            <td>€ {{ '%.2f'|format(snapshot.variances.overall.margine.reale) }}</td>
-            <td class="{% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.margine.scostamento) }}</td>
-            <td class="{% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">{{ '%.2f'|format(snapshot.variances.overall.margine.scostamento_pct) }}%</td>
-          </tr>
+          {% if can_view_site_margin %}
+            <tr>
+              <td><strong>Margine</strong></td>
+              <td>€ {{ '%.2f'|format(snapshot.variances.overall.margine.previsto) }}</td>
+              <td>€ {{ '%.2f'|format(snapshot.variances.overall.margine.reale) }}</td>
+              <td class="{% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.margine.scostamento) }}</td>
+              <td class="{% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">{{ '%.2f'|format(snapshot.variances.overall.margine.scostamento_pct) }}%</td>
+            </tr>
+          {% endif %}
         </tbody>
       </table>
     </div>
@@ -140,29 +165,29 @@
           <thead>
             <tr>
               <th>Periodo</th>
-              <th>Ricavi</th>
+              {% if can_view_site_margin %}<th>Ricavi</th>{% endif %}
               <th>Manodopera</th>
               <th>Materiali</th>
               <th>Mezzi / trasporti</th>
               <th>Attrezzature</th>
               <th>Costi totali</th>
-              <th>Utile / perdita</th>
+              {% if can_view_site_margin %}<th>Utile / perdita</th>{% endif %}
             </tr>
           </thead>
           <tbody>
             {% for row in snapshot.trend %}
               <tr>
                 <td>{{ row.label }}</td>
-                <td>€ {{ '%.2f'|format(row.revenues) }}</td>
+                {% if can_view_site_margin %}<td>€ {{ '%.2f'|format(row.revenues) }}</td>{% endif %}
                 <td>€ {{ '%.2f'|format(row.labor) }}</td>
                 <td>€ {{ '%.2f'|format(row.materials) }}</td>
                 <td>€ {{ '%.2f'|format(row.logistics) }}</td>
                 <td>€ {{ '%.2f'|format(row.equipment) }}</td>
                 <td>€ {{ '%.2f'|format(row.total_costs) }}</td>
-                <td class="{% if row.profit < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(row.profit) }}</td>
+                {% if can_view_site_margin %}<td class="{% if row.profit < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(row.profit) }}</td>{% endif %}
               </tr>
             {% else %}
-              <tr><td colspan="8" class="table-empty">Nessun trend disponibile per il periodo selezionato.</td></tr>
+              <tr><td colspan="{% if can_view_site_margin %}8{% else %}6{% endif %}" class="table-empty">Nessun trend disponibile per il periodo selezionato.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -178,7 +203,9 @@
           <input type="hidden" name="timeframe" value="{{ timeframe }}">
           <input type="hidden" name="start_date" value="{{ filters.start_date }}">
           <input type="hidden" name="end_date" value="{{ filters.end_date }}">
-          <div class="form-group"><label class="form-label">Ricavo previsto</label><input class="form-control" type="number" step="0.01" min="0" name="ricavo_previsto" value="{{ '%.2f'|format(snapshot.budget.ricavo_previsto) }}" {% if not can_manage %}disabled{% endif %}></div>
+          {% if can_view_site_margin %}
+            <div class="form-group"><label class="form-label">Ricavo previsto</label><input class="form-control" type="number" step="0.01" min="0" name="ricavo_previsto" value="{{ '%.2f'|format(snapshot.budget.ricavo_previsto) }}" {% if not can_manage %}disabled{% endif %}></div>
+          {% endif %}
           <div class="form-group"><label class="form-label">Materiali previsti</label><input class="form-control" type="number" step="0.01" min="0" name="materiali_previsti" value="{{ '%.2f'|format(snapshot.budget.materiali_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
           <div class="form-group"><label class="form-label">Manodopera prevista</label><input class="form-control" type="number" step="0.01" min="0" name="manodopera_prevista" value="{{ '%.2f'|format(snapshot.budget.manodopera_prevista) }}" {% if not can_manage %}disabled{% endif %}></div>
           <div class="form-group"><label class="form-label">Trasporti previsti</label><input class="form-control" type="number" step="0.01" min="0" name="trasporti_previsti" value="{{ '%.2f'|format(snapshot.budget.trasporti_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
@@ -245,17 +272,21 @@
           <div class="form-group"><label class="form-label">Data</label><input class="form-control" type="date" name="entry_date" value="{{ filters.end_date }}" required></div>
           <div class="form-group"><label class="form-label">Tipo</label>
             <select class="form-select" name="entry_type">
-              <option value="revenue">Ricavo</option>
+              {% if can_view_site_margin %}
+                <option value="revenue">Ricavo</option>
+              {% endif %}
               <option value="cost">Costo</option>
             </select>
           </div>
           <div class="form-group"><label class="form-label">Categoria</label>
             <select class="form-select" name="category">
-              <optgroup label="Ricavi">
-                {% for item in revenue_category_options %}
-                  <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
-                {% endfor %}
-              </optgroup>
+              {% if can_view_site_margin %}
+                <optgroup label="Ricavi">
+                  {% for item in revenue_category_options %}
+                    <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
+                  {% endfor %}
+                </optgroup>
+              {% endif %}
               <optgroup label="Costi">
                 {% for item in cost_category_options %}
                   <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
