@@ -3260,12 +3260,27 @@ def pagina_nuovo_rapportino_capo(
     Pagina per creare un nuovo rapportino giornaliero (caposquadra).
     Il JS della pagina chiamerà l'API POST /reports con il token JWT.
     """
+    db = SessionLocal()
+    try:
+        cantieri = _get_capo_assigned_sites(db, current_user)
+        operai_attivi = (
+            db.exec(
+                select(Personale)
+                .where(Personale.attivo.is_(True))
+                .order_by(Personale.cognome, Personale.nome)
+            ).all()
+        )
+    finally:
+        db.close()
+
     return templates.TemplateResponse(
         request,
         "capo_nuovo_rapportino.html",
         build_template_context(
             request,
             current_user,
+            cantieri=cantieri,
+            operai_attivi=operai_attivi,
         ),
     )
 
