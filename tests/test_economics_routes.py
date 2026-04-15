@@ -60,6 +60,17 @@ def build_manager_user() -> User:
     )
 
 
+def build_admin_user() -> User:
+    return User(
+        id=100,
+        email="admin@example.com",
+        full_name="Admin Test",
+        hashed_password="fake",
+        role=RoleEnum.admin,
+        is_active=True,
+    )
+
+
 def seed_site_with_economics() -> int:
     SQLModel.metadata.drop_all(bind=engine)
     Base.metadata.drop_all(bind=engine)
@@ -222,6 +233,20 @@ def test_manager_can_open_site_economics_detail() -> None:
     assert "⚠️ Sabato rilevato" in response.text
     assert "€ 4180.00" in response.text
     assert "Fiche #1" in response.text
+    assert "Margine reale" not in response.text
+    assert "Ricavi reali periodo" not in response.text
+
+
+def test_admin_can_see_margin_data_in_site_economics_detail() -> None:
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_admin_user
+
+    response = client.get(f"/manager/cantieri/{site_id}/economics?timeframe=month&start_date=2026-03-01&end_date=2026-03-31")
+
+    assert response.status_code == 200
+    assert "Margine reale" in response.text
+    assert "Ricavi reali periodo" in response.text
+    assert "Utile / perdita" in response.text
 
 
 def test_non_manager_cannot_access_economics_area() -> None:
@@ -305,8 +330,44 @@ def test_trend_data_endpoint_returns_daily_series() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["site_id"] == site_id
-    assert payload["series"][0] == {"data": "2026-03-01", "costi": 0.0, "ricavi": 10000.0, "margine": 10000.0}
+    assert payload["series"][0] == {"data": "2026-03-01", "costi": 0.0}
     assert any(row["data"] == "2026-03-06" and row["costi"] == 480.0 for row in payload["series"])
+
+
+def test_trend_data_endpoint_returns_full_series_for_admin() -> None:
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_admin_user
+
+    response = client.get(
+        f"/manager/cantieri/{site_id}/economics/trend-data?timeframe=month&start_date=2026-03-01&end_date=2026-03-08"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["series"][0] == {"data": "2026-03-01", "costi": 0.0, "ricavi": 10000.0, "margine": 10000.0}
+
+
+def test_manager_cannot_create_revenue_entry() -> None:
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_manager_user
+
+    response = client.post(
+        f"/manager/cantieri/{site_id}/economics/entries",
+        data={
+            "entry_date": "2026-03-10",
+            "entry_type": "revenue",
+            "category": "ricavi_fatturati",
+            "amount": "100",
+            "description": "Tentativo non admin",
+            "notes": "",
+            "timeframe": "month",
+            "start_date": "2026-03-01",
+            "end_date": "2026-03-31",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 403
 
 
 def test_manager_can_update_economic_entry_with_tracking() -> None:

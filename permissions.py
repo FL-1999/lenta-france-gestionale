@@ -187,5 +187,9 @@ def can_access_logistics_area(user: User | None) -> bool:
     return has_any_perm(user, "manager.access", "trasporti.read", "trasporti.loads.manage")
 
 
+def can_view_site_margin(user: User | None) -> bool:
+    return user_has_role(user, RoleEnum.admin) or has_perm(user, "admin.access")
+
+
 def can_manage_trip_loads(user: User | None) -> bool:
     return has_any_perm(user, "manager.access", "trasporti.loads.manage", "warehouse.loads.prepare")
