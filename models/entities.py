@@ -854,7 +854,7 @@ class ReportWorker(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     report_id = Column(Integer, ForeignKey("reports.id", ondelete="CASCADE"), nullable=False, index=True)
-    personale_id = Column(Integer, ForeignKey("personale.id"), nullable=False, index=True)
+    personale_id = Column(Integer, ForeignKey(Personale.__table__.c.id), nullable=False, index=True)
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
     attendance_date = Column(Date, nullable=False, index=True)
     role_label = Column(String(120), nullable=True)
@@ -863,7 +863,7 @@ class ReportWorker(Base, TimestampMixin):
     day_type = Column(String(20), nullable=False, default="FULL")
 
     report = relationship("Report", back_populates="workers")
-    worker = relationship("Personale")
+    worker = relationship(Personale)
     site = relationship("Site")
 
 
@@ -1003,7 +1003,7 @@ class PersonalePresenza(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    report_id: Optional[int] = Field(default=None, foreign_key="reports.id", index=True)
+    report_id: Optional[int] = Field(default=None, index=True)
     personale_id: int = Field(foreign_key="personale.id", index=True)
     attendance_date: date = Field(
         sa_column=Column("date", Date, index=True, nullable=False)
