@@ -71,7 +71,6 @@ class ReportWorkerIn(BaseModel):
     personale_id: int
     role_label: Optional[str] = None
     note: Optional[str] = None
-    hours_worked: float = Field(default=8.0, ge=0)
     day_type: str = Field(default="FULL")
 
 
@@ -103,6 +102,8 @@ def _validate_and_build_report_workers(
     db: Session,
     report_date: dt_date,
     site_id: int | None,
+    total_hours: float,
+    workers_count: int,
     workers_in: list[ReportWorkerIn],
     report_id: int | None = None,
 ) -> list[ReportWorker]:
@@ -149,6 +150,8 @@ def _validate_and_build_report_workers(
                 ),
             )
 
+    derived_hours_per_worker = (total_hours / workers_count) if workers_count > 0 else 0.0
+
     return [
         ReportWorker(
             personale_id=worker.personale_id,
@@ -156,7 +159,7 @@ def _validate_and_build_report_workers(
             attendance_date=report_date,
             role_label=worker.role_label,
             note=worker.note,
-            hours_worked=worker.hours_worked,
+            hours_worked=derived_hours_per_worker,
             day_type=worker.day_type or "FULL",
         )
         for worker in workers_in
@@ -275,6 +278,8 @@ def create_report(
         db=db,
         report_date=report_in.date,
         site_id=report_in.site_id,
+        total_hours=report_in.total_hours,
+        workers_count=report_in.workers_count,
         workers_in=report_in.workers,
         report_id=None,
     )
@@ -322,6 +327,8 @@ def update_report(
         db=db,
         report_date=report_in.date,
         site_id=report_in.site_id,
+        total_hours=report_in.total_hours,
+        workers_count=report_in.workers_count,
         workers_in=report_in.workers,
         report_id=report.id,
     )
