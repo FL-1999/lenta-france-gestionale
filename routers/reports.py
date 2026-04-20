@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from sqlalchemy.orm import Session, joinedload
-from sqlmodel import select
 
 from auth import get_current_active_user, get_current_active_user_html
 from database import get_db
@@ -116,12 +115,12 @@ def _validate_and_build_report_workers(
 
     workers_map = {
         row.id: row
-        for row in db.exec(
-            select(Personale).where(
-                Personale.id.in_(personale_ids),
-                Personale.attivo.is_(True),
-            )
-        ).all()
+        for row in db.query(Personale)
+        .filter(
+            Personale.id.in_(personale_ids),
+            Personale.attivo.is_(True),
+        )
+        .all()
     }
     if len(workers_map) != len(personale_ids):
         raise HTTPException(
@@ -130,15 +129,17 @@ def _validate_and_build_report_workers(
         )
 
     for worker_in in workers_in:
-        conflict_query = select(PersonalePresenza).where(
+        conflict_query = db.query(PersonalePresenza).filter(
             PersonalePresenza.personale_id == worker_in.personale_id,
             PersonalePresenza.attendance_date == report_date,
-            PersonalePresenza.site_id.is_not(None),
+            PersonalePresenza.site_id.isnot(None),
             PersonalePresenza.site_id != site_id,
         )
         if report_id is not None:
-            conflict_query = conflict_query.where(PersonalePresenza.report_id != report_id)
-        conflict = db.exec(conflict_query).first()
+            conflict_query = conflict_query.filter(
+                PersonalePresenza.report_id != report_id
+            )
+        conflict = conflict_query.first()
         if conflict:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -164,21 +165,25 @@ def _validate_and_build_report_workers(
 
 def _sync_attendance_from_report(db: Session, report: Report) -> None:
     current_workers_by_personale = {worker.personale_id: worker for worker in report.workers}
-    linked_presenze = db.exec(
-        select(PersonalePresenza).where(PersonalePresenza.report_id == report.id)
-    ).all()
+    linked_presenze = (
+        db.query(PersonalePresenza)
+        .filter(PersonalePresenza.report_id == report.id)
+        .all()
+    )
     linked_by_personale = {pres.personale_id: pres for pres in linked_presenze}
 
     # upsert presenze correnti
     for worker in report.workers:
         presenza = linked_by_personale.get(worker.personale_id)
         if not presenza:
-            presenza = db.exec(
-                select(PersonalePresenza).where(
+            presenza = (
+                db.query(PersonalePresenza)
+                .filter(
                     PersonalePresenza.personale_id == worker.personale_id,
                     PersonalePresenza.attendance_date == report.date,
                 )
-            ).first()
+                .first()
+            )
         if not presenza:
             presenza = PersonalePresenza(
                 report_id=report.id,
@@ -343,9 +348,11 @@ def delete_report(
     if not is_owner and current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato.")
 
-    linked_presenze = db.exec(
-        select(PersonalePresenza).where(PersonalePresenza.report_id == report.id)
-    ).all()
+    linked_presenze = (
+        db.query(PersonalePresenza)
+        .filter(PersonalePresenza.report_id == report.id)
+        .all()
+    )
     for presenza in linked_presenze:
         db.delete(presenza)
     db.delete(report)
