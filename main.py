@@ -3408,6 +3408,24 @@ def capo_site_detail(
     db = SessionLocal()
     try:
         site = get_site_for_user(db, site_id, current_user)
+        site_tasks = (
+            db.query(SiteTask)
+            .options(
+                joinedload(SiteTask.assigned_to),
+                joinedload(SiteTask.created_by),
+                joinedload(SiteTask.completed_by),
+            )
+            .filter(SiteTask.site_id == site_id)
+            .order_by(
+                SiteTask.completed.asc(),
+                SiteTask.priority.desc(),
+                SiteTask.due_date.asc().nulls_last(),
+                SiteTask.created_at.desc(),
+            )
+            .all()
+        )
+        open_tasks = [task for task in site_tasks if not task.completed]
+        completed_tasks = [task for task in site_tasks if task.completed]
     finally:
         db.close()
 
@@ -3418,6 +3436,10 @@ def capo_site_detail(
             request,
             current_user,
             site=site,
+            site_tasks=site_tasks,
+            open_tasks=open_tasks,
+            completed_tasks=completed_tasks,
+            can_add_tasks=has_perm(current_user, "manager.access"),
         ),
     )
 
