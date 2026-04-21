@@ -88,7 +88,7 @@
       <tbody>
         {% for s in sites_list %}
         {% set caposquadra = site_caposquadra_map.get(s.id) if site_caposquadra_map else None %}
-        <tr data-list-item>
+        <tr data-list-item data-detail-url="{{ url_for('manager_site_detail', site_id=s.id) }}" class="site-row-clickable">
           <td>
             <a href="{{ url_for('manager_site_detail', site_id=s.id) }}" class="site-detail-link">
               <strong>{{ s.name or s.nome or "-" }}</strong>
@@ -119,6 +119,9 @@
           {# ✅ AZIONI CENTRATE VERTICALI #}
           <td class="table-actions">
             <div class="actions--vertical">
+              <a href="{{ url_for('manager_site_detail', site_id=s.id) }}" class="btn btn-primary btn-sm">
+                🔎 {% if lang == 'fr' %}Détail{% else %}Apri{% endif %}
+              </a>
               <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
                 ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
               </a>
@@ -147,7 +150,7 @@
 <div class="list-cards">
   {% for s in sites_list %}
     {% set caposquadra = site_caposquadra_map.get(s.id) if site_caposquadra_map else None %}
-    <article class="card list-card" data-list-item>
+    <article class="card list-card site-card-clickable" data-list-item data-detail-url="{{ url_for('manager_site_detail', site_id=s.id) }}">
       <div class="card-body">
         <div class="list-card-header">
           <h3>
@@ -197,6 +200,9 @@
 
           {# ✅ AZIONI CENTRATE VERTICALI (mobile card) #}
           <div class="list-card-actions-column actions--vertical">
+            <a href="{{ url_for('manager_site_detail', site_id=s.id) }}" class="btn btn-primary btn-sm">
+              🔎 {% if lang == 'fr' %}Détail{% else %}Apri{% endif %}
+            </a>
             <a href="/manager/cantieri/{{ s.id }}/modifica" class="btn btn-secondary btn-sm">
               ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
             </a>
@@ -252,6 +258,27 @@
 
 {# ✅ CSS locale per centrare i due bottoni #}
 <style>
+  .site-row-clickable td{
+    cursor:pointer;
+    transition: background-color .15s ease;
+  }
+  .site-row-clickable:hover td{
+    background: rgba(99, 102, 241, 0.12);
+  }
+  .site-row-clickable td .btn,
+  .site-row-clickable td a{
+    position:relative;
+    z-index:2;
+  }
+  .site-card-clickable{
+    cursor:pointer;
+    transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+  }
+  .site-card-clickable:hover{
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 10px 25px rgba(0,0,0,.22);
+    transform: translateY(-1px);
+  }
   .actions--vertical{
     display:flex;
     flex-direction:column;
@@ -268,4 +295,18 @@
 
 <script src="{{ url_for('static', path='/js/list-search.js') }}"></script>
 <script src="{{ url_for('static', path='/js/site-map-preview.js') }}"></script>
+<script>
+  (function () {
+    const isInteractiveElement = (target) => target.closest('a, button, input, select, textarea, label, [role="button"]');
+    const goToDetail = (event, element) => {
+      if (isInteractiveElement(event.target)) return;
+      const url = element.dataset.detailUrl;
+      if (url) window.location.href = url;
+    };
+
+    document.querySelectorAll('.site-row-clickable, .site-card-clickable').forEach((element) => {
+      element.addEventListener('click', (event) => goToDetail(event, element));
+    });
+  })();
+</script>
 {% endblock %}
