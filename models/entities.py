@@ -136,6 +136,18 @@ class SiteEconomicCategoryEnum(PyEnum):
     altri_costi = "altri_costi"
 
 
+class SiteTaskStatusEnum(PyEnum):
+    da_fare = "da_fare"
+    in_corso = "in_corso"
+    completato = "completato"
+
+
+class SiteTaskPriorityEnum(PyEnum):
+    bassa = "bassa"
+    media = "media"
+    alta = "alta"
+
+
 # ------------------------------------------------------------
 # MIXIN PER TIMESTAMP
 # ------------------------------------------------------------
@@ -258,6 +270,21 @@ class User(Base, TimestampMixin):
         "SiteEconomicAutoParams",
         back_populates="updated_by",
         foreign_keys="SiteEconomicAutoParams.updated_by_id",
+    )
+    site_tasks_created = relationship(
+        "SiteTask",
+        back_populates="created_by",
+        foreign_keys="SiteTask.created_by_id",
+    )
+    site_tasks_updated = relationship(
+        "SiteTask",
+        back_populates="updated_by",
+        foreign_keys="SiteTask.updated_by_id",
+    )
+    site_tasks_completed = relationship(
+        "SiteTask",
+        back_populates="completed_by",
+        foreign_keys="SiteTask.completed_by_id",
     )
 
     @property
@@ -427,9 +454,45 @@ class Site(Base):
         cascade="all, delete-orphan",
         uselist=False,
     )
+    tasks = relationship(
+        "SiteTask",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        order_by="desc(SiteTask.created_at)",
+    )
 
     def __repr__(self) -> str:
         return f"<Site id={self.id} code={self.code} name={self.name}>"
+
+
+class SiteTask(Base, TimestampMixin):
+    __tablename__ = "site_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(Enum(SiteTaskStatusEnum), nullable=False, default=SiteTaskStatusEnum.da_fare)
+    priority = Column(Enum(SiteTaskPriorityEnum), nullable=False, default=SiteTaskPriorityEnum.media)
+    due_date = Column(Date, nullable=True)
+    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    completed = Column(Boolean, nullable=False, default=False)
+    completed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    site = relationship("Site", back_populates="tasks")
+    assigned_to = relationship("User", foreign_keys=[assigned_to_id])
+    created_by = relationship("User", foreign_keys=[created_by_id], back_populates="site_tasks_created")
+    updated_by = relationship("User", foreign_keys=[updated_by_id], back_populates="site_tasks_updated")
+    completed_by = relationship("User", foreign_keys=[completed_by_id], back_populates="site_tasks_completed")
+
+    def __repr__(self) -> str:
+        return (
+            "<SiteTask "
+            f"id={self.id} site_id={self.site_id} status={self.status.value} priority={self.priority.value}>"
+        )
 
 
 

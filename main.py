@@ -50,6 +50,9 @@ from models import (
     RoleEnum,
     Report,
     Site,
+    SiteTask,
+    SiteTaskPriorityEnum,
+    SiteTaskStatusEnum,
     SiteStrutLevel,
     SiteStatusEnum,
     Machine,
@@ -98,6 +101,16 @@ perf_logger = logging.getLogger("lenta_france_gestionale.performance")
 
 DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
+SITE_TASK_STATUSES = (
+    SiteTaskStatusEnum.da_fare,
+    SiteTaskStatusEnum.in_corso,
+    SiteTaskStatusEnum.completato,
+)
+SITE_TASK_PRIORITIES = (
+    SiteTaskPriorityEnum.bassa,
+    SiteTaskPriorityEnum.media,
+    SiteTaskPriorityEnum.alta,
+)
 APP_ENV = (
     os.getenv("APP_ENV")
     or os.getenv("ENVIRONMENT")
@@ -2451,6 +2464,53 @@ def _get_site_for_detail(db: Session, site_id: int, current_user: User) -> Site:
     raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
 
+def _parse_site_task_status(value: str | None) -> SiteTaskStatusEnum:
+    cleaned = (value or "").strip()
+    for status_value in SITE_TASK_STATUSES:
+        if cleaned == status_value.value:
+            return status_value
+    return SiteTaskStatusEnum.da_fare
+
+
+def _parse_site_task_priority(value: str | None) -> SiteTaskPriorityEnum:
+    cleaned = (value or "").strip()
+    for priority_value in SITE_TASK_PRIORITIES:
+        if cleaned == priority_value.value:
+            return priority_value
+    return SiteTaskPriorityEnum.media
+
+
+def _parse_optional_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _normalize_task_completion(task: SiteTask, user_id: int | None = None) -> None:
+    is_completed = task.status == SiteTaskStatusEnum.completato or bool(task.completed)
+    task.completed = is_completed
+    if is_completed:
+        if task.status != SiteTaskStatusEnum.completato:
+            task.status = SiteTaskStatusEnum.completato
+        if task.completed_at is None:
+            task.completed_at = datetime.utcnow()
+        if task.completed_by_id is None:
+            task.completed_by_id = user_id
+    else:
+        task.completed_at = None
+        task.completed_by_id = None
+
+
+def _build_site_task_filters(query_filter: str | None) -> dict[str, bool]:
+    value = (query_filter or "aperte").strip().lower()
+    valid = {"aperte", "completate", "tutte", "priorita_alta", "scadenza_vicina"}
+    selected = value if value in valid else "aperte"
+    return {key: key == selected for key in valid}
+
+
 @app.post(
     "/manager/sites/{site_id}/progress/cordoli",
     name="manager_site_progress_cordoli",
@@ -2847,11 +2907,51 @@ def manager_site_detail(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     lang = request.cookies.get("lang", "it")
+    task_filter = (request.query_params.get("task_filter") or "aperte").strip().lower()
+    task_filters = _build_site_task_filters(task_filter)
     db = SessionLocal()
     try:
         site = _get_site_for_detail(db, site_id, current_user)
         progress_summary, strut_levels_view, strut_levels_count = _build_site_progress(
             site, lang
+        )
+        site_tasks_query = (
+            db.query(SiteTask)
+            .options(
+                joinedload(SiteTask.assigned_to),
+                joinedload(SiteTask.created_by),
+                joinedload(SiteTask.updated_by),
+                joinedload(SiteTask.completed_by),
+            )
+            .filter(SiteTask.site_id == site_id)
+        )
+        soon_limit = date.today() + timedelta(days=3)
+        if task_filters["aperte"]:
+            site_tasks_query = site_tasks_query.filter(SiteTask.completed.is_(False))
+        elif task_filters["completate"]:
+            site_tasks_query = site_tasks_query.filter(SiteTask.completed.is_(True))
+        elif task_filters["priorita_alta"]:
+            site_tasks_query = site_tasks_query.filter(SiteTask.priority == SiteTaskPriorityEnum.alta)
+        elif task_filters["scadenza_vicina"]:
+            site_tasks_query = site_tasks_query.filter(
+                SiteTask.completed.is_(False),
+                SiteTask.due_date.isnot(None),
+                SiteTask.due_date <= soon_limit,
+            )
+        site_tasks = site_tasks_query.order_by(
+            SiteTask.completed.asc(),
+            SiteTask.priority.desc(),
+            SiteTask.due_date.asc().nulls_last(),
+            SiteTask.created_at.desc(),
+        ).all()
+        open_tasks = [task for task in site_tasks if not task.completed]
+        completed_tasks = [task for task in site_tasks if task.completed]
+        manager_users = (
+            db.query(User)
+            .filter(User.is_active.is_(True))
+            .filter(User.role.in_([RoleEnum.admin, RoleEnum.manager]))
+            .order_by(User.full_name, User.email)
+            .all()
         )
     finally:
         db.close()
@@ -2866,7 +2966,208 @@ def manager_site_detail(
             progress_summary=progress_summary,
             strut_levels=strut_levels_view,
             strut_levels_count=strut_levels_count,
+            site_tasks=site_tasks,
+            open_tasks=open_tasks,
+            completed_tasks=completed_tasks,
+            task_filter=task_filter,
+            task_filters=task_filters,
+            site_task_status_values=SITE_TASK_STATUSES,
+            site_task_priority_values=SITE_TASK_PRIORITIES,
+            manager_users=manager_users,
         ),
+    )
+
+
+@app.post("/manager/cantieri/{site_id}/tasks", name="manager_site_task_create")
+def manager_site_task_create(
+    request: Request,
+    site_id: int,
+    title: str = Form(...),
+    description: str = Form(""),
+    status_value: str = Form("da_fare"),
+    priority_value: str = Form("media"),
+    assigned_to_id: str | None = Form(None),
+    due_date: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    db = SessionLocal()
+    try:
+        site = _get_site_for_detail(db, site_id, current_user)
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        if not title.strip():
+            raise HTTPException(status_code=400, detail="Titolo obbligatorio")
+
+        assigned_to = None
+        if assigned_to_id not in (None, ""):
+            try:
+                assigned_user_id = int(assigned_to_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Assegnatario non valido") from exc
+            assigned_to = db.query(User).filter(User.id == assigned_user_id).first()
+            if not assigned_to:
+                raise HTTPException(status_code=400, detail="Assegnatario non trovato")
+        task = SiteTask(
+            site_id=site_id,
+            title=title.strip(),
+            description=(description or "").strip() or None,
+            status=_parse_site_task_status(status_value),
+            priority=_parse_site_task_priority(priority_value),
+            due_date=_parse_optional_date(due_date),
+            assigned_to_id=assigned_to.id if assigned_to else None,
+            created_by_id=current_user.id,
+            updated_by_id=current_user.id,
+        )
+        _normalize_task_completion(task, current_user.id)
+        db.add(task)
+        db.commit()
+    finally:
+        db.close()
+    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        status_code=303,
+    )
+
+
+@app.post("/manager/cantieri/{site_id}/tasks/{task_id}/edit", name="manager_site_task_update")
+def manager_site_task_update(
+    request: Request,
+    site_id: int,
+    task_id: int,
+    title: str = Form(...),
+    description: str = Form(""),
+    status_value: str = Form("da_fare"),
+    priority_value: str = Form("media"),
+    assigned_to_id: str | None = Form(None),
+    due_date: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    db = SessionLocal()
+    try:
+        _get_site_for_detail(db, site_id, current_user)
+        task = db.query(SiteTask).filter(SiteTask.id == task_id, SiteTask.site_id == site_id).first()
+        if not task:
+            raise HTTPException(status_code=404, detail="Task non trovato")
+        if not title.strip():
+            raise HTTPException(status_code=400, detail="Titolo obbligatorio")
+        task.title = title.strip()
+        task.description = (description or "").strip() or None
+        task.status = _parse_site_task_status(status_value)
+        task.priority = _parse_site_task_priority(priority_value)
+        task.due_date = _parse_optional_date(due_date)
+        task.updated_by_id = current_user.id
+        if assigned_to_id in (None, ""):
+            task.assigned_to_id = None
+        else:
+            try:
+                assigned_user_id = int(assigned_to_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Assegnatario non valido") from exc
+            assigned_to = db.query(User).filter(User.id == assigned_user_id).first()
+            if not assigned_to:
+                raise HTTPException(status_code=400, detail="Assegnatario non trovato")
+            task.assigned_to_id = assigned_user_id
+        _normalize_task_completion(task, current_user.id)
+        db.add(task)
+        db.commit()
+    finally:
+        db.close()
+    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        status_code=303,
+    )
+
+
+@app.post("/manager/cantieri/{site_id}/tasks/{task_id}/complete", name="manager_site_task_complete")
+def manager_site_task_complete(
+    request: Request,
+    site_id: int,
+    task_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    db = SessionLocal()
+    try:
+        _get_site_for_detail(db, site_id, current_user)
+        task = db.query(SiteTask).filter(SiteTask.id == task_id, SiteTask.site_id == site_id).first()
+        if not task:
+            raise HTTPException(status_code=404, detail="Task non trovato")
+        task.status = SiteTaskStatusEnum.completato
+        task.completed = True
+        task.completed_by_id = current_user.id
+        task.completed_at = datetime.utcnow()
+        task.updated_by_id = current_user.id
+        db.add(task)
+        db.commit()
+    finally:
+        db.close()
+    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        status_code=303,
+    )
+
+
+@app.post("/manager/cantieri/{site_id}/tasks/{task_id}/reopen", name="manager_site_task_reopen")
+def manager_site_task_reopen(
+    request: Request,
+    site_id: int,
+    task_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    db = SessionLocal()
+    try:
+        _get_site_for_detail(db, site_id, current_user)
+        task = db.query(SiteTask).filter(SiteTask.id == task_id, SiteTask.site_id == site_id).first()
+        if not task:
+            raise HTTPException(status_code=404, detail="Task non trovato")
+        task.status = SiteTaskStatusEnum.da_fare
+        task.completed = False
+        task.completed_by_id = None
+        task.completed_at = None
+        task.updated_by_id = current_user.id
+        db.add(task)
+        db.commit()
+    finally:
+        db.close()
+    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        status_code=303,
+    )
+
+
+@app.post("/manager/cantieri/{site_id}/tasks/{task_id}/delete", name="manager_site_task_delete")
+def manager_site_task_delete(
+    request: Request,
+    site_id: int,
+    task_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    db = SessionLocal()
+    try:
+        _get_site_for_detail(db, site_id, current_user)
+        task = db.query(SiteTask).filter(SiteTask.id == task_id, SiteTask.site_id == site_id).first()
+        if task:
+            db.delete(task)
+            db.commit()
+    finally:
+        db.close()
+    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        status_code=303,
     )
 
 
