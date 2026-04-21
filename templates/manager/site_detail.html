@@ -71,38 +71,36 @@
     </div>
 </div>
 
-{% include "manager/_site_progress_cards.html" %}
-
 {% if has_perm(user, "manager.access") %}
-<div id="todo-operative" class="card mt-4">
+<div id="note-operative" class="card mt-4">
     <div class="card-header">
         <h2 class="card-title mb-0">
-            {% if lang == 'fr' %}To do / Notes opérationnelles{% else %}To do / Note operative{% endif %}
+            {% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}
         </h2>
     </div>
     <div class="card-body">
         <form method="get" action="{{ url_for('manager_site_detail', site_id=site.id) }}" class="mb-3 d-flex gap-2 flex-wrap">
-            <label for="task_filter"><strong>Filtro:</strong></label>
+            <label for="task_filter"><strong>{% if lang == 'fr' %}Filtre:{% else %}Filtro:{% endif %}</strong></label>
             <select id="task_filter" name="task_filter" class="form-control" style="max-width: 240px;">
-                <option value="aperte" {% if task_filter == 'aperte' %}selected{% endif %}>Aperte</option>
-                <option value="completate" {% if task_filter == 'completate' %}selected{% endif %}>Completate</option>
-                <option value="tutte" {% if task_filter == 'tutte' %}selected{% endif %}>Tutte</option>
-                <option value="priorita_alta" {% if task_filter == 'priorita_alta' %}selected{% endif %}>Priorità alta</option>
-                <option value="scadenza_vicina" {% if task_filter == 'scadenza_vicina' %}selected{% endif %}>Scadenza vicina</option>
+                <option value="aperte" {% if task_filter == 'aperte' %}selected{% endif %}>{% if lang == 'fr' %}Ouvertes{% else %}Aperte{% endif %}</option>
+                <option value="completate" {% if task_filter == 'completate' %}selected{% endif %}>{% if lang == 'fr' %}Terminées{% else %}Completate{% endif %}</option>
+                <option value="tutte" {% if task_filter == 'tutte' %}selected{% endif %}>{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
+                <option value="priorita_alta" {% if task_filter == 'priorita_alta' %}selected{% endif %}>{% if lang == 'fr' %}Priorité haute{% else %}Priorità alta{% endif %}</option>
+                <option value="scadenza_vicina" {% if task_filter == 'scadenza_vicina' %}selected{% endif %}>{% if lang == 'fr' %}Échéance proche{% else %}Scadenza vicina{% endif %}</option>
             </select>
-            <button type="submit" class="btn btn-secondary">Applica</button>
+            <button type="submit" class="btn btn-secondary">{% if lang == 'fr' %}Appliquer{% else %}Applica{% endif %}</button>
         </form>
 
         <details class="mb-4" open>
-            <summary><strong>Nuova attività / Nota operativa</strong></summary>
+            <summary><strong>{% if lang == 'fr' %}Nouvelle note opérationnelle{% else %}Nuova nota operativa{% endif %}</strong></summary>
             <form method="post" action="{{ url_for('manager_site_task_create', site_id=site.id) }}?task_filter={{ task_filter }}" class="mt-3">
                 <div class="row g-2">
                     <div class="col-md-4">
-                        <label>Titolo</label>
+                        <label>{% if lang == 'fr' %}Titre{% else %}Titolo{% endif %}</label>
                         <input type="text" name="title" class="form-control" required maxlength="255">
                     </div>
                     <div class="col-md-2">
-                        <label>Priorità</label>
+                        <label>{% if lang == 'fr' %}Priorité{% else %}Priorità{% endif %}</label>
                         <select name="priority_value" class="form-control">
                             {% for value in site_task_priority_values %}
                                 <option value="{{ value.value }}" {% if value.value == 'media' %}selected{% endif %}>{{ value.value|replace('_', ' ')|title }}</option>
@@ -110,7 +108,7 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label>Stato</label>
+                        <label>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</label>
                         <select name="status_value" class="form-control">
                             {% for value in site_task_status_values %}
                                 <option value="{{ value.value }}">{{ value.value|replace('_', ' ')|title }}</option>
@@ -118,7 +116,7 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label>Assegnato a</label>
+                        <label>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</label>
                         <select name="assigned_to_id" class="form-control">
                             <option value="">—</option>
                             {% for manager_user in manager_users %}
@@ -127,29 +125,29 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label>Scadenza</label>
+                        <label>{% if lang == 'fr' %}Échéance{% else %}Scadenza{% endif %}</label>
                         <input type="date" name="due_date" class="form-control">
                     </div>
                     <div class="col-12">
-                        <label>Descrizione / Nota operativa</label>
+                        <label>{% if lang == 'fr' %}Description / note{% else %}Descrizione / nota{% endif %}</label>
                         <textarea name="description" class="form-control" rows="2"></textarea>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary mt-2">Aggiungi task</button>
+                <button type="submit" class="btn btn-primary mt-2">{% if lang == 'fr' %}Nouvelle note opérationnelle{% else %}Nuova nota operativa{% endif %}</button>
             </form>
         </details>
 
-        <h3 class="h5">To do aperte ({{ open_tasks|length }})</h3>
+        <h3 class="h5">{% if lang == 'fr' %}Activités ouvertes{% else %}Attività aperte{% endif %} ({{ open_tasks|length }})</h3>
         {% for task in open_tasks %}
             <div class="border rounded p-3 mb-2">
                 <form method="post" action="{{ url_for('manager_site_task_update', site_id=site.id, task_id=task.id) }}?task_filter={{ task_filter }}">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-4">
-                            <label>Titolo</label>
+                            <label>{% if lang == 'fr' %}Titre{% else %}Titolo{% endif %}</label>
                             <input type="text" name="title" value="{{ task.title }}" class="form-control" required maxlength="255">
                         </div>
                         <div class="col-md-2">
-                            <label>Priorità</label>
+                            <label>{% if lang == 'fr' %}Priorité{% else %}Priorità{% endif %}</label>
                             <select name="priority_value" class="form-control">
                                 {% for value in site_task_priority_values %}
                                     <option value="{{ value.value }}" {% if task.priority == value %}selected{% endif %}>{{ value.value|replace('_', ' ')|title }}</option>
@@ -157,7 +155,7 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label>Stato</label>
+                            <label>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</label>
                             <select name="status_value" class="form-control">
                                 {% for value in site_task_status_values %}
                                     <option value="{{ value.value }}" {% if task.status == value %}selected{% endif %}>{{ value.value|replace('_', ' ')|title }}</option>
@@ -165,7 +163,7 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label>Assegnato a</label>
+                            <label>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</label>
                             <select name="assigned_to_id" class="form-control">
                                 <option value="">—</option>
                                 {% for manager_user in manager_users %}
@@ -174,56 +172,75 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label>Scadenza</label>
+                            <label>{% if lang == 'fr' %}Échéance{% else %}Scadenza{% endif %}</label>
                             <input type="date" name="due_date" class="form-control" value="{{ task.due_date.isoformat() if task.due_date else '' }}">
                         </div>
                         <div class="col-12">
-                            <label>Descrizione / Nota operativa</label>
+                            <label>{% if lang == 'fr' %}Description / note{% else %}Descrizione / nota{% endif %}</label>
                             <textarea name="description" class="form-control" rows="2">{{ task.description or '' }}</textarea>
                         </div>
                     </div>
                     <p class="mt-2 mb-1 text-muted small">
-                        Creato da: {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }} ·
-                        Creato il: {{ task.created_at.strftime('%d/%m/%Y %H:%M') if task.created_at else '—' }} ·
-                        Modificato da: {{ task.updated_by.full_name or task.updated_by.email if task.updated_by else '—' }}
+                        {% if lang == 'fr' %}
+                            Créé par: {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }} ·
+                            Créé le: {{ task.created_at.strftime('%d/%m/%Y %H:%M') if task.created_at else '—' }} ·
+                            Modifié par: {{ task.updated_by.full_name or task.updated_by.email if task.updated_by else '—' }}
+                        {% else %}
+                            Creato da: {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }} ·
+                            Creato il: {{ task.created_at.strftime('%d/%m/%Y %H:%M') if task.created_at else '—' }} ·
+                            Modificato da: {{ task.updated_by.full_name or task.updated_by.email if task.updated_by else '—' }}
+                        {% endif %}
                     </p>
                     <div class="d-flex gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-secondary">Salva</button>
+                        <button type="submit" class="btn btn-secondary">{% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
                 </form>
                 <form method="post" action="{{ url_for('manager_site_task_complete', site_id=site.id, task_id=task.id) }}?task_filter={{ task_filter }}">
-                    <button type="submit" class="btn btn-primary">☑ Completa</button>
+                    <button type="submit" class="btn btn-primary">☑ {% if lang == 'fr' %}Terminer{% else %}Completa{% endif %}</button>
                 </form>
                 <form method="post" action="{{ url_for('manager_site_task_delete', site_id=site.id, task_id=task.id) }}?task_filter={{ task_filter }}" onsubmit="return confirm('Eliminare questo task?');">
-                    <button type="submit" class="btn btn-danger">Elimina</button>
+                    <button type="submit" class="btn btn-danger">{% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
                 </form>
                     </div>
             </div>
         {% else %}
-            <p class="text-muted">Nessuna attività aperta.</p>
+            <p class="text-muted">{% if lang == 'fr' %}Aucune activité ouverte.{% else %}Nessuna attività aperta.{% endif %}</p>
         {% endfor %}
 
-        <h3 class="h5 mt-4">To do completate ({{ completed_tasks|length }})</h3>
+        <h3 class="h5 mt-4">{% if lang == 'fr' %}Activités terminées{% else %}Attività completate{% endif %} ({{ completed_tasks|length }})</h3>
         {% for task in completed_tasks %}
-            <div class="border rounded p-3 mb-2 bg-light">
-                <p class="mb-1"><strong>{{ task.title }}</strong> · {{ task.priority.value|title }} · {{ task.assigned_to.full_name or task.assigned_to.email if task.assigned_to else '—' }}</p>
-                <p class="mb-1">{{ task.description or '—' }}</p>
+            <div class="border rounded p-3 mb-2">
+                <p class="mb-1">
+                    <strong>{{ task.title }}</strong>
+                    · {{ task.description or '—' }}
+                    · {{ task.priority.value|title }}
+                    · {{ task.assigned_to.full_name or task.assigned_to.email if task.assigned_to else '—' }}
+                    · {{ task.due_date.strftime('%d/%m/%Y') if task.due_date else '—' }}
+                    · {{ task.status.value|replace('_', ' ')|title }}
+                </p>
                 <p class="mb-2 text-muted small">
-                    Completato da: {{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }}
-                    il {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
+                    {% if lang == 'fr' %}
+                        Terminé par: {{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }}
+                        le {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
+                    {% else %}
+                        Completato da: {{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }}
+                        il {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
+                    {% endif %}
                 </p>
                 <div class="d-flex gap-2">
                     <form method="post" action="{{ url_for('manager_site_task_reopen', site_id=site.id, task_id=task.id) }}?task_filter={{ task_filter }}">
-                        <button type="submit" class="btn btn-secondary">Riapri</button>
+                        <button type="submit" class="btn btn-secondary">{% if lang == 'fr' %}Rouvrir{% else %}Riapri{% endif %}</button>
                     </form>
                     <form method="post" action="{{ url_for('manager_site_task_delete', site_id=site.id, task_id=task.id) }}?task_filter={{ task_filter }}" onsubmit="return confirm('Eliminare questo task?');">
-                        <button type="submit" class="btn btn-danger">Elimina</button>
+                        <button type="submit" class="btn btn-danger">{% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
                     </form>
                 </div>
             </div>
         {% else %}
-            <p class="text-muted">Nessuna attività completata.</p>
+            <p class="text-muted">{% if lang == 'fr' %}Aucune activité terminée.{% else %}Nessuna attività completata.{% endif %}</p>
         {% endfor %}
     </div>
 </div>
 {% endif %}
+
+{% include "manager/_site_progress_cards.html" %}
 {% endblock %}
