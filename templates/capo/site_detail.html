@@ -53,4 +53,63 @@
         </p>
     </div>
 </div>
+
+<div class="card mt-3" id="todo-operative">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">{% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}</h2>
+        {% if can_add_tasks %}
+            <a href="{{ url_for('manager_site_detail', site_id=site.id) }}#todo-operative" class="btn btn-primary btn-sm">
+                {% if lang == 'fr' %}Ajouter{% else %}Aggiungi{% endif %}
+            </a>
+        {% else %}
+            <button type="button" class="btn btn-secondary btn-sm" disabled>
+                {% if lang == 'fr' %}Ajouter{% else %}Aggiungi{% endif %}
+            </button>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if not site_tasks %}
+            <p class="text-muted mb-0">{% if lang == 'fr' %}Aucune note opérationnelle{% else %}Nessuna nota operativa{% endif %}</p>
+        {% else %}
+            <h3 class="h6">{% if lang == 'fr' %}Ouvertes{% else %}Aperte{% endif %} ({{ open_tasks|length }})</h3>
+            {% if open_tasks %}
+                <ul class="list-group mb-3">
+                    {% for task in open_tasks %}
+                        <li class="list-group-item">
+                            <strong>{{ task.title }}</strong>
+                            <div class="small text-muted">
+                                {{ task.description or '—' }} ·
+                                {{ task.priority.value|replace('_', ' ')|title }} ·
+                                {{ task.due_date.strftime('%d/%m/%Y') if task.due_date else '—' }}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">{% if lang == 'fr' %}Aucune note ouverte{% else %}Nessuna nota aperta{% endif %}</p>
+            {% endif %}
+
+            <h3 class="h6">{% if lang == 'fr' %}Terminées{% else %}Completate{% endif %} ({{ completed_tasks|length }})</h3>
+            {% if completed_tasks %}
+                <ul class="list-group">
+                    {% for task in completed_tasks %}
+                        <li class="list-group-item">
+                            <strong>{{ task.title }}</strong>
+                            <div class="small text-muted">
+                                {{ task.description or '—' }} ·
+                                {% if lang == 'fr' %}
+                                    Terminé le {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
+                                {% else %}
+                                    Completato il {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted mb-0">{% if lang == 'fr' %}Aucune note terminée{% else %}Nessuna nota completata{% endif %}</p>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
