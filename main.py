@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from jose import JWTError, jwt
 
-from sqlalchemy import case, func
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import joinedload, load_only, Session
 from sqlmodel import SQLModel
 
@@ -2504,6 +2504,24 @@ def _normalize_task_completion(task: SiteTask, user_id: int | None = None) -> No
         task.completed_by_id = None
 
 
+def _site_task_completed_clause():
+    return or_(
+        SiteTask.completed.is_(True),
+        SiteTask.status == SiteTaskStatusEnum.completato,
+    )
+
+
+def _site_task_open_clause():
+    return and_(
+        SiteTask.completed.is_(False),
+        SiteTask.status != SiteTaskStatusEnum.completato,
+    )
+
+
+def _is_task_completed(task: SiteTask) -> bool:
+    return bool(task.completed) or task.status == SiteTaskStatusEnum.completato
+
+
 def _build_site_task_filters(query_filter: str | None) -> dict[str, bool]:
     value = (query_filter or "aperte").strip().lower()
     valid = {"aperte", "completate", "tutte", "priorita_alta", "scadenza_vicina"}
@@ -2935,14 +2953,15 @@ def manager_site_detail(
         )
         soon_limit = date.today() + timedelta(days=3)
         if task_filters["aperte"]:
-            site_tasks_query = site_tasks_query.filter(SiteTask.completed.is_(False))
+            site_tasks_query = site_tasks_query.filter(_site_task_open_clause())
         elif task_filters["completate"]:
-            site_tasks_query = site_tasks_query.filter(SiteTask.completed.is_(True))
+            site_tasks_query = site_tasks_query.filter(_site_task_completed_clause())
         elif task_filters["priorita_alta"]:
             site_tasks_query = site_tasks_query.filter(SiteTask.priority == SiteTaskPriorityEnum.alta)
         elif task_filters["scadenza_vicina"]:
             site_tasks_query = site_tasks_query.filter(
                 SiteTask.completed.is_(False),
+                SiteTask.status != SiteTaskStatusEnum.completato,
                 SiteTask.due_date.isnot(None),
                 SiteTask.due_date <= soon_limit,
             )
@@ -2952,8 +2971,8 @@ def manager_site_detail(
             SiteTask.due_date.asc().nulls_last(),
             SiteTask.created_at.desc(),
         ).all()
-        open_tasks = [task for task in site_tasks if not task.completed]
-        completed_tasks = [task for task in site_tasks if task.completed]
+        open_tasks = [task for task in site_tasks if not _is_task_completed(task)]
+        completed_tasks = [task for task in site_tasks if _is_task_completed(task)]
         manager_users = (
             db.query(User)
             .filter(User.is_active.is_(True))
@@ -3107,9 +3126,8 @@ def manager_site_task_complete(
             raise HTTPException(status_code=404, detail="Task non trovato")
         task.status = SiteTaskStatusEnum.completato
         task.completed = True
-        task.completed_by_id = current_user.id
-        task.completed_at = datetime.utcnow()
         task.updated_by_id = current_user.id
+        _normalize_task_completion(task, current_user.id)
         db.add(task)
         db.commit()
     finally:
@@ -3137,9 +3155,8 @@ def manager_site_task_reopen(
             raise HTTPException(status_code=404, detail="Task non trovato")
         task.status = SiteTaskStatusEnum.da_fare
         task.completed = False
-        task.completed_by_id = None
-        task.completed_at = None
         task.updated_by_id = current_user.id
+        _normalize_task_completion(task, current_user.id)
         db.add(task)
         db.commit()
     finally:
@@ -3197,10 +3214,9 @@ def manager_site_tasks_overview(
             .all()
         )
         site_ids = [site.id for site in sites]
-        tasks_by_site: dict[int, dict[str, list[SiteTask]]] = {
-            site.id: {"open": [], "completed": []} for site in sites
-        }
+        tasks_by_site: dict[int, dict[str, list[SiteTask]]] = {site.id: {"open": []} for site in sites}
         open_counts_by_site: dict[int, int] = {site.id: 0 for site in sites}
+        recent_completed_tasks: list[SiteTask] = []
 
         if site_ids:
             tasks = (
@@ -3214,7 +3230,6 @@ def manager_site_tasks_overview(
                 .filter(SiteTask.site_id.in_(site_ids))
                 .order_by(
                     SiteTask.site_id.asc(),
-                    SiteTask.completed.asc(),
                     SiteTask.priority.desc(),
                     SiteTask.due_date.asc().nulls_last(),
                     SiteTask.created_at.desc(),
@@ -3222,19 +3237,36 @@ def manager_site_tasks_overview(
                 .all()
             )
             for task in tasks:
-                key = "completed" if task.completed else "open"
-                tasks_by_site.setdefault(task.site_id, {"open": [], "completed": []})[key].append(task)
+                if not _is_task_completed(task):
+                    tasks_by_site.setdefault(task.site_id, {"open": []})["open"].append(task)
 
             open_count_rows = (
                 db.query(SiteTask.site_id, func.count(SiteTask.id))
                 .filter(
                     SiteTask.site_id.in_(site_ids),
-                    SiteTask.completed.is_(False),
+                    _site_task_open_clause(),
                 )
                 .group_by(SiteTask.site_id)
                 .all()
             )
             open_counts_by_site = {site_id: int(count or 0) for site_id, count in open_count_rows}
+            recent_completed_tasks = (
+                db.query(SiteTask)
+                .options(
+                    joinedload(SiteTask.site),
+                    joinedload(SiteTask.completed_by),
+                )
+                .filter(
+                    SiteTask.site_id.in_(site_ids),
+                    _site_task_completed_clause(),
+                )
+                .order_by(
+                    SiteTask.completed_at.desc().nulls_last(),
+                    SiteTask.updated_at.desc(),
+                )
+                .limit(5)
+                .all()
+            )
 
         manager_users = (
             db.query(User)
@@ -3255,8 +3287,118 @@ def manager_site_tasks_overview(
             active_sites=sites,
             tasks_by_site=tasks_by_site,
             open_counts_by_site=open_counts_by_site,
+            recent_completed_tasks=recent_completed_tasks,
             manager_users=manager_users,
             site_task_status_values=SITE_TASK_STATUSES,
+            site_task_priority_values=SITE_TASK_PRIORITIES,
+        ),
+    )
+
+
+@app.get("/manager/note-operative/storico", response_class=HTMLResponse, name="manager_site_tasks_history")
+def manager_site_tasks_history(
+    request: Request,
+    site_id: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    priority: str | None = None,
+    completed_by_id: str | None = None,
+    q: str | None = None,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        sites = (
+            scope_sites_query(
+                db.query(Site),
+                current_user,
+            )
+            .order_by(Site.name.asc())
+            .all()
+        )
+        site_ids = [site.id for site in sites]
+
+        query = (
+            db.query(SiteTask)
+            .options(
+                joinedload(SiteTask.site),
+                joinedload(SiteTask.assigned_to),
+                joinedload(SiteTask.completed_by),
+            )
+            .filter(
+                SiteTask.site_id.in_(site_ids),
+                _site_task_completed_clause(),
+            )
+        )
+
+        selected_site_id: int | None = None
+        if site_id and site_id.isdigit():
+            selected_site_id = int(site_id)
+            query = query.filter(SiteTask.site_id == selected_site_id)
+
+        selected_completed_by_id: int | None = None
+        if completed_by_id and completed_by_id.isdigit():
+            selected_completed_by_id = int(completed_by_id)
+            query = query.filter(SiteTask.completed_by_id == selected_completed_by_id)
+
+        selected_priority = None
+        if priority:
+            selected_priority = _parse_site_task_priority(priority)
+            query = query.filter(SiteTask.priority == selected_priority)
+
+        parsed_date_from = _parse_optional_date(date_from)
+        if parsed_date_from:
+            query = query.filter(func.date(SiteTask.completed_at) >= parsed_date_from)
+
+        parsed_date_to = _parse_optional_date(date_to)
+        if parsed_date_to:
+            query = query.filter(func.date(SiteTask.completed_at) <= parsed_date_to)
+
+        search_term = (q or "").strip()
+        if search_term:
+            pattern = f"%{search_term}%"
+            query = query.filter(
+                or_(
+                    SiteTask.title.ilike(pattern),
+                    SiteTask.description.ilike(pattern),
+                )
+            )
+
+        completed_tasks = query.order_by(
+            SiteTask.completed_at.desc().nulls_last(),
+            SiteTask.updated_at.desc(),
+        ).all()
+
+        completer_ids = {task.completed_by_id for task in completed_tasks if task.completed_by_id}
+        completers = (
+            db.query(User)
+            .filter(User.id.in_(completer_ids))
+            .order_by(User.full_name, User.email)
+            .all()
+            if completer_ids
+            else []
+        )
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "manager/site_tasks_history.html",
+        build_template_context(
+            request,
+            current_user,
+            completed_tasks=completed_tasks,
+            sites=sites,
+            completers=completers,
+            selected_site_id=selected_site_id,
+            selected_priority=selected_priority.value if selected_priority else "",
+            selected_completed_by_id=selected_completed_by_id,
+            date_from=date_from or "",
+            date_to=date_to or "",
+            q=q or "",
             site_task_priority_values=SITE_TASK_PRIORITIES,
         ),
     )

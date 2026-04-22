@@ -13,11 +13,56 @@
         <h1 class="mb-1">{% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}</h1>
         <p class="text-muted mb-0">
             {% if lang == 'fr' %}
-                Vue centrale rapide des tâches ouvertes et complétées par chantier actif.
+                Vue rapide: nouvelles notes, activités ouvertes et 5 dernières activités terminées.
             {% else %}
-                Vista centrale rapida delle attività aperte e completate per cantiere attivo.
+                Vista rapida: nuove note, attività aperte e 5 ultime attività completate.
             {% endif %}
         </p>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">{% if lang == 'fr' %}Dernières activités terminées{% else %}Ultime attività svolte{% endif %}</h2>
+        <a href="{{ url_for('manager_site_tasks_history') }}" class="btn btn-primary">
+            {% if lang == 'fr' %}Voir l'historique complet{% else %}Apri storico{% endif %}
+        </a>
+    </div>
+    <div class="card-body p-0">
+        {% if recent_completed_tasks %}
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'fr' %}Titre{% else %}Titolo{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Terminé le{% else %}Completato il{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Terminé par{% else %}Completato da{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in recent_completed_tasks %}
+                            <tr>
+                                <td><strong>{{ task.title }}</strong></td>
+                                <td>{{ task.site.name if task.site else '—' }}</td>
+                                <td>{{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}</td>
+                                <td>{{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }}</td>
+                                <td>{{ (task.description or '—')[:120] }}</td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('manager_site_detail', site_id=task.site_id) }}?task_filter=completate#todo-operative" class="btn btn-sm btn-outline-secondary">
+                                        {% if lang == 'fr' %}Détail{% else %}Dettaglio{% endif %}
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0 p-3">{% if lang == 'fr' %}Aucune activité terminée récente.{% else %}Nessuna attività svolta recente.{% endif %}</p>
+        {% endif %}
     </div>
 </div>
 
@@ -28,7 +73,7 @@
 {% endif %}
 
 {% for site in active_sites %}
-    {% set site_tasks = tasks_by_site.get(site.id, {'open': [], 'completed': []}) %}
+    {% set site_tasks = tasks_by_site.get(site.id, {'open': []}) %}
     {% set open_count = open_counts_by_site.get(site.id, 0) %}
     <details class="card mb-3" id="site-{{ site.id }}" {% if open_count > 0 and loop.first %}open{% endif %}>
         <summary class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer; list-style:none;">
@@ -119,30 +164,6 @@
             {% else %}
                 <p class="text-muted mb-2">{% if lang == 'fr' %}Aucune activité ouverte.{% else %}Nessuna attività aperta.{% endif %}</p>
             {% endif %}
-
-            <details class="mt-2">
-                <summary><strong>{% if lang == 'fr' %}Terminées{% else %}Completate{% endif %} ({{ site_tasks.completed|length }})</strong></summary>
-                <div class="mt-2">
-                    {% for task in site_tasks.completed %}
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-                            <div>
-                                <strong>{{ task.title }}</strong>
-                                <span class="text-muted">· {{ task.description or '—' }} · {{ task.priority.value|title }}</span>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <form method="post" action="{{ url_for('manager_site_task_reopen', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">{% if lang == 'fr' %}Rouvrir{% else %}Riapri{% endif %}</button>
-                                </form>
-                                <form method="post" action="{{ url_for('manager_site_task_delete', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}" onsubmit="return confirm('Eliminare questa nota?');">
-                                    <button type="submit" class="btn btn-sm btn-danger">🗑</button>
-                                </form>
-                            </div>
-                        </div>
-                    {% else %}
-                        <p class="text-muted mb-0">{% if lang == 'fr' %}Aucune activité terminée.{% else %}Nessuna attività completata.{% endif %}</p>
-                    {% endfor %}
-                </div>
-            </details>
         </div>
     </details>
 {% endfor %}
