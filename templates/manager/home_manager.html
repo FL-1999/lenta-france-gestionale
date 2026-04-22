@@ -46,6 +46,9 @@
             <a href="/manager/fiches" class="btn btn-lg btn-secondary">
                 {% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}
             </a>
+            <a href="{{ url_for('manager_site_tasks_overview') }}" class="btn btn-lg btn-danger">
+                🧭 {% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}
+            </a>
         </div>
     </div>
 

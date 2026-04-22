@@ -2511,6 +2511,14 @@ def _build_site_task_filters(query_filter: str | None) -> dict[str, bool]:
     return {key: key == selected for key in valid}
 
 
+def _build_site_task_redirect_url(request: Request, site_id: int, *, fallback_filter: str = "aperte") -> str:
+    next_url = (request.query_params.get("next") or "").strip()
+    if next_url.startswith("/manager/"):
+        return next_url
+    filter_value = (request.query_params.get("task_filter") or fallback_filter).strip().lower()
+    return f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative"
+
+
 @app.post(
     "/manager/sites/{site_id}/progress/cordoli",
     name="manager_site_progress_cordoli",
@@ -3025,9 +3033,8 @@ def manager_site_task_create(
         db.commit()
     finally:
         db.close()
-    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
     return RedirectResponse(
-        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        url=_build_site_task_redirect_url(request, site_id),
         status_code=303,
     )
 
@@ -3077,9 +3084,8 @@ def manager_site_task_update(
         db.commit()
     finally:
         db.close()
-    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
     return RedirectResponse(
-        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        url=_build_site_task_redirect_url(request, site_id),
         status_code=303,
     )
 
@@ -3108,9 +3114,8 @@ def manager_site_task_complete(
         db.commit()
     finally:
         db.close()
-    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
     return RedirectResponse(
-        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        url=_build_site_task_redirect_url(request, site_id),
         status_code=303,
     )
 
@@ -3139,9 +3144,8 @@ def manager_site_task_reopen(
         db.commit()
     finally:
         db.close()
-    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
     return RedirectResponse(
-        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        url=_build_site_task_redirect_url(request, site_id),
         status_code=303,
     )
 
@@ -3164,10 +3168,97 @@ def manager_site_task_delete(
             db.commit()
     finally:
         db.close()
-    filter_value = (request.query_params.get("task_filter") or "aperte").strip().lower()
     return RedirectResponse(
-        url=f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative",
+        url=_build_site_task_redirect_url(request, site_id),
         status_code=303,
+    )
+
+
+@app.get("/manager/note-operative", response_class=HTMLResponse, name="manager_site_tasks_overview")
+def manager_site_tasks_overview(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        sites = (
+            scope_sites_query(
+                db.query(Site).options(joinedload(Site.caposquadra)),
+                current_user,
+            )
+            .filter(
+                Site.is_active.is_(True),
+                Site.status.in_([SiteStatusEnum.aperto, SiteStatusEnum.pianificato]),
+            )
+            .order_by(Site.name.asc())
+            .all()
+        )
+        site_ids = [site.id for site in sites]
+        tasks_by_site: dict[int, dict[str, list[SiteTask]]] = {
+            site.id: {"open": [], "completed": []} for site in sites
+        }
+        open_counts_by_site: dict[int, int] = {site.id: 0 for site in sites}
+
+        if site_ids:
+            tasks = (
+                db.query(SiteTask)
+                .options(
+                    joinedload(SiteTask.assigned_to),
+                    joinedload(SiteTask.created_by),
+                    joinedload(SiteTask.updated_by),
+                    joinedload(SiteTask.completed_by),
+                )
+                .filter(SiteTask.site_id.in_(site_ids))
+                .order_by(
+                    SiteTask.site_id.asc(),
+                    SiteTask.completed.asc(),
+                    SiteTask.priority.desc(),
+                    SiteTask.due_date.asc().nulls_last(),
+                    SiteTask.created_at.desc(),
+                )
+                .all()
+            )
+            for task in tasks:
+                key = "completed" if task.completed else "open"
+                tasks_by_site.setdefault(task.site_id, {"open": [], "completed": []})[key].append(task)
+
+            open_count_rows = (
+                db.query(SiteTask.site_id, func.count(SiteTask.id))
+                .filter(
+                    SiteTask.site_id.in_(site_ids),
+                    SiteTask.completed.is_(False),
+                )
+                .group_by(SiteTask.site_id)
+                .all()
+            )
+            open_counts_by_site = {site_id: int(count or 0) for site_id, count in open_count_rows}
+
+        manager_users = (
+            db.query(User)
+            .filter(User.is_active.is_(True))
+            .filter(User.role.in_([RoleEnum.admin, RoleEnum.manager]))
+            .order_by(User.full_name, User.email)
+            .all()
+        )
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "manager/site_tasks_overview.html",
+        build_template_context(
+            request,
+            current_user,
+            active_sites=sites,
+            tasks_by_site=tasks_by_site,
+            open_counts_by_site=open_counts_by_site,
+            manager_users=manager_users,
+            site_task_status_values=SITE_TASK_STATUSES,
+            site_task_priority_values=SITE_TASK_PRIORITIES,
+        ),
     )
 
 

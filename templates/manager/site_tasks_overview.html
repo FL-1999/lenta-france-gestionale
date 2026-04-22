@@ -1,0 +1,149 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}
+    {% if lang == 'fr' %}
+        Notes opérationnelles – Manager
+    {% else %}
+        Note operative – Manager
+    {% endif %}
+{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+    <div>
+        <h1 class="mb-1">{% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}</h1>
+        <p class="text-muted mb-0">
+            {% if lang == 'fr' %}
+                Vue centrale rapide des tâches ouvertes et complétées par chantier actif.
+            {% else %}
+                Vista centrale rapida delle attività aperte e completate per cantiere attivo.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+{% if not active_sites %}
+    <div class="card"><div class="card-body text-muted">
+        {% if lang == 'fr' %}Aucun chantier actif trouvé.{% else %}Nessun cantiere attivo trovato.{% endif %}
+    </div></div>
+{% endif %}
+
+{% for site in active_sites %}
+    {% set site_tasks = tasks_by_site.get(site.id, {'open': [], 'completed': []}) %}
+    {% set open_count = open_counts_by_site.get(site.id, 0) %}
+    <details class="card mb-3" id="site-{{ site.id }}" {% if open_count > 0 and loop.first %}open{% endif %}>
+        <summary class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer; list-style:none;">
+            <div class="d-flex align-items-center gap-2">
+                <strong>{{ site.name }}</strong>
+                {% if open_count > 0 %}
+                    <span class="badge badge-danger" style="background:#ef4444;color:#fff;">{{ open_count }}</span>
+                    <span title="Attività aperte" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;"></span>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('manager_site_detail', site_id=site.id) }}" class="btn btn-sm btn-secondary">
+                    {% if lang == 'fr' %}Détail{% else %}Dettaglio{% endif %}
+                </a>
+            </div>
+        </summary>
+        <div class="card-body">
+            <details>
+                <summary><strong>{% if lang == 'fr' %}Nouvelle note{% else %}Nuova nota{% endif %}</strong></summary>
+                <form method="post" action="{{ url_for('manager_site_task_create', site_id=site.id) }}?next=/manager/note-operative#site-{{ site.id }}" class="mt-2">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <input type="text" name="title" class="form-control" placeholder="{% if lang == 'fr' %}Titre{% else %}Titolo{% endif %}" required maxlength="255">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" name="description" class="form-control" placeholder="{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}">
+                        </div>
+                        <div class="col-md-2">
+                            <select name="priority_value" class="form-control">
+                                {% for value in site_task_priority_values %}
+                                    <option value="{{ value.value }}" {% if value.value == 'media' %}selected{% endif %}>{{ value.value|replace('_', ' ')|title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="date" name="due_date" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">+ {% if lang == 'fr' %}Ajouter{% else %}Aggiungi{% endif %}</button>
+                        </div>
+                    </div>
+                </form>
+            </details>
+
+            <h3 class="h6 mt-3 mb-2">{% if lang == 'fr' %}Ouvertes{% else %}Aperte{% endif %} ({{ site_tasks.open|length }})</h3>
+            {% if site_tasks.open %}
+                {% for task in site_tasks.open %}
+                    <div class="card mb-2" id="task-{{ task.id }}">
+                        <div class="card-body py-2">
+                            <form method="post" action="{{ url_for('manager_site_task_update', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}">
+                                <div class="row g-2">
+                                    <div class="col-md-3"><input type="text" name="title" value="{{ task.title }}" class="form-control form-control-sm" required maxlength="255"></div>
+                                    <div class="col-md-3"><input type="text" name="description" value="{{ task.description or '' }}" class="form-control form-control-sm"></div>
+                                    <div class="col-md-2">
+                                        <select name="priority_value" class="form-control form-control-sm">
+                                            {% for value in site_task_priority_values %}
+                                                <option value="{{ value.value }}" {% if task.priority == value %}selected{% endif %}>{{ value.value|replace('_', ' ')|title }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2"><input type="date" name="due_date" class="form-control form-control-sm" value="{{ task.due_date.isoformat() if task.due_date else '' }}"></div>
+                                    <div class="col-md-2">
+                                        <select name="status_value" class="form-control form-control-sm">
+                                            {% for value in site_task_status_values %}
+                                                <option value="{{ value.value }}" {% if task.status == value %}selected{% endif %}>{{ value.value|replace('_', ' ')|title }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <button type="submit" class="btn btn-sm btn-secondary">{% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</button>
+                                </div>
+                            </form>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                    <form method="post" action="{{ url_for('manager_site_task_complete', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}">
+                                        <button type="submit" class="btn btn-sm btn-success">✓ {% if lang == 'fr' %}Terminer{% else %}Completa{% endif %}</button>
+                                    </form>
+                                    <form method="post" action="{{ url_for('manager_site_task_delete', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}" onsubmit="return confirm('Eliminare questa nota?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">🗑 {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
+                                    </form>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                {{ task.priority.value|replace('_', ' ')|title }} · {{ task.due_date.strftime('%d/%m/%Y') if task.due_date else '—' }}
+                            </small>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-2">{% if lang == 'fr' %}Aucune activité ouverte.{% else %}Nessuna attività aperta.{% endif %}</p>
+            {% endif %}
+
+            <details class="mt-2">
+                <summary><strong>{% if lang == 'fr' %}Terminées{% else %}Completate{% endif %} ({{ site_tasks.completed|length }})</strong></summary>
+                <div class="mt-2">
+                    {% for task in site_tasks.completed %}
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <div>
+                                <strong>{{ task.title }}</strong>
+                                <span class="text-muted">· {{ task.description or '—' }} · {{ task.priority.value|title }}</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <form method="post" action="{{ url_for('manager_site_task_reopen', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">{% if lang == 'fr' %}Rouvrir{% else %}Riapri{% endif %}</button>
+                                </form>
+                                <form method="post" action="{{ url_for('manager_site_task_delete', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}" onsubmit="return confirm('Eliminare questa nota?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">🗑</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">{% if lang == 'fr' %}Aucune activité terminée.{% else %}Nessuna attività completata.{% endif %}</p>
+                    {% endfor %}
+                </div>
+            </details>
+        </div>
+    </details>
+{% endfor %}
+{% endblock %}
