@@ -3259,6 +3259,7 @@ def manager_site_tasks_overview(
                 db.query(SiteTask)
                 .options(
                     joinedload(SiteTask.site),
+                    joinedload(SiteTask.created_by),
                     joinedload(SiteTask.completed_by),
                 )
                 .filter(
@@ -3331,6 +3332,7 @@ def manager_site_tasks_history(
             .options(
                 joinedload(SiteTask.site),
                 joinedload(SiteTask.assigned_to),
+                joinedload(SiteTask.created_by),
                 joinedload(SiteTask.completed_by),
             )
             .filter(

@@ -80,7 +80,9 @@
                             <div class="small text-muted">
                                 {{ task.description or '—' }} ·
                                 {{ task.priority.value|replace('_', ' ')|title }} ·
-                                {{ task.due_date.strftime('%d/%m/%Y') if task.due_date else '—' }}
+                                {{ task.due_date.strftime('%d/%m/%Y') if task.due_date else '—' }} ·
+                                {% if lang == 'fr' %}Créé par{% else %}Creato da{% endif %}:
+                                {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }}
                             </div>
                         </li>
                     {% endfor %}
@@ -98,8 +100,12 @@
                             <div class="small text-muted">
                                 {{ task.description or '—' }} ·
                                 {% if lang == 'fr' %}
+                                    Créé par {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }} ·
+                                    Terminé par {{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }} ·
                                     Terminé le {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
                                 {% else %}
+                                    Creato da {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }} ·
+                                    Completato da {{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }} ·
                                     Completato il {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
                                 {% endif %}
                             </div>
