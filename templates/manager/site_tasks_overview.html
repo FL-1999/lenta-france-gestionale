@@ -300,6 +300,12 @@
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (feedback) {
+            feedback.style.display = 'none';
+            feedback.textContent = '';
+            feedback.classList.remove('alert-danger');
+            feedback.classList.add('alert-success');
+        }
         const submitBtn = form.querySelector('button[type="submit"]');
         const originalLabel = submitBtn ? submitBtn.textContent : '';
         if (submitBtn) {
@@ -312,8 +318,17 @@
                 body: new FormData(form),
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
-            const payload = await response.json();
-            if (!response.ok || !payload.ok) {
+            const contentType = (response.headers.get('content-type') || '').toLowerCase();
+            const isJson = contentType.includes('application/json');
+            let payload = null;
+            if (isJson) {
+                payload = await response.json();
+            } else {
+                const rawText = await response.text();
+                throw new Error(rawText ? 'Risposta non valida dal server (atteso JSON).' : 'Risposta vuota dal server.');
+            }
+
+            if (!response.ok || !payload.success) {
                 throw new Error(payload.detail || payload.message || 'Errore durante il salvataggio');
             }
 
@@ -325,7 +340,14 @@
             setModalOpen(false);
             window.location.assign(payload.redirect_url || '/manager/note-operative');
         } catch (error) {
-            window.alert(error.message || 'Errore inatteso');
+            if (feedback) {
+                feedback.style.display = 'block';
+                feedback.classList.remove('alert-success');
+                feedback.classList.add('alert-danger');
+                feedback.textContent = error.message || 'Errore inatteso';
+            } else {
+                window.alert(error.message || 'Errore inatteso');
+            }
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
