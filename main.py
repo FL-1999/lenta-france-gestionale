@@ -2522,19 +2522,57 @@ def _is_task_completed(task: SiteTask) -> bool:
     return bool(task.completed) or task.status == SiteTaskStatusEnum.completato
 
 
-def _build_site_task_filters(query_filter: str | None) -> dict[str, bool]:
-    value = (query_filter or "aperte").strip().lower()
-    valid = {"aperte", "completate", "tutte", "priorita_alta", "scadenza_vicina"}
-    selected = value if value in valid else "aperte"
-    return {key: key == selected for key in valid}
-
-
 def _build_site_task_redirect_url(request: Request, site_id: int, *, fallback_filter: str = "aperte") -> str:
     next_url = (request.query_params.get("next") or "").strip()
     if next_url.startswith("/manager/"):
         return next_url
     filter_value = (request.query_params.get("task_filter") or fallback_filter).strip().lower()
     return f"/manager/cantieri/{site_id}?task_filter={filter_value}#todo-operative"
+
+
+def _load_site_tasks_for_site_detail(
+    db: Session,
+    site_id: int,
+) -> tuple[list[SiteTask], list[SiteTask], list[SiteTask]]:
+    open_tasks = (
+        db.query(SiteTask)
+        .options(
+            joinedload(SiteTask.assigned_to),
+            joinedload(SiteTask.created_by),
+            joinedload(SiteTask.updated_by),
+            joinedload(SiteTask.completed_by),
+        )
+        .filter(
+            SiteTask.site_id == site_id,
+            _site_task_open_clause(),
+        )
+        .order_by(
+            SiteTask.priority.desc(),
+            SiteTask.due_date.asc().nulls_last(),
+            SiteTask.created_at.desc(),
+        )
+        .all()
+    )
+    completed_tasks = (
+        db.query(SiteTask)
+        .options(
+            joinedload(SiteTask.assigned_to),
+            joinedload(SiteTask.created_by),
+            joinedload(SiteTask.updated_by),
+            joinedload(SiteTask.completed_by),
+        )
+        .filter(
+            SiteTask.site_id == site_id,
+            _site_task_completed_clause(),
+        )
+        .order_by(
+            SiteTask.completed_at.desc().nulls_last(),
+            SiteTask.updated_at.desc(),
+            SiteTask.created_at.desc(),
+        )
+        .all()
+    )
+    return open_tasks + completed_tasks, open_tasks, completed_tasks
 
 
 @app.post(
@@ -2933,46 +2971,14 @@ def manager_site_detail(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     lang = request.cookies.get("lang", "it")
-    task_filter = (request.query_params.get("task_filter") or "aperte").strip().lower()
-    task_filters = _build_site_task_filters(task_filter)
+    task_filter = (request.query_params.get("task_filter") or "tutte").strip().lower()
     db = SessionLocal()
     try:
         site = _get_site_for_detail(db, site_id, current_user)
         progress_summary, strut_levels_view, strut_levels_count = _build_site_progress(
             site, lang
         )
-        site_tasks_query = (
-            db.query(SiteTask)
-            .options(
-                joinedload(SiteTask.assigned_to),
-                joinedload(SiteTask.created_by),
-                joinedload(SiteTask.updated_by),
-                joinedload(SiteTask.completed_by),
-            )
-            .filter(SiteTask.site_id == site_id)
-        )
-        soon_limit = date.today() + timedelta(days=3)
-        if task_filters["aperte"]:
-            site_tasks_query = site_tasks_query.filter(_site_task_open_clause())
-        elif task_filters["completate"]:
-            site_tasks_query = site_tasks_query.filter(_site_task_completed_clause())
-        elif task_filters["priorita_alta"]:
-            site_tasks_query = site_tasks_query.filter(SiteTask.priority == SiteTaskPriorityEnum.alta)
-        elif task_filters["scadenza_vicina"]:
-            site_tasks_query = site_tasks_query.filter(
-                SiteTask.completed.is_(False),
-                SiteTask.status != SiteTaskStatusEnum.completato,
-                SiteTask.due_date.isnot(None),
-                SiteTask.due_date <= soon_limit,
-            )
-        site_tasks = site_tasks_query.order_by(
-            SiteTask.completed.asc(),
-            SiteTask.priority.desc(),
-            SiteTask.due_date.asc().nulls_last(),
-            SiteTask.created_at.desc(),
-        ).all()
-        open_tasks = [task for task in site_tasks if not _is_task_completed(task)]
-        completed_tasks = [task for task in site_tasks if _is_task_completed(task)]
+        site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
         manager_users = (
             db.query(User)
             .filter(User.is_active.is_(True))
@@ -2997,7 +3003,6 @@ def manager_site_detail(
             open_tasks=open_tasks,
             completed_tasks=completed_tasks,
             task_filter=task_filter,
-            task_filters=task_filters,
             site_task_status_values=SITE_TASK_STATUSES,
             site_task_priority_values=SITE_TASK_PRIORITIES,
             manager_users=manager_users,
@@ -3641,24 +3646,7 @@ def capo_site_detail(
     db = SessionLocal()
     try:
         site = get_site_for_user(db, site_id, current_user)
-        site_tasks = (
-            db.query(SiteTask)
-            .options(
-                joinedload(SiteTask.assigned_to),
-                joinedload(SiteTask.created_by),
-                joinedload(SiteTask.completed_by),
-            )
-            .filter(SiteTask.site_id == site_id)
-            .order_by(
-                SiteTask.completed.asc(),
-                SiteTask.priority.desc(),
-                SiteTask.due_date.asc().nulls_last(),
-                SiteTask.created_at.desc(),
-            )
-            .all()
-        )
-        open_tasks = [task for task in site_tasks if not task.completed]
-        completed_tasks = [task for task in site_tasks if task.completed]
+        site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
     finally:
         db.close()
 
