@@ -34,6 +34,9 @@
             </p>
         </div>
         <div class="header-actions dashboard-actions">
+            <a href="{{ url_for('manager_site_tasks_overview') }}" class="btn btn-lg btn-danger">
+                🧭 {% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}
+            </a>
             <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-primary">
                 ➕ {% if lang == 'fr' %}Nouveau rapport{% else %}Nuovo rapportino{% endif %}
             </a>
@@ -45,9 +48,6 @@
             </a>
             <a href="/manager/fiches" class="btn btn-lg btn-secondary">
                 {% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}
-            </a>
-            <a href="{{ url_for('manager_site_tasks_overview') }}" class="btn btn-lg btn-danger">
-                🧭 {% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}
             </a>
         </div>
     </div>
