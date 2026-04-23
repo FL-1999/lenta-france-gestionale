@@ -3292,7 +3292,7 @@ def manager_site_tasks_overview(
         recent_completed_tasks: list[SiteTask] = []
 
         if site_ids:
-            tasks = (
+            open_tasks = (
                 db.query(SiteTask)
                 .options(
                     joinedload(SiteTask.assigned_to),
@@ -3300,7 +3300,10 @@ def manager_site_tasks_overview(
                     joinedload(SiteTask.updated_by),
                     joinedload(SiteTask.completed_by),
                 )
-                .filter(SiteTask.site_id.in_(site_ids))
+                .filter(
+                    SiteTask.site_id.in_(site_ids),
+                    _site_task_open_clause(),
+                )
                 .order_by(
                     SiteTask.site_id.asc(),
                     SiteTask.priority.desc(),
@@ -3309,9 +3312,8 @@ def manager_site_tasks_overview(
                 )
                 .all()
             )
-            for task in tasks:
-                if not _is_task_completed(task):
-                    tasks_by_site.setdefault(task.site_id, {"open": []})["open"].append(task)
+            for task in open_tasks:
+                tasks_by_site.setdefault(task.site_id, {"open": []})["open"].append(task)
 
             open_count_rows = (
                 db.query(SiteTask.site_id, func.count(SiteTask.id))

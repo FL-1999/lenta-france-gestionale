@@ -94,16 +94,25 @@
 {% for site in active_sites %}
     {% set site_tasks = tasks_by_site.get(site.id, {'open': []}) %}
     {% set open_count = open_counts_by_site.get(site.id, 0) %}
-    <details class="card mb-3" id="site-{{ site.id }}" {% if open_count > 0 and loop.first %}open{% endif %}>
-        <summary class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer; list-style:none;">
-            <div class="d-flex align-items-center gap-2">
+    <details class="card mb-3 site-accordion" id="site-{{ site.id }}">
+        <summary class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap site-accordion__summary">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="site-accordion__chevron" aria-hidden="true">▸</span>
                 <strong>{{ site.name }}</strong>
+                <span class="badge bg-secondary">{{ open_count }}</span>
+                <small class="text-muted">
+                    {% if lang == 'fr' %}activités ouvertes{% else %}attività aperte{% endif %}
+                </small>
                 {% if open_count > 0 %}
-                    <span class="badge badge-danger" style="background:#ef4444;color:#fff;">{{ open_count }}</span>
-                    <span title="Attività aperte" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;"></span>
+                    <span class="badge" style="background:#ef4444;color:#fff;">
+                        {% if lang == 'fr' %}À faire{% else %}Da fare{% endif %}
+                    </span>
                 {% endif %}
             </div>
             <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary site-accordion__toggle-label">
+                    {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
+                </button>
                 <a href="{{ url_for('manager_site_detail', site_id=site.id) }}" class="btn btn-sm btn-secondary">
                     {% if lang == 'fr' %}Détail{% else %}Dettaglio{% endif %}
                 </a>
@@ -232,8 +241,38 @@
 
 {% block scripts %}
 {{ super() }}
+<style>
+    .site-accordion__summary {
+        cursor: pointer;
+        list-style: none;
+    }
+    .site-accordion__summary::-webkit-details-marker {
+        display: none;
+    }
+    .site-accordion__chevron {
+        font-size: .9rem;
+        transition: transform .18s ease;
+    }
+    details[open] .site-accordion__chevron {
+        transform: rotate(90deg);
+    }
+</style>
 <script>
 (() => {
+    const accordionLabels = {
+        open: "{% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}",
+        close: "{% if lang == 'fr' %}Fermer{% else %}Chiudi{% endif %}",
+    };
+    document.querySelectorAll('.site-accordion').forEach((accordion) => {
+        const labelBtn = accordion.querySelector('.site-accordion__toggle-label');
+        if (!labelBtn) return;
+        const updateLabel = () => {
+            labelBtn.textContent = accordion.open ? accordionLabels.close : accordionLabels.open;
+        };
+        updateLabel();
+        accordion.addEventListener('toggle', updateLabel);
+    });
+
     const modal = document.getElementById('new-note-modal');
     const openBtn = document.querySelector('[data-open-note-modal]');
     const closeButtons = Array.from(document.querySelectorAll('[data-close-note-modal]'));
