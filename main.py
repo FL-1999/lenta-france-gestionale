@@ -29,6 +29,7 @@ from auth import (
     authenticate_user,
     create_access_token,
     get_current_active_user,
+    get_current_active_user_api,
     get_current_active_user_html,
     get_current_role_from_request,
     get_default_route,
@@ -3099,36 +3100,57 @@ def manager_site_task_create_from_overview(
     priority_value: str = Form("media"),
     assigned_to_id: str | None = Form(None),
     due_date: str | None = Form(None),
-    current_user: User = Depends(get_current_active_user_html),
+    current_user: User = Depends(get_current_active_user_api),
 ):
-    if not has_perm(current_user, "manager.access"):
-        raise HTTPException(status_code=403, detail="Permessi insufficienti")
-
-    db = SessionLocal()
     try:
-        task = _create_site_task(
-            db,
-            site_id=site_id,
-            title=title,
-            description=description,
-            status_value=status_value,
-            priority_value=priority_value,
-            assigned_to_id=assigned_to_id,
-            due_date=due_date,
-            current_user=current_user,
-        )
-    finally:
-        db.close()
+        if not has_perm(current_user, "manager.access"):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"success": False, "message": "Permessi insufficienti"},
+            )
 
-    return JSONResponse(
-        {
-            "ok": True,
-            "message": "Nota operativa creata",
-            "task_id": task.id,
-            "site_id": task.site_id,
-            "redirect_url": f"/manager/note-operative#site-{task.site_id}",
-        }
-    )
+        db = SessionLocal()
+        try:
+            task = _create_site_task(
+                db,
+                site_id=site_id,
+                title=title,
+                description=description,
+                status_value=status_value,
+                priority_value=priority_value,
+                assigned_to_id=assigned_to_id,
+                due_date=due_date,
+                current_user=current_user,
+            )
+        finally:
+            db.close()
+
+        return JSONResponse(
+            {
+                "success": True,
+                "message": "Nota operativa creata con successo",
+                "task_id": task.id,
+                "site_id": task.site_id,
+                "redirect_url": f"/manager/note-operative#site-{task.site_id}",
+            }
+        )
+    except HTTPException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "success": False,
+                "message": str(exc.detail) if exc.detail else "Errore durante la creazione della nota",
+            },
+        )
+    except Exception:
+        logger.exception("Errore inatteso durante la creazione della nota operativa da modal")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "success": False,
+                "message": "Errore inatteso durante la creazione della nota operativa",
+            },
+        )
 
 
 @app.post("/manager/cantieri/{site_id}/tasks/{task_id}/edit", name="manager_site_task_update")
