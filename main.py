@@ -2575,6 +2575,50 @@ def _load_site_tasks_for_site_detail(
     return open_tasks + completed_tasks, open_tasks, completed_tasks
 
 
+def _create_site_task(
+    db: Session,
+    *,
+    site_id: int,
+    title: str,
+    description: str | None,
+    status_value: str,
+    priority_value: str,
+    assigned_to_id: str | None,
+    due_date: str | None,
+    current_user: User,
+) -> SiteTask:
+    site = _get_site_for_detail(db, site_id, current_user)
+    if not site:
+        raise HTTPException(status_code=404, detail="Cantiere non trovato")
+    if not title.strip():
+        raise HTTPException(status_code=400, detail="Titolo obbligatorio")
+
+    assigned_to = None
+    if assigned_to_id not in (None, ""):
+        try:
+            assigned_user_id = int(assigned_to_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Assegnatario non valido") from exc
+        assigned_to = db.query(User).filter(User.id == assigned_user_id).first()
+        if not assigned_to:
+            raise HTTPException(status_code=400, detail="Assegnatario non trovato")
+    task = SiteTask(
+        site_id=site_id,
+        title=title.strip(),
+        description=(description or "").strip() or None,
+        status=_parse_site_task_status(status_value),
+        priority=_parse_site_task_priority(priority_value),
+        due_date=_parse_optional_date(due_date),
+        assigned_to_id=assigned_to.id if assigned_to else None,
+        created_by_id=current_user.id,
+        updated_by_id=current_user.id,
+    )
+    _normalize_task_completion(task, current_user.id)
+    db.add(task)
+    db.commit()
+    return task
+
+
 @app.post(
     "/manager/sites/{site_id}/progress/cordoli",
     name="manager_site_progress_cordoli",
@@ -3026,40 +3070,64 @@ def manager_site_task_create(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     db = SessionLocal()
     try:
-        site = _get_site_for_detail(db, site_id, current_user)
-        if not site:
-            raise HTTPException(status_code=404, detail="Cantiere non trovato")
-        if not title.strip():
-            raise HTTPException(status_code=400, detail="Titolo obbligatorio")
-
-        assigned_to = None
-        if assigned_to_id not in (None, ""):
-            try:
-                assigned_user_id = int(assigned_to_id)
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Assegnatario non valido") from exc
-            assigned_to = db.query(User).filter(User.id == assigned_user_id).first()
-            if not assigned_to:
-                raise HTTPException(status_code=400, detail="Assegnatario non trovato")
-        task = SiteTask(
+        _create_site_task(
+            db,
             site_id=site_id,
-            title=title.strip(),
-            description=(description or "").strip() or None,
-            status=_parse_site_task_status(status_value),
-            priority=_parse_site_task_priority(priority_value),
-            due_date=_parse_optional_date(due_date),
-            assigned_to_id=assigned_to.id if assigned_to else None,
-            created_by_id=current_user.id,
-            updated_by_id=current_user.id,
+            title=title,
+            description=description,
+            status_value=status_value,
+            priority_value=priority_value,
+            assigned_to_id=assigned_to_id,
+            due_date=due_date,
+            current_user=current_user,
         )
-        _normalize_task_completion(task, current_user.id)
-        db.add(task)
-        db.commit()
     finally:
         db.close()
     return RedirectResponse(
         url=_build_site_task_redirect_url(request, site_id),
         status_code=303,
+    )
+
+
+@app.post("/manager/note-operative/tasks", response_class=JSONResponse, name="manager_site_task_create_from_overview")
+def manager_site_task_create_from_overview(
+    request: Request,
+    site_id: int = Form(...),
+    title: str = Form(...),
+    description: str = Form(""),
+    status_value: str = Form("da_fare"),
+    priority_value: str = Form("media"),
+    assigned_to_id: str | None = Form(None),
+    due_date: str | None = Form(None),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        task = _create_site_task(
+            db,
+            site_id=site_id,
+            title=title,
+            description=description,
+            status_value=status_value,
+            priority_value=priority_value,
+            assigned_to_id=assigned_to_id,
+            due_date=due_date,
+            current_user=current_user,
+        )
+    finally:
+        db.close()
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "Nota operativa creata",
+            "task_id": task.id,
+            "site_id": task.site_id,
+            "redirect_url": f"/manager/note-operative#site-{task.site_id}",
+        }
     )
 
 
