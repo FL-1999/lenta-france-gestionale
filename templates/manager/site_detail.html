@@ -84,18 +84,6 @@
         </h2>
     </div>
     <div class="card-body">
-        <form method="get" action="{{ url_for('manager_site_detail', site_id=site.id) }}" class="mb-3 d-flex gap-2 flex-wrap">
-            <label for="task_filter"><strong>{% if lang == 'fr' %}Filtre:{% else %}Filtro:{% endif %}</strong></label>
-            <select id="task_filter" name="task_filter" class="form-control" style="max-width: 240px;">
-                <option value="aperte" {% if task_filter == 'aperte' %}selected{% endif %}>{% if lang == 'fr' %}Ouvertes{% else %}Aperte{% endif %}</option>
-                <option value="completate" {% if task_filter == 'completate' %}selected{% endif %}>{% if lang == 'fr' %}Terminées{% else %}Completate{% endif %}</option>
-                <option value="tutte" {% if task_filter == 'tutte' %}selected{% endif %}>{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
-                <option value="priorita_alta" {% if task_filter == 'priorita_alta' %}selected{% endif %}>{% if lang == 'fr' %}Priorité haute{% else %}Priorità alta{% endif %}</option>
-                <option value="scadenza_vicina" {% if task_filter == 'scadenza_vicina' %}selected{% endif %}>{% if lang == 'fr' %}Échéance proche{% else %}Scadenza vicina{% endif %}</option>
-            </select>
-            <button type="submit" class="btn btn-secondary">{% if lang == 'fr' %}Appliquer{% else %}Applica{% endif %}</button>
-        </form>
-
         <details class="mb-4" open>
             <summary><strong>{% if lang == 'fr' %}Nouvelle note opérationnelle{% else %}Nuova nota operativa{% endif %}</strong></summary>
             <form method="post" action="{{ url_for('manager_site_task_create', site_id=site.id) }}?task_filter={{ task_filter }}" class="mt-3">
