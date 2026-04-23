@@ -212,9 +212,11 @@
                 </p>
                 <p class="mb-2 text-muted small">
                     {% if lang == 'fr' %}
+                        Créé par: {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }} ·
                         Terminé par: {{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }}
                         le {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
                     {% else %}
+                        Creato da: {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }} ·
                         Completato da: {{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }}
                         il {{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}
                     {% endif %}

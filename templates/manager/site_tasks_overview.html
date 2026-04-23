@@ -36,6 +36,7 @@
                         <tr>
                             <th>{% if lang == 'fr' %}Titre{% else %}Titolo{% endif %}</th>
                             <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                            <th>{% if lang == 'fr' %}Créé par{% else %}Creato da{% endif %}</th>
                             <th>{% if lang == 'fr' %}Terminé le{% else %}Completato il{% endif %}</th>
                             <th>{% if lang == 'fr' %}Terminé par{% else %}Completato da{% endif %}</th>
                             <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
@@ -47,6 +48,7 @@
                             <tr>
                                 <td><strong>{{ task.title }}</strong></td>
                                 <td>{{ task.site.name if task.site else '—' }}</td>
+                                <td>{{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }}</td>
                                 <td>{{ task.completed_at.strftime('%d/%m/%Y %H:%M') if task.completed_at else '—' }}</td>
                                 <td>{{ task.completed_by.full_name or task.completed_by.email if task.completed_by else '—' }}</td>
                                 <td>{{ (task.description or '—')[:120] }}</td>
@@ -156,7 +158,10 @@
                                     </form>
                             </div>
                             <small class="text-muted d-block mt-2">
-                                {{ task.priority.value|replace('_', ' ')|title }} · {{ task.due_date.strftime('%d/%m/%Y') if task.due_date else '—' }}
+                                {{ task.priority.value|replace('_', ' ')|title }} ·
+                                {{ task.due_date.strftime('%d/%m/%Y') if task.due_date else '—' }} ·
+                                {% if lang == 'fr' %}Créé par{% else %}Creato da{% endif %}:
+                                {{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }}
                             </small>
                         </div>
                     </div>
