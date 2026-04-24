@@ -46,9 +46,8 @@
         </a>
     </div>
     <div class="card-body p-0">
-        {% if recent_completed_tasks %}
-            <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle">
+        <div class="table-responsive" id="recent-completed-wrapper" {% if not recent_completed_tasks %}style="display:none;"{% endif %}>
+            <table class="table table-sm mb-0 align-middle">
                     <thead>
                         <tr>
                             <th>{% if lang == 'fr' %}Titre{% else %}Titolo{% endif %}</th>
@@ -60,9 +59,9 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="recent-completed-body">
                         {% for task in recent_completed_tasks %}
-                            <tr>
+                            <tr id="recent-task-{{ task.id }}">
                                 <td><strong>{{ task.title }}</strong></td>
                                 <td>{{ task.site.name if task.site else '—' }}</td>
                                 <td>{{ task.created_by.full_name or task.created_by.email if task.created_by else '—' }}</td>
@@ -77,11 +76,9 @@
                             </tr>
                         {% endfor %}
                     </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="text-muted mb-0 p-3">{% if lang == 'fr' %}Aucune activité terminée récente.{% else %}Nessuna attività svolta recente.{% endif %}</p>
-        {% endif %}
+            </table>
+        </div>
+        <p class="text-muted mb-0 p-3" id="recent-completed-empty" {% if recent_completed_tasks %}style="display:none;"{% endif %}>{% if lang == 'fr' %}Aucune activité terminée récente.{% else %}Nessuna attività svolta recente.{% endif %}</p>
     </div>
 </div>
 
@@ -94,20 +91,18 @@
 {% for site in active_sites %}
     {% set site_tasks = tasks_by_site.get(site.id, {'open': []}) %}
     {% set open_count = open_counts_by_site.get(site.id, 0) %}
-    <details class="card mb-3 site-accordion" id="site-{{ site.id }}">
+    <details class="card mb-3 site-accordion" id="site-{{ site.id }}" data-site-id="{{ site.id }}">
         <summary class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap site-accordion__summary">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="site-accordion__chevron" aria-hidden="true">▸</span>
                 <strong>{{ site.name }}</strong>
-                <span class="badge bg-secondary">{{ open_count }}</span>
+                <span class="badge bg-secondary" data-open-count-badge>{{ open_count }}</span>
                 <small class="text-muted">
                     {% if lang == 'fr' %}activités ouvertes{% else %}attività aperte{% endif %}
                 </small>
-                {% if open_count > 0 %}
-                    <span class="badge" style="background:#ef4444;color:#fff;">
+                <span class="badge" style="background:#ef4444;color:#fff;{% if open_count <= 0 %}display:none;{% endif %}" data-open-attention-badge>
                         {% if lang == 'fr' %}À faire{% else %}Da fare{% endif %}
                     </span>
-                {% endif %}
             </div>
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-sm btn-outline-secondary site-accordion__toggle-label">
@@ -119,15 +114,16 @@
             </div>
         </summary>
         <div class="card-body">
-            <h3 class="h6 mt-3 mb-2">{% if lang == 'fr' %}Ouvertes{% else %}Aperte{% endif %} ({{ site_tasks.open|length }})</h3>
+            <h3 class="h6 mt-3 mb-2">{% if lang == 'fr' %}Ouvertes{% else %}Aperte{% endif %} (<span data-open-list-count>{{ site_tasks.open|length }}</span>)</h3>
+            <div data-open-list>
             {% if site_tasks.open %}
                 {% for task in site_tasks.open %}
-                    <div class="card mb-2" id="task-{{ task.id }}">
+                    <div class="card mb-2" id="task-{{ task.id }}" data-task-card data-task-id="{{ task.id }}" data-site-id="{{ site.id }}">
                         <div class="card-body py-2">
-                            <form method="post" action="{{ url_for('manager_site_task_update', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}">
+                            <form method="post" action="{{ url_for('manager_site_task_update', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}" data-task-form>
                                 <div class="row g-2">
-                                    <div class="col-md-3"><input type="text" name="title" value="{{ task.title }}" class="form-control form-control-sm" required maxlength="255"></div>
-                                    <div class="col-md-3"><input type="text" name="description" value="{{ task.description or '' }}" class="form-control form-control-sm"></div>
+                                    <div class="col-md-3"><input type="text" name="title" value="{{ task.title }}" class="form-control form-control-sm" required maxlength="255" data-live-field></div>
+                                    <div class="col-md-3"><input type="text" name="description" value="{{ task.description or '' }}" class="form-control form-control-sm" data-live-field></div>
                                     <div class="col-md-2">
                                         <select name="priority_value" class="form-control form-control-sm">
                                             {% for value in site_task_priority_values %}
@@ -143,18 +139,19 @@
                                             {% endfor %}
                                         </select>
                                     </div>
-                                </div>
-                                <div class="mt-2">
-                                    <button type="submit" class="btn btn-sm btn-secondary">{% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</button>
+                                    <div class="col-md-4">
+                                        <select name="assigned_to_id" class="form-control form-control-sm">
+                                            <option value="">{% if lang == 'fr' %}Non assigné{% else %}Non assegnato{% endif %}</option>
+                                            {% for manager in manager_users %}
+                                                <option value="{{ manager.id }}" {% if task.assigned_to_id == manager.id %}selected{% endif %}>{{ manager.full_name or manager.email }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
                                 </div>
                             </form>
                             <div class="d-flex flex-wrap gap-2 mt-2">
-                                    <form method="post" action="{{ url_for('manager_site_task_complete', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}">
-                                        <button type="submit" class="btn btn-sm btn-success">✓ {% if lang == 'fr' %}Terminer{% else %}Completa{% endif %}</button>
-                                    </form>
-                                    <form method="post" action="{{ url_for('manager_site_task_delete', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}" onsubmit="return confirm('Eliminare questa nota?');">
-                                        <button type="submit" class="btn btn-sm btn-danger">🗑 {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
-                                    </form>
+                                    <button type="button" class="btn btn-sm btn-success" data-action="complete" data-complete-url="{{ url_for('manager_site_task_complete', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}">✓ {% if lang == 'fr' %}Terminer{% else %}Completa{% endif %}</button>
+                                    <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-delete-url="{{ url_for('manager_site_task_delete', site_id=site.id, task_id=task.id) }}?next=/manager/note-operative#site-{{ site.id }}">🗑 {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
                             </div>
                             <small class="text-muted d-block mt-2">
                                 {{ task.priority.value|replace('_', ' ')|title }} ·
@@ -166,8 +163,9 @@
                     </div>
                 {% endfor %}
             {% else %}
-                <p class="text-muted mb-2">{% if lang == 'fr' %}Aucune activité ouverte.{% else %}Nessuna attività aperta.{% endif %}</p>
             {% endif %}
+            </div>
+            <p class="text-muted mb-2" data-open-empty {% if site_tasks.open %}style="display:none;"{% endif %}>{% if lang == 'fr' %}Aucune activité ouverte.{% else %}Nessuna attività aperta.{% endif %}</p>
         </div>
     </details>
 {% endfor %}
@@ -259,9 +257,171 @@
 </style>
 <script>
 (() => {
-    const accordionLabels = {
+    const labels = {
         open: "{% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}",
         close: "{% if lang == 'fr' %}Fermer{% else %}Chiudi{% endif %}",
+        saving: "{% if lang == 'fr' %}Enregistrement...{% else %}Salvataggio...{% endif %}",
+        saveError: "{% if lang == 'fr' %}Impossible d'enregistrer la modification.{% else %}Impossibile salvare la modifica.{% endif %}",
+        completeError: "{% if lang == 'fr' %}Impossible de terminer la note.{% else %}Impossibile completare la nota.{% endif %}",
+        deleteError: "{% if lang == 'fr' %}Impossible de supprimer la note.{% else %}Impossibile eliminare la nota.{% endif %}",
+        deleteConfirm: "{% if lang == 'fr' %}Supprimer cette note ?{% else %}Eliminare questa nota?{% endif %}",
+        noRecentCompleted: "{% if lang == 'fr' %}Aucune activité terminée récente.{% else %}Nessuna attività svolta recente.{% endif %}",
+        noOpen: "{% if lang == 'fr' %}Aucune activité ouverte.{% else %}Nessuna attività aperta.{% endif %}",
+        detail: "{% if lang == 'fr' %}Détail{% else %}Dettaglio{% endif %}",
+        createdBy: "{% if lang == 'fr' %}Créé par{% else %}Creato da{% endif %}",
+    };
+    const statusOptions = {{ site_task_status_values | map(attribute='value') | list | tojson }};
+    const priorityOptions = {{ site_task_priority_values | map(attribute='value') | list | tojson }};
+    const managerOptions = [
+        { id: "", label: "{% if lang == 'fr' %}Non assigné{% else %}Non assegnato{% endif %}" },
+        {% for manager in manager_users %}
+        { id: "{{ manager.id }}", label: {{ (manager.full_name or manager.email) | tojson }} },
+        {% endfor %}
+    ];
+
+    const escapeHtml = (value) => {
+        const div = document.createElement('div');
+        div.textContent = value || '';
+        return div.innerHTML;
+    };
+
+    const prettyValue = (value) => {
+        const clean = (value || '').replaceAll('_', ' ').trim();
+        return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : '—';
+    };
+
+    const formatDisplayDate = (isoDate) => {
+        if (!isoDate) return '—';
+        const [year, month, day] = isoDate.split('-');
+        if (!year || !month || !day) return '—';
+        return `${day}/${month}/${year}`;
+    };
+
+    const getSiteAccordion = (siteId) => document.querySelector(`.site-accordion[data-site-id="${siteId}"]`);
+    const getTaskCard = (taskId) => document.querySelector(`[data-task-card][data-task-id="${taskId}"]`);
+
+    const updateSiteCounters = (siteId, openCount) => {
+        const accordion = getSiteAccordion(siteId);
+        if (!accordion) return;
+        const safeCount = Number.isFinite(Number(openCount)) ? Number(openCount) : 0;
+        const badge = accordion.querySelector('[data-open-count-badge]');
+        const labelCount = accordion.querySelector('[data-open-list-count]');
+        const alertBadge = accordion.querySelector('[data-open-attention-badge]');
+        const empty = accordion.querySelector('[data-open-empty]');
+        const openList = accordion.querySelector('[data-open-list]');
+        if (badge) badge.textContent = String(safeCount);
+        if (labelCount) labelCount.textContent = String(safeCount);
+        if (alertBadge) alertBadge.style.display = safeCount > 0 ? '' : 'none';
+        if (empty && openList) empty.style.display = openList.querySelectorAll('[data-task-card]').length > 0 ? 'none' : '';
+    };
+
+    const renderRecentCompleted = (tasks) => {
+        if (!Array.isArray(tasks)) return;
+        const tbody = document.getElementById('recent-completed-body');
+        const wrapper = document.getElementById('recent-completed-wrapper');
+        const empty = document.getElementById('recent-completed-empty');
+        if (!tbody || !wrapper || !empty) return;
+        tbody.innerHTML = '';
+        tasks.slice(0, 5).forEach((task) => {
+            const row = document.createElement('tr');
+            row.id = `recent-task-${task.id}`;
+            row.innerHTML = `
+                <td><strong>${escapeHtml(task.title || '')}</strong></td>
+                <td>${escapeHtml(task.site_name || '—')}</td>
+                <td>${escapeHtml(task.created_by_label || '—')}</td>
+                <td>${escapeHtml(task.completed_at_display || '—')}</td>
+                <td>${escapeHtml(task.completed_by_label || '—')}</td>
+                <td>${escapeHtml((task.description || '—').slice(0, 120))}</td>
+                <td class="text-end">
+                    <a href="/manager/cantieri/${task.site_id}?task_filter=completate#todo-operative" class="btn btn-sm btn-outline-secondary">${labels.detail}</a>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        const hasRows = tbody.children.length > 0;
+        wrapper.style.display = hasRows ? '' : 'none';
+        empty.style.display = hasRows ? 'none' : '';
+    };
+
+    const renderTaskCard = (task) => {
+        const assignedOptionsHtml = managerOptions
+            .map((option) => `<option value="${escapeHtml(option.id)}" ${String(task.assigned_to_id || '') === String(option.id) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`)
+            .join('');
+        const statusHtml = statusOptions
+            .map((value) => `<option value="${escapeHtml(value)}" ${task.status_value === value ? 'selected' : ''}>${escapeHtml(prettyValue(value))}</option>`)
+            .join('');
+        const priorityHtml = priorityOptions
+            .map((value) => `<option value="${escapeHtml(value)}" ${task.priority_value === value ? 'selected' : ''}>${escapeHtml(prettyValue(value))}</option>`)
+            .join('');
+        return `
+            <div class="card mb-2" id="task-${task.id}" data-task-card data-task-id="${task.id}" data-site-id="${task.site_id}">
+                <div class="card-body py-2">
+                    <form method="post" action="/manager/cantieri/${task.site_id}/tasks/${task.id}/edit?next=/manager/note-operative#site-${task.site_id}" data-task-form>
+                        <div class="row g-2">
+                            <div class="col-md-3"><input type="text" name="title" value="${escapeHtml(task.title || '')}" class="form-control form-control-sm" required maxlength="255" data-live-field></div>
+                            <div class="col-md-3"><input type="text" name="description" value="${escapeHtml(task.description || '')}" class="form-control form-control-sm" data-live-field></div>
+                            <div class="col-md-2"><select name="priority_value" class="form-control form-control-sm">${priorityHtml}</select></div>
+                            <div class="col-md-2"><input type="date" name="due_date" class="form-control form-control-sm" value="${escapeHtml(task.due_date || '')}"></div>
+                            <div class="col-md-2"><select name="status_value" class="form-control form-control-sm">${statusHtml}</select></div>
+                            <div class="col-md-4"><select name="assigned_to_id" class="form-control form-control-sm">${assignedOptionsHtml}</select></div>
+                        </div>
+                    </form>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <button type="button" class="btn btn-sm btn-success" data-action="complete" data-complete-url="/manager/cantieri/${task.site_id}/tasks/${task.id}/complete?next=/manager/note-operative#site-${task.site_id}">✓ {% if lang == 'fr' %}Terminer{% else %}Completa{% endif %}</button>
+                        <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-delete-url="/manager/cantieri/${task.site_id}/tasks/${task.id}/delete?next=/manager/note-operative#site-${task.site_id}">🗑 {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        ${escapeHtml(prettyValue(task.priority_value))} · ${escapeHtml(formatDisplayDate(task.due_date))} · ${labels.createdBy}: ${escapeHtml(task.created_by_label || '—')}
+                    </small>
+                </div>
+            </div>
+        `;
+    };
+
+    const showFeedback = (message, isError = false) => {
+        const feedback = document.getElementById('new-note-feedback');
+        if (!feedback) {
+            if (isError) window.alert(message);
+            return;
+        }
+        feedback.style.display = 'block';
+        feedback.classList.toggle('alert-danger', isError);
+        feedback.classList.toggle('alert-success', !isError);
+        feedback.textContent = message;
+    };
+
+    const clearFeedback = () => {
+        const feedback = document.getElementById('new-note-feedback');
+        if (!feedback) return;
+        feedback.style.display = 'none';
+        feedback.textContent = '';
+        feedback.classList.remove('alert-danger');
+        feedback.classList.add('alert-success');
+    };
+
+    const fetchJson = async (url, options = {}) => {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                ...(options.headers || {}),
+            },
+        });
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+            throw new Error('Risposta non valida dal server (atteso JSON).');
+        }
+        const payload = await response.json();
+        if (!response.ok || payload.success === false) {
+            throw new Error(payload.detail || payload.message || 'Operazione non riuscita.');
+        }
+        return payload;
+    };
+
+    const accordionLabels = {
+        open: labels.open,
+        close: labels.close,
     };
     document.querySelectorAll('.site-accordion').forEach((accordion) => {
         const labelBtn = accordion.querySelector('.site-accordion__toggle-label');
@@ -277,7 +437,6 @@
     const openBtn = document.querySelector('[data-open-note-modal]');
     const closeButtons = Array.from(document.querySelectorAll('[data-close-note-modal]'));
     const form = document.getElementById('new-note-form');
-    const feedback = document.getElementById('new-note-feedback');
     if (!modal || !openBtn || !form) return;
 
     const setModalOpen = (isOpen) => {
@@ -300,58 +459,129 @@
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        if (feedback) {
-            feedback.style.display = 'none';
-            feedback.textContent = '';
-            feedback.classList.remove('alert-danger');
-            feedback.classList.add('alert-success');
-        }
+        clearFeedback();
         const submitBtn = form.querySelector('button[type="submit"]');
         const originalLabel = submitBtn ? submitBtn.textContent : '';
         if (submitBtn) {
             submitBtn.disabled = true;
-            submitBtn.textContent = "{% if lang == 'fr' %}Enregistrement...{% else %}Salvataggio...{% endif %}";
+            submitBtn.textContent = labels.saving;
         }
         try {
-            const response = await fetch(form.action, {
+            const payload = await fetchJson(form.action, {
                 method: 'POST',
                 body: new FormData(form),
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
-            const contentType = (response.headers.get('content-type') || '').toLowerCase();
-            const isJson = contentType.includes('application/json');
-            let payload = null;
-            if (isJson) {
-                payload = await response.json();
-            } else {
-                const rawText = await response.text();
-                throw new Error(rawText ? 'Risposta non valida dal server (atteso JSON).' : 'Risposta vuota dal server.');
-            }
-
-            if (!response.ok || !payload.success) {
-                throw new Error(payload.detail || payload.message || 'Errore durante il salvataggio');
-            }
-
-            if (feedback) {
-                feedback.style.display = 'block';
-                feedback.textContent = payload.message || "{% if lang == 'fr' %}Note créée avec succès.{% else %}Nota creata con successo.{% endif %}";
+            const task = payload.task;
+            if (!task || !task.site_id) throw new Error('Dati nota mancanti nella risposta.');
+            const accordion = getSiteAccordion(task.site_id);
+            if (!accordion) throw new Error('Cantiere non trovato nella pagina corrente.');
+            const openList = accordion.querySelector('[data-open-list]');
+            if (!openList) throw new Error('Lista attività aperte non disponibile.');
+            openList.insertAdjacentHTML('afterbegin', renderTaskCard(task));
+            updateSiteCounters(task.site_id, payload.open_count);
+            showFeedback(payload.message || "{% if lang == 'fr' %}Note créée avec succès.{% else %}Nota creata con successo.{% endif %}");
+            if (!accordion.open) {
+                accordion.open = true;
             }
             form.reset();
             setModalOpen(false);
-            window.location.assign(payload.redirect_url || '/manager/note-operative');
         } catch (error) {
-            if (feedback) {
-                feedback.style.display = 'block';
-                feedback.classList.remove('alert-success');
-                feedback.classList.add('alert-danger');
-                feedback.textContent = error.message || 'Errore inatteso';
-            } else {
-                window.alert(error.message || 'Errore inatteso');
-            }
+            showFeedback(error.message || 'Errore inatteso', true);
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalLabel;
+            }
+        }
+    });
+
+    const saveTaskForm = async (formElement) => {
+        if (!formElement) return;
+        const card = formElement.closest('[data-task-card]');
+        if (!card || card.dataset.loading === '1') return;
+        card.dataset.loading = '1';
+        try {
+            const payload = await fetchJson(formElement.action, {
+                method: 'POST',
+                body: new FormData(formElement),
+            });
+            const updatedTask = payload.task;
+            if (updatedTask?.status_value === 'completato') {
+                card.remove();
+                renderRecentCompleted(payload.recent_completed_tasks || []);
+            }
+            updateSiteCounters(updatedTask?.site_id || card.dataset.siteId, payload.open_count);
+            clearFeedback();
+        } catch (error) {
+            showFeedback(error.message || labels.saveError, true);
+        } finally {
+            delete card.dataset.loading;
+        }
+    };
+
+    document.addEventListener('change', (event) => {
+        const element = event.target;
+        if (!(element instanceof HTMLElement)) return;
+        const formElement = element.closest('form[data-task-form]');
+        if (!formElement) return;
+        saveTaskForm(formElement);
+    });
+
+    document.addEventListener('focusout', (event) => {
+        const element = event.target;
+        if (!(element instanceof HTMLElement)) return;
+        if (!element.matches('[data-live-field]')) return;
+        const formElement = element.closest('form[data-task-form]');
+        if (!formElement) return;
+        saveTaskForm(formElement);
+    });
+
+    document.addEventListener('submit', (event) => {
+        const formElement = event.target;
+        if (!(formElement instanceof HTMLFormElement)) return;
+        if (!formElement.matches('[data-task-form]')) return;
+        event.preventDefault();
+        saveTaskForm(formElement);
+    });
+
+    document.addEventListener('click', async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const button = target.closest('button[data-action]');
+        if (!button) return;
+        const card = button.closest('[data-task-card]');
+        if (!card || card.dataset.loading === '1') return;
+        const siteId = Number(card.dataset.siteId);
+        if (!Number.isFinite(siteId)) return;
+
+        if (button.dataset.action === 'complete') {
+            card.dataset.loading = '1';
+            try {
+                const payload = await fetchJson(button.dataset.completeUrl, { method: 'POST' });
+                card.remove();
+                updateSiteCounters(siteId, payload.open_count);
+                renderRecentCompleted(payload.recent_completed_tasks || []);
+                clearFeedback();
+            } catch (error) {
+                showFeedback(error.message || labels.completeError, true);
+            } finally {
+                delete card.dataset.loading;
+            }
+        }
+
+        if (button.dataset.action === 'delete') {
+            if (!window.confirm(labels.deleteConfirm)) return;
+            card.dataset.loading = '1';
+            try {
+                const payload = await fetchJson(button.dataset.deleteUrl, { method: 'POST' });
+                card.remove();
+                updateSiteCounters(siteId, payload.open_count);
+                renderRecentCompleted(payload.recent_completed_tasks || []);
+                clearFeedback();
+            } catch (error) {
+                showFeedback(error.message || labels.deleteError, true);
+            } finally {
+                delete card.dataset.loading;
             }
         }
     });
