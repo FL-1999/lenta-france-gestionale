@@ -3102,6 +3102,7 @@ def manager_site_task_create_from_overview(
     due_date: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_api),
 ):
+    db = SessionLocal()
     try:
         if not has_perm(current_user, "manager.access"):
             return JSONResponse(
@@ -3109,7 +3110,6 @@ def manager_site_task_create_from_overview(
                 content={"success": False, "message": "Permessi insufficienti"},
             )
 
-        db = SessionLocal()
         try:
             task = _create_site_task(
                 db,
@@ -3122,6 +3122,11 @@ def manager_site_task_create_from_overview(
                 due_date=due_date,
                 current_user=current_user,
             )
+            db.flush()
+            db.refresh(task)
+            task_id = task.id
+            task_site_id = task.site_id
+            db.commit()
         finally:
             db.close()
 
@@ -3129,9 +3134,9 @@ def manager_site_task_create_from_overview(
             {
                 "success": True,
                 "message": "Nota operativa creata con successo",
-                "task_id": task.id,
-                "site_id": task.site_id,
-                "redirect_url": f"/manager/note-operative#site-{task.site_id}",
+                "task_id": task_id,
+                "site_id": task_site_id,
+                "redirect_url": f"/manager/note-operative#site-{task_site_id}",
             }
         )
     except HTTPException as exc:
