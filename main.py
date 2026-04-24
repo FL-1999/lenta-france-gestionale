@@ -2523,6 +2523,88 @@ def _is_task_completed(task: SiteTask) -> bool:
     return bool(task.completed) or task.status == SiteTaskStatusEnum.completato
 
 
+def _request_wants_json(request: Request) -> bool:
+    requested_with = (request.headers.get("x-requested-with") or "").lower()
+    accept = (request.headers.get("accept") or "").lower()
+    return requested_with == "xmlhttprequest" or "application/json" in accept
+
+
+def _format_user_label(user: User | None) -> str | None:
+    if not user:
+        return None
+    return user.full_name or user.email
+
+
+def _serialize_site_task(task: SiteTask) -> dict:
+    return {
+        "id": task.id,
+        "site_id": task.site_id,
+        "title": task.title,
+        "description": task.description or "",
+        "status_value": task.status.value if task.status else SiteTaskStatusEnum.da_fare.value,
+        "priority_value": task.priority.value if task.priority else SiteTaskPriorityEnum.media.value,
+        "due_date": task.due_date.isoformat() if task.due_date else None,
+        "assigned_to_id": task.assigned_to_id,
+        "assigned_to_label": _format_user_label(task.assigned_to),
+        "created_by_label": _format_user_label(task.created_by),
+        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+        "completed_at_display": task.completed_at.strftime("%d/%m/%Y %H:%M") if task.completed_at else "—",
+        "completed_by_label": _format_user_label(task.completed_by),
+        "site_name": task.site.name if task.site else None,
+    }
+
+
+def _get_overview_site_ids(db: Session, current_user: User) -> list[int]:
+    scoped_sites = (
+        scope_sites_query(
+            db.query(Site.id),
+            current_user,
+        )
+        .filter(
+            Site.is_active.is_(True),
+            Site.status.in_([SiteStatusEnum.aperto, SiteStatusEnum.pianificato]),
+        )
+        .all()
+    )
+    return [row[0] for row in scoped_sites]
+
+
+def _get_recent_completed_tasks_for_overview(db: Session, current_user: User, limit: int = 5) -> list[SiteTask]:
+    site_ids = _get_overview_site_ids(db, current_user)
+    if not site_ids:
+        return []
+    return (
+        db.query(SiteTask)
+        .options(
+            joinedload(SiteTask.site),
+            joinedload(SiteTask.created_by),
+            joinedload(SiteTask.completed_by),
+        )
+        .filter(
+            SiteTask.site_id.in_(site_ids),
+            _site_task_completed_clause(),
+        )
+        .order_by(
+            SiteTask.completed_at.desc().nulls_last(),
+            SiteTask.updated_at.desc(),
+        )
+        .limit(limit)
+        .all()
+    )
+
+
+def _get_open_count_for_site(db: Session, site_id: int) -> int:
+    count = (
+        db.query(func.count(SiteTask.id))
+        .filter(
+            SiteTask.site_id == site_id,
+            _site_task_open_clause(),
+        )
+        .scalar()
+    )
+    return int(count or 0)
+
+
 def _build_site_task_redirect_url(request: Request, site_id: int, *, fallback_filter: str = "aperte") -> str:
     next_url = (request.query_params.get("next") or "").strip()
     if next_url.startswith("/manager/"):
@@ -3069,9 +3151,10 @@ def manager_site_task_create(
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    wants_json = _request_wants_json(request)
     db = SessionLocal()
     try:
-        _create_site_task(
+        task = _create_site_task(
             db,
             site_id=site_id,
             title=title,
@@ -3082,6 +3165,19 @@ def manager_site_task_create(
             due_date=due_date,
             current_user=current_user,
         )
+        db.flush()
+        db.refresh(task)
+        open_count = _get_open_count_for_site(db, site_id)
+        db.commit()
+        if wants_json:
+            return JSONResponse(
+                {
+                    "success": True,
+                    "message": "Nota operativa creata con successo",
+                    "task": _serialize_site_task(task),
+                    "open_count": open_count,
+                }
+            )
     finally:
         db.close()
     return RedirectResponse(
@@ -3124,8 +3220,7 @@ def manager_site_task_create_from_overview(
             )
             db.flush()
             db.refresh(task)
-            task_id = task.id
-            task_site_id = task.site_id
+            open_count = _get_open_count_for_site(db, task.site_id)
             db.commit()
         finally:
             db.close()
@@ -3134,9 +3229,8 @@ def manager_site_task_create_from_overview(
             {
                 "success": True,
                 "message": "Nota operativa creata con successo",
-                "task_id": task_id,
-                "site_id": task_site_id,
-                "redirect_url": f"/manager/note-operative#site-{task_site_id}",
+                "task": _serialize_site_task(task),
+                "open_count": open_count,
             }
         )
     except HTTPException as exc:
@@ -3173,6 +3267,7 @@ def manager_site_task_update(
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    wants_json = _request_wants_json(request)
     db = SessionLocal()
     try:
         _get_site_for_detail(db, site_id, current_user)
@@ -3200,7 +3295,25 @@ def manager_site_task_update(
             task.assigned_to_id = assigned_user_id
         _normalize_task_completion(task, current_user.id)
         db.add(task)
+        db.flush()
+        db.refresh(task)
+        open_count = _get_open_count_for_site(db, site_id)
+        recent_completed_tasks = []
+        if _is_task_completed(task):
+            recent_completed_tasks = _get_recent_completed_tasks_for_overview(db, current_user)
         db.commit()
+        if wants_json:
+            return JSONResponse(
+                {
+                    "success": True,
+                    "message": "Nota aggiornata",
+                    "task": _serialize_site_task(task),
+                    "open_count": open_count,
+                    "recent_completed_tasks": [
+                        _serialize_site_task(completed_task) for completed_task in recent_completed_tasks
+                    ],
+                }
+            )
     finally:
         db.close()
     return RedirectResponse(
@@ -3218,6 +3331,7 @@ def manager_site_task_complete(
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    wants_json = _request_wants_json(request)
     db = SessionLocal()
     try:
         _get_site_for_detail(db, site_id, current_user)
@@ -3229,7 +3343,23 @@ def manager_site_task_complete(
         task.updated_by_id = current_user.id
         _normalize_task_completion(task, current_user.id)
         db.add(task)
+        db.flush()
+        db.refresh(task)
+        open_count = _get_open_count_for_site(db, site_id)
+        recent_completed_tasks = _get_recent_completed_tasks_for_overview(db, current_user)
         db.commit()
+        if wants_json:
+            return JSONResponse(
+                {
+                    "success": True,
+                    "message": "Nota completata",
+                    "task": _serialize_site_task(task),
+                    "open_count": open_count,
+                    "recent_completed_tasks": [
+                        _serialize_site_task(completed_task) for completed_task in recent_completed_tasks
+                    ],
+                }
+            )
     finally:
         db.close()
     return RedirectResponse(
@@ -3247,6 +3377,7 @@ def manager_site_task_reopen(
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    wants_json = _request_wants_json(request)
     db = SessionLocal()
     try:
         _get_site_for_detail(db, site_id, current_user)
@@ -3258,7 +3389,23 @@ def manager_site_task_reopen(
         task.updated_by_id = current_user.id
         _normalize_task_completion(task, current_user.id)
         db.add(task)
+        db.flush()
+        db.refresh(task)
+        open_count = _get_open_count_for_site(db, site_id)
+        recent_completed_tasks = _get_recent_completed_tasks_for_overview(db, current_user)
         db.commit()
+        if wants_json:
+            return JSONResponse(
+                {
+                    "success": True,
+                    "message": "Nota riaperta",
+                    "task": _serialize_site_task(task),
+                    "open_count": open_count,
+                    "recent_completed_tasks": [
+                        _serialize_site_task(completed_task) for completed_task in recent_completed_tasks
+                    ],
+                }
+            )
     finally:
         db.close()
     return RedirectResponse(
@@ -3276,13 +3423,40 @@ def manager_site_task_delete(
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    wants_json = _request_wants_json(request)
     db = SessionLocal()
     try:
         _get_site_for_detail(db, site_id, current_user)
         task = db.query(SiteTask).filter(SiteTask.id == task_id, SiteTask.site_id == site_id).first()
+        if not task:
+            if wants_json:
+                return JSONResponse(
+                    status_code=404,
+                    content={"success": False, "message": "Task non trovato"},
+                )
+            return RedirectResponse(
+                url=_build_site_task_redirect_url(request, site_id),
+                status_code=303,
+            )
         if task:
             db.delete(task)
+            db.flush()
+            open_count = _get_open_count_for_site(db, site_id)
+            recent_completed_tasks = _get_recent_completed_tasks_for_overview(db, current_user)
             db.commit()
+            if wants_json:
+                return JSONResponse(
+                    {
+                        "success": True,
+                        "message": "Nota eliminata",
+                        "task_id": task_id,
+                        "site_id": site_id,
+                        "open_count": open_count,
+                        "recent_completed_tasks": [
+                            _serialize_site_task(completed_task) for completed_task in recent_completed_tasks
+                        ],
+                    }
+                )
     finally:
         db.close()
     return RedirectResponse(
