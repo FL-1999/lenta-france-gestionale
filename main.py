@@ -2698,7 +2698,6 @@ def _create_site_task(
     )
     _normalize_task_completion(task, current_user.id)
     db.add(task)
-    db.commit()
     return task
 
 
@@ -3206,34 +3205,56 @@ def manager_site_task_create_from_overview(
                 content={"success": False, "message": "Permessi insufficienti"},
             )
 
-        try:
-            task = _create_site_task(
-                db,
-                site_id=site_id,
-                title=title,
-                description=description,
-                status_value=status_value,
-                priority_value=priority_value,
-                assigned_to_id=assigned_to_id,
-                due_date=due_date,
-                current_user=current_user,
-            )
-            db.flush()
-            db.refresh(task)
-            open_count = _get_open_count_for_site(db, task.site_id)
-            db.commit()
-        finally:
-            db.close()
+        task = _create_site_task(
+            db,
+            site_id=site_id,
+            title=title,
+            description=description,
+            status_value=status_value,
+            priority_value=priority_value,
+            assigned_to_id=assigned_to_id,
+            due_date=due_date,
+            current_user=current_user,
+        )
+        db.flush()
+
+        assigned_to_label = None
+        if task.assigned_to_id:
+            assigned_user = db.query(User).filter(User.id == task.assigned_to_id).first()
+            assigned_to_label = _format_user_label(assigned_user)
+        created_by_label = _format_user_label(current_user)
+        site_name = db.query(Site.name).filter(Site.id == task.site_id).scalar()
+
+        task_payload = {
+            "id": task.id,
+            "site_id": task.site_id,
+            "title": task.title,
+            "description": task.description or "",
+            "status_value": task.status.value if task.status else SiteTaskStatusEnum.da_fare.value,
+            "priority_value": task.priority.value if task.priority else SiteTaskPriorityEnum.media.value,
+            "due_date": task.due_date.isoformat() if task.due_date else None,
+            "assigned_to_id": task.assigned_to_id,
+            "assigned_to_label": assigned_to_label,
+            "created_by_label": created_by_label,
+            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+            "completed_at_display": task.completed_at.strftime("%d/%m/%Y %H:%M") if task.completed_at else "—",
+            "completed_by_label": None,
+            "site_name": site_name,
+        }
+
+        open_count = _get_open_count_for_site(db, task.site_id)
+        db.commit()
 
         return JSONResponse(
             {
                 "success": True,
                 "message": "Nota operativa creata con successo",
-                "task": _serialize_site_task(task),
+                "task": task_payload,
                 "open_count": open_count,
             }
         )
     except HTTPException as exc:
+        db.rollback()
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -3242,6 +3263,7 @@ def manager_site_task_create_from_overview(
             },
         )
     except Exception:
+        db.rollback()
         logger.exception("Errore inatteso durante la creazione della nota operativa da modal")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -3250,6 +3272,8 @@ def manager_site_task_create_from_overview(
                 "message": "Errore inatteso durante la creazione della nota operativa",
             },
         )
+    finally:
+        db.close()
 
 
 @app.post("/manager/cantieri/{site_id}/tasks/{task_id}/edit", name="manager_site_task_update")
