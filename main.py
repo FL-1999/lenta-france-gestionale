@@ -86,7 +86,7 @@ from template_context import (
     render_template,
 )
 from permissions import get_active_role, get_user_roles, has_perm, user_has_role
-from notifications import notify_site_status_change
+from notifications import notify_new_site_task, notify_site_status_change
 from audit_utils import log_audit_event
 from logging_config import configure_logging
 
@@ -3165,6 +3165,7 @@ def manager_site_task_create(
             current_user=current_user,
         )
         db.flush()
+        notify_new_site_task(db, task, current_user)
         db.refresh(task)
         open_count = _get_open_count_for_site(db, site_id)
         db.commit()
@@ -3217,6 +3218,7 @@ def manager_site_task_create_from_overview(
             current_user=current_user,
         )
         db.flush()
+        notify_new_site_task(db, task, current_user)
 
         assigned_to_label = None
         if task.assigned_to_id:
