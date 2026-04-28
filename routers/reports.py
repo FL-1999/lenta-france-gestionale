@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from sqlalchemy.orm import Session, joinedload
 
-from auth import get_current_active_user, get_current_active_user_html
+from auth import get_current_active_user_api, get_current_active_user_html
 from database import get_db
 from models import (
     Personale,
@@ -246,7 +246,7 @@ def _report_to_out(report: Report) -> ReportOut:
 def create_report(
     report_in: ReportCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     """
     Crea un nuovo rapportino e lo salva nel database.
@@ -300,7 +300,7 @@ def update_report(
     report_id: int,
     report_in: ReportCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     report = (
         db.query(Report)
@@ -345,7 +345,7 @@ def update_report(
 def delete_report(
     report_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
@@ -370,7 +370,7 @@ def delete_report(
 @router.get("/reports", response_model=List[ReportOut])
 def list_reports_for_manager(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_api),
 ):
     """
     Lista rapportini.
