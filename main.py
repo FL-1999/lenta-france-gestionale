@@ -4101,7 +4101,8 @@ def pagina_nuovo_rapportino_capo(
 ):
     """
     Pagina per creare un nuovo rapportino giornaliero (caposquadra).
-    Il JS della pagina chiamerà l'API POST /reports con il token JWT.
+    Il JS della pagina chiamerà l'API POST /reports usando la sessione autenticata
+    (cookie access_token) e, in fallback, eventuale Bearer token disponibile.
     """
     db = SessionLocal()
     try:

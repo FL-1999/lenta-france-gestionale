@@ -12,7 +12,7 @@
         </h1>
         <p class="subtitle">
             Compila il rapportino della giornata per il cantiere selezionato. I dati verranno inviati
-            al backend tramite l'API <code>POST /reports</code>.
+            al backend tramite l'API <code>POST /reports</code> usando la sessione corrente.
         </p>
     </div>
 
@@ -152,20 +152,6 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
         return;
     }
 
-    // Recupera il token dal localStorage
-    let token = null;
-    try {
-        token = localStorage.getItem("lf_token");
-    } catch (e) {
-        console.error("Impossibile leggere lf_token:", e);
-    }
-
-    if (!token) {
-        errorBox.textContent = "Nessun token trovato. Effettua di nuovo il login.";
-        errorBox.style.display = "block";
-        return;
-    }
-
     const payload = {
         date: data,
         site_id: cantiere_id,
@@ -178,19 +164,34 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
         workers: workers.items,
     };
 
+    const headers = {
+        "Content-Type": "application/json",
+    };
+    try {
+        const token = localStorage.getItem("lf_token");
+        if (token) {
+            headers.Authorization = "Bearer " + token;
+        }
+    } catch (e) {
+        console.warn("Impossibile leggere lf_token; uso sessione cookie.", e);
+    }
+
     try {
         const resp = await fetch("/reports", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token,
-            },
+            credentials: "same-origin",
+            headers,
             body: JSON.stringify(payload),
         });
 
         if (!resp.ok) {
             if (resp.status === 401 || resp.status === 403) {
-                errorBox.textContent = "Non sei autorizzato a creare rapportini. Effettua di nuovo il login.";
+                errorBox.textContent = "Sessione scaduta o non valida. Reindirizzamento al login…";
+                errorBox.style.display = "block";
+                setTimeout(() => {
+                    window.location.href = "/login";
+                }, 1200);
+                return;
             } else if (resp.status === 422) {
                 errorBox.textContent = "Dati non validi (errore di validazione). Controlla i campi e riprova.";
             } else {
