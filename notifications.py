@@ -7,7 +7,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from magazzino_repository import count_under_threshold
-from models import Notification, RoleEnum, Report, Site, User, MagazzinoRichiesta
+from models import Notification, RoleEnum, Report, Site, SiteTask, User, MagazzinoRichiesta
 from warehouse_requests_repository import count_pending_requests_for_user
 
 
@@ -46,6 +46,43 @@ def create_notifications_for_users(
     notifications: list[Notification] = []
     for user in users:
         if exclude_user_id is not None and user.id == exclude_user_id:
+            continue
+        notifications.append(
+            create_notification(
+                db,
+                notification_type,
+                message,
+                recipient_user_id=user.id,
+                target_url=target_url,
+            )
+        )
+    return notifications
+
+
+def create_notifications_for_users_deduplicated(
+    db: Session,
+    users: Iterable[User],
+    notification_type: str,
+    message: str,
+    *,
+    target_url: str | None = None,
+    exclude_user_id: int | None = None,
+) -> list[Notification]:
+    notifications: list[Notification] = []
+    for user in users:
+        if exclude_user_id is not None and user.id == exclude_user_id:
+            continue
+        already_exists = (
+            db.query(Notification.id)
+            .filter(
+                Notification.notification_type == notification_type,
+                Notification.recipient_user_id == user.id,
+                Notification.message == message,
+                Notification.target_url == target_url,
+            )
+            .first()
+        )
+        if already_exists:
             continue
         notifications.append(
             create_notification(
@@ -201,4 +238,19 @@ def notify_magazzino_richiesta(
         message,
         target_url=f"/manager/magazzino/richieste/{richiesta.id}",
         exclude_user_id=requester.id,
+    )
+
+
+def notify_new_site_task(db: Session, task: SiteTask, author: User) -> None:
+    site = db.query(Site).filter(Site.id == task.site_id).first()
+    site_name = site.name if site and site.name else f"Cantiere #{task.site_id}"
+    target_url = f"/manager/note-operative?created_task_id={task.id}#site-{task.site_id}"
+    message = f"Nuova nota operativa su {site_name}: {task.title}"
+    create_notifications_for_users_deduplicated(
+        db,
+        _get_manager_users(db),
+        "site_task_created",
+        message,
+        target_url=target_url,
+        exclude_user_id=author.id,
     )
