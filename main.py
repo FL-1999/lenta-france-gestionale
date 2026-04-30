@@ -4128,6 +4128,66 @@ def pagina_nuovo_rapportino_capo(
     )
 
 
+
+
+@app.post("/capo/rapportini/nuovo")
+def pagina_nuovo_rapportino_capo_post(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+    data: date = Form(...),
+    cantiere_id: int = Form(...),
+    ore_totali: float = Form(...),
+    numero_operai: int = Form(...),
+    macchinari: str | None = Form(None),
+    attivita: str | None = Form(None),
+    note: str | None = Form(None),
+    worker_personale_id: List[int] = Form(default_factory=list),
+    worker_role_label: List[str] = Form(default_factory=list),
+    worker_note: List[str] = Form(default_factory=list),
+):
+    if current_user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == cantiere_id, Site.caposquadra_id == current_user.id, Site.is_active.is_(True)).first()
+        if not site:
+            raise HTTPException(status_code=422, detail="Cantiere non valido")
+
+        workers = []
+        for idx, personale_id in enumerate(worker_personale_id):
+            workers.append(
+                ReportWorker(
+                    personale_id=personale_id,
+                    site_id=site.id,
+                    attendance_date=data,
+                    role_label=(worker_role_label[idx] if idx < len(worker_role_label) and worker_role_label[idx] else None),
+                    note=(worker_note[idx] if idx < len(worker_note) and worker_note[idx] else None),
+                    hours_worked=(ore_totali / numero_operai) if numero_operai > 0 else 0.0,
+                    day_type="FULL",
+                )
+            )
+
+        report = Report(
+            date=data,
+            site_id=site.id,
+            site_name_or_code=site.name,
+            total_hours=ore_totali,
+            workers_count=numero_operai,
+            machines_used=(macchinari or None),
+            activities=(attivita or None),
+            notes=(note or None),
+            created_by_id=current_user.id,
+            workers=workers,
+        )
+        db.add(report)
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/capo/dashboard?rapportino_created=1", status_code=303)
+
+
 @app.get("/capo/fiches/nuova", response_class=HTMLResponse)
 def capo_fiche_nuova_get(
     request: Request,

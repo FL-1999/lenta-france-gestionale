@@ -11,6 +11,12 @@
 {% endblock %}
 
 {% block content %}
+{% if request.query_params.get("rapportino_created") == "1" %}
+<div class="card" style="padding:0.85rem 1rem;margin-bottom:1rem;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.12);color:#166534;">
+    ✅ Rapportino creato correttamente
+</div>
+{% endif %}
+
 <div class="dashboard-page">
     <div class="page-header">
         <div class="page-header-main">
