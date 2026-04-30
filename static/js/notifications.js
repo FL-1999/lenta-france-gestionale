@@ -2,8 +2,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const container = document.querySelector("[data-notifications]");
   if (!container) return;
 
-  const toggle = container.querySelector("[data-notifications-toggle]");
-  const panel = container.querySelector("[data-notifications-panel]");
+  const toggle =
+    container.querySelector("#notificationsToggle") ||
+    container.querySelector("[data-notifications-toggle]");
+  const panel =
+    container.querySelector("#notificationsPanel") ||
+    container.querySelector("[data-notifications-panel]");
   const list = container.querySelector("[data-notifications-list]");
   const emptyState = container.querySelector("[data-notifications-empty]");
   const badge = container.querySelector("#notificationBadge");
@@ -16,6 +20,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const markAllButton = container.querySelector("[data-notifications-mark-all]");
 
   if (!toggle || !panel || !list || !emptyState || !badge) return;
+
+  const closePanel = () => {
+    panel.classList.remove("is-open");
+    toggle.setAttribute("aria-expanded", "false");
+  };
+
+  const openPanel = () => {
+    panel.classList.add("is-open");
+    toggle.setAttribute("aria-expanded", "true");
+    fetchNotifications();
+    updateNotificationBadge();
+  };
+
+  const togglePanel = () => {
+    const isOpen = panel.classList.contains("is-open");
+    if (isOpen) {
+      closePanel();
+      return;
+    }
+    openPanel();
+  };
 
   const getUnreadCount = (payload) => {
     const raw = payload?.count ?? payload?.unread_count ?? 0;
@@ -36,6 +61,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  const setMarkAllState = (hasUnread) => {
+    if (!markAllButton) return;
+    markAllButton.disabled = !hasUnread;
+    markAllButton.classList.toggle("is-disabled", !hasUnread);
+  };
+
   const updateNotificationBadge = async () => {
     try {
       const response = await fetch(countEndpoint, { credentials: "same-origin" });
@@ -44,15 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const unreadCount = getUnreadCount(payload);
       setBadge(unreadCount);
       setMarkAllState(unreadCount > 0);
-    } catch (error) {
-      // Fail silently: unread-count issues must not impact dropdown interactions.
+    } catch (_error) {
+      // Silent fail by design.
     }
-  };
-
-  const setMarkAllState = (hasUnread) => {
-    if (!markAllButton) return;
-    markAllButton.disabled = !hasUnread;
-    markAllButton.classList.toggle("is-disabled", !hasUnread);
   };
 
   const renderNotifications = (payload) => {
@@ -95,8 +120,8 @@ document.addEventListener("DOMContentLoaded", () => {
           item.classList.remove("is-unread");
           setBadge(unreadCountAfterMark);
           setMarkAllState(unreadCountAfterMark > 0);
-        } catch (error) {
-          console.error("Notification read failed", error);
+        } catch (_error) {
+          // Silent fail by design.
         }
       });
 
@@ -117,26 +142,27 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!response.ok) return;
       const payload = await response.json();
       renderNotifications(payload);
-    } catch (error) {
-      console.error("Notifications polling failed", error);
+    } catch (_error) {
+      // Silent fail by design.
     }
   };
 
   toggle.addEventListener("click", (event) => {
+    event.preventDefault();
     event.stopPropagation();
-    const isOpen = panel.classList.toggle("is-open");
-    toggle.setAttribute("aria-expanded", String(isOpen));
-    if (isOpen) {
-      fetchNotifications();
-      updateNotificationBadge();
-    }
+    togglePanel();
+  });
+
+  panel.addEventListener("click", (event) => {
+    event.stopPropagation();
   });
 
   document.addEventListener("click", (event) => {
-    if (!container.contains(event.target)) {
-      panel.classList.remove("is-open");
-      toggle.setAttribute("aria-expanded", "false");
-    }
+    if (!container.contains(event.target)) closePanel();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closePanel();
   });
 
   if (markAllButton) {
@@ -153,8 +179,8 @@ document.addEventListener("DOMContentLoaded", () => {
         await response.json();
         fetchNotifications();
         updateNotificationBadge();
-      } catch (error) {
-        console.error("Notifications mark all failed", error);
+      } catch (_error) {
+        // Silent fail by design.
       }
     });
   }
