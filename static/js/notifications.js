@@ -168,6 +168,7 @@
       setBadge(payload?.unread_count || 0);
       setMarkAllState((payload?.unread_count || 0) > 0);
       fetchNotifications();
+      fetchUnreadCount();
     } catch (error) {
       console.error("Notifications mark all failed", error);
     }
@@ -207,23 +208,8 @@
   }
 
   fetchUnreadCount();
+  fetchNotifications();
   if (pollInterval > 0) {
     setInterval(fetchUnreadCount, pollInterval);
   }
 })();
-function hideEmptyBadges() {
-  document.querySelectorAll(".badge-notification").forEach((el) => {
-    // se non c'è numero/testo vero, nascondilo
-    if ((el.textContent || "").trim() === "") {
-      el.style.display = "none";
-    }
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  hideEmptyBadges();
-
-  // nel caso qualche template/JS aggiunga badge dopo
-  const obs = new MutationObserver(hideEmptyBadges);
-  obs.observe(document.body, { childList: true, subtree: true });
-});
