@@ -6,9 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const panel = container.querySelector("[data-notifications-panel]");
   const list = container.querySelector("[data-notifications-list]");
   const emptyState = container.querySelector("[data-notifications-empty]");
-  const badge =
-    container.querySelector("#notification-badge") ||
-    container.querySelector("[data-notifications-badge]");
+  const badge = container.querySelector("#notificationBadge");
   const countEndpoint =
     container.dataset.countEndpoint || "/api/notifications/unread-count";
   const listEndpoint = container.dataset.listEndpoint || "/api/notifications/list";
@@ -20,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!toggle || !panel || !list || !emptyState || !badge) return;
 
   const getUnreadCount = (payload) => {
-    const raw = payload?.unread_count ?? payload?.count ?? 0;
+    const raw = payload?.count ?? payload?.unread_count ?? 0;
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : 0;
   };
@@ -28,19 +26,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const setBadge = (count) => {
     const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
     if (safeCount > 0) {
-      badge.textContent = safeCount > 99 ? "99+" : String(safeCount);
-      badge.classList.remove("is-hidden");
+      badge.textContent = String(safeCount);
+      badge.style.display = "flex";
       badge.setAttribute("aria-label", `${safeCount} notifiche non lette`);
     } else {
-      badge.textContent = "";
-      badge.classList.add("is-hidden");
+      badge.textContent = "0";
+      badge.style.display = "none";
       badge.removeAttribute("aria-label");
     }
-    console.log("[notifications] badge aggiornato", {
-      count: safeCount,
-      hidden: badge.classList.contains("is-hidden"),
-      text: badge.textContent,
-    });
+  };
+
+  const updateNotificationBadge = async () => {
+    try {
+      const response = await fetch(countEndpoint, { credentials: "same-origin" });
+      if (!response.ok) return;
+      const payload = await response.json();
+      const unreadCount = getUnreadCount(payload);
+      setBadge(unreadCount);
+      setMarkAllState(unreadCount > 0);
+    } catch (error) {
+      console.error("Notifications count failed", error);
+    }
   };
 
   const setMarkAllState = (hasUnread) => {
@@ -110,25 +116,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch(listEndpoint, { credentials: "same-origin" });
       if (!response.ok) return;
       const payload = await response.json();
-      console.log("[notifications] risposta list endpoint", payload);
       renderNotifications(payload);
     } catch (error) {
       console.error("Notifications polling failed", error);
-    }
-  };
-
-  const fetchUnreadCount = async () => {
-    try {
-      const response = await fetch(countEndpoint, { credentials: "same-origin" });
-      if (!response.ok) return;
-      const payload = await response.json();
-      const unreadCount = getUnreadCount(payload);
-      console.log("[notifications] risposta unread endpoint", payload);
-      console.log("[notifications] count ricevuto", unreadCount);
-      setBadge(unreadCount);
-      setMarkAllState(unreadCount > 0);
-    } catch (error) {
-      console.error("Notifications count failed", error);
     }
   };
 
@@ -136,7 +126,10 @@ document.addEventListener("DOMContentLoaded", () => {
     event.stopPropagation();
     const isOpen = panel.classList.toggle("is-open");
     toggle.setAttribute("aria-expanded", String(isOpen));
-    if (isOpen) fetchNotifications();
+    if (isOpen) {
+      fetchNotifications();
+      updateNotificationBadge();
+    }
   });
 
   document.addEventListener("click", (event) => {
@@ -157,18 +150,16 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ mark_all: true }),
         });
         if (!response.ok) return;
-        const payload = await response.json();
-        const unreadCount = getUnreadCount(payload);
-        setBadge(unreadCount);
-        setMarkAllState(unreadCount > 0);
+        await response.json();
         fetchNotifications();
+        updateNotificationBadge();
       } catch (error) {
         console.error("Notifications mark all failed", error);
       }
     });
   }
 
-  fetchUnreadCount();
+  updateNotificationBadge();
   fetchNotifications();
-  if (pollInterval > 0) setInterval(fetchUnreadCount, pollInterval);
+  if (pollInterval > 0) setInterval(updateNotificationBadge, pollInterval);
 });

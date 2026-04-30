@@ -399,14 +399,22 @@ body {
     display: none;
 }
 
-.nav-right .nav-link .badge-notification,
-.nav-link--icon .badge-notification,
-#notification-badge {
+.notification-badge {
     position: absolute;
     top: -6px;
-    right: -8px;
-    margin-left: 0;
-    z-index: 999;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
 }
 
 
