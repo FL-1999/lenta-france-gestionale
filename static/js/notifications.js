@@ -35,12 +35,15 @@
   };
 
   const setBadge = (count) => {
-    if (count > 0) {
-      badge.textContent = count > 99 ? "99+" : String(count);
+    const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+    if (safeCount > 0) {
+      badge.textContent = safeCount > 99 ? "99+" : String(safeCount);
       badge.classList.remove("is-hidden");
+      badge.setAttribute("aria-label", `${safeCount} notifiche non lette`);
     } else {
       badge.textContent = "";
       badge.classList.add("is-hidden");
+      badge.removeAttribute("aria-label");
     }
   };
 
@@ -125,6 +128,7 @@
       }
       const payload = await response.json();
       renderNotifications(payload);
+      setBadge(payload?.unread_count || 0);
     } catch (error) {
       console.error("Notifications polling failed", error);
     }
