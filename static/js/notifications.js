@@ -1,37 +1,28 @@
-(function () {
+document.addEventListener("DOMContentLoaded", () => {
   const container = document.querySelector("[data-notifications]");
-  if (!container) {
-    return;
-  }
+  if (!container) return;
 
   const toggle = container.querySelector("[data-notifications-toggle]");
   const panel = container.querySelector("[data-notifications-panel]");
   const list = container.querySelector("[data-notifications-list]");
   const emptyState = container.querySelector("[data-notifications-empty]");
-  const badge = container.querySelector("[data-notifications-badge]");
+  const badge =
+    container.querySelector("#notification-badge") ||
+    container.querySelector("[data-notifications-badge]");
   const countEndpoint =
     container.dataset.countEndpoint || "/api/notifications/unread-count";
   const listEndpoint = container.dataset.listEndpoint || "/api/notifications/list";
   const markReadEndpoint =
     container.dataset.markReadEndpoint || "/api/notifications/mark-read";
   const pollInterval = Number(container.dataset.pollInterval || 30000);
-  const markAllButton = container.querySelector(
-    "[data-notifications-mark-all]"
-  );
+  const markAllButton = container.querySelector("[data-notifications-mark-all]");
 
-  if (!toggle || !panel || !list || !emptyState || !badge) {
-    return;
-  }
+  if (!toggle || !panel || !list || !emptyState || !badge) return;
 
-  const formatDateTime = (value) => {
-    if (!value) {
-      return "";
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return "";
-    }
-    return date.toLocaleString();
+  const getUnreadCount = (payload) => {
+    const raw = payload?.unread_count ?? payload?.count ?? 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
   };
 
   const setBadge = (count) => {
@@ -45,19 +36,22 @@
       badge.classList.add("is-hidden");
       badge.removeAttribute("aria-label");
     }
+    console.log("[notifications] badge aggiornato", {
+      count: safeCount,
+      hidden: badge.classList.contains("is-hidden"),
+      text: badge.textContent,
+    });
   };
 
   const setMarkAllState = (hasUnread) => {
-    if (!markAllButton) {
-      return;
-    }
+    if (!markAllButton) return;
     markAllButton.disabled = !hasUnread;
     markAllButton.classList.toggle("is-disabled", !hasUnread);
   };
 
   const renderNotifications = (payload) => {
     const notifications = payload?.notifications || [];
-    const unreadCount = payload?.unread_count || 0;
+    const unreadCount = getUnreadCount(payload);
     setBadge(unreadCount);
     setMarkAllState(unreadCount > 0);
 
@@ -71,51 +65,42 @@
     notifications.forEach((notification) => {
       const item = document.createElement("li");
       item.className = "notifications-panel__item";
-      if (!notification.read) {
-        item.classList.add("is-unread");
-      }
+      if (!notification.read) item.classList.add("is-unread");
 
       const link = document.createElement("a");
       link.className = "notifications-panel__link";
       link.href = notification.link_url || "#";
       link.textContent = notification.message;
 
-      const meta = document.createElement("span");
-      meta.className = "notifications-panel__meta";
-      meta.textContent = formatDateTime(notification.created_at);
-
       link.addEventListener("click", async (event) => {
-        if (!notification.link_url) {
-          event.preventDefault();
-        }
+        if (!notification.link_url) event.preventDefault();
+        if (notification.read) return;
         try {
-          if (notification.read) {
-            return;
-          }
           const response = await fetch(markReadEndpoint, {
             method: "POST",
             credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ notification_id: notification.id }),
           });
-          if (response.ok) {
-            const payload = await response.json();
-            notification.read = true;
-            item.classList.remove("is-unread");
-            setBadge(payload.unread_count || 0);
-            setMarkAllState((payload.unread_count || 0) > 0);
-          }
+          if (!response.ok) return;
+          const markPayload = await response.json();
+          const unreadCountAfterMark = getUnreadCount(markPayload);
+          notification.read = true;
+          item.classList.remove("is-unread");
+          setBadge(unreadCountAfterMark);
+          setMarkAllState(unreadCountAfterMark > 0);
         } catch (error) {
           console.error("Notification read failed", error);
         }
       });
 
+      const meta = document.createElement("span");
+      meta.className = "notifications-panel__meta";
+      const date = new Date(notification.created_at);
+      meta.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
+
       item.appendChild(link);
-      if (meta.textContent) {
-        item.appendChild(meta);
-      }
+      if (meta.textContent) item.appendChild(meta);
       list.appendChild(item);
     });
   };
@@ -123,12 +108,10 @@
   const fetchNotifications = async () => {
     try {
       const response = await fetch(listEndpoint, { credentials: "same-origin" });
-      if (!response.ok) {
-        return;
-      }
+      if (!response.ok) return;
       const payload = await response.json();
+      console.log("[notifications] risposta list endpoint", payload);
       renderNotifications(payload);
-      setBadge(payload?.unread_count || 0);
     } catch (error) {
       console.error("Notifications polling failed", error);
     }
@@ -136,14 +119,12 @@
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await fetch(countEndpoint, {
-        credentials: "same-origin",
-      });
-      if (!response.ok) {
-        return;
-      }
+      const response = await fetch(countEndpoint, { credentials: "same-origin" });
+      if (!response.ok) return;
       const payload = await response.json();
-      const unreadCount = payload?.unread_count || 0;
+      const unreadCount = getUnreadCount(payload);
+      console.log("[notifications] risposta unread endpoint", payload);
+      console.log("[notifications] count ricevuto", unreadCount);
       setBadge(unreadCount);
       setMarkAllState(unreadCount > 0);
     } catch (error) {
@@ -151,65 +132,43 @@
     }
   };
 
-  const markAllAsRead = async () => {
-    try {
-      const response = await fetch(markReadEndpoint, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ mark_all: true }),
-      });
-      if (!response.ok) {
-        return;
-      }
-      const payload = await response.json();
-      setBadge(payload?.unread_count || 0);
-      setMarkAllState((payload?.unread_count || 0) > 0);
-      fetchNotifications();
-      fetchUnreadCount();
-    } catch (error) {
-      console.error("Notifications mark all failed", error);
-    }
-  };
-
-  const closePanel = () => {
-    panel.classList.remove("is-open");
-    toggle.setAttribute("aria-expanded", "false");
-  };
-
-  const openPanel = () => {
-    panel.classList.add("is-open");
-    toggle.setAttribute("aria-expanded", "true");
-    fetchNotifications();
-  };
-
   toggle.addEventListener("click", (event) => {
     event.stopPropagation();
-    if (panel.classList.contains("is-open")) {
-      closePanel();
-      return;
-    }
-    openPanel();
+    const isOpen = panel.classList.toggle("is-open");
+    toggle.setAttribute("aria-expanded", String(isOpen));
+    if (isOpen) fetchNotifications();
   });
 
   document.addEventListener("click", (event) => {
     if (!container.contains(event.target)) {
-      closePanel();
+      panel.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
     }
   });
 
   if (markAllButton) {
-    markAllButton.addEventListener("click", (event) => {
+    markAllButton.addEventListener("click", async (event) => {
       event.preventDefault();
-      markAllAsRead();
+      try {
+        const response = await fetch(markReadEndpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mark_all: true }),
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const unreadCount = getUnreadCount(payload);
+        setBadge(unreadCount);
+        setMarkAllState(unreadCount > 0);
+        fetchNotifications();
+      } catch (error) {
+        console.error("Notifications mark all failed", error);
+      }
     });
   }
 
   fetchUnreadCount();
   fetchNotifications();
-  if (pollInterval > 0) {
-    setInterval(fetchUnreadCount, pollInterval);
-  }
-})();
+  if (pollInterval > 0) setInterval(fetchUnreadCount, pollInterval);
+});
