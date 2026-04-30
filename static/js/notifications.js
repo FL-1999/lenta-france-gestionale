@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setBadge(unreadCount);
       setMarkAllState(unreadCount > 0);
     } catch (error) {
-      console.error("Notifications count failed", error);
+      // Fail silently: unread-count issues must not impact dropdown interactions.
     }
   };
 
