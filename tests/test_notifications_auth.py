@@ -6,7 +6,7 @@ from sqlalchemy.pool import StaticPool
 from auth import create_access_token
 from database import get_db
 from main import app
-from models import Base, Role, RoleEnum, User, UserRole
+from models import Base, Notification, Role, RoleEnum, User, UserRole
 
 
 class TestNotificationsAuth:
@@ -77,3 +77,53 @@ class TestNotificationsAuth:
 
         assert response.status_code == 200
         assert response.json()["unread_count"] == 0
+
+
+    def test_recent_notifications_returns_renderable_payload(self):
+        token = create_access_token(
+            data={
+                "sub": self.user.email,
+                "role": RoleEnum.manager.value,
+                "roles": [RoleEnum.manager.value],
+            }
+        )
+        self.client.cookies.set("access_token", f"Bearer {token}")
+        self.client.cookies.set("current_role", RoleEnum.manager.value)
+
+        own_notification = Notification(
+            notification_type="test",
+            message="Nuova notifica",
+            recipient_user_id=self.user.id,
+            target_url="/manager/report",
+            is_read=False,
+        )
+        other_user = User(
+            email="capo.notifications@example.com",
+            full_name="Capo Notifications",
+            hashed_password="test-secret",
+            role=RoleEnum.caposquadra,
+            is_active=True,
+        )
+        self.db.add(other_user)
+        self.db.flush()
+        foreign_notification = Notification(
+            notification_type="test",
+            message="Notifica altro utente",
+            recipient_user_id=other_user.id,
+            target_url="/capo/dashboard",
+            is_read=False,
+        )
+        self.db.add_all([own_notification, foreign_notification])
+        self.db.commit()
+
+        response = self.client.get("/api/notifications/recent")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert "notifications" in payload
+        assert len(payload["notifications"]) == 1
+        notification = payload["notifications"][0]
+        assert notification["message"] == "Nuova notifica"
+        assert notification["url"] == "/manager/report"
+        assert notification["is_read"] is False
+        assert "created_at" in notification
