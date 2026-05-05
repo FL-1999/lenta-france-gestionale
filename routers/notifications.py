@@ -38,9 +38,21 @@ class NotificationListItem(BaseModel):
     created_at: datetime
 
 
+class NotificationRecentItem(BaseModel):
+    id: int
+    message: str
+    created_at: datetime
+    url: str | None = None
+    is_read: bool
+
+
 class NotificationListPayload(BaseModel):
     unread_count: int
     notifications: list[NotificationListItem]
+
+
+class NotificationRecentPayload(BaseModel):
+    notifications: list[NotificationRecentItem]
 
 
 class UnreadCountResponse(BaseModel):
@@ -68,6 +80,16 @@ def _serialize_notification(notification: Notification) -> NotificationListItem:
         link_url=notification.target_url,
         read=notification.is_read,
         created_at=notification.created_at,
+    )
+
+
+def _serialize_recent_notification(notification: Notification) -> NotificationRecentItem:
+    return NotificationRecentItem(
+        id=notification.id,
+        message=notification.message,
+        created_at=notification.created_at,
+        url=notification.target_url,
+        is_read=notification.is_read,
     )
 
 
@@ -104,6 +126,25 @@ def list_latest_notifications(
         notifications=[_serialize_notification(n) for n in notifications],
     )
 
+
+
+
+@router.get("/recent", response_model=NotificationRecentPayload)
+def list_recent_notifications(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_api),
+):
+    limit = max(1, min(limit, 50))
+    notifications = (
+        _notifications_base_query(db, current_user)
+        .order_by(Notification.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return NotificationRecentPayload(
+        notifications=[_serialize_recent_notification(n) for n in notifications],
+    )
 
 @router.post("/mark-read", response_model=UnreadCountResponse)
 def mark_notifications_read(

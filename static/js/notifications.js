@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!root || !toggle || !panel || !notificationCount || !listContainer) return;
 
   const countEndpoint = root.dataset.countEndpoint || "/api/notifications/unread-count";
-  const listEndpoint = root.dataset.listEndpoint || "/api/notifications/list";
+  const listEndpoint = root.dataset.listEndpoint || "/api/notifications/recent";
   const markReadEndpoint = root.dataset.markReadEndpoint || "/api/notifications/mark-read";
   const pollInterval = Number(root.dataset.pollInterval || "30000");
 
@@ -53,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
       id: item.id,
       text: item.message || item.text || "Notifica",
       createdAt: item.created_at || item.createdAt || null,
-      link: item.link_url || item.target_url || null,
+      link: item.link_url || item.target_url || item.url || null,
       read: Boolean(item.read ?? item.is_read),
     }));
   };
