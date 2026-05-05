@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const toggle = document.getElementById("notificationsToggle");
   const panel = document.getElementById("notificationsPanel");
-  const badge = document.getElementById("notificationBadge");
+  const badge = document.getElementById("notificationCount");
   const list = container.querySelector("[data-notifications-list]");
   const emptyState = container.querySelector("[data-notifications-empty]");
   const markAllButton = container.querySelector("[data-notifications-mark-all]");
@@ -26,17 +26,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const setBadge = (count) => {
     const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-    if (safeCount > 0) {
-      badge.textContent = String(safeCount);
-      badge.style.display = "flex";
-      badge.setAttribute("aria-label", `${safeCount} notifiche non lette`);
-      badge.removeAttribute("aria-hidden");
-    } else {
-      badge.textContent = "0";
-      badge.style.display = "none";
-      badge.setAttribute("aria-hidden", "true");
-      badge.removeAttribute("aria-label");
-    }
+    badge.textContent = String(safeCount);
+    badge.setAttribute("aria-label", `${safeCount} notifiche non lette`);
   };
 
   const setMarkAllState = (hasUnread) => {
