@@ -7,7 +7,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from magazzino_repository import count_under_threshold
-from models import Notification, RoleEnum, Report, Site, SiteTask, User, MagazzinoRichiesta
+from models import Notification, RoleEnum, Report, Site, SiteTask, User, MagazzinoRichiesta, Fiche
 from warehouse_requests_repository import count_pending_requests_for_user
 
 
@@ -163,6 +163,22 @@ def _find_site_for_report(db: Session, report: Report) -> Site | None:
         .first()
     )
 
+
+
+
+def notify_new_fiche(db: Session, fiche: Fiche, author: User) -> None:
+    author_name = author.full_name or author.email
+    site = db.query(Site).filter(Site.id == fiche.site_id).first()
+    site_label = site.name if site and site.name else f"Cantiere #{fiche.site_id}"
+    message = f"Nuova fiche da {author_name} per {site_label}."
+    create_notifications_for_users(
+        db,
+        _get_manager_users(db),
+        "fiche_created",
+        message,
+        target_url="/manager/fiches",
+        exclude_user_id=author.id,
+    )
 
 def notify_new_report(db: Session, report: Report, author: User) -> None:
     author_name = author.full_name or author.email

@@ -86,7 +86,7 @@ from template_context import (
     render_template,
 )
 from permissions import get_active_role, get_user_roles, has_perm, user_has_role
-from notifications import notify_new_site_task, notify_site_status_change
+from notifications import notify_new_fiche, notify_new_site_task, notify_site_status_change
 from audit_utils import log_audit_event
 from logging_config import configure_logging
 
@@ -1504,6 +1504,7 @@ async def manager_fiche_create(
             db.add(fiche)
             db.commit()
             db.refresh(fiche)
+            notify_new_fiche(db, fiche, current_user)
 
             for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
                 if not mat:
@@ -4306,6 +4307,7 @@ async def capo_fiche_nuova_post(
             db.add(fiche)
             db.commit()
             db.refresh(fiche)
+            notify_new_fiche(db, fiche, current_user)
 
             for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
                 if not mat:

@@ -9,6 +9,7 @@ from database import get_db
 from deps import get_site_for_user
 from models import Fiche, FicheTypeEnum, RoleEnum, Site, Machine, User
 from schemas import FicheCreate, FicheRead, FicheListItem
+from notifications import notify_new_fiche
 
 router = APIRouter(prefix="/fiches", tags=["fiches"])
 
@@ -146,6 +147,8 @@ def create_fiche(
         created_by_id=current_user.id,
     )
     db.add(fiche)
+    db.flush()
+    notify_new_fiche(db, fiche, current_user)
     db.commit()
     db.refresh(fiche)
 
