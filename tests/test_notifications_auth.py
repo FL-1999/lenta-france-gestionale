@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -127,3 +128,34 @@ class TestNotificationsAuth:
         assert notification["url"] == "/manager/report"
         assert notification["is_read"] is False
         assert "created_at" in notification
+
+    def test_recent_notifications_includes_old_unread_items(self):
+        token = create_access_token(
+            data={
+                "sub": self.user.email,
+                "role": RoleEnum.manager.value,
+                "roles": [RoleEnum.manager.value],
+            }
+        )
+        self.client.cookies.set("access_token", f"Bearer {token}")
+        self.client.cookies.set("current_role", RoleEnum.manager.value)
+
+        old_unread = Notification(
+            notification_type="test",
+            message="Notifica non letta vecchia",
+            recipient_user_id=self.user.id,
+            is_read=False,
+            created_at=datetime.utcnow() - timedelta(days=45),
+        )
+        self.db.add(old_unread)
+        self.db.commit()
+
+        count_response = self.client.get("/api/notifications/unread-count")
+        recent_response = self.client.get("/api/notifications/recent")
+
+        assert count_response.status_code == 200
+        assert count_response.json()["unread_count"] == 1
+        assert recent_response.status_code == 200
+        payload = recent_response.json()
+        assert len(payload["notifications"]) == 1
+        assert payload["notifications"][0]["message"] == "Notifica non letta vecchia"
