@@ -73,6 +73,16 @@ def _notifications_base_query(db: Session, current_user: User):
     )
 
 
+def _notifications_recent_or_unread_query(db: Session, current_user: User):
+    since_date = datetime.utcnow() - timedelta(days=30)
+    return _notifications_base_query(db, current_user).filter(
+        or_(
+            Notification.created_at >= since_date,
+            Notification.is_read.is_(False),
+        )
+    )
+
+
 def _serialize_notification(notification: Notification) -> NotificationListItem:
     return NotificationListItem(
         id=notification.id,
@@ -116,11 +126,7 @@ def list_latest_notifications(
     unread_count = (
         base_query.filter(Notification.is_read.is_(False)).count()
     )
-    notifications = (
-        base_query.order_by(Notification.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    notifications = base_query.order_by(Notification.created_at.desc()).limit(limit).all()
     return NotificationListPayload(
         unread_count=unread_count,
         notifications=[_serialize_notification(n) for n in notifications],
@@ -137,7 +143,7 @@ def list_recent_notifications(
 ):
     limit = max(1, min(limit, 50))
     notifications = (
-        _notifications_base_query(db, current_user)
+        _notifications_recent_or_unread_query(db, current_user)
         .order_by(Notification.created_at.desc())
         .limit(limit)
         .all()
@@ -187,10 +193,7 @@ def list_notifications(
     current_user: User = Depends(get_current_active_user_api),
 ):
     limit = max(1, min(limit, 50))
-    since_date = datetime.utcnow() - timedelta(days=30)
-    base_query = _notifications_base_query(db, current_user).filter(
-        Notification.created_at >= since_date
-    )
+    base_query = _notifications_recent_or_unread_query(db, current_user)
     unread_count = (
         base_query.filter(Notification.is_read.is_(False)).count()
     )

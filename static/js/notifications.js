@@ -110,18 +110,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const loadNotifications = async () => {
     try {
-      const response = await fetch(listEndpoint, { credentials: "same-origin" });
-      if (!response.ok) {
+      const [countResponse, listResponse] = await Promise.all([
+        fetch(countEndpoint, { credentials: "same-origin" }),
+        fetch(listEndpoint, { credentials: "same-origin" }),
+      ]);
+      if (!listResponse.ok) {
         renderNotifications([]);
         return;
       }
-      const data = await response.json();
-      console.log("notifications list:", data);
+      const data = await listResponse.json();
       const notifications = extractListPayload(data);
       renderNotifications(notifications);
-      if (typeof data?.unread_count !== "undefined") {
-        const count = Number(data.unread_count);
+      let count = Number.NaN;
+      if (countResponse.ok) {
+        const countData = await countResponse.json();
+        count = Number(countData?.count ?? countData?.unread_count ?? 0);
+      } else if (typeof data?.unread_count !== "undefined") {
+        count = Number(data.unread_count);
+      }
+      if (Number.isFinite(count)) {
         notificationCount.textContent = String(Number.isFinite(count) ? count : 0);
+        if (count > 0 && notifications.length === 0) {
+          console.error(
+            "Backend inconsistency: unread count is > 0 but recent notifications list is empty.",
+            { count, listEndpoint },
+          );
+        }
       }
     } catch (_error) {
       renderNotifications([]);
