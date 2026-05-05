@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const list = container.querySelector("[data-notifications-list]");
   const emptyState = container.querySelector("[data-notifications-empty]");
   const badge = container.querySelector("#notificationBadge");
+
   const countEndpoint =
     container.dataset.countEndpoint || "/api/notifications/unread-count";
   const listEndpoint = container.dataset.listEndpoint || "/api/notifications/list";
@@ -19,7 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const pollInterval = Number(container.dataset.pollInterval || 30000);
   const markAllButton = container.querySelector("[data-notifications-mark-all]");
 
-  if (!toggle || !panel || !list || !emptyState || !badge) return;
+  // Core dropdown behavior must work independently from badge features.
+  if (!toggle || !panel || !list || !emptyState) return;
 
   const closePanel = () => {
     panel.classList.remove("is-open");
@@ -34,8 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const togglePanel = () => {
-    const isOpen = panel.classList.contains("is-open");
-    if (isOpen) {
+    if (panel.classList.contains("is-open")) {
       closePanel();
       return;
     }
@@ -48,15 +49,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
+  // Safe badge behavior: if badge is missing, silently skip badge updates.
   const setBadge = (count) => {
+    if (!badge) return;
     const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
     if (safeCount > 0) {
       badge.textContent = String(safeCount);
       badge.style.display = "flex";
       badge.setAttribute("aria-label", `${safeCount} notifiche non lette`);
+      badge.removeAttribute("aria-hidden");
     } else {
       badge.textContent = "0";
       badge.style.display = "none";
+      badge.setAttribute("aria-hidden", "true");
       badge.removeAttribute("aria-label");
     }
   };
