@@ -119,7 +119,7 @@
             {% else %}
                 <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
                     <button type="button" class="nav-link nav-link--icon notification-button" id="notificationsToggle" data-notifications-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notificationsPanel">
-                        🔔
+                        <span class="notification-icon" aria-hidden="true">🔔</span>
                         <span id="notificationBadge" class="notification-badge" style="display:none;" aria-hidden="true">0</span>
                     </button>
                     <div class="notifications-panel" id="notificationsPanel" data-notifications-panel>
