@@ -401,8 +401,8 @@ body {
 
 .notification-badge {
     position: absolute;
-    top: -7px;
-    right: -7px;
+    top: 2px;
+    right: 4px;
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
@@ -416,7 +416,7 @@ body {
     line-height: 16px;
     text-align: center;
     display: none;
-    z-index: 10;
+    z-index: 20;
     pointer-events: none;
     user-select: none;
 }
@@ -451,6 +451,18 @@ body {
 
 .notification-button {
     position: relative;
+    width: 44px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+}
+
+.notification-icon {
+    font-size: 20px;
+    line-height: 1;
+    display: inline-block;
 }
 
 .notifications-panel {
