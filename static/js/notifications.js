@@ -36,24 +36,18 @@ document.addEventListener("DOMContentLoaded", () => {
     markAllButton.classList.toggle("is-disabled", !hasUnread);
   };
 
+  const isPanelOpen = () => !panel.classList.contains("hidden");
+
   const closePanel = () => {
-    panel.classList.remove("is-open");
+    panel.classList.add("hidden");
     toggle.setAttribute("aria-expanded", "false");
   };
 
   const openPanel = () => {
-    panel.classList.add("is-open");
+    panel.classList.remove("hidden");
     toggle.setAttribute("aria-expanded", "true");
     fetchNotifications();
     updateNotificationBadge();
-  };
-
-  const togglePanel = () => {
-    if (panel.classList.contains("is-open")) {
-      closePanel();
-      return;
-    }
-    openPanel();
   };
 
   const updateNotificationBadge = async () => {
@@ -140,16 +134,19 @@ document.addEventListener("DOMContentLoaded", () => {
   toggle.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    console.log("click campanella rilevato");
-    togglePanel();
+    if (isPanelOpen()) {
+      closePanel();
+      return;
+    }
+    openPanel();
   });
 
   panel.addEventListener("click", (event) => {
     event.stopPropagation();
   });
 
-  document.addEventListener("click", (event) => {
-    if (!container.contains(event.target)) closePanel();
+  document.addEventListener("click", () => {
+    if (isPanelOpen()) closePanel();
   });
 
   document.addEventListener("keydown", (event) => {
@@ -176,6 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  closePanel();
   updateNotificationBadge();
   fetchNotifications();
   if (pollInterval > 0) setInterval(updateNotificationBadge, pollInterval);
