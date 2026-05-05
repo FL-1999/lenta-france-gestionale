@@ -118,11 +118,11 @@
                 </a>
             {% else %}
                 <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
-                    <button type="button" class="nav-link nav-link--icon" data-notifications-toggle aria-haspopup="true" aria-expanded="false">
+                    <button type="button" class="nav-link nav-link--icon" id="notificationsToggle" data-notifications-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notificationsPanel">
                         🔔
-                        <span id="notificationBadge" class="notification-badge" style="display:none;">0</span>
+                        <span id="notificationBadge" class="notification-badge" style="display:none;" aria-hidden="true">0</span>
                     </button>
-                    <div class="notifications-panel" data-notifications-panel>
+                    <div class="notifications-panel" id="notificationsPanel" data-notifications-panel>
                         <div class="notifications-panel__header">
                             <span>{% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}</span>
                             <button type="button" class="notifications-panel__action" data-notifications-mark-all>
