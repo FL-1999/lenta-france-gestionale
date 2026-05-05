@@ -4,13 +4,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const panel = document.getElementById("notificationsPanel");
   const badge = document.getElementById("notificationCount");
   const list = document.getElementById("notificationsList") || container?.querySelector("[data-notifications-list]");
-  const emptyState = container?.querySelector("[data-notifications-empty]");
   const markAllButton = container?.querySelector("[data-notifications-mark-all]");
 
-  if (!container || !toggle || !panel || !badge || !list || !emptyState) return;
+  if (!container || !toggle || !panel || !badge || !list) return;
 
   const countEndpoint = container.dataset.countEndpoint || "/api/notifications/unread-count";
-  const listEndpoint = container.dataset.listEndpoint || "/api/notifications/list";
+  const listEndpoint = container.dataset.listEndpoint || "/api/notifications/recent";
   const markReadEndpoint = container.dataset.markReadEndpoint || "/api/notifications/mark-read";
   const pollInterval = Number(container.dataset.pollInterval || 30000);
 
@@ -33,16 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const isPanelOpen = () => !panel.classList.contains("hidden");
-
-  const closePanel = () => {
-    panel.classList.add("hidden");
-    toggle.setAttribute("aria-expanded", "false");
-  };
-
-  const openPanel = () => {
-    panel.classList.remove("hidden");
-    toggle.setAttribute("aria-expanded", "true");
-  };
+  const closePanel = () => { panel.classList.add("hidden"); toggle.setAttribute("aria-expanded", "false"); };
+  const openPanel = () => { panel.classList.remove("hidden"); toggle.setAttribute("aria-expanded", "true"); };
 
   const updateNotificationBadge = async () => {
     try {
@@ -52,41 +43,36 @@ document.addEventListener("DOMContentLoaded", () => {
       const unreadCount = getUnreadCount(payload);
       setBadge(unreadCount);
       setMarkAllState(unreadCount > 0);
-    } catch (_error) {
-      // silent fail
-    }
+    } catch (_error) {}
   };
 
   const renderNotifications = (payload) => {
     const notifications = payload?.notifications || [];
-    const unreadCount = getUnreadCount(payload);
-
-    setBadge(unreadCount);
-    setMarkAllState(unreadCount > 0);
     list.innerHTML = "";
 
     if (!notifications.length) {
-      emptyState.textContent = "Nessuna notifica";
-      emptyState.classList.remove("is-hidden");
+      list.innerHTML = '<div class="notification-empty">Nessuna notifica</div>';
       return;
     }
 
-    emptyState.classList.add("is-hidden");
-
     notifications.forEach((notification) => {
-      const item = document.createElement("li");
-      item.className = "notifications-panel__item";
-      if (!notification.read) item.classList.add("is-unread");
+      const isRead = Boolean(notification.is_read ?? notification.read);
+      const linkUrl = notification.url || notification.link_url || null;
 
-      const link = document.createElement("a");
-      link.className = "notifications-panel__link";
-      link.href = notification.link_url || "#";
-      link.textContent = notification.message;
+      const item = document.createElement("div");
+      item.className = "notification-item";
+      if (!isRead) item.classList.add("is-unread");
 
-      link.addEventListener("click", async (event) => {
-        if (!notification.link_url) event.preventDefault();
-        if (notification.read) return;
+      const text = document.createElement(linkUrl ? "a" : "div");
+      if (linkUrl) {
+        text.href = linkUrl;
+        text.className = "notifications-panel__link";
+      }
+      text.textContent = notification.message || "Notifica";
 
+      text.addEventListener("click", async (event) => {
+        if (!linkUrl) event.preventDefault();
+        if (isRead) return;
         try {
           const response = await fetch(markReadEndpoint, {
             method: "POST",
@@ -95,65 +81,52 @@ document.addEventListener("DOMContentLoaded", () => {
             body: JSON.stringify({ notification_id: notification.id }),
           });
           if (!response.ok) return;
-
           const markPayload = await response.json();
           const unreadCountAfterMark = getUnreadCount(markPayload);
-          notification.read = true;
           item.classList.remove("is-unread");
           setBadge(unreadCountAfterMark);
           setMarkAllState(unreadCountAfterMark > 0);
-        } catch (_error) {
-          // silent fail
-        }
+        } catch (_error) {}
       });
 
-      const meta = document.createElement("span");
+      const meta = document.createElement("div");
       meta.className = "notifications-panel__meta";
       const date = new Date(notification.created_at);
       meta.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
 
-      item.appendChild(link);
+      item.appendChild(text);
       if (meta.textContent) item.appendChild(meta);
       list.appendChild(item);
     });
   };
 
   const loadNotificationsList = async () => {
+    list.innerHTML = '<div class="notification-empty">Caricamento notifiche...</div>';
     try {
       const response = await fetch(listEndpoint, { credentials: "same-origin" });
-      if (!response.ok) return;
+      if (!response.ok) {
+        list.innerHTML = '<div class="notification-empty">Errore caricamento notifiche</div>';
+        return;
+      }
       const payload = await response.json();
       renderNotifications(payload);
+      updateNotificationBadge();
     } catch (_error) {
-      // silent fail
+      list.innerHTML = '<div class="notification-empty">Errore caricamento notifiche</div>';
     }
   };
 
   toggle.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-
-    if (isPanelOpen()) {
-      closePanel();
-      return;
-    }
-
+    if (isPanelOpen()) return closePanel();
     openPanel();
     loadNotificationsList();
-    updateNotificationBadge();
   });
 
-  panel.addEventListener("click", (event) => {
-    event.stopPropagation();
-  });
-
-  document.addEventListener("click", () => {
-    if (isPanelOpen()) closePanel();
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isPanelOpen()) closePanel();
-  });
+  panel.addEventListener("click", (event) => event.stopPropagation());
+  document.addEventListener("click", () => { if (isPanelOpen()) closePanel(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && isPanelOpen()) closePanel(); });
 
   if (markAllButton) {
     markAllButton.addEventListener("click", async (event) => {
@@ -170,17 +143,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const unreadCountAfterMarkAll = getUnreadCount(markPayload);
         setBadge(unreadCountAfterMarkAll);
         setMarkAllState(unreadCountAfterMarkAll > 0);
-
-        list.querySelectorAll(".notifications-panel__item").forEach((item) => item.classList.remove("is-unread"));
-        if (!list.children.length) {
-          emptyState.textContent = "Nessuna notifica";
-          emptyState.classList.remove("is-hidden");
-        }
-
-        updateNotificationBadge();
-      } catch (_error) {
-        // silent fail
-      }
+        loadNotificationsList();
+      } catch (_error) {}
     });
   }
 

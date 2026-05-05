@@ -114,7 +114,7 @@
                     {% endif %}
                 </a>
             {% else %}
-                <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
+                <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/recent" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
                     <button type="button" class="nav-link nav-link--icon notification-button" id="notificationsToggle" data-notifications-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notificationsPanel">
                         <i class="bi bi-bell-fill notification-icon" aria-hidden="true"></i>
                         <span id="notificationCount" class="notification-count">0</span>
@@ -126,9 +126,8 @@
                                 {% if lang == 'fr' %}Tout marquer comme lu{% else %}Segna tutte come lette{% endif %}
                             </button>
                         </div>
-                        <ul class="notifications-panel__list" data-notifications-list></ul>
-                        <div class="notifications-panel__empty is-hidden" data-notifications-empty>
-                            {% if lang == 'fr' %}Aucune notification{% else %}Nessuna notifica{% endif %}
+                        <div id="notificationsList" class="notifications-list">
+                            <div class="notification-empty">Caricamento notifiche...</div>
                         </div>
                     </div>
                 </div>
