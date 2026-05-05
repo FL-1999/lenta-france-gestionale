@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!root || !toggle || !panel || !notificationCount || !listContainer) return;
 
   const countEndpoint = root.dataset.countEndpoint || "/api/notifications/unread-count";
-  const listEndpoint = root.dataset.listEndpoint || "/api/notifications";
+  const listEndpoint = root.dataset.listEndpoint || "/api/notifications/list";
   const markReadEndpoint = root.dataset.markReadEndpoint || "/api/notifications/mark-read";
   const pollInterval = Number(root.dataset.pollInterval || "30000");
 
@@ -42,7 +42,13 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const extractListPayload = (data) => {
-    const list = Array.isArray(data?.notifications) ? data.notifications : [];
+    const list = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.notifications)
+        ? data.notifications
+        : Array.isArray(data?.items)
+          ? data.items
+          : [];
     return list.map((item) => ({
       id: item.id,
       text: item.message || item.text || "Notifica",
@@ -63,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
     emptyState?.classList.add("is-hidden");
 
     notifications.forEach((notification) => {
-      const item = document.createElement("li");
+      const item = document.createElement("div");
       item.className = "notifications-panel__item";
       if (!notification.read) {
         item.classList.add("is-unread");
@@ -110,6 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
       const data = await response.json();
+      console.log("notifications list:", data);
       const notifications = extractListPayload(data);
       renderNotifications(notifications);
       if (typeof data?.unread_count !== "undefined") {
