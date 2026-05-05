@@ -470,8 +470,12 @@ body {
     z-index: 40;
 }
 
+.notifications-panel.hidden {
+  display: none;
+}
+
 .notifications-panel.is-open {
-    display: block;
+  display: block;
 }
 
 .notifications-panel__header {

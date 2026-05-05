@@ -119,10 +119,10 @@
             {% else %}
                 <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/list" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
                     <button id="notificationsToggle" class="notification-button" type="button" data-notifications-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notificationsPanel">
-                        <i class="bi bi-bell-fill notification-icon"></i>
+                        🔔
                         <span id="notificationCount" class="notification-count">0</span>
                     </button>
-                    <div class="notifications-panel" id="notificationsPanel" data-notifications-panel>
+                    <div class="notifications-panel hidden" id="notificationsPanel" data-notifications-panel>
                         <div class="notifications-panel__header">
                             <span>{% if lang == 'fr' %}Notifications{% else %}Notifiche{% endif %}</span>
                             <button type="button" class="notifications-panel__action" data-notifications-mark-all>
@@ -368,7 +368,7 @@
     {% endif %}
 
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212c"></script>
-    <script src="{{ url_for('static', path='/js/notifications.js') }}?v=20260505"></script>
+    <script src="/static/js/notifications.js?v=20260505b"></script>
     <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260212c"></script>
     <script>
         (() => {
