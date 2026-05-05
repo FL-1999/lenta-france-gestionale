@@ -455,6 +455,10 @@ body {
     justify-content: center;
 }
 
+.hidden {
+    display: none !important;
+}
+
 .notifications-panel {
     position: absolute;
     top: calc(100% + 10px);
@@ -471,7 +475,7 @@ body {
 }
 
 .notifications-panel.hidden {
-  display: none;
+  display: none !important;
 }
 
 .notifications-panel.open {

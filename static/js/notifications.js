@@ -166,8 +166,17 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ mark_all: true }),
         });
         if (!response.ok) return;
-        await response.json();
-        loadNotificationsList();
+        const markPayload = await response.json();
+        const unreadCountAfterMarkAll = getUnreadCount(markPayload);
+        setBadge(unreadCountAfterMarkAll);
+        setMarkAllState(unreadCountAfterMarkAll > 0);
+
+        list.querySelectorAll(".notifications-panel__item").forEach((item) => item.classList.remove("is-unread"));
+        if (!list.children.length) {
+          emptyState.textContent = "Nessuna notifica";
+          emptyState.classList.remove("is-hidden");
+        }
+
         updateNotificationBadge();
       } catch (_error) {
         // silent fail
