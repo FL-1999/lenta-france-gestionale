@@ -1,22 +1,18 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("notifications js loaded");
-
   const container = document.querySelector("[data-notifications]");
-  if (!container) return;
-
   const toggle = document.getElementById("notificationsToggle");
   const panel = document.getElementById("notificationsPanel");
   const badge = document.getElementById("notificationCount");
-  const list = container.querySelector("[data-notifications-list]");
-  const emptyState = container.querySelector("[data-notifications-empty]");
-  const markAllButton = container.querySelector("[data-notifications-mark-all]");
+  const list = document.getElementById("notificationsList") || container?.querySelector("[data-notifications-list]");
+  const emptyState = container?.querySelector("[data-notifications-empty]");
+  const markAllButton = container?.querySelector("[data-notifications-mark-all]");
+
+  if (!container || !toggle || !panel || !badge || !list || !emptyState) return;
 
   const countEndpoint = container.dataset.countEndpoint || "/api/notifications/unread-count";
   const listEndpoint = container.dataset.listEndpoint || "/api/notifications/list";
   const markReadEndpoint = container.dataset.markReadEndpoint || "/api/notifications/mark-read";
   const pollInterval = Number(container.dataset.pollInterval || 30000);
-
-  if (!toggle || !panel || !badge || !list || !emptyState) return;
 
   const getUnreadCount = (payload) => {
     const raw = payload?.count ?? payload?.unread_count ?? 0;
@@ -46,8 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const openPanel = () => {
     panel.classList.remove("hidden");
     toggle.setAttribute("aria-expanded", "true");
-    fetchNotifications();
-    updateNotificationBadge();
   };
 
   const updateNotificationBadge = async () => {
@@ -56,7 +50,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!response.ok) return;
       const payload = await response.json();
       const unreadCount = getUnreadCount(payload);
-      console.log("notifications count ricevuto:", unreadCount);
       setBadge(unreadCount);
       setMarkAllState(unreadCount > 0);
     } catch (_error) {
@@ -67,16 +60,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const renderNotifications = (payload) => {
     const notifications = payload?.notifications || [];
     const unreadCount = getUnreadCount(payload);
+
     setBadge(unreadCount);
     setMarkAllState(unreadCount > 0);
-
     list.innerHTML = "";
+
     if (!notifications.length) {
+      emptyState.textContent = "Nessuna notifica";
       emptyState.classList.remove("is-hidden");
       return;
     }
 
     emptyState.classList.add("is-hidden");
+
     notifications.forEach((notification) => {
       const item = document.createElement("li");
       item.className = "notifications-panel__item";
@@ -90,6 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
       link.addEventListener("click", async (event) => {
         if (!notification.link_url) event.preventDefault();
         if (notification.read) return;
+
         try {
           const response = await fetch(markReadEndpoint, {
             method: "POST",
@@ -98,6 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
             body: JSON.stringify({ notification_id: notification.id }),
           });
           if (!response.ok) return;
+
           const markPayload = await response.json();
           const unreadCountAfterMark = getUnreadCount(markPayload);
           notification.read = true;
@@ -120,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  const fetchNotifications = async () => {
+  const loadNotificationsList = async () => {
     try {
       const response = await fetch(listEndpoint, { credentials: "same-origin" });
       if (!response.ok) return;
@@ -134,11 +132,15 @@ document.addEventListener("DOMContentLoaded", () => {
   toggle.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+
     if (isPanelOpen()) {
       closePanel();
       return;
     }
+
     openPanel();
+    loadNotificationsList();
+    updateNotificationBadge();
   });
 
   panel.addEventListener("click", (event) => {
@@ -150,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closePanel();
+    if (event.key === "Escape" && isPanelOpen()) closePanel();
   });
 
   if (markAllButton) {
@@ -165,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         if (!response.ok) return;
         await response.json();
-        fetchNotifications();
+        loadNotificationsList();
         updateNotificationBadge();
       } catch (_error) {
         // silent fail
@@ -175,6 +177,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
   closePanel();
   updateNotificationBadge();
-  fetchNotifications();
   if (pollInterval > 0) setInterval(updateNotificationBadge, pollInterval);
 });
