@@ -6,6 +6,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const notificationCount = document.getElementById("notificationCount");
   if (!toggle || !panel || !notificationCount) return;
 
+  const isOpen = () => !panel.classList.contains("hidden");
+
+  const openPanel = () => {
+    panel.classList.remove("hidden");
+    panel.classList.add("open");
+    toggle.setAttribute("aria-expanded", "true");
+  };
+
+  const closePanel = () => {
+    panel.classList.add("hidden");
+    panel.classList.remove("open");
+    toggle.setAttribute("aria-expanded", "false");
+  };
+
   const updateNotificationCount = async () => {
     try {
       const response = await fetch("/api/notifications/unread-count", { credentials: "same-origin" });
@@ -20,9 +34,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  toggle.addEventListener("click", () => {
-    console.log("toggle clicked");
-    panel.classList.toggle("hidden");
+  toggle.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isOpen()) {
+      closePanel();
+    } else {
+      openPanel();
+    }
+  });
+
+  panel.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+
+  document.addEventListener("click", () => {
+    if (isOpen()) closePanel();
   });
 
   updateNotificationCount();
