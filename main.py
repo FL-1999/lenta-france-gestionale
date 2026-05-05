@@ -3126,6 +3126,8 @@ def manager_site_task_complete(
             raise HTTPException(status_code=404, detail="Task non trovato")
         task.status = SiteTaskStatusEnum.completato
         task.completed = True
+        task.completed_at = datetime.utcnow()
+        task.completed_by_id = current_user.id
         task.updated_by_id = current_user.id
         _normalize_task_completion(task, current_user.id)
         db.add(task)
@@ -3372,7 +3374,17 @@ def manager_site_tasks_history(
             SiteTask.updated_at.desc(),
         ).all()
 
-        completer_ids = {task.completed_by_id for task in completed_tasks if task.completed_by_id}
+        completer_rows = (
+            db.query(SiteTask.completed_by_id)
+            .filter(
+                SiteTask.site_id.in_(site_ids),
+                _site_task_completed_clause(),
+                SiteTask.completed_by_id.isnot(None),
+            )
+            .distinct()
+            .all()
+        )
+        completer_ids = {row[0] for row in completer_rows if row[0]}
         completers = (
             db.query(User)
             .filter(User.id.in_(completer_ids))
