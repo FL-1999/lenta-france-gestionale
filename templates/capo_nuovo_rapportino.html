@@ -73,9 +73,12 @@
                     </div>
                     <div class="form-group" style="margin-top: 1rem;">
                         <label class="form-label">Personale presente</label>
-                        <div id="worker-warning-summary" class="worker-warning-summary" style="display:none;">⚠️ Ci sono persone con giornata non compilata.</div>
-                        <div id="workers-container"></div>
-                        <p class="form-help">La prima riga è il caposquadra autenticato ed è inclusa automaticamente nel totale. Per ogni persona indica ore e stato giornata; eventuali mancanze vengono evidenziate prima del salvataggio.</p>
+                        <div id="worker-warning-summary" class="worker-warning-summary" style="display:none;" aria-live="polite">
+                            <strong>Giornata non compilata</strong>
+                            <span>Completa ore e stato giornata per le righe evidenziate.</span>
+                        </div>
+                        <div id="workers-container" class="workers-container"></div>
+                        <p class="form-help">La prima riga è il caposquadra autenticato ed è inclusa automaticamente nel totale. Le ore partono da 8 di default per tutti e restano modificabili; eventuali mancanze vengono evidenziate prima del salvataggio.</p>
                     </div>
                 </section>
 
@@ -124,28 +127,36 @@
 </div>
 
 <style>
+.workers-container {
+    display: grid;
+    gap: 0.75rem;
+}
 .worker-row {
     display: grid;
-    grid-template-columns: minmax(180px, 2fr) minmax(120px, 0.8fr) minmax(150px, 1fr);
+    grid-template-columns: minmax(180px, 2fr) minmax(110px, 0.65fr) minmax(150px, 1fr);
     gap: 0.75rem;
     align-items: start;
-    margin-bottom: 0.75rem;
-    padding: 0.85rem;
-    border: 1px solid var(--border-color, #d7dde8);
-    border-radius: 0.8rem;
-    background: var(--card-bg, #fff);
+    padding: 0.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: var(--radius-md, 14px);
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.68), rgba(15, 23, 42, 0.46));
+    color: var(--color-text-main, #e5e7eb);
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22);
+    transition: border-color var(--anim-fast, 120ms) ease, box-shadow var(--anim-fast, 120ms) ease, background var(--anim-fast, 120ms) ease;
 }
 .worker-row--capo {
-    border-color: #8ab4ff;
-    background: #f4f8ff;
+    border-color: rgba(129, 140, 248, 0.55);
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.84), rgba(15, 23, 42, 0.58));
 }
 .worker-row--incomplete {
-    border-color: #dc3545;
-    box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.18);
+    border-color: rgba(245, 158, 11, 0.72);
+    background: linear-gradient(180deg, rgba(120, 53, 15, 0.22), rgba(15, 23, 42, 0.62));
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.22), 0 10px 24px rgba(2, 6, 23, 0.24);
 }
-.worker-row--incomplete .worker-hours:invalid,
-.worker-row--incomplete .worker-day-type:invalid {
-    border-color: #dc3545;
+.worker-row--incomplete .worker-hours.is-missing,
+.worker-row--incomplete .worker-day-type.is-missing {
+    border-color: rgba(251, 146, 60, 0.9);
+    box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.28);
 }
 .worker-person-label {
     min-height: 2.45rem;
@@ -153,34 +164,92 @@
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
+    color: var(--color-text-strong, #f9fafb);
 }
 .worker-badge {
     display: inline-flex;
     align-items: center;
-    border-radius: 999px;
-    padding: 0.15rem 0.55rem;
-    background: #0d6efd;
-    color: #fff;
+    border-radius: var(--radius-pill, 999px);
+    padding: 0.18rem 0.6rem;
+    background: rgba(99, 102, 241, 0.24);
+    border: 1px solid rgba(129, 140, 248, 0.44);
+    color: #e0e7ff;
     font-size: 0.78rem;
     font-weight: 700;
 }
 .worker-note {
     grid-column: 1 / span 3;
 }
-.worker-incomplete-message,
-.worker-warning-summary {
-    color: #b02a37;
+.worker-row .form-control,
+.worker-row .form-select {
+    background: rgba(2, 6, 23, 0.58);
+    border-color: rgba(148, 163, 184, 0.30);
+    color: var(--color-text-main, #e5e7eb);
+}
+.worker-row .form-control::placeholder {
+    color: rgba(203, 213, 225, 0.58);
+}
+.worker-incomplete-message {
+    grid-column: 1 / span 3;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: fit-content;
+    border-radius: var(--radius-pill, 999px);
+    padding: 0.28rem 0.65rem;
+    border: 1px solid rgba(245, 158, 11, 0.36);
+    background: rgba(245, 158, 11, 0.12);
+    color: #fdba74;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
 }
 .worker-warning-summary {
     margin: 0.35rem 0 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: var(--radius-md, 14px);
+    border: 1px solid rgba(245, 158, 11, 0.44);
+    background: rgba(120, 53, 15, 0.18);
+    color: #fed7aa;
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.18);
+}
+.worker-warning-summary strong,
+.worker-warning-summary span {
+    display: block;
+}
+.worker-warning-summary span {
+    margin-top: 0.2rem;
+    color: var(--color-text-subtle, #c3cfdd);
+    font-size: 0.9rem;
+}
+:root[data-theme="light"] .worker-row {
+    background: rgba(255, 250, 240, 0.86);
+    color: var(--color-text-main, #1f2937);
+}
+:root[data-theme="light"] .worker-row--capo {
+    background: rgba(238, 242, 255, 0.92);
+}
+:root[data-theme="light"] .worker-row--incomplete {
+    background: rgba(255, 247, 237, 0.94);
+}
+:root[data-theme="light"] .worker-row .form-control,
+:root[data-theme="light"] .worker-row .form-select {
+    background: rgba(255, 250, 240, 0.96);
+    color: var(--color-text-main, #1f2937);
+}
+:root[data-theme="light"] .worker-warning-summary {
+    background: rgba(255, 247, 237, 0.96);
+    color: #9a3412;
+}
+:root[data-theme="light"] .worker-incomplete-message {
+    background: rgba(255, 247, 237, 0.96);
+    color: #9a3412;
 }
 @media (max-width: 760px) {
     .worker-row {
         grid-template-columns: 1fr;
     }
-    .worker-note {
+    .worker-note,
+    .worker-incomplete-message {
         grid-column: auto;
     }
 }
@@ -305,6 +374,9 @@ const WORKERS = [
     { id: {{ operaio.id }}, label: {{ operaio.label|tojson }} },
     {% endfor %}
 ];
+const DEFAULT_WORKER_HOURS = "8";
+let totalHoursEditedManually = false;
+
 const DAY_TYPES = [
     { value: "WORK", label: "Lavoro" },
     { value: "ABSENT", label: "Assente" },
@@ -343,17 +415,28 @@ function getDayTypeOptions(selectedValue) {
     return base.join("");
 }
 
-function readPreviousRows() {
-    return Array.from(workersContainer.querySelectorAll(".worker-row:not(.worker-row--capo)")).map((row) => ({
+function readRowValues(row) {
+    if (!row) {
+        return {};
+    }
+    return {
         personale_id: row.querySelector(".worker-select")?.value || "",
         role_label: row.querySelector(".worker-role")?.value || "",
         hours_worked: row.querySelector(".worker-hours")?.value || "",
         day_type: row.querySelector(".worker-day-type")?.value || "",
         note: row.querySelector(".worker-note")?.value || "",
-    }));
+    };
 }
 
-function buildCapoRow() {
+function readPreviousRows() {
+    return Array.from(workersContainer.querySelectorAll(".worker-row:not(.worker-row--capo)")).map(readRowValues);
+}
+
+function readPreviousCapoRow() {
+    return readRowValues(workersContainer.querySelector(".worker-row--capo"));
+}
+
+function buildCapoRow(preserved = {}) {
     const row = document.createElement("div");
     row.className = "worker-row worker-row--capo";
     row.dataset.personaleId = String(CAPOSQUADRA.id);
@@ -366,9 +449,9 @@ function buildCapoRow() {
             <input type="hidden" class="worker-select" value="${CAPOSQUADRA.id}" />
             <input type="hidden" class="worker-role" value="Caposquadra (tu)" />
         </div>
-        <input type="number" class="form-control worker-hours" min="0" step="0.5" placeholder="Ore" aria-label="Ore caposquadra" />
-        <select class="form-control worker-day-type" aria-label="Stato giornata caposquadra">${getDayTypeOptions("")}</select>
-        <input type="text" class="form-control worker-note" placeholder="Note caposquadra (opzionale)" />
+        <input type="number" class="form-control worker-hours" min="0" step="0.5" placeholder="Ore" aria-label="Ore caposquadra" value="${escapeHtml(preserved.hours_worked || DEFAULT_WORKER_HOURS)}" />
+        <select class="form-control worker-day-type" aria-label="Stato giornata caposquadra">${getDayTypeOptions(preserved.day_type || "")}</select>
+        <input type="text" class="form-control worker-note" placeholder="Note caposquadra (opzionale)" value="${escapeHtml(preserved.note || "")}" />
         <div class="worker-incomplete-message" style="display:none;">⚠️ giornata non compilata</div>
     `;
     return row;
@@ -379,13 +462,12 @@ function buildWorkerRow(preserved) {
     row.className = "worker-row";
     row.innerHTML = `
         <select class="form-control worker-select" name="worker_personale_id" required>${getWorkerOptions(preserved.personale_id)}</select>
-        <input type="number" class="form-control worker-hours" min="0" step="0.5" placeholder="Ore" aria-label="Ore operaio" />
+        <input type="number" class="form-control worker-hours" min="0" step="0.5" placeholder="Ore" aria-label="Ore operaio" value="${escapeHtml(preserved.hours_worked || DEFAULT_WORKER_HOURS)}" />
         <select class="form-control worker-day-type" aria-label="Stato giornata operaio">${getDayTypeOptions(preserved.day_type)}</select>
         <input type="text" name="worker_role_label" class="form-control worker-role" placeholder="Mansione (opzionale)" value="${escapeHtml(preserved.role_label || "")}" />
         <input type="text" name="worker_note" class="form-control worker-note" placeholder="Note operaio (opzionale)" value="${escapeHtml(preserved.note || "")}" />
         <div class="worker-incomplete-message" style="display:none;">⚠️ giornata non compilata</div>
     `;
-    row.querySelector(".worker-hours").value = preserved.hours_worked || "";
     return row;
 }
 
@@ -396,32 +478,59 @@ function syncWorkerTotal() {
 
 function renderWorkerRows(count) {
     const safeCount = Math.max(0, Number(count) || 0);
+    const previousCapo = readPreviousCapoRow();
     const previous = readPreviousRows();
     workersContainer.innerHTML = "";
-    workersContainer.appendChild(buildCapoRow());
+    workersContainer.appendChild(buildCapoRow(previousCapo));
     for (let i = 0; i < safeCount; i += 1) {
         workersContainer.appendChild(buildWorkerRow(previous[i] || {}));
     }
     validateIncompleteDays();
 }
 
+function calculateWorkersHoursTotal() {
+    return Array.from(workersContainer.querySelectorAll(".worker-hours"))
+        .reduce((total, input) => total + (Number(input.value) || 0), 0);
+}
+
+function syncTotalHoursFromWorkers(force = false) {
+    const totalHoursInput = document.getElementById("ore_totali");
+    if (!totalHoursInput) {
+        return;
+    }
+    const computedTotal = calculateWorkersHoursTotal();
+    if (force || !totalHoursEditedManually || totalHoursInput.value === "") {
+        totalHoursInput.value = computedTotal ? String(computedTotal) : "";
+    }
+}
+
 function validateIncompleteDays() {
     const rows = Array.from(workersContainer.querySelectorAll(".worker-row"));
     const incompleteRows = [];
     for (const row of rows) {
-        const hoursValue = row.querySelector(".worker-hours")?.value;
-        const dayTypeValue = row.querySelector(".worker-day-type")?.value;
-        const isIncomplete = hoursValue === "" || dayTypeValue === "";
+        const hoursInput = row.querySelector(".worker-hours");
+        const dayTypeInput = row.querySelector(".worker-day-type");
+        const hoursValue = hoursInput?.value || "";
+        const dayTypeValue = dayTypeInput?.value || "";
+        const missingHours = hoursValue === "";
+        const missingDayType = dayTypeValue === "";
+        const isIncomplete = missingHours || missingDayType;
         row.classList.toggle("worker-row--incomplete", isIncomplete);
+        hoursInput?.classList.toggle("is-missing", missingHours);
+        dayTypeInput?.classList.toggle("is-missing", missingDayType);
         const message = row.querySelector(".worker-incomplete-message");
         if (message) {
-            message.style.display = isIncomplete ? "block" : "none";
+            message.style.display = isIncomplete ? "flex" : "none";
+            message.textContent = missingHours && missingDayType
+                ? "⚠️ giornata non compilata: mancano ore e stato"
+                : (missingHours ? "⚠️ giornata non compilata: mancano ore" : "⚠️ giornata non compilata: manca lo stato");
         }
         if (isIncomplete) {
             incompleteRows.push(row);
         }
     }
     warningSummary.style.display = incompleteRows.length ? "block" : "none";
+    syncTotalHoursFromWorkers();
     return incompleteRows;
 }
 
@@ -460,9 +569,13 @@ function refreshWorkerRows() {
     renderWorkerRows(extraWorkerCountInput.value);
 }
 
+document.getElementById("ore_totali").addEventListener("input", () => {
+    totalHoursEditedManually = true;
+});
 extraWorkerCountInput.addEventListener("input", refreshWorkerRows);
 workersContainer.addEventListener("input", validateIncompleteDays);
 workersContainer.addEventListener("change", validateIncompleteDays);
 refreshWorkerRows();
+syncTotalHoursFromWorkers(true);
 </script>
 {% endblock %}
