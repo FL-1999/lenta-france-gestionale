@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!container || !toggle || !panel || !badge || !list) return;
 
   const countEndpoint = container.dataset.countEndpoint || "/api/notifications/unread-count";
-  const listEndpoint = container.dataset.listEndpoint || "/api/notifications/recent";
+  const listEndpoint = "/api/notifications/recent";
   const markReadEndpoint = container.dataset.markReadEndpoint || "/api/notifications/mark-read";
   const pollInterval = Number(container.dataset.pollInterval || 30000);
 
@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const renderNotifications = (payload) => {
-    const notifications = payload?.notifications || [];
+    const notifications = Array.isArray(payload?.notifications) ? payload.notifications : [];
     list.innerHTML = "";
 
     if (!notifications.length) {
@@ -108,7 +108,19 @@ document.addEventListener("DOMContentLoaded", () => {
         list.innerHTML = '<div class="notification-empty">Errore caricamento notifiche</div>';
         return;
       }
-      const payload = await response.json();
+      let payload;
+      try {
+        payload = await response.json();
+      } catch (_parseError) {
+        list.innerHTML = '<div class="notification-empty">Errore caricamento notifiche</div>';
+        return;
+      }
+
+      if (!payload || typeof payload !== "object" || !Array.isArray(payload.notifications)) {
+        list.innerHTML = '<div class="notification-empty">Errore caricamento notifiche</div>';
+        return;
+      }
+
       renderNotifications(payload);
       updateNotificationBadge();
     } catch (_error) {
