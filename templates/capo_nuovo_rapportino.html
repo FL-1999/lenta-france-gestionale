@@ -49,7 +49,7 @@
                                 <option value="">Seleziona cantiere</option>
                                 {% for cantiere in cantieri %}
                                 <option value="{{ cantiere.id }}" data-site-name="{{ cantiere.name }}">
-                                    {{ cantiere.code or ('#' ~ cantiere.id) }} - {{ cantiere.name }}
+                                    #{{ cantiere.id }} - {{ cantiere.name }}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -302,7 +302,7 @@ const CAPOSQUADRA = {
 };
 const WORKERS = [
     {% for operaio in operai_attivi %}
-    { id: {{ operaio.id }}, label: {{ (operaio.cognome ~ " " ~ operaio.nome)|tojson }} },
+    { id: {{ operaio.id }}, label: {{ operaio.label|tojson }} },
     {% endfor %}
 ];
 const DAY_TYPES = [

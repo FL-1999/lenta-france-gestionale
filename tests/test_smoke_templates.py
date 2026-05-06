@@ -167,6 +167,25 @@ def test_cantieri_map_data_is_json_serializable() -> None:
     assert '"name": "Cantiere Lyon"' in serialized
 
 
+def test_capo_nuovo_rapportino_renders_with_safe_dicts() -> None:
+    output = render_template(
+        "capo_nuovo_rapportino.html",
+        {
+            "request": build_request("/capo/rapportini/nuovo"),
+            "user": build_capo_user(),
+            "cantieri": [{"id": 7, "name": "Cantiere Safe"}],
+            "operai_attivi": [{"id": 11, "label": "Rossi Mario"}],
+            "caposquadra_personale": {"id": 3},
+            "caposquadra_label": "Luigi Bianchi",
+            "nuove_richieste_count": 0,
+        },
+    )
+
+    assert 'value="7"' in output
+    assert 'data-site-name="Cantiere Safe"' in output
+    assert 'label: "Rossi Mario"' in output
+
+
 def test_new_trip_form_renders_with_unified_locations() -> None:
     locations = [
         SimpleNamespace(value="site:1", label="[Cantiere] Milano Centro"),
