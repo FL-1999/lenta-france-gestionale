@@ -665,6 +665,19 @@ def _validate_fiche_geometria(
         )
 
 
+def _validate_metri_cubi_gettati(metri_cubi_gettati: float | None) -> None:
+    if metri_cubi_gettati is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Il campo Metri cubi gettati è obbligatorio.",
+        )
+    if metri_cubi_gettati < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Il campo Metri cubi gettati non può essere negativo.",
+        )
+
+
 def _build_fiche_form_data(
     cantiere_id: int | str | None = None,
     macchinario_id: int | str | None = None,
@@ -1438,7 +1451,6 @@ async def manager_fiche_create(
     ore_lavorate: float = Form(...),
     note: str | None = Form(None),
     tipologia_scavo: str | None = Form(None),
-    stratigrafia: str | None = Form(None),
     materiale: str | None = Form(None),
     profondita_totale: float | None = Form(None),
     diametro_palo_cm: float | None = Form(None),
@@ -1467,6 +1479,7 @@ async def manager_fiche_create(
             altezza_pannello=altezza_pannello,
             profondita_totale=profondita_totale,
         )
+        _validate_metri_cubi_gettati(metri_cubi_gettati)
 
         db = SessionLocal()
         try:
@@ -1491,7 +1504,6 @@ async def manager_fiche_create(
                 hours=ore_lavorate,
                 notes=note,
                 tipologia_scavo=tipologia_scavo or None,
-                stratigrafia=stratigrafia or None,
                 materiale=materiale or None,
                 profondita_totale=profondita_totale,
                 diametro_palo=diametro_value_m,
@@ -1536,7 +1548,6 @@ async def manager_fiche_create(
             ore_lavorate=ore_lavorate,
             note=note,
             tipologia_scavo=tipologia_scavo,
-            stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
             diametro_palo=diametro_value_m,
@@ -1575,7 +1586,6 @@ async def manager_fiche_create(
             ore_lavorate=ore_lavorate,
             note=note,
             tipologia_scavo=tipologia_scavo,
-            stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
             diametro_palo=diametro_value_m,
@@ -4239,7 +4249,6 @@ async def capo_fiche_nuova_post(
     ore_lavorate: float = Form(...),
     note: str | None = Form(None),
     tipologia_scavo: str | None = Form(None),
-    stratigrafia: str | None = Form(None),
     materiale: str | None = Form(None),
     profondita_totale: float | None = Form(None),
     diametro_palo_cm: float | None = Form(None),
@@ -4268,6 +4277,7 @@ async def capo_fiche_nuova_post(
             altezza_pannello=altezza_pannello,
             profondita_totale=profondita_totale,
         )
+        _validate_metri_cubi_gettati(metri_cubi_gettati)
 
         db = SessionLocal()
         try:
@@ -4294,7 +4304,6 @@ async def capo_fiche_nuova_post(
                 hours=ore_lavorate,
                 notes=note or None,
                 tipologia_scavo=tipologia_scavo or None,
-                stratigrafia=stratigrafia or None,
                 materiale=materiale or None,
                 profondita_totale=profondita_totale,
                 diametro_palo=diametro_value_m,
@@ -4338,7 +4347,6 @@ async def capo_fiche_nuova_post(
             ore_lavorate=ore_lavorate,
             note=note,
             tipologia_scavo=tipologia_scavo,
-            stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
             diametro_palo=diametro_value_m,
@@ -4376,7 +4384,6 @@ async def capo_fiche_nuova_post(
             ore_lavorate=ore_lavorate,
             note=note,
             tipologia_scavo=tipologia_scavo,
-            stratigrafia=stratigrafia,
             materiale=materiale,
             profondita_totale=profondita_totale,
             diametro_palo=diametro_value_m,

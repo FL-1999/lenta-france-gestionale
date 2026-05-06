@@ -136,7 +136,6 @@ def create_fiche(
         hours=fiche_in.hours,
         notes=fiche_in.notes,
         tipologia_scavo=fiche_in.tipologia_scavo,
-        stratigrafia=fiche_in.stratigrafia,
         materiale=fiche_in.materiale,
         profondita_totale=fiche_in.profondita_totale,
         diametro_palo=fiche_in.diametro_palo,
