@@ -4130,9 +4130,12 @@ def pagina_nuovo_rapportino_capo(
     db = SessionLocal()
     try:
         cantieri = _get_capo_assigned_sites(db, current_user)
+        caposquadra_personale = reports.ensure_capo_personale(db, current_user)
+        db.commit()
         operai_attivi = (
             db.query(Personale)
             .filter(Personale.attivo.is_(True))
+            .filter(Personale.id != caposquadra_personale.id)
             .order_by(Personale.cognome, Personale.nome)
             .all()
         )
@@ -4147,6 +4150,8 @@ def pagina_nuovo_rapportino_capo(
             current_user,
             cantieri=cantieri,
             operai_attivi=operai_attivi,
+            caposquadra_personale=caposquadra_personale,
+            caposquadra_label=(current_user.full_name or current_user.email),
         ),
     )
 
@@ -4177,8 +4182,25 @@ def pagina_nuovo_rapportino_capo_post(
         if not site:
             raise HTTPException(status_code=422, detail="Cantiere non valido")
 
-        workers = []
+        caposquadra_personale = reports.ensure_capo_personale(db, current_user)
+        submitted_ids = [caposquadra_personale.id, *worker_personale_id]
+        numero_operai = len(dict.fromkeys(submitted_ids))
+        hours_per_worker = (ore_totali / numero_operai) if numero_operai > 0 else 0.0
+        workers = [
+            ReportWorker(
+                personale_id=caposquadra_personale.id,
+                site_id=site.id,
+                attendance_date=data,
+                role_label="Caposquadra (tu)",
+                hours_worked=hours_per_worker,
+                day_type="WORK",
+            )
+        ]
+        seen_worker_ids = {caposquadra_personale.id}
         for idx, personale_id in enumerate(worker_personale_id):
+            if personale_id in seen_worker_ids:
+                continue
+            seen_worker_ids.add(personale_id)
             workers.append(
                 ReportWorker(
                     personale_id=personale_id,
@@ -4186,8 +4208,8 @@ def pagina_nuovo_rapportino_capo_post(
                     attendance_date=data,
                     role_label=(worker_role_label[idx] if idx < len(worker_role_label) and worker_role_label[idx] else None),
                     note=(worker_note[idx] if idx < len(worker_note) and worker_note[idx] else None),
-                    hours_worked=(ore_totali / numero_operai) if numero_operai > 0 else 0.0,
-                    day_type="FULL",
+                    hours_worked=hours_per_worker,
+                    day_type="WORK",
                 )
             )
 

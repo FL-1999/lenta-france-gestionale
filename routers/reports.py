@@ -4,7 +4,8 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_api, get_current_active_user_html
@@ -60,18 +61,12 @@ class ReportCreate(ReportBase):
     site_id: Optional[int] = None
     workers: List["ReportWorkerIn"] = Field(default_factory=list)
 
-    @model_validator(mode="after")
-    def validate_workers_count(self) -> "ReportCreate":
-        if self.workers_count != len(self.workers):
-            raise ValueError("Numero operai non coerente con elenco nominativo.")
-        return self
-
-
 class ReportWorkerIn(BaseModel):
     personale_id: int
     role_label: Optional[str] = None
     note: Optional[str] = None
-    day_type: str = Field(default="FULL")
+    hours_worked: Optional[float] = Field(default=None, ge=0)
+    day_type: Optional[str] = None
 
 
 class ReportOut(ReportBase):
@@ -96,6 +91,73 @@ class ReportWorkerOut(BaseModel):
 
 ReportCreate.model_rebuild()
 ReportOut.model_rebuild()
+
+def _split_user_full_name(user: User) -> tuple[str, str]:
+    display_name = (user.full_name or user.email.split("@", 1)[0]).strip()
+    parts = display_name.split()
+    if not parts:
+        return "Caposquadra", user.email
+    if len(parts) == 1:
+        return parts[0], ""
+    return parts[0], " ".join(parts[1:])
+
+
+def ensure_capo_personale(db: Session, capo: User) -> Personale:
+    """Restituisce/crea l'anagrafica personale collegata al caposquadra autenticato."""
+    email = (capo.email or "").strip()
+    personale = None
+    if email:
+        personale = (
+            db.query(Personale)
+            .filter(func.lower(Personale.email) == email.lower())
+            .first()
+        )
+    if personale:
+        if not personale.attivo:
+            personale.attivo = True
+            db.add(personale)
+            db.flush()
+        return personale
+
+    nome, cognome = _split_user_full_name(capo)
+    personale = Personale(
+        nome=nome,
+        cognome=cognome,
+        ruolo="Caposquadra",
+        email=email or None,
+        attivo=True,
+        note="Creato automaticamente per includere il caposquadra nei rapportini giornalieri.",
+    )
+    db.add(personale)
+    db.flush()
+    return personale
+
+
+def _with_auto_capo_worker(
+    db: Session,
+    current_user: User,
+    report_in: ReportCreate,
+) -> tuple[list[ReportWorkerIn], int]:
+    workers = list(report_in.workers)
+    if current_user.role == RoleEnum.caposquadra:
+        capo_personale = ensure_capo_personale(db, current_user)
+        capo_worker = next(
+            (worker for worker in workers if worker.personale_id == capo_personale.id),
+            None,
+        )
+        if capo_worker is None:
+            workers.insert(
+                0,
+                ReportWorkerIn(
+                    personale_id=capo_personale.id,
+                    role_label="Caposquadra (tu)",
+                    day_type=None,
+                ),
+            )
+        else:
+            capo_worker.role_label = capo_worker.role_label or "Caposquadra (tu)"
+            workers = [capo_worker, *[worker for worker in workers if worker.personale_id != capo_personale.id]]
+    return workers, len(workers)
 
 
 def _validate_and_build_report_workers(
@@ -159,8 +221,8 @@ def _validate_and_build_report_workers(
             attendance_date=report_date,
             role_label=worker.role_label,
             note=worker.note,
-            hours_worked=derived_hours_per_worker,
-            day_type=worker.day_type or "FULL",
+            hours_worked=(worker.hours_worked if worker.hours_worked is not None else derived_hours_per_worker),
+            day_type=(worker.day_type or "WORK"),
         )
         for worker in workers_in
     ]
@@ -193,7 +255,7 @@ def _sync_attendance_from_report(db: Session, report: Report) -> None:
                 personale_id=worker.personale_id,
                 attendance_date=report.date,
                 site_id=report.site_id,
-                status="WORK",
+                status=worker.day_type or "WORK",
                 hours=worker.hours_worked,
                 note=worker.note,
             )
@@ -201,7 +263,7 @@ def _sync_attendance_from_report(db: Session, report: Report) -> None:
             presenza.report_id = report.id
             presenza.attendance_date = report.date
             presenza.site_id = report.site_id
-            presenza.status = "WORK"
+            presenza.status = worker.day_type or "WORK"
             presenza.hours = worker.hours_worked
             presenza.note = worker.note
         db.add(presenza)
@@ -263,12 +325,14 @@ def create_report(
             detail="Non hai i permessi per creare un rapportino.",
         )
 
+    workers_in, workers_count = _with_auto_capo_worker(db, current_user, report_in)
+
     db_report = Report(
         date=report_in.date,
         site_id=report_in.site_id,
         site_name_or_code=report_in.site_name_or_code,
         total_hours=report_in.total_hours,
-        workers_count=report_in.workers_count,
+        workers_count=workers_count,
         machines_used=report_in.machines_used,
         activities=report_in.activities,
         notes=report_in.notes,
@@ -279,8 +343,8 @@ def create_report(
         report_date=report_in.date,
         site_id=report_in.site_id,
         total_hours=report_in.total_hours,
-        workers_count=report_in.workers_count,
-        workers_in=report_in.workers,
+        workers_count=workers_count,
+        workers_in=workers_in,
         report_id=None,
     )
 
@@ -315,11 +379,13 @@ def update_report(
     if not is_owner and current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato.")
 
+    workers_in, workers_count = _with_auto_capo_worker(db, current_user, report_in)
+
     report.date = report_in.date
     report.site_id = report_in.site_id
     report.site_name_or_code = report_in.site_name_or_code
     report.total_hours = report_in.total_hours
-    report.workers_count = report_in.workers_count
+    report.workers_count = workers_count
     report.machines_used = report_in.machines_used
     report.activities = report_in.activities
     report.notes = report_in.notes
@@ -328,8 +394,8 @@ def update_report(
         report_date=report_in.date,
         site_id=report_in.site_id,
         total_hours=report_in.total_hours,
-        workers_count=report_in.workers_count,
-        workers_in=report_in.workers,
+        workers_count=workers_count,
+        workers_in=workers_in,
         report_id=report.id,
     )
     db.add(report)
