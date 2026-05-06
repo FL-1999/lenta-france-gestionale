@@ -2617,8 +2617,15 @@ body {
 }
 
 .form-card {
+    width: 100%;
     max-width: 1000px;
     margin: 0 auto;
+}
+
+.form-section-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
 .form-card .card-body {
@@ -3073,9 +3080,88 @@ body {
     color: var(--color-text-strong);
 }
 
+
+.form-section-wrapper--fiche-geometry {
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+
+.fiche-geometry-card {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: var(--space-5);
+}
+
+.fiche-geometry-card .card-body {
+    align-items: stretch;
+    gap: var(--space-4);
+}
+
+.fiche-geometry-card .element-drawing-label,
+.fiche-geometry-card .text-muted,
+.fiche-geometry-card .geometry-note {
+    text-align: left;
+}
+
+.fiche-geometry-card svg {
+    flex: 0 0 auto;
+}
+
+.fiche-geometry-card .geometry-section,
+.fiche-geometry-card .geometry-layout,
+.fiche-geometry-card .geometry-blocks,
+.fiche-geometry-card #geom-fields {
+    width: 100%;
+}
+
+.fiche-geometry-card #geom-fields,
+.fiche-geometry-card .geometry-blocks {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.fiche-geometry-card .geometry-section-header {
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.fiche-geometry-card .geometry-field,
+.fiche-geometry-card .geometry-field .form-label,
+.fiche-geometry-card .geometry-label {
+    width: 100%;
+    text-align: left;
+}
+
+.fiche-geometry-card .unit-input,
+.fiche-geometry-card .input-with-unit {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 56px;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+}
+
+.fiche-geometry-card .unit-input .form-control,
+.fiche-geometry-card .input-with-unit .form-control,
+.fiche-geometry-card #larghezza_pannello {
+    width: 100%;
+    min-width: 0;
+}
+
+.fiche-geometry-card .unit-badge {
+    width: 56px;
+    min-width: 56px;
+    justify-self: end;
+}
+
 @media (max-width: 640px) {
-    .fiche-sketch {
+    .fiche-sketch,
+    .fiche-geometry-card {
         max-width: 100%;
+    }
+
+    .fiche-geometry-card {
+        padding: var(--space-4);
     }
     /* FICHE: campo profondità totale (metri scavati) più evidente */
 label.form-label[for="profondita_totale"]{
