@@ -5,7 +5,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_api, get_current_active_user_html
@@ -24,6 +23,7 @@ from models import (
 from notifications import notify_new_report
 from permissions import has_perm
 from template_context import build_template_context, register_manager_badges
+from services.personale_profiles import ensure_user_personale_profile
 
 router = APIRouter(
     prefix="",
@@ -92,44 +92,19 @@ class ReportWorkerOut(BaseModel):
 ReportCreate.model_rebuild()
 ReportOut.model_rebuild()
 
-def _split_user_full_name(user: User) -> tuple[str, str]:
-    display_name = (user.full_name or user.email.split("@", 1)[0]).strip()
-    parts = display_name.split()
-    if not parts:
-        return "Caposquadra", user.email
-    if len(parts) == 1:
-        return parts[0], ""
-    return parts[0], " ".join(parts[1:])
-
-
 def ensure_capo_personale(db: Session, capo: User) -> Personale:
     """Restituisce/crea l'anagrafica personale collegata al caposquadra autenticato."""
-    email = (capo.email or "").strip()
-    personale = None
-    if email:
-        personale = (
-            db.query(Personale)
-            .filter(func.lower(Personale.email) == email.lower())
-            .first()
-        )
-    if personale:
-        if not personale.attivo:
-            personale.attivo = True
-            db.add(personale)
-            db.flush()
-        return personale
-
-    nome, cognome = _split_user_full_name(capo)
-    personale = Personale(
-        nome=nome,
-        cognome=cognome,
-        ruolo="Caposquadra",
-        email=email or None,
-        attivo=True,
-        note="Creato automaticamente per includere il caposquadra nei rapportini giornalieri.",
+    personale = ensure_user_personale_profile(
+        db,
+        capo,
+        roles=[RoleEnum.caposquadra],
+        create_personale_profile=True,
     )
-    db.add(personale)
-    db.flush()
+    if personale is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Impossibile creare o associare il caposquadra al personale.",
+        )
     return personale
 
 

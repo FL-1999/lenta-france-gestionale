@@ -77,6 +77,7 @@ SITES_COLUMNS: tuple[str, ...] = (
 )
 
 NOTIFICATIONS_COLUMNS: tuple[str, ...] = ("is_read BOOLEAN NOT NULL DEFAULT 0",)
+PERSONALE_COLUMNS: tuple[str, ...] = ("user_id INTEGER",)
 
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "veicoli": VEICOLI_COLUMNS,
@@ -89,6 +90,7 @@ UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "site_economic_entries": SITE_ECONOMIC_ENTRIES_COLUMNS,
     "sites": SITES_COLUMNS,
     "notifications": NOTIFICATIONS_COLUMNS,
+    "personale": PERSONALE_COLUMNS,
 }
 
 
@@ -238,6 +240,31 @@ def _migrate_legacy_roles(connection: Connection) -> None:
     logger.info("Legacy roles migrated to 'manager': %s", ", ".join(legacy_roles))
 
 
+def _ensure_personale_user_link_constraints(connection: Connection) -> None:
+    if not _table_exists(connection, "personale"):
+        logger.warning("Skipped personale user link indexes: table not found.")
+        return
+
+    existing_columns = _read_existing_columns(connection, "personale")
+    if "user_id" not in existing_columns:
+        logger.warning("Skipped personale user link indexes: user_id column not found.")
+        return
+
+    connection.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_personale_user_id_unique "
+            "ON personale(user_id) WHERE user_id IS NOT NULL"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_personale_email_lower "
+            "ON personale(lower(email)) WHERE email IS NOT NULL"
+        )
+    )
+    logger.info("Ensured personale user/email lookup indexes.")
+
+
 def _backfill_site_labor_weekend_flags(connection: Connection) -> None:
     if not _table_exists(connection, "site_labor_cost_entries"):
         logger.warning("Skipped site_labor_cost_entries backfill: table not found.")
@@ -303,6 +330,7 @@ def upgrade_db(engine: Engine) -> None:
         _seed_roles_table(connection)
         _migrate_legacy_roles(connection)
         _backfill_user_roles(connection)
+        _ensure_personale_user_link_constraints(connection)
 
 
 def check_db_schema(engine: Engine) -> dict[str, list[str]]:

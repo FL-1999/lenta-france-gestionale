@@ -894,6 +894,10 @@ class Personale(SQLModel, table=True):
     __tablename__ = "personale"
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, unique=True, index=True, nullable=True),
+    )
     nome: str
     cognome: str
     ruolo: Optional[str] = Field(
