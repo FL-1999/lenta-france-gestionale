@@ -30,6 +30,7 @@
             {% set selected_roles = form_roles or (user_obj.assigned_role_values if user_obj else []) %}
             {% set current_active_role = form_active_role or (user_obj.role.value if user_obj and user_obj.role else '') %}
             {% set current_switch_flag = form_can_switch_roles if form_can_switch_roles is not none else (user_obj.can_switch_roles if user_obj else False) %}
+            {% set current_personale_flag = form_create_personale_profile if form_create_personale_profile is not none else False %}
 
             <form method="post" class="form" action="{{ '/manager/utenti/nuovo' if mode == 'create' else '/manager/utenti/' + ((user_obj.id if user_obj else user_id) | string) + '/modifica' }}">
                 <div class="form-grid">
@@ -97,6 +98,14 @@
                     </div>
                 </div>
 
+                <div class="form-group form-group--checkbox">
+                    <label class="checkbox-option checkbox-option--single" for="create_personale_profile">
+                        <input id="create_personale_profile" type="checkbox" name="create_personale_profile" {% if current_personale_flag %}checked{% endif %}>
+                        <span>Crea/associa anche come personale</span>
+                    </label>
+                    <p class="form-help">Preselezionato solo per utenti con ruolo esclusivo caposquadra. Serve a far comparire la persona in Personale, Presenze, rapportini giornalieri e conteggi.</p>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Salva</button>
                     <a href="/manager/utenti" class="btn btn-secondary">Annulla</a>
@@ -111,6 +120,8 @@
     const roleCheckboxes = Array.from(document.querySelectorAll('input[name="roles"]'));
     const activeRoleSelect = document.getElementById('active_role');
     const switchRoleCheckbox = document.getElementById('can_switch_roles');
+    const personaleCheckbox = document.getElementById('create_personale_profile');
+    const isCreateMode = {{ 'true' if mode == 'create' else 'false' }};
     if (!roleCheckboxes.length || !activeRoleSelect) {
         return;
     }
@@ -133,6 +144,10 @@
             if (!canSwitch) {
                 switchRoleCheckbox.checked = false;
             }
+        }
+
+        if (personaleCheckbox && isCreateMode) {
+            personaleCheckbox.checked = selected.length === 1 && selected[0] === 'caposquadra';
         }
     }
 

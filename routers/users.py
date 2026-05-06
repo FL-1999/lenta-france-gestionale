@@ -8,6 +8,7 @@ from database import get_db
 from models import Role, RoleEnum, User, UserRole
 from permissions import get_user_roles, has_perm
 from auth import get_current_active_user, hash_password
+from services.personale_profiles import ensure_user_personale_profile
 
 router = APIRouter(
     prefix="/users",
@@ -38,6 +39,7 @@ class UserCreate(BaseModel):
     roles: list[RoleEnum]
     language: str | None = "it"
     can_switch_roles: bool = False
+    create_personale_profile: bool | None = None
 
 
 def _get_or_create_role(db: Session, role_name: RoleEnum) -> Role:
@@ -137,6 +139,12 @@ def create_user(
     db.flush()
     for role_name in dict.fromkeys(user_in.roles):
         db.add(UserRole(user=db_user, role=_get_or_create_role(db, role_name)))
+    ensure_user_personale_profile(
+        db,
+        db_user,
+        roles=list(dict.fromkeys(user_in.roles)),
+        create_personale_profile=user_in.create_personale_profile,
+    )
     db.commit()
     db.refresh(db_user)
     db.refresh(db_user, attribute_names=["user_roles"])

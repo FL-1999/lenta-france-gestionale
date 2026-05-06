@@ -87,6 +87,7 @@ from template_context import (
 )
 from permissions import get_active_role, get_user_roles, has_perm, user_has_role
 from notifications import notify_new_fiche, notify_new_site_task, notify_site_status_change
+from services.personale_profiles import ensure_user_personale_profile
 from audit_utils import log_audit_event
 from logging_config import configure_logging
 
@@ -1775,6 +1776,7 @@ async def manager_new_user_get(
             form_active_role="",
             form_language="",
             form_can_switch_roles=False,
+            form_create_personale_profile=None,
         ),
     )
 
@@ -1798,6 +1800,7 @@ async def manager_new_user_post(
     active_role_value = (form.get("active_role") or "").strip()
     language = (form.get("language") or "").strip() or None
     can_switch_roles = (form.get("can_switch_roles") or "").strip().lower() in {"1", "true", "on", "yes"}
+    create_personale_profile = (form.get("create_personale_profile") or "").strip().lower() in {"1", "true", "on", "yes"}
 
     def render_form(error_message: str, status_code: int = 400):
         return templates.TemplateResponse(
@@ -1818,6 +1821,7 @@ async def manager_new_user_post(
                 form_active_role=active_role_value,
                 form_language=language or "",
                 form_can_switch_roles=can_switch_roles,
+                form_create_personale_profile=create_personale_profile,
             ),
             status_code=status_code,
         )
@@ -1873,6 +1877,12 @@ async def manager_new_user_post(
         db.add(new_user)
         db.flush()
         _sync_user_roles(db, new_user, parsed_roles)
+        personale_profile = ensure_user_personale_profile(
+            db,
+            new_user,
+            roles=parsed_roles,
+            create_personale_profile=create_personale_profile,
+        )
         log_audit_event(
             db,
             current_user,
@@ -1884,6 +1894,7 @@ async def manager_new_user_post(
                 "roles": [role.value for role in parsed_roles],
                 "active_role": active_role.value,
                 "can_switch_roles": new_user.can_switch_roles,
+                "personale_id": personale_profile.id if personale_profile else None,
             },
         )
         db.commit()
@@ -1918,6 +1929,12 @@ async def manager_edit_user_get(
         )
         if not user_to_edit:
             raise HTTPException(status_code=404, detail="Utente non trovato")
+        has_personale_profile = (
+            db.query(Personale)
+            .filter(Personale.user_id == user_to_edit.id)
+            .first()
+            is not None
+        )
     finally:
         db.close()
 
@@ -1939,6 +1956,7 @@ async def manager_edit_user_get(
             form_active_role=user_to_edit.role.value if user_to_edit.role else "",
             form_language=user_to_edit.language or "",
             form_can_switch_roles=bool(getattr(user_to_edit, "can_switch_roles", False)),
+            form_create_personale_profile=has_personale_profile,
         ),
     )
 
@@ -1962,6 +1980,7 @@ async def manager_edit_user_post(
     active_role_value = (form.get("active_role") or "").strip()
     language = (form.get("language") or "").strip() or None
     can_switch_roles = (form.get("can_switch_roles") or "").strip().lower() in {"1", "true", "on", "yes"}
+    create_personale_profile = (form.get("create_personale_profile") or "").strip().lower() in {"1", "true", "on", "yes"}
     user_obj = None
 
     def render_form(error_message: str, status_code: int = 400):
@@ -1983,6 +2002,7 @@ async def manager_edit_user_post(
                 form_active_role=active_role_value,
                 form_language=language or "",
                 form_can_switch_roles=can_switch_roles,
+                form_create_personale_profile=create_personale_profile,
             ),
             status_code=status_code,
         )
@@ -2048,6 +2068,12 @@ async def manager_edit_user_post(
         user_to_edit.language = language
         user_to_edit.can_switch_roles = can_switch_roles
         _sync_user_roles(db, user_to_edit, parsed_roles)
+        personale_profile = ensure_user_personale_profile(
+            db,
+            user_to_edit,
+            roles=parsed_roles,
+            create_personale_profile=create_personale_profile,
+        )
 
         log_audit_event(
             db,
@@ -2062,6 +2088,7 @@ async def manager_edit_user_post(
                 "previous_roles": previous_roles,
                 "new_roles": [role.value for role in parsed_roles],
                 "can_switch_roles": user_to_edit.can_switch_roles,
+                "personale_id": personale_profile.id if personale_profile else None,
             },
         )
 
