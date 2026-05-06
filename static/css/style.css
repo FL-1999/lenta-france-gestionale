@@ -2953,7 +2953,7 @@ body {
 .geometry-layout {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: 18px;
 }
 
 .geometry-blocks {
@@ -2966,12 +2966,12 @@ body {
 .geometry-block {
     background: var(--color-bg-elevated);
     border: 1px solid var(--color-border-soft);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
+    border-radius: 14px;
+    padding: 18px;
     box-shadow: var(--shadow-card-subtle);
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: 14px;
 }
 
 .geometry-block--depth {
@@ -2988,19 +2988,23 @@ body {
 .geometry-input {
     font-size: 1.15rem;
     font-weight: 800;
-    padding: 12px 14px;
 }
 
-.input-with-unit {
+.input-with-unit,
+.input-group {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 8px;
     width: 100%;
 }
 
-.input-with-unit .form-control {
-    flex: 1 1 12rem;
-    min-width: 10rem;
+.input-with-unit .form-control,
+.input-field {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 10px;
 }
 
 .input-with-unit .unit-badge {
@@ -3012,18 +3016,21 @@ body {
     min-width: 10rem;
 }
 
-.unit-badge {
+.unit-badge,
+.unit {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 44px;
-    padding: 8px 10px;
-    border-radius: var(--radius-sm);
+    flex: 0 0 auto;
+    min-width: 40px;
+    height: 42px;
+    padding: 0 10px;
+    border-radius: 10px;
     border: 1px solid var(--color-border-soft);
-    background: var(--color-bg-elevated);
-    color: var(--color-text-subtle);
+    background: rgba(255, 255, 255, 0.05);
+    color: #cbd5f5;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 13px;
 }
 
 .geometry-divider {
@@ -3071,13 +3078,15 @@ body {
 }
 
 .fiche-sketch {
-    max-width: 260px;
+    max-width: 100%;
 }
 
-.fiche-sketch svg {
+.fiche-sketch svg,
+.diagram-sketch {
     display: block;
     margin: 0 auto;
     color: var(--color-text-strong);
+    max-width: 100%;
 }
 
 
@@ -3088,9 +3097,13 @@ body {
 
 .fiche-geometry-card {
     width: 100%;
-    max-width: 420px;
+    max-width: 520px;
     margin: 0 auto;
-    padding: var(--space-5);
+    padding: 18px;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
 
 .fiche-geometry-card .card-body {
@@ -3103,6 +3116,19 @@ body {
 .fiche-geometry-card .geometry-note {
     text-align: left;
 }
+.diagram-rect,
+.diagram-circle {
+    stroke: #e5e7eb;
+    stroke-width: 3;
+    vector-effect: non-scaling-stroke;
+}
+
+.diagram-label {
+    font-size: 13px;
+    font-weight: 600;
+    fill: #cbd5f5;
+}
+
 
 .fiche-geometry-card svg {
     flex: 0 0 auto;
@@ -3133,25 +3159,27 @@ body {
 }
 
 .fiche-geometry-card .unit-input,
-.fiche-geometry-card .input-with-unit {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 56px;
+.fiche-geometry-card .input-with-unit,
+.fiche-geometry-card .input-group {
+    display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 8px;
     width: 100%;
 }
 
 .fiche-geometry-card .unit-input .form-control,
 .fiche-geometry-card .input-with-unit .form-control,
+.fiche-geometry-card .input-field,
 .fiche-geometry-card #larghezza_pannello {
     width: 100%;
     min-width: 0;
 }
 
-.fiche-geometry-card .unit-badge {
-    width: 56px;
-    min-width: 56px;
-    justify-self: end;
+.fiche-geometry-card .unit-badge,
+.fiche-geometry-card .unit {
+    width: auto;
+    min-width: 40px;
+    justify-self: auto;
 }
 
 @media (max-width: 640px) {
@@ -3179,21 +3207,32 @@ label.form-label[for="profondita_totale"]{
 
 }
 
-.unit-input{display:flex; gap:.6rem; align-items:center;}
-.input-with-unit .form-control{
-  flex: 1 1 12rem;
-  min-width: 10rem;
+.unit-input,
+.input-with-unit,
+.input-group{display:flex; gap:8px; align-items:center;}
+.input-with-unit .form-control,
+.input-field{
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
 }
-.input-with-unit .unit-badge{
+.input-with-unit .unit-badge,
+.unit{
   flex: 0 0 auto;
 }
-.unit-badge{
-  min-width: 56px;
+.unit-badge,
+.unit{
+  min-width: 40px;
+  height: 42px;
   text-align:center;
-  padding: .7rem .8rem;
-  border-radius: 12px;
+  padding: 0 10px;
+  border-radius: 10px;
   border: 1px solid var(--color-border-soft);
-  background: rgba(148,163,184,.10);
+  background: rgba(255,255,255,.05);
+  color: #cbd5f5;
+  font-size: 13px;
   font-weight: 800;
 }
 

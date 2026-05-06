@@ -317,33 +317,31 @@
                               {% endif %}
                             </div>
 
-                            <svg id="fiche-sketch-svg" width="140" height="140" viewBox="0 0 140 140">
+                            <svg id="fiche-sketch-svg" class="diagram-sketch" width="240" height="170" viewBox="0 0 240 170" aria-hidden="true">
                                 <circle id="sketch-palo"
-                                        cx="70" cy="70" r="35"
-                                        stroke="currentColor"
-                                        stroke-width="4"
+                                        class="diagram-circle"
+                                        cx="120" cy="82" r="50"
                                         fill="none"
                                         style="display: none;" />
 
                                 <rect id="sketch-paratia"
-                                      x="20" y="40" width="100" height="50"
-                                      stroke="currentColor"
-                                      stroke-width="4"
+                                      class="diagram-rect"
+                                      x="20" y="45" width="200" height="80"
                                       fill="none"
                                       style="display: none;" />
 
                                 <text id="label-larghezza"
-                                      x="70" y="110"
+                                      class="diagram-label"
+                                      x="120" y="150"
                                       text-anchor="middle"
-                                      font-size="10"
                                       style="display:none;">
                                 </text>
 
                                 <text id="label-altezza"
-                                      x="15" y="65"
+                                      class="diagram-label"
+                                      x="13" y="85"
                                       text-anchor="middle"
-                                      font-size="10"
-                                      transform="rotate(-90 15 65)"
+                                      transform="rotate(-90 13 85)"
                                       style="display:none;">
                                 </text>
                             </svg>
@@ -376,18 +374,18 @@
                                     <div class="form-group geom-palo geometry-field">
                                       <label class="form-label" for="diametro_palo_cm">DIAMETRO PALO</label>
 
-                                      <div class="unit-input">
+                                      <div class="input-group unit-input">
                                         <input
                                           id="diametro_palo_cm"
                                           name="diametro_palo_cm"
                                           type="number"
                                           step="1"
                                           min="1"
-                                          class="form-control"
+                                          class="form-control input-field"
                                           placeholder="Es. 104"
                                           value="{{ diametro_value_cm }}"
                                         >
-                                        <span class="unit-badge">cm</span>
+                                        <span class="unit-badge unit">cm</span>
                                       </div>
 
                                       <small class="muted">Inserisci il diametro in centimetri (es: 104).</small>
@@ -415,15 +413,15 @@
                                                 Larghezza pannello
                                             {% endif %}
                                         </label>
-                                        <div class="input-with-unit">
+                                        <div class="input-group input-with-unit">
                                            <input id="larghezza_pannello"
                                                    name="larghezza_pannello"
                                                    type="number"
                                                    step="0.01"
                                                    min="0.01"
-                                                   class="form-control geometry-input"
+                                                   class="form-control geometry-input input-field"
                                                    value="{{ form_data.get('larghezza_pannello', '') }}" />
-                                            <span class="unit-badge">m</span>
+                                            <span class="unit-badge unit">m</span>
                                         </div>
                                     </div>
                                     <div class="form-group geom-paratia geometry-field">
@@ -434,15 +432,15 @@
                                                 Spessore pannello
                                             {% endif %}
                                         </label>
-                                        <div class="input-with-unit">
+                                        <div class="input-group input-with-unit">
                                            <input id="altezza_pannello"
                                                    name="altezza_pannello"
                                                    type="number"
                                                    step="0.01"
                                                    min="0.01"
-                                                   class="form-control geometry-input"
+                                                   class="form-control geometry-input input-field"
                                                    value="{{ form_data.get('altezza_pannello', '') }}" />
-                                            <span class="unit-badge">cm</span>
+                                            <span class="unit-badge unit">cm</span>
                                         </div>
                                     </div>
                                 </div>
