@@ -61,14 +61,21 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="numero_operai">Numero operai</label>
-                            <input type="number" id="numero_operai" name="numero_operai" class="form-control" min="0" required placeholder="es. 3" />
+                            <label class="form-label" for="numero_operai">Totale personale</label>
+                            <input type="number" id="numero_operai" name="numero_operai" class="form-control" min="1" required readonly value="1" />
+                            <p class="form-help">Conteggio automatico: caposquadra + altri operai inseriti.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="numero_altri_operai">Altri operai da aggiungere</label>
+                            <input type="number" id="numero_altri_operai" class="form-control" min="0" value="0" placeholder="es. 2" />
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 1rem;">
-                        <label class="form-label">Operai presenti</label>
+                        <label class="form-label">Personale presente</label>
+                        <div id="worker-warning-summary" class="worker-warning-summary" style="display:none;">⚠️ Ci sono persone con giornata non compilata.</div>
                         <div id="workers-container"></div>
-                        <p class="form-help">Per ogni operaio puoi indicare mansione e note. Le ore si compilano solo nel campo generale del cantiere.</p>
+                        <p class="form-help">La prima riga è il caposquadra autenticato ed è inclusa automaticamente nel totale. Per ogni persona indica ore e stato giornata; eventuali mancanze vengono evidenziate prima del salvataggio.</p>
                     </div>
                 </section>
 
@@ -116,6 +123,69 @@
     <button type="submit" form="rapportino-form" class="btn btn-primary">Salva</button>
 </div>
 
+<style>
+.worker-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 2fr) minmax(120px, 0.8fr) minmax(150px, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+    margin-bottom: 0.75rem;
+    padding: 0.85rem;
+    border: 1px solid var(--border-color, #d7dde8);
+    border-radius: 0.8rem;
+    background: var(--card-bg, #fff);
+}
+.worker-row--capo {
+    border-color: #8ab4ff;
+    background: #f4f8ff;
+}
+.worker-row--incomplete {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.18);
+}
+.worker-row--incomplete .worker-hours:invalid,
+.worker-row--incomplete .worker-day-type:invalid {
+    border-color: #dc3545;
+}
+.worker-person-label {
+    min-height: 2.45rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.worker-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    background: #0d6efd;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+.worker-note {
+    grid-column: 1 / span 3;
+}
+.worker-incomplete-message,
+.worker-warning-summary {
+    color: #b02a37;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+.worker-warning-summary {
+    margin: 0.35rem 0 0.75rem;
+}
+@media (max-width: 760px) {
+    .worker-row {
+        grid-template-columns: 1fr;
+    }
+    .worker-note {
+        grid-column: auto;
+    }
+}
+</style>
+
 <script>
 document.getElementById("rapportino-form").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -126,6 +196,7 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
     const selectedSiteOption = cantiereSelect.options[cantiereSelect.selectedIndex];
     const cantiere = selectedSiteOption ? (selectedSiteOption.dataset.siteName || "").trim() : "";
     const ore_totali = parseFloat(document.getElementById("ore_totali").value || "0");
+    syncWorkerTotal();
     const numero_operai = parseInt(document.getElementById("numero_operai").value || "0", 10);
     const macchinari = (document.getElementById("macchinari").value || "").trim();
     const attivita = (document.getElementById("attivita").value || "").trim();
@@ -150,6 +221,14 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
         errorBox.textContent = workers.error;
         errorBox.style.display = "block";
         return;
+    }
+
+    if (workers.incompleteRows && workers.incompleteRows.length) {
+        const conferma = window.confirm(`⚠️ ${workers.incompleteRows.length} persona/e hanno la giornata non compilata (ore o stato mancanti). Vuoi salvare comunque?`);
+        if (!conferma) {
+            workers.incompleteRows[0].scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+        }
     }
 
     const payload = {
@@ -217,50 +296,139 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
     }
 });
 
+const CAPOSQUADRA = {
+    id: {{ caposquadra_personale.id }},
+    label: {{ caposquadra_label|tojson }},
+};
 const WORKERS = [
     {% for operaio in operai_attivi %}
     { id: {{ operaio.id }}, label: {{ (operaio.cognome ~ " " ~ operaio.nome)|tojson }} },
     {% endfor %}
 ];
+const DAY_TYPES = [
+    { value: "WORK", label: "Lavoro" },
+    { value: "ABSENT", label: "Assente" },
+    { value: "SICK", label: "Malattia" },
+    { value: "VACATION", label: "Ferie" },
+];
 
 const workersContainer = document.getElementById("workers-container");
 const workerCountInput = document.getElementById("numero_operai");
+const extraWorkerCountInput = document.getElementById("numero_altri_operai");
+const warningSummary = document.getElementById("worker-warning-summary");
+
+function escapeHtml(value) {
+    return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+}
 
 function getWorkerOptions(selectedId) {
     const base = ['<option value="">Seleziona operaio</option>'];
     for (const worker of WORKERS) {
         const selected = Number(selectedId) === Number(worker.id) ? "selected" : "";
-        base.push(`<option value="${worker.id}" ${selected}>${worker.label}</option>`);
+        base.push(`<option value="${worker.id}" ${selected}>${escapeHtml(worker.label)}</option>`);
     }
     return base.join("");
 }
 
-function renderWorkerRows(count) {
-    const safeCount = Math.max(0, Number(count) || 0);
-    const previous = Array.from(workersContainer.querySelectorAll(".worker-row")).map((row) => ({
+function getDayTypeOptions(selectedValue) {
+    const base = ['<option value="">Seleziona stato</option>'];
+    for (const dayType of DAY_TYPES) {
+        const selected = selectedValue === dayType.value ? "selected" : "";
+        base.push(`<option value="${dayType.value}" ${selected}>${dayType.label}</option>`);
+    }
+    return base.join("");
+}
+
+function readPreviousRows() {
+    return Array.from(workersContainer.querySelectorAll(".worker-row:not(.worker-row--capo)")).map((row) => ({
         personale_id: row.querySelector(".worker-select")?.value || "",
         role_label: row.querySelector(".worker-role")?.value || "",
+        hours_worked: row.querySelector(".worker-hours")?.value || "",
+        day_type: row.querySelector(".worker-day-type")?.value || "",
         note: row.querySelector(".worker-note")?.value || "",
     }));
+}
+
+function buildCapoRow() {
+    const row = document.createElement("div");
+    row.className = "worker-row worker-row--capo";
+    row.dataset.personaleId = String(CAPOSQUADRA.id);
+    row.innerHTML = `
+        <div>
+            <div class="worker-person-label">
+                <strong>${escapeHtml(CAPOSQUADRA.label)}</strong>
+                <span class="worker-badge">Caposquadra (tu)</span>
+            </div>
+            <input type="hidden" class="worker-select" value="${CAPOSQUADRA.id}" />
+            <input type="hidden" class="worker-role" value="Caposquadra (tu)" />
+        </div>
+        <input type="number" class="form-control worker-hours" min="0" step="0.5" placeholder="Ore" aria-label="Ore caposquadra" />
+        <select class="form-control worker-day-type" aria-label="Stato giornata caposquadra">${getDayTypeOptions("")}</select>
+        <input type="text" class="form-control worker-note" placeholder="Note caposquadra (opzionale)" />
+        <div class="worker-incomplete-message" style="display:none;">⚠️ giornata non compilata</div>
+    `;
+    return row;
+}
+
+function buildWorkerRow(preserved) {
+    const row = document.createElement("div");
+    row.className = "worker-row";
+    row.innerHTML = `
+        <select class="form-control worker-select" name="worker_personale_id" required>${getWorkerOptions(preserved.personale_id)}</select>
+        <input type="number" class="form-control worker-hours" min="0" step="0.5" placeholder="Ore" aria-label="Ore operaio" />
+        <select class="form-control worker-day-type" aria-label="Stato giornata operaio">${getDayTypeOptions(preserved.day_type)}</select>
+        <input type="text" name="worker_role_label" class="form-control worker-role" placeholder="Mansione (opzionale)" value="${escapeHtml(preserved.role_label || "")}" />
+        <input type="text" name="worker_note" class="form-control worker-note" placeholder="Note operaio (opzionale)" value="${escapeHtml(preserved.note || "")}" />
+        <div class="worker-incomplete-message" style="display:none;">⚠️ giornata non compilata</div>
+    `;
+    row.querySelector(".worker-hours").value = preserved.hours_worked || "";
+    return row;
+}
+
+function syncWorkerTotal() {
+    const extraCount = Math.max(0, Number(extraWorkerCountInput.value) || 0);
+    workerCountInput.value = String(extraCount + 1);
+}
+
+function renderWorkerRows(count) {
+    const safeCount = Math.max(0, Number(count) || 0);
+    const previous = readPreviousRows();
     workersContainer.innerHTML = "";
+    workersContainer.appendChild(buildCapoRow());
     for (let i = 0; i < safeCount; i += 1) {
-        const preserved = previous[i] || {};
-        const row = document.createElement("div");
-        row.className = "worker-row";
-        row.style.cssText = "display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-bottom:0.75rem;";
-        row.innerHTML = `
-            <select class="form-control worker-select" name="worker_personale_id" required>${getWorkerOptions(preserved.personale_id)}</select>
-            <input type="text" name="worker_role_label" class="form-control worker-role" placeholder="Mansione (opzionale)" value="${preserved.role_label || ""}" />
-            <input type="text" name="worker_note" class="form-control worker-note" placeholder="Note operaio (opzionale)" value="${preserved.note || ""}" style="grid-column: 1 / span 2;" />
-        `;
-        workersContainer.appendChild(row);
+        workersContainer.appendChild(buildWorkerRow(previous[i] || {}));
     }
+    validateIncompleteDays();
+}
+
+function validateIncompleteDays() {
+    const rows = Array.from(workersContainer.querySelectorAll(".worker-row"));
+    const incompleteRows = [];
+    for (const row of rows) {
+        const hoursValue = row.querySelector(".worker-hours")?.value;
+        const dayTypeValue = row.querySelector(".worker-day-type")?.value;
+        const isIncomplete = hoursValue === "" || dayTypeValue === "";
+        row.classList.toggle("worker-row--incomplete", isIncomplete);
+        const message = row.querySelector(".worker-incomplete-message");
+        if (message) {
+            message.style.display = isIncomplete ? "block" : "none";
+        }
+        if (isIncomplete) {
+            incompleteRows.push(row);
+        }
+    }
+    warningSummary.style.display = incompleteRows.length ? "block" : "none";
+    return incompleteRows;
 }
 
 function collectWorkers() {
     const rows = Array.from(workersContainer.querySelectorAll(".worker-row"));
     if (rows.length !== (Number(workerCountInput.value) || 0)) {
-        return { error: "Numero operai non coerente con le righe nominative." };
+        return { error: "Numero personale non coerente con le righe nominative." };
     }
 
     const selected = new Set();
@@ -268,25 +436,33 @@ function collectWorkers() {
     for (const row of rows) {
         const personaleId = parseInt(row.querySelector(".worker-select").value || "0", 10);
         if (!personaleId) {
-            return { error: "Seleziona tutti i nominativi operai prima di salvare." };
+            return { error: "Seleziona tutti i nominativi del personale prima di salvare." };
         }
         if (selected.has(personaleId)) {
-            return { error: "Non puoi selezionare lo stesso operaio due volte." };
+            return { error: "Non puoi selezionare la stessa persona due volte." };
         }
         selected.add(personaleId);
+        const hoursValue = row.querySelector(".worker-hours").value;
+        const dayTypeValue = row.querySelector(".worker-day-type").value;
         items.push({
             personale_id: personaleId,
             role_label: (row.querySelector(".worker-role").value || "").trim() || null,
-            note: (row.querySelector(".worker-note").value || "").trim() || null,
-            day_type: "FULL",
+            note: (row.querySelector(".worker-note")?.value || "").trim() || null,
+            hours_worked: hoursValue === "" ? null : Number(hoursValue),
+            day_type: dayTypeValue || null,
         });
     }
-    return { items };
+    return { items, incompleteRows: validateIncompleteDays() };
 }
 
-workerCountInput.addEventListener("input", (event) => {
-    renderWorkerRows(event.target.value);
-});
-renderWorkerRows(parseInt(workerCountInput.value || "0", 10));
+function refreshWorkerRows() {
+    syncWorkerTotal();
+    renderWorkerRows(extraWorkerCountInput.value);
+}
+
+extraWorkerCountInput.addEventListener("input", refreshWorkerRows);
+workersContainer.addEventListener("input", validateIncompleteDays);
+workersContainer.addEventListener("change", validateIncompleteDays);
+refreshWorkerRows();
 </script>
 {% endblock %}
