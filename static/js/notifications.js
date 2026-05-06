@@ -91,8 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const meta = document.createElement("div");
       meta.className = "notifications-panel__meta";
-      const date = new Date(notification.created_at);
-      meta.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
+      meta.textContent = notification.created_at || "";
 
       item.appendChild(text);
       if (meta.textContent) item.appendChild(meta);
@@ -111,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
       let payload;
       try {
         payload = await response.json();
-        console.log("recent notifications response", payload);
+        console.log("recent notifications:", payload);
       } catch (_parseError) {
         list.innerHTML = '<div class="notification-empty">Errore caricamento notifiche</div>';
         return;

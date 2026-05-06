@@ -127,7 +127,7 @@ class TestNotificationsAuth:
         assert notification["message"] == "Nuova notifica"
         assert notification["url"] == "/manager/report"
         assert notification["is_read"] is False
-        assert "created_at" in notification
+        assert notification["created_at"] == own_notification.created_at.strftime("%d/%m/%Y %H:%M")
 
     def test_recent_notifications_includes_old_unread_items(self):
         token = create_access_token(
@@ -194,7 +194,7 @@ class TestNotificationsAuth:
                 {
                     "id": role_notification.id,
                     "message": "Notifica ruolo manager",
-                    "created_at": role_notification.created_at.isoformat(),
+                    "created_at": role_notification.created_at.strftime("%d/%m/%Y %H:%M"),
                     "url": "/manager/dashboard",
                     "is_read": False,
                 }
