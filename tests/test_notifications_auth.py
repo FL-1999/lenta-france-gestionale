@@ -159,3 +159,44 @@ class TestNotificationsAuth:
         payload = recent_response.json()
         assert len(payload["notifications"]) == 1
         assert payload["notifications"][0]["message"] == "Notifica non letta vecchia"
+
+    def test_recent_notifications_uses_unread_count_role_logic(self):
+        token = create_access_token(
+            data={
+                "sub": self.user.email,
+                "role": RoleEnum.manager.value,
+                "roles": [RoleEnum.manager.value],
+            }
+        )
+        self.client.cookies.set("access_token", f"Bearer {token}")
+        self.client.cookies.set("current_role", RoleEnum.manager.value)
+
+        role_notification = Notification(
+            notification_type="test",
+            message="Notifica ruolo manager",
+            recipient_role=RoleEnum.manager,
+            target_url="/manager/dashboard",
+            is_read=False,
+            created_at=datetime.utcnow() - timedelta(days=45),
+        )
+        self.db.add(role_notification)
+        self.db.commit()
+
+        count_response = self.client.get("/api/notifications/unread-count")
+        recent_response = self.client.get("/api/notifications/recent")
+
+        assert count_response.status_code == 200
+        assert count_response.json()["unread_count"] == 1
+        assert recent_response.status_code == 200
+        payload = recent_response.json()
+        assert payload == {
+            "notifications": [
+                {
+                    "id": role_notification.id,
+                    "message": "Notifica ruolo manager",
+                    "created_at": role_notification.created_at.isoformat(),
+                    "url": "/manager/dashboard",
+                    "is_read": False,
+                }
+            ]
+        }

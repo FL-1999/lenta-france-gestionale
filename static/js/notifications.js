@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!container || !toggle || !panel || !badge || !list) return;
 
   const countEndpoint = container.dataset.countEndpoint || "/api/notifications/unread-count";
-  const listEndpoint = "/api/notifications/recent";
+  const listEndpoint = container.dataset.listEndpoint || "/api/notifications/recent";
   const markReadEndpoint = container.dataset.markReadEndpoint || "/api/notifications/mark-read";
   const pollInterval = Number(container.dataset.pollInterval || 30000);
 
@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
       let payload;
       try {
         payload = await response.json();
+        console.log("recent notifications response", payload);
       } catch (_parseError) {
         list.innerHTML = '<div class="notification-empty">Errore caricamento notifiche</div>';
         return;
