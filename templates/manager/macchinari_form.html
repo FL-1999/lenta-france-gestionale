@@ -171,13 +171,13 @@
           <textarea id="notes" name="notes" class="form-textarea" rows="4" placeholder="{% if lang == 'fr' %}Détails supplémentaires{% else %}Dettagli aggiuntivi{% endif %}">{{ macchinario.notes if macchinario else '' }}</textarea>
         </div>
 
-        <div class="form-actions">
-          <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-secondary">
-            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
-          </a>
-          <button type="submit" class="btn btn-primary">
+        <div class="form-actions machine-form-actions">
+          <button type="submit" class="btn btn-save">
             {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
           </button>
+          <a href="{{ request.url_for('manager_machines_list') }}" class="btn btn-cancel">
+            {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
+          </a>
         </div>
       </form>
     </div>
