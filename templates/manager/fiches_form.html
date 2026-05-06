@@ -138,9 +138,9 @@
                 <div class="form-group">
                     <label class="form-label" for="metri_cubi_gettati">
                         {% if lang == 'fr' %}
-                            Mètres cubes bétonnés
+                            Mètres cubes bétonnés*
                         {% else %}
-                            Metri cubi gettati
+                            Metri cubi gettati*
                         {% endif %}
                     </label>
                     <input id="metri_cubi_gettati"
@@ -149,7 +149,8 @@
                            step="0.1"
                            min="0"
                            class="form-control"
-                           value="{{ form_data.get('metri_cubi_gettati', '') }}" />
+                           value="{{ form_data.get('metri_cubi_gettati', '') }}"
+                           required />
                 </div>
 
                 <h3 class="form-section-title">
@@ -197,20 +198,6 @@
                        class="form-control"
                        value="{{ form_data.get('profondita_totale', '') }}" />
             </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="stratigrafia">
-                        {% if lang == 'fr' %}
-                            Stratigraphie (description)
-                        {% else %}
-                            Stratigrafia (descrizione)
-                        {% endif %}
-                    </label>
-                    <textarea id="stratigrafia"
-                              name="stratigrafia"
-                              class="form-textarea"
-                              rows="3">{{ form_data.get('stratigrafia', '') }}</textarea>
-                </div>
 
                 <h2 class="page-title" style="font-size: 1.1rem; margin-top: 1.5rem;">
                     {% if lang == 'fr' %}

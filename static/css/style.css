@@ -2988,10 +2988,21 @@ body {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    width: 100%;
 }
 
 .input-with-unit .form-control {
-    flex: 1;
+    flex: 1 1 12rem;
+    min-width: 10rem;
+}
+
+.input-with-unit .unit-badge {
+    flex: 0 0 auto;
+}
+
+#larghezza_pannello {
+    width: 100%;
+    min-width: 10rem;
 }
 
 .unit-badge {
@@ -3083,6 +3094,13 @@ label.form-label[for="profondita_totale"]{
 }
 
 .unit-input{display:flex; gap:.6rem; align-items:center;}
+.input-with-unit .form-control{
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+.input-with-unit .unit-badge{
+  flex: 0 0 auto;
+}
 .unit-badge{
   min-width: 56px;
   text-align:center;

@@ -124,14 +124,13 @@ class FicheCreate(BaseModel):
     hours: float
     notes: Optional[str] = None
     tipologia_scavo: Optional[str] = None
-    stratigrafia: Optional[str] = None
     materiale: Optional[str] = None
     profondita_totale: Optional[float] = None
     diametro_palo: Optional[float] = None
     larghezza_pannello: Optional[float] = None
     altezza_pannello: Optional[float] = None
     data_getto: Optional[date] = None
-    metri_cubi_gettati: Optional[float] = None
+    metri_cubi_gettati: float = Field(..., ge=0)
 
     model_config = {"from_attributes": True}
 
