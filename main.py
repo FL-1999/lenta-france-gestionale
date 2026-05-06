@@ -4157,15 +4157,32 @@ def pagina_nuovo_rapportino_capo(
     db = SessionLocal()
     try:
         cantieri = _get_capo_assigned_sites(db, current_user)
+        cantieri_data = [
+            {
+                "id": cantiere.id,
+                "name": cantiere.name,
+            }
+            for cantiere in cantieri
+        ]
+
         caposquadra_personale = reports.ensure_capo_personale(db, current_user)
+        caposquadra_personale_id = caposquadra_personale.id
         db.commit()
+
         operai_attivi = (
             db.query(Personale)
             .filter(Personale.attivo.is_(True))
-            .filter(Personale.id != caposquadra_personale.id)
+            .filter(Personale.id != caposquadra_personale_id)
             .order_by(Personale.cognome, Personale.nome)
             .all()
         )
+        operai_attivi_data = [
+            {
+                "id": operaio.id,
+                "label": f"{operaio.cognome} {operaio.nome}".strip(),
+            }
+            for operaio in operai_attivi
+        ]
     finally:
         db.close()
 
@@ -4175,9 +4192,9 @@ def pagina_nuovo_rapportino_capo(
         build_template_context(
             request,
             current_user,
-            cantieri=cantieri,
-            operai_attivi=operai_attivi,
-            caposquadra_personale=caposquadra_personale,
+            cantieri=cantieri_data,
+            operai_attivi=operai_attivi_data,
+            caposquadra_personale={"id": caposquadra_personale_id},
             caposquadra_label=(current_user.full_name or current_user.email),
         ),
     )
