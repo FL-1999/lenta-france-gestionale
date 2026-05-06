@@ -28,9 +28,7 @@ VEICOLI_COLUMNS: tuple[str, ...] = (
     "visibile_trasporti INTEGER NOT NULL DEFAULT 0",
 )
 
-USERS_COLUMNS: tuple[str, ...] = (
-    "can_switch_roles BOOLEAN NOT NULL DEFAULT 0",
-)
+USERS_COLUMNS: tuple[str, ...] = ("can_switch_roles BOOLEAN NOT NULL DEFAULT 0",)
 
 TRASPORTI_VIAGGI_COLUMNS: tuple[str, ...] = (
     "origine_site_id INTEGER",
@@ -57,9 +55,7 @@ MOVIMENTI_ATTREZZATURE_COLUMNS: tuple[str, ...] = (
     "destinazione_depot_id INTEGER",
 )
 
-MAGAZZINO_MOVIMENTI_COLUMNS: tuple[str, ...] = (
-    "deposito_id INTEGER",
-)
+MAGAZZINO_MOVIMENTI_COLUMNS: tuple[str, ...] = ("deposito_id INTEGER",)
 
 SITE_LABOR_COST_ENTRIES_COLUMNS: tuple[str, ...] = (
     "is_weekend BOOLEAN NOT NULL DEFAULT 0",
@@ -80,6 +76,8 @@ SITES_COLUMNS: tuple[str, ...] = (
     "manual_material_entries_override_auto BOOLEAN NOT NULL DEFAULT 1",
 )
 
+NOTIFICATIONS_COLUMNS: tuple[str, ...] = ("is_read BOOLEAN NOT NULL DEFAULT 0",)
+
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "veicoli": VEICOLI_COLUMNS,
     "users": USERS_COLUMNS,
@@ -90,6 +88,7 @@ UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "site_labor_cost_entries": SITE_LABOR_COST_ENTRIES_COLUMNS,
     "site_economic_entries": SITE_ECONOMIC_ENTRIES_COLUMNS,
     "sites": SITES_COLUMNS,
+    "notifications": NOTIFICATIONS_COLUMNS,
 }
 
 
