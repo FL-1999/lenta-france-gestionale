@@ -75,10 +75,10 @@
                         <label class="form-label">Personale presente</label>
                         <div id="worker-warning-summary" class="worker-warning-summary" style="display:none;" aria-live="polite">
                             <strong>Giornata non compilata</strong>
-                            <span>Completa ore e stato giornata per le righe evidenziate.</span>
+                            <span>Completa nominativo e ore per le righe evidenziate.</span>
                         </div>
                         <div id="workers-container" class="workers-container"></div>
-                        <p class="form-help">La prima riga è il caposquadra autenticato ed è inclusa automaticamente nel totale. Le ore partono da 8 di default per tutti e restano modificabili; eventuali mancanze vengono evidenziate prima del salvataggio.</p>
+                        <p class="form-help">La prima riga è il caposquadra autenticato ed è inclusa automaticamente nel totale. Le ore partono da 8 di default per tutti e restano modificabili; lo stato è assegnato automaticamente come Presente / Lavoro.</p>
                     </div>
                 </section>
 
@@ -154,7 +154,7 @@
     box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.22), 0 10px 24px rgba(2, 6, 23, 0.24);
 }
 .worker-row--incomplete .worker-hours.is-missing,
-.worker-row--incomplete .worker-day-type.is-missing {
+.worker-row--incomplete .worker-select.is-missing {
     border-color: rgba(251, 146, 60, 0.9);
     box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.28);
 }
@@ -293,7 +293,7 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
     }
 
     if (workers.incompleteRows && workers.incompleteRows.length) {
-        const conferma = window.confirm(`⚠️ ${workers.incompleteRows.length} persona/e hanno la giornata non compilata (ore o stato mancanti). Vuoi salvare comunque?`);
+        const conferma = window.confirm(`⚠️ ${workers.incompleteRows.length} riga/e hanno la giornata non compilata (operaio o ore mancanti). Vuoi salvare comunque?`);
         if (!conferma) {
             workers.incompleteRows[0].scrollIntoView({ behavior: "smooth", block: "center" });
             return;
@@ -377,13 +377,6 @@ const WORKERS = [
 const DEFAULT_WORKER_HOURS = "8";
 let totalHoursEditedManually = false;
 
-const DAY_TYPES = [
-    { value: "WORK", label: "Lavoro" },
-    { value: "ABSENT", label: "Assente" },
-    { value: "SICK", label: "Malattia" },
-    { value: "VACATION", label: "Ferie" },
-];
-
 const workersContainer = document.getElementById("workers-container");
 const workerCountInput = document.getElementById("numero_operai");
 const extraWorkerCountInput = document.getElementById("numero_altri_operai");
@@ -406,15 +399,6 @@ function getWorkerOptions(selectedId) {
     return base.join("");
 }
 
-function getDayTypeOptions(selectedValue) {
-    const base = ['<option value="">Seleziona stato</option>'];
-    for (const dayType of DAY_TYPES) {
-        const selected = selectedValue === dayType.value ? "selected" : "";
-        base.push(`<option value="${dayType.value}" ${selected}>${dayType.label}</option>`);
-    }
-    return base.join("");
-}
-
 function readRowValues(row) {
     if (!row) {
         return {};
@@ -423,7 +407,6 @@ function readRowValues(row) {
         personale_id: row.querySelector(".worker-select")?.value || "",
         role_label: row.querySelector(".worker-role")?.value || "",
         hours_worked: row.querySelector(".worker-hours")?.value || "",
-        day_type: row.querySelector(".worker-day-type")?.value || "",
         note: row.querySelector(".worker-note")?.value || "",
     };
 }
@@ -450,7 +433,6 @@ function buildCapoRow(preserved = {}) {
             <input type="hidden" class="worker-role" value="Caposquadra (tu)" />
         </div>
         <input type="number" class="form-control worker-hours" min="0" step="0.5" placeholder="Ore" aria-label="Ore caposquadra" value="${escapeHtml(preserved.hours_worked || DEFAULT_WORKER_HOURS)}" />
-        <select class="form-control worker-day-type" aria-label="Stato giornata caposquadra">${getDayTypeOptions(preserved.day_type || "")}</select>
         <input type="text" class="form-control worker-note" placeholder="Note caposquadra (opzionale)" value="${escapeHtml(preserved.note || "")}" />
         <div class="worker-incomplete-message" style="display:none;">⚠️ giornata non compilata</div>
     `;
@@ -463,7 +445,6 @@ function buildWorkerRow(preserved) {
     row.innerHTML = `
         <select class="form-control worker-select" name="worker_personale_id" required>${getWorkerOptions(preserved.personale_id)}</select>
         <input type="number" class="form-control worker-hours" min="0" step="0.5" placeholder="Ore" aria-label="Ore operaio" value="${escapeHtml(preserved.hours_worked || DEFAULT_WORKER_HOURS)}" />
-        <select class="form-control worker-day-type" aria-label="Stato giornata operaio">${getDayTypeOptions(preserved.day_type)}</select>
         <input type="text" name="worker_role_label" class="form-control worker-role" placeholder="Mansione (opzionale)" value="${escapeHtml(preserved.role_label || "")}" />
         <input type="text" name="worker_note" class="form-control worker-note" placeholder="Note operaio (opzionale)" value="${escapeHtml(preserved.note || "")}" />
         <div class="worker-incomplete-message" style="display:none;">⚠️ giornata non compilata</div>
@@ -509,21 +490,21 @@ function validateIncompleteDays() {
     const incompleteRows = [];
     for (const row of rows) {
         const hoursInput = row.querySelector(".worker-hours");
-        const dayTypeInput = row.querySelector(".worker-day-type");
+        const personInput = row.querySelector(".worker-select");
         const hoursValue = hoursInput?.value || "";
-        const dayTypeValue = dayTypeInput?.value || "";
+        const personValue = personInput?.value || "";
         const missingHours = hoursValue === "";
-        const missingDayType = dayTypeValue === "";
-        const isIncomplete = missingHours || missingDayType;
+        const missingPerson = personValue === "";
+        const isIncomplete = missingHours || missingPerson;
         row.classList.toggle("worker-row--incomplete", isIncomplete);
         hoursInput?.classList.toggle("is-missing", missingHours);
-        dayTypeInput?.classList.toggle("is-missing", missingDayType);
+        personInput?.classList.toggle("is-missing", missingPerson);
         const message = row.querySelector(".worker-incomplete-message");
         if (message) {
             message.style.display = isIncomplete ? "flex" : "none";
-            message.textContent = missingHours && missingDayType
-                ? "⚠️ giornata non compilata: mancano ore e stato"
-                : (missingHours ? "⚠️ giornata non compilata: mancano ore" : "⚠️ giornata non compilata: manca lo stato");
+            message.textContent = missingHours && missingPerson
+                ? "⚠️ giornata non compilata: mancano operaio e ore"
+                : (missingHours ? "⚠️ giornata non compilata: mancano ore" : "⚠️ giornata non compilata: manca operaio");
         }
         if (isIncomplete) {
             incompleteRows.push(row);
@@ -552,13 +533,11 @@ function collectWorkers() {
         }
         selected.add(personaleId);
         const hoursValue = row.querySelector(".worker-hours").value;
-        const dayTypeValue = row.querySelector(".worker-day-type").value;
         items.push({
             personale_id: personaleId,
             role_label: (row.querySelector(".worker-role").value || "").trim() || null,
             note: (row.querySelector(".worker-note")?.value || "").trim() || null,
             hours_worked: hoursValue === "" ? null : Number(hoursValue),
-            day_type: dayTypeValue || null,
         });
     }
     return { items, incompleteRows: validateIncompleteDays() };
