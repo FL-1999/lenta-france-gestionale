@@ -79,7 +79,6 @@ class TestNotificationsAuth:
         assert response.status_code == 200
         assert response.json()["unread_count"] == 0
 
-
     def test_recent_notifications_returns_renderable_payload(self):
         token = create_access_token(
             data={
@@ -127,7 +126,9 @@ class TestNotificationsAuth:
         assert notification["message"] == "Nuova notifica"
         assert notification["url"] == "/manager/report"
         assert notification["is_read"] is False
-        assert notification["created_at"] == own_notification.created_at.strftime("%d/%m/%Y %H:%M")
+        assert notification["created_at"] == own_notification.created_at.strftime(
+            "%d/%m/%Y %H:%M"
+        )
 
     def test_recent_notifications_includes_old_unread_items(self):
         token = create_access_token(
@@ -190,13 +191,157 @@ class TestNotificationsAuth:
         assert recent_response.status_code == 200
         payload = recent_response.json()
         assert payload == {
+            "unread_count": 1,
             "notifications": [
                 {
                     "id": role_notification.id,
                     "message": "Notifica ruolo manager",
-                    "created_at": role_notification.created_at.strftime("%d/%m/%Y %H:%M"),
+                    "created_at": role_notification.created_at.strftime(
+                        "%d/%m/%Y %H:%M"
+                    ),
                     "url": "/manager/dashboard",
                     "is_read": False,
                 }
-            ]
+            ],
         }
+
+    def test_recent_notifications_prioritizes_unread_and_limits_to_15(self):
+        token = create_access_token(
+            data={
+                "sub": self.user.email,
+                "role": RoleEnum.manager.value,
+                "roles": [RoleEnum.manager.value],
+            }
+        )
+        self.client.cookies.set("access_token", f"Bearer {token}")
+        self.client.cookies.set("current_role", RoleEnum.manager.value)
+
+        for index in range(20):
+            self.db.add(
+                Notification(
+                    notification_type="test",
+                    message=f"Letta {index}",
+                    recipient_user_id=self.user.id,
+                    is_read=True,
+                    created_at=datetime.utcnow() - timedelta(minutes=index + 10),
+                )
+            )
+        unread = Notification(
+            notification_type="test",
+            message="Non letta prioritaria",
+            recipient_user_id=self.user.id,
+            is_read=False,
+            created_at=datetime.utcnow() - timedelta(days=1),
+        )
+        self.db.add(unread)
+        self.db.commit()
+
+        response = self.client.get("/api/notifications/recent?limit=50")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["unread_count"] == 1
+        assert len(payload["notifications"]) == 15
+        assert payload["notifications"][0]["message"] == "Non letta prioritaria"
+        assert payload["notifications"][0]["is_read"] is False
+
+    def test_mark_all_sets_unread_counter_to_zero(self):
+        token = create_access_token(
+            data={
+                "sub": self.user.email,
+                "role": RoleEnum.manager.value,
+                "roles": [RoleEnum.manager.value],
+            }
+        )
+        self.client.cookies.set("access_token", f"Bearer {token}")
+        self.client.cookies.set("current_role", RoleEnum.manager.value)
+
+        self.db.add_all(
+            [
+                Notification(
+                    notification_type="test",
+                    message="Da leggere 1",
+                    recipient_user_id=self.user.id,
+                    is_read=False,
+                ),
+                Notification(
+                    notification_type="test",
+                    message="Da leggere 2",
+                    recipient_user_id=self.user.id,
+                    is_read=False,
+                ),
+            ]
+        )
+        self.db.commit()
+
+        response = self.client.post(
+            "/api/notifications/mark-read", json={"mark_all": True}
+        )
+
+        assert response.status_code == 200
+        assert response.json()["unread_count"] == 0
+        assert (
+            self.db.query(Notification).filter(Notification.is_read.is_(False)).count()
+            == 0
+        )
+
+    def test_cleanup_keeps_max_100_direct_notifications_for_user(self):
+        token = create_access_token(
+            data={
+                "sub": self.user.email,
+                "role": RoleEnum.manager.value,
+                "roles": [RoleEnum.manager.value],
+            }
+        )
+        self.client.cookies.set("access_token", f"Bearer {token}")
+        self.client.cookies.set("current_role", RoleEnum.manager.value)
+
+        for index in range(105):
+            self.db.add(
+                Notification(
+                    notification_type="test",
+                    message=f"Notifica {index}",
+                    recipient_user_id=self.user.id,
+                    is_read=True,
+                    created_at=datetime.utcnow() - timedelta(minutes=index),
+                )
+            )
+        self.db.commit()
+
+        response = self.client.get("/api/notifications/unread-count")
+
+        assert response.status_code == 200
+        assert (
+            self.db.query(Notification)
+            .filter(Notification.recipient_user_id == self.user.id)
+            .count()
+            == 100
+        )
+
+    def test_clear_all_deletes_current_user_notifications(self):
+        token = create_access_token(
+            data={
+                "sub": self.user.email,
+                "role": RoleEnum.manager.value,
+                "roles": [RoleEnum.manager.value],
+            }
+        )
+        self.client.cookies.set("access_token", f"Bearer {token}")
+        self.client.cookies.set("current_role", RoleEnum.manager.value)
+
+        self.db.add(
+            Notification(
+                notification_type="test",
+                message="Da cancellare",
+                recipient_user_id=self.user.id,
+                is_read=False,
+            )
+        )
+        self.db.commit()
+
+        response = self.client.post("/api/notifications/clear-all")
+
+        assert response.status_code == 200
+        assert response.json()["deleted_count"] == 1
+        assert response.json()["unread_count"] == 0
+        assert self.db.query(Notification).count() == 0
