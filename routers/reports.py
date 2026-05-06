@@ -33,6 +33,9 @@ router = APIRouter(
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 
+REPORT_WORK_DAY_TYPE = "WORK"
+DEFAULT_REPORT_WORKER_HOURS = 8.0
+
 
 # ---------------------------
 # SCHEMI Pydantic (v2)
@@ -126,12 +129,25 @@ def _with_auto_capo_worker(
                 ReportWorkerIn(
                     personale_id=capo_personale.id,
                     role_label="Caposquadra (tu)",
-                    day_type=None,
+                    hours_worked=DEFAULT_REPORT_WORKER_HOURS,
+                    day_type=REPORT_WORK_DAY_TYPE,
                 ),
             )
         else:
             capo_worker.role_label = capo_worker.role_label or "Caposquadra (tu)"
-            workers = [capo_worker, *[worker for worker in workers if worker.personale_id != capo_personale.id]]
+            if capo_worker.hours_worked is None:
+                capo_worker.hours_worked = DEFAULT_REPORT_WORKER_HOURS
+            capo_worker.day_type = REPORT_WORK_DAY_TYPE
+            workers = [
+                capo_worker,
+                *[worker for worker in workers if worker.personale_id != capo_personale.id],
+            ]
+
+    for worker in workers:
+        if worker.hours_worked is None:
+            worker.hours_worked = DEFAULT_REPORT_WORKER_HOURS
+        worker.day_type = REPORT_WORK_DAY_TYPE
+
     return workers, len(workers)
 
 
@@ -187,8 +203,6 @@ def _validate_and_build_report_workers(
                 ),
             )
 
-    derived_hours_per_worker = (total_hours / workers_count) if workers_count > 0 else 0.0
-
     return [
         ReportWorker(
             personale_id=worker.personale_id,
@@ -196,8 +210,12 @@ def _validate_and_build_report_workers(
             attendance_date=report_date,
             role_label=worker.role_label,
             note=worker.note,
-            hours_worked=(worker.hours_worked if worker.hours_worked is not None else derived_hours_per_worker),
-            day_type=(worker.day_type or "WORK"),
+            hours_worked=(
+                worker.hours_worked
+                if worker.hours_worked is not None
+                else DEFAULT_REPORT_WORKER_HOURS
+            ),
+            day_type=REPORT_WORK_DAY_TYPE,
         )
         for worker in workers_in
     ]
@@ -230,7 +248,7 @@ def _sync_attendance_from_report(db: Session, report: Report) -> None:
                 personale_id=worker.personale_id,
                 attendance_date=report.date,
                 site_id=report.site_id,
-                status=worker.day_type or "WORK",
+                status=REPORT_WORK_DAY_TYPE,
                 hours=worker.hours_worked,
                 note=worker.note,
             )
@@ -238,7 +256,7 @@ def _sync_attendance_from_report(db: Session, report: Report) -> None:
             presenza.report_id = report.id
             presenza.attendance_date = report.date
             presenza.site_id = report.site_id
-            presenza.status = worker.day_type or "WORK"
+            presenza.status = REPORT_WORK_DAY_TYPE
             presenza.hours = worker.hours_worked
             presenza.note = worker.note
         db.add(presenza)
