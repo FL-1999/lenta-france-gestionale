@@ -41,7 +41,7 @@ class NotificationListItem(BaseModel):
 class NotificationRecentItem(BaseModel):
     id: int
     message: str
-    created_at: datetime
+    created_at: str
     url: str | None = None
     is_read: bool
 
@@ -93,11 +93,15 @@ def _serialize_notification(notification: Notification) -> NotificationListItem:
     )
 
 
+def _format_recent_created_at(created_at: datetime) -> str:
+    return created_at.strftime("%d/%m/%Y %H:%M")
+
+
 def _serialize_recent_notification(notification: Notification) -> NotificationRecentItem:
     return NotificationRecentItem(
         id=notification.id,
         message=notification.message,
-        created_at=notification.created_at,
+        created_at=_format_recent_created_at(notification.created_at),
         url=notification.target_url,
         is_read=notification.is_read,
     )
