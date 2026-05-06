@@ -142,14 +142,8 @@ def list_recent_notifications(
     current_user: User = Depends(get_current_active_user_api),
 ):
     limit = max(1, min(limit, 50))
-    base_query = _notifications_base_query(db, current_user)
     notifications = (
-        base_query.filter(
-            or_(
-                Notification.created_at >= datetime.utcnow() - timedelta(days=30),
-                Notification.is_read.is_(False),
-            )
-        )
+        _notifications_recent_or_unread_query(db, current_user)
         .order_by(Notification.created_at.desc())
         .limit(limit)
         .all()
