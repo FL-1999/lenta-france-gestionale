@@ -103,6 +103,7 @@ perf_logger = logging.getLogger("lenta_france_gestionale.performance")
 
 DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
+CAPO_REPORT_CREATED_REDIRECT_URL = "/capo/dashboard?rapportino_created=1"
 SITE_TASK_STATUSES = (
     SiteTaskStatusEnum.da_fare,
     SiteTaskStatusEnum.in_corso,
@@ -4144,6 +4145,16 @@ def _get_capo_assigned_sites(db: SessionLocal, capo: User) -> list[Site]:
     )
 
 
+@app.get("/capo/rapportini")
+def capo_rapportini_legacy_redirect(
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    return RedirectResponse(url=CAPO_REPORT_CREATED_REDIRECT_URL, status_code=303)
+
+
 @app.get("/capo/rapportini/nuovo", response_class=HTMLResponse)
 def pagina_nuovo_rapportino_capo(
     request: Request,
@@ -4283,7 +4294,7 @@ def pagina_nuovo_rapportino_capo_post(
     finally:
         db.close()
 
-    return RedirectResponse(url="/capo/dashboard?rapportino_created=1", status_code=303)
+    return RedirectResponse(url=CAPO_REPORT_CREATED_REDIRECT_URL, status_code=303)
 
 
 @app.get("/capo/fiches/nuova", response_class=HTMLResponse)
