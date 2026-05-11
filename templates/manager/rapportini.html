@@ -44,7 +44,7 @@
         <tr>
           <td>{{ r.date.strftime("%d/%m/%Y") }}</td>
           <td>{{ r.site_name_or_code }}</td>
-          <td>{{ "%.1f"|format(r.total_hours) }}</td>
+          <td>{{ "%.1f"|format(report_total_hours(r)) }}</td>
           <td>{{ r.workers_count }}</td>
           <td>
             {% if r.created_by %}

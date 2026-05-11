@@ -12,8 +12,9 @@
   <div class="card-body">
     <p><strong>Data:</strong> {{ report.date.strftime("%d/%m/%Y") }}</p>
     <p><strong>Cantiere:</strong> {{ report.site_name_or_code }}</p>
-    <p><strong>Ore totali:</strong> {{ "%.1f"|format(report.total_hours) }}</p>
+    <p><strong>Ore totali:</strong> {{ "%.1f"|format(report_total_hours(report)) }}</p>
     <p><strong>N. operai:</strong> {{ report.workers_count }}</p>
+    <p><strong>Ore uomo:</strong> {{ "%.1f"|format(report_man_hours(report)) }}</p>
     <p><strong>Macchinari:</strong> {{ report.machines_used or "-" }}</p>
     <p><strong>Attività:</strong> {{ report.activities or "-" }}</p>
     <p><strong>Note:</strong> {{ report.notes or "-" }}</p>
