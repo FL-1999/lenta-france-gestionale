@@ -51,7 +51,7 @@ def test_caposquadra_is_created_as_personale_and_prepended_to_report_workers() -
             site_id=1,
             site_name_or_code="Cantiere Test",
             total_hours=8,
-            workers_count=0,
+            workers_count=1,
             workers=[],
         )
 
@@ -121,7 +121,7 @@ def test_report_workers_default_to_work_status_and_eight_hours() -> None:
             site_id=1,
             site_name_or_code="Cantiere Test",
             total_hours=16,
-            workers_count=1,
+            workers_count=2,
             workers=[
                 ReportWorkerIn(
                     personale_id=operaio.id,

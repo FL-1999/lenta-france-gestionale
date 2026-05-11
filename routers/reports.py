@@ -47,7 +47,7 @@ class ReportBase(BaseModel):
     date: dt_date = Field(..., description="Data del rapportino")
     site_name_or_code: str = Field(..., description="Nome o codice cantiere")
     total_hours: float = Field(..., ge=0, description="Ore totali lavorate")
-    workers_count: int = Field(..., ge=0, description="Numero operai")
+    workers_count: int = Field(..., ge=1, description="Totale personale (caposquadra incluso)")
     machines_used: Optional[str] = Field(
         default=None, description="Macchinari utilizzati (testo libero)"
     )
@@ -149,6 +149,17 @@ def _with_auto_capo_worker(
         worker.day_type = REPORT_WORK_DAY_TYPE
 
     return workers, len(workers)
+
+
+def _ensure_requested_workers_count(report_in: ReportCreate, actual_count: int) -> None:
+    if report_in.workers_count != actual_count:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Il totale personale deve corrispondere alle righe personale "
+                "(caposquadra incluso)."
+            ),
+        )
 
 
 def _validate_and_build_report_workers(
@@ -319,6 +330,7 @@ def create_report(
         )
 
     workers_in, workers_count = _with_auto_capo_worker(db, current_user, report_in)
+    _ensure_requested_workers_count(report_in, workers_count)
 
     db_report = Report(
         date=report_in.date,
@@ -373,6 +385,7 @@ def update_report(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato.")
 
     workers_in, workers_count = _with_auto_capo_worker(db, current_user, report_in)
+    _ensure_requested_workers_count(report_in, workers_count)
 
     report.date = report_in.date
     report.site_id = report_in.site_id
