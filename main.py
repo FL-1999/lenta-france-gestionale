@@ -4214,8 +4214,10 @@ def pagina_nuovo_rapportino_capo_post(
     attivita: str | None = Form(None),
     note: str | None = Form(None),
     worker_personale_id: List[int] = Form(default_factory=list),
+    worker_hours: List[float] = Form(default_factory=list),
     worker_role_label: List[str] = Form(default_factory=list),
     worker_note: List[str] = Form(default_factory=list),
+    caposquadra_hours: float = Form(8.0),
 ):
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
@@ -4226,25 +4228,31 @@ def pagina_nuovo_rapportino_capo_post(
         if not site:
             raise HTTPException(status_code=422, detail="Cantiere non valido")
 
+        if numero_operai < 1:
+            raise HTTPException(status_code=422, detail="Il totale personale deve essere almeno 1")
+        if len(worker_personale_id) != numero_operai - 1:
+            raise HTTPException(
+                status_code=422,
+                detail="Il totale personale deve corrispondere a caposquadra + operai selezionati",
+            )
+        if len(set(worker_personale_id)) != len(worker_personale_id):
+            raise HTTPException(status_code=422, detail="Non puoi selezionare la stessa persona due volte")
+
         caposquadra_personale = reports.ensure_capo_personale(db, current_user)
-        submitted_ids = [caposquadra_personale.id, *worker_personale_id]
-        numero_operai = len(dict.fromkeys(submitted_ids))
-        hours_per_worker = (ore_totali / numero_operai) if numero_operai > 0 else 0.0
+        if caposquadra_personale.id in worker_personale_id:
+            raise HTTPException(status_code=422, detail="Il caposquadra è già incluso nel totale personale")
+
         workers = [
             ReportWorker(
                 personale_id=caposquadra_personale.id,
                 site_id=site.id,
                 attendance_date=data,
                 role_label="Caposquadra (tu)",
-                hours_worked=hours_per_worker,
+                hours_worked=caposquadra_hours,
                 day_type="WORK",
             )
         ]
-        seen_worker_ids = {caposquadra_personale.id}
         for idx, personale_id in enumerate(worker_personale_id):
-            if personale_id in seen_worker_ids:
-                continue
-            seen_worker_ids.add(personale_id)
             workers.append(
                 ReportWorker(
                     personale_id=personale_id,
@@ -4252,10 +4260,11 @@ def pagina_nuovo_rapportino_capo_post(
                     attendance_date=data,
                     role_label=(worker_role_label[idx] if idx < len(worker_role_label) and worker_role_label[idx] else None),
                     note=(worker_note[idx] if idx < len(worker_note) and worker_note[idx] else None),
-                    hours_worked=hours_per_worker,
+                    hours_worked=(worker_hours[idx] if idx < len(worker_hours) else reports.DEFAULT_REPORT_WORKER_HOURS),
                     day_type="WORK",
                 )
             )
+        ore_totali = sum(float(worker.hours_worked or 0) for worker in workers)
 
         report = Report(
             date=data,
