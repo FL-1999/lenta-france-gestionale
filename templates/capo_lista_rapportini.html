@@ -13,34 +13,74 @@
 <div class="page-actions-sticky">
     <a href="/capo/rapportini" class="btn btn-secondary is-active">Elenco</a>
     <a href="/capo/rapportini/nuovo" class="btn btn-primary">➕ Nuovo</a>
+    <a href="/capo/dashboard" class="btn btn-secondary">⬅️ Dashboard</a>
 </div>
 
-<div class="card">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Cantiere</th>
-                <th>Ore</th>
-                <th>Attività</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Dati di esempio, poi li sostituiremo coi dati reali -->
-            <tr>
-                <td>2025-01-01</td>
-                <td>Cantiere esempio 1</td>
-                <td>8</td>
-                <td>Lavori di scavo</td>
-            </tr>
-            <tr>
-                <td>2025-01-02</td>
-                <td>Cantiere esempio 2</td>
-                <td>7.5</td>
-                <td>Getto cemento</td>
-            </tr>
-        </tbody>
-    </table>
+<div class="card table-card">
+    <div class="card-header">
+        <div class="card-title">📝 Rapportini compilati</div>
+        <div class="card-subtitle">
+            {{ total_reports or 0 }} rapportini trovati
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Cantiere</th>
+                    <th>Ore totali</th>
+                    <th>Persone</th>
+                    <th>Attività / note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set reports_list = reports | default([]) %}
+                {% for report in reports_list %}
+                <tr>
+                    <td>{{ report.date.strftime("%d/%m/%Y") if report.date else "-" }}</td>
+                    <td>
+                        {% if report.site %}
+                            {{ report.site.name }}{% if report.site.code %} ({{ report.site.code }}){% endif %}
+                        {% else %}
+                            {{ report.site_name_or_code }}
+                        {% endif %}
+                    </td>
+                    <td>{{ "%.1f"|format(report.total_hours or 0) }}</td>
+                    <td>{{ report.workers_count or 0 }}</td>
+                    <td>
+                        {% set preview = report.activities or report.notes or "-" %}
+                        {% if preview|length > 80 %}
+                            {{ preview[:80] }}…
+                        {% else %}
+                            {{ preview }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="table-empty">
+                        Non hai ancora compilato rapportini.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if reports_list and reports_list|length > 0 %}
+        <div class="card-actions" style="justify-content: space-between; align-items: center; margin-top: var(--space-3);">
+            <div class="text-muted">Pagina {{ page }} di {{ total_pages }}</div>
+            <div class="table-actions">
+                {% if page > 1 %}
+                    <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page-1) }}">&laquo; Precedente</a>
+                {% endif %}
+                {% if page < total_pages %}
+                    <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page+1) }}">Successiva &raquo;</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
 </div>
 
 <div class="form-actions">

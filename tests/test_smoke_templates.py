@@ -1,20 +1,33 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, timedelta
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from sqlmodel import SQLModel
 from starlette.requests import Request
 
 from main import (
-    CAPO_REPORT_CREATED_REDIRECT_URL,
     _build_sites_map_data,
     app,
     get_current_active_user_html,
     templates,
 )
-from models import Depot, RoleEnum, Site, SiteStatusEnum, User
+from database import Base
+from models import (
+    Depot,
+    Personale,
+    Report,
+    ReportWorker,
+    RoleEnum,
+    Site,
+    SiteStatusEnum,
+    User,
+)
 
 
 def build_request(path: str) -> Request:
@@ -44,8 +57,10 @@ def build_manager_user() -> SimpleNamespace:
 
 def build_capo_user() -> SimpleNamespace:
     return SimpleNamespace(
+        id=1,
         role=RoleEnum.caposquadra,
         full_name="Luigi Bianchi",
+        email="capo@example.com",
         is_magazzino_manager=False,
     )
 
@@ -201,16 +216,138 @@ def test_capo_nuovo_rapportino_renders_with_safe_dicts() -> None:
         assert f'value="{total}"' in output
 
 
-def test_capo_rapportini_legacy_route_redirects_to_dashboard_menu() -> None:
+def test_capo_rapportini_route_lists_only_logged_capo_reports(monkeypatch) -> None:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+    SQLModel.metadata.create_all(bind=engine)
+
+    db = TestingSessionLocal()
+    try:
+        own_report = Report(
+            date=date(2026, 5, 6),
+            site_name_or_code="Cantiere Capo",
+            total_hours=16,
+            workers_count=2,
+            activities="Getto cemento",
+            created_by_id=1,
+        )
+        other_report = Report(
+            date=date(2026, 5, 7),
+            site_name_or_code="Cantiere Altro",
+            total_hours=8,
+            workers_count=1,
+            activities="Da non vedere",
+            created_by_id=2,
+        )
+        db.add_all([own_report, other_report])
+        db.commit()
+    finally:
+        db.close()
+
+    import main as main_module
+    import template_context as template_context_module
+
+    monkeypatch.setattr(main_module, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(template_context_module, "SessionLocal", TestingSessionLocal)
     app.dependency_overrides[get_current_active_user_html] = build_capo_user
     try:
         client = TestClient(app)
-        response = client.get("/capo/rapportini", follow_redirects=False)
+        response = client.get("/capo/rapportini")
     finally:
         app.dependency_overrides.pop(get_current_active_user_html, None)
 
-    assert response.status_code == 303
-    assert response.headers["location"] == CAPO_REPORT_CREATED_REDIRECT_URL
+    assert response.status_code == 200
+    assert "Cantiere Capo" in response.text
+    assert "Getto cemento" in response.text
+    assert "Cantiere Altro" not in response.text
+    assert "Da non vedere" not in response.text
+
+
+def test_capo_dashboard_weekly_hours_sum_only_logged_capo_worker(monkeypatch) -> None:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+    SQLModel.metadata.create_all(bind=engine)
+
+    today = date.today()
+    week_date = today - timedelta(days=today.weekday())
+
+    db = TestingSessionLocal()
+    try:
+        capo_personale = Personale(
+            user_id=1,
+            nome="Luigi",
+            cognome="Bianchi",
+            email="capo@example.com",
+            ruolo="Caposquadra",
+            attivo=True,
+        )
+        operaio = Personale(
+            nome="Mario",
+            cognome="Rossi",
+            email="operaio@example.com",
+            ruolo="Operaio",
+            attivo=True,
+        )
+        db.add_all([capo_personale, operaio])
+        db.flush()
+
+        report = Report(
+            date=week_date,
+            site_name_or_code="Cantiere Settimana",
+            total_hours=16,
+            workers_count=2,
+            created_by_id=1,
+        )
+        db.add(report)
+        db.flush()
+        db.add_all(
+            [
+                ReportWorker(
+                    report_id=report.id,
+                    personale_id=capo_personale.id,
+                    attendance_date=week_date,
+                    hours_worked=8,
+                    day_type="WORK",
+                ),
+                ReportWorker(
+                    report_id=report.id,
+                    personale_id=operaio.id,
+                    attendance_date=week_date,
+                    hours_worked=8,
+                    day_type="WORK",
+                ),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    import main as main_module
+    import template_context as template_context_module
+
+    monkeypatch.setattr(main_module, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(template_context_module, "SessionLocal", TestingSessionLocal)
+    app.dependency_overrides[get_current_active_user_html] = build_capo_user
+    try:
+        client = TestClient(app)
+        response = client.get("/capo/dashboard")
+    finally:
+        app.dependency_overrides.pop(get_current_active_user_html, None)
+
+    assert response.status_code == 200
+    assert "Ore questa settimana" in response.text
+    assert '<div class="kpi-value">8.0</div>' in response.text
+    assert '<div class="kpi-value">16.0</div>' not in response.text
 
 
 def test_new_trip_form_renders_with_unified_locations() -> None:

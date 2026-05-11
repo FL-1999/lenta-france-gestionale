@@ -50,6 +50,7 @@ from models import (
     UserRole,
     RoleEnum,
     Report,
+    ReportWorker,
     Site,
     SiteTask,
     SiteTaskPriorityEnum,
@@ -4025,6 +4026,7 @@ def capo_dashboard(
     """
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
+    start_of_next_week = start_of_week + timedelta(days=7)
 
     db = SessionLocal()
     try:
@@ -4075,9 +4077,13 @@ def capo_dashboard(
 
         query_started = time.monotonic()
         kpi_hours_this_week = (
-            db.query(func.coalesce(func.sum(Report.total_hours), 0.0))
+            db.query(func.coalesce(func.sum(ReportWorker.hours_worked), 0.0))
+            .join(Report, ReportWorker.report_id == Report.id)
+            .join(Personale, ReportWorker.personale_id == Personale.id)
             .filter(Report.created_by_id == current_user.id)
             .filter(Report.date >= start_of_week)
+            .filter(Report.date < start_of_next_week)
+            .filter(Personale.user_id == current_user.id)
             .scalar()
             or 0
         )
@@ -4145,14 +4151,55 @@ def _get_capo_assigned_sites(db: SessionLocal, capo: User) -> list[Site]:
     )
 
 
-@app.get("/capo/rapportini")
-def capo_rapportini_legacy_redirect(
+@app.get("/capo/rapportini", response_class=HTMLResponse)
+def capo_rapportini_list(
+    request: Request,
+    page: int = 1,
+    per_page: int = 20,
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    return RedirectResponse(url=CAPO_REPORT_CREATED_REDIRECT_URL, status_code=303)
+    page, per_page = _normalize_pagination(page, per_page)
+
+    db = SessionLocal()
+    try:
+        query = (
+            db.query(Report)
+            .options(
+                joinedload(Report.site),
+                joinedload(Report.workers).joinedload(ReportWorker.worker),
+            )
+            .filter(Report.created_by_id == current_user.id)
+        )
+        total_reports = query.count()
+        total_pages = max(1, ceil(total_reports / per_page))
+        if page > total_pages:
+            page = total_pages
+
+        reports_page = (
+            query.order_by(Report.date.desc(), Report.id.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "capo_lista_rapportini.html",
+        build_template_context(
+            request,
+            current_user,
+            user_role="capo",
+            reports=reports_page,
+            page=page,
+            total_pages=total_pages,
+            total_reports=total_reports,
+        ),
+    )
 
 
 @app.get("/capo/rapportini/nuovo", response_class=HTMLResponse)
