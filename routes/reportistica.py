@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import case, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_html
 from database import get_db
@@ -18,6 +18,7 @@ from models import (
     FicheTypeEnum,
     Machine,
     Report,
+    ReportWorker,
     Role,
     RoleEnum,
     UserRole,
@@ -26,11 +27,13 @@ from models import (
 )
 from permissions import has_perm
 from template_context import render_template, register_manager_badges
+from utils.reports import report_total_hours
 
 
 router = APIRouter(tags=["manager-reports"])
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
+templates.env.globals["report_total_hours"] = report_total_hours
 
 REPORT_TYPES = {
     "cantieri": "Cantieri",
@@ -98,37 +101,45 @@ def _build_cantieri_report(
     start_date: date,
     end_date: date,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    report_rows = (
-        db.query(
-            Site.id.label("site_id"),
-            Site.name.label("site_name"),
-            Site.code.label("site_code"),
-            Site.status.label("site_status"),
-            func.coalesce(func.sum(Report.total_hours), 0).label("total_hours"),
-            func.count(Report.id).label("reports_count"),
-        )
-        .outerjoin(
-            Report,
-            (Report.site_id == Site.id)
-            & (Report.date >= start_date)
-            & (Report.date <= end_date),
-        )
+    sites = (
+        db.query(Site)
         .filter(Site.is_active.is_(True))
-        .group_by(Site.id)
         .order_by(Site.name.asc())
         .all()
     )
+    report_rows = (
+        db.query(Report)
+        .options(
+            joinedload(Report.workers).load_only(
+                ReportWorker.id,
+                ReportWorker.report_id,
+                ReportWorker.hours_worked,
+            )
+        )
+        .filter(Report.date >= start_date, Report.date <= end_date)
+        .all()
+    )
+
+    hours_by_site: dict[int, float] = {}
+    counts_by_site: dict[int, int] = {}
+    for report in report_rows:
+        if report.site_id is None:
+            continue
+        hours_by_site[report.site_id] = hours_by_site.get(
+            report.site_id, 0.0
+        ) + report_total_hours(report)
+        counts_by_site[report.site_id] = counts_by_site.get(report.site_id, 0) + 1
 
     rows = [
         {
-            "site_id": row.site_id,
-            "site_name": row.site_name,
-            "site_code": row.site_code,
-            "site_status": row.site_status.value if row.site_status else "-",
-            "total_hours": float(row.total_hours or 0),
-            "reports_count": int(row.reports_count or 0),
+            "site_id": site.id,
+            "site_name": site.name,
+            "site_code": site.code,
+            "site_status": site.status.value if site.status else "-",
+            "total_hours": float(hours_by_site.get(site.id, 0.0)),
+            "reports_count": int(counts_by_site.get(site.id, 0)),
         }
-        for row in report_rows
+        for site in sites
     ]
 
     chart_data = [
@@ -159,20 +170,26 @@ def _build_caposquadra_report(
         .all()
     )
 
-    report_stats = {
-        row.created_by_id: {
-            "reports_count": int(row.reports_count or 0),
-            "total_hours": float(row.total_hours or 0),
-        }
-        for row in db.query(
-            Report.created_by_id,
-            func.count(Report.id).label("reports_count"),
-            func.coalesce(func.sum(Report.total_hours), 0).label("total_hours"),
+    report_stats: dict[int, dict[str, float | int]] = {}
+    reports = (
+        db.query(Report)
+        .options(
+            joinedload(Report.workers).load_only(
+                ReportWorker.id,
+                ReportWorker.report_id,
+                ReportWorker.hours_worked,
+            )
         )
         .filter(Report.date >= start_date, Report.date <= end_date)
-        .group_by(Report.created_by_id)
         .all()
-    }
+    )
+    for report in reports:
+        stats = report_stats.setdefault(
+            report.created_by_id,
+            {"reports_count": 0, "total_hours": 0.0},
+        )
+        stats["reports_count"] = int(stats["reports_count"]) + 1
+        stats["total_hours"] = float(stats["total_hours"]) + report_total_hours(report)
 
     rows = []
     for capo in capi:

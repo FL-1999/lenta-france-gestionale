@@ -95,6 +95,7 @@ from logging_config import configure_logging
 from db_upgrade import upgrade_db, check_db_schema
 from utils.db_check import check_and_suggest_db_upgrade
 from utils.trips import compute_trip_progress
+from utils.reports import report_man_hours, report_total_hours
 
 
 configure_logging()
@@ -390,6 +391,8 @@ templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 register_static_helpers(templates)
 register_permission_helpers(templates)
+templates.env.globals["report_total_hours"] = report_total_hours
+templates.env.globals["report_man_hours"] = report_man_hours
 
 
 # -------------------------------------------------
@@ -1014,6 +1017,11 @@ def manager_dashboard(
                     Report.site_name_or_code,
                 ),
                 joinedload(Report.site).load_only(Site.id, Site.name),
+                joinedload(Report.workers).load_only(
+                    ReportWorker.id,
+                    ReportWorker.report_id,
+                    ReportWorker.hours_worked,
+                ),
             )
             .order_by(Report.date.desc(), Report.id.desc())
             .limit(50)
@@ -1046,26 +1054,38 @@ def manager_dashboard(
         ]
 
         query_started = time.monotonic()
-        hours_per_site_rows = (
-            db.query(
-                func.coalesce(Site.name, Report.site_name_or_code).label("site_name"),
-                func.sum(Report.total_hours).label("hours"),
+        reports_for_hours = (
+            db.query(Report)
+            .options(
+                joinedload(Report.site).load_only(Site.id, Site.name),
+                joinedload(Report.workers).load_only(
+                    ReportWorker.id,
+                    ReportWorker.report_id,
+                    ReportWorker.hours_worked,
+                ),
             )
-            .outerjoin(Site, Site.id == Report.site_id)
             .filter(Report.date >= start_date)
-            .group_by("site_name")
-            .order_by(func.sum(Report.total_hours).desc())
             .all()
         )
+        hours_by_site: dict[str, float] = {}
+        for report in reports_for_hours:
+            site_name = (
+                report.site.name if report.site else report.site_name_or_code
+            ) or "Senza nome"
+            hours_by_site[site_name] = hours_by_site.get(
+                site_name, 0.0
+            ) + report_total_hours(report)
+        hours_per_site_30_days = [
+            {"site_name": site_name, "hours": hours}
+            for site_name, hours in sorted(
+                hours_by_site.items(), key=lambda item: item[1], reverse=True
+            )
+        ]
         perf_logger.debug(
             "manager_dashboard hours_per_site rows=%s duration_ms=%.2f",
-            len(hours_per_site_rows),
+            len(hours_per_site_30_days),
             (time.monotonic() - query_started) * 1000,
         )
-        hours_per_site_30_days = [
-            {"site_name": row.site_name or "Senza nome", "hours": float(row.hours or 0)}
-            for row in hours_per_site_rows
-        ]
 
         query_started = time.monotonic()
         reports_by_status_rows = (
@@ -4322,8 +4342,6 @@ def pagina_nuovo_rapportino_capo_post(
                     day_type="WORK",
                 )
             )
-        ore_totali = sum(float(worker.hours_worked or 0) for worker in workers)
-
         report = Report(
             date=data,
             site_id=site.id,

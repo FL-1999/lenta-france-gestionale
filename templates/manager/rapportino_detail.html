@@ -28,11 +28,15 @@
             </div>
             <div class="col-md-3">
                 <h4 class="mb-1">Ore totali</h4>
-                <p class="mb-3">{{ "%.1f"|format(report.total_hours) }}</p>
+                <p class="mb-3">{{ "%.1f"|format(report_total_hours(report)) }}</p>
             </div>
             <div class="col-md-3">
                 <h4 class="mb-1">Operai</h4>
                 <p class="mb-3">{{ report.workers_count }}</p>
+            </div>
+            <div class="col-md-3">
+                <h4 class="mb-1">Ore uomo</h4>
+                <p class="mb-3">{{ "%.1f"|format(report_man_hours(report)) }}</p>
             </div>
             <div class="col-md-6">
                 <h4 class="mb-1">Caposquadra</h4>

@@ -147,3 +147,38 @@ def test_report_workers_default_to_work_status_and_eight_hours() -> None:
         assert all(worker.day_type == "WORK" for worker in workers)
     finally:
         db.close()
+
+
+def test_report_total_hours_normalizes_legacy_man_hour_total() -> None:
+    from types import SimpleNamespace
+
+    from utils.reports import report_man_hours, report_total_hours
+
+    report = SimpleNamespace(
+        total_hours=16,
+        workers_count=2,
+        workers=[
+            SimpleNamespace(hours_worked=8),
+            SimpleNamespace(hours_worked=8),
+        ],
+    )
+
+    assert report_total_hours(report) == 8
+    assert report_man_hours(report) == 16
+
+
+def test_report_total_hours_keeps_explicit_day_duration() -> None:
+    from types import SimpleNamespace
+
+    from utils.reports import report_total_hours
+
+    report = SimpleNamespace(
+        total_hours=8,
+        workers_count=2,
+        workers=[
+            SimpleNamespace(hours_worked=8),
+            SimpleNamespace(hours_worked=8),
+        ],
+    )
+
+    assert report_total_hours(report) == 8

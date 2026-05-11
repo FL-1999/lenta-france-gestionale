@@ -23,6 +23,7 @@ from models import (
 from notifications import notify_new_report
 from permissions import has_perm
 from template_context import build_template_context, register_manager_badges
+from utils.reports import report_man_hours, report_total_hours
 from services.personale_profiles import ensure_user_personale_profile
 
 router = APIRouter(
@@ -32,6 +33,8 @@ router = APIRouter(
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
+templates.env.globals["report_total_hours"] = report_total_hours
+templates.env.globals["report_man_hours"] = report_man_hours
 
 REPORT_WORK_DAY_TYPE = "WORK"
 DEFAULT_REPORT_WORKER_HOURS = 8.0
@@ -284,7 +287,7 @@ def _report_to_out(report: Report) -> ReportOut:
         date=report.date,
         site_id=report.site_id,
         site_name_or_code=report.site_name_or_code,
-        total_hours=report.total_hours,
+        total_hours=report_total_hours(report),
         workers_count=report.workers_count,
         machines_used=report.machines_used,
         activities=report.activities,
@@ -476,7 +479,7 @@ def manager_reports_list(
     if not (has_perm(current_user, "manager.access") or has_perm(current_user, "reports.read_all")):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato")
 
-    query = db.query(Report)
+    query = db.query(Report).options(joinedload(Report.workers))
 
     if start_date:
         try:
@@ -528,6 +531,8 @@ def manager_reports_list(
             current_user,
             user_role="manager",
             reports=reports_page,
+            report_total_hours=report_total_hours,
+            report_man_hours=report_man_hours,
             page=page,
             total_pages=total_pages,
             filters={
@@ -574,5 +579,7 @@ def manager_report_detail(
             current_user,
             user_role="manager",
             report=report,
+            report_total_hours=report_total_hours,
+            report_man_hours=report_man_hours,
         ),
     )
