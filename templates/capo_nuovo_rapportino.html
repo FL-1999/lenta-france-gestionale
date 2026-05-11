@@ -62,9 +62,13 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="numero_operai">Totale personale</label>
-                            <input type="number" id="numero_operai" name="numero_operai" class="form-control" min="1" required value="1" />
-                            <p class="form-help">Include sempre il caposquadra: 2 = caposquadra + 1 operaio, 5 = caposquadra + 4 operai.</p>
+                            <label class="form-label" for="total_personale">Totale personale</label>
+                            <select id="total_personale" name="total_personale" class="form-control total-personale-select" required aria-describedby="total-personale-help">
+                                {% for total in range(1, 11) %}
+                                <option value="{{ total }}" {% if total == 1 %}selected{% endif %}>{{ total }}</option>
+                                {% endfor %}
+                            </select>
+                            <p id="total-personale-help" class="form-help">Scegli da 1 a 10. Include sempre il caposquadra: 1 = solo caposquadra, 2 = caposquadra + 1 operaio, 10 = caposquadra + 9 operai.</p>
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 1rem;">
@@ -248,6 +252,10 @@
     .worker-incomplete-message {
         grid-column: auto;
     }
+    .total-personale-select {
+        min-height: 3rem;
+        font-size: 1rem;
+    }
 }
 </style>
 
@@ -262,7 +270,7 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
     const cantiere = selectedSiteOption ? (selectedSiteOption.dataset.siteName || "").trim() : "";
     syncTotalHoursFromWorkers();
     const ore_totali = parseFloat(document.getElementById("ore_totali").value || "0");
-    const numero_operai = parseInt(document.getElementById("numero_operai").value || "0", 10);
+    const total_personale = getTotalPersonnelValue();
     const macchinari = (document.getElementById("macchinari").value || "").trim();
     const attivita = (document.getElementById("attivita").value || "").trim();
     const note = (document.getElementById("note").value || "").trim();
@@ -293,7 +301,7 @@ document.getElementById("rapportino-form").addEventListener("submit", async func
         site_id: cantiere_id,
         site_name_or_code: cantiere,
         total_hours: ore_totali,
-        workers_count: numero_operai,
+        workers_count: total_personale,
         machines_used: macchinari,
         activities: attivita,
         notes: note,
@@ -364,7 +372,7 @@ const WORKERS = [
 ];
 const DEFAULT_WORKER_HOURS = "8";
 const workersContainer = document.getElementById("workers-container");
-const workerCountInput = document.getElementById("numero_operai");
+const workerCountInput = document.getElementById("total_personale");
 const warningSummary = document.getElementById("worker-warning-summary");
 
 function escapeHtml(value) {
@@ -439,7 +447,8 @@ function buildWorkerRow(preserved) {
 
 function getTotalPersonnelValue() {
     const parsed = parseInt(workerCountInput.value || "1", 10);
-    return Math.max(1, Number.isFinite(parsed) ? parsed : 1);
+    const totalPersonnel = Number.isFinite(parsed) ? parsed : 1;
+    return Math.min(10, Math.max(1, totalPersonnel));
 }
 
 function syncTotalPersonnelInput() {
@@ -448,8 +457,8 @@ function syncTotalPersonnelInput() {
     return totalPersonnel;
 }
 
-function renderWorkerRows(totalPersonnel) {
-    const safeCount = Math.max(0, syncTotalPersonnelInput() - 1);
+function renderWorkerRows() {
+    const safeCount = syncTotalPersonnelInput() - 1;
     const previousCapo = readPreviousCapoRow();
     const previous = readPreviousRows();
     workersContainer.innerHTML = "";
@@ -512,6 +521,9 @@ function collectWorkers() {
     if (totalPersonnel < 1) {
         return { error: "Il totale personale deve essere almeno 1." };
     }
+    if (totalPersonnel > 10) {
+        return { error: "Il totale personale deve essere al massimo 10." };
+    }
 
     const rows = Array.from(workersContainer.querySelectorAll(".worker-row"));
     if (rows.length !== totalPersonnel) {
@@ -544,10 +556,10 @@ function collectWorkers() {
 }
 
 function refreshWorkerRows() {
-    renderWorkerRows(getTotalPersonnelValue());
+    renderWorkerRows();
 }
 
-workerCountInput.addEventListener("input", refreshWorkerRows);
+workerCountInput.addEventListener("change", refreshWorkerRows);
 workersContainer.addEventListener("input", validateIncompleteDays);
 workersContainer.addEventListener("change", validateIncompleteDays);
 refreshWorkerRows();

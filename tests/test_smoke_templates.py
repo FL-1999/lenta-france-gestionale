@@ -184,6 +184,11 @@ def test_capo_nuovo_rapportino_renders_with_safe_dicts() -> None:
     assert 'value="7"' in output
     assert 'data-site-name="Cantiere Safe"' in output
     assert 'label: "Rossi Mario"' in output
+    assert '<select id="total_personale" name="total_personale"' in output
+    assert 'id="numero_operai"' not in output
+    assert 'name="numero_operai"' not in output
+    for total in range(1, 11):
+        assert f'value="{total}"' in output
 
 
 def test_new_trip_form_renders_with_unified_locations() -> None:
