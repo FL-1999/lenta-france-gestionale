@@ -203,7 +203,7 @@ def notify_new_report(db: Session, report: Report, author: User) -> None:
             "report_created",
             capo_message,
             recipient_user_id=site.caposquadra_id,
-            target_url="/capo/rapportini",
+            target_url="/capo/dashboard",
         )
 
 

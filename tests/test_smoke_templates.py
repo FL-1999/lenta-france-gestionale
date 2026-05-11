@@ -4,9 +4,16 @@ import json
 from datetime import date
 from types import SimpleNamespace
 
+from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from main import _build_sites_map_data, app, templates
+from main import (
+    CAPO_REPORT_CREATED_REDIRECT_URL,
+    _build_sites_map_data,
+    app,
+    get_current_active_user_html,
+    templates,
+)
 from models import Depot, RoleEnum, Site, SiteStatusEnum, User
 
 
@@ -187,8 +194,23 @@ def test_capo_nuovo_rapportino_renders_with_safe_dicts() -> None:
     assert '<select id="total_personale" name="total_personale"' in output
     assert 'id="numero_operai"' not in output
     assert 'name="numero_operai"' not in output
+    assert 'href="/capo/dashboard" class="btn btn-secondary">⬅️ Menu caposquadra' in output
+    assert 'window.location.href = "/capo/dashboard?rapportino_created=1"' in output
+    assert 'href="/capo/rapportini"' not in output
     for total in range(1, 11):
         assert f'value="{total}"' in output
+
+
+def test_capo_rapportini_legacy_route_redirects_to_dashboard_menu() -> None:
+    app.dependency_overrides[get_current_active_user_html] = build_capo_user
+    try:
+        client = TestClient(app)
+        response = client.get("/capo/rapportini", follow_redirects=False)
+    finally:
+        app.dependency_overrides.pop(get_current_active_user_html, None)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == CAPO_REPORT_CREATED_REDIRECT_URL
 
 
 def test_new_trip_form_renders_with_unified_locations() -> None:
