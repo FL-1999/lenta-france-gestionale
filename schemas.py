@@ -121,7 +121,7 @@ class FicheCreate(BaseModel):
     fiche_type: FicheTypeEnum
     description: str
     operator: Optional[str] = None
-    hours: float
+    hours: Optional[float] = Field(default=None, ge=0)
     notes: Optional[str] = None
     tipologia_scavo: Optional[str] = None
     materiale: Optional[str] = None
@@ -143,7 +143,7 @@ class FicheRead(BaseModel):
     fiche_type: FicheTypeEnum
     description: str
     operator: Optional[str]
-    hours: float
+    hours: Optional[float]
     notes: Optional[str]
     tipologia_scavo: Optional[str] = None
     stratigrafia: Optional[str] = None
@@ -169,7 +169,7 @@ class FicheListItem(BaseModel):
     machine_name: Optional[str]
     fiche_type: FicheTypeEnum
     operator: Optional[str]
-    hours: float
+    hours: Optional[float]
     tipologia_scavo: Optional[str] = None
     stratigrafia: Optional[str] = None
     materiale: Optional[str] = None

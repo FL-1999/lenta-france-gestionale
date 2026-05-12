@@ -2,6 +2,7 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user
@@ -12,6 +13,16 @@ from schemas import FicheCreate, FicheRead, FicheListItem
 from notifications import notify_new_fiche
 
 router = APIRouter(prefix="/fiches", tags=["fiches"])
+
+
+def _sync_site_fiche_progress(db: Session, site: Site) -> None:
+    paratie_scavate = (
+        db.query(func.count(Fiche.id)).filter(Fiche.site_id == site.id).scalar() or 0
+    )
+    site.paratie_done_panels = int(paratie_scavate)
+    if site.totale_paratie_da_scavare is not None:
+        site.paratie_total_panels = site.totale_paratie_da_scavare
+
 
 
 @router.get("/", response_model=list[FicheListItem])
@@ -147,6 +158,7 @@ def create_fiche(
     )
     db.add(fiche)
     db.flush()
+    _sync_site_fiche_progress(db, site)
     notify_new_fiche(db, fiche, current_user)
     db.commit()
     db.refresh(fiche)

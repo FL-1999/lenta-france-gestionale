@@ -50,7 +50,7 @@
                     <th>{% if lang == 'fr' %}Cantiere{% else %}Cantiere{% endif %}</th>
                     <th>{% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}</th>
                     <th>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Heures d'excavation{% else %}Ore scavate{% endif %}</th>
                     <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
                     <th class="text-end">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
                 </tr>
@@ -62,7 +62,7 @@
                         <td>{{ f.site.name if f.site else '-' }}</td>
                         <td>{{ f.machine.name if f.machine else '-' }}</td>
                         <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
-                        <td>{{ f.hours }}</td>
+                        <td>{{ f.hours if f.hours is not none else '-' }}</td>
                         <td>{{ f.fiche_type.value if f.fiche_type else '-' }}</td>
                         <td class="text-end">
                             <a href="{{ url_for('manager_fiches_detail', fiche_id=f.id) }}" class="btn btn-sm btn-secondary">

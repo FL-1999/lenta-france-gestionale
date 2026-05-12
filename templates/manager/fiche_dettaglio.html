@@ -17,7 +17,7 @@
     {% endif %}
   </p>
   <p><strong>Tipo fiche:</strong> {{ fiche.fiche_type.value }}</p>
-  <p><strong>Ore:</strong> {{ "%.1f"|format(fiche.hours) }}</p>
+  <p><strong>Ore scavate:</strong> {{ '%.1f'|format(fiche.hours) if fiche.hours is not none else '-' }}</p>
   <p><strong>Descrizione:</strong> {{ fiche.description }}</p>
   <p><strong>Note:</strong> {{ fiche.notes or "-" }}</p>
   <p><strong>Creato da:</strong> {{ fiche.created_by.full_name or fiche.created_by.email }} ({{ fiche.created_by.role.value }})</p>

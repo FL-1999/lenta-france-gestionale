@@ -247,14 +247,14 @@
     <form method="post"
           action="{{ url_for('manager_site_progress_paratie', site_id=site.id) }}">
       <div class="form-group">
-        <label class="form-label" for="paratie_total_panels">
-          {% if lang == 'fr' %}Panneaux totaux{% else %}Pannelli totali{% endif %}
+        <label class="form-label" for="totale_paratie_da_scavare">
+          {% if lang == 'fr' %}Parois totales à excaver{% else %}Paratie totali da scavare{% endif %}
         </label>
         <input
           type="number"
           min="0"
-          id="paratie_total_panels"
-          name="paratie_total_panels"
+          id="totale_paratie_da_scavare"
+          name="totale_paratie_da_scavare"
           class="form-control"
           value="{{ progress_summary.paratie.total }}"
         />
@@ -262,7 +262,7 @@
 
       <div class="form-group">
         <label class="form-label" for="paratie_done_panels">
-          {% if lang == 'fr' %}Panneaux réalisés{% else %}Pannelli eseguiti{% endif %}
+          {% if lang == 'fr' %}Parois excavées{% else %}Paratie scavate{% endif %}
         </label>
         <input
           type="number"
@@ -271,7 +271,9 @@
           name="paratie_done_panels"
           class="form-control"
           value="{{ progress_summary.paratie.done }}"
+          readonly
         />
+        <small class="form-text text-muted">{% if lang == 'fr' %}Calculé automatiquement depuis les fiches enregistrées.{% else %}Calcolato automaticamente dalle fiches salvate.{% endif %}</small>
       </div>
 
       <div class="progress-bar" aria-hidden="true">
