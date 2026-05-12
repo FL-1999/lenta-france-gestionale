@@ -28,7 +28,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for depot in depositi %}
+        {% for depot in depots %}
         <tr data-depot-item data-name="{{ depot.name }}" data-lat="{{ depot.lat if depot.lat is not none else '' }}" data-lng="{{ depot.lng if depot.lng is not none else '' }}">
           <td><strong>{{ depot.name }}</strong></td>
           <td>{{ depot.city or '-' }}</td>

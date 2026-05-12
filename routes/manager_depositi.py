@@ -148,20 +148,22 @@ def manager_depositi_list(
     page, per_page = _normalize_pagination(page, per_page)
 
     total_count = _real_depots_query(db).with_entities(func.count(Depot.id)).scalar() or 0
-    depositi = (
+    depots = (
         _real_depots_query(db)
         .order_by(Depot.is_active.desc(), Depot.name.asc())
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
     )
+    print("depots count:", len(depots))
 
     return render_template(
         templates,
         request,
         "manager/depositi/list.html",
         {
-            "depositi": depositi,
+            "depots": depots,
+            "depositi": depots,
             "page": page,
             "per_page": per_page,
             "total_pages": max(1, math.ceil(total_count / per_page)),
@@ -212,6 +214,7 @@ def manager_depositi_create(
     _ensure_depots_manage(current_user)
 
     payload = _extract_depot_form_payload(name, address, city, zip_code, legacy_zip, province, country, note, lat, lng, is_active)
+    print("creating depot:", payload.get("name"))
     depot = Depot()
     try:
         _apply_depot_payload(depot, payload)
@@ -242,7 +245,7 @@ def manager_depositi_create(
                 depot=None,
                 form_action=str(request.url_for("manager_depositi_create")),
                 form_data=payload,
-                error_message="Esiste già un deposito con questo nome",
+                error_message="Deposito già esistente",
             ),
             db,
             current_user,
@@ -263,7 +266,7 @@ def manager_depositi_create(
                 depot=None,
                 form_action=str(request.url_for("manager_depositi_create")),
                 form_data=payload,
-                error_message="Esiste già un deposito con questo nome",
+                error_message="Deposito già esistente",
             ),
             db,
             current_user,
@@ -421,7 +424,7 @@ def manager_depositi_update(
                 depot=depot,
                 form_action=str(request.url_for("manager_depositi_update", depot_id=depot.id)),
                 form_data=payload,
-                error_message="Esiste già un deposito con questo nome",
+                error_message="Deposito già esistente",
             ),
             db,
             current_user,
@@ -442,7 +445,7 @@ def manager_depositi_update(
                 depot=depot,
                 form_action=str(request.url_for("manager_depositi_update", depot_id=depot.id)),
                 form_data=payload,
-                error_message="Esiste già un deposito con questo nome",
+                error_message="Deposito già esistente",
             ),
             db,
             current_user,
