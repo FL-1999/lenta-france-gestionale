@@ -126,10 +126,10 @@ class FicheCreate(BaseModel):
     notes: Optional[str] = None
     tipologia_scavo: Optional[str] = None
     materiale: Optional[str] = None
-    profondita_totale: Optional[float] = None
-    diametro_palo: Optional[float] = None
-    larghezza_pannello: Optional[float] = None
-    altezza_pannello: Optional[float] = None
+    profondita_totale: Optional[float] = Field(default=None, gt=0)
+    diametro_palo: Optional[float] = Field(default=None, gt=0)
+    larghezza_pannello: Optional[float] = Field(default=None, gt=0)
+    altezza_pannello: Optional[float] = Field(default=None, gt=0)
     data_getto: Optional[date] = None
     metri_cubi_gettati: float = Field(..., ge=0)
 
