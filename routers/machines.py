@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session, joinedload, load_only
 from auth import get_current_active_user_html
 from database import get_db
 from models import Attrezzatura, Machine, MachineNote, MachineSiteAssignment, MachineType, MachineTypeEnum, MovimentoAttrezzatura, RoleEnum, Site
+from notifications import notify_machine_note_created
+from utils.places import format_place_label, get_place_by_value, get_selectable_places
 from schemas import MachineCreate, MachineRead
 from template_context import build_template_context, register_manager_badges
 from permissions import has_perm
