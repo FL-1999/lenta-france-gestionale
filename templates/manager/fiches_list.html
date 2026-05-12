@@ -1,7 +1,13 @@
 {% extends "shared/base.html" %}
 {% block title %}
     {% set lang = request.cookies.get('lang', 'it') %}
-    {% if lang == 'fr' %}Fiches – Manager – Lenta France{% else %}Fiches – Manager – Lenta France{% endif %}
+    {% if selected_site %}
+        {{ selected_site.name }} – Fiches – Manager
+    {% elif lang == 'fr' %}
+        Fiches par chantier – Manager – Lenta France
+    {% else %}
+        Fiches per cantiere – Manager – Lenta France
+    {% endif %}
 {% endblock %}
 {% block content %}
 {% set lang = request.cookies.get('lang', 'it') %}
@@ -15,84 +21,155 @@
                 Gestione fiches
             {% endif %}
         </p>
-        <h1 class="page-title">Fiches</h1>
-        <p class="page-subtitle">
-            {% if lang == 'fr' %}
-                Vue d'ensemble des fiches enregistrées pour les chantiers.
+        <h1 class="page-title">
+            {% if selected_site %}
+                {{ selected_site.name }} – fiches
             {% else %}
-                Panoramica delle fiches registrate per i cantieri.
+                Fiches per cantiere
+            {% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if selected_site %}
+                {% if lang == 'fr' %}
+                    Liste filtrée: seules les fiches du chantier sélectionné sont affichées.
+                {% else %}
+                    Elenco filtrato: vengono mostrate solo le fiches del cantiere selezionato.
+                {% endif %}
+            {% else %}
+                {% if lang == 'fr' %}
+                    Avancement des fiches regroupé par chantier, avec historique automatique des chantiers terminés.
+                {% else %}
+                    Avanzamento fiches raggruppato per cantiere, con storico automatico dei cantieri completati.
+                {% endif %}
             {% endif %}
         </p>
+    </div>
+    <div class="page-actions">
+        {% if selected_site %}
+            <a href="{{ url_for('manager_fiches_list') }}" class="btn btn-secondary">
+                ← {% if lang == 'fr' %}Tous les chantiers{% else %}Tutti i cantieri{% endif %}
+            </a>
+        {% endif %}
+        <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-primary">
+            ➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+        </a>
     </div>
 </div>
 
-<div class="card table-card">
-    <div class="card-header">
-        <div class="card-title">
-            📄
-            {% if lang == 'fr' %}
-                Liste des fiches
-            {% else %}
-                Elenco fiches
-            {% endif %}
+{% macro site_progress_card(card) %}
+    <article class="fiche-site-card">
+        <div class="fiche-site-card__main">
+            <div>
+                <h3 class="fiche-site-card__title">{{ card.site.name }}</h3>
+                <p class="fiche-site-card__meta">
+                    {% if card.site.code %}{{ card.site.code }} · {% endif %}
+                    {{ card.created }}/{{ card.total }} fiches
+                    {% if card.total == 0 %}
+                        · {% if lang == 'fr' %}total parois non défini{% else %}totale paratie non definito{% endif %}
+                    {% endif %}
+                </p>
+            </div>
+            <div class="fiche-progress-pill {% if card.is_completed %}fiche-progress-pill--done{% endif %}">
+                {{ card.percent }}%
+            </div>
         </div>
-        <div class="card-actions">
-            <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-primary btn-sm">
-                ➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+        <div class="fiche-site-card__progress" aria-label="Avanzamento fiches {{ card.percent }}%">
+            <span style="width: {{ card.percent }}%;"></span>
+        </div>
+        <div class="fiche-site-card__footer">
+            <span class="text-muted">
+                {% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}: {{ card.created }} / {{ card.total }}
+            </span>
+            <a href="{{ url_for('manager_fiches_list') }}?site_id={{ card.site.id }}" class="btn btn-sm btn-secondary">
+                {% if lang == 'fr' %}Ouvrir fiches{% else %}Apri fiches{% endif %}
             </a>
         </div>
-    </div>
-    <div class="card-body">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Cantiere{% else %}Cantiere{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Panneau{% else %}Pannello{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Heures d'excavation{% else %}Ore scavate{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
-                    <th class="text-end">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for f in fiches %}
-                    <tr>
-                        <td>{{ f.date }}</td>
-                        <td>{{ f.site.name if f.site else '-' }}</td>
-                        <td>{{ f.numero_pannello }}</td>
-                        <td>{{ f.machine.name if f.machine else '-' }}</td>
-                        <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
-                        <td>{{ f.hours if f.hours is not none else '-' }}</td>
-                        <td>{{ f.fiche_type.value if f.fiche_type else '-' }}</td>
-                        <td class="text-end">
-                            <a href="{{ url_for('manager_fiches_detail', fiche_id=f.id) }}" class="btn btn-sm btn-secondary">
-                                {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
-                            </a>
-                        </td>
-                    </tr>
+    </article>
+{% endmacro %}
+
+{% if not selected_site %}
+    <section class="card fiche-sites-section">
+        <div class="card-header">
+            <div class="card-title">🏗️ {% if lang == 'fr' %}Chantiers en cours{% else %}Cantieri in corso{% endif %}</div>
+        </div>
+        <div class="card-body">
+            <div class="fiche-site-grid">
+                {% for card in active_site_progress %}
+                    {{ site_progress_card(card) }}
                 {% else %}
-                    <tr>
-                        <td colspan="8" class="table-empty">
-                            {% if lang == 'fr' %}
-                                Aucune fiche enregistrée pour le moment.
-                            {% else %}
-                                Nessuna fiche registrata al momento.
-                            {% endif %}
-                        </td>
-                    </tr>
+                    <p class="text-muted">{% if lang == 'fr' %}Aucun chantier en cours.{% else %}Nessun cantiere in corso.{% endif %}</p>
                 {% endfor %}
-            </tbody>
-        </table>
-        <p class="text-muted">
-            {% if lang == 'fr' %}
-                Total fiches: {{ total_fiches }}
-            {% else %}
-                Fiches totali: {{ total_fiches }}
-            {% endif %}
-        </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="card fiche-sites-section">
+        <div class="card-header">
+            <div class="card-title">📚 {% if lang == 'fr' %}Chantiers terminés / historique fiches{% else %}Cantieri completati / storico fiches{% endif %}</div>
+        </div>
+        <div class="card-body">
+            <div class="fiche-site-grid">
+                {% for card in completed_site_progress %}
+                    {{ site_progress_card(card) }}
+                {% else %}
+                    <p class="text-muted">{% if lang == 'fr' %}Aucun chantier terminé dans l'historique fiches.{% else %}Nessun cantiere completato nello storico fiches.{% endif %}</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+{% else %}
+    <div class="card table-card">
+        <div class="card-header">
+            <div class="card-title">
+                📄 {% if lang == 'fr' %}Fiches du chantier{% else %}Fiches del cantiere{% endif %}: {{ selected_site.name }}
+            </div>
+            <div class="card-actions text-muted">
+                {% if lang == 'fr' %}Total fiches{% else %}Fiches totali{% endif %}: {{ total_fiches }}
+            </div>
+        </div>
+        <div class="card-body">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Panneau{% else %}Pannello{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Machine{% else %}Macchinario{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Heures d'excavation{% else %}Ore scavate{% endif %}</th>
+                        <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                        <th class="text-end">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fiches %}
+                        <tr>
+                            <td>{{ f.date }}</td>
+                            <td>{{ f.numero_pannello }}</td>
+                            <td>{{ f.machine.name if f.machine else '-' }}</td>
+                            <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
+                            <td>{{ f.hours if f.hours is not none else '-' }}</td>
+                            <td>{{ f.fiche_type.value if f.fiche_type else '-' }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('manager_fiches_detail', fiche_id=f.id) }}" class="btn btn-sm btn-secondary">
+                                    {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
+                                </a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="table-empty">
+                                {% if lang == 'fr' %}
+                                    Aucune fiche enregistrée pour ce chantier.
+                                {% else %}
+                                    Nessuna fiche registrata per questo cantiere.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
+{% endif %}
 
 {% endblock %}
