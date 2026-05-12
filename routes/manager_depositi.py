@@ -20,15 +20,9 @@ register_manager_badges(templates)
 DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
 
-DEFAULT_DEPOT_NAMES = {"montauroux", "st. jeannet", "st jeannet", "sommariva", "cantieri"}
 
-
-def _real_depots_query(db: Session, *, include_inactive: bool = True):
-    query = db.query(Depot)
-    if not include_inactive:
-        query = query.filter(Depot.is_active.is_(True))
-    normalized_defaults = [name.lower() for name in DEFAULT_DEPOT_NAMES]
-    return query.filter(func.lower(func.trim(Depot.name)).notin_(normalized_defaults))
+def _real_depots_query(db: Session):
+    return db.query(Depot)
 
 
 def _format_depot_label(depot: Depot) -> str:
@@ -150,12 +144,13 @@ def manager_depositi_list(
     total_count = _real_depots_query(db).with_entities(func.count(Depot.id)).scalar() or 0
     depots = (
         _real_depots_query(db)
-        .order_by(Depot.is_active.desc(), Depot.name.asc())
+        .order_by(Depot.name.asc())
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
     )
-    print("depots count:", len(depots))
+    print("depots count:", total_count)
+    print("nomi depositi trovati:", [depot.name for depot in depots])
 
     return render_template(
         templates,
@@ -214,6 +209,7 @@ def manager_depositi_create(
     _ensure_depots_manage(current_user)
 
     payload = _extract_depot_form_payload(name, address, city, zip_code, legacy_zip, province, country, note, lat, lng, is_active)
+    payload["is_active"] = True
     print("creating depot:", payload.get("name"))
     depot = Depot()
     try:

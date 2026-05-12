@@ -47,7 +47,6 @@ class DepositiRoutesTests(unittest.TestCase):
                 "lat": "50.6292",
                 "lng": "3.0573",
                 "note": "Note test",
-                "is_active": "on",
             },
             follow_redirects=False,
         )
@@ -66,6 +65,7 @@ class DepositiRoutesTests(unittest.TestCase):
             depot_id = depot.id
             self.assertEqual(depot.city, "Lille")
             self.assertAlmostEqual(depot.lat, 50.6292)
+            self.assertTrue(depot.is_active)
         finally:
             session.close()
 
@@ -95,6 +95,21 @@ class DepositiRoutesTests(unittest.TestCase):
             self.assertFalse(updated.is_active)
         finally:
             session.close()
+
+    def test_manager_depositi_list_shows_inactive_depots(self) -> None:
+        unique = uuid4().hex[:10]
+        depot_name = f"000 Deposito inattivo {unique}"
+        session = SessionLocal()
+        try:
+            session.add(Depot(name=depot_name, city="Nice", is_active=False))
+            session.commit()
+        finally:
+            session.close()
+
+        response = self.client.get("/manager/depositi?per_page=100", cookies={"lang": "it"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(depot_name, response.text)
 
     def test_manager_depositi_duplicate_name_shows_clear_error(self) -> None:
         unique = uuid4().hex[:10]
