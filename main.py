@@ -692,7 +692,7 @@ def _build_fiche_form_data(
     metri_cubi_gettati: float | None = None,
     operatore: str | None = None,
     descrizione: str | None = None,
-    ore_lavorate: float | None = None,
+    ore_lavorate: float | str | None = None,
     note: str | None = None,
     tipologia_scavo: str | None = None,
     stratigrafia: str | None = None,
@@ -1472,7 +1472,7 @@ async def manager_fiche_create(
     metri_cubi_gettati: float | None = Form(None),
     operatore: str = Form(...),
     descrizione: str = Form(""),
-    ore_lavorate: float = Form(...),
+    ore_lavorate: str | None = Form(None),
     note: str | None = Form(None),
     tipologia_scavo: str | None = Form(None),
     materiale: str | None = Form(None),
@@ -1495,6 +1495,9 @@ async def manager_fiche_create(
         diametro_value_cm = diametro_palo_cm
         diametro_value_m = (
             diametro_value_cm / 100 if diametro_value_cm is not None else None
+        )
+        ore_scavate = _parse_optional_non_negative_float(
+            ore_lavorate, "Ore scavate"
         )
 
         _validate_fiche_geometria(
@@ -1525,7 +1528,7 @@ async def manager_fiche_create(
                 fiche_type=FicheTypeEnum.produzione,
                 description=descrizione or "",
                 operator=operatore,
-                hours=ore_lavorate,
+                hours=ore_scavate,
                 notes=note,
                 tipologia_scavo=tipologia_scavo or None,
                 materiale=materiale or None,
@@ -1538,6 +1541,8 @@ async def manager_fiche_create(
                 created_by_id=current_user.id,
             )
             db.add(fiche)
+            db.flush()
+            _sync_site_fiche_progress(db, site)
             db.commit()
             db.refresh(fiche)
             notify_new_fiche(db, fiche, current_user)
@@ -2377,6 +2382,61 @@ def _clamp_progress_percent(value: str | int | float | None) -> int:
     return max(0, min(100, numeric_value))
 
 
+def _parse_optional_non_negative_float(
+    value: str | int | float | None, field_label: str
+) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        parsed_value = float(value)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Il campo {field_label} non è valido.",
+        )
+    if parsed_value < 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Il campo {field_label} non può essere negativo.",
+        )
+    return parsed_value
+
+
+def _parse_optional_non_negative_int(value: str | int | None) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        parsed_value = int(value)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=400,
+            detail="Il totale paratie da scavare non è valido.",
+        )
+    if parsed_value < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Il totale paratie da scavare non può essere negativo.",
+        )
+    return parsed_value
+
+
+def _site_paratie_total(site: Site) -> int:
+    return int(
+        site.totale_paratie_da_scavare
+        if site.totale_paratie_da_scavare is not None
+        else (site.paratie_total_panels or 0)
+    )
+
+
+def _sync_site_fiche_progress(db: Session, site: Site) -> None:
+    paratie_scavate = (
+        db.query(func.count(Fiche.id)).filter(Fiche.site_id == site.id).scalar() or 0
+    )
+    site.paratie_done_panels = int(paratie_scavate)
+    if site.totale_paratie_da_scavare is not None:
+        site.paratie_total_panels = site.totale_paratie_da_scavare
+
+
 def _apply_extra_site_progress(
     site: Site,
     installazione_cantiere_pct: str | int | float | None,
@@ -2399,7 +2459,7 @@ def _build_site_progress(
 ) -> tuple[dict[str, dict[str, object]], list[dict[str, int | str]], int]:
     cordoli_total = float(site.cordoli_total_m or 0)
     cordoli_done = float(site.cordoli_done_m or 0)
-    paratie_total = int(site.paratie_total_panels or 0)
+    paratie_total = _site_paratie_total(site)
     paratie_done = int(site.paratie_done_panels or 0)
     installazione_cantiere_pct = _clamp_progress_percent(site.installazione_cantiere_pct)
     rabotage_pct = _clamp_progress_percent(site.rabotage_pct)
@@ -2813,6 +2873,7 @@ def manager_site_progress_paratie(
     request: Request,
     site_id: int,
     paratie_total_panels: int | None = Form(None),
+    totale_paratie_da_scavare: int | None = Form(None),
     paratie_done_panels: int | None = Form(None),
     installazione_cantiere_pct: str | None = Form(None),
     rabotage_pct: str | None = Form(None),
@@ -2828,10 +2889,15 @@ def manager_site_progress_paratie(
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
-        total_value = max(int(paratie_total_panels or 0), 0)
-        done_value = max(int(paratie_done_panels or 0), 0)
+        submitted_total = (
+            totale_paratie_da_scavare
+            if totale_paratie_da_scavare is not None
+            else paratie_total_panels
+        )
+        total_value = max(int(submitted_total or 0), 0)
+        site.totale_paratie_da_scavare = total_value
         site.paratie_total_panels = total_value
-        site.paratie_done_panels = done_value
+        _sync_site_fiche_progress(db, site)
         _apply_extra_site_progress(
             site,
             installazione_cantiere_pct,
@@ -2994,6 +3060,7 @@ def manager_cantiere_nuovo_post(
     status: str = Form(...),
     is_active: str | None = Form(None),
     caposquadra_id: str | None = Form(None),
+    totale_paratie_da_scavare: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "sites.create"):
@@ -3033,6 +3100,7 @@ def manager_cantiere_nuovo_post(
     end_date_parsed = parse_date(end_date)
     lat_value = parse_coordinate(lat)
     lng_value = parse_coordinate(lng)
+    total_paratie_value = _parse_optional_non_negative_int(totale_paratie_da_scavare)
     has_address = bool(address and address.strip())
 
     if start_date and start_date_parsed is None:
@@ -3119,6 +3187,7 @@ def manager_cantiere_nuovo_post(
                         "status": status,
                         "is_active": is_active,
                         "caposquadra_id": parsed_capo_id,
+                        "totale_paratie_da_scavare": totale_paratie_da_scavare or "",
                         "confirm_unverified": confirm_unverified,
                     },
                     form_submitted=True,
@@ -3140,6 +3209,9 @@ def manager_cantiere_nuovo_post(
             status=status_value,
             is_active=is_active is not None,
             caposquadra_id=parsed_capo_id,
+            totale_paratie_da_scavare=total_paratie_value,
+            paratie_total_panels=total_paratie_value,
+            paratie_done_panels=0,
         )
         db.add(new_site)
         db.flush()
@@ -3886,6 +3958,7 @@ def manager_cantiere_modifica_post(
     status: str = Form(...),
     is_active: str | None = Form(None),
     caposquadra_id: str | None = Form(None),
+    totale_paratie_da_scavare: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role == RoleEnum.caposquadra:
@@ -3926,6 +3999,7 @@ def manager_cantiere_modifica_post(
     end_date_parsed = parse_date(end_date)
     lat_value = parse_coordinate(lat)
     lng_value = parse_coordinate(lng)
+    total_paratie_value = _parse_optional_non_negative_int(totale_paratie_da_scavare)
     has_address = bool(address and address.strip())
 
     if status not in SiteStatusEnum.__members__:
@@ -3986,6 +4060,9 @@ def manager_cantiere_modifica_post(
         site.status = status_value
         site.is_active = is_active is not None
         site.caposquadra_id = parsed_capo_id
+        site.totale_paratie_da_scavare = total_paratie_value
+        site.paratie_total_panels = total_paratie_value
+        _sync_site_fiche_progress(db, site)
 
         new_status = site.status.value if site.status else None
         if previous_status != new_status:
@@ -4033,6 +4110,9 @@ def capo_site_detail(
     db = SessionLocal()
     try:
         site = get_site_for_user(db, site_id, current_user)
+        progress_summary, _, _ = _build_site_progress(
+            site, request.cookies.get("lang", "it")
+        )
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
     finally:
         db.close()
@@ -4044,6 +4124,7 @@ def capo_site_detail(
             request,
             current_user,
             site=site,
+            progress_summary=progress_summary,
             site_tasks=site_tasks,
             open_tasks=open_tasks,
             completed_tasks=completed_tasks,
@@ -4413,7 +4494,7 @@ async def capo_fiche_nuova_post(
     metri_cubi_gettati: float | None = Form(None),
     operatore: str = Form(...),
     descrizione: str = Form(""),
-    ore_lavorate: float = Form(...),
+    ore_lavorate: str | None = Form(None),
     note: str | None = Form(None),
     tipologia_scavo: str | None = Form(None),
     materiale: str | None = Form(None),
@@ -4436,6 +4517,9 @@ async def capo_fiche_nuova_post(
         diametro_value_cm = diametro_palo_cm
         diametro_value_m = (
             diametro_value_cm / 100 if diametro_value_cm is not None else None
+        )
+        ore_scavate = _parse_optional_non_negative_float(
+            ore_lavorate, "Ore scavate"
         )
 
         _validate_fiche_geometria(
@@ -4468,7 +4552,7 @@ async def capo_fiche_nuova_post(
                 fiche_type=FicheTypeEnum.produzione,
                 description=descrizione or "",
                 operator=operatore,
-                hours=ore_lavorate,
+                hours=ore_scavate,
                 notes=note or None,
                 tipologia_scavo=tipologia_scavo or None,
                 materiale=materiale or None,
@@ -4481,6 +4565,8 @@ async def capo_fiche_nuova_post(
                 created_by_id=current_user.id,
             )
             db.add(fiche)
+            db.flush()
+            _sync_site_fiche_progress(db, site)
             db.commit()
             db.refresh(fiche)
             notify_new_fiche(db, fiche, current_user)

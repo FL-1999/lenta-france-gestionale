@@ -55,7 +55,7 @@
           <th>Cantiere</th>
           <th>Macchina</th>
           <th>Tipo</th>
-          <th>Ore</th>
+          <th>Ore scavate</th>
           <th>Creato da</th>
           <th class="table-actions-col">Dettaglio</th>
         </tr>
@@ -67,7 +67,7 @@
           <td>{{ f.site.name if f.site else "" }}</td>
           <td>{% if f.machine %}{{ f.machine.name }}{% else %}-{% endif %}</td>
           <td>{{ f.fiche_type.value }}</td>
-          <td>{{ "%.1f"|format(f.hours) }}</td>
+          <td>{{ '%.1f'|format(f.hours) if f.hours is not none else '-' }}</td>
           <td>{{ f.created_by.full_name or f.created_by.email }}</td>
           <td class="table-actions">
             <a href="/manager/fiches/{{ f.id }}" class="btn btn-sm btn-secondary">Apri</a>

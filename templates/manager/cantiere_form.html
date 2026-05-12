@@ -40,6 +40,7 @@
       {% set form_status = form_data.get('status') %}
       {% set form_capo = form_data.get('caposquadra_id') %}
       {% set form_active = form_data.get('is_active') %}
+      {% set form_totale_paratie_da_scavare = form_data.get('totale_paratie_da_scavare') %}
       {% set form_confirm_unverified = form_data.get('confirm_unverified') %}
       <form method="post" data-mode="{{ mode }}" class="cantiere-form" data-place-picker>
         {% set has_coordinates = (form_lat is not none and form_lng is not none) or (site and site.lat is not none and site.lng is not none) %}
@@ -104,6 +105,18 @@
               <label class="form-label" for="end_date">Data fine</label>
               <input type="date" id="end_date" name="end_date" class="form-control"
                      value="{{ form_end_date if form_end_date is not none else (site.end_date.isoformat() if site and site.end_date else '') }}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="totale_paratie_da_scavare">Totale paratie da scavare</label>
+              <input type="number"
+                     id="totale_paratie_da_scavare"
+                     name="totale_paratie_da_scavare"
+                     class="form-control"
+                     min="0"
+                     step="1"
+                     value="{{ form_totale_paratie_da_scavare if form_totale_paratie_da_scavare is not none else (site.totale_paratie_da_scavare if site and site.totale_paratie_da_scavare is not none else (site.paratie_total_panels if site and site.paratie_total_panels is not none else '')) }}">
+              <small class="form-text text-muted">Usato per calcolare l'avanzamento automatico dalle fiches salvate.</small>
             </div>
           </div>
         </div>

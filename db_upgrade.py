@@ -74,6 +74,7 @@ SITES_COLUMNS: tuple[str, ...] = (
     "auto_cost_materials_enabled BOOLEAN NOT NULL DEFAULT 1",
     "auto_cost_labor_enabled BOOLEAN NOT NULL DEFAULT 1",
     "manual_material_entries_override_auto BOOLEAN NOT NULL DEFAULT 1",
+    "totale_paratie_da_scavare INTEGER",
 )
 
 NOTIFICATIONS_COLUMNS: tuple[str, ...] = ("is_read BOOLEAN NOT NULL DEFAULT 0",)
@@ -300,6 +301,79 @@ def _backfill_site_labor_weekend_flags(connection: Connection) -> None:
     logger.info("Backfilled weekend flags for site_labor_cost_entries.")
 
 
+def _ensure_fiche_hours_nullable(connection: Connection) -> None:
+    if not _table_exists(connection, "fiches"):
+        logger.warning("Skipped fiches.hours nullable migration: table not found.")
+        return
+
+    columns = connection.execute(text("PRAGMA table_info(fiches)")).fetchall()
+    hours_column = next((row for row in columns if row[1] == "hours"), None)
+    if hours_column is None:
+        logger.warning("Skipped fiches.hours nullable migration: column not found.")
+        return
+    if not bool(hours_column[3]):
+        logger.info("fiches.hours already nullable.")
+        return
+
+    connection.execute(text("PRAGMA foreign_keys=OFF"))
+    connection.execute(
+        text(
+            """
+            CREATE TABLE fiches_nullable_hours (
+                id INTEGER PRIMARY KEY,
+                date DATE NOT NULL,
+                site_id INTEGER NOT NULL,
+                machine_id INTEGER,
+                created_by_id INTEGER NOT NULL,
+                fiche_type VARCHAR(15) NOT NULL,
+                description TEXT NOT NULL,
+                operator VARCHAR(255),
+                hours FLOAT,
+                notes TEXT,
+                tipologia_scavo VARCHAR(50),
+                stratigrafia TEXT,
+                materiale VARCHAR(100),
+                profondita_totale FLOAT,
+                diametro_palo FLOAT,
+                larghezza_pannello FLOAT,
+                altezza_pannello FLOAT,
+                data_getto DATE,
+                metri_cubi_gettati FLOAT,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                FOREIGN KEY(site_id) REFERENCES sites(id),
+                FOREIGN KEY(machine_id) REFERENCES machines(id),
+                FOREIGN KEY(created_by_id) REFERENCES users(id)
+            )
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            INSERT INTO fiches_nullable_hours (
+                id, date, site_id, machine_id, created_by_id, fiche_type, description,
+                operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
+                profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
+                data_getto, metri_cubi_gettati, created_at, updated_at
+            )
+            SELECT
+                id, date, site_id, machine_id, created_by_id, fiche_type, description,
+                operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
+                profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
+                data_getto, metri_cubi_gettati, created_at, updated_at
+            FROM fiches
+            """
+        )
+    )
+    connection.execute(text("DROP TABLE fiches"))
+    connection.execute(text("ALTER TABLE fiches_nullable_hours RENAME TO fiches"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_fiches_id ON fiches (id)"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_fiches_site_id ON fiches (site_id)"))
+    connection.execute(text("PRAGMA foreign_keys=ON"))
+    logger.info("Migrated fiches.hours to nullable.")
+
+
 def upgrade_db(engine: Engine) -> None:
     """Run idempotent SQLite schema upgrades for configured tables."""
     site_labor_columns_added = False
@@ -331,6 +405,7 @@ def upgrade_db(engine: Engine) -> None:
         _migrate_legacy_roles(connection)
         _backfill_user_roles(connection)
         _ensure_personale_user_link_constraints(connection)
+        _ensure_fiche_hours_nullable(connection)
 
 
 def check_db_schema(engine: Engine) -> dict[str, list[str]]:

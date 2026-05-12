@@ -163,7 +163,7 @@
                 <p class="mb-0">{{ fiche.operator or (fiche.created_by.full_name if fiche.created_by else "-") }}</p>
             </div>
             <div>
-                <p class="text-muted">{% if lang == 'fr' %}Heures{% else %}Ore{% endif %}</p>
+                <p class="text-muted">{% if lang == 'fr' %}Heures d'excavation{% else %}Ore scavate{% endif %}</p>
                 <p class="mb-0">{{ "%.1f"|format(fiche.hours) if fiche.hours is not none else "-" }}</p>
             </div>
             <div>
