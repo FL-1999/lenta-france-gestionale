@@ -22,6 +22,30 @@ def _sync_site_fiche_progress(db: Session, site: Site) -> None:
     site.paratie_done_panels = int(paratie_scavate)
     if site.totale_paratie_da_scavare is not None:
         site.paratie_total_panels = site.totale_paratie_da_scavare
+    paratie_total = int(
+        site.totale_paratie_da_scavare
+        if site.totale_paratie_da_scavare is not None
+        else (site.paratie_total_panels or 0)
+    )
+    site.progress = (
+        int(round((int(paratie_scavate) / paratie_total) * 100))
+        if paratie_total > 0
+        else 0
+    )
+
+
+def _ensure_unique_numero_pannello(db: Session, site_id: int, numero_pannello: int) -> None:
+    duplicate_exists = (
+        db.query(Fiche.id)
+        .filter(Fiche.site_id == site_id, Fiche.numero_pannello == numero_pannello)
+        .first()
+        is not None
+    )
+    if duplicate_exists:
+        raise HTTPException(
+            status_code=400,
+            detail="Pannello già registrato per questo cantiere",
+        )
 
 
 
@@ -56,6 +80,7 @@ def list_fiches(
             id=fiche.id,
             date=fiche.date,
             site_name=fiche.site.name if fiche.site else "",
+            numero_pannello=fiche.numero_pannello,
             machine_name=fiche.machine.name if fiche.machine else None,
             fiche_type=fiche.fiche_type,
             operator=fiche.operator,
@@ -101,6 +126,7 @@ def get_fiche_detail(
         id=fiche.id,
         date=fiche.date,
         site_id=fiche.site_id,
+        numero_pannello=fiche.numero_pannello,
         machine_id=fiche.machine_id,
         fiche_type=fiche.fiche_type,
         description=fiche.description,
@@ -130,6 +156,7 @@ def create_fiche(
     current_user: User = Depends(get_current_active_user),
 ):
     site = get_site_for_user(db, fiche_in.site_id, current_user)
+    _ensure_unique_numero_pannello(db, fiche_in.site_id, fiche_in.numero_pannello)
 
     machine = None
     if fiche_in.machine_id is not None:
@@ -139,6 +166,7 @@ def create_fiche(
 
     fiche = Fiche(
         date=fiche_in.date,
+        numero_pannello=fiche_in.numero_pannello,
         site_id=fiche_in.site_id,
         machine_id=fiche_in.machine_id,
         fiche_type=fiche_in.fiche_type,
@@ -167,6 +195,7 @@ def create_fiche(
         id=fiche.id,
         date=fiche.date,
         site_id=fiche.site_id,
+        numero_pannello=fiche.numero_pannello,
         machine_id=fiche.machine_id,
         fiche_type=fiche.fiche_type,
         description=fiche.description,

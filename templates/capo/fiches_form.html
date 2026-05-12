@@ -63,6 +63,21 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="form-label" for="numero_pannello">
+                            {% if lang == 'fr' %}Numéro panneau*{% else %}Numero pannello*{% endif %}
+                        </label>
+                        <input id="numero_pannello"
+                               name="numero_pannello"
+                               type="number"
+                               min="1"
+                               required
+                               class="form-control input-field"
+                               value="{{ form_data.get('numero_pannello', '') }}"
+                               oninvalid="this.setCustomValidity('Inserire numero pannello')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+
+                    <div class="form-group">
                         <label class="form-label" for="macchinario_id">
                             {% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}
                         </label>

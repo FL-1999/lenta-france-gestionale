@@ -117,6 +117,7 @@ class DailyReportRead(DailyReportBase):
 class FicheCreate(BaseModel):
     date: date
     site_id: int
+    numero_pannello: int = Field(..., gt=0)
     machine_id: Optional[int] = None
     fiche_type: FicheTypeEnum
     description: str
@@ -139,6 +140,7 @@ class FicheRead(BaseModel):
     id: int
     date: date
     site_id: int
+    numero_pannello: int
     machine_id: Optional[int]
     fiche_type: FicheTypeEnum
     description: str
@@ -166,6 +168,7 @@ class FicheListItem(BaseModel):
     id: int
     date: date
     site_name: str
+    numero_pannello: int
     machine_name: Optional[str]
     fiche_type: FicheTypeEnum
     operator: Optional[str]

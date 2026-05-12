@@ -53,6 +53,7 @@
         <tr>
           <th>Data</th>
           <th>Cantiere</th>
+          <th>Pannello</th>
           <th>Macchina</th>
           <th>Tipo</th>
           <th>Ore scavate</th>
@@ -65,6 +66,7 @@
         <tr>
           <td>{{ f.date.strftime("%d/%m/%Y") }}</td>
           <td>{{ f.site.name if f.site else "" }}</td>
+          <td>{{ f.numero_pannello }}</td>
           <td>{% if f.machine %}{{ f.machine.name }}{% else %}-{% endif %}</td>
           <td>{{ f.fiche_type.value }}</td>
           <td>{{ '%.1f'|format(f.hours) if f.hours is not none else '-' }}</td>
@@ -75,7 +77,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="table-empty">Nessuna fiche trovata.</td>
+          <td colspan="8" class="table-empty">Nessuna fiche trovata.</td>
         </tr>
         {% endfor %}
       </tbody>
