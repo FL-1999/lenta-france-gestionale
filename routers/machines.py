@@ -6,16 +6,17 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm import Session, joinedload, load_only
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import Machine, MachineSiteAssignment, MachineType, MachineTypeEnum, Site
+from models import Attrezzatura, Machine, MachineNote, MachineSiteAssignment, MachineType, MachineTypeEnum, MovimentoAttrezzatura, RoleEnum, Site
 from schemas import MachineCreate, MachineRead
 from template_context import build_template_context, register_manager_badges
 from permissions import has_perm
+from notifications import notify_machine_note_created
 
 router = APIRouter()
 
@@ -380,6 +381,335 @@ def _build_machine_type_redirect(
             updated_query,
             parsed.fragment,
         )
+    )
+
+
+
+
+NOTE_TYPE_CHOICES = (
+    ("rottura", "Rottura"),
+    ("manutenzione", "Manutenzione"),
+    ("problema", "Problema"),
+    ("osservazione", "Osservazione"),
+)
+
+
+def _require_capo(user):
+    if user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+
+def _get_capo_sites(db: Session, user) -> list[Site]:
+    return (
+        db.query(Site)
+        .filter(Site.caposquadra_id == user.id, Site.is_active == True)  # noqa: E712
+        .order_by(Site.name.asc())
+        .all()
+    )
+
+
+def _latest_attrezzatura_movements_for_sites(db: Session, site_ids: list[int]) -> list[MovimentoAttrezzatura]:
+    if not site_ids:
+        return []
+    latest_dates = (
+        db.query(
+            MovimentoAttrezzatura.attrezzatura_id.label("attrezzatura_id"),
+            func.max(MovimentoAttrezzatura.data).label("latest_data"),
+        )
+        .group_by(MovimentoAttrezzatura.attrezzatura_id)
+        .subquery()
+    )
+    return (
+        db.query(MovimentoAttrezzatura)
+        .options(
+            joinedload(MovimentoAttrezzatura.attrezzatura),
+            joinedload(MovimentoAttrezzatura.destinazione_site),
+        )
+        .join(
+            latest_dates,
+            and_(
+                MovimentoAttrezzatura.attrezzatura_id == latest_dates.c.attrezzatura_id,
+                MovimentoAttrezzatura.data == latest_dates.c.latest_data,
+            ),
+        )
+        .filter(MovimentoAttrezzatura.destinazione_site_id.in_(site_ids))
+        .order_by(MovimentoAttrezzatura.data.desc())
+        .all()
+    )
+
+
+def _load_capo_asset(db: Session, user, asset_type: str, asset_id: int):
+    sites = _get_capo_sites(db, user)
+    site_ids = [site.id for site in sites]
+    if asset_type == "machine":
+        asset = (
+            db.query(Machine)
+            .options(joinedload(Machine.site), joinedload(Machine.machine_type_rel))
+            .filter(Machine.id == asset_id, Machine.site_id.in_(site_ids))
+            .first()
+        )
+        site = asset.site if asset else None
+        label = asset.name if asset else ""
+    elif asset_type == "attrezzatura":
+        movement = (
+            db.query(MovimentoAttrezzatura)
+            .options(joinedload(MovimentoAttrezzatura.attrezzatura), joinedload(MovimentoAttrezzatura.destinazione_site))
+            .filter(
+                MovimentoAttrezzatura.attrezzatura_id == asset_id,
+                MovimentoAttrezzatura.destinazione_site_id.in_(site_ids),
+            )
+            .order_by(MovimentoAttrezzatura.data.desc())
+            .first()
+        )
+        asset = movement.attrezzatura if movement else None
+        site = movement.destinazione_site if movement else None
+        label = asset.nome if asset else ""
+    else:
+        raise HTTPException(status_code=404, detail="Risorsa non trovata")
+    if not asset:
+        raise HTTPException(status_code=404, detail="Risorsa non trovata o non assegnata")
+    return asset, site, label
+
+
+def _load_asset_notes(db: Session, asset_type: str, asset_id: int) -> list[MachineNote]:
+    query = db.query(MachineNote).options(
+        joinedload(MachineNote.operator),
+        joinedload(MachineNote.site),
+        joinedload(MachineNote.machine),
+        joinedload(MachineNote.attrezzatura),
+    )
+    if asset_type == "machine":
+        query = query.filter(MachineNote.machine_id == asset_id)
+    elif asset_type == "attrezzatura":
+        query = query.filter(MachineNote.attrezzatura_id == asset_id)
+    else:
+        raise HTTPException(status_code=404, detail="Risorsa non trovata")
+    return query.order_by(MachineNote.created_at.desc()).all()
+
+
+@router.get(
+    "/capo/cantiere/attrezzature",
+    response_class=HTMLResponse,
+    name="capo_cantiere_attrezzature",
+)
+def capo_cantiere_attrezzature_page(
+    request: Request,
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_capo(current_user)
+    sites = _get_capo_sites(db, current_user)
+    site_ids = [site.id for site in sites]
+    machines = []
+    if site_ids:
+        machines = (
+            db.query(Machine)
+            .options(joinedload(Machine.site), joinedload(Machine.machine_type_rel))
+            .filter(Machine.site_id.in_(site_ids), Machine.is_active == True)  # noqa: E712
+            .order_by(Machine.name.asc())
+            .all()
+        )
+    attrezzatura_movements = _latest_attrezzatura_movements_for_sites(db, site_ids)
+
+    return templates.TemplateResponse(
+        request,
+        "capo/cantiere_attrezzature.html",
+        build_template_context(
+            request,
+            current_user,
+            user_role="capo",
+            sites=sites,
+            machines=machines,
+            attrezzatura_movements=attrezzatura_movements,
+            success_message=request.query_params.get("success_message"),
+            error_message=request.query_params.get("error_message"),
+        ),
+    )
+
+
+@router.get(
+    "/capo/cantiere/attrezzature/nota",
+    response_class=HTMLResponse,
+    name="capo_asset_note_form",
+)
+def capo_asset_note_form(
+    request: Request,
+    entity: str,
+    asset_id: int,
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_capo(current_user)
+    asset, site, label = _load_capo_asset(db, current_user, entity, asset_id)
+    return templates.TemplateResponse(
+        request,
+        "capo/asset_note_form.html",
+        build_template_context(
+            request,
+            current_user,
+            user_role="capo",
+            entity=entity,
+            asset=asset,
+            site=site,
+            asset_label=label,
+            note_type_choices=NOTE_TYPE_CHOICES,
+            error_message=request.query_params.get("error_message"),
+        ),
+    )
+
+
+@router.post(
+    "/capo/cantiere/attrezzature/nota",
+    response_class=HTMLResponse,
+    name="capo_asset_note_create",
+)
+def capo_asset_note_create(
+    request: Request,
+    entity: str = Form(...),
+    asset_id: int = Form(...),
+    note_text: str = Form(...),
+    note_type: str | None = Form(None),
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_capo(current_user)
+    text = (note_text or "").strip()
+    if not text:
+        return RedirectResponse(
+            url=str(request.url_for("capo_asset_note_form")) + f"?entity={entity}&asset_id={asset_id}&error_message=Testo%20nota%20obbligatorio",
+            status_code=303,
+        )
+    cleaned_type = (note_type or "").strip() or None
+    allowed_types = {value for value, _label in NOTE_TYPE_CHOICES}
+    if cleaned_type and cleaned_type not in allowed_types:
+        cleaned_type = None
+
+    asset, site, _label = _load_capo_asset(db, current_user, entity, asset_id)
+    note = MachineNote(
+        machine_id=asset.id if entity == "machine" else None,
+        attrezzatura_id=asset.id if entity == "attrezzatura" else None,
+        site_id=site.id if site else None,
+        operator_id=current_user.id,
+        note_type=cleaned_type,
+        text=text,
+    )
+    db.add(note)
+    db.flush()
+    note = (
+        db.query(MachineNote)
+        .options(joinedload(MachineNote.machine), joinedload(MachineNote.attrezzatura), joinedload(MachineNote.site))
+        .filter(MachineNote.id == note.id)
+        .one()
+    )
+    notify_machine_note_created(db, note, current_user)
+    db.commit()
+    return RedirectResponse(
+        url=str(request.url_for("capo_cantiere_attrezzature")) + "?success_message=Nota%20aggiunta",
+        status_code=303,
+    )
+
+
+@router.get(
+    "/capo/cantiere/attrezzature/note",
+    response_class=HTMLResponse,
+    name="capo_asset_notes_history",
+)
+def capo_asset_notes_history(
+    request: Request,
+    entity: str,
+    asset_id: int,
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_capo(current_user)
+    asset, site, label = _load_capo_asset(db, current_user, entity, asset_id)
+    notes = _load_asset_notes(db, entity, asset.id)
+    return templates.TemplateResponse(
+        request,
+        "manager/machine_notes_history.html",
+        build_template_context(
+            request,
+            current_user,
+            user_role="capo",
+            entity=entity,
+            asset=asset,
+            site=site,
+            asset_label=label,
+            notes=notes,
+            back_url=request.url_for("capo_cantiere_attrezzature"),
+        ),
+    )
+
+
+@router.get(
+    "/manager/macchinari/{machine_id}/note",
+    response_class=HTMLResponse,
+    name="manager_machine_notes_history",
+)
+def manager_machine_notes_history(
+    request: Request,
+    machine_id: int,
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_manager_or_admin(current_user)
+    machine = (
+        db.query(Machine)
+        .options(joinedload(Machine.site), joinedload(Machine.machine_type_rel))
+        .filter(Machine.id == machine_id)
+        .first()
+    )
+    if not machine:
+        raise HTTPException(status_code=404, detail="Macchinario non trovato")
+    notes = _load_asset_notes(db, "machine", machine.id)
+    return templates.TemplateResponse(
+        request,
+        "manager/machine_notes_history.html",
+        build_template_context(
+            request,
+            current_user,
+            user_role="manager",
+            entity="machine",
+            asset=machine,
+            site=machine.site,
+            asset_label=machine.name,
+            notes=notes,
+            back_url=request.url_for("manager_machines_list"),
+        ),
+    )
+
+
+@router.get(
+    "/manager/attrezzature/{attrezzatura_id}/note",
+    response_class=HTMLResponse,
+    name="manager_attrezzatura_notes_history",
+)
+def manager_attrezzatura_notes_history(
+    request: Request,
+    attrezzatura_id: int,
+    current_user=Depends(get_current_active_user_html),
+    db: Session = Depends(get_db),
+):
+    _require_manager_or_admin(current_user)
+    attrezzatura = db.query(Attrezzatura).filter(Attrezzatura.id == attrezzatura_id).first()
+    if not attrezzatura:
+        raise HTTPException(status_code=404, detail="Attrezzatura non trovata")
+    notes = _load_asset_notes(db, "attrezzatura", attrezzatura.id)
+    latest_note_site = notes[0].site if notes else None
+    return templates.TemplateResponse(
+        request,
+        "manager/machine_notes_history.html",
+        build_template_context(
+            request,
+            current_user,
+            user_role="manager",
+            entity="attrezzatura",
+            asset=attrezzatura,
+            site=latest_note_site,
+            asset_label=attrezzatura.nome,
+            notes=notes,
+            back_url=request.url_for("manager_machines_list"),
+        ),
     )
 
 

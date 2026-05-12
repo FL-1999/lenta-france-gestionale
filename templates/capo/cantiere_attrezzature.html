@@ -1,0 +1,107 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}{% if lang == 'fr' %}Machines et équipements – Chef d'équipe{% else %}Macchinari e attrezzature – Caposquadra{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Chantier assigné{% else %}Cantiere assegnato{% endif %}</p>
+        <h1 class="page-title">{% if lang == 'fr' %}Machines et équipements{% else %}Macchinari e attrezzature{% endif %}</h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Consultez les moyens présents sur vos chantiers et signalez anomalies, pannes ou observations.
+            {% else %}
+                Visualizza mezzi e attrezzature presenti nei cantieri assegnati e segnala anomalie, rotture o osservazioni.
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <a href="/capo/dashboard" class="btn btn-secondary">← {% if lang == 'fr' %}Retour dashboard{% else %}Torna alla dashboard{% endif %}</a>
+    </div>
+</div>
+
+{% if success_message %}<div class="alert alert-success">{{ success_message }}</div>{% endif %}
+{% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
+
+<div class="card table-card" style="margin-top:1rem;">
+    <div class="card-header">
+        <div class="card-title">🚜 {% if lang == 'fr' %}Machines présentes{% else %}Macchinari presenti{% endif %}</div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Typologie{% else %}Tipologia{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in machines %}
+                    {% set machine_type_label = none %}
+                    {% if m.machine_type_rel %}
+                        {% set machine_type_label = m.machine_type_rel.label_fr if lang == 'fr' else m.machine_type_rel.label_it %}
+                    {% elif m.machine_type %}
+                        {% set machine_type_label = m.machine_type.value %}
+                    {% endif %}
+                    <tr>
+                        <td>{{ m.name }}</td>
+                        <td>{{ m.code or '—' }}</td>
+                        <td>{{ machine_type_label or '—' }}</td>
+                        <td>{{ m.status or '—' }}</td>
+                        <td>{{ m.site.name if m.site else '—' }}</td>
+                        <td class="table-actions">
+                            <a class="btn btn-primary btn-sm" href="{{ request.url_for('capo_asset_note_form') }}?entity=machine&asset_id={{ m.id }}">{% if lang == 'fr' %}Ajouter note{% else %}Aggiungi nota{% endif %}</a>
+                            <a class="btn btn-secondary btn-sm" href="{{ request.url_for('capo_asset_notes_history') }}?entity=machine&asset_id={{ m.id }}">{% if lang == 'fr' %}Historique notes{% else %}Storico note{% endif %}</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6" class="table-empty">{% if lang == 'fr' %}Aucune machine présente sur les chantiers assignés.{% else %}Nessun macchinario presente nei cantieri assegnati.{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card table-card" style="margin-top:1.5rem;">
+    <div class="card-header">
+        <div class="card-title">🧰 {% if lang == 'fr' %}Équipements présents{% else %}Attrezzature presenti{% endif %}</div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Typologie{% else %}Tipologia{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                    <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for movement in attrezzatura_movements %}
+                    {% set a = movement.attrezzatura %}
+                    <tr>
+                        <td>{{ a.nome }}</td>
+                        <td>{{ a.codice }}</td>
+                        <td>{{ a.tipo }}</td>
+                        <td>{{ a.stato.value if a.stato else '—' }}</td>
+                        <td>{{ movement.destinazione_site.name if movement.destinazione_site else movement.destinazione }}</td>
+                        <td class="table-actions">
+                            <a class="btn btn-primary btn-sm" href="{{ request.url_for('capo_asset_note_form') }}?entity=attrezzatura&asset_id={{ a.id }}">{% if lang == 'fr' %}Ajouter note{% else %}Aggiungi nota{% endif %}</a>
+                            <a class="btn btn-secondary btn-sm" href="{{ request.url_for('capo_asset_notes_history') }}?entity=attrezzatura&asset_id={{ a.id }}">{% if lang == 'fr' %}Historique notes{% else %}Storico note{% endif %}</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6" class="table-empty">{% if lang == 'fr' %}Aucun équipement présent sur les chantiers assignés.{% else %}Nessuna attrezzatura presente nei cantieri assegnati.{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

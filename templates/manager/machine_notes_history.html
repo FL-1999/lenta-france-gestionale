@@ -1,0 +1,49 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}{% if lang == 'fr' %}Historique notes{% else %}Storico note{% endif %} – {{ asset_label }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Historique signalements{% else %}Storico segnalazioni{% endif %}</p>
+        <h1 class="page-title">{% if lang == 'fr' %}Historique notes{% else %}Storico note{% endif %}</h1>
+        <p class="page-subtitle">{{ asset_label }}{% if site %} · {{ site.name }}{% endif %}</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ back_url }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+    </div>
+</div>
+
+<div class="card table-card" style="margin-top:1rem;">
+    <div class="card-header">
+        <div class="card-title">📝 {% if lang == 'fr' %}Notes{% else %}Note{% endif %}</div>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Opérateur / chef{% else %}Operatore / caposquadra{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Type{% else %}Tipo nota{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Texte{% else %}Testo nota{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for note in notes %}
+                    <tr>
+                        <td>{{ note.created_at.strftime('%d/%m/%Y %H:%M') if note.created_at else '—' }}</td>
+                        <td>{{ note.operator.full_name or note.operator.email if note.operator else '—' }}</td>
+                        <td>{{ note.site.name if note.site else '—' }}</td>
+                        <td>{{ note.note_type or '—' }}</td>
+                        <td>{{ note.text }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="5" class="table-empty">{% if lang == 'fr' %}Aucune note enregistrée.{% else %}Nessuna nota registrata.{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

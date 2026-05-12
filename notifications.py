@@ -7,7 +7,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from magazzino_repository import count_under_threshold
-from models import Notification, RoleEnum, Report, Site, SiteTask, User, MagazzinoRichiesta, Fiche
+from models import Notification, RoleEnum, Report, Site, SiteTask, User, MagazzinoRichiesta, Fiche, MachineNote
 from warehouse_requests_repository import count_pending_requests_for_user
 
 
@@ -165,6 +165,28 @@ def _find_site_for_report(db: Session, report: Report) -> Site | None:
 
 
 
+
+
+def notify_machine_note_created(db: Session, note: MachineNote, author: User) -> None:
+    site_label = note.site.name if note.site else "cantiere non assegnato"
+    if note.machine:
+        asset_kind = "macchinario"
+        asset_name = note.machine.name
+        target_url = f"/manager/macchinari/{note.machine.id}/note"
+    else:
+        asset_kind = "attrezzatura"
+        asset_name = note.attrezzatura.nome if note.attrezzatura else "attrezzatura"
+        target_url = f"/manager/attrezzature/{note.attrezzatura_id}/note"
+
+    message = f"Nuova nota su {asset_kind} {asset_name} nel cantiere {site_label}"
+    create_notifications_for_users(
+        db,
+        _get_manager_users(db),
+        "machine_note_created",
+        message,
+        target_url=target_url,
+        exclude_user_id=author.id,
+    )
 
 def notify_new_fiche(db: Session, fiche: Fiche, author: User) -> None:
     author_name = author.full_name or author.email
