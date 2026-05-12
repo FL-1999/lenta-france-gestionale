@@ -173,6 +173,7 @@ def seed_site_with_economics() -> int:
         db.add(
             Fiche(
                 date=date(2026, 3, 6),
+                numero_pannello=1,
                 site_id=site.id,
                 fiche_type=FicheTypeEnum.produzione,
                 description="Getto cemento",

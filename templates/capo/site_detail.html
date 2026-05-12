@@ -42,9 +42,9 @@
         <p><strong>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}:</strong> {{ site.city or '—' }}</p>
         <p><strong>{% if lang == 'fr' %}Pays{% else %}Paese{% endif %}:</strong> {{ site.country or '—' }}</p>
         <p><strong>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}:</strong> {{ site.status.value if site.status else '—' }}</p>
-        <p><strong>{% if lang == 'fr' %}Parois excavées{% else %}Paratie scavate{% endif %}:</strong> {{ progress_summary.paratie.done }}</p>
-        <p><strong>{% if lang == 'fr' %}Parois totales{% else %}Paratie totali{% endif %}:</strong> {{ progress_summary.paratie.total }}</p>
-        <p><strong>{% if lang == 'fr' %}Avancement{% else %}Percentuale avanzamento{% endif %}:</strong> {{ progress_summary.paratie.percent }}%</p>
+        <p><strong>{% if lang == 'fr' %}Panneaux excavés{% else %}Pannelli scavati{% endif %}:</strong> {{ progress_summary.paratie.done }}</p>
+        <p><strong>{% if lang == 'fr' %}Total panneaux{% else %}Totale pannelli{% endif %}:</strong> {{ progress_summary.paratie.total }}</p>
+        <p><strong>{% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}:</strong> {{ progress_summary.paratie.percent }}%</p>
         <p><strong>{% if lang == 'fr' %}Début{% else %}Inizio{% endif %}:</strong> {{ site.start_date.strftime("%d/%m/%Y") if site.start_date else '—' }}</p>
         <p><strong>{% if lang == 'fr' %}Fin{% else %}Fine{% endif %}:</strong> {{ site.end_date.strftime("%d/%m/%Y") if site.end_date else '—' }}</p>
         <p><strong>{% if lang == 'fr' %}Coordonnées{% else %}Coordinate{% endif %}:</strong>

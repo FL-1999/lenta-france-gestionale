@@ -686,6 +686,7 @@ def _validate_metri_cubi_gettati(metri_cubi_gettati: float | None) -> None:
 
 def _build_fiche_form_data(
     cantiere_id: int | str | None = None,
+    numero_pannello: int | str | None = None,
     macchinario_id: int | str | None = None,
     data_scavo: date | None = None,
     data_getto: date | None = None,
@@ -732,6 +733,7 @@ def _build_fiche_form_data(
 
     return {
         "cantiere_id": _fmt(cantiere_id),
+        "numero_pannello": _fmt(numero_pannello),
         "macchinario_id": _fmt(macchinario_id),
         "data_scavo": data_scavo.isoformat() if data_scavo else "",
         "data_getto": data_getto.isoformat() if data_getto else "",
@@ -1466,6 +1468,7 @@ async def manager_fiche_create(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
     cantiere_id: int = Form(...),
+    numero_pannello: str | None = Form(None),
     macchinario_id: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
@@ -1487,14 +1490,19 @@ async def manager_fiche_create(
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
+    diametro_value_cm = diametro_palo_cm
+    diametro_value_m = (
+        diametro_value_cm / 100 if diametro_value_cm is not None else None
+    )
+
     try:
         parsed_machine_id: int | None = None
         if macchinario_id not in (None, ""):
             parsed_machine_id = int(macchinario_id)
-
-        diametro_value_cm = diametro_palo_cm
-        diametro_value_m = (
-            diametro_value_cm / 100 if diametro_value_cm is not None else None
+        parsed_numero_pannello = _parse_required_positive_int(
+            numero_pannello,
+            "Inserire numero pannello",
+            "Il numero pannello deve essere maggiore di 0",
         )
         ore_scavate = _parse_optional_non_negative_float(
             ore_lavorate, "Ore scavate"
@@ -1513,6 +1521,7 @@ async def manager_fiche_create(
             site = db.query(Site).filter(Site.id == cantiere_id).first()
             if not site:
                 raise HTTPException(status_code=400, detail="Cantiere non trovato")
+            _ensure_unique_numero_pannello(db, cantiere_id, parsed_numero_pannello)
 
             if parsed_machine_id is not None:
                 machine = (
@@ -1523,6 +1532,7 @@ async def manager_fiche_create(
 
             fiche = Fiche(
                 date=data_scavo,
+                numero_pannello=parsed_numero_pannello,
                 site_id=cantiere_id,
                 machine_id=parsed_machine_id,
                 fiche_type=FicheTypeEnum.produzione,
@@ -1568,6 +1578,7 @@ async def manager_fiche_create(
         # macchinario_id non numerico
         form_data = _build_fiche_form_data(
             cantiere_id=cantiere_id,
+            numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
             data_scavo=data_scavo,
             data_getto=data_getto,
@@ -1606,6 +1617,7 @@ async def manager_fiche_create(
         status_code = exc.status_code or 400
         form_data = _build_fiche_form_data(
             cantiere_id=cantiere_id,
+            numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
             data_scavo=data_scavo,
             data_getto=data_getto,
@@ -2420,6 +2432,36 @@ def _parse_optional_non_negative_int(value: str | int | None) -> int | None:
     return parsed_value
 
 
+def _parse_required_positive_int(
+    value: str | int | None,
+    empty_message: str,
+    invalid_message: str,
+) -> int:
+    if value in (None, ""):
+        raise HTTPException(status_code=400, detail=empty_message)
+    try:
+        parsed_value = int(value)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail=invalid_message)
+    if parsed_value <= 0:
+        raise HTTPException(status_code=400, detail=invalid_message)
+    return parsed_value
+
+
+def _ensure_unique_numero_pannello(db: Session, site_id: int, numero_pannello: int) -> None:
+    duplicate_exists = (
+        db.query(Fiche.id)
+        .filter(Fiche.site_id == site_id, Fiche.numero_pannello == numero_pannello)
+        .first()
+        is not None
+    )
+    if duplicate_exists:
+        raise HTTPException(
+            status_code=400,
+            detail="Pannello già registrato per questo cantiere",
+        )
+
+
 def _site_paratie_total(site: Site) -> int:
     return int(
         site.totale_paratie_da_scavare
@@ -2435,6 +2477,8 @@ def _sync_site_fiche_progress(db: Session, site: Site) -> None:
     site.paratie_done_panels = int(paratie_scavate)
     if site.totale_paratie_da_scavare is not None:
         site.paratie_total_panels = site.totale_paratie_da_scavare
+    paratie_total = _site_paratie_total(site)
+    site.progress = _progress_percent(paratie_scavate, paratie_total)
 
 
 def _apply_extra_site_progress(
@@ -4488,6 +4532,7 @@ async def capo_fiche_nuova_post(
     request: Request,
     current_user: User = Depends(get_current_active_user_html),
     cantiere_id: int = Form(...),
+    numero_pannello: str | None = Form(None),
     macchinario_id: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
@@ -4509,14 +4554,19 @@ async def capo_fiche_nuova_post(
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
+    diametro_value_cm = diametro_palo_cm
+    diametro_value_m = (
+        diametro_value_cm / 100 if diametro_value_cm is not None else None
+    )
+
     try:
         parsed_machine_id: int | None = None
         if macchinario_id not in (None, ""):
             parsed_machine_id = int(macchinario_id)
-
-        diametro_value_cm = diametro_palo_cm
-        diametro_value_m = (
-            diametro_value_cm / 100 if diametro_value_cm is not None else None
+        parsed_numero_pannello = _parse_required_positive_int(
+            numero_pannello,
+            "Inserire numero pannello",
+            "Il numero pannello deve essere maggiore di 0",
         )
         ore_scavate = _parse_optional_non_negative_float(
             ore_lavorate, "Ore scavate"
@@ -4537,6 +4587,7 @@ async def capo_fiche_nuova_post(
             site = db.query(Site).filter(Site.id == cantiere_id).first()
             if not site or (allowed_site_ids and site.id not in allowed_site_ids):
                 raise HTTPException(status_code=403, detail="Cantiere non valido")
+            _ensure_unique_numero_pannello(db, cantiere_id, parsed_numero_pannello)
 
             if parsed_machine_id is not None:
                 machine = (
@@ -4547,6 +4598,7 @@ async def capo_fiche_nuova_post(
 
             fiche = Fiche(
                 date=data_scavo,
+                numero_pannello=parsed_numero_pannello,
                 site_id=cantiere_id,
                 machine_id=parsed_machine_id,
                 fiche_type=FicheTypeEnum.produzione,
@@ -4591,6 +4643,7 @@ async def capo_fiche_nuova_post(
     except ValueError:
         form_data = _build_fiche_form_data(
             cantiere_id=cantiere_id,
+            numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
             data_scavo=data_scavo,
             data_getto=data_getto,
@@ -4628,6 +4681,7 @@ async def capo_fiche_nuova_post(
         status_code = exc.status_code or 400
         form_data = _build_fiche_form_data(
             cantiere_id=cantiere_id,
+            numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
             data_scavo=data_scavo,
             data_getto=data_getto,

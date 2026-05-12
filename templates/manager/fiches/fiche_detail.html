@@ -149,6 +149,10 @@
                 </p>
             </div>
             <div>
+                <p class="text-muted">{% if lang == 'fr' %}Panneau{% else %}Numero pannello{% endif %}</p>
+                <p class="mb-0">{{ fiche.numero_pannello }}</p>
+            </div>
+            <div>
                 <p class="text-muted">{% if lang == 'fr' %}Machine{% else %}Macchinario{% endif %}</p>
                 <p class="mb-0">
                     {% if fiche.machine %}

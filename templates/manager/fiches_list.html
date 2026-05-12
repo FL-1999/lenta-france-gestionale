@@ -48,6 +48,7 @@
                 <tr>
                     <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
                     <th>{% if lang == 'fr' %}Cantiere{% else %}Cantiere{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Panneau{% else %}Pannello{% endif %}</th>
                     <th>{% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}</th>
                     <th>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</th>
                     <th>{% if lang == 'fr' %}Heures d'excavation{% else %}Ore scavate{% endif %}</th>
@@ -60,6 +61,7 @@
                     <tr>
                         <td>{{ f.date }}</td>
                         <td>{{ f.site.name if f.site else '-' }}</td>
+                        <td>{{ f.numero_pannello }}</td>
                         <td>{{ f.machine.name if f.machine else '-' }}</td>
                         <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
                         <td>{{ f.hours if f.hours is not none else '-' }}</td>
@@ -72,7 +74,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="7" class="table-empty">
+                        <td colspan="8" class="table-empty">
                             {% if lang == 'fr' %}
                                 Aucune fiche enregistrée pour le moment.
                             {% else %}

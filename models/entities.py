@@ -659,10 +659,19 @@ class Report(Base, TimestampMixin):
 
 class Fiche(Base, TimestampMixin):
     __tablename__ = "fiches"
+    __table_args__ = (
+        UniqueConstraint(
+            "site_id",
+            "numero_pannello",
+            name="uq_fiches_site_numero_pannello",
+        ),
+        CheckConstraint("numero_pannello > 0", name="ck_fiches_numero_pannello_positive"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 
     date = Column(Date, nullable=False)
+    numero_pannello = Column(Integer, nullable=False)
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=False)
     site = relationship("Site", back_populates="fiches")
 
