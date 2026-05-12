@@ -149,18 +149,15 @@
               {% if lang == 'fr' %}Aucun{% else %}Nessuno{% endif %}
             </option>
 
-            <!-- Localizzazioni fisse -->
-            <option value="__montauroux__" {% if macchinario and macchinario.site_id == '__montauroux__' %}selected{% endif %}>Montauroux</option>
-            <option value="__st_jeannet__" {% if macchinario and macchinario.site_id == '__st_jeannet__' %}selected{% endif %}>St. Jeannet</option>
-            <option value="__sommariva__" {% if macchinario and macchinario.site_id == '__sommariva__' %}selected{% endif %}>Sommariva</option>
+            {% set open_assignment = (macchinario.assignments | selectattr('unassigned_at', 'equalto', none) | list | first) if macchinario else none %}
+            {% set current_location_label = open_assignment.location_label if open_assignment and open_assignment.location_label else '' %}
+            {% set selected_location_value = 'site:' ~ macchinario.site_id if macchinario and macchinario.site_id else '' %}
 
-            <optgroup label="{% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}">
-              {% for s in sites %}
-                <option value="{{ s.id }}" {% if macchinario and macchinario.site_id == s.id %}selected{% endif %}>
-                  {{ s.name }} ({{ s.code }})
-                </option>
-              {% endfor %}
-            </optgroup>
+            {% for place in locations or [] %}
+              <option value="{{ place.value }}" {% if selected_location_value == place.value or current_location_label == place.label %}selected{% endif %}>
+                {{ place.label }}{% if place.city %} – {{ place.city }}{% endif %}
+              </option>
+            {% endfor %}
           </select>
         </div>
 

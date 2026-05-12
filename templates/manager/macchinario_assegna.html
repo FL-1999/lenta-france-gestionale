@@ -3,16 +3,21 @@
 {% block title %}Assegna macchinario{% endblock %}
 
 {% block content %}
-<h1>Assegna macchinario a cantiere</h1>
+<h1>Assegna macchinario a localizzazione</h1>
 
 <p>Macchinario: <strong>{{ machine.name }}</strong></p>
 
 <form method="post">
-  <label>Seleziona cantiere
+  <label>Localizzazione
     <select name="site_id">
-      <option value="">Nessun cantiere</option>
-      {% for s in sites %}
-      <option value="{{ s.id }}" {% if machine.site_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
+      <option value="">Nessuno</option>
+      {% set open_assignment = (machine.assignments | selectattr('unassigned_at', 'equalto', none) | list | first) %}
+      {% set current_location_label = open_assignment.location_label if open_assignment and open_assignment.location_label else '' %}
+      {% set selected_location_value = 'site:' ~ machine.site_id if machine.site_id else '' %}
+      {% for place in locations or [] %}
+        <option value="{{ place.value }}" {% if selected_location_value == place.value or current_location_label == place.label %}selected{% endif %}>
+          {{ place.label }}{% if place.city %} – {{ place.city }}{% endif %}
+        </option>
       {% endfor %}
     </select>
   </label>

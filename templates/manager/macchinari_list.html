@@ -183,17 +183,15 @@
                         {% elif m.machine_type %}
                             {% set machine_type_label = m.machine_type.value %}
                         {% endif %}
-                        {% set location_value = '' %}
+                        {% set location_ns = namespace(value='') %}
                         {% if m.site %}
-                            {% set location_value = m.site.id %}
+                            {% set location_ns.value = 'site:' ~ m.site.id %}
                         {% elif location_label %}
-                            {% if location_label == 'Montauroux' %}
-                                {% set location_value = '__montauroux__' %}
-                            {% elif location_label == 'St. Jeannet' %}
-                                {% set location_value = '__st_jeannet__' %}
-                            {% elif location_label == 'Sommariva' %}
-                                {% set location_value = '__sommariva__' %}
-                            {% endif %}
+                            {% for place in locations or [] %}
+                                {% if location_label == place.label %}
+                                    {% set location_ns.value = place.value %}
+                                {% endif %}
+                            {% endfor %}
                         {% endif %}
                         <td>{{ m.name }}</td>
                         <td>{{ m.code }}</td>
@@ -240,7 +238,7 @@
                                 data-machine-quick-open
                                 data-machine-id="{{ m.id }}"
                                 data-current-status="{{ stato }}"
-                                data-current-location="{{ location_value }}"
+                                data-current-location="{{ location_ns.value }}"
                             >
                                 ⚡ {% if lang == 'fr' %}Déplacer / Statut{% else %}Sposta / Stato{% endif %}
                             </button>
@@ -290,14 +288,9 @@
                         <label for="machine-quick-location">{% if lang == 'fr' %}Localisation{% else %}Localizzazione{% endif %}</label>
                         <select name="location" id="machine-quick-location">
                             <option value="">{% if lang == 'fr' %}Aucune{% else %}Nessuno{% endif %}</option>
-                            <option value="__montauroux__">Montauroux</option>
-                            <option value="__st_jeannet__">St. Jeannet</option>
-                            <option value="__sommariva__">Sommariva</option>
-                            <optgroup label="{% if lang == 'fr' %}Chantiers réels{% else %}Cantieri reali{% endif %}">
-                                {% for site in sites %}
-                                    <option value="{{ site.id }}">{{ site.name }} ({{ site.code }})</option>
-                                {% endfor %}
-                            </optgroup>
+                            {% for place in locations or [] %}
+                                <option value="{{ place.value }}">{{ place.label }}{% if place.city %} – {{ place.city }}{% endif %}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>

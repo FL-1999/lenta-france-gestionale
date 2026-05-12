@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_html
 from database import get_db
-from models import Depot, User
+from models import Attrezzatura, Depot, Machine, MachineSiteAssignment, MagazzinoMovimento, User
 from permissions import can_access_depots, can_manage_depots
 from template_context import register_manager_badges, render_template
 
@@ -18,6 +18,25 @@ register_manager_badges(templates)
 
 DEFAULT_PER_PAGE = 50
 MAX_PER_PAGE = 100
+
+DEFAULT_DEPOT_NAMES = {"montauroux", "st. jeannet", "st jeannet", "sommariva", "cantieri"}
+
+
+def _real_depots_query(db: Session, *, include_inactive: bool = True):
+    query = db.query(Depot)
+    if not include_inactive:
+        query = query.filter(Depot.is_active.is_(True))
+    normalized_defaults = [name.lower() for name in DEFAULT_DEPOT_NAMES]
+    return query.filter(func.lower(func.trim(Depot.name)).notin_(normalized_defaults))
+
+
+def _format_depot_label(depot: Depot) -> str:
+    return f"[Deposito] {depot.name}"
+
+
+def _depot_address(depot: Depot) -> str:
+    parts = [depot.address, depot.city, depot.zip_code, depot.province, depot.country]
+    return ", ".join(str(part).strip() for part in parts if part and str(part).strip()) or "—"
 
 
 def _ensure_depots_read(user: User) -> None:
@@ -119,9 +138,9 @@ def manager_depositi_list(
     _ensure_depots_read(current_user)
     page, per_page = _normalize_pagination(page, per_page)
 
-    total_count = db.query(func.count(Depot.id)).scalar() or 0
+    total_count = _real_depots_query(db).with_entities(func.count(Depot.id)).scalar() or 0
     depositi = (
-        db.query(Depot)
+        _real_depots_query(db)
         .order_by(Depot.is_active.desc(), Depot.name.asc())
         .offset((page - 1) * per_page)
         .limit(per_page)
@@ -210,7 +229,75 @@ def manager_depositi_create(
     return RedirectResponse(url=request.url_for("manager_depositi_list"), status_code=303)
 
 
-@router.get("/manager/depositi/{depot_id}", response_class=HTMLResponse, name="manager_depositi_edit")
+@router.get("/manager/depositi/{depot_id}", response_class=HTMLResponse, name="manager_depositi_detail")
+def manager_depositi_detail(
+    depot_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    _ensure_depots_read(current_user)
+    depot = _real_depots_query(db).filter(Depot.id == depot_id).first()
+    if not depot:
+        raise HTTPException(status_code=404, detail="Deposito non trovato")
+
+    depot_label = _format_depot_label(depot)
+    machine_assignments = (
+        db.query(MachineSiteAssignment)
+        .options(joinedload(MachineSiteAssignment.machine))
+        .join(Machine, Machine.id == MachineSiteAssignment.machine_id)
+        .filter(MachineSiteAssignment.unassigned_at.is_(None))
+        .filter(MachineSiteAssignment.location_label == depot_label)
+        .order_by(Machine.name.asc())
+        .all()
+    )
+    attrezzature = (
+        db.query(Attrezzatura)
+        .filter(func.lower(func.trim(Attrezzatura.posizione_attuale)) == depot.name.strip().lower())
+        .order_by(Attrezzatura.nome.asc())
+        .all()
+    )
+    materiali = (
+        db.query(
+            MagazzinoMovimento.item_id,
+            func.sum(MagazzinoMovimento.quantita).label("quantita"),
+        )
+        .filter(MagazzinoMovimento.deposito_id == depot.id)
+        .group_by(MagazzinoMovimento.item_id)
+        .all()
+    )
+    material_rows = []
+    for row in materiali:
+        movimento = (
+            db.query(MagazzinoMovimento)
+            .options(joinedload(MagazzinoMovimento.item))
+            .filter(
+                MagazzinoMovimento.deposito_id == depot.id,
+                MagazzinoMovimento.item_id == row.item_id,
+            )
+            .order_by(MagazzinoMovimento.created_at.desc())
+            .first()
+        )
+        if movimento and movimento.item:
+            material_rows.append({"item": movimento.item, "quantita": row.quantita})
+
+    return render_template(
+        templates,
+        request,
+        "manager/depositi/detail.html",
+        {
+            "depot": depot,
+            "depot_address": _depot_address(depot),
+            "machine_assignments": machine_assignments,
+            "attrezzature": attrezzature,
+            "material_rows": material_rows,
+        },
+        db,
+        current_user,
+    )
+
+
+@router.get("/manager/depositi/{depot_id}/modifica", response_class=HTMLResponse, name="manager_depositi_edit")
 def manager_depositi_edit(
     depot_id: int,
     request: Request,
@@ -218,7 +305,7 @@ def manager_depositi_edit(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_depots_manage(current_user)
-    depot = db.query(Depot).filter(Depot.id == depot_id).first()
+    depot = _real_depots_query(db).filter(Depot.id == depot_id).first()
     if not depot:
         raise HTTPException(status_code=404, detail="Deposito non trovato")
 
@@ -236,7 +323,8 @@ def manager_depositi_edit(
     )
 
 
-@router.post("/manager/depositi/{depot_id}", response_class=HTMLResponse, name="manager_depositi_update")
+@router.post("/manager/depositi/{depot_id}/modifica", response_class=HTMLResponse, name="manager_depositi_update")
+@router.post("/manager/depositi/{depot_id}", response_class=HTMLResponse)
 def manager_depositi_update(
     depot_id: int,
     request: Request,
@@ -255,7 +343,7 @@ def manager_depositi_update(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_depots_manage(current_user)
-    depot = db.query(Depot).filter(Depot.id == depot_id).first()
+    depot = _real_depots_query(db).filter(Depot.id == depot_id).first()
     if not depot:
         raise HTTPException(status_code=404, detail="Deposito non trovato")
 

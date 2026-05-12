@@ -1,0 +1,82 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}{{ depot.name }} – {% if lang == 'fr' %}Dépôt{% else %}Deposito{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">{% if lang == 'fr' %}Détail dépôt{% else %}Dettaglio deposito{% endif %}</p>
+    <h1 class="page-title">📦 {{ depot.name }}</h1>
+    <p class="page-subtitle">{{ depot_address }}</p>
+    {% if depot.notes %}<p class="page-subtitle">{{ depot.notes }}</p>{% endif %}
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('manager_depositi_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Liste{% else %}Elenco{% endif %}</a>
+    <a href="{{ url_for('manager_depositi_edit', depot_id=depot.id) }}" class="btn btn-primary">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header"><div class="card-title">{% if lang == 'fr' %}Informations{% else %}Informazioni deposito{% endif %}</div></div>
+  <div class="card-body">
+    <div class="form-grid">
+      <div><strong>{% if lang == 'fr' %}Adresse/localité{% else %}Indirizzo/località{% endif %}</strong><br>{{ depot_address }}</div>
+      <div><strong>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</strong><br>{{ 'Attivo' if depot.is_active else 'Non attivo' }}</div>
+      <div><strong>GPS</strong><br>{% if depot.lat is not none and depot.lng is not none %}{{ depot.lat }}, {{ depot.lng }}{% else %}—{% endif %}</div>
+      <div><strong>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</strong><br>{{ depot.notes or '—' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card table-card" style="margin-bottom: 1.5rem;">
+  <div class="card-header"><div class="card-title">🚜 {% if lang == 'fr' %}Machines présentes{% else %}Macchinari presenti{% endif %}</div></div>
+  <div class="card-body list-table">
+    <table class="data-table">
+      <thead><tr><th>Codice</th><th>Nome</th><th>Stato</th><th>{% if lang == 'fr' %}Depuis{% else %}Dal{% endif %}</th></tr></thead>
+      <tbody>
+      {% for assignment in machine_assignments %}
+        <tr>
+          <td>{{ assignment.machine.code or '—' }}</td>
+          <td>{{ assignment.machine.name if assignment.machine else '—' }}</td>
+          <td>{{ assignment.machine.status if assignment.machine else '—' }}</td>
+          <td>{{ assignment.assigned_at.strftime('%d/%m/%Y %H:%M') if assignment.assigned_at else '—' }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="table-empty">{% if lang == 'fr' %}Aucune machine présente.{% else %}Nessun macchinario presente.{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card table-card" style="margin-bottom: 1.5rem;">
+  <div class="card-header"><div class="card-title">🧰 {% if lang == 'fr' %}Équipements présents{% else %}Attrezzature presenti{% endif %}</div></div>
+  <div class="card-body list-table">
+    <table class="data-table">
+      <thead><tr><th>Codice</th><th>Nome</th><th>Tipo</th><th>Stato</th></tr></thead>
+      <tbody>
+      {% for item in attrezzature %}
+        <tr><td>{{ item.codice }}</td><td>{{ item.nome }}</td><td>{{ item.tipo }}</td><td>{{ item.stato.value if item.stato and item.stato.value is defined else item.stato }}</td></tr>
+      {% else %}
+        <tr><td colspan="4" class="table-empty">{% if lang == 'fr' %}Aucun équipement présent.{% else %}Nessuna attrezzatura presente.{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card table-card">
+  <div class="card-header"><div class="card-title">📦 {% if lang == 'fr' %}Matériaux présents{% else %}Materiali presenti{% endif %}</div></div>
+  <div class="card-body list-table">
+    <table class="data-table">
+      <thead><tr><th>Codice</th><th>Materiale</th><th>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th><th>UM</th></tr></thead>
+      <tbody>
+      {% for row in material_rows %}
+        <tr><td>{{ row.item.codice or '—' }}</td><td>{{ row.item.nome }}</td><td>{{ row.quantita }}</td><td>{{ row.item.unita_misura }}</td></tr>
+      {% else %}
+        <tr><td colspan="4" class="table-empty">{% if lang == 'fr' %}Aucun matériau enregistré.{% else %}Nessun materiale registrato.{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

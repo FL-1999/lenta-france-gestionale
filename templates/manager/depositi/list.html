@@ -21,11 +21,8 @@
       <thead>
         <tr>
           <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-          <th>{% if lang == 'fr' %}Adresse{% else %}Indirizzo{% endif %}</th>
-          <th>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}</th>
-          <th>CAP</th>
-          <th>{% if lang == 'fr' %}Province{% else %}Provincia{% endif %}</th>
-          <th>{% if lang == 'fr' %}Pays{% else %}Paese{% endif %}</th>
+          <th>{% if lang == 'fr' %}Adresse/localité{% else %}Indirizzo/località{% endif %}</th>
+          <th>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</th>
           <th class="text-center">📍</th>
           <th class="text-center">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</th>
           <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
@@ -35,17 +32,17 @@
         {% for depot in depositi %}
         <tr data-depot-item data-name="{{ depot.name }}" data-lat="{{ depot.lat if depot.lat is not none else '' }}" data-lng="{{ depot.lng if depot.lng is not none else '' }}">
           <td><strong>{{ depot.name }}</strong></td>
-          <td>{{ depot.address or '-' }}</td>
-          <td>{{ depot.city or '-' }}</td>
-          <td>{{ depot.zip_code or '-' }}</td>
-          <td>{{ depot.province or '-' }}</td>
-          <td>{{ depot.country or '-' }}</td>
+          <td>{% set address_parts = [] %}{% for part in [depot.address, depot.city, depot.zip_code, depot.province, depot.country] %}{% if part %}{% set _ = address_parts.append(part) %}{% endif %}{% endfor %}{{ address_parts | join(', ') or '-' }}</td>
+          <td>{{ depot.notes or '-' }}</td>
           <td class="text-center"><span class="badge badge-secondary">{{ 'OK' if depot.lat is not none and depot.lng is not none else '—' }}</span></td>
           <td class="text-center">{{ 'Sì' if depot.is_active else 'No' }}</td>
-          <td class="table-actions"><a class="btn btn-secondary btn-sm" href="{{ url_for('manager_depositi_edit', depot_id=depot.id) }}">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a></td>
+          <td class="table-actions">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_depositi_detail', depot_id=depot.id) }}">🔎 {% if lang == 'fr' %}Ouvrir{% else %}Apri/Dettagli{% endif %}</a>
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_depositi_edit', depot_id=depot.id) }}">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a>
+          </td>
         </tr>
         {% else %}
-        <tr><td colspan="9" class="table-empty">{% if lang == 'fr' %}Aucun dépôt enregistré.{% else %}Nessun deposito registrato.{% endif %}</td></tr>
+        <tr><td colspan="6" class="table-empty">{% if lang == 'fr' %}Aucun dépôt enregistré.{% else %}Nessun deposito registrato.{% endif %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
