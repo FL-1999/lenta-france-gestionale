@@ -570,6 +570,12 @@ class Machine(Base, TimestampMixin):
     machine_type_rel = relationship("MachineType", back_populates="machines")
 
     fiches = relationship("Fiche", back_populates="machine")
+    notes_history = relationship(
+        "MachineNote",
+        back_populates="machine",
+        cascade="all, delete-orphan",
+        order_by="desc(MachineNote.created_at)",
+    )
     assignments = relationship(
         "MachineSiteAssignment",
         back_populates="machine",
@@ -1158,6 +1164,42 @@ class Attrezzatura(Base, TimestampMixin):
         default=AttrezzaturaStatoEnum.disponibile,
     )
     posizione_attuale = Column(String(255), nullable=True)
+
+    notes_history = relationship(
+        "MachineNote",
+        back_populates="attrezzatura",
+        cascade="all, delete-orphan",
+        order_by="desc(MachineNote.created_at)",
+    )
+
+
+class MachineNote(Base, TimestampMixin):
+    __tablename__ = "machine_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=True, index=True)
+    attrezzatura_id = Column(Integer, ForeignKey("attrezzature.id"), nullable=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=True, index=True)
+    operator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    note_type = Column(String(50), nullable=True, index=True)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    machine = relationship("Machine", back_populates="notes_history")
+    attrezzatura = relationship("Attrezzatura", back_populates="notes_history")
+    site = relationship("Site")
+    operator = relationship("User")
+
+    __table_args__ = (
+        CheckConstraint(
+            "(machine_id IS NOT NULL AND attrezzatura_id IS NULL) OR "
+            "(machine_id IS NULL AND attrezzatura_id IS NOT NULL)",
+            name="ck_machine_notes_single_asset",
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<MachineNote id={self.id} machine_id={self.machine_id} attrezzatura_id={self.attrezzatura_id}>"
 
 
 class TrasportoViaggio(Base, TimestampMixin):

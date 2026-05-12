@@ -1,0 +1,47 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}{% if lang == 'fr' %}Ajouter note{% else %}Aggiungi nota{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{% if lang == 'fr' %}Signalement chantier{% else %}Segnalazione cantiere{% endif %}</p>
+        <h1 class="page-title">{% if lang == 'fr' %}Ajouter note{% else %}Aggiungi nota{% endif %}</h1>
+        <p class="page-subtitle">{{ asset_label }}{% if site %} · {{ site.name }}{% endif %}</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ request.url_for('capo_cantiere_attrezzature') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour liste{% else %}Torna all'elenco{% endif %}</a>
+    </div>
+</div>
+
+{% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
+
+<div class="card" style="margin-top:1rem;">
+    <div class="card-body">
+        <form method="post" action="{{ request.url_for('capo_asset_note_create') }}">
+            <input type="hidden" name="entity" value="{{ entity }}">
+            <input type="hidden" name="asset_id" value="{{ asset.id }}">
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="note_type">{% if lang == 'fr' %}Type de note (optionnel){% else %}Tipo nota (opzionale){% endif %}</label>
+                    <select id="note_type" name="note_type" class="form-control">
+                        <option value="">{% if lang == 'fr' %}Sélectionner{% else %}Seleziona{% endif %}</option>
+                        {% for value, label in note_type_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="note_text">{% if lang == 'fr' %}Texte note{% else %}Testo nota{% endif %} *</label>
+                    <textarea id="note_text" name="note_text" class="form-control" rows="6" required placeholder="{% if lang == 'fr' %}Décrivez panne, entretien, problème ou observation...{% else %}Descrivi rottura, manutenzione, problema o osservazione...{% endif %}"></textarea>
+                </div>
+            </div>
+            <div class="form-actions">
+                <a href="{{ request.url_for('capo_cantiere_attrezzature') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
+                <button type="submit" class="btn btn-primary">{% if lang == 'fr' %}Salva note{% else %}Salva nota{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

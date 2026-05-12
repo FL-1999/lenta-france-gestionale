@@ -320,9 +320,9 @@
                     </div>
                     <span>
                         {% if lang == 'fr' %}
-                            Votre profil
+                            Machines et équipements
                         {% else %}
-                            Il tuo profilo
+                            Macchinari e attrezzature
                         {% endif %}
                     </span>
                 </div>
@@ -330,17 +330,17 @@
             <div class="card-body">
                 <p>
                     {% if lang == 'fr' %}
-                        Récapitulatif de vos informations et activités récentes.
+                        Consultez les moyens et équipements présents sur le chantier et signalez les anomalies.
                     {% else %}
-                        Riepilogo delle tue informazioni e attività recenti.
+                        Visualizza mezzi e attrezzature presenti in cantiere e segnala anomalie
                     {% endif %}
                 </p>
                 <div class="card-actions">
-                    <a href="/capo/dashboard" class="btn btn-secondary">
+                    <a href="{{ request.url_for('capo_cantiere_attrezzature') }}" class="btn btn-secondary">
                         {% if lang == 'fr' %}
-                            Aller au profil
+                            Ouvrir la liste
                         {% else %}
-                            Vai al profilo
+                            Apri elenco
                         {% endif %}
                     </a>
                 </div>

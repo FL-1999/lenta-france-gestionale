@@ -232,6 +232,9 @@
                             <a href="{{ request.url_for('manager_machine_edit', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
                                 {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
                             </a>
+                            <a href="{{ request.url_for('manager_machine_notes_history', machine_id=m.id) }}" class="btn btn-secondary btn-sm">
+                                {% if lang == 'fr' %}Historique notes{% else %}Storico note{% endif %}
+                            </a>
                             <button
                                 type="button"
                                 class="btn btn-secondary btn-sm"
