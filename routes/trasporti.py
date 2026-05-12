@@ -33,6 +33,7 @@ from services import GPSIntegrationService, get_gps_provider_adapter
 from permissions import can_access_logistics_area, can_access_manager_area, can_manage_trip_loads, has_perm
 from template_context import register_manager_badges, render_template
 from utils.google_maps import estimate_trip_eta
+from utils.places import DEFAULT_DEPOT_NAMES
 from utils.gps import trip_gps_marker_context
 from utils.places import format_place_label, get_place_by_value, get_selectable_places
 from utils.trips import can_edit_trip, compute_trip_progress, format_trip_datetime_parts, format_trip_time
@@ -611,7 +612,7 @@ def manager_trasporti_mappa(
     _ensure_manager(current_user)
 
     sites = db.query(Site).order_by(Site.name.asc()).all()
-    depots = db.query(Depot).order_by(Depot.name.asc()).all()
+    depots = db.query(Depot).filter(func.lower(func.trim(Depot.name)).notin_(DEFAULT_DEPOT_NAMES)).order_by(Depot.name.asc()).all()
 
     trip_query = (
         db.query(TrasportoViaggio)
