@@ -90,6 +90,42 @@ class DepositiRoutesTests(unittest.TestCase):
         finally:
             session.close()
 
+    def test_manager_depositi_duplicate_name_shows_clear_error(self) -> None:
+        unique = uuid4().hex[:10]
+        existing_name = f"Deposito duplicato {unique}"
+        session = SessionLocal()
+        try:
+            session.add(Depot(name=existing_name, city="Lyon"))
+            session.commit()
+        finally:
+            session.close()
+
+        response = self.client.post(
+            "/manager/depositi/nuovo",
+            data={
+                "name": existing_name,
+                "address": "Rue Test 1",
+                "city": "Lyon",
+                "zip_code": "69000",
+                "province": "Rhône",
+                "country": "France",
+                "is_active": "on",
+            },
+            follow_redirects=False,
+            cookies={"lang": "it"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Esiste già un deposito con questo nome", response.text)
+
+        session = SessionLocal()
+        try:
+            count = session.query(Depot).filter(Depot.name == existing_name).count()
+            self.assertEqual(count, 1)
+        finally:
+            session.close()
+
+
 
 if __name__ == "__main__":
     unittest.main()
