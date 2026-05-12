@@ -78,6 +78,61 @@
         </p>
     </div>
 </div>
+{% if has_perm(user, "manager.access") %}
+<div class="card mt-4 site-panel-schema" id="schema-pannelli">
+    <div class="card-header">
+        <h2 class="card-title mb-0">
+            {% if lang == 'fr' %}Schéma panneaux{% else %}Schema pannelli{% endif %}
+        </h2>
+    </div>
+    <div class="card-body">
+        {% if panel_schema %}
+            <p class="text-muted mb-3">
+                {% if lang == 'fr' %}
+                    Vert = fiche déjà créée, gris = fiche absente. Cliquez sur un panneau vert pour ouvrir la fiche liée.
+                {% else %}
+                    Verde = fiche già creata, grigio = fiche non presente. Clicca un pannello verde per aprire la fiche collegata.
+                {% endif %}
+            </p>
+            <div class="panel-grid" role="list" aria-label="Schema pannelli">
+                {% for panel in panel_schema %}
+                    {% if panel.is_completed %}
+                        <a
+                            href="{{ url_for('manager_fiches_detail', fiche_id=panel.fiche_id) }}"
+                            class="panel-tile panel-tile--completed"
+                            role="listitem"
+                            aria-label="Pannello {{ panel.number }}: fiche presente"
+                            title="Apri fiche pannello {{ panel.number }}"
+                        >
+                            <span class="panel-tile__number">{{ panel.number }}</span>
+                            <span class="panel-tile__status">Fiche</span>
+                        </a>
+                    {% else %}
+                        <span
+                            class="panel-tile panel-tile--missing"
+                            role="listitem"
+                            aria-label="Pannello {{ panel.number }}: fiche non presente"
+                            title="Fiche non presente"
+                        >
+                            <span class="panel-tile__number">{{ panel.number }}</span>
+                            <span class="panel-tile__status">—</span>
+                        </span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">
+                {% if lang == 'fr' %}
+                    Aucun panneau à afficher: renseigner le total des panneaux à excaver pour générer le schéma.
+                {% else %}
+                    Nessun pannello da mostrare: valorizzare il totale paratie da scavare per generare lo schema.
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 
 {% if has_perm(user, "manager.access") %}
 <div id="todo-operative" class="card mt-4">

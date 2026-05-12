@@ -2470,6 +2470,54 @@ def _site_paratie_total(site: Site) -> int:
     )
 
 
+def _build_site_panel_schema(site: Site, fiches: list[Fiche]) -> list[dict]:
+    """Build a panel grid model decoupled from rendering.
+
+    The placeholder coordinate fields keep the structure ready for a future
+    planimetry/image layer without changing the admin/manager template contract.
+    """
+
+    total_panels = int(site.totale_paratie_da_scavare or 0)
+    if total_panels <= 0:
+        return []
+
+    fiches_by_panel: dict[int, Fiche] = {}
+    for fiche in sorted(fiches, key=lambda item: (item.numero_pannello, item.id)):
+        panel_number = int(fiche.numero_pannello or 0)
+        if panel_number < 1 or panel_number > total_panels:
+            continue
+        fiches_by_panel.setdefault(panel_number, fiche)
+
+    panels: list[dict] = []
+    for panel_number in range(1, total_panels + 1):
+        fiche = fiches_by_panel.get(panel_number)
+        created_by = getattr(fiche, "created_by", None) if fiche else None
+        panels.append(
+            {
+                "number": panel_number,
+                "status": "completed" if fiche else "missing",
+                "is_completed": fiche is not None,
+                "fiche_id": fiche.id if fiche else None,
+                "fiche_date": fiche.date if fiche else None,
+                "caposquadra": (
+                    (created_by.full_name or created_by.email)
+                    if created_by is not None
+                    else None
+                ),
+                "metri_cubi": fiche.metri_cubi_gettati if fiche else None,
+                "ore_scavate": fiche.hours if fiche else None,
+                "notes": fiche.notes if fiche else None,
+                "planimetry": {
+                    "x": None,
+                    "y": None,
+                    "width": None,
+                    "height": None,
+                },
+            }
+        )
+    return panels
+
+
 def _sync_site_fiche_progress(db: Session, site: Site) -> None:
     paratie_scavate = (
         db.query(func.count(Fiche.id)).filter(Fiche.site_id == site.id).scalar() or 0
@@ -3296,6 +3344,16 @@ def manager_site_detail(
         progress_summary, strut_levels_view, strut_levels_count = _build_site_progress(
             site, lang
         )
+        panel_schema = []
+        if has_perm(current_user, "manager.access"):
+            site_fiches = (
+                db.query(Fiche)
+                .options(joinedload(Fiche.created_by))
+                .filter(Fiche.site_id == site.id)
+                .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
+                .all()
+            )
+            panel_schema = _build_site_panel_schema(site, site_fiches)
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
         manager_users = (
             db.query(User)
@@ -3317,6 +3375,7 @@ def manager_site_detail(
             progress_summary=progress_summary,
             strut_levels=strut_levels_view,
             strut_levels_count=strut_levels_count,
+            panel_schema=panel_schema,
             site_tasks=site_tasks,
             open_tasks=open_tasks,
             completed_tasks=completed_tasks,

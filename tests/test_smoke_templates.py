@@ -12,6 +12,7 @@ from sqlmodel import SQLModel
 from starlette.requests import Request
 
 from main import (
+    _build_site_panel_schema,
     _build_sites_map_data,
     app,
     get_current_active_user_html,
@@ -23,6 +24,8 @@ from models import (
     Personale,
     Report,
     ReportWorker,
+    Fiche,
+    FicheTypeEnum,
     RoleEnum,
     Site,
     SiteStatusEnum,
@@ -187,6 +190,94 @@ def test_cantieri_map_data_is_json_serializable() -> None:
     serialized = json.dumps(payload)
 
     assert '"name": "Cantiere Lyon"' in serialized
+
+
+def test_build_site_panel_schema_marks_completed_panels() -> None:
+    site = Site(
+        id=9,
+        name="Cantiere Schema",
+        totale_paratie_da_scavare=4,
+    )
+    capo = User(
+        email="capo-schema@example.com",
+        full_name="Capo Schema",
+        hashed_password="fake",
+        role=RoleEnum.caposquadra,
+    )
+    fiche = Fiche(
+        id=12,
+        date=date(2026, 5, 12),
+        numero_pannello=2,
+        site_id=site.id,
+        created_by=capo,
+        created_by_id=1,
+        fiche_type=FicheTypeEnum.produzione,
+        description="Pannello completato",
+        hours=7.5,
+        notes="Note pannello",
+        metri_cubi_gettati=18.0,
+    )
+
+    panel_schema = _build_site_panel_schema(site, [fiche])
+
+    assert [panel["number"] for panel in panel_schema] == [1, 2, 3, 4]
+    assert panel_schema[0]["status"] == "missing"
+    assert panel_schema[1]["status"] == "completed"
+    assert panel_schema[1]["fiche_id"] == 12
+    assert panel_schema[1]["caposquadra"] == "Capo Schema"
+    assert panel_schema[1]["planimetry"] == {
+        "x": None,
+        "y": None,
+        "width": None,
+        "height": None,
+    }
+
+
+def test_manager_site_detail_renders_panel_schema() -> None:
+    site = Site(
+        id=3,
+        name="Cantiere Pannelli",
+        code="PAN-003",
+        status=SiteStatusEnum.aperto,
+        totale_paratie_da_scavare=2,
+    )
+    progress_summary = {
+        "installazione_cantiere": {"percent": 0, "status": "Da fare"},
+        "cordoli": {"percent": 0, "done": 0, "total": 0},
+        "paratie": {"percent": 50, "done": 1, "total": 2},
+        "pozzi_pompaggio": {"percent": 0, "status": "Da fare"},
+        "rabotage": {"percent": 0, "status": "Da fare"},
+        "puntoni": {"percent": 0, "done": 0, "total": 0},
+    }
+
+    output = render_template(
+        "manager/site_detail.html",
+        {
+            "request": build_request("/manager/cantieri/3"),
+            "user": build_manager_user(),
+            "site": site,
+            "progress_summary": progress_summary,
+            "strut_levels": [],
+            "strut_levels_count": 0,
+            "panel_schema": [
+                {"number": 1, "is_completed": True, "fiche_id": 44},
+                {"number": 2, "is_completed": False, "fiche_id": None},
+            ],
+            "site_tasks": [],
+            "open_tasks": [],
+            "completed_tasks": [],
+            "task_filter": "tutte",
+            "site_task_status_values": [],
+            "site_task_priority_values": [],
+            "manager_users": [],
+        },
+    )
+
+    assert "Schema pannelli" in output
+    assert 'href="http://testserver/manager/fiches/44"' in output
+    assert "Fiche non presente" in output
+    assert "panel-tile--completed" in output
+    assert "panel-tile--missing" in output
 
 
 def test_capo_nuovo_rapportino_renders_with_safe_dicts() -> None:
