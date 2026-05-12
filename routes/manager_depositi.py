@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_html
@@ -76,6 +77,14 @@ def _validate_name(name: str | None) -> str:
     if not cleaned:
         raise HTTPException(status_code=400, detail="Nome deposito obbligatorio")
     return cleaned
+
+
+def _find_depot_by_name(db: Session, name: str, *, exclude_id: int | None = None) -> Depot | None:
+    with db.no_autoflush:
+        query = db.query(Depot).filter(func.lower(func.trim(Depot.name)) == name.strip().lower())
+        if exclude_id is not None:
+            query = query.filter(Depot.id != exclude_id)
+        return query.first()
 
 
 def _build_form_context(request: Request, *, depot: Depot | None, form_action: str, form_data: dict | None = None, error_message: str | None = None) -> dict:
@@ -223,8 +232,43 @@ def manager_depositi_create(
             status_code=exc.status_code,
         )
 
+    if _find_depot_by_name(db, depot.name):
+        return render_template(
+            templates,
+            request,
+            "manager/depositi/form.html",
+            _build_form_context(
+                request,
+                depot=None,
+                form_action=str(request.url_for("manager_depositi_create")),
+                form_data=payload,
+                error_message="Esiste già un deposito con questo nome",
+            ),
+            db,
+            current_user,
+            status_code=400,
+        )
+
     db.add(depot)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return render_template(
+            templates,
+            request,
+            "manager/depositi/form.html",
+            _build_form_context(
+                request,
+                depot=None,
+                form_action=str(request.url_for("manager_depositi_create")),
+                form_data=payload,
+                error_message="Esiste già un deposito con questo nome",
+            ),
+            db,
+            current_user,
+            status_code=400,
+        )
 
     return RedirectResponse(url=request.url_for("manager_depositi_list"), status_code=303)
 
@@ -367,7 +411,42 @@ def manager_depositi_update(
             status_code=exc.status_code,
         )
 
+    if _find_depot_by_name(db, depot.name, exclude_id=depot.id):
+        return render_template(
+            templates,
+            request,
+            "manager/depositi/form.html",
+            _build_form_context(
+                request,
+                depot=depot,
+                form_action=str(request.url_for("manager_depositi_update", depot_id=depot.id)),
+                form_data=payload,
+                error_message="Esiste già un deposito con questo nome",
+            ),
+            db,
+            current_user,
+            status_code=400,
+        )
+
     db.add(depot)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return render_template(
+            templates,
+            request,
+            "manager/depositi/form.html",
+            _build_form_context(
+                request,
+                depot=depot,
+                form_action=str(request.url_for("manager_depositi_update", depot_id=depot.id)),
+                form_data=payload,
+                error_message="Esiste già un deposito con questo nome",
+            ),
+            db,
+            current_user,
+            status_code=400,
+        )
 
     return RedirectResponse(url=request.url_for("manager_depositi_list"), status_code=303)
