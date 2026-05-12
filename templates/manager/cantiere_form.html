@@ -64,6 +64,10 @@
           </div>
           <div class="cantiere-stepper-item" data-step-index="2">
             <span class="cantiere-stepper-index">3</span>
+            <span class="cantiere-stepper-label">Depositi disponibili</span>
+          </div>
+          <div class="cantiere-stepper-item" data-step-index="3">
+            <span class="cantiere-stepper-index">4</span>
             <span class="cantiere-stepper-label">Assegnazione / stato</span>
           </div>
         </div>
@@ -203,7 +207,35 @@
           </div>
         </div>
 
+
+        {% if mode == "create" %}
         <div class="cantiere-step" data-step="3">
+          <div class="card" style="margin-bottom: 1rem;">
+            <div class="card-header">
+              <div class="card-title">Depositi disponibili</div>
+            </div>
+            <div class="card-body">
+              <p class="text-muted">Puoi creare un nuovo deposito oppure consultare e selezionare un deposito reale già esistente.</p>
+              <div class="form-actions" style="justify-content: flex-start; margin-bottom: 1rem;">
+                <a href="{{ url_for('manager_depositi_new') }}" class="btn btn-primary" target="_blank" rel="noopener">➕ Nuovo deposito</a>
+                <a href="{{ url_for('manager_depositi_list') }}" class="btn btn-secondary" target="_blank" rel="noopener">📋 Lista depositi</a>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="deposito_riferimento_id">Deposito esistente (opzionale)</label>
+                <select id="deposito_riferimento_id" name="deposito_riferimento_id" class="form-select">
+                  <option value="">Nessuno</option>
+                  {% for deposito in depositi_disponibili or [] %}
+                    <option value="{{ deposito.id }}">{{ deposito.name }}{% if deposito.city %} – {{ deposito.city }}{% endif %}</option>
+                  {% endfor %}
+                </select>
+                <small class="form-text text-muted">La selezione serve come riferimento operativo durante la creazione; i depositi restano gestiti dalla pagina Depositi.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="cantiere-step" data-step="{{ 4 if mode == 'create' else 3 }}">
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="status">Stato</label>

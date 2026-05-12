@@ -964,13 +964,14 @@ def manager_dashboard(
         depots_with_coords = (
             db.query(Depot)
             .filter(Depot.lat.isnot(None), Depot.lng.isnot(None))
+            .filter(func.lower(func.trim(Depot.name)).notin_(["montauroux", "st. jeannet", "st jeannet", "sommariva", "cantieri"]))
             .order_by(Depot.name.asc())
             .all()
         )
         depots_map_data = _build_depots_map_data(
             depots_with_coords,
             detail_url_template=str(
-                request.url_for("manager_depositi_edit", depot_id="__DEPOT_ID__")
+                request.url_for("manager_depositi_detail", depot_id="__DEPOT_ID__")
             ),
         )
         active_trips = (
@@ -2926,6 +2927,17 @@ def manager_site_progress_puntoni(
     )
 
 
+def _load_real_depots_for_forms(db: Session):
+    default_names = ["montauroux", "st. jeannet", "st jeannet", "sommariva", "cantieri"]
+    return (
+        db.query(Depot)
+        .filter(Depot.is_active.is_(True))
+        .filter(func.lower(func.trim(Depot.name)).notin_(default_names))
+        .order_by(Depot.name.asc())
+        .all()
+    )
+
+
 @app.get("/manager/cantieri/nuovo", response_class=HTMLResponse)
 def manager_cantiere_nuovo_get(
     request: Request,
@@ -2945,6 +2957,7 @@ def manager_cantiere_nuovo_get(
             .order_by(User.full_name, User.email)
             .all()
         )
+        depositi_disponibili = _load_real_depots_for_forms(db)
     finally:
         db.close()
 
@@ -2959,6 +2972,7 @@ def manager_cantiere_nuovo_get(
             site_status_values=site_status_values,
             capisquadra=capisquadra,
             google_maps_api_key=google_maps_api_key,
+            depositi_disponibili=depositi_disponibili,
         ),
     )
 
@@ -3077,6 +3091,7 @@ def manager_cantiere_nuovo_post(
                 .order_by(User.full_name, User.email)
                 .all()
             )
+            depositi_disponibili = _load_real_depots_for_forms(db)
             return templates.TemplateResponse(
                 request,
                 "manager/cantiere_form.html",
@@ -3088,6 +3103,7 @@ def manager_cantiere_nuovo_post(
                     site_status_values=site_status_values,
                     capisquadra=capisquadra,
                     google_maps_api_key=google_maps_api_key,
+                    depositi_disponibili=depositi_disponibili,
                     error_message=errors[0],
                     form_data={
                         "name": name,

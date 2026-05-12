@@ -16,7 +16,6 @@ from models import Attrezzatura, Machine, MachineNote, MachineSiteAssignment, Ma
 from schemas import MachineCreate, MachineRead
 from template_context import build_template_context, register_manager_badges
 from permissions import has_perm
-from notifications import notify_machine_note_created
 
 router = APIRouter()
 
@@ -53,11 +52,35 @@ def _get_machine_or_404(db: Session, machine_id: int) -> Machine:
     return machine
 
 
-LOCATION_LABELS = {
-    "__montauroux__": "Montauroux",
-    "__st_jeannet__": "St. Jeannet",
-    "__sommariva__": "Sommariva",
-}
+def _load_machine_locations(db: Session):
+    return get_selectable_places(db, include_inactive=False)
+
+
+def _parse_location_selection(
+    db: Session,
+    raw_value: str | int | None,
+) -> tuple[int | None, str | None]:
+    if raw_value in (None, ""):
+        return None, None
+    if isinstance(raw_value, int):
+        site = db.query(Site).filter(Site.id == raw_value, Site.is_active == True).first()  # noqa: E712
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        return site.id, None
+
+    raw = str(raw_value).strip()
+    if raw.isdigit():
+        site = db.query(Site).filter(Site.id == int(raw), Site.is_active == True).first()  # noqa: E712
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        return site.id, None
+
+    place = get_place_by_value(db, raw, include_inactive=False)
+    if not place:
+        raise HTTPException(status_code=400, detail="Localizzazione non valida")
+    if place.kind == "site":
+        return place.id, None
+    return None, format_place_label("depot", place.name)
 
 
 def _parse_site_selection(
@@ -69,12 +92,8 @@ def _parse_site_selection(
         return site_id_value, None
     try:
         return int(site_id_value), None
-    except (TypeError, ValueError):
-        pass
-    location_label = LOCATION_LABELS.get(str(site_id_value))
-    if location_label is None:
-        raise HTTPException(status_code=400, detail="Localizzazione non valida")
-    return None, location_label
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Localizzazione non valida") from exc
 
 
 def _update_machine_assignment(
@@ -82,16 +101,7 @@ def _update_machine_assignment(
     machine: Machine,
     site_id_value: str | int | None,
 ) -> None:
-    site_id, location_label = _parse_site_selection(site_id_value)
-
-    if site_id is not None:
-        site = (
-            db.query(Site)
-            .filter(Site.id == site_id, Site.is_active == True)  # noqa: E712
-            .first()
-        )
-        if not site:
-            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+    site_id, location_label = _parse_location_selection(db, site_id_value)
 
     now = datetime.utcnow()
     open_assignment = (
@@ -805,6 +815,7 @@ def manager_machines_page(
         or 0
     )
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
+    locations = _load_machine_locations(db)
 
     success_message = request.query_params.get("success_message")
     error_message = request.query_params.get("error_message")
@@ -821,6 +832,7 @@ def manager_machines_page(
             kpi_active=kpi_active,
             kpi_oos=kpi_oos,
             sites=sites,
+            locations=locations,
             page=page,
             per_page=per_page,
             total_pages=max(1, (total_count + per_page - 1) // per_page),
@@ -949,6 +961,7 @@ def manager_machine_types_detail_page(
         or 0
     )
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
+    locations = _load_machine_locations(db)
 
     success_message = request.query_params.get("success_message")
     error_message = request.query_params.get("error_message")
@@ -969,6 +982,7 @@ def manager_machine_types_detail_page(
             kpi_active=kpi_active,
             kpi_oos=kpi_oos,
             sites=sites,
+            locations=locations,
             page=page,
             per_page=per_page,
             total_pages=max(1, (total_count + per_page - 1) // per_page),
@@ -992,6 +1006,7 @@ def manager_machine_new_get(
 ):
     _require_manager_or_admin(current_user)
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
+    locations = _load_machine_locations(db)
     machine_types = _load_machine_types(db)
     selected_machine_type = request.query_params.get("machine_type")
 
@@ -1007,6 +1022,7 @@ def manager_machine_new_get(
             machine_types=machine_types,
             status_choices=MACHINE_STATUS_CHOICES,
             sites=sites,
+            locations=locations,
             selected_machine_type=selected_machine_type,
         ),
     )
@@ -1110,6 +1126,7 @@ def manager_machine_edit_get(
     _require_manager_or_admin(current_user)
     machine = _get_machine_or_404(db, machine_id)
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
+    locations = _load_machine_locations(db)
     machine_types = _load_machine_types(db)
     selected_machine_type = request.query_params.get("machine_type")
 
@@ -1125,6 +1142,7 @@ def manager_machine_edit_get(
             machine_types=machine_types,
             status_choices=MACHINE_STATUS_CHOICES,
             sites=sites,
+            locations=locations,
             selected_machine_type=selected_machine_type,
         ),
     )
@@ -1244,15 +1262,7 @@ def manager_machine_quick_update(
         if status not in MACHINE_STATUS_CHOICES:
             raise HTTPException(status_code=400, detail="Stato macchinario non valido")
 
-        site_id, location_label = _parse_site_selection(location)
-        if site_id is not None:
-            site = (
-                db.query(Site)
-                .filter(Site.id == site_id, Site.is_active == True)  # noqa: E712
-                .first()
-            )
-            if not site:
-                raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        site_id, location_label = _parse_location_selection(db, location)
 
         machine.status = status
         has_history = (
@@ -1296,6 +1306,7 @@ def manager_machine_assign_get(
     _require_manager_or_admin(current_user)
     machine = _get_machine_or_404(db, machine_id)
     sites = db.query(Site).filter(Site.is_active == True).order_by(Site.name.asc()).all()  # noqa: E712
+    locations = _load_machine_locations(db)
 
     return templates.TemplateResponse(
         request,
@@ -1306,6 +1317,7 @@ def manager_machine_assign_get(
             current_user=current_user,
             machine=machine,
             sites=sites,
+            locations=locations,
         ),
     )
 
