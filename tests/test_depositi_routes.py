@@ -52,6 +52,12 @@ class DepositiRoutesTests(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(create_response.status_code, 303)
+        self.assertEqual(create_response.headers["location"], "http://testserver/manager/depositi")
+
+        list_response = self.client.get("/manager/depositi", cookies={"lang": "it"})
+        self.assertEqual(list_response.status_code, 200)
+        self.assertIn(f"Deposito test {unique}", list_response.text)
+        self.assertNotIn("Nessun deposito registrato", list_response.text)
 
         session = SessionLocal()
         try:
@@ -116,7 +122,7 @@ class DepositiRoutesTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("Esiste già un deposito con questo nome", response.text)
+        self.assertIn("Deposito già esistente", response.text)
 
         session = SessionLocal()
         try:
