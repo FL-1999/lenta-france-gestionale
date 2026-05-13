@@ -313,8 +313,56 @@ def test_manager_site_detail_renders_panel_schema() -> None:
     assert "Schema pannelli" in output
     assert 'href="http://testserver/manager/fiches/44"' in output
     assert "Fiche non presente" in output
+    assert "grid-avanzamento" in output
+    assert "cell done" in output
+    assert "cell missing" in output
     assert "panel-tile--completed" in output
     assert "panel-tile--missing" in output
+
+
+def test_capo_site_detail_renders_non_clickable_panel_schema() -> None:
+    site = Site(
+        id=4,
+        name="Cantiere Capo Pannelli",
+        code="CAP-004",
+        status=SiteStatusEnum.aperto,
+        numero_totale_paratie=2,
+    )
+    progress_summary = {
+        "installazione_cantiere": {"percent": 0, "status": "Da fare"},
+        "cordoli": {"percent": 0, "done": 0, "total": 0},
+        "paratie": {"percent": 50, "done": 1, "total": 2},
+        "pali": {"percent": 0, "done": 0, "total": 0},
+        "pozzi_pompaggio": {"percent": 0, "status": "Da fare"},
+        "rabotage": {"percent": 0, "status": "Da fare"},
+        "puntoni": {"percent": 0, "done": 0, "total": 0},
+    }
+
+    output = render_template(
+        "capo/site_detail.html",
+        {
+            "request": build_request("/capo/cantieri/4"),
+            "user": build_capo_user(),
+            "site": site,
+            "progress_summary": progress_summary,
+            "panel_schema": [
+                {"number": 1, "is_completed": True, "fiche_id": 55},
+                {"number": 2, "is_completed": False, "fiche_id": None},
+            ],
+            "pali_schema": [],
+            "can_open_fiche_details": False,
+            "site_tasks": [],
+            "open_tasks": [],
+            "completed_tasks": [],
+            "can_add_tasks": False,
+        },
+    )
+
+    assert "Schema pannelli" in output
+    assert "grid-avanzamento" in output
+    assert "cell done" in output
+    assert "cell missing" in output
+    assert 'href="http://testserver/manager/fiches/55"' not in output
 
 
 def test_capo_nuovo_rapportino_renders_with_safe_dicts() -> None:

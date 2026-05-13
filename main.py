@@ -3971,22 +3971,18 @@ def manager_site_detail(
         progress_summary, strut_levels_view, strut_levels_count = _build_site_progress(
             site, lang
         )
-        panel_schema = []
-        if has_perm(current_user, "manager.access"):
-            site_fiches = (
-                db.query(Fiche)
-                .options(joinedload(Fiche.created_by))
-                .filter(Fiche.site_id == site.id)
-                .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
-                .all()
-            )
-            panel_schema = _build_site_panel_schema(site, site_fiches)
-            pali_schema = _build_site_pali_schema(site, site_fiches)
-            _update_progress_summary_for_fiche_grids(
-                progress_summary, site, site_fiches, lang
-            )
-        else:
-            pali_schema = []
+        site_fiches = (
+            db.query(Fiche)
+            .options(joinedload(Fiche.created_by))
+            .filter(Fiche.site_id == site.id)
+            .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
+            .all()
+        )
+        panel_schema = _build_site_panel_schema(site, site_fiches)
+        pali_schema = _build_site_pali_schema(site, site_fiches)
+        _update_progress_summary_for_fiche_grids(
+            progress_summary, site, site_fiches, lang
+        )
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
         manager_users = (
             db.query(User)
@@ -4010,6 +4006,7 @@ def manager_site_detail(
             strut_levels_count=strut_levels_count,
             panel_schema=panel_schema,
             pali_schema=pali_schema,
+            can_open_fiche_details=has_perm(current_user, "manager.access"),
             site_tasks=site_tasks,
             open_tasks=open_tasks,
             completed_tasks=completed_tasks,
@@ -4851,8 +4848,19 @@ def capo_site_detail(
     db = SessionLocal()
     try:
         site = get_site_for_user(db, site_id, current_user)
-        progress_summary, _, _ = _build_site_progress(
-            site, request.cookies.get("lang", "it")
+        lang = request.cookies.get("lang", "it")
+        progress_summary, _, _ = _build_site_progress(site, lang)
+        site_fiches = (
+            db.query(Fiche)
+            .options(joinedload(Fiche.created_by))
+            .filter(Fiche.site_id == site.id)
+            .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
+            .all()
+        )
+        panel_schema = _build_site_panel_schema(site, site_fiches)
+        pali_schema = _build_site_pali_schema(site, site_fiches)
+        _update_progress_summary_for_fiche_grids(
+            progress_summary, site, site_fiches, lang
         )
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
     finally:
@@ -4866,6 +4874,9 @@ def capo_site_detail(
             current_user,
             site=site,
             progress_summary=progress_summary,
+            panel_schema=panel_schema,
+            pali_schema=pali_schema,
+            can_open_fiche_details=False,
             site_tasks=site_tasks,
             open_tasks=open_tasks,
             completed_tasks=completed_tasks,
