@@ -12,6 +12,7 @@ from sqlmodel import SQLModel
 from starlette.requests import Request
 
 from main import (
+    _build_site_pali_schema,
     _build_site_panel_schema,
     _build_sites_map_data,
     app,
@@ -232,6 +233,42 @@ def test_build_site_panel_schema_marks_completed_panels() -> None:
         "height": None,
     }
 
+
+
+def test_build_site_schemas_keep_pali_and_paratie_separate() -> None:
+    site = Site(
+        id=10,
+        name="Cantiere Separato",
+        numero_totale_paratie=2,
+        numero_totale_pali=2,
+    )
+    paratia = Fiche(
+        id=20,
+        date=date(2026, 5, 12),
+        numero_pannello=1,
+        site_id=site.id,
+        created_by_id=1,
+        fiche_type=FicheTypeEnum.produzione,
+        description="Paratia completata",
+        tipologia_scavo="paratia",
+    )
+    palo = Fiche(
+        id=21,
+        date=date(2026, 5, 12),
+        numero_pannello=2,
+        site_id=site.id,
+        created_by_id=1,
+        fiche_type=FicheTypeEnum.produzione,
+        description="Palo completato",
+        tipologia_scavo="palo",
+        diametro_palo=0.8,
+    )
+
+    panel_schema = _build_site_panel_schema(site, [paratia, palo])
+    pali_schema = _build_site_pali_schema(site, [paratia, palo])
+
+    assert [panel["fiche_id"] for panel in panel_schema] == [20, None]
+    assert [palo_item["fiche_id"] for palo_item in pali_schema] == [None, 21]
 
 def test_manager_site_detail_renders_panel_schema() -> None:
     site = Site(

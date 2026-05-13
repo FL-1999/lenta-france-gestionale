@@ -41,6 +41,7 @@
       {% set form_capo = form_data.get('caposquadra_id') %}
       {% set form_active = form_data.get('is_active') %}
       {% set form_totale_paratie_da_scavare = form_data.get('totale_paratie_da_scavare') %}
+      {% set form_numero_totale_pali = form_data.get('numero_totale_pali') %}
       {% set form_confirm_unverified = form_data.get('confirm_unverified') %}
       <form method="post" data-mode="{{ mode }}" class="cantiere-form" data-place-picker>
         {% set has_coordinates = (form_lat is not none and form_lng is not none) or (site and site.lat is not none and site.lng is not none) %}
@@ -115,8 +116,20 @@
                      class="form-control"
                      min="0"
                      step="1"
-                     value="{{ form_totale_paratie_da_scavare if form_totale_paratie_da_scavare is not none else (site.totale_paratie_da_scavare if site and site.totale_paratie_da_scavare is not none else (site.paratie_total_panels if site and site.paratie_total_panels is not none else '')) }}">
-              <small class="form-text text-muted">Usato per calcolare l'avanzamento automatico dalle fiches salvate.</small>
+                     value="{{ form_totale_paratie_da_scavare if form_totale_paratie_da_scavare is not none else (site.numero_totale_paratie if site and site.numero_totale_paratie is not none else (site.totale_paratie_da_scavare if site and site.totale_paratie_da_scavare is not none else (site.paratie_total_panels if site and site.paratie_total_panels is not none else ''))) }}">
+              <small class="form-text text-muted">Usato per calcolare l'avanzamento automatico dalle fiches paratia salvate.</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="numero_totale_pali">Totale pali da eseguire</label>
+              <input type="number"
+                     id="numero_totale_pali"
+                     name="numero_totale_pali"
+                     class="form-control"
+                     min="0"
+                     step="1"
+                     value="{{ form_numero_totale_pali if form_numero_totale_pali is not none else (site.numero_totale_pali if site and site.numero_totale_pali is not none else '') }}">
+              <small class="form-text text-muted">Usato per generare la griglia separata dei pali dalle fiches salvate.</small>
             </div>
           </div>
         </div>

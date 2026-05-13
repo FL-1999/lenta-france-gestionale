@@ -1309,6 +1309,8 @@ def manager_site_economics_auto_cost_config(
     costo_ferro_ton: str = Form("0"),
     costo_ferro_kg: str = Form("0"),
     altri_prezzi_json: str = Form("{}"),
+    labor_cost_per_person: str | None = Form(None),
+    material_prices_json: str | None = Form(None),
     manual_material_entries_override_auto: str | None = Form(None),
     timeframe: str = Form("month"),
     start_date: str | None = Form(None),
@@ -1317,29 +1319,52 @@ def manager_site_economics_auto_cost_config(
     db: Session = Depends(get_db),
 ):
     _ensure_economics_manage(current_user)
-    site = db.query(Site).options(joinedload(Site.economic_auto_params)).filter(Site.id == site_id).first()
+    site = (
+        db.query(Site)
+        .options(joinedload(Site.economic_auto_params))
+        .filter(Site.id == site_id)
+        .first()
+    )
     if not site:
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
     try:
-        parsed_labor = _normalize_entry_amount(costo_manodopera_persona_giorno)
+        parsed_labor = _normalize_entry_amount(
+            labor_cost_per_person
+            if labor_cost_per_person is not None
+            else costo_manodopera_persona_giorno
+        )
         parsed_cemento = _normalize_entry_amount(costo_cemento_mc)
         parsed_ferro_ton = _normalize_entry_amount(costo_ferro_ton)
         parsed_ferro_kg = _normalize_entry_amount(costo_ferro_kg)
-        parsed_altri_prezzi = _parse_material_prices(altri_prezzi_json)
+        parsed_altri_prezzi = _parse_material_prices(
+            material_prices_json
+            if material_prices_json is not None
+            else altri_prezzi_json
+        )
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Configurazione prezzi non valida")
 
     params = site.economic_auto_params
     if params is None:
-        params = SiteEconomicAutoParams(site_id=site.id, created_by_id=getattr(current_user, "id", None))
+        params = SiteEconomicAutoParams(
+            site_id=site.id, created_by_id=getattr(current_user, "id", None)
+        )
         db.add(params)
     params.costo_manodopera_persona_giorno = parsed_labor
     params.costo_cemento_mc = parsed_cemento
     params.costo_ferro_ton = parsed_ferro_ton
     params.costo_ferro_kg = parsed_ferro_kg
     params.altri_prezzi_json = _serialize_material_prices(parsed_altri_prezzi)
-    params.manual_material_entries_override_auto = manual_material_entries_override_auto in {"1", "true", "True", "on", "yes"}
+    params.manual_material_entries_override_auto = manual_material_entries_override_auto in {
+        "1",
+        "true",
+        "True",
+        "on",
+        "yes",
+    }
+    site.labor_cost_per_person = parsed_labor
+    site.material_unit_prices = _serialize_material_prices(parsed_altri_prezzi)
     params.updated_by_id = getattr(current_user, "id", None)
     db.commit()
 
