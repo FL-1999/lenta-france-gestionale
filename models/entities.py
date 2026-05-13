@@ -431,6 +431,12 @@ class Site(Base):
         back_populates="site",
         cascade="all, delete-orphan",
     )
+    coupes = relationship(
+        "SiteCoupe",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        order_by="SiteCoupe.id",
+    )
     machines = relationship("Machine", back_populates="site", cascade="all, delete-orphan")
     strut_levels = relationship(
         "SiteStrutLevel",
@@ -688,6 +694,24 @@ class SiteProgressGridName(Base, TimestampMixin):
     nome_personalizzato = Column(String(100), nullable=False)
 
 
+class SiteCoupe(Base, TimestampMixin):
+    __tablename__ = "site_coupes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    site = relationship("Site", back_populates="coupes")
+    nome = Column(String(100), nullable=False)
+    quota_tn = Column(Float, nullable=True)
+    quota_testa = Column(Float, nullable=True)
+    quota_fondo_teorica = Column(Float, nullable=True)
+    profondita_teorica = Column(Float, nullable=True)
+    spessore = Column(Float, nullable=True)
+    terreno_teorico = Column(Text, nullable=True)
+    note = Column(Text, nullable=True)
+
+    fiches = relationship("Fiche", back_populates="coupe")
+
+
 class Fiche(Base, TimestampMixin):
     __tablename__ = "fiches"
     __table_args__ = (
@@ -706,6 +730,9 @@ class Fiche(Base, TimestampMixin):
     numero_pannello = Column(Integer, nullable=False)
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=False)
     site = relationship("Site", back_populates="fiches")
+
+    coupe_id = Column(Integer, ForeignKey("site_coupes.id"), nullable=True)
+    coupe = relationship("SiteCoupe", back_populates="fiches")
 
     machine_id = Column(Integer, ForeignKey("machines.id"), nullable=True)
     machine = relationship("Machine", back_populates="fiches")
@@ -730,6 +757,9 @@ class Fiche(Base, TimestampMixin):
     quota_ngf_testa = Column(Float, nullable=True)
     quota_ngf_fondo = Column(Float, nullable=True)
     quota_ngf_note = Column(Text, nullable=True)
+    scavo_da_tn = Column(Boolean, nullable=False, default=True)
+    quota_partenza = Column(Float, nullable=True)
+    quota_testa_getto = Column(Float, nullable=True)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
     stratigrafie = relationship(
