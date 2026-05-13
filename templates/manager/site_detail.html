@@ -87,6 +87,9 @@
                 </div>
                 <span class="progress-map-badge">{{ summary.percent }}%</span>
             </div>
+            <div class="progress-bar progress-map-bar" aria-hidden="true">
+                <div class="progress-bar-fill" style="width: {{ summary.percent }}%;"></div>
+            </div>
 
             <div class="progress-map-grid" role="list" aria-label="{{ aria_label }}">
                 {% for i in range(1, total + 1) %}
@@ -135,7 +138,7 @@
 <div class="card mt-4 site-panel-schema progress-map-card" id="schema-pannelli">
     <div class="card-header">
         <h2 class="card-title mb-0">
-            {% if lang == 'fr' %}Carte d’avancement fiches{% else %}Mappa avanzamento fiches{% endif %}
+            {% if lang == 'fr' %}Avancement des travaux{% else %}Avanzamento lavori{% endif %}
         </h2>
     </div>
     <div class="card-body">

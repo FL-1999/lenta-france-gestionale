@@ -2995,10 +2995,16 @@ def _site_pali_total(site: Site) -> int:
 
 
 def _fiche_schema_kind(fiche: Fiche) -> str:
+    """Return the normalized excavation kind used by progress grids.
+
+    Progress for paratie and pali must stay strictly separated: only the
+    explicit ``tipologia_scavo`` value decides which grid a fiche completes.
+    """
+
     tipologia = (fiche.tipologia_scavo or "").strip().lower()
-    if tipologia == "palo" or fiche.diametro_palo is not None:
-        return "palo"
-    return "paratia"
+    if tipologia in {"paratia", "palo"}:
+        return tipologia
+    return ""
 
 
 def _build_site_fiche_grid_schema(
@@ -4909,6 +4915,20 @@ def capo_site_detail(
         )
         panel_schema = _build_site_panel_schema(site, site_fiches)
         pali_schema = _build_site_pali_schema(site, site_fiches)
+        numero_totale_paratie = _site_paratie_total(site)
+        numero_totale_pali = _site_pali_total(site)
+        paratie_fiches_map = _build_site_fiches_map(
+            db, site.id, "paratia", numero_totale_paratie
+        )
+        pali_fiches_map = _build_site_fiches_map(
+            db, site.id, "palo", numero_totale_pali
+        )
+        paratie_progress_map = _progress_map_summary(
+            len(paratie_fiches_map), numero_totale_paratie
+        )
+        pali_progress_map = _progress_map_summary(
+            len(pali_fiches_map), numero_totale_pali
+        )
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
@@ -4926,6 +4946,12 @@ def capo_site_detail(
             progress_summary=progress_summary,
             panel_schema=panel_schema,
             pali_schema=pali_schema,
+            numero_totale_paratie=numero_totale_paratie,
+            numero_totale_pali=numero_totale_pali,
+            paratie_fiches_map=paratie_fiches_map,
+            pali_fiches_map=pali_fiches_map,
+            paratie_progress_map=paratie_progress_map,
+            pali_progress_map=pali_progress_map,
             can_open_fiche_details=False,
             site_tasks=site_tasks,
             open_tasks=open_tasks,
