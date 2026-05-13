@@ -703,9 +703,12 @@ def _parse_decimal_comma_float_list(
 
 
 def _invalid_fields_for_fiche_error(error_message: str | None) -> list[str]:
+    normalized_message = (error_message or "").lower()
     if error_message == FICHE_STRATIGRAFIA_DEPTH_ERROR:
         return ["profondita_totale", "strato_a_last"]
-    if error_message and "stratigrafia" in error_message.lower():
+    if "profondità totale" in normalized_message or "profondita totale" in normalized_message:
+        return ["profondita_totale"]
+    if "stratigrafia" in normalized_message or "strato" in normalized_message:
         return ["stratigrafia"]
     return []
 
@@ -918,6 +921,261 @@ def _load_manager_form_collections() -> tuple[list[Site], list[Machine]]:
         return sites, machines
     finally:
         db.close()
+
+
+def _render_fiche_create_form(
+    request: Request,
+    current_user: User,
+    *,
+    template_name: str,
+    collections_loader,
+    status_code: int = 200,
+    form_data: dict | None = None,
+    error_message: str | None = None,
+    extra_context: dict | None = None,
+):
+    sites, machines = collections_loader()
+    context = {
+        "cantieri": sites,
+        "macchinari": machines,
+        "form_data": form_data or _build_fiche_form_data(),
+        "error_message": error_message,
+    }
+    if extra_context:
+        context.update(extra_context)
+    return templates.TemplateResponse(
+        request,
+        template_name,
+        build_template_context(request, current_user, **context),
+        status_code=status_code,
+    )
+
+
+def _build_fiche_error_form_data(
+    *,
+    cantiere_id: int | str | None,
+    numero_pannello: int | str | None,
+    macchinario_id: int | str | None,
+    data_scavo: date | None,
+    data_getto: date | None,
+    metri_cubi_gettati: str | float | None,
+    operatore: str | None,
+    descrizione: str | None,
+    ore_lavorate: str | float | None,
+    note: str | None,
+    tipologia_scavo: str | None,
+    materiale: str | None,
+    profondita_totale: str | float | None,
+    diametro_palo_cm: str | float | None,
+    larghezza_pannello: str | float | None,
+    altezza_pannello: str | float | None,
+    strato_da: list[str | float | None] | None,
+    strato_a: list[str | float | None] | None,
+    strato_materiale: list[str] | None,
+    invalid_fields: list[str] | None = None,
+) -> dict:
+    return _build_fiche_form_data(
+        cantiere_id=cantiere_id,
+        numero_pannello=numero_pannello,
+        macchinario_id=macchinario_id,
+        data_scavo=data_scavo,
+        data_getto=data_getto,
+        metri_cubi_gettati=metri_cubi_gettati,
+        operatore=operatore,
+        descrizione=descrizione,
+        ore_lavorate=ore_lavorate,
+        note=note,
+        tipologia_scavo=tipologia_scavo,
+        materiale=materiale,
+        profondita_totale=profondita_totale,
+        diametro_palo_cm=diametro_palo_cm,
+        larghezza_pannello=larghezza_pannello,
+        altezza_pannello=altezza_pannello,
+        invalid_fields=invalid_fields,
+        strato_da=strato_da,
+        strato_a=strato_a,
+        strato_materiale=strato_materiale,
+    )
+
+
+def _parse_optional_machine_id(macchinario_id: str | int | None) -> int | None:
+    if macchinario_id in (None, ""):
+        return None
+    try:
+        return int(macchinario_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Macchinario non valido")
+
+
+def _validate_required_fiche_stratigrafia(
+    profondita_totale: float | None,
+    strato_da: list[float | None] | None,
+    strato_a: list[float | None] | None,
+    strato_materiale: list[str] | None = None,
+) -> list[tuple[float, float, str]]:
+    if profondita_totale is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Il campo profondità totale scavata è obbligatorio.",
+        )
+
+    strato_da = strato_da or []
+    strato_a = strato_a or []
+    strato_materiale = strato_materiale or []
+    max_len = max(len(strato_da), len(strato_a), len(strato_materiale), 0)
+    has_any_stratigrafia_value = False
+
+    for index in range(max_len):
+        da_val = strato_da[index] if index < len(strato_da) else None
+        a_val = strato_a[index] if index < len(strato_a) else None
+        material = strato_materiale[index] if index < len(strato_materiale) else ""
+        if da_val is not None or a_val is not None or (material or "").strip():
+            has_any_stratigrafia_value = True
+        if (da_val is None) != (a_val is None):
+            raise HTTPException(
+                status_code=400,
+                detail="Ogni strato di stratigrafia deve avere Da (m) e A (m).",
+            )
+
+    layers = _get_complete_stratigrafia_layers(
+        strato_da=strato_da,
+        strato_a=strato_a,
+        strato_materiale=strato_materiale,
+    )
+    if not layers or not has_any_stratigrafia_value:
+        raise HTTPException(
+            status_code=400,
+            detail="Inserire almeno uno strato di stratigrafia.",
+        )
+
+    _validate_fiche_stratigrafia(
+        profondita_totale=profondita_totale,
+        strato_da=[layer[0] for layer in layers],
+        strato_a=[layer[1] for layer in layers],
+    )
+    return layers
+
+
+def _create_validated_fiche(
+    db: Session,
+    *,
+    current_user: User,
+    cantiere_id: int,
+    numero_pannello: str | int | None,
+    macchinario_id: str | int | None,
+    data_scavo: date,
+    data_getto: date | None,
+    metri_cubi_gettati: str | float | None,
+    operatore: str,
+    descrizione: str | None,
+    ore_lavorate: str | float | None,
+    note: str | None,
+    tipologia_scavo: str | None,
+    materiale: str | None,
+    profondita_totale: str | float | None,
+    diametro_palo_cm: str | float | None,
+    larghezza_pannello: str | float | None,
+    altezza_pannello: str | float | None,
+    strato_da: list[str | float | None] | None,
+    strato_a: list[str | float | None] | None,
+    strato_materiale: list[str] | None,
+    restrict_to_capo_sites: bool = False,
+) -> Fiche:
+    metri_cubi_value = _parse_decimal_comma_float(
+        metri_cubi_gettati, "Metri cubi gettati"
+    )
+    profondita_value = _parse_decimal_comma_float(
+        profondita_totale, "profondità totale"
+    )
+    diametro_value_cm = _parse_decimal_comma_float(diametro_palo_cm, "diametro palo")
+    larghezza_value = _parse_decimal_comma_float(
+        larghezza_pannello, "larghezza pannello"
+    )
+    altezza_value = _parse_decimal_comma_float(altezza_pannello, "altezza pannello")
+    parsed_strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
+    parsed_strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
+    parsed_machine_id = _parse_optional_machine_id(macchinario_id)
+    parsed_numero_pannello = _parse_required_positive_int(
+        numero_pannello,
+        "Inserire numero pannello",
+        "Il numero pannello deve essere maggiore di 0",
+    )
+    ore_scavate = _parse_optional_non_negative_float(ore_lavorate, "Ore scavate")
+
+    if not (operatore or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Il campo Operatore / squadra è obbligatorio.",
+        )
+
+    _validate_fiche_geometria(
+        diametro_palo_cm=diametro_value_cm,
+        larghezza_pannello=larghezza_value,
+        altezza_pannello=altezza_value,
+        profondita_totale=profondita_value,
+    )
+    _validate_metri_cubi_gettati(metri_cubi_value)
+    layers = _validate_required_fiche_stratigrafia(
+        profondita_totale=profondita_value,
+        strato_da=parsed_strato_da,
+        strato_a=parsed_strato_a,
+        strato_materiale=strato_materiale,
+    )
+
+    site = db.query(Site).filter(Site.id == cantiere_id).first()
+    if not site:
+        raise HTTPException(status_code=400, detail="Cantiere non trovato")
+    if restrict_to_capo_sites:
+        allowed_site_ids = {s.id for s in _get_capo_assigned_sites(db, current_user)}
+        if allowed_site_ids and site.id not in allowed_site_ids:
+            raise HTTPException(status_code=403, detail="Cantiere non valido")
+
+    _ensure_unique_numero_pannello(db, cantiere_id, parsed_numero_pannello)
+
+    if parsed_machine_id is not None:
+        machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
+        if not machine:
+            raise HTTPException(status_code=400, detail="Macchinario non trovato")
+
+    diametro_value_m = diametro_value_cm / 100 if diametro_value_cm is not None else None
+    fiche = Fiche(
+        date=data_scavo,
+        numero_pannello=parsed_numero_pannello,
+        site_id=cantiere_id,
+        machine_id=parsed_machine_id,
+        fiche_type=FicheTypeEnum.produzione,
+        description=descrizione or "",
+        operator=operatore.strip(),
+        hours=ore_scavate,
+        notes=note or None,
+        tipologia_scavo=tipologia_scavo or None,
+        materiale=materiale or None,
+        profondita_totale=profondita_value,
+        diametro_palo=diametro_value_m,
+        larghezza_pannello=larghezza_value,
+        altezza_pannello=altezza_value,
+        data_getto=data_getto,
+        metri_cubi_gettati=metri_cubi_value,
+        created_by_id=current_user.id,
+    )
+    db.add(fiche)
+    db.flush()
+
+    for da_val, a_val, mat in layers:
+        db.add(
+            FicheStratigrafia(
+                fiche_id=fiche.id,
+                da_profondita=da_val,
+                a_profondita=a_val,
+                materiale=mat,
+            )
+        )
+
+    _sync_site_fiche_progress(db, site)
+    db.commit()
+    db.refresh(fiche)
+    notify_new_fiche(db, fiche, current_user)
+    return fiche
 
 
 # -------------------------------------------------
@@ -1573,20 +1831,23 @@ def manager_fiche_new_form(
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
-    sites, machines = _load_manager_form_collections()
-
-    return templates.TemplateResponse(
+    return _render_fiche_create_form(
         request,
-        "manager/fiches_form.html",
-        build_template_context(
-            request,
-            current_user,
-            cantieri=sites,
-            macchinari=machines,
-            is_edit=False,
-            form_data=_build_fiche_form_data(),
-            error_message=None,
-        ),
+        current_user,
+        template_name="capo/fiches_form.html",
+        collections_loader=_load_manager_form_collections,
+        extra_context={
+            "is_edit": False,
+            "fiche_form_area_label": {
+                "fr": "Gestion des fiches",
+                "it": "Gestione fiches",
+            },
+            "fiche_form_subtitle": {
+                "fr": "Renseignez les informations pour enregistrer une nouvelle fiche avec le modèle unique.",
+                "it": "Compila le informazioni per registrare una nuova fiche con il modello unico.",
+            },
+            "fiche_cancel_url": "/manager/fiches",
+        },
     )
 
 
@@ -1621,155 +1882,36 @@ async def manager_fiche_create(
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
-    diametro_value_cm = diametro_palo_cm
-    diametro_value_m = None
-
     try:
-        metri_cubi_gettati = _parse_decimal_comma_float(
-            metri_cubi_gettati, "Metri cubi gettati"
-        )
-        profondita_totale = _parse_decimal_comma_float(
-            profondita_totale, "profondità totale"
-        )
-        diametro_value_cm = _parse_decimal_comma_float(
-            diametro_palo_cm, "diametro palo"
-        )
-        larghezza_pannello = _parse_decimal_comma_float(
-            larghezza_pannello, "larghezza pannello"
-        )
-        altezza_pannello = _parse_decimal_comma_float(
-            altezza_pannello, "altezza pannello"
-        )
-        strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
-        strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
-        diametro_value_m = (
-            diametro_value_cm / 100 if diametro_value_cm is not None else None
-        )
-        parsed_machine_id: int | None = None
-        if macchinario_id not in (None, ""):
-            parsed_machine_id = int(macchinario_id)
-        parsed_numero_pannello = _parse_required_positive_int(
-            numero_pannello,
-            "Inserire numero pannello",
-            "Il numero pannello deve essere maggiore di 0",
-        )
-        ore_scavate = _parse_optional_non_negative_float(
-            ore_lavorate, "Ore scavate"
-        )
-
-        _validate_fiche_geometria(
-            diametro_palo_cm=diametro_value_cm,
-            larghezza_pannello=larghezza_pannello,
-            altezza_pannello=altezza_pannello,
-            profondita_totale=profondita_totale,
-        )
-        _validate_metri_cubi_gettati(metri_cubi_gettati)
-
-        _validate_stratigrafia_matches_depth(
-            profondita_totale=profondita_totale,
-            strato_da=strato_da,
-            strato_a=strato_a,
-            strato_materiale=strato_materiale,
-        )
-
         db = SessionLocal()
         try:
-            site = db.query(Site).filter(Site.id == cantiere_id).first()
-            if not site:
-                raise HTTPException(status_code=400, detail="Cantiere non trovato")
-            _ensure_unique_numero_pannello(db, cantiere_id, parsed_numero_pannello)
-
-            if parsed_machine_id is not None:
-                machine = (
-                    db.query(Machine).filter(Machine.id == parsed_machine_id).first()
-                )
-                if not machine:
-                    raise HTTPException(status_code=400, detail="Macchinario non trovato")
-
-            fiche = Fiche(
-                date=data_scavo,
-                numero_pannello=parsed_numero_pannello,
-                site_id=cantiere_id,
-                machine_id=parsed_machine_id,
-                fiche_type=FicheTypeEnum.produzione,
-                description=descrizione or "",
-                operator=operatore,
-                hours=ore_scavate,
-                notes=note,
-                tipologia_scavo=tipologia_scavo or None,
-                materiale=materiale or None,
-                profondita_totale=profondita_totale,
-                diametro_palo=diametro_value_m,
-                larghezza_pannello=larghezza_pannello,
-                altezza_pannello=altezza_pannello,
+            _create_validated_fiche(
+                db,
+                current_user=current_user,
+                cantiere_id=cantiere_id,
+                numero_pannello=numero_pannello,
+                macchinario_id=macchinario_id,
+                data_scavo=data_scavo,
                 data_getto=data_getto,
                 metri_cubi_gettati=metri_cubi_gettati,
-                created_by_id=current_user.id,
+                operatore=operatore,
+                descrizione=descrizione,
+                ore_lavorate=ore_lavorate,
+                note=note,
+                tipologia_scavo=tipologia_scavo,
+                materiale=materiale,
+                profondita_totale=profondita_totale,
+                diametro_palo_cm=diametro_palo_cm,
+                larghezza_pannello=larghezza_pannello,
+                altezza_pannello=altezza_pannello,
+                strato_da=strato_da,
+                strato_a=strato_a,
+                strato_materiale=strato_materiale,
             )
-            db.add(fiche)
-            db.flush()
-            _sync_site_fiche_progress(db, site)
-            db.commit()
-            db.refresh(fiche)
-            notify_new_fiche(db, fiche, current_user)
-
-            for da_val, a_val, mat in _get_complete_stratigrafia_layers(
-                strato_da, strato_a, strato_materiale
-            ):
-                if not mat:
-                    continue
-                layer = FicheStratigrafia(
-                    fiche_id=fiche.id,
-                    da_profondita=da_val,
-                    a_profondita=a_val,
-                    materiale=mat,
-                )
-                db.add(layer)
-            db.commit()
         finally:
             db.close()
-    except ValueError:
-        # macchinario_id non numerico
-        form_data = _build_fiche_form_data(
-            cantiere_id=cantiere_id,
-            numero_pannello=numero_pannello,
-            macchinario_id=macchinario_id,
-            data_scavo=data_scavo,
-            data_getto=data_getto,
-            metri_cubi_gettati=metri_cubi_gettati,
-            operatore=operatore,
-            descrizione=descrizione,
-            ore_lavorate=ore_lavorate,
-            note=note,
-            tipologia_scavo=tipologia_scavo,
-            materiale=materiale,
-            profondita_totale=profondita_totale,
-            diametro_palo=diametro_value_m,
-            diametro_palo_cm=diametro_value_cm,
-            larghezza_pannello=larghezza_pannello,
-            altezza_pannello=altezza_pannello,
-            strato_da=strato_da,
-            strato_a=strato_a,
-            strato_materiale=strato_materiale,
-        )
-        sites, machines = _load_manager_form_collections()
-        return templates.TemplateResponse(
-            request,
-            "manager/fiches_form.html",
-            build_template_context(
-                request,
-                current_user,
-                cantieri=sites,
-                macchinari=machines,
-                is_edit=False,
-                form_data=form_data,
-                error_message="Macchinario non valido",
-            ),
-            status_code=400,
-        )
     except HTTPException as exc:
-        status_code = exc.status_code or 400
-        form_data = _build_fiche_form_data(
+        form_data = _build_fiche_error_form_data(
             cantiere_id=cantiere_id,
             numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
@@ -1783,29 +1925,34 @@ async def manager_fiche_create(
             tipologia_scavo=tipologia_scavo,
             materiale=materiale,
             profondita_totale=profondita_totale,
-            diametro_palo=diametro_value_m,
-            diametro_palo_cm=diametro_value_cm,
+            diametro_palo_cm=diametro_palo_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
-            invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
             strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
+            invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
         )
-        sites, machines = _load_manager_form_collections()
-        return templates.TemplateResponse(
+        return _render_fiche_create_form(
             request,
-            "manager/fiches_form.html",
-            build_template_context(
-                request,
-                current_user,
-                cantieri=sites,
-                macchinari=machines,
-                is_edit=False,
-                form_data=form_data,
-                error_message=exc.detail,
-            ),
-            status_code=status_code,
+            current_user,
+            template_name="capo/fiches_form.html",
+            collections_loader=_load_manager_form_collections,
+            status_code=exc.status_code or 400,
+            form_data=form_data,
+            error_message=exc.detail,
+            extra_context={
+                "is_edit": False,
+                "fiche_form_area_label": {
+                    "fr": "Gestion des fiches",
+                    "it": "Gestione fiches",
+                },
+                "fiche_form_subtitle": {
+                    "fr": "Renseignez les informations pour enregistrer une nouvelle fiche avec le modèle unique.",
+                    "it": "Compila le informazioni per registrare una nuova fiche con il modello unico.",
+                },
+                "fiche_cancel_url": "/manager/fiches",
+            },
         )
 
     return RedirectResponse(
@@ -4725,19 +4872,11 @@ def capo_fiche_nuova_get(
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    sites, machines = _load_capo_form_collections(current_user)
-
-    return templates.TemplateResponse(
+    return _render_fiche_create_form(
         request,
-        "capo/fiches_form.html",
-        build_template_context(
-            request,
-            current_user,
-            cantieri=sites,
-            macchinari=machines,
-            form_data=_build_fiche_form_data(),
-            error_message=None,
-        ),
+        current_user,
+        template_name="capo/fiches_form.html",
+        collections_loader=lambda: _load_capo_form_collections(current_user),
     )
 
 
@@ -4768,155 +4907,37 @@ async def capo_fiche_nuova_post(
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
-    diametro_value_cm = diametro_palo_cm
-    diametro_value_m = None
-
     try:
-        metri_cubi_gettati = _parse_decimal_comma_float(
-            metri_cubi_gettati, "Metri cubi gettati"
-        )
-        profondita_totale = _parse_decimal_comma_float(
-            profondita_totale, "profondità totale"
-        )
-        diametro_value_cm = _parse_decimal_comma_float(
-            diametro_palo_cm, "diametro palo"
-        )
-        larghezza_pannello = _parse_decimal_comma_float(
-            larghezza_pannello, "larghezza pannello"
-        )
-        altezza_pannello = _parse_decimal_comma_float(
-            altezza_pannello, "altezza pannello"
-        )
-        strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
-        strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
-        diametro_value_m = (
-            diametro_value_cm / 100 if diametro_value_cm is not None else None
-        )
-        parsed_machine_id: int | None = None
-        if macchinario_id not in (None, ""):
-            parsed_machine_id = int(macchinario_id)
-        parsed_numero_pannello = _parse_required_positive_int(
-            numero_pannello,
-            "Inserire numero pannello",
-            "Il numero pannello deve essere maggiore di 0",
-        )
-        ore_scavate = _parse_optional_non_negative_float(
-            ore_lavorate, "Ore scavate"
-        )
-
-        _validate_fiche_geometria(
-            diametro_palo_cm=diametro_value_cm,
-            larghezza_pannello=larghezza_pannello,
-            altezza_pannello=altezza_pannello,
-            profondita_totale=profondita_totale,
-        )
-        _validate_metri_cubi_gettati(metri_cubi_gettati)
-
-        _validate_stratigrafia_matches_depth(
-            profondita_totale=profondita_totale,
-            strato_da=strato_da,
-            strato_a=strato_a,
-            strato_materiale=strato_materiale,
-        )
-
         db = SessionLocal()
         try:
-            allowed_sites = _get_capo_assigned_sites(db, current_user)
-            allowed_site_ids = {s.id for s in allowed_sites}
-            site = db.query(Site).filter(Site.id == cantiere_id).first()
-            if not site or (allowed_site_ids and site.id not in allowed_site_ids):
-                raise HTTPException(status_code=403, detail="Cantiere non valido")
-            _ensure_unique_numero_pannello(db, cantiere_id, parsed_numero_pannello)
-
-            if parsed_machine_id is not None:
-                machine = (
-                    db.query(Machine).filter(Machine.id == parsed_machine_id).first()
-                )
-                if not machine:
-                    raise HTTPException(status_code=400, detail="Macchinario non trovato")
-
-            fiche = Fiche(
-                date=data_scavo,
-                numero_pannello=parsed_numero_pannello,
-                site_id=cantiere_id,
-                machine_id=parsed_machine_id,
-                fiche_type=FicheTypeEnum.produzione,
-                description=descrizione or "",
-                operator=operatore,
-                hours=ore_scavate,
-                notes=note or None,
-                tipologia_scavo=tipologia_scavo or None,
-                materiale=materiale or None,
-                profondita_totale=profondita_totale,
-                diametro_palo=diametro_value_m,
-                larghezza_pannello=larghezza_pannello,
-                altezza_pannello=altezza_pannello,
+            _create_validated_fiche(
+                db,
+                current_user=current_user,
+                cantiere_id=cantiere_id,
+                numero_pannello=numero_pannello,
+                macchinario_id=macchinario_id,
+                data_scavo=data_scavo,
                 data_getto=data_getto,
                 metri_cubi_gettati=metri_cubi_gettati,
-                created_by_id=current_user.id,
+                operatore=operatore,
+                descrizione=descrizione,
+                ore_lavorate=ore_lavorate,
+                note=note,
+                tipologia_scavo=tipologia_scavo,
+                materiale=materiale,
+                profondita_totale=profondita_totale,
+                diametro_palo_cm=diametro_palo_cm,
+                larghezza_pannello=larghezza_pannello,
+                altezza_pannello=altezza_pannello,
+                strato_da=strato_da,
+                strato_a=strato_a,
+                strato_materiale=strato_materiale,
+                restrict_to_capo_sites=True,
             )
-            db.add(fiche)
-            db.flush()
-            _sync_site_fiche_progress(db, site)
-            db.commit()
-            db.refresh(fiche)
-            notify_new_fiche(db, fiche, current_user)
-
-            for da_val, a_val, mat in _get_complete_stratigrafia_layers(
-                strato_da, strato_a, strato_materiale
-            ):
-                if not mat:
-                    continue
-                layer = FicheStratigrafia(
-                    fiche_id=fiche.id,
-                    da_profondita=da_val,
-                    a_profondita=a_val,
-                    materiale=mat,
-                )
-                db.add(layer)
-            db.commit()
         finally:
             db.close()
-    except ValueError:
-        form_data = _build_fiche_form_data(
-            cantiere_id=cantiere_id,
-            numero_pannello=numero_pannello,
-            macchinario_id=macchinario_id,
-            data_scavo=data_scavo,
-            data_getto=data_getto,
-            metri_cubi_gettati=metri_cubi_gettati,
-            operatore=operatore,
-            descrizione=descrizione,
-            ore_lavorate=ore_lavorate,
-            note=note,
-            tipologia_scavo=tipologia_scavo,
-            materiale=materiale,
-            profondita_totale=profondita_totale,
-            diametro_palo=diametro_value_m,
-            diametro_palo_cm=diametro_value_cm,
-            larghezza_pannello=larghezza_pannello,
-            altezza_pannello=altezza_pannello,
-            strato_da=strato_da,
-            strato_a=strato_a,
-            strato_materiale=strato_materiale,
-        )
-        sites, machines = _load_capo_form_collections(current_user)
-        return templates.TemplateResponse(
-            request,
-            "capo/fiches_form.html",
-            build_template_context(
-                request,
-                current_user,
-                cantieri=sites,
-                macchinari=machines,
-                form_data=form_data,
-                error_message="Macchinario non valido",
-            ),
-            status_code=400,
-        )
     except HTTPException as exc:
-        status_code = exc.status_code or 400
-        form_data = _build_fiche_form_data(
+        form_data = _build_fiche_error_form_data(
             cantiere_id=cantiere_id,
             numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
@@ -4930,28 +4951,22 @@ async def capo_fiche_nuova_post(
             tipologia_scavo=tipologia_scavo,
             materiale=materiale,
             profondita_totale=profondita_totale,
-            diametro_palo=diametro_value_m,
-            diametro_palo_cm=diametro_value_cm,
+            diametro_palo_cm=diametro_palo_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
-            invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
             strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
+            invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
         )
-        sites, machines = _load_capo_form_collections(current_user)
-        return templates.TemplateResponse(
+        return _render_fiche_create_form(
             request,
-            "capo/fiches_form.html",
-            build_template_context(
-                request,
-                current_user,
-                cantieri=sites,
-                macchinari=machines,
-                form_data=form_data,
-                error_message=exc.detail,
-            ),
-            status_code=status_code,
+            current_user,
+            template_name="capo/fiches_form.html",
+            collections_loader=lambda: _load_capo_form_collections(current_user),
+            status_code=exc.status_code or 400,
+            form_data=form_data,
+            error_message=exc.detail,
         )
 
     return RedirectResponse(url="/capo/dashboard", status_code=303)

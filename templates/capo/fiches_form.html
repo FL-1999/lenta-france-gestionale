@@ -7,21 +7,20 @@
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set form_data = form_data or {} %}
 {% set invalid_fields = form_data.get('invalid_fields', []) %}
+{% set fiche_form_area_label = fiche_form_area_label or ({'fr': "Espace Chef d'équipe", 'it': 'Area Caposquadra'}) %}
+{% set fiche_form_subtitle = fiche_form_subtitle or ({'fr': 'Renseignez les informations pour enregistrer une nouvelle fiche liée à vos chantiers.', 'it': 'Compila le informazioni per registrare una nuova fiche sui cantieri assegnati.'}) %}
+{% set fiche_cancel_url = fiche_cancel_url or '/capo/dashboard' %}
 
 <div class="form-page">
     <div class="form-page-header">
         <p class="page-eyebrow">
-            {% if lang == 'fr' %}Espace Chef d'équipe{% else %}Area Caposquadra{% endif %}
+            {{ fiche_form_area_label.get(lang, fiche_form_area_label.get('it')) }}
         </p>
         <h1 class="page-title">
             {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
         </h1>
         <p class="page-subtitle">
-            {% if lang == 'fr' %}
-                Renseignez les informations pour enregistrer une nouvelle fiche liée à vos chantiers.
-            {% else %}
-                Compila le informazioni per registrare una nuova fiche sui cantieri assegnati.
-            {% endif %}
+            {{ fiche_form_subtitle.get(lang, fiche_form_subtitle.get('it')) }}
         </p>
     </div>
 
@@ -499,7 +498,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <a href="/capo/dashboard" class="btn btn-secondary">
+                    <a href="{{ fiche_cancel_url }}" class="btn btn-secondary">
                         {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
                     </a>
                     <button type="submit" class="btn btn-primary">
