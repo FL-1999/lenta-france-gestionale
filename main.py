@@ -6,7 +6,7 @@ import uuid
 import asyncio
 from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timedelta
-from math import ceil
+from math import ceil, pi
 from typing import List
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException, status
@@ -835,6 +835,9 @@ def _build_fiche_form_data(
     diametro_palo_cm: float | None = None,
     larghezza_pannello: float | None = None,
     altezza_pannello: float | None = None,
+    quota_ngf_testa: float | str | None = None,
+    quota_ngf_fondo: float | str | None = None,
+    quota_ngf_note: str | None = None,
     strato_da: list[float] | None = None,
     strato_a: list[float] | None = None,
     strato_materiale: list[str] | None = None,
@@ -883,6 +886,9 @@ def _build_fiche_form_data(
         "diametro_palo_cm": _fmt(cm_value),
         "larghezza_pannello": _fmt(larghezza_pannello),
         "altezza_pannello": _fmt(altezza_pannello),
+        "quota_ngf_testa": _fmt(quota_ngf_testa),
+        "quota_ngf_fondo": _fmt(quota_ngf_fondo),
+        "quota_ngf_note": quota_ngf_note or "",
         "strati": strati,
         "invalid_fields": invalid_fields or [],
     }
@@ -969,6 +975,9 @@ def _build_fiche_error_form_data(
     diametro_palo_cm: str | float | None,
     larghezza_pannello: str | float | None,
     altezza_pannello: str | float | None,
+    quota_ngf_testa: str | float | None = None,
+    quota_ngf_fondo: str | float | None = None,
+    quota_ngf_note: str | None = None,
     strato_da: list[str | float | None] | None,
     strato_a: list[str | float | None] | None,
     strato_materiale: list[str] | None,
@@ -991,6 +1000,9 @@ def _build_fiche_error_form_data(
         diametro_palo_cm=diametro_palo_cm,
         larghezza_pannello=larghezza_pannello,
         altezza_pannello=altezza_pannello,
+        quota_ngf_testa=quota_ngf_testa,
+        quota_ngf_fondo=quota_ngf_fondo,
+        quota_ngf_note=quota_ngf_note,
         invalid_fields=invalid_fields,
         strato_da=strato_da,
         strato_a=strato_a,
@@ -1076,6 +1088,9 @@ def _create_validated_fiche(
     diametro_palo_cm: str | float | None,
     larghezza_pannello: str | float | None,
     altezza_pannello: str | float | None,
+    quota_ngf_testa: str | float | None = None,
+    quota_ngf_fondo: str | float | None = None,
+    quota_ngf_note: str | None = None,
     strato_da: list[str | float | None] | None,
     strato_a: list[str | float | None] | None,
     strato_materiale: list[str] | None,
@@ -1092,6 +1107,8 @@ def _create_validated_fiche(
         larghezza_pannello, "larghezza pannello"
     )
     altezza_value = _parse_decimal_comma_float(altezza_pannello, "altezza pannello")
+    quota_ngf_testa_value = _parse_decimal_comma_float(quota_ngf_testa, "quota NGF testa")
+    quota_ngf_fondo_value = _parse_decimal_comma_float(quota_ngf_fondo, "quota NGF fondo")
     parsed_strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
     parsed_strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
     parsed_machine_id = _parse_optional_machine_id(macchinario_id)
@@ -1156,6 +1173,9 @@ def _create_validated_fiche(
         altezza_pannello=altezza_value,
         data_getto=data_getto,
         metri_cubi_gettati=metri_cubi_value,
+        quota_ngf_testa=quota_ngf_testa_value,
+        quota_ngf_fondo=quota_ngf_fondo_value,
+        quota_ngf_note=(quota_ngf_note or "").strip() or None,
         created_by_id=current_user.id,
     )
     db.add(fiche)
@@ -1176,6 +1196,183 @@ def _create_validated_fiche(
     db.refresh(fiche)
     notify_new_fiche(db, fiche, current_user)
     return fiche
+
+
+def _update_validated_fiche(
+    db: Session,
+    *,
+    fiche: Fiche,
+    current_user: User,
+    cantiere_id: int,
+    numero_pannello: str | int | None,
+    macchinario_id: str | int | None,
+    data_scavo: date,
+    data_getto: date | None,
+    metri_cubi_gettati: str | float | None,
+    operatore: str,
+    descrizione: str | None,
+    ore_lavorate: str | float | None,
+    note: str | None,
+    tipologia_scavo: str | None,
+    materiale: str | None,
+    profondita_totale: str | float | None,
+    diametro_palo_cm: str | float | None,
+    larghezza_pannello: str | float | None,
+    altezza_pannello: str | float | None,
+    quota_ngf_testa: str | float | None,
+    quota_ngf_fondo: str | float | None,
+    quota_ngf_note: str | None,
+    strato_da: list[str | float | None] | None,
+    strato_a: list[str | float | None] | None,
+    strato_materiale: list[str] | None,
+) -> Fiche:
+    metri_cubi_value = _parse_decimal_comma_float(
+        metri_cubi_gettati, "Metri cubi gettati"
+    )
+    profondita_value = _parse_decimal_comma_float(
+        profondita_totale, "profondità totale"
+    )
+    diametro_value_cm = _parse_decimal_comma_float(diametro_palo_cm, "diametro palo")
+    larghezza_value = _parse_decimal_comma_float(
+        larghezza_pannello, "larghezza pannello"
+    )
+    altezza_value = _parse_decimal_comma_float(altezza_pannello, "altezza pannello")
+    quota_ngf_testa_value = _parse_decimal_comma_float(quota_ngf_testa, "quota NGF testa")
+    quota_ngf_fondo_value = _parse_decimal_comma_float(quota_ngf_fondo, "quota NGF fondo")
+    parsed_strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
+    parsed_strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
+    parsed_machine_id = _parse_optional_machine_id(macchinario_id)
+    parsed_numero_pannello = _parse_required_positive_int(
+        numero_pannello,
+        "Inserire numero pannello",
+        "Il numero pannello deve essere maggiore di 0",
+    )
+    ore_scavate = _parse_optional_non_negative_float(ore_lavorate, "Ore scavate")
+
+    if not (operatore or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Il campo Operatore / squadra è obbligatorio.",
+        )
+
+    _validate_fiche_geometria(
+        diametro_palo_cm=diametro_value_cm,
+        larghezza_pannello=larghezza_value,
+        altezza_pannello=altezza_value,
+        profondita_totale=profondita_value,
+    )
+    _validate_metri_cubi_gettati(metri_cubi_value)
+    layers = _validate_required_fiche_stratigrafia(
+        profondita_totale=profondita_value,
+        strato_da=parsed_strato_da,
+        strato_a=parsed_strato_a,
+        strato_materiale=strato_materiale,
+    )
+
+    site = db.query(Site).filter(Site.id == cantiere_id).first()
+    if not site:
+        raise HTTPException(status_code=400, detail="Cantiere non trovato")
+
+    _ensure_unique_numero_pannello(
+        db,
+        cantiere_id,
+        parsed_numero_pannello,
+        exclude_fiche_id=fiche.id,
+    )
+
+    if parsed_machine_id is not None:
+        machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
+        if not machine:
+            raise HTTPException(status_code=400, detail="Macchinario non trovato")
+
+    previous_site_id = fiche.site_id
+    diametro_value_m = diametro_value_cm / 100 if diametro_value_cm is not None else None
+    fiche.date = data_scavo
+    fiche.numero_pannello = parsed_numero_pannello
+    fiche.site_id = cantiere_id
+    fiche.machine_id = parsed_machine_id
+    fiche.fiche_type = FicheTypeEnum.produzione
+    fiche.description = descrizione or ""
+    fiche.operator = operatore.strip()
+    fiche.hours = ore_scavate
+    fiche.notes = note or None
+    fiche.tipologia_scavo = tipologia_scavo or None
+    fiche.materiale = materiale or None
+    fiche.profondita_totale = profondita_value
+    fiche.diametro_palo = diametro_value_m
+    fiche.larghezza_pannello = larghezza_value
+    fiche.altezza_pannello = altezza_value
+    fiche.data_getto = data_getto
+    fiche.metri_cubi_gettati = metri_cubi_value
+    fiche.quota_ngf_testa = quota_ngf_testa_value
+    fiche.quota_ngf_fondo = quota_ngf_fondo_value
+    fiche.quota_ngf_note = (quota_ngf_note or "").strip() or None
+
+    db.query(FicheStratigrafia).filter(FicheStratigrafia.fiche_id == fiche.id).delete()
+    db.flush()
+    for da_val, a_val, mat in layers:
+        db.add(
+            FicheStratigrafia(
+                fiche_id=fiche.id,
+                da_profondita=da_val,
+                a_profondita=a_val,
+                materiale=mat,
+            )
+        )
+
+    _sync_site_fiche_progress(db, site)
+    if previous_site_id != site.id:
+        previous_site = db.query(Site).filter(Site.id == previous_site_id).first()
+        if previous_site:
+            _sync_site_fiche_progress(db, previous_site)
+    db.commit()
+    db.refresh(fiche)
+    return fiche
+
+
+def _calculate_fiche_volume_teorico(fiche: Fiche) -> float | None:
+    if fiche.profondita_totale is None:
+        return None
+    tipologia = (fiche.tipologia_scavo or "").strip().lower()
+    if tipologia == "paratia":
+        if fiche.larghezza_pannello is None or fiche.altezza_pannello is None:
+            return None
+        return fiche.larghezza_pannello * fiche.altezza_pannello * fiche.profondita_totale
+    if tipologia == "palo":
+        if fiche.diametro_palo is None:
+            return None
+        radius = fiche.diametro_palo / 2
+        return pi * (radius ** 2) * fiche.profondita_totale
+    return None
+
+
+def _build_fiche_form_data_from_model(fiche: Fiche) -> dict:
+    stratigrafie = sorted(fiche.stratigrafie or [], key=lambda layer: layer.da_profondita)
+    return _build_fiche_form_data(
+        cantiere_id=fiche.site_id,
+        numero_pannello=fiche.numero_pannello,
+        macchinario_id=fiche.machine_id,
+        data_scavo=fiche.date,
+        data_getto=fiche.data_getto,
+        metri_cubi_gettati=fiche.metri_cubi_gettati,
+        operatore=fiche.operator,
+        descrizione=fiche.description,
+        ore_lavorate=fiche.hours,
+        note=fiche.notes,
+        tipologia_scavo=fiche.tipologia_scavo,
+        stratigrafia=fiche.stratigrafia,
+        materiale=fiche.materiale,
+        profondita_totale=fiche.profondita_totale,
+        diametro_palo=fiche.diametro_palo,
+        larghezza_pannello=fiche.larghezza_pannello,
+        altezza_pannello=fiche.altezza_pannello,
+        quota_ngf_testa=fiche.quota_ngf_testa,
+        quota_ngf_fondo=fiche.quota_ngf_fondo,
+        quota_ngf_note=fiche.quota_ngf_note,
+        strato_da=[layer.da_profondita for layer in stratigrafie],
+        strato_a=[layer.a_profondita for layer in stratigrafie],
+        strato_materiale=[layer.materiale for layer in stratigrafie],
+    )
 
 
 # -------------------------------------------------
@@ -1847,6 +2044,7 @@ def manager_fiche_new_form(
                 "it": "Compila le informazioni per registrare una nuova fiche con il modello unico.",
             },
             "fiche_cancel_url": "/manager/fiches",
+            "show_ngf_fields": True,
         },
     )
 
@@ -1875,6 +2073,9 @@ async def manager_fiche_create(
     diametro_palo_cm: str | None = Form(None),
     larghezza_pannello: str | None = Form(None),
     altezza_pannello: str | None = Form(None),
+    quota_ngf_testa: str | None = Form(None),
+    quota_ngf_fondo: str | None = Form(None),
+    quota_ngf_note: str | None = Form(None),
     strato_da: List[str] = Form(default_factory=list),
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
@@ -1904,6 +2105,9 @@ async def manager_fiche_create(
                 diametro_palo_cm=diametro_palo_cm,
                 larghezza_pannello=larghezza_pannello,
                 altezza_pannello=altezza_pannello,
+                quota_ngf_testa=quota_ngf_testa,
+                quota_ngf_fondo=quota_ngf_fondo,
+                quota_ngf_note=quota_ngf_note,
                 strato_da=strato_da,
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
@@ -1928,6 +2132,9 @@ async def manager_fiche_create(
             diametro_palo_cm=diametro_palo_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
+            quota_ngf_testa=quota_ngf_testa,
+            quota_ngf_fondo=quota_ngf_fondo,
+            quota_ngf_note=quota_ngf_note,
             strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
@@ -1952,6 +2159,7 @@ async def manager_fiche_create(
                     "it": "Compila le informazioni per registrare una nuova fiche con il modello unico.",
                 },
                 "fiche_cancel_url": "/manager/fiches",
+                "show_ngf_fields": True,
             },
         )
 
@@ -2750,13 +2958,19 @@ def _parse_required_positive_int(
     return parsed_value
 
 
-def _ensure_unique_numero_pannello(db: Session, site_id: int, numero_pannello: int) -> None:
-    duplicate_exists = (
-        db.query(Fiche.id)
-        .filter(Fiche.site_id == site_id, Fiche.numero_pannello == numero_pannello)
-        .first()
-        is not None
+def _ensure_unique_numero_pannello(
+    db: Session,
+    site_id: int,
+    numero_pannello: int,
+    *,
+    exclude_fiche_id: int | None = None,
+) -> None:
+    query = db.query(Fiche.id).filter(
+        Fiche.site_id == site_id, Fiche.numero_pannello == numero_pannello
     )
+    if exclude_fiche_id is not None:
+        query = query.filter(Fiche.id != exclude_fiche_id)
+    duplicate_exists = query.first() is not None
     if duplicate_exists:
         raise HTTPException(
             status_code=400,
@@ -5167,6 +5381,183 @@ def manager_fiches(
 
 
 @app.get(
+    "/manager/fiches/{fiche_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_fiches_edit_form",
+)
+def manager_fiche_edit_form(
+    request: Request,
+    fiche_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        fiche = (
+            db.query(Fiche)
+            .options(joinedload(Fiche.stratigrafie))
+            .filter(Fiche.id == fiche_id)
+            .first()
+        )
+        if not fiche:
+            return RedirectResponse(
+                url=request.url_for("manager_fiches_list"), status_code=303
+            )
+        form_data = _build_fiche_form_data_from_model(fiche)
+    finally:
+        db.close()
+
+    return _render_fiche_create_form(
+        request,
+        current_user,
+        template_name="capo/fiches_form.html",
+        collections_loader=_load_manager_form_collections,
+        form_data=form_data,
+        extra_context={
+            "is_edit": True,
+            "fiche_form_area_label": {
+                "fr": "Gestion des fiches",
+                "it": "Gestione fiches",
+            },
+            "fiche_form_subtitle": {
+                "fr": "Modifiez les informations de la fiche sélectionnée.",
+                "it": "Modifica le informazioni della fiche selezionata.",
+            },
+            "fiche_cancel_url": str(request.url_for("manager_fiches_detail", fiche_id=fiche_id)),
+            "show_ngf_fields": True,
+        },
+    )
+
+
+@app.post(
+    "/manager/fiches/{fiche_id}/modifica",
+    response_class=HTMLResponse,
+    name="manager_fiches_update",
+)
+async def manager_fiche_update(
+    request: Request,
+    fiche_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+    cantiere_id: int = Form(...),
+    numero_pannello: str | None = Form(None),
+    macchinario_id: str | None = Form(None),
+    data_scavo: date = Form(...),
+    data_getto: date | None = Form(None),
+    metri_cubi_gettati: str | None = Form(None),
+    operatore: str = Form(...),
+    descrizione: str = Form(""),
+    ore_lavorate: str | None = Form(None),
+    note: str | None = Form(None),
+    tipologia_scavo: str | None = Form(None),
+    materiale: str | None = Form(None),
+    profondita_totale: str | None = Form(None),
+    diametro_palo_cm: str | None = Form(None),
+    larghezza_pannello: str | None = Form(None),
+    altezza_pannello: str | None = Form(None),
+    quota_ngf_testa: str | None = Form(None),
+    quota_ngf_fondo: str | None = Form(None),
+    quota_ngf_note: str | None = Form(None),
+    strato_da: List[str] = Form(default_factory=list),
+    strato_a: List[str] = Form(default_factory=list),
+    strato_materiale: List[str] = Form(default_factory=list),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    try:
+        db = SessionLocal()
+        try:
+            fiche = db.query(Fiche).filter(Fiche.id == fiche_id).first()
+            if not fiche:
+                return RedirectResponse(
+                    url=request.url_for("manager_fiches_list"), status_code=303
+                )
+            _update_validated_fiche(
+                db,
+                fiche=fiche,
+                current_user=current_user,
+                cantiere_id=cantiere_id,
+                numero_pannello=numero_pannello,
+                macchinario_id=macchinario_id,
+                data_scavo=data_scavo,
+                data_getto=data_getto,
+                metri_cubi_gettati=metri_cubi_gettati,
+                operatore=operatore,
+                descrizione=descrizione,
+                ore_lavorate=ore_lavorate,
+                note=note,
+                tipologia_scavo=tipologia_scavo,
+                materiale=materiale,
+                profondita_totale=profondita_totale,
+                diametro_palo_cm=diametro_palo_cm,
+                larghezza_pannello=larghezza_pannello,
+                altezza_pannello=altezza_pannello,
+                quota_ngf_testa=quota_ngf_testa,
+                quota_ngf_fondo=quota_ngf_fondo,
+                quota_ngf_note=quota_ngf_note,
+                strato_da=strato_da,
+                strato_a=strato_a,
+                strato_materiale=strato_materiale,
+            )
+        finally:
+            db.close()
+    except HTTPException as exc:
+        form_data = _build_fiche_error_form_data(
+            cantiere_id=cantiere_id,
+            numero_pannello=numero_pannello,
+            macchinario_id=macchinario_id,
+            data_scavo=data_scavo,
+            data_getto=data_getto,
+            metri_cubi_gettati=metri_cubi_gettati,
+            operatore=operatore,
+            descrizione=descrizione,
+            ore_lavorate=ore_lavorate,
+            note=note,
+            tipologia_scavo=tipologia_scavo,
+            materiale=materiale,
+            profondita_totale=profondita_totale,
+            diametro_palo_cm=diametro_palo_cm,
+            larghezza_pannello=larghezza_pannello,
+            altezza_pannello=altezza_pannello,
+            quota_ngf_testa=quota_ngf_testa,
+            quota_ngf_fondo=quota_ngf_fondo,
+            quota_ngf_note=quota_ngf_note,
+            strato_da=strato_da,
+            strato_a=strato_a,
+            strato_materiale=strato_materiale,
+            invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
+        )
+        return _render_fiche_create_form(
+            request,
+            current_user,
+            template_name="capo/fiches_form.html",
+            collections_loader=_load_manager_form_collections,
+            status_code=exc.status_code or 400,
+            form_data=form_data,
+            error_message=exc.detail,
+            extra_context={
+                "is_edit": True,
+                "fiche_form_area_label": {
+                    "fr": "Gestion des fiches",
+                    "it": "Gestione fiches",
+                },
+                "fiche_form_subtitle": {
+                    "fr": "Modifiez les informations de la fiche sélectionnée.",
+                    "it": "Modifica le informazioni della fiche selezionata.",
+                },
+                "fiche_cancel_url": str(request.url_for("manager_fiches_detail", fiche_id=fiche_id)),
+                "show_ngf_fields": True,
+            },
+        )
+
+    return RedirectResponse(
+        url=request.url_for("manager_fiches_detail", fiche_id=fiche_id), status_code=303
+    )
+
+
+@app.get(
     "/manager/fiches/{fiche_id}",
     response_class=HTMLResponse,
     name="manager_fiches_detail",
@@ -5207,6 +5598,7 @@ def manager_fiche_dettaglio(
             request,
             current_user,
             fiche=fiche,
+            volume_teorico=_calculate_fiche_volume_teorico(fiche),
             stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
         ),
     )

@@ -695,6 +695,9 @@ class Fiche(Base, TimestampMixin):
     altezza_pannello = Column(Float, nullable=True)
     data_getto = Column(Date, nullable=True)
     metri_cubi_gettati = Column(Float, nullable=True)
+    quota_ngf_testa = Column(Float, nullable=True)
+    quota_ngf_fondo = Column(Float, nullable=True)
+    quota_ngf_note = Column(Text, nullable=True)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
     stratigrafie = relationship(

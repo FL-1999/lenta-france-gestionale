@@ -10,6 +10,8 @@
 {% set fiche_form_area_label = fiche_form_area_label or ({'fr': "Espace Chef d'équipe", 'it': 'Area Caposquadra'}) %}
 {% set fiche_form_subtitle = fiche_form_subtitle or ({'fr': 'Renseignez les informations pour enregistrer une nouvelle fiche liée à vos chantiers.', 'it': 'Compila le informazioni per registrare una nuova fiche sui cantieri assegnati.'}) %}
 {% set fiche_cancel_url = fiche_cancel_url or '/capo/dashboard' %}
+{% set is_edit = is_edit|default(false) %}
+{% set show_ngf_fields = show_ngf_fields|default(false) %}
 
 <div class="form-page">
     <div class="form-page-header">
@@ -17,7 +19,11 @@
             {{ fiche_form_area_label.get(lang, fiche_form_area_label.get('it')) }}
         </p>
         <h1 class="page-title">
-            {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+            {% if is_edit %}
+                {% if lang == 'fr' %}Modifier fiche{% else %}Modifica fiche{% endif %}
+            {% else %}
+                {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+            {% endif %}
         </h1>
         <p class="page-subtitle">
             {{ fiche_form_subtitle.get(lang, fiche_form_subtitle.get('it')) }}
@@ -490,6 +496,49 @@
                 </div>
                 </div>
 
+                {% if show_ngf_fields %}
+                    <div class="form-section-wrapper">
+                        <div class="form-section-header">
+                            <h3 class="form-section-title">
+                                {% if lang == 'fr' %}Cotes NGF réelles{% else %}Quote NGF reali{% endif %}
+                            </h3>
+                            <p class="text-muted">
+                                {% if lang == 'fr' %}Champs réservés à l'administration et aux managers.{% else %}Campi riservati ad admin e manager.{% endif %}
+                            </p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="quota_ngf_testa">
+                                    {% if lang == 'fr' %}Cote NGF tête{% else %}Quota NGF testa{% endif %}
+                                </label>
+                                <input id="quota_ngf_testa"
+                                       name="quota_ngf_testa"
+                                       type="number"
+                                       step="0.01"
+                                       class="form-control input-field"
+                                       value="{{ form_data.get('quota_ngf_testa', '') }}" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="quota_ngf_fondo">
+                                    {% if lang == 'fr' %}Cote NGF fond{% else %}Quota NGF fondo{% endif %}
+                                </label>
+                                <input id="quota_ngf_fondo"
+                                       name="quota_ngf_fondo"
+                                       type="number"
+                                       step="0.01"
+                                       class="form-control input-field"
+                                       value="{{ form_data.get('quota_ngf_fondo', '') }}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="quota_ngf_note">
+                                {% if lang == 'fr' %}Notes cote{% else %}Note quota{% endif %}
+                            </label>
+                            <textarea id="quota_ngf_note" name="quota_ngf_note" class="form-textarea" rows="2">{{ form_data.get('quota_ngf_note', '') }}</textarea>
+                        </div>
+                    </div>
+                {% endif %}
+
                 <div class="form-group">
                     <label class="form-label" for="note">
                         {% if lang == 'fr' %}Remarques{% else %}Note{% endif %}
@@ -502,7 +551,11 @@
                         {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
                     </a>
                     <button type="submit" class="btn btn-primary">
-                        {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                        {% if is_edit %}
+                            {% if lang == 'fr' %}Mettre à jour{% else %}Aggiorna{% endif %}
+                        {% else %}
+                            {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
+                        {% endif %}
                     </button>
                 </div>
             </form>
