@@ -7,9 +7,18 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from magazzino_repository import count_under_threshold
-from models import Notification, RoleEnum, Report, Site, SiteTask, User, MagazzinoRichiesta, Fiche, MachineNote
+from models import (
+    Notification,
+    RoleEnum,
+    Report,
+    Site,
+    SiteTask,
+    User,
+    MagazzinoRichiesta,
+    Fiche,
+    MachineNote,
+)
 from warehouse_requests_repository import count_pending_requests_for_user
-
 
 
 def create_notification(
@@ -129,9 +138,7 @@ def unread_warehouse_notifications_count(db: Session, user: User | None) -> int:
 
 def _get_manager_users(db: Session) -> list[User]:
     return (
-        db.query(User)
-        .filter(User.role.in_([RoleEnum.manager, RoleEnum.admin]))
-        .all()
+        db.query(User).filter(User.role.in_([RoleEnum.manager, RoleEnum.admin])).all()
     )
 
 
@@ -164,21 +171,16 @@ def _find_site_for_report(db: Session, report: Report) -> Site | None:
     )
 
 
-
-
-
 def notify_machine_note_created(db: Session, note: MachineNote, author: User) -> None:
     site_label = note.site.name if note.site else "cantiere non assegnato"
     if note.machine:
-        asset_kind = "macchinario"
         asset_name = note.machine.name
         target_url = f"/manager/macchinari/{note.machine.id}/note"
     else:
-        asset_kind = "attrezzatura"
         asset_name = note.attrezzatura.nome if note.attrezzatura else "attrezzatura"
         target_url = f"/manager/attrezzature/{note.attrezzatura_id}/note"
 
-    message = f"Nuova nota su {asset_kind} {asset_name} nel cantiere {site_label}"
+    message = f"Nuova anomalia su {asset_name} nel cantiere {site_label}"
     create_notifications_for_users(
         db,
         _get_manager_users(db),
@@ -188,25 +190,30 @@ def notify_machine_note_created(db: Session, note: MachineNote, author: User) ->
         exclude_user_id=author.id,
     )
 
-def notify_new_fiche(db: Session, fiche: Fiche, author: User) -> None:
+
+def notify_new_fiche(db: Session, fiche: Fiche, author: User) -> list[Notification]:
     author_name = author.full_name or author.email
     site = db.query(Site).filter(Site.id == fiche.site_id).first()
     site_label = site.name if site and site.name else f"Cantiere #{fiche.site_id}"
-    message = f"Nuova fiche da {author_name} per {site_label}."
-    create_notifications_for_users(
+    message = f"Nuova fiche creata da {author_name} per cantiere {site_label}"
+    target_url = (
+        f"/manager/fiches/{fiche.id}"
+        if fiche.id
+        else f"/manager/fiches?site_id={fiche.site_id}"
+    )
+    return create_notifications_for_users(
         db,
         _get_manager_users(db),
         "fiche_created",
         message,
-        target_url="/manager/fiches",
+        target_url=target_url,
         exclude_user_id=author.id,
     )
 
+
 def notify_new_report(db: Session, report: Report, author: User) -> None:
     author_name = author.full_name or author.email
-    message = (
-        f"Nuovo rapportino da {author_name} per {report.site_name_or_code}."
-    )
+    message = f"Nuovo rapportino da {author_name} per {report.site_name_or_code}."
     create_notifications_for_users(
         db,
         _get_manager_users(db),
@@ -217,9 +224,7 @@ def notify_new_report(db: Session, report: Report, author: User) -> None:
     )
     site = _find_site_for_report(db, report)
     if site and site.caposquadra_id and site.caposquadra_id != author.id:
-        capo_message = (
-            f"Nuovo rapportino per il cantiere {site.name}."
-        )
+        capo_message = f"Nuovo rapportino per il cantiere {site.name}."
         create_notification(
             db,
             "report_created",
@@ -250,9 +255,7 @@ def notify_site_status_change(
         exclude_user_id=actor.id,
     )
     if site.caposquadra_id:
-        capo_message = (
-            f"Lo stato del tuo cantiere {site.name} è cambiato: {old_label} → {new_label}."
-        )
+        capo_message = f"Lo stato del tuo cantiere {site.name} è cambiato: {old_label} → {new_label}."
         create_notification(
             db,
             "site_status_changed",
@@ -282,7 +285,9 @@ def notify_magazzino_richiesta(
 def notify_new_site_task(db: Session, task: SiteTask, author: User) -> None:
     site = db.query(Site).filter(Site.id == task.site_id).first()
     site_name = site.name if site and site.name else f"Cantiere #{task.site_id}"
-    target_url = f"/manager/note-operative?created_task_id={task.id}#site-{task.site_id}"
+    target_url = (
+        f"/manager/note-operative?created_task_id={task.id}#site-{task.site_id}"
+    )
     message = f"Nuova nota operativa su {site_name}: {task.title}"
     create_notifications_for_users_deduplicated(
         db,

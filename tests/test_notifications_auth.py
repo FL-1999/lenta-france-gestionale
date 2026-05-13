@@ -205,7 +205,7 @@ class TestNotificationsAuth:
             ],
         }
 
-    def test_recent_notifications_prioritizes_unread_and_limits_to_15(self):
+    def test_recent_notifications_shows_all_unread_recent_types_and_limits_to_50(self):
         token = create_access_token(
             data={
                 "sub": self.user.email,
@@ -223,27 +223,41 @@ class TestNotificationsAuth:
                     message=f"Letta {index}",
                     recipient_user_id=self.user.id,
                     is_read=True,
-                    created_at=datetime.utcnow() - timedelta(minutes=index + 10),
+                    created_at=datetime.utcnow() - timedelta(minutes=index + 100),
                 )
             )
-        unread = Notification(
-            notification_type="test",
-            message="Non letta prioritaria",
-            recipient_user_id=self.user.id,
-            is_read=False,
-            created_at=datetime.utcnow() - timedelta(days=1),
-        )
-        self.db.add(unread)
+        for index in range(55):
+            notification_type = [
+                "report_created",
+                "fiche_created",
+                "machine_note_created",
+            ][index % 3]
+            self.db.add(
+                Notification(
+                    notification_type=notification_type,
+                    message=f"Non letta {index}",
+                    recipient_user_id=self.user.id,
+                    is_read=False,
+                    created_at=datetime.utcnow() - timedelta(minutes=index),
+                )
+            )
         self.db.commit()
 
-        response = self.client.get("/api/notifications/recent?limit=50")
+        response = self.client.get("/api/notifications/recent?limit=99")
 
         assert response.status_code == 200
         payload = response.json()
-        assert payload["unread_count"] == 1
-        assert len(payload["notifications"]) == 15
-        assert payload["notifications"][0]["message"] == "Non letta prioritaria"
-        assert payload["notifications"][0]["is_read"] is False
+        assert payload["unread_count"] == 55
+        assert len(payload["notifications"]) == 50
+        assert [item["message"] for item in payload["notifications"][:3]] == [
+            "Non letta 0",
+            "Non letta 1",
+            "Non letta 2",
+        ]
+        assert {item["message"] for item in payload["notifications"]}.isdisjoint(
+            {f"Letta {index}" for index in range(20)}
+        )
+        assert all(item["is_read"] is False for item in payload["notifications"])
 
     def test_mark_all_sets_unread_counter_to_zero(self):
         token = create_access_token(

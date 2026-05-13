@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from typing import Optional
 
@@ -13,6 +14,7 @@ from schemas import FicheCreate, FicheRead, FicheListItem
 from notifications import notify_new_fiche
 
 router = APIRouter(prefix="/fiches", tags=["fiches"])
+logger = logging.getLogger("lenta_france_gestionale.errors")
 
 
 def _sync_site_fiche_progress(db: Session, site: Site) -> None:
@@ -214,7 +216,12 @@ def create_fiche(
     db.add(fiche)
     db.flush()
     _sync_site_fiche_progress(db, site)
-    notify_new_fiche(db, fiche, current_user)
+    fiche_notifications = notify_new_fiche(db, fiche, current_user)
+    logger.info(
+        "notification created for fiche id %s: %s recipient(s)",
+        fiche.id,
+        len(fiche_notifications),
+    )
     db.commit()
     db.refresh(fiche)
 
