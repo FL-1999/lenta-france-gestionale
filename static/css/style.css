@@ -4237,33 +4237,142 @@ label.form-label[for="profondita_totale"]{
   display: none;
 }
 
-.stratigrafia-column {
+.soil-visual {
   border: 1px solid rgba(226, 232, 240, 0.24);
   border-radius: 0.85rem;
-  display: flex;
-  flex-direction: column;
-  height: 420px;
-  min-height: 420px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 36px rgba(2, 6, 23, 0.28);
+  max-width: 720px;
   overflow: hidden;
 }
 
-.stratigrafia-layer {
-  align-items: center;
-  color: #fff;
+.soil-surface {
+  align-items: flex-end;
+  background:
+    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(#2a2f3a, #1f2937);
+  background-size: 28px 28px, 28px 28px, 100% 100%;
   display: flex;
-  gap: 1rem;
-  justify-content: space-between;
-  min-height: 3.2rem;
-  padding: 0.7rem 1rem;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  height: 80px;
+  justify-content: center;
+  position: relative;
 }
 
-.stratigrafia-layer__range {
-  font-weight: 800;
+.soil-surface::after {
+  background: linear-gradient(90deg, #334155, #64748b, #334155);
+  bottom: 0;
+  content: "";
+  height: 6px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.building {
+  background: #94a3b8;
+  border-radius: 4px 4px 0 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24), 0 8px 18px rgba(2, 6, 23, 0.32);
+  height: 60px;
+  position: relative;
+  width: 80px;
+  z-index: 1;
+}
+
+.building::before {
+  background:
+    linear-gradient(90deg, transparent 0 15px, rgba(30, 41, 59, 0.92) 15px 24px, transparent 24px 40px) 0 10px / 40px 13px repeat,
+    linear-gradient(90deg, transparent 0 15px, rgba(30, 41, 59, 0.82) 15px 24px, transparent 24px 40px) 0 31px / 40px 13px repeat;
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.soil-layers {
+  display: flex;
+  flex-direction: column;
+  height: 420px;
+  overflow: hidden;
+}
+
+.soil-layer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  min-height: 0;
+  position: relative;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.62);
+}
+
+.soil-layer .label-left,
+.soil-layer .label-right {
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.2;
+  max-width: calc(50% - 18px);
+  overflow: hidden;
+  padding: 0.18rem 0.45rem;
+  position: absolute;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.stratigrafia-layer__material {
-  font-weight: 600;
+.soil-layer .label-left {
+  font-weight: 800;
+  left: 10px;
+  top: 8px;
+}
+
+.soil-layer .label-right {
+  bottom: 8px;
+  font-weight: 700;
+  right: 10px;
   text-align: right;
+}
+
+.soil-layer--riporto {
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.07) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient(45deg, #8b5a2b, #8b5a2b 6px, #7a4e24 6px, #7a4e24 12px);
+}
+
+.soil-layer--ghiaia {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.32) 18%, transparent 20%) 0 0 / 10px 10px repeat,
+    radial-gradient(circle, rgba(17, 24, 39, 0.28) 18%, transparent 20%) 5px 5px / 12px 12px repeat,
+    linear-gradient(#9ca3af, #6b7280);
+}
+
+.soil-layer--argilla {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 11px),
+    linear-gradient(135deg, #b87916, #a16207 54%, #854d0e);
+}
+
+.soil-layer--sabbia {
+  background:
+    radial-gradient(circle, rgba(120, 53, 15, 0.22) 12%, transparent 14%) 0 0 / 8px 8px repeat,
+    radial-gradient(circle, rgba(254, 240, 138, 0.42) 14%, transparent 16%) 4px 4px / 9px 9px repeat,
+    linear-gradient(#fde68a, #facc15 52%, #ca8a04);
+  color: #1f2937;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.36);
+}
+
+.soil-layer--roccia {
+  background:
+    linear-gradient(135deg, transparent 0 44%, rgba(255, 255, 255, 0.14) 45% 47%, transparent 48% 100%) 0 0 / 52px 34px repeat,
+    linear-gradient(45deg, rgba(17, 24, 39, 0.28) 0 22%, transparent 23% 100%) 0 0 / 36px 28px repeat,
+    linear-gradient(#6b7280, #4b5563);
+}
+
+.soil-layer--limo {
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 7px),
+    linear-gradient(#a99572, #7c6748);
+}
+
+.soil-layer--generico {
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.08) 0 3px, transparent 3px 10px),
+    linear-gradient(#3f7cac, #25607d);
 }

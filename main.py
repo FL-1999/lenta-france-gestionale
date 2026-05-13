@@ -4957,21 +4957,21 @@ async def capo_fiche_nuova_post(
     return RedirectResponse(url="/capo/dashboard", status_code=303)
 
 
-def _materiale_stratigrafia_color(materiale: str | None) -> str:
+def _materiale_stratigrafia_texture_class(materiale: str | None) -> str:
     label = (materiale or "").lower()
     if "riporto" in label or "remblai" in label:
-        return "#8b5a2b"
+        return "soil-layer--riporto"
     if "ghia" in label or "gravier" in label or "gravel" in label:
-        return "#8f98a3"
+        return "soil-layer--ghiaia"
     if "argill" in label or "argile" in label or "clay" in label:
-        return "#b86b3d"
+        return "soil-layer--argilla"
     if "rocc" in label or "roche" in label or "rock" in label:
-        return "#555f6d"
+        return "soil-layer--roccia"
     if "sabb" in label or "sable" in label or "sand" in label:
-        return "#d6b45f"
+        return "soil-layer--sabbia"
     if "lim" in label or "silt" in label:
-        return "#9c8766"
-    return "#3f7cac"
+        return "soil-layer--limo"
+    return "soil-layer--generico"
 
 
 def _build_stratigrafia_visual_layers(fiche: Fiche) -> list[dict]:
@@ -4995,7 +4995,9 @@ def _build_stratigrafia_visual_layers(fiche: Fiche) -> list[dict]:
                     "height_percent": round((thickness / total_depth) * 100, 2)
                     if total_depth > 0
                     else 0,
-                    "color": _materiale_stratigrafia_color(layer.materiale),
+                    "texture_class": _materiale_stratigrafia_texture_class(
+                        layer.materiale
+                    ),
                 }
             )
         return visual_layers
@@ -5019,7 +5021,7 @@ def _build_stratigrafia_visual_layers(fiche: Fiche) -> list[dict]:
                 "height_percent": round((thickness / total_depth) * 100, 2)
                 if total_depth > 0
                 else 0,
-                "color": _materiale_stratigrafia_color(layer.material),
+                "texture_class": _materiale_stratigrafia_texture_class(layer.material),
             }
         )
     return visual_layers
