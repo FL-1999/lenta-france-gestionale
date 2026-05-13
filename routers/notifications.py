@@ -136,6 +136,12 @@ def _notifications_base_query(db: Session, current_user: User):
     )
 
 
+def _notifications_unread_query(db: Session, current_user: User):
+    return _notifications_base_query(db, current_user).filter(
+        Notification.is_read.is_(False)
+    )
+
+
 def _notifications_recent_or_unread_query(db: Session, current_user: User):
     since_date = datetime.utcnow() - timedelta(days=30)
     return _notifications_base_query(db, current_user).filter(
@@ -185,12 +191,12 @@ def unread_count(
 
 @router.get("/list", response_model=NotificationListPayload)
 def list_latest_notifications(
-    limit: int = 15,
+    limit: int = 25,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_api),
 ):
     _cleanup_stale_notifications(db, current_user)
-    limit = max(1, min(limit, 15))
+    limit = max(1, min(limit, 50))
     base_query = _notifications_base_query(db, current_user)
     unread_count = base_query.filter(Notification.is_read.is_(False)).count()
     notifications = (
@@ -206,18 +212,16 @@ def list_latest_notifications(
 
 @router.get("/recent", response_model=NotificationRecentPayload)
 def list_recent_notifications(
-    limit: int = 15,
+    limit: int = 25,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_api),
 ):
     _cleanup_stale_notifications(db, current_user)
-    limit = max(1, min(limit, 15))
-    base_query = _notifications_recent_or_unread_query(db, current_user)
-    unread_count = base_query.filter(Notification.is_read.is_(False)).count()
+    limit = max(1, min(limit, 50))
+    unread_query = _notifications_unread_query(db, current_user)
+    unread_count = unread_query.count()
     notifications = (
-        base_query.order_by(Notification.is_read.asc(), Notification.created_at.desc())
-        .limit(limit)
-        .all()
+        unread_query.order_by(Notification.created_at.desc()).limit(limit).all()
     )
     return NotificationRecentPayload(
         unread_count=unread_count,
@@ -284,12 +288,12 @@ def clear_notifications(
 @router.get("", response_model=NotificationListResponse)
 def list_notifications(
     unread_only: bool = False,
-    limit: int = 15,
+    limit: int = 25,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_api),
 ):
     _cleanup_stale_notifications(db, current_user)
-    limit = max(1, min(limit, 15))
+    limit = max(1, min(limit, 50))
     base_query = _notifications_recent_or_unread_query(db, current_user)
     unread_count = base_query.filter(Notification.is_read.is_(False)).count()
     if unread_only:

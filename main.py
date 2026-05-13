@@ -88,7 +88,12 @@ from template_context import (
     render_template,
 )
 from permissions import get_active_role, get_user_roles, has_perm, user_has_role
-from notifications import notify_new_fiche, notify_new_site_task, notify_site_status_change
+from notifications import (
+    notify_new_fiche,
+    notify_new_report,
+    notify_new_site_task,
+    notify_site_status_change,
+)
 from services.personale_profiles import ensure_user_personale_profile
 from audit_utils import log_audit_event
 from logging_config import configure_logging
@@ -1196,9 +1201,14 @@ def _create_validated_fiche(
         )
 
     _sync_site_fiche_progress(db, site)
+    fiche_notifications = notify_new_fiche(db, fiche, current_user)
+    logger.info(
+        "notification created for fiche id %s: %s recipient(s)",
+        fiche.id,
+        len(fiche_notifications),
+    )
     db.commit()
     db.refresh(fiche)
-    notify_new_fiche(db, fiche, current_user)
     return fiche
 
 
@@ -5622,6 +5632,8 @@ def pagina_nuovo_rapportino_capo_post(
             workers=workers,
         )
         db.add(report)
+        db.flush()
+        notify_new_report(db, report, current_user)
         db.commit()
     finally:
         db.close()

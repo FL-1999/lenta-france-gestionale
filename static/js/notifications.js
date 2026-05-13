@@ -173,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     event.stopPropagation();
     if (isPanelOpen()) return closePanel();
     openPanel();
-    loadNotificationsList({ markOnOpen: true });
+    loadNotificationsList({ markOnOpen: false });
   });
 
   panel.addEventListener("click", (event) => event.stopPropagation());
