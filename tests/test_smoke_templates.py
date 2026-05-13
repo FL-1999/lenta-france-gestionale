@@ -381,8 +381,11 @@ def test_avanzamento_grid_uses_custom_display_names() -> None:
     items = _build_avanzamento_grid_items({}, 2, "Paratia", {1: "P1"})
 
     assert items[0]["display_name"] == "P1"
-    assert items[0]["preview"]["title"] == "P1"
-    assert items[1]["display_name"] == "Paratia 2"
+    assert items[0]["preview"]["title"] == "Paratia 1"
+    assert items[0]["full_name"] == "Paratia 1"
+    assert items[0]["tooltip"] == "Paratia 1\nstato: mancante"
+    assert items[1]["display_name"] == "2"
+    assert items[1]["full_name"] == "Paratia 2"
 
 
 def test_manager_site_detail_renders_panel_schema() -> None:

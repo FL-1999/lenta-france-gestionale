@@ -3125,6 +3125,10 @@ def _progress_grid_display_name(
     custom_label = (custom_labels or {}).get(element_number)
     if custom_label:
         return custom_label
+    return str(element_number)
+
+
+def _progress_grid_full_name(element_number: int, default_label: str) -> str:
     return f"{default_label} {element_number}"
 
 
@@ -3205,16 +3209,20 @@ def _build_avanzamento_grid_items(
     for element_number in range(1, total_elements + 1):
         fiche = fiches_map.get(element_number)
         display_name = _progress_grid_display_name(element_number, label, custom_labels)
+        full_name = _progress_grid_full_name(element_number, label)
         if not fiche:
             items.append(
                 {
                     "number": element_number,
                     "label": label,
                     "display_name": display_name,
+                    "full_name": full_name,
                     "custom_label": (custom_labels or {}).get(element_number, ""),
                     "is_completed": False,
+                    "status_label": "mancante",
+                    "tooltip": f"{full_name}\nstato: mancante",
                     "preview": {
-                        "title": display_name,
+                        "title": full_name,
                         "missing": True,
                         "message": "Fiche non ancora creata",
                     },
@@ -3240,11 +3248,17 @@ def _build_avanzamento_grid_items(
                 "number": element_number,
                 "label": label,
                 "display_name": display_name,
+                "full_name": full_name,
                 "custom_label": (custom_labels or {}).get(element_number, ""),
                 "is_completed": True,
+                "status_label": "completata",
+                "tooltip": (
+                    f"{full_name}\nstato: completata\ndata fiche: "
+                    f"{fiche.date.strftime('%d/%m/%Y') if fiche.date else '—'}"
+                ),
                 "fiche_id": fiche.id,
                 "preview": {
-                    "title": display_name,
+                    "title": full_name,
                     "missing": False,
                     "number": element_number,
                     "date": fiche.date.strftime("%d/%m/%Y") if fiche.date else "—",

@@ -38,7 +38,8 @@
             data-progress-cell
             data-preview='{{ item.preview|tojson }}'
             data-fiche-url="{{ fiche_url }}"
-            aria-label="{{ title }} {{ item.number }}: {{ 'fiche creata' if item.is_completed else 'fiche non ancora creata' }}"
+            aria-label="{{ item.full_name }}: stato {{ item.status_label }}"
+            title="{{ item.tooltip }}"
           >
             <span>{{ item.display_name }}</span>
           </button>
@@ -212,8 +213,9 @@
         setLinkState("");
       } else {
         body.innerHTML = [
-          row("Numero paratia / palo", preview.title || preview.number),
-          row("Data", preview.date),
+          row("Elemento", preview.title || preview.number),
+          row("Stato", "completata"),
+          row("Data fiche", preview.date),
           row("Operatore", preview.operator),
           row("Volume gettato", `${preview.volume_gettato || "—"} m³`),
           row("Volume teorico", `${preview.volume_teorico || "—"} m³`),

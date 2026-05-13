@@ -4644,20 +4644,27 @@ label.form-label[for="profondita_totale"]{
 
 .progress-map-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  grid-template-columns: repeat(auto-fill, 40px);
   gap: 10px;
   margin-top: 14px;
 }
 
 .progress-cell {
-  height: 38px;
+  aspect-ratio: 1 / 1;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 13px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  line-height: 1;
+  min-height: 40px;
+  overflow: hidden;
+  padding: 0.15rem;
+  text-align: center;
   text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -4685,14 +4692,14 @@ label.form-label[for="profondita_totale"]{
   }
 
   .progress-map-grid {
-    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+    grid-template-columns: repeat(auto-fill, 34px);
     gap: 8px;
   }
 
   .progress-cell {
-    height: 34px;
     border-radius: 8px;
-    font-size: 12px;
+    font-size: 0.72rem;
+    min-height: 34px;
   }
 }
 
@@ -4772,22 +4779,34 @@ label.form-label[for="profondita_totale"]{
 .advanced-progress-grid {
   display: grid;
   gap: 0.7rem;
-  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  grid-template-columns: repeat(auto-fill, 46px);
   margin-top: 1rem;
 }
 
 .advanced-progress-cell {
   align-items: center;
+  aspect-ratio: 1 / 1;
   border: 0;
   border-radius: 14px;
   cursor: pointer;
   display: inline-flex;
   font: inherit;
+  font-size: 0.82rem;
   font-weight: 900;
   justify-content: center;
+  line-height: 1;
   min-height: 46px;
-  padding: 0;
+  overflow: hidden;
+  padding: 0.2rem;
+  text-align: center;
   transition: box-shadow 0.16s ease, filter 0.16s ease, transform 0.16s ease;
+}
+
+.advanced-progress-cell span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .advanced-progress-cell--done {
@@ -4901,11 +4920,13 @@ label.form-label[for="profondita_totale"]{
   }
 
   .advanced-progress-grid {
-    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, 40px);
   }
 
   .advanced-progress-cell {
     border-radius: 12px;
+    font-size: 0.76rem;
     min-height: 40px;
   }
 
