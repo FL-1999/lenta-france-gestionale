@@ -20,7 +20,7 @@
 {% set is_paratia = tipologia_scavo == "paratia" %}
 {% set volume_gettato = fiche.metri_cubi_gettati %}
 {% set volume_diff = volume_gettato - volume_teorico if volume_gettato is not none and volume_teorico is not none else none %}
-{% set has_ngf_quote = fiche.quota_ngf_testa is not none or fiche.quota_ngf_fondo is not none or fiche.quota_ngf_note %}
+{% set has_ngf_quote = fiche.quota_ngf_testa is not none or fiche.quota_ngf_fondo is not none or fiche.quota_ngf_note or fiche.quota_partenza is not none or fiche.quota_testa_getto is not none %}
 
 <div class="page-header">
     <div class="page-header-main">
@@ -231,6 +231,32 @@
                         -
                     {% endif %}
                 </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<section class="card technical-coupe-card" style="margin-top: 1.5rem;">
+    <div class="card-header"><div class="card-title">📈 Schema tecnico coupe</div></div>
+    <div class="card-body">
+        <div style="display:grid; grid-template-columns: minmax(260px, 1fr) minmax(220px, .8fr); gap:1rem; align-items:stretch;">
+            <div style="position:relative; min-height:360px; border:1px solid var(--border-color, #e5e7eb); border-radius:18px; padding:1rem; background:linear-gradient(180deg,#f8fafc,#eef2ff); overflow:hidden;">
+                <div style="position:absolute; left:1rem; right:1rem; top:44px; border-top:3px solid #2563eb;"><strong style="background:#fff; padding:.2rem .5rem; border-radius:999px;">TN {{ '%.2f'|format(fiche.coupe.quota_tn) if fiche.coupe and fiche.coupe.quota_tn is not none else '—' }}</strong></div>
+                <div style="position:absolute; left:1rem; right:1rem; top:96px; border-top:2px dashed #0f172a;"><strong style="background:#fff; padding:.2rem .5rem; border-radius:999px;">Testa {{ '%.2f'|format(fiche.coupe.quota_testa) if fiche.coupe and fiche.coupe.quota_testa is not none else '—' }}</strong></div>
+                <div style="position:absolute; left:1rem; right:1rem; bottom:76px; border-top:3px solid #dc2626;"><strong style="background:#fff; padding:.2rem .5rem; border-radius:999px;">Fondo scavo {{ '%.2f'|format(fiche.quota_ngf_fondo) if fiche.quota_ngf_fondo is not none else '—' }}</strong></div>
+                <div style="position:absolute; left:1rem; right:1rem; bottom:132px; border-top:3px solid #16a34a;"><strong style="background:#fff; padding:.2rem .5rem; border-radius:999px;">Getto {{ '%.2f'|format(fiche.quota_testa_getto) if fiche.quota_testa_getto is not none else '—' }}</strong></div>
+                <div style="position:absolute; left:45%; top:96px; bottom:76px; width:90px; transform:translateX(-50%); border-radius:12px 12px 4px 4px; background:rgba(30,64,175,.18); border:2px solid #1d4ed8;"></div>
+                <div style="position:absolute; right:1.25rem; top:150px; max-width:220px; background:#fff; border-radius:14px; padding:.75rem; box-shadow:0 10px 25px rgba(15,23,42,.10);">
+                    <strong>Reale</strong><br>
+                    Profondità scavata: {{ fiche.profondita_totale if fiche.profondita_totale is not none else '—' }} m<br>
+                    Scavo da TN: {{ 'Sì' if fiche.scavo_da_tn else 'No' }}
+                </div>
+            </div>
+            <div style="display:grid; gap:1rem;">
+                <div class="card" style="box-shadow:none;"><div class="card-body"><strong>Coupe progetto</strong><br>{{ fiche.coupe.nome if fiche.coupe else 'Nessuna coupe associata' }}<br>Fondo teorico: {{ '%.2f'|format(fiche.coupe.quota_fondo_teorica) if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else '—' }}<br>Profondità teorica: {{ fiche.coupe.profondita_teorica if fiche.coupe and fiche.coupe.profondita_teorica is not none else '—' }} m</div></div>
+                <div class="card" style="box-shadow:none;"><div class="card-body"><strong>Terreno teorico</strong><p class="mb-0">{{ fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else 'Non compilato' }}</p></div></div>
+                <div class="card" style="box-shadow:none;"><div class="card-body"><strong>Stratigrafia reale</strong><p class="mb-0">{{ fiche.stratigrafia or 'Vedi strati reali sotto.' }}</p></div></div>
             </div>
         </div>
     </div>

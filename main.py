@@ -62,6 +62,7 @@ from models import (
     Fiche,
     FicheStratigrafia,
     SiteProgressGridName,
+    SiteCoupe,
     Personale,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
@@ -826,6 +827,10 @@ def _build_fiche_form_data(
     cantiere_id: int | str | None = None,
     numero_pannello: int | str | None = None,
     macchinario_id: int | str | None = None,
+    coupe_id: int | str | None = None,
+    scavo_da_tn: bool | str | None = True,
+    quota_partenza: float | str | None = None,
+    quota_testa_getto: float | str | None = None,
     data_scavo: date | None = None,
     data_getto: date | None = None,
     metri_cubi_gettati: float | None = None,
@@ -877,6 +882,10 @@ def _build_fiche_form_data(
         "cantiere_id": _fmt(cantiere_id),
         "numero_pannello": _fmt(numero_pannello),
         "macchinario_id": _fmt(macchinario_id),
+        "coupe_id": _fmt(coupe_id),
+        "scavo_da_tn": "1" if scavo_da_tn in (True, "1", "true", "on", "si", "SI") else "0",
+        "quota_partenza": _fmt(quota_partenza),
+        "quota_testa_getto": _fmt(quota_testa_getto),
         "data_scavo": data_scavo.isoformat() if data_scavo else "",
         "data_getto": data_getto.isoformat() if data_getto else "",
         "metri_cubi_gettati": _fmt(metri_cubi_gettati),
@@ -947,9 +956,22 @@ def _render_fiche_create_form(
     extra_context: dict | None = None,
 ):
     sites, machines = collections_loader()
+    db = SessionLocal()
+    try:
+        site_ids = [site.id for site in sites]
+        coupes = (
+            db.query(SiteCoupe)
+            .filter(SiteCoupe.site_id.in_(site_ids))
+            .order_by(SiteCoupe.site_id.asc(), SiteCoupe.nome.asc())
+            .all()
+            if site_ids else []
+        )
+    finally:
+        db.close()
     context = {
         "cantieri": sites,
         "macchinari": machines,
+        "coupes": coupes,
         "form_data": form_data or _build_fiche_form_data(),
         "error_message": error_message,
     }
@@ -968,31 +990,39 @@ def _build_fiche_error_form_data(
     cantiere_id: int | str | None,
     numero_pannello: int | str | None,
     macchinario_id: int | str | None,
-    data_scavo: date | None,
-    data_getto: date | None,
-    metri_cubi_gettati: str | float | None,
-    operatore: str | None,
-    descrizione: str | None,
-    ore_lavorate: str | float | None,
-    note: str | None,
-    tipologia_scavo: str | None,
-    materiale: str | None,
-    profondita_totale: str | float | None,
-    diametro_palo_cm: str | float | None,
-    larghezza_pannello: str | float | None,
-    altezza_pannello: str | float | None,
+    coupe_id: int | str | None = None,
+    scavo_da_tn: bool | str | None = True,
+    quota_partenza: float | str | None = None,
+    quota_testa_getto: float | str | None = None,
+    data_scavo: date | None = None,
+    data_getto: date | None = None,
+    metri_cubi_gettati: str | float | None = None,
+    operatore: str | None = None,
+    descrizione: str | None = None,
+    ore_lavorate: str | float | None = None,
+    note: str | None = None,
+    tipologia_scavo: str | None = None,
+    materiale: str | None = None,
+    profondita_totale: str | float | None = None,
+    diametro_palo_cm: str | float | None = None,
+    larghezza_pannello: str | float | None = None,
+    altezza_pannello: str | float | None = None,
     quota_ngf_testa: str | float | None = None,
     quota_ngf_fondo: str | float | None = None,
     quota_ngf_note: str | None = None,
-    strato_da: list[str | float | None] | None,
-    strato_a: list[str | float | None] | None,
-    strato_materiale: list[str] | None,
+    strato_da: list[str | float | None] | None = None,
+    strato_a: list[str | float | None] | None = None,
+    strato_materiale: list[str] | None = None,
     invalid_fields: list[str] | None = None,
 ) -> dict:
     return _build_fiche_form_data(
         cantiere_id=cantiere_id,
         numero_pannello=numero_pannello,
         macchinario_id=macchinario_id,
+        coupe_id=coupe_id,
+        scavo_da_tn=scavo_da_tn,
+        quota_partenza=quota_partenza,
+        quota_testa_getto=quota_testa_getto,
         data_scavo=data_scavo,
         data_getto=data_getto,
         metri_cubi_gettati=metri_cubi_gettati,
@@ -1097,9 +1127,9 @@ def _create_validated_fiche(
     quota_ngf_testa: str | float | None = None,
     quota_ngf_fondo: str | float | None = None,
     quota_ngf_note: str | None = None,
-    strato_da: list[str | float | None] | None,
-    strato_a: list[str | float | None] | None,
-    strato_materiale: list[str] | None,
+    strato_da: list[str | float | None] | None = None,
+    strato_a: list[str | float | None] | None = None,
+    strato_materiale: list[str] | None = None,
     restrict_to_capo_sites: bool = False,
 ) -> Fiche:
     metri_cubi_value = _parse_decimal_comma_float(
@@ -1153,6 +1183,20 @@ def _create_validated_fiche(
         if allowed_site_ids and site.id not in allowed_site_ids:
             raise HTTPException(status_code=403, detail="Cantiere non valido")
 
+    parsed_coupe_id = _parse_optional_machine_id(coupe_id)
+    coupe = None
+    if parsed_coupe_id is not None:
+        coupe = db.query(SiteCoupe).filter(SiteCoupe.id == parsed_coupe_id, SiteCoupe.site_id == site.id).first()
+        if not coupe:
+            raise HTTPException(status_code=400, detail="Coupe di progetto non valida")
+    scavo_da_tn_value = scavo_da_tn in (True, "1", "true", "on", "si", "SI")
+    quota_partenza_value = None
+    if coupe:
+        quota_partenza_value = coupe.quota_tn if scavo_da_tn_value else coupe.quota_testa
+    quota_testa_getto_value = _parse_decimal_comma_float(quota_testa_getto, "quota testa getto")
+    if coupe and quota_testa_getto_value is not None and coupe.quota_tn is not None and quota_testa_getto_value > coupe.quota_tn:
+        raise HTTPException(status_code=400, detail="La quota testa getto non può essere superiore alla quota TN della coupe.")
+
     normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
     _ensure_unique_numero_pannello(
         db, cantiere_id, normalized_tipologia, parsed_numero_pannello
@@ -1168,6 +1212,7 @@ def _create_validated_fiche(
         date=data_scavo,
         numero_pannello=parsed_numero_pannello,
         site_id=cantiere_id,
+        coupe_id=parsed_coupe_id,
         machine_id=parsed_machine_id,
         fiche_type=FicheTypeEnum.produzione,
         description=descrizione or "",
@@ -1183,8 +1228,11 @@ def _create_validated_fiche(
         data_getto=data_getto,
         metri_cubi_gettati=metri_cubi_value,
         quota_ngf_testa=quota_ngf_testa_value,
-        quota_ngf_fondo=quota_ngf_fondo_value,
         quota_ngf_note=(quota_ngf_note or "").strip() or None,
+        scavo_da_tn=scavo_da_tn_value,
+        quota_partenza=quota_partenza_value,
+        quota_testa_getto=quota_testa_getto_value,
+        quota_ngf_fondo=(quota_partenza_value - profondita_value) if quota_partenza_value is not None and profondita_value is not None else quota_ngf_fondo_value,
         created_by_id=current_user.id,
     )
     db.add(fiche)
@@ -1236,9 +1284,12 @@ def _update_validated_fiche(
     quota_ngf_testa: str | float | None,
     quota_ngf_fondo: str | float | None,
     quota_ngf_note: str | None,
-    strato_da: list[str | float | None] | None,
-    strato_a: list[str | float | None] | None,
-    strato_materiale: list[str] | None,
+    coupe_id: str | int | None = None,
+    scavo_da_tn: bool | str | None = True,
+    quota_testa_getto: str | float | None = None,
+    strato_da: list[str | float | None] | None = None,
+    strato_a: list[str | float | None] | None = None,
+    strato_materiale: list[str] | None = None,
 ) -> Fiche:
     metri_cubi_value = _parse_decimal_comma_float(
         metri_cubi_gettati, "Metri cubi gettati"
@@ -1296,6 +1347,20 @@ def _update_validated_fiche(
         exclude_fiche_id=fiche.id,
     )
 
+    parsed_coupe_id = _parse_optional_machine_id(coupe_id)
+    coupe = None
+    if parsed_coupe_id is not None:
+        coupe = db.query(SiteCoupe).filter(SiteCoupe.id == parsed_coupe_id, SiteCoupe.site_id == site.id).first()
+        if not coupe:
+            raise HTTPException(status_code=400, detail="Coupe di progetto non valida")
+    scavo_da_tn_value = scavo_da_tn in (True, "1", "true", "on", "si", "SI")
+    quota_partenza_value = None
+    if coupe:
+        quota_partenza_value = coupe.quota_tn if scavo_da_tn_value else coupe.quota_testa
+    quota_testa_getto_value = _parse_decimal_comma_float(quota_testa_getto, "quota testa getto")
+    if coupe and quota_testa_getto_value is not None and coupe.quota_tn is not None and quota_testa_getto_value > coupe.quota_tn:
+        raise HTTPException(status_code=400, detail="La quota testa getto non può essere superiore alla quota TN della coupe.")
+
     if parsed_machine_id is not None:
         machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
         if not machine:
@@ -1306,6 +1371,7 @@ def _update_validated_fiche(
     fiche.date = data_scavo
     fiche.numero_pannello = parsed_numero_pannello
     fiche.site_id = cantiere_id
+    fiche.coupe_id = parsed_coupe_id
     fiche.machine_id = parsed_machine_id
     fiche.fiche_type = FicheTypeEnum.produzione
     fiche.description = descrizione or ""
@@ -1321,8 +1387,11 @@ def _update_validated_fiche(
     fiche.data_getto = data_getto
     fiche.metri_cubi_gettati = metri_cubi_value
     fiche.quota_ngf_testa = quota_ngf_testa_value
-    fiche.quota_ngf_fondo = quota_ngf_fondo_value
+    fiche.quota_ngf_fondo = (quota_partenza_value - profondita_value) if quota_partenza_value is not None and profondita_value is not None else quota_ngf_fondo_value
     fiche.quota_ngf_note = (quota_ngf_note or "").strip() or None
+    fiche.scavo_da_tn = scavo_da_tn_value
+    fiche.quota_partenza = quota_partenza_value
+    fiche.quota_testa_getto = quota_testa_getto_value
 
     db.query(FicheStratigrafia).filter(FicheStratigrafia.fiche_id == fiche.id).delete()
     db.flush()
@@ -1368,6 +1437,10 @@ def _build_fiche_form_data_from_model(fiche: Fiche) -> dict:
         cantiere_id=fiche.site_id,
         numero_pannello=fiche.numero_pannello,
         macchinario_id=fiche.machine_id,
+        coupe_id=fiche.coupe_id,
+        scavo_da_tn=fiche.scavo_da_tn,
+        quota_partenza=fiche.quota_partenza,
+        quota_testa_getto=fiche.quota_testa_getto,
         data_scavo=fiche.date,
         data_getto=fiche.data_getto,
         metri_cubi_gettati=fiche.metri_cubi_gettati,
@@ -2076,6 +2149,9 @@ async def manager_fiche_create(
     cantiere_id: int = Form(...),
     numero_pannello: str | None = Form(None),
     macchinario_id: str | None = Form(None),
+    coupe_id: str | None = Form(None),
+    scavo_da_tn: str | None = Form("1"),
+    quota_testa_getto: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
     metri_cubi_gettati: str | None = Form(None),
@@ -2108,6 +2184,9 @@ async def manager_fiche_create(
                 cantiere_id=cantiere_id,
                 numero_pannello=numero_pannello,
                 macchinario_id=macchinario_id,
+                coupe_id=coupe_id,
+                scavo_da_tn=scavo_da_tn,
+                quota_testa_getto=quota_testa_getto,
                 data_scavo=data_scavo,
                 data_getto=data_getto,
                 metri_cubi_gettati=metri_cubi_gettati,
@@ -2135,6 +2214,9 @@ async def manager_fiche_create(
             cantiere_id=cantiere_id,
             numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
+            coupe_id=coupe_id,
+            scavo_da_tn=scavo_da_tn,
+            quota_testa_getto=quota_testa_getto,
             data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
@@ -3497,6 +3579,7 @@ def _get_site_for_detail(db: Session, site_id: int, current_user: User) -> Site:
     query = db.query(Site).options(
         joinedload(Site.caposquadra),
         joinedload(Site.strut_levels),
+        joinedload(Site.coupes),
     )
     query = scope_sites_query(query, current_user)
     site = query.filter(Site.id == site_id).first()
@@ -3881,7 +3964,7 @@ def manager_site_progress_puntoni(
 
     db = SessionLocal()
     try:
-        site = db.query(Site).options(joinedload(Site.strut_levels)).filter(Site.id == site_id).first()
+        site = db.query(Site).options(joinedload(Site.strut_levels), joinedload(Site.coupes)).filter(Site.id == site_id).first()
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
@@ -3916,6 +3999,66 @@ def manager_site_progress_puntoni(
         status_code=303,
     )
 
+
+
+def _optional_float_from_form(value: str | None) -> float | None:
+    return _parse_decimal_comma_float(value, "valore coupe")
+
+
+def _sync_site_coupes_from_form(
+    db: Session,
+    site: Site,
+    *,
+    coupe_id: list[str] | None,
+    coupe_nome: list[str] | None,
+    coupe_quota_tn: list[str] | None,
+    coupe_quota_testa: list[str] | None,
+    coupe_quota_fondo_teorica: list[str] | None,
+    coupe_profondita_teorica: list[str] | None,
+    coupe_spessore: list[str] | None,
+    coupe_terreno_teorico: list[str] | None,
+    coupe_note: list[str] | None,
+) -> None:
+    existing = {str(coupe.id): coupe for coupe in (site.coupes or [])}
+    row_count = max(
+        len(coupe_id or []), len(coupe_nome or []), len(coupe_quota_tn or []),
+        len(coupe_quota_testa or []), len(coupe_quota_fondo_teorica or []),
+        len(coupe_profondita_teorica or []), len(coupe_spessore or []),
+        len(coupe_terreno_teorico or []), len(coupe_note or []), 0
+    )
+    seen: set[int] = set()
+
+    def value(values: list[str] | None, index: int) -> str:
+        return (values[index] if values and index < len(values) else "") or ""
+
+    for index in range(row_count):
+        name = value(coupe_nome, index).strip()
+        has_any_value = any(
+            value(values, index).strip()
+            for values in (coupe_quota_tn, coupe_quota_testa, coupe_quota_fondo_teorica, coupe_profondita_teorica, coupe_spessore, coupe_terreno_teorico, coupe_note)
+        )
+        row_id = value(coupe_id, index).strip()
+        if not name and not has_any_value:
+            continue
+        if not name:
+            name = f"Coupe {index + 1}"
+        coupe = existing.get(row_id) if row_id else None
+        if coupe is None:
+            coupe = SiteCoupe(site_id=site.id, nome=name)
+            db.add(coupe)
+        coupe.nome = name
+        coupe.quota_tn = _optional_float_from_form(value(coupe_quota_tn, index))
+        coupe.quota_testa = _optional_float_from_form(value(coupe_quota_testa, index))
+        coupe.quota_fondo_teorica = _optional_float_from_form(value(coupe_quota_fondo_teorica, index))
+        coupe.profondita_teorica = _optional_float_from_form(value(coupe_profondita_teorica, index))
+        coupe.spessore = _optional_float_from_form(value(coupe_spessore, index))
+        coupe.terreno_teorico = value(coupe_terreno_teorico, index).strip() or None
+        coupe.note = value(coupe_note, index).strip() or None
+        if coupe.id:
+            seen.add(coupe.id)
+    for coupe in list(site.coupes or []):
+        if coupe.id not in seen and not any(fiche.coupe_id == coupe.id for fiche in site.fiches or []):
+            db.delete(coupe)
 
 def _load_real_depots_for_forms(db: Session):
     default_names = ["montauroux", "st. jeannet", "st jeannet", "sommariva", "cantieri"]
@@ -3986,6 +4129,15 @@ def manager_cantiere_nuovo_post(
     caposquadra_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
     numero_totale_pali: str | None = Form(None),
+    coupe_id: List[str] = Form(default_factory=list),
+    coupe_nome: List[str] = Form(default_factory=list),
+    coupe_quota_tn: List[str] = Form(default_factory=list),
+    coupe_quota_testa: List[str] = Form(default_factory=list),
+    coupe_quota_fondo_teorica: List[str] = Form(default_factory=list),
+    coupe_profondita_teorica: List[str] = Form(default_factory=list),
+    coupe_spessore: List[str] = Form(default_factory=list),
+    coupe_terreno_teorico: List[str] = Form(default_factory=list),
+    coupe_note: List[str] = Form(default_factory=list),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "sites.create"):
@@ -4144,6 +4296,13 @@ def manager_cantiere_nuovo_post(
         )
         db.add(new_site)
         db.flush()
+        _sync_site_coupes_from_form(
+            db, new_site, coupe_id=coupe_id, coupe_nome=coupe_nome,
+            coupe_quota_tn=coupe_quota_tn, coupe_quota_testa=coupe_quota_testa,
+            coupe_quota_fondo_teorica=coupe_quota_fondo_teorica,
+            coupe_profondita_teorica=coupe_profondita_teorica, coupe_spessore=coupe_spessore,
+            coupe_terreno_teorico=coupe_terreno_teorico, coupe_note=coupe_note,
+        )
         log_audit_event(
             db,
             current_user,
@@ -4262,6 +4421,11 @@ def manager_site_detail(
     )
 
 
+@app.get(
+    "/cantieri/{site_id}/avanzamento-griglie",
+    response_class=HTMLResponse,
+    name="site_progress_grids",
+)
 @app.get(
     "/manager/cantieri/{site_id}/avanzamento-griglie",
     response_class=HTMLResponse,
@@ -4998,7 +5162,7 @@ def manager_cantiere_modifica_get(
     try:
         site = (
             db.query(Site)
-            .options(joinedload(Site.strut_levels))
+            .options(joinedload(Site.strut_levels), joinedload(Site.coupes))
             .filter(Site.id == site_id)
             .first()
         )
@@ -5110,6 +5274,15 @@ def manager_cantiere_modifica_post(
     caposquadra_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
     numero_totale_pali: str | None = Form(None),
+    coupe_id: List[str] = Form(default_factory=list),
+    coupe_nome: List[str] = Form(default_factory=list),
+    coupe_quota_tn: List[str] = Form(default_factory=list),
+    coupe_quota_testa: List[str] = Form(default_factory=list),
+    coupe_quota_fondo_teorica: List[str] = Form(default_factory=list),
+    coupe_profondita_teorica: List[str] = Form(default_factory=list),
+    coupe_spessore: List[str] = Form(default_factory=list),
+    coupe_terreno_teorico: List[str] = Form(default_factory=list),
+    coupe_note: List[str] = Form(default_factory=list),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role == RoleEnum.caposquadra:
@@ -5216,6 +5389,14 @@ def manager_cantiere_modifica_post(
         site.numero_totale_paratie = total_paratie_value
         site.numero_totale_pali = total_pali_value
         site.paratie_total_panels = total_paratie_value
+        if not is_caposquadra:
+            _sync_site_coupes_from_form(
+                db, site, coupe_id=coupe_id, coupe_nome=coupe_nome,
+                coupe_quota_tn=coupe_quota_tn, coupe_quota_testa=coupe_quota_testa,
+                coupe_quota_fondo_teorica=coupe_quota_fondo_teorica,
+                coupe_profondita_teorica=coupe_profondita_teorica, coupe_spessore=coupe_spessore,
+                coupe_terreno_teorico=coupe_terreno_teorico, coupe_note=coupe_note,
+            )
         _sync_site_fiche_progress(db, site)
 
         new_status = site.status.value if site.status else None
@@ -5678,6 +5859,9 @@ async def capo_fiche_nuova_post(
     cantiere_id: int = Form(...),
     numero_pannello: str | None = Form(None),
     macchinario_id: str | None = Form(None),
+    coupe_id: str | None = Form(None),
+    scavo_da_tn: str | None = Form("1"),
+    quota_testa_getto: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
     metri_cubi_gettati: str | None = Form(None),
@@ -5707,6 +5891,9 @@ async def capo_fiche_nuova_post(
                 cantiere_id=cantiere_id,
                 numero_pannello=numero_pannello,
                 macchinario_id=macchinario_id,
+                coupe_id=coupe_id,
+                scavo_da_tn=scavo_da_tn,
+                quota_testa_getto=quota_testa_getto,
                 data_scavo=data_scavo,
                 data_getto=data_getto,
                 metri_cubi_gettati=metri_cubi_gettati,
@@ -5732,6 +5919,9 @@ async def capo_fiche_nuova_post(
             cantiere_id=cantiere_id,
             numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
+            coupe_id=coupe_id,
+            scavo_da_tn=scavo_da_tn,
+            quota_testa_getto=quota_testa_getto,
             data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
@@ -6028,6 +6218,9 @@ async def manager_fiche_update(
     cantiere_id: int = Form(...),
     numero_pannello: str | None = Form(None),
     macchinario_id: str | None = Form(None),
+    coupe_id: str | None = Form(None),
+    scavo_da_tn: str | None = Form("1"),
+    quota_testa_getto: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
     metri_cubi_gettati: str | None = Form(None),
@@ -6066,6 +6259,9 @@ async def manager_fiche_update(
                 cantiere_id=cantiere_id,
                 numero_pannello=numero_pannello,
                 macchinario_id=macchinario_id,
+                coupe_id=coupe_id,
+                scavo_da_tn=scavo_da_tn,
+                quota_testa_getto=quota_testa_getto,
                 data_scavo=data_scavo,
                 data_getto=data_getto,
                 metri_cubi_gettati=metri_cubi_gettati,
@@ -6093,6 +6289,9 @@ async def manager_fiche_update(
             cantiere_id=cantiere_id,
             numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
+            coupe_id=coupe_id,
+            scavo_da_tn=scavo_da_tn,
+            quota_testa_getto=quota_testa_getto,
             data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
@@ -6161,6 +6360,7 @@ def manager_fiche_dettaglio(
             db.query(Fiche)
             .options(
                 joinedload(Fiche.site),
+                joinedload(Fiche.coupe),
                 joinedload(Fiche.machine),
                 joinedload(Fiche.created_by),
                 joinedload(Fiche.stratigrafie),

@@ -85,6 +85,10 @@ FICHES_COLUMNS: tuple[str, ...] = (
     "quota_ngf_testa FLOAT",
     "quota_ngf_fondo FLOAT",
     "quota_ngf_note TEXT",
+    "coupe_id INTEGER",
+    "scavo_da_tn BOOLEAN NOT NULL DEFAULT 1",
+    "quota_partenza FLOAT",
+    "quota_testa_getto FLOAT",
 )
 
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
@@ -332,6 +336,7 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 date DATE NOT NULL,
                 numero_pannello INTEGER NOT NULL,
                 site_id INTEGER NOT NULL,
+                coupe_id INTEGER,
                 machine_id INTEGER,
                 created_by_id INTEGER NOT NULL,
                 fiche_type VARCHAR(15) NOT NULL,
@@ -351,9 +356,13 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 quota_ngf_testa FLOAT,
                 quota_ngf_fondo FLOAT,
                 quota_ngf_note TEXT,
+                scavo_da_tn BOOLEAN NOT NULL DEFAULT 1,
+                quota_partenza FLOAT,
+                quota_testa_getto FLOAT,
                 created_at DATETIME NOT NULL,
                 updated_at DATETIME NOT NULL,
                 FOREIGN KEY(site_id) REFERENCES sites(id),
+                FOREIGN KEY(coupe_id) REFERENCES site_coupes(id),
                 FOREIGN KEY(machine_id) REFERENCES machines(id),
                 FOREIGN KEY(created_by_id) REFERENCES users(id)
             )
@@ -364,18 +373,18 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
         text(
             """
             INSERT INTO fiches_nullable_hours (
-                id, date, numero_pannello, site_id, machine_id, created_by_id, fiche_type, description,
+                id, date, numero_pannello, site_id, coupe_id, machine_id, created_by_id, fiche_type, description,
                 operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
-                quota_ngf_note, created_at, updated_at
+                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, created_at, updated_at
             )
             SELECT
-                id, date, numero_pannello, site_id, machine_id, created_by_id, fiche_type, description,
+                id, date, numero_pannello, site_id, coupe_id, machine_id, created_by_id, fiche_type, description,
                 operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
-                quota_ngf_note, created_at, updated_at
+                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, created_at, updated_at
             FROM fiches
             """
         )
@@ -431,7 +440,7 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
         logger.warning("Skipped fiches unique migration: duplicate type/number rows exist.")
         return
 
-    optional_columns = ["quota_ngf_testa", "quota_ngf_fondo", "quota_ngf_note"]
+    optional_columns = ["quota_ngf_testa", "quota_ngf_fondo", "quota_ngf_note", "coupe_id", "scavo_da_tn", "quota_partenza", "quota_testa_getto"]
     select_optional = [col if col in columns else f"NULL AS {col}" for col in optional_columns]
 
     connection.execute(text("PRAGMA foreign_keys=OFF"))
@@ -443,6 +452,7 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
                 date DATE NOT NULL,
                 numero_pannello INTEGER NOT NULL,
                 site_id INTEGER NOT NULL,
+                coupe_id INTEGER,
                 machine_id INTEGER,
                 created_by_id INTEGER NOT NULL,
                 fiche_type VARCHAR(15) NOT NULL,
@@ -462,11 +472,15 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
                 quota_ngf_testa FLOAT,
                 quota_ngf_fondo FLOAT,
                 quota_ngf_note TEXT,
+                scavo_da_tn BOOLEAN NOT NULL DEFAULT 1,
+                quota_partenza FLOAT,
+                quota_testa_getto FLOAT,
                 created_at DATETIME NOT NULL,
                 updated_at DATETIME NOT NULL,
                 CONSTRAINT uq_fiches_site_tipologia_numero_pannello UNIQUE (site_id, tipologia_scavo, numero_pannello),
                 CONSTRAINT ck_fiches_numero_pannello_positive CHECK (numero_pannello > 0),
                 FOREIGN KEY(site_id) REFERENCES sites(id),
+                FOREIGN KEY(coupe_id) REFERENCES site_coupes(id),
                 FOREIGN KEY(machine_id) REFERENCES machines(id),
                 FOREIGN KEY(created_by_id) REFERENCES users(id)
             )
@@ -477,18 +491,18 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
         text(
             f"""
             INSERT INTO fiches_tipologia_unique (
-                id, date, numero_pannello, site_id, machine_id, created_by_id, fiche_type,
+                id, date, numero_pannello, site_id, coupe_id, machine_id, created_by_id, fiche_type,
                 description, operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
-                quota_ngf_note, created_at, updated_at
+                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, created_at, updated_at
             )
             SELECT
-                id, date, numero_pannello, site_id, machine_id, created_by_id, fiche_type,
+                id, date, numero_pannello, site_id, {select_optional[3]}, machine_id, created_by_id, fiche_type,
                 description, operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, {select_optional[0]}, {select_optional[1]},
-                {select_optional[2]}, created_at, updated_at
+                {select_optional[2]}, {select_optional[4]}, {select_optional[5]}, {select_optional[6]}, created_at, updated_at
             FROM fiches
             """
         )
