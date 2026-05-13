@@ -4030,6 +4030,9 @@ def manager_site_detail(
         pali_progress_map = _progress_map_summary(
             len(pali_fiches_map), numero_totale_pali
         )
+        pali_fatti = len(pali_fiches_map)
+        pali_percent = pali_progress_map["percent"]
+        pali_map = pali_fiches_map
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
@@ -4062,6 +4065,9 @@ def manager_site_detail(
             pali_fiches_map=pali_fiches_map,
             paratie_progress_map=paratie_progress_map,
             pali_progress_map=pali_progress_map,
+            pali_fatti=pali_fatti,
+            pali_percent=pali_percent,
+            pali_map=pali_map,
             can_open_fiche_details=has_perm(current_user, "manager.access"),
             site_tasks=site_tasks,
             open_tasks=open_tasks,
@@ -4708,6 +4714,33 @@ def manager_cantiere_modifica_get(
         progress_summary, strut_levels_view, strut_levels_count = _build_site_progress(
             site, lang
         )
+        site_fiches = (
+            db.query(Fiche)
+            .options(joinedload(Fiche.created_by))
+            .filter(Fiche.site_id == site.id)
+            .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
+            .all()
+        )
+        numero_totale_paratie = _site_paratie_total(site)
+        numero_totale_pali = _site_pali_total(site)
+        paratie_fiches_map = _build_site_fiches_map(
+            db, site.id, "paratia", numero_totale_paratie
+        )
+        pali_fiches_map = _build_site_fiches_map(
+            db, site.id, "palo", numero_totale_pali
+        )
+        paratie_progress_map = _progress_map_summary(
+            len(paratie_fiches_map), numero_totale_paratie
+        )
+        pali_progress_map = _progress_map_summary(
+            len(pali_fiches_map), numero_totale_pali
+        )
+        pali_fatti = len(pali_fiches_map)
+        pali_percent = pali_progress_map["percent"]
+        pali_map = pali_fiches_map
+        _update_progress_summary_for_fiche_grids(
+            progress_summary, site, site_fiches, lang
+        )
     finally:
         db.close()
 
@@ -4726,6 +4759,16 @@ def manager_cantiere_modifica_get(
             progress_summary=progress_summary,
             strut_levels=strut_levels_view,
             strut_levels_count=strut_levels_count,
+            numero_totale_paratie=numero_totale_paratie,
+            numero_totale_pali=numero_totale_pali,
+            paratie_fiches_map=paratie_fiches_map,
+            pali_fiches_map=pali_fiches_map,
+            paratie_progress_map=paratie_progress_map,
+            pali_progress_map=pali_progress_map,
+            pali_fatti=pali_fatti,
+            pali_percent=pali_percent,
+            pali_map=pali_map,
+            can_open_fiche_details=has_perm(current_user, "manager.access"),
         ),
     )
 
@@ -4929,6 +4972,9 @@ def capo_site_detail(
         pali_progress_map = _progress_map_summary(
             len(pali_fiches_map), numero_totale_pali
         )
+        pali_fatti = len(pali_fiches_map)
+        pali_percent = pali_progress_map["percent"]
+        pali_map = pali_fiches_map
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
@@ -4952,6 +4998,9 @@ def capo_site_detail(
             pali_fiches_map=pali_fiches_map,
             paratie_progress_map=paratie_progress_map,
             pali_progress_map=pali_progress_map,
+            pali_fatti=pali_fatti,
+            pali_percent=pali_percent,
+            pali_map=pali_map,
             can_open_fiche_details=False,
             site_tasks=site_tasks,
             open_tasks=open_tasks,
