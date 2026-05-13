@@ -671,6 +671,62 @@ def _validate_fiche_geometria(
         )
 
 
+FICHE_STRATIGRAFIA_DEPTH_ERROR = (
+    "La profondità totale scavata deve corrispondere all’ultimo strato di stratigrafia"
+)
+
+
+def _invalid_fields_for_fiche_error(error_message: str | None) -> list[str]:
+    if error_message == FICHE_STRATIGRAFIA_DEPTH_ERROR:
+        return ["profondita_totale", "strato_a_last"]
+    if error_message and "stratigrafia" in error_message.lower():
+        return ["stratigrafia"]
+    return []
+
+
+def _validate_fiche_stratigrafia(
+    profondita_totale: float | None,
+    strato_da: list[float] | None,
+    strato_a: list[float] | None,
+) -> None:
+    strato_da = strato_da or []
+    strato_a = strato_a or []
+    max_len = max(len(strato_da), len(strato_a), 0)
+    layers: list[tuple[float, float]] = []
+
+    for index in range(max_len):
+        da_val = strato_da[index] if index < len(strato_da) else None
+        a_val = strato_a[index] if index < len(strato_a) else None
+        if da_val is None and a_val is None:
+            continue
+        if da_val is None or a_val is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Ogni strato di stratigrafia deve avere sia Da (m) sia A (m).",
+            )
+        if da_val >= a_val:
+            raise HTTPException(
+                status_code=400,
+                detail="Ogni valore Da (m) deve essere minore del relativo A (m).",
+            )
+        layers.append((da_val, a_val))
+
+    if not layers:
+        return
+
+    previous_a = layers[0][1]
+    for da_val, a_val in layers[1:]:
+        if abs(da_val - previous_a) > 0.000001:
+            raise HTTPException(
+                status_code=400,
+                detail="Gli strati di stratigrafia devono essere continui.",
+            )
+        previous_a = a_val
+
+    if profondita_totale is None or abs(profondita_totale - layers[-1][1]) > 0.000001:
+        raise HTTPException(status_code=400, detail=FICHE_STRATIGRAFIA_DEPTH_ERROR)
+
+
 def _validate_metri_cubi_gettati(metri_cubi_gettati: float | None) -> None:
     if metri_cubi_gettati is None:
         raise HTTPException(
@@ -735,6 +791,7 @@ def _build_fiche_form_data(
     strato_da: list[float] | None = None,
     strato_a: list[float] | None = None,
     strato_materiale: list[str] | None = None,
+    invalid_fields: list[str] | None = None,
 ) -> dict:
     def _fmt(value):
         return "" if value is None else str(value)
@@ -780,6 +837,7 @@ def _build_fiche_form_data(
         "larghezza_pannello": _fmt(larghezza_pannello),
         "altezza_pannello": _fmt(altezza_pannello),
         "strati": strati,
+        "invalid_fields": invalid_fields or [],
     }
 
 
@@ -1544,11 +1602,14 @@ async def manager_fiche_create(
             profondita_totale=profondita_totale,
         )
         _validate_metri_cubi_gettati(metri_cubi_gettati)
+
         _validate_stratigrafia_matches_depth(
             profondita_totale=profondita_totale,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
         )
+
+
 
         db = SessionLocal()
         try:
@@ -1593,10 +1654,6 @@ async def manager_fiche_create(
 
             for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
                 if not mat:
-                    continue
-                if da_val is None or a_val is None:
-                    continue
-                if a_val <= da_val:
                     continue
                 layer = FicheStratigrafia(
                     fiche_id=fiche.id,
@@ -1667,6 +1724,7 @@ async def manager_fiche_create(
             diametro_palo_cm=diametro_value_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
+            invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
             strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
@@ -4672,6 +4730,7 @@ async def capo_fiche_nuova_post(
             profondita_totale=profondita_totale,
         )
         _validate_metri_cubi_gettati(metri_cubi_gettati)
+
         _validate_stratigrafia_matches_depth(
             profondita_totale=profondita_totale,
             strato_a=strato_a,
@@ -4723,10 +4782,6 @@ async def capo_fiche_nuova_post(
 
             for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
                 if not mat:
-                    continue
-                if da_val is None or a_val is None:
-                    continue
-                if a_val <= da_val:
                     continue
                 layer = FicheStratigrafia(
                     fiche_id=fiche.id,
@@ -4795,6 +4850,7 @@ async def capo_fiche_nuova_post(
             diametro_palo_cm=diametro_value_cm,
             larghezza_pannello=larghezza_pannello,
             altezza_pannello=altezza_pannello,
+            invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
             strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,

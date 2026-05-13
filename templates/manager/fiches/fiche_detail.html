@@ -10,8 +10,8 @@
 {% block content %}
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set diametro_cm = fiche.diametro_palo * 100 if fiche.diametro_palo is not none else None %}
-{% set larghezza_cm = fiche.larghezza_pannello * 100 if fiche.larghezza_pannello is not none else None %}
-{% set altezza_cm = fiche.altezza_pannello %}
+{% set larghezza_m = fiche.larghezza_pannello if fiche.larghezza_pannello is not none else None %}
+{% set spessore_m = fiche.altezza_pannello if fiche.altezza_pannello is not none else None %}
 {% set stratigrafie = fiche.stratigrafie or [] %}
 {% set strat_layers = fiche.layers or [] %}
 {% set visual_layers = stratigrafia_visual_layers or [] %}
@@ -105,11 +105,11 @@
                 </div>
             {% elif is_paratia %}
                 <div class="kpi-card">
-                    <div class="kpi-top">📐 {% if lang == 'fr' %}Paroi (L × H){% else %}Paratia (L × H){% endif %}</div>
+                    <div class="kpi-top">📐 {% if lang == 'fr' %}Paroi (largeur × épaisseur){% else %}Paratia (larghezza × spessore){% endif %}</div>
                     <div class="kpi-value kpi-value--geometry">
-                        {% if larghezza_cm is not none or altezza_cm is not none %}
-                            <span class="kpi-number">{{ larghezza_cm|round(1) if larghezza_cm is not none else "-" }} × {{ altezza_cm|round(1) if altezza_cm is not none else "-" }}</span>
-                            <span class="unit-badge unit-badge--kpi">cm</span>
+                        {% if larghezza_m is not none or spessore_m is not none %}
+                            <span class="kpi-number">{{ larghezza_m|round(2) if larghezza_m is not none else "-" }} × {{ spessore_m|round(2) if spessore_m is not none else "-" }}</span>
+                            <span class="unit-badge unit-badge--kpi">m</span>
                         {% else %}
                             <span class="kpi-number">-</span>
                         {% endif %}

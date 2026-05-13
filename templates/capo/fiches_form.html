@@ -6,6 +6,7 @@
 {% block content %}
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set form_data = form_data or {} %}
+{% set invalid_fields = form_data.get('invalid_fields', []) %}
 
 <div class="form-page">
     <div class="form-page-header">
@@ -31,6 +32,7 @@
                     {{ error_message }}
                 </div>
             {% endif %}
+            <div class="alert alert-danger fiche-client-error" data-fiche-stratigrafia-error role="alert" hidden></div>
 
             {% set selected_site = form_data.get('cantiere_id', '') %}
             {% set selected_machine = form_data.get('macchinario_id', '') %}
@@ -44,7 +46,7 @@
               {% endif %}
             {% endif %}
 
-            <form method="post" class="form-grid form-grid--single">
+            <form method="post" class="form-grid form-grid--single" data-fiche-form>
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="cantiere_id">
@@ -230,6 +232,7 @@
                                            step="0.1"
                                            min="0"
                                            name="strato_da"
+                                           data-strato-da
                                            class="form-control"
                                            value="{{ strato.da }}" />
                                 </div>
@@ -241,7 +244,8 @@
                                            step="0.1"
                                            min="0"
                                            name="strato_a"
-                                           class="form-control"
+                                           data-strato-a
+                                           class="form-control {% if 'strato_a_last' in invalid_fields and loop.last %}is-invalid{% endif %}"
                                            value="{{ strato.a }}" />
                                 </div>
                                 <div class="form-group">
@@ -396,7 +400,8 @@
                                                    type="number"
                                                    step="0.1"
                                                    min="0.1"
-                                                   class="form-control geometry-input input-field"
+                                                   class="form-control geometry-input input-field {% if 'profondita_totale' in invalid_fields %}is-invalid{% endif %}"
+                                                   data-profondita-totale
                                                    value="{{ form_data.get('profondita_totale', '') }}" />
                                             <span class="unit-badge unit">m</span>
                                         </div>
@@ -475,7 +480,7 @@
                                                        min="0.01"
                                                        class="form-control geometry-input input-field"
                                                        value="{{ form_data.get('altezza_pannello', '') }}" />
-                                                <span class="unit-badge unit">cm</span>
+                                                <span class="unit-badge unit">m</span>
                                             </div>
                                         </div>
                                     </div>
@@ -506,6 +511,116 @@
     </div>
 </div>
 
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector("[data-fiche-form]");
+    if (!form) return;
+
+    const depthInput = form.querySelector("[data-profondita-totale]");
+    const errorBox = form.querySelector("[data-fiche-stratigrafia-error]");
+    const depthMismatchMessage = "La profondità totale scavata deve corrispondere all’ultimo strato di stratigrafia";
+
+    function parseNumber(input) {
+        if (!input || input.value === "") return null;
+        const value = Number.parseFloat(input.value);
+        return Number.isFinite(value) ? value : null;
+    }
+
+    function rows() {
+        return Array.from(form.querySelectorAll(".strato-row")).map(function (row) {
+            return {
+                row: row,
+                daInput: row.querySelector("[data-strato-da]"),
+                aInput: row.querySelector("[data-strato-a]")
+            };
+        });
+    }
+
+    function clearValidation() {
+        form.querySelectorAll(".is-invalid").forEach(function (input) {
+            input.classList.remove("is-invalid");
+            input.setCustomValidity("");
+        });
+        if (errorBox) {
+            errorBox.hidden = true;
+            errorBox.textContent = "";
+        }
+    }
+
+    function showError(message, inputs) {
+        inputs.filter(Boolean).forEach(function (input) {
+            input.classList.add("is-invalid");
+            input.setCustomValidity(message);
+        });
+        if (errorBox) {
+            errorBox.textContent = message;
+            errorBox.hidden = false;
+        }
+        const firstInput = inputs.find(Boolean) || depthInput;
+        if (firstInput) {
+            firstInput.reportValidity();
+            firstInput.focus({ preventScroll: true });
+        }
+    }
+
+    function validateStratigrafia() {
+        clearValidation();
+        const completedRows = [];
+
+        for (const item of rows()) {
+            const da = parseNumber(item.daInput);
+            const a = parseNumber(item.aInput);
+            if (da === null && a === null) continue;
+            if (da === null || a === null) {
+                showError("Ogni strato di stratigrafia deve avere sia Da (m) sia A (m).", [item.daInput, item.aInput]);
+                return false;
+            }
+            if (da >= a) {
+                showError("Ogni valore Da (m) deve essere minore del relativo A (m).", [item.daInput, item.aInput]);
+                return false;
+            }
+            completedRows.push({ da, a, daInput: item.daInput, aInput: item.aInput });
+        }
+
+        for (let i = 1; i < completedRows.length; i += 1) {
+            if (Math.abs(completedRows[i].da - completedRows[i - 1].a) > 0.000001) {
+                showError("Gli strati di stratigrafia devono essere continui.", [completedRows[i - 1].aInput, completedRows[i].daInput]);
+                return false;
+            }
+        }
+
+        if (completedRows.length > 0) {
+            const depth = parseNumber(depthInput);
+            const lastA = completedRows[completedRows.length - 1].a;
+            if (depth === null || Math.abs(depth - lastA) > 0.000001) {
+                showError(depthMismatchMessage, [depthInput, completedRows[completedRows.length - 1].aInput]);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    form.addEventListener("submit", function (event) {
+        if (!validateStratigrafia()) {
+            event.preventDefault();
+        }
+    });
+
+    form.addEventListener("input", function (event) {
+        if (event.target.matches("[data-profondita-totale], [data-strato-da], [data-strato-a]")) {
+            event.target.classList.remove("is-invalid");
+            event.target.setCustomValidity("");
+            if (errorBox) {
+                errorBox.hidden = true;
+                errorBox.textContent = "";
+            }
+        }
+    });
+});
+</script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const container = document.getElementById("strati-container");
@@ -535,7 +650,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const templateRow = rows[0];
         const clone = templateRow.cloneNode(true);
 
-        clone.querySelectorAll("input").forEach((input) => { input.value = ""; });
+        clone.querySelectorAll("input").forEach((input) => {
+            input.value = "";
+            input.classList.remove("is-invalid");
+            input.setCustomValidity("");
+        });
         clone.querySelectorAll("select").forEach((sel) => { sel.value = ""; });
 
         container.appendChild(clone);
@@ -600,7 +719,7 @@ document.addEventListener("DOMContentLoaded", function () {
             labelLarghezza.textContent = w ? w + " m" : "";
             labelLarghezza.style.display = w ? "block" : "none";
 
-            labelAltezza.textContent = h ? h + " cm" : "";
+            labelAltezza.textContent = h ? h + " m" : "";
             labelAltezza.style.display = h ? "block" : "none";
 
             if (labelDiametro) {

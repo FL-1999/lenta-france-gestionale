@@ -2827,6 +2827,21 @@ body {
     background: rgba(255, 250, 240, 0.9);
 }
 
+.form-control.is-invalid,
+.form-select.is-invalid,
+.form-textarea.is-invalid {
+    border-color: rgba(248, 113, 113, 0.95);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+
+.input-with-unit .form-control.is-invalid {
+    border-color: rgba(248, 113, 113, 0.95);
+}
+
+.fiche-client-error[hidden] {
+    display: none;
+}
+
 .form-control:focus,
 .form-select:focus,
 .form-textarea:focus {
