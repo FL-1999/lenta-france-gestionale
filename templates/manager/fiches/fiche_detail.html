@@ -223,9 +223,9 @@
 
         {% if visual_layers %}
             <div id="stratigrafia-visual" class="stratigrafia-visual" hidden>
-                <div class="soil-visual" aria-label="{% if lang == 'fr' %}Section technique verticale du terrain{% else %}Sezione tecnica verticale del terreno{% endif %}">
-                    <div class="soil-container">
-                        <div class="soil-layers">
+                <div class="soil-visual" aria-label="{% if lang == 'fr' %}Bloc technique 3D de stratigraphie du terrain{% else %}Blocco tecnico 3D di stratigrafia del terreno{% endif %}">
+                    <div class="soil-3d">
+                        <div class="soil-front">
                             {% for layer in visual_layers %}
                                 <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};">
                                     <span class="label label-left">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</span>
@@ -233,6 +233,12 @@
                                 </div>
                             {% endfor %}
                         </div>
+                        <div class="soil-side" aria-hidden="true">
+                            {% for layer in visual_layers %}
+                                <div class="soil-side-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};"></div>
+                            {% endfor %}
+                        </div>
+                        <div class="soil-bottom" aria-hidden="true"></div>
                     </div>
                 </div>
             </div>

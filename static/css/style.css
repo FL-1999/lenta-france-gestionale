@@ -4226,12 +4226,13 @@ label.form-label[for="profondita_totale"]{
 }
 
 .stratigrafia-visual {
-  background: linear-gradient(145deg, rgba(248, 250, 252, 0.08), rgba(15, 23, 42, 0.9));
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(145deg, rgba(20, 13, 8, 0.86), rgba(9, 8, 7, 0.94));
+  border: 1px solid rgba(120, 84, 45, 0.34);
   border-radius: 1.25rem;
-  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.32);
+  box-shadow: 0 22px 54px rgba(2, 6, 23, 0.42);
   margin-top: 1rem;
-  padding: clamp(0.75rem, 2vw, 1.15rem);
+  overflow: hidden;
+  padding: clamp(1.25rem, 4vw, 2.75rem) clamp(1rem, 4vw, 3.25rem) clamp(2.75rem, 5vw, 4rem);
 }
 
 .stratigrafia-visual[hidden] {
@@ -4240,73 +4241,116 @@ label.form-label[for="profondita_totale"]{
 
 .soil-visual {
   margin: 0 auto;
-  max-width: 820px;
-  perspective: 1200px;
+  max-width: 880px;
+  overflow: visible;
+  padding: 0 42px 36px 0;
   width: 100%;
 }
 
-.soil-container {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(15, 23, 42, 0.06));
-  border: 1px solid rgba(226, 232, 240, 0.28);
-  border-radius: 20px;
+.soil-3d {
+  filter: drop-shadow(0 30px 34px rgba(0, 0, 0, 0.38));
+  height: 360px;
+  margin: 0 auto;
+  max-width: 100%;
+  perspective: 900px;
+  position: relative;
+  width: 720px;
+}
+
+.soil-front {
+  background: #362012;
+  border: 1px solid rgba(255, 241, 214, 0.18);
+  border-radius: 14px;
   box-shadow:
-    0 26px 50px rgba(0, 0, 0, 0.38),
-    0 8px 18px rgba(15, 23, 42, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -18px 32px rgba(15, 23, 42, 0.18);
+    0 24px 50px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset -16px 0 28px rgba(0, 0, 0, 0.2),
+    inset 0 -18px 26px rgba(0, 0, 0, 0.18);
+  height: 100%;
   overflow: hidden;
   position: relative;
-  transform: rotateX(1.2deg) rotateY(-1.1deg);
-  transform-origin: center center;
-  width: 100%;
+  z-index: 3;
 }
 
-.soil-container::before,
-.soil-container::after {
+.soil-front::after {
+  background:
+    repeating-linear-gradient(180deg, transparent 0 31px, rgba(255, 255, 255, 0.035) 31px 32px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent 18%, transparent 76%, rgba(0, 0, 0, 0.22)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 13%, transparent 78%, rgba(0, 0, 0, 0.24));
   content: "";
   inset: 0;
+  mix-blend-mode: soft-light;
   pointer-events: none;
   position: absolute;
   z-index: 2;
 }
 
-.soil-container::before {
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 14%, transparent 84%, rgba(15, 23, 42, 0.32)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 10%, transparent 82%, rgba(0, 0, 0, 0.28));
-  mix-blend-mode: soft-light;
-}
-
-.soil-container::after {
-  background: linear-gradient(90deg, transparent 0 74%, rgba(0, 0, 0, 0.2) 100%);
-}
-
-.soil-layers {
-  display: flex;
-  flex-direction: column;
-  height: clamp(360px, 58vh, 520px);
+.soil-side {
+  background: linear-gradient(90deg, #3b2414, #1f130b);
+  border-radius: 0 12px 12px 0;
+  box-shadow:
+    inset 10px 0 18px rgba(255, 255, 255, 0.05),
+    inset -14px 0 24px rgba(0, 0, 0, 0.44),
+    18px 18px 28px rgba(0, 0, 0, 0.32);
+  height: calc(100% - 18px);
+  opacity: 0.95;
   overflow: hidden;
-  position: relative;
-  width: 100%;
+  position: absolute;
+  right: -34px;
+  top: 18px;
+  transform: skewY(28deg);
+  transform-origin: left top;
+  width: 34px;
+  z-index: 2;
 }
 
-.soil-layers::after {
-  background:
-    repeating-linear-gradient(180deg, transparent 0 27px, rgba(255, 255, 255, 0.045) 27px 28px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 22%, transparent 78%, rgba(0, 0, 0, 0.18));
+.soil-side::after {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.38));
   content: "";
   inset: 0;
   pointer-events: none;
   position: absolute;
+}
+
+.soil-side-layer {
+  animation: growDown 0.4s ease both;
+  animation-delay: calc(var(--layer-index, 0) * 60ms);
+  filter: brightness(0.58) saturate(0.92) contrast(1.08);
+  min-height: 0;
+  position: relative;
+  transform-origin: top center;
+}
+
+.soil-side-layer + .soil-side-layer {
+  border-top: 1px solid rgba(0, 0, 0, 0.32);
+}
+
+.soil-bottom {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04), transparent 36%),
+    linear-gradient(#3b2414, #17100a);
+  border-radius: 0 0 14px 14px;
+  bottom: -28px;
+  box-shadow:
+    inset 0 8px 16px rgba(255, 255, 255, 0.04),
+    inset 0 -12px 22px rgba(0, 0, 0, 0.45),
+    8px 18px 30px rgba(0, 0, 0, 0.35);
+  height: 28px;
+  left: 18px;
+  position: absolute;
+  transform: skewX(45deg);
+  transform-origin: left top;
+  width: calc(100% - 18px);
   z-index: 1;
 }
 
 .soil-layer {
   animation: growDown 0.4s ease both;
   animation-delay: calc(var(--layer-index, 0) * 60ms);
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
     inset 0 10px 16px rgba(255, 255, 255, 0.06),
+    inset -18px 0 28px rgba(0, 0, 0, 0.16),
     inset 0 -12px 18px rgba(0, 0, 0, 0.24);
   color: #fff;
   min-height: 0;
@@ -4321,7 +4365,7 @@ label.form-label[for="profondita_totale"]{
 
 .soil-layer .label {
   backdrop-filter: blur(7px);
-  background: rgba(15, 23, 42, 0.62);
+  background: rgba(15, 23, 42, 0.66);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
@@ -4336,7 +4380,7 @@ label.form-label[for="profondita_totale"]{
   top: 50%;
   transform: translateY(-50%);
   white-space: nowrap;
-  z-index: 3;
+  z-index: 4;
 }
 
 .soil-layer .label-left {
@@ -4348,6 +4392,41 @@ label.form-label[for="profondita_totale"]{
   font-weight: 700;
   right: 12px;
   text-align: right;
+}
+
+@media (max-width: 760px) {
+  .soil-visual {
+    padding-right: 30px;
+  }
+
+  .soil-3d {
+    height: 320px;
+  }
+
+  .soil-side {
+    right: -26px;
+    width: 26px;
+  }
+
+  .soil-bottom {
+    bottom: -22px;
+    height: 22px;
+  }
+}
+
+@media (max-width: 560px) {
+  .soil-layer .label {
+    max-width: calc(50% - 10px);
+    padding: 4px 7px;
+  }
+
+  .soil-layer .label-left {
+    left: 8px;
+  }
+
+  .soil-layer .label-right {
+    right: 8px;
+  }
 }
 
 @keyframes growDown {
