@@ -143,6 +143,11 @@
     </div>
     <div class="card-body">
         {% if numero_totale_paratie > 0 or numero_totale_pali > 0 %}
+            <div class="mb-3">
+                <a href="{{ url_for('manager_site_progress_grids', site_id=site.id) }}" class="btn btn-primary">
+                    Apri griglie avanzamento
+                </a>
+            </div>
             <p class="text-muted mb-3">
                 {% if lang == 'fr' %}
                     Vert = fiche créée, gris = fiche absente.{% if can_open_fiche_details|default(true) %} Cliquez sur une case verte pour ouvrir le détail de la fiche.{% endif %} Parois et pieux restent séparés.
