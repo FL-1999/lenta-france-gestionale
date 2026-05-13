@@ -330,6 +330,7 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
             CREATE TABLE fiches_nullable_hours (
                 id INTEGER PRIMARY KEY,
                 date DATE NOT NULL,
+                numero_pannello INTEGER NOT NULL,
                 site_id INTEGER NOT NULL,
                 machine_id INTEGER,
                 created_by_id INTEGER NOT NULL,
@@ -363,14 +364,14 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
         text(
             """
             INSERT INTO fiches_nullable_hours (
-                id, date, site_id, machine_id, created_by_id, fiche_type, description,
+                id, date, numero_pannello, site_id, machine_id, created_by_id, fiche_type, description,
                 operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
                 quota_ngf_note, created_at, updated_at
             )
             SELECT
-                id, date, site_id, machine_id, created_by_id, fiche_type, description,
+                id, date, numero_pannello, site_id, machine_id, created_by_id, fiche_type, description,
                 operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
@@ -385,6 +386,119 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
     connection.execute(text("CREATE INDEX IF NOT EXISTS ix_fiches_site_id ON fiches (site_id)"))
     connection.execute(text("PRAGMA foreign_keys=ON"))
     logger.info("Migrated fiches.hours to nullable.")
+
+
+def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
+    if not _table_exists(connection, "fiches"):
+        logger.warning("Skipped fiches unique migration: table not found.")
+        return
+
+    create_sql = connection.execute(
+        text("SELECT sql FROM sqlite_master WHERE type='table' AND name='fiches'")
+    ).scalar() or ""
+    if "uq_fiches_site_tipologia_numero_pannello" in create_sql or (
+        "tipologia_scavo" in create_sql
+        and "numero_pannello" in create_sql
+        and "UNIQUE (site_id, tipologia_scavo, numero_pannello)" in create_sql
+    ):
+        logger.info("fiches unique constraint already separates tipologia_scavo.")
+        return
+
+    columns = _read_existing_columns(connection, "fiches")
+    required_columns = {
+        "id", "date", "numero_pannello", "site_id", "machine_id", "created_by_id",
+        "fiche_type", "description", "operator", "hours", "notes", "tipologia_scavo",
+        "stratigrafia", "materiale", "profondita_totale", "diametro_palo",
+        "larghezza_pannello", "altezza_pannello", "data_getto", "metri_cubi_gettati",
+        "created_at", "updated_at",
+    }
+    if not required_columns.issubset(columns):
+        logger.warning("Skipped fiches unique migration: required columns not found.")
+        return
+
+    duplicate_rows = connection.execute(
+        text(
+            """
+            SELECT site_id, lower(tipologia_scavo) AS tipologia, numero_pannello, COUNT(*) AS total
+            FROM fiches
+            WHERE tipologia_scavo IS NOT NULL
+            GROUP BY site_id, lower(tipologia_scavo), numero_pannello
+            HAVING COUNT(*) > 1
+            """
+        )
+    ).fetchall()
+    if duplicate_rows:
+        logger.warning("Skipped fiches unique migration: duplicate type/number rows exist.")
+        return
+
+    optional_columns = ["quota_ngf_testa", "quota_ngf_fondo", "quota_ngf_note"]
+    select_optional = [col if col in columns else f"NULL AS {col}" for col in optional_columns]
+
+    connection.execute(text("PRAGMA foreign_keys=OFF"))
+    connection.execute(
+        text(
+            """
+            CREATE TABLE fiches_tipologia_unique (
+                id INTEGER PRIMARY KEY,
+                date DATE NOT NULL,
+                numero_pannello INTEGER NOT NULL,
+                site_id INTEGER NOT NULL,
+                machine_id INTEGER,
+                created_by_id INTEGER NOT NULL,
+                fiche_type VARCHAR(15) NOT NULL,
+                description TEXT NOT NULL,
+                operator VARCHAR(255),
+                hours FLOAT,
+                notes TEXT,
+                tipologia_scavo VARCHAR(50),
+                stratigrafia TEXT,
+                materiale VARCHAR(100),
+                profondita_totale FLOAT,
+                diametro_palo FLOAT,
+                larghezza_pannello FLOAT,
+                altezza_pannello FLOAT,
+                data_getto DATE,
+                metri_cubi_gettati FLOAT,
+                quota_ngf_testa FLOAT,
+                quota_ngf_fondo FLOAT,
+                quota_ngf_note TEXT,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                CONSTRAINT uq_fiches_site_tipologia_numero_pannello UNIQUE (site_id, tipologia_scavo, numero_pannello),
+                CONSTRAINT ck_fiches_numero_pannello_positive CHECK (numero_pannello > 0),
+                FOREIGN KEY(site_id) REFERENCES sites(id),
+                FOREIGN KEY(machine_id) REFERENCES machines(id),
+                FOREIGN KEY(created_by_id) REFERENCES users(id)
+            )
+            """
+        )
+    )
+    connection.execute(
+        text(
+            f"""
+            INSERT INTO fiches_tipologia_unique (
+                id, date, numero_pannello, site_id, machine_id, created_by_id, fiche_type,
+                description, operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
+                profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
+                data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
+                quota_ngf_note, created_at, updated_at
+            )
+            SELECT
+                id, date, numero_pannello, site_id, machine_id, created_by_id, fiche_type,
+                description, operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
+                profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
+                data_getto, metri_cubi_gettati, {select_optional[0]}, {select_optional[1]},
+                {select_optional[2]}, created_at, updated_at
+            FROM fiches
+            """
+        )
+    )
+    connection.execute(text("DROP TABLE fiches"))
+    connection.execute(text("ALTER TABLE fiches_tipologia_unique RENAME TO fiches"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_fiches_id ON fiches (id)"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_fiches_site_id ON fiches (site_id)"))
+    connection.execute(text("PRAGMA foreign_keys=ON"))
+    logger.info("Migrated fiches unique constraint to include tipologia_scavo.")
 
 
 def upgrade_db(engine: Engine) -> None:
@@ -419,6 +533,7 @@ def upgrade_db(engine: Engine) -> None:
         _backfill_user_roles(connection)
         _ensure_personale_user_link_constraints(connection)
         _ensure_fiche_hours_nullable(connection)
+        _ensure_fiches_unique_per_tipologia(connection)
 
 
 def check_db_schema(engine: Engine) -> dict[str, list[str]]:

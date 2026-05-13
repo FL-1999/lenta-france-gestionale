@@ -53,7 +53,7 @@
                             {% if lang == 'fr' %}Chantier*{% else %}Cantiere*{% endif %}
                         </label>
                         <select id="cantiere_id" name="cantiere_id" class="form-select" required>
-                            <option value="">
+                            <option value="" disabled {% if not selected_tipologia %}selected{% endif %}>
                                 {% if lang == 'fr' %}Sélectionnez un chantier{% else %}Seleziona un cantiere{% endif %}
                             </option>
                             {% for c in cantieri %}
@@ -66,7 +66,7 @@
 
                     <div class="form-group">
                         <label class="form-label" for="numero_pannello">
-                            {% if lang == 'fr' %}Numéro panneau*{% else %}Numero pannello*{% endif %}
+                            {% if lang == 'fr' %}Numéro paroi / pieu*{% else %}Numero paratia / palo*{% endif %}
                         </label>
                         <input id="numero_pannello"
                                name="numero_pannello"
@@ -75,7 +75,7 @@
                                required
                                class="form-control input-field"
                                value="{{ form_data.get('numero_pannello', '') }}"
-                               oninvalid="this.setCustomValidity('Inserire numero pannello')"
+                               oninvalid="this.setCustomValidity('Inserire numero paratia / palo')"
                                oninput="this.setCustomValidity('')" />
                     </div>
 
@@ -84,7 +84,7 @@
                             {% if lang == 'fr' %}Macchinario{% else %}Macchinario{% endif %}
                         </label>
                         <select id="macchinario_id" name="macchinario_id" class="form-select">
-                            <option value="">
+                            <option value="" disabled {% if not selected_tipologia %}selected{% endif %}>
                                 {% if lang == 'fr' %}Aucun{% else %}Nessuno{% endif %}
                             </option>
                             {% for m in macchinari %}
@@ -185,8 +185,8 @@
                             Tipologia di scavo
                         {% endif %}
                     </label>
-                    <select id="tipologia_scavo" name="tipologia_scavo" class="form-select">
-                        <option value="">
+                    <select id="tipologia_scavo" name="tipologia_scavo" class="form-select" required>
+                        <option value="" disabled {% if not selected_tipologia %}selected{% endif %}>
                             {% if lang == 'fr' %}Aucun{% else %}Nessuna{% endif %}
                         </option>
                         <option value="palo" {% if selected_tipologia == 'palo' %}selected{% endif %}>
@@ -271,7 +271,7 @@
                                         {% if lang == 'fr' %}Matériau{% else %}Materiale{% endif %}
                                     </label>
                                     <select name="strato_materiale" class="form-select">
-                                        <option value="">
+                                        <option value="" disabled {% if not selected_tipologia %}selected{% endif %}>
                                             {% if lang == 'fr' %}Sélectionnez{% else %}Seleziona{% endif %}
                                         </option>
                                         <option value="argilla" {% if strato.materiale == 'argilla' %}selected{% endif %}>

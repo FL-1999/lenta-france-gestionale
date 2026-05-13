@@ -61,6 +61,7 @@ from models import (
     FicheTypeEnum,
     Fiche,
     FicheStratigrafia,
+    SiteProgressGridName,
     Personale,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
@@ -1114,8 +1115,8 @@ def _create_validated_fiche(
     parsed_machine_id = _parse_optional_machine_id(macchinario_id)
     parsed_numero_pannello = _parse_required_positive_int(
         numero_pannello,
-        "Inserire numero pannello",
-        "Il numero pannello deve essere maggiore di 0",
+        "Inserire numero paratia / palo",
+        "Il numero paratia / palo deve essere maggiore di 0",
     )
     ore_scavate = _parse_optional_non_negative_float(ore_lavorate, "Ore scavate")
 
@@ -1147,7 +1148,10 @@ def _create_validated_fiche(
         if allowed_site_ids and site.id not in allowed_site_ids:
             raise HTTPException(status_code=403, detail="Cantiere non valido")
 
-    _ensure_unique_numero_pannello(db, cantiere_id, parsed_numero_pannello)
+    normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
+    _ensure_unique_numero_pannello(
+        db, cantiere_id, normalized_tipologia, parsed_numero_pannello
+    )
 
     if parsed_machine_id is not None:
         machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
@@ -1165,7 +1169,7 @@ def _create_validated_fiche(
         operator=operatore.strip(),
         hours=ore_scavate,
         notes=note or None,
-        tipologia_scavo=tipologia_scavo or None,
+        tipologia_scavo=normalized_tipologia,
         materiale=materiale or None,
         profondita_totale=profondita_value,
         diametro_palo=diametro_value_m,
@@ -1244,8 +1248,8 @@ def _update_validated_fiche(
     parsed_machine_id = _parse_optional_machine_id(macchinario_id)
     parsed_numero_pannello = _parse_required_positive_int(
         numero_pannello,
-        "Inserire numero pannello",
-        "Il numero pannello deve essere maggiore di 0",
+        "Inserire numero paratia / palo",
+        "Il numero paratia / palo deve essere maggiore di 0",
     )
     ore_scavate = _parse_optional_non_negative_float(ore_lavorate, "Ore scavate")
 
@@ -1273,9 +1277,11 @@ def _update_validated_fiche(
     if not site:
         raise HTTPException(status_code=400, detail="Cantiere non trovato")
 
+    normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
     _ensure_unique_numero_pannello(
         db,
         cantiere_id,
+        normalized_tipologia,
         parsed_numero_pannello,
         exclude_fiche_id=fiche.id,
     )
@@ -1296,7 +1302,7 @@ def _update_validated_fiche(
     fiche.operator = operatore.strip()
     fiche.hours = ore_scavate
     fiche.notes = note or None
-    fiche.tipologia_scavo = tipologia_scavo or None
+    fiche.tipologia_scavo = normalized_tipologia
     fiche.materiale = materiale or None
     fiche.profondita_totale = profondita_value
     fiche.diametro_palo = diametro_value_m
@@ -2958,23 +2964,38 @@ def _parse_required_positive_int(
     return parsed_value
 
 
+def _normalize_fiche_tipologia(tipologia_scavo: str | None) -> str:
+    tipologia = (tipologia_scavo or "").strip().lower()
+    if tipologia not in {"paratia", "palo"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Selezionare una tipologia di scavo valida: paratia o palo.",
+        )
+    return tipologia
+
+
 def _ensure_unique_numero_pannello(
     db: Session,
     site_id: int,
+    tipologia_scavo: str,
     numero_pannello: int,
     *,
     exclude_fiche_id: int | None = None,
 ) -> None:
+    normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
     query = db.query(Fiche.id).filter(
-        Fiche.site_id == site_id, Fiche.numero_pannello == numero_pannello
+        Fiche.site_id == site_id,
+        func.lower(Fiche.tipologia_scavo) == normalized_tipologia,
+        Fiche.numero_pannello == numero_pannello,
     )
     if exclude_fiche_id is not None:
         query = query.filter(Fiche.id != exclude_fiche_id)
     duplicate_exists = query.first() is not None
     if duplicate_exists:
+        label = "Paratia" if normalized_tipologia == "paratia" else "Palo"
         raise HTTPException(
             status_code=400,
-            detail="Pannello già registrato per questo cantiere",
+            detail=f"{label} {numero_pannello} già registrato per questo cantiere",
         )
 
 
@@ -3069,6 +3090,66 @@ def _build_site_pali_schema(site: Site, fiches: list[Fiche]) -> list[dict]:
     return _build_site_fiche_grid_schema(_site_pali_total(site), fiches, "palo")
 
 
+def _load_progress_grid_label_map(
+    db: Session, site_id: int, tipologia: str, total_elements: int
+) -> dict[int, str]:
+    if total_elements <= 0:
+        return {}
+    rows = (
+        db.query(SiteProgressGridName)
+        .filter(
+            SiteProgressGridName.site_id == site_id,
+            func.lower(SiteProgressGridName.tipologia_scavo) == tipologia.lower(),
+            SiteProgressGridName.numero_elemento >= 1,
+            SiteProgressGridName.numero_elemento <= total_elements,
+        )
+        .order_by(SiteProgressGridName.numero_elemento.asc())
+        .all()
+    )
+    return {int(row.numero_elemento): row.nome_personalizzato for row in rows}
+
+
+def _progress_grid_display_name(
+    element_number: int, default_label: str, custom_labels: dict[int, str] | None = None
+) -> str:
+    custom_label = (custom_labels or {}).get(element_number)
+    if custom_label:
+        return custom_label
+    return f"{default_label} {element_number}"
+
+
+def _save_progress_grid_label_map(
+    db: Session, site_id: int, tipologia: str, total_elements: int, submitted_labels: dict[int, str]
+) -> None:
+    normalized_tipologia = _normalize_fiche_tipologia(tipologia)
+    existing_rows = (
+        db.query(SiteProgressGridName)
+        .filter(
+            SiteProgressGridName.site_id == site_id,
+            func.lower(SiteProgressGridName.tipologia_scavo) == normalized_tipologia,
+        )
+        .all()
+    )
+    rows_by_number = {int(row.numero_elemento): row for row in existing_rows}
+    for element_number in range(1, total_elements + 1):
+        submitted_label = (submitted_labels.get(element_number) or "").strip()
+        row = rows_by_number.get(element_number)
+        if submitted_label:
+            if row is None:
+                db.add(
+                    SiteProgressGridName(
+                        site_id=site_id,
+                        tipologia_scavo=normalized_tipologia,
+                        numero_elemento=element_number,
+                        nome_personalizzato=submitted_label,
+                    )
+                )
+            else:
+                row.nome_personalizzato = submitted_label
+        elif row is not None:
+            db.delete(row)
+
+
 def _build_site_fiches_map(
     db: Session, site_id: int, tipologia: str, total_elements: int
 ) -> dict[int, Fiche]:
@@ -3100,7 +3181,10 @@ def _progress_map_summary(done: int, total: int) -> dict[str, int]:
 
 
 def _build_avanzamento_grid_items(
-    fiches_map: dict[int, Fiche], total_elements: int, label: str
+    fiches_map: dict[int, Fiche],
+    total_elements: int,
+    label: str,
+    custom_labels: dict[int, str] | None = None,
 ) -> list[dict[str, object]]:
     """Build the dedicated progress-grid view model with fiche preview data."""
 
@@ -3110,14 +3194,17 @@ def _build_avanzamento_grid_items(
 
     for element_number in range(1, total_elements + 1):
         fiche = fiches_map.get(element_number)
+        display_name = _progress_grid_display_name(element_number, label, custom_labels)
         if not fiche:
             items.append(
                 {
                     "number": element_number,
                     "label": label,
+                    "display_name": display_name,
+                    "custom_label": (custom_labels or {}).get(element_number, ""),
                     "is_completed": False,
                     "preview": {
-                        "title": f"{label} {element_number}",
+                        "title": display_name,
                         "missing": True,
                         "message": "Fiche non ancora creata",
                     },
@@ -3142,10 +3229,12 @@ def _build_avanzamento_grid_items(
             {
                 "number": element_number,
                 "label": label,
+                "display_name": display_name,
+                "custom_label": (custom_labels or {}).get(element_number, ""),
                 "is_completed": True,
                 "fiche_id": fiche.id,
                 "preview": {
-                    "title": f"{label} {element_number}",
+                    "title": display_name,
                     "missing": False,
                     "number": element_number,
                     "date": fiche.date.strftime("%d/%m/%Y") if fiche.date else "—",
@@ -4085,6 +4174,12 @@ def manager_site_detail(
         pali_fiches_map = _build_site_fiches_map(
             db, site.id, "palo", numero_totale_pali
         )
+        paratie_grid_labels = _load_progress_grid_label_map(
+            db, site.id, "paratia", numero_totale_paratie
+        )
+        pali_grid_labels = _load_progress_grid_label_map(
+            db, site.id, "palo", numero_totale_pali
+        )
         paratie_progress_map = _progress_map_summary(
             len(paratie_fiches_map), numero_totale_paratie
         )
@@ -4124,6 +4219,8 @@ def manager_site_detail(
             numero_totale_pali=numero_totale_pali,
             paratie_fiches_map=paratie_fiches_map,
             pali_fiches_map=pali_fiches_map,
+            paratie_grid_labels=paratie_grid_labels,
+            pali_grid_labels=pali_grid_labels,
             paratie_progress_map=paratie_progress_map,
             pali_progress_map=pali_progress_map,
             pali_fatti=pali_fatti,
@@ -4178,6 +4275,12 @@ def manager_site_progress_grids(
         pali_fiches_map = _build_site_fiches_map(
             db, site.id, "palo", numero_totale_pali
         )
+        paratie_grid_labels = _load_progress_grid_label_map(
+            db, site.id, "paratia", numero_totale_paratie
+        )
+        pali_grid_labels = _load_progress_grid_label_map(
+            db, site.id, "palo", numero_totale_pali
+        )
         paratie_progress_map = _progress_map_summary(
             len(paratie_fiches_map), numero_totale_paratie
         )
@@ -4189,10 +4292,10 @@ def manager_site_progress_grids(
             progress_summary, site, site_fiches, lang
         )
         paratie_grid = _build_avanzamento_grid_items(
-            paratie_fiches_map, numero_totale_paratie, "Paratia"
+            paratie_fiches_map, numero_totale_paratie, "Paratia", paratie_grid_labels
         )
         pali_grid = _build_avanzamento_grid_items(
-            pali_fiches_map, numero_totale_pali, "Palo"
+            pali_fiches_map, numero_totale_pali, "Palo", pali_grid_labels
         )
     finally:
         db.close()
@@ -4209,9 +4312,64 @@ def manager_site_progress_grids(
             numero_totale_pali=numero_totale_pali,
             paratie_progress_map=paratie_progress_map,
             pali_progress_map=pali_progress_map,
+            paratie_grid_labels=paratie_grid_labels,
+            pali_grid_labels=pali_grid_labels,
             paratie_grid=paratie_grid,
             pali_grid=pali_grid,
         ),
+    )
+
+
+@app.post(
+    "/manager/cantieri/{site_id}/avanzamento-griglie",
+    name="manager_site_progress_grids_update",
+)
+@app.post(
+    "/admin/cantieri/{site_id}/avanzamento-griglie",
+    name="admin_site_progress_grids_update",
+)
+async def manager_site_progress_grids_update(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    form = await request.form()
+
+    def collect_labels(prefix: str, total_elements: int) -> dict[int, str]:
+        labels: dict[int, str] = {}
+        for element_number in range(1, total_elements + 1):
+            labels[element_number] = str(form.get(f"{prefix}_{element_number}") or "")
+        return labels
+
+    db = SessionLocal()
+    try:
+        site = _get_site_for_detail(db, site_id, current_user)
+        numero_totale_paratie = _site_paratie_total(site)
+        numero_totale_pali = _site_pali_total(site)
+        _save_progress_grid_label_map(
+            db,
+            site.id,
+            "paratia",
+            numero_totale_paratie,
+            collect_labels("paratia_label", numero_totale_paratie),
+        )
+        _save_progress_grid_label_map(
+            db,
+            site.id,
+            "palo",
+            numero_totale_pali,
+            collect_labels("palo_label", numero_totale_pali),
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(
+        url=str(request.url_for("manager_site_progress_grids", site_id=site_id)),
+        status_code=303,
     )
 
 

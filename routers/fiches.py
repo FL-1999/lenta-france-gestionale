@@ -17,7 +17,10 @@ router = APIRouter(prefix="/fiches", tags=["fiches"])
 
 def _sync_site_fiche_progress(db: Session, site: Site) -> None:
     paratie_scavate = (
-        db.query(func.count(Fiche.id)).filter(Fiche.site_id == site.id).scalar() or 0
+        db.query(func.count(Fiche.id))
+        .filter(Fiche.site_id == site.id, func.lower(Fiche.tipologia_scavo) == "paratia")
+        .scalar()
+        or 0
     )
     site.paratie_done_panels = int(paratie_scavate)
     if site.totale_paratie_da_scavare is not None:
@@ -34,17 +37,35 @@ def _sync_site_fiche_progress(db: Session, site: Site) -> None:
     )
 
 
-def _ensure_unique_numero_pannello(db: Session, site_id: int, numero_pannello: int) -> None:
+def _normalize_fiche_tipologia(tipologia_scavo: str | None) -> str:
+    tipologia = (tipologia_scavo or "").strip().lower()
+    if tipologia not in {"paratia", "palo"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Selezionare una tipologia di scavo valida: paratia o palo.",
+        )
+    return tipologia
+
+
+def _ensure_unique_numero_pannello(
+    db: Session, site_id: int, tipologia_scavo: str | None, numero_pannello: int
+) -> None:
+    normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
     duplicate_exists = (
         db.query(Fiche.id)
-        .filter(Fiche.site_id == site_id, Fiche.numero_pannello == numero_pannello)
+        .filter(
+            Fiche.site_id == site_id,
+            func.lower(Fiche.tipologia_scavo) == normalized_tipologia,
+            Fiche.numero_pannello == numero_pannello,
+        )
         .first()
         is not None
     )
     if duplicate_exists:
+        label = "Paratia" if normalized_tipologia == "paratia" else "Palo"
         raise HTTPException(
             status_code=400,
-            detail="Pannello già registrato per questo cantiere",
+            detail=f"{label} {numero_pannello} già registrato per questo cantiere",
         )
 
 
@@ -159,7 +180,10 @@ def create_fiche(
     current_user: User = Depends(get_current_active_user),
 ):
     site = get_site_for_user(db, fiche_in.site_id, current_user)
-    _ensure_unique_numero_pannello(db, fiche_in.site_id, fiche_in.numero_pannello)
+    normalized_tipologia = _normalize_fiche_tipologia(fiche_in.tipologia_scavo)
+    _ensure_unique_numero_pannello(
+        db, fiche_in.site_id, normalized_tipologia, fiche_in.numero_pannello
+    )
 
     machine = None
     if fiche_in.machine_id is not None:
@@ -177,7 +201,7 @@ def create_fiche(
         operator=fiche_in.operator,
         hours=fiche_in.hours,
         notes=fiche_in.notes,
-        tipologia_scavo=fiche_in.tipologia_scavo,
+        tipologia_scavo=normalized_tipologia,
         materiale=fiche_in.materiale,
         profondita_totale=fiche_in.profondita_totale,
         diametro_palo=fiche_in.diametro_palo,

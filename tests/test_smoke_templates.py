@@ -15,6 +15,8 @@ from main import (
     _build_site_pali_schema,
     _build_site_panel_schema,
     _build_sites_map_data,
+    _build_avanzamento_grid_items,
+    _ensure_unique_numero_pannello,
     app,
     get_current_active_user_html,
     templates,
@@ -325,6 +327,63 @@ def test_build_site_schemas_keep_pali_and_paratie_separate() -> None:
 
     assert [panel["fiche_id"] for panel in panel_schema] == [20, None]
     assert [palo_item["fiche_id"] for palo_item in pali_schema] == [None, 21]
+
+
+def test_unique_numero_pannello_is_scoped_by_tipologia() -> None:
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+    SQLModel.metadata.create_all(bind=engine)
+
+    db = TestingSessionLocal()
+    try:
+        site = Site(id=99, name="Cantiere Duplicati", status=SiteStatusEnum.aperto)
+        user = User(
+            id=99,
+            email="duplicati@example.com",
+            full_name="Capo Duplicati",
+            hashed_password="fake",
+            role=RoleEnum.caposquadra,
+        )
+        db.add_all([site, user])
+        db.flush()
+        db.add(
+            Fiche(
+                date=date(2026, 5, 12),
+                numero_pannello=1,
+                site_id=site.id,
+                created_by_id=user.id,
+                fiche_type=FicheTypeEnum.produzione,
+                description="Paratia 1",
+                tipologia_scavo="paratia",
+            )
+        )
+        db.flush()
+
+        _ensure_unique_numero_pannello(db, site.id, "palo", 1)
+
+        try:
+            _ensure_unique_numero_pannello(db, site.id, "paratia", 1)
+        except Exception as exc:
+            assert getattr(exc, "status_code", None) == 400
+            assert "Paratia 1" in getattr(exc, "detail", "")
+        else:
+            raise AssertionError("Paratia duplicata non bloccata")
+    finally:
+        db.close()
+
+
+def test_avanzamento_grid_uses_custom_display_names() -> None:
+    items = _build_avanzamento_grid_items({}, 2, "Paratia", {1: "P1"})
+
+    assert items[0]["display_name"] == "P1"
+    assert items[0]["preview"]["title"] == "P1"
+    assert items[1]["display_name"] == "Paratia 2"
+
 
 def test_manager_site_detail_renders_panel_schema() -> None:
     site = Site(

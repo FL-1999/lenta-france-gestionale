@@ -40,7 +40,7 @@
             data-fiche-url="{{ fiche_url }}"
             aria-label="{{ title }} {{ item.number }}: {{ 'fiche creata' if item.is_completed else 'fiche non ancora creata' }}"
           >
-            <span>{{ item.number }}</span>
+            <span>{{ item.display_name }}</span>
           </button>
         {% endfor %}
       </div>
@@ -66,6 +66,7 @@
     <p class="page-subtitle">{{ site.name }}</p>
   </div>
   <div class="page-actions">
+    <button type="button" class="btn btn-primary" data-grid-edit-toggle>Modifica griglia</button>
     <a href="{{ url_for('manager_site_detail', site_id=site.id) }}#schema-pannelli" class="btn btn-secondary">Torna ad Avanzamento lavori</a>
   </div>
 </div>
@@ -81,6 +82,69 @@
       {{ summary_card('Paratie', paratie_progress_map) }}
       {{ summary_card('Pali', pali_progress_map) }}
     </div>
+  </div>
+</section>
+
+<section class="card advanced-progress-edit-card" id="advanced-progress-edit" hidden>
+  <div class="card-body">
+    <div class="advanced-progress-section__header">
+      <div>
+        <p class="page-eyebrow mb-1">Admin / manager</p>
+        <h2 class="card-title mb-1">Modifica griglia</h2>
+        <p class="text-muted mb-0">Inserisci un nome personalizzato per ogni paratia o palo. Se lasci vuoto, resta il numero standard.</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('manager_site_progress_grids_update', site_id=site.id) }}">
+      <div class="advanced-progress-edit-columns">
+        <section>
+          <h3>Paratie</h3>
+          {% if paratie_grid %}
+            <div class="advanced-progress-edit-grid">
+              {% for item in paratie_grid %}
+                <label class="form-label" for="paratia-label-{{ item.number }}">
+                  Paratia {{ item.number }}
+                  <input
+                    id="paratia-label-{{ item.number }}"
+                    name="paratia_label_{{ item.number }}"
+                    class="form-control"
+                    maxlength="100"
+                    value="{{ item.custom_label }}"
+                    placeholder="Paratia {{ item.number }}"
+                  />
+                </label>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted">Nessuna paratia configurata.</p>
+          {% endif %}
+        </section>
+        <section>
+          <h3>Pali</h3>
+          {% if pali_grid %}
+            <div class="advanced-progress-edit-grid">
+              {% for item in pali_grid %}
+                <label class="form-label" for="palo-label-{{ item.number }}">
+                  Palo {{ item.number }}
+                  <input
+                    id="palo-label-{{ item.number }}"
+                    name="palo_label_{{ item.number }}"
+                    class="form-control"
+                    maxlength="100"
+                    value="{{ item.custom_label }}"
+                    placeholder="Palo {{ item.number }}"
+                  />
+                </label>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted">Nessun palo configurato.</p>
+          {% endif %}
+        </section>
+      </div>
+      <div class="page-actions mt-3">
+        <button type="submit" class="btn btn-primary">Salva nomi griglia</button>
+      </div>
+    </form>
   </div>
 </section>
 
@@ -148,7 +212,7 @@
         setLinkState("");
       } else {
         body.innerHTML = [
-          row("Numero pannello/palo", preview.number),
+          row("Numero paratia / palo", preview.title || preview.number),
           row("Data", preview.date),
           row("Operatore", preview.operator),
           row("Volume gettato", `${preview.volume_gettato || "—"} m³`),
@@ -166,6 +230,14 @@
       modal.classList.remove("is-open");
       modal.setAttribute("aria-hidden", "true");
     };
+
+    const editToggle = document.querySelector("[data-grid-edit-toggle]");
+    const editPanel = document.getElementById("advanced-progress-edit");
+    if (editToggle && editPanel) {
+      editToggle.addEventListener("click", () => {
+        editPanel.hidden = !editPanel.hidden;
+      });
+    }
 
     document.querySelectorAll("[data-progress-cell]").forEach((cell) => {
       cell.addEventListener("click", () => {

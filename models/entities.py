@@ -426,6 +426,11 @@ class Site(Base):
     # Relazioni
     reports = relationship("Report", back_populates="site", cascade="all, delete-orphan")
     fiches = relationship("Fiche", back_populates="site", cascade="all, delete-orphan")
+    progress_grid_names = relationship(
+        "SiteProgressGridName",
+        back_populates="site",
+        cascade="all, delete-orphan",
+    )
     machines = relationship("Machine", back_populates="site", cascade="all, delete-orphan")
     strut_levels = relationship(
         "SiteStrutLevel",
@@ -659,13 +664,38 @@ class Report(Base, TimestampMixin):
 # MODELLO FICHE DI CANTIERE
 # ------------------------------------------------------------
 
+
+class SiteProgressGridName(Base, TimestampMixin):
+    __tablename__ = "site_progress_grid_names"
+    __table_args__ = (
+        UniqueConstraint(
+            "site_id",
+            "tipologia_scavo",
+            "numero_elemento",
+            name="uq_site_progress_grid_names_site_tipologia_numero",
+        ),
+        CheckConstraint(
+            "numero_elemento > 0",
+            name="ck_site_progress_grid_names_numero_positive",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id"), nullable=False, index=True)
+    site = relationship("Site", back_populates="progress_grid_names")
+    tipologia_scavo = Column(String(50), nullable=False)
+    numero_elemento = Column(Integer, nullable=False)
+    nome_personalizzato = Column(String(100), nullable=False)
+
+
 class Fiche(Base, TimestampMixin):
     __tablename__ = "fiches"
     __table_args__ = (
         UniqueConstraint(
             "site_id",
+            "tipologia_scavo",
             "numero_pannello",
-            name="uq_fiches_site_numero_pannello",
+            name="uq_fiches_site_tipologia_numero_pannello",
         ),
         CheckConstraint("numero_pannello > 0", name="ck_fiches_numero_pannello_positive"),
     )
