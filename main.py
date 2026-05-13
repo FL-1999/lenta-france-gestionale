@@ -5749,6 +5749,12 @@ def manager_fiches(
             query = query.filter(Fiche.fiche_type == parsed_fiche_type)
 
         fiches_list = query.order_by(Fiche.date.desc(), Fiche.id.desc()).all()
+        paratie_fiches_list = [
+            fiche for fiche in fiches_list if _fiche_schema_kind(fiche) == "paratia"
+        ]
+        pali_fiches_list = [
+            fiche for fiche in fiches_list if _fiche_schema_kind(fiche) == "palo"
+        ]
     finally:
         db.close()
 
@@ -5759,6 +5765,8 @@ def manager_fiches(
             request,
             current_user,
             fiches=fiches_list,
+            paratie_fiches=paratie_fiches_list,
+            pali_fiches=pali_fiches_list,
             total_fiches=len(fiches_list),
             active_site_progress=active_site_progress,
             completed_site_progress=completed_site_progress,

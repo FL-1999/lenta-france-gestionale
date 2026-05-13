@@ -705,3 +705,77 @@ def test_driver_trip_detail_renders_map_section() -> None:
 
     assert "Mappa viaggio" in output
     assert "Apri in Google Maps" in output
+
+
+def test_manager_fiches_site_page_splits_paratie_pali_and_links_progress_grid() -> None:
+    site = SimpleNamespace(id=42, name="Cantiere Split", code="SPL-042")
+    paratia_fiche = SimpleNamespace(
+        id=101,
+        date=date(2026, 5, 12),
+        numero_pannello=1,
+        machine=None,
+        operator="Operatore Paratia",
+        created_by=SimpleNamespace(full_name="Capo Paratia"),
+        hours=6.0,
+        fiche_type=FicheTypeEnum.produzione,
+    )
+    palo_fiche = SimpleNamespace(
+        id=102,
+        date=date(2026, 5, 13),
+        numero_pannello=2,
+        machine=None,
+        operator="Operatore Palo",
+        created_by=SimpleNamespace(full_name="Capo Palo"),
+        hours=4.0,
+        fiche_type=FicheTypeEnum.produzione,
+    )
+
+    output = render_template(
+        "manager/fiches_list.html",
+        {
+            "request": build_request("/manager/fiches?site_id=42"),
+            "user": build_manager_user(),
+            "selected_site": site,
+            "selected_site_id": site.id,
+            "fiches": [paratia_fiche, palo_fiche],
+            "paratie_fiches": [paratia_fiche],
+            "pali_fiches": [palo_fiche],
+            "total_fiches": 2,
+            "active_site_progress": [],
+            "completed_site_progress": [],
+            "filters": {"from_date": "", "to_date": "", "fiche_type": ""},
+        },
+    )
+
+    assert 'href="http://testserver/manager/cantieri/42/avanzamento-griglie"' in output
+    assert "Griglia avanzamento" in output
+    assert "PARATIE" in output
+    assert "PALI" in output
+    assert "Operatore Paratia" in output
+    assert "Operatore Palo" in output
+    assert output.index("PARATIE") < output.index("Operatore Paratia") < output.index("PALI")
+    assert output.index("PALI") < output.index("Operatore Palo")
+
+
+def test_manager_fiches_site_page_shows_empty_section_messages() -> None:
+    site = SimpleNamespace(id=43, name="Cantiere Vuoto", code="V-043")
+
+    output = render_template(
+        "manager/fiches_list.html",
+        {
+            "request": build_request("/manager/fiches?site_id=43"),
+            "user": build_manager_user(),
+            "selected_site": site,
+            "selected_site_id": site.id,
+            "fiches": [],
+            "paratie_fiches": [],
+            "pali_fiches": [],
+            "total_fiches": 0,
+            "active_site_progress": [],
+            "completed_site_progress": [],
+            "filters": {"from_date": "", "to_date": "", "fiche_type": ""},
+        },
+    )
+
+    assert "Nessuna fiche paratia registrata" in output
+    assert "Nessuna fiche palo registrata" in output
