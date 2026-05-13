@@ -4637,6 +4637,11 @@ label.form-label[for="profondita_totale"]{
   padding: 6px 10px;
 }
 
+.progress-map-bar {
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
 .progress-map-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
@@ -4672,4 +4677,21 @@ label.form-label[for="profondita_totale"]{
 .progress-cell.done:focus-visible {
   transform: translateY(-2px);
   filter: brightness(1.1);
+}
+
+@media (max-width: 640px) {
+  .progress-map-section {
+    padding: 14px;
+  }
+
+  .progress-map-grid {
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+    gap: 8px;
+  }
+
+  .progress-cell {
+    height: 34px;
+    border-radius: 8px;
+    font-size: 12px;
+  }
 }

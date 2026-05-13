@@ -57,90 +57,98 @@
     </div>
 </div>
 
-{% macro fiche_grid(schema, label, done, total, percent, aria_label, can_open_fiches=True) %}
-    <div class="site-panel-schema__group">
-        <div class="site-panel-schema__group-header">
-            <h3 class="h5 mb-0">{{ label }}</h3>
-            <span class="progress-card-percent">{{ done }}/{{ total }} · {{ percent }}%</span>
-        </div>
-        <div class="progress-bar" aria-hidden="true">
-            <div class="progress-bar-fill" style="width: {{ percent }}%;"></div>
-        </div>
-        <div class="grid-avanzamento panel-grid" role="list" aria-label="{{ aria_label }}">
-            {% for panel in schema %}
-                {% if panel.is_completed and can_open_fiches %}
-                    <a
-                        href="{{ url_for('manager_fiches_detail', fiche_id=panel.fiche_id) }}"
-                        class="cell done panel-tile panel-tile--completed"
-                        role="listitem"
-                        aria-label="{{ label }} {{ panel.number }}: fiche presente"
-                        title="Apri fiche {{ label|lower }} {{ panel.number }}"
-                    >
-                        <span class="panel-tile__number">{{ panel.number }}</span>
-                        <span class="panel-tile__status">Fiche</span>
-                    </a>
-                {% elif panel.is_completed %}
-                    <span
-                        class="cell done panel-tile panel-tile--completed"
-                        role="listitem"
-                        aria-label="{{ label }} {{ panel.number }}: fiche presente"
-                        title="Fiche {{ label|lower }} {{ panel.number }}"
-                    >
-                        <span class="panel-tile__number">{{ panel.number }}</span>
-                        <span class="panel-tile__status">Fiche</span>
-                    </span>
-                {% else %}
-                    <span
-                        class="cell missing panel-tile panel-tile--missing"
-                        role="listitem"
-                        aria-label="{{ label }} {{ panel.number }}: fiche non presente"
-                        title="{% if lang == 'fr' %}Fiche pas encore créée{% else %}Fiche non presente - non ancora creata{% endif %}"
-                    >
-                        <span class="panel-tile__number">{{ panel.number }}</span>
-                        <span class="panel-tile__status">—</span>
-                    </span>
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
+{% macro progress_map_section(title, complete_word, total, fiches_map, summary, aria_label, can_open_fiches=True) %}
+    {% if total > 0 %}
+        <section class="progress-map-section" aria-label="{{ aria_label }}">
+            <div class="progress-map-section__header">
+                <div>
+                    <h3>{{ title }} — {{ summary.done }}/{{ total }} {{ complete_word }} — {{ summary.percent }}%</h3>
+                    <p>{{ summary.done }}/{{ total }} {{ complete_word }}</p>
+                </div>
+                <span class="progress-map-badge">{{ summary.percent }}%</span>
+            </div>
+            <div class="progress-bar progress-map-bar" aria-hidden="true">
+                <div class="progress-bar-fill" style="width: {{ summary.percent }}%;"></div>
+            </div>
+
+            <div class="progress-map-grid" role="list" aria-label="{{ aria_label }}">
+                {% for i in range(1, total + 1) %}
+                    {% if i in fiches_map %}
+                        {% if can_open_fiches %}
+                            <a
+                                href="{{ url_for('manager_fiches_detail', fiche_id=fiches_map[i].id) }}"
+                                class="progress-cell done"
+                                role="listitem"
+                                aria-label="{{ title }} {{ i }}: fiche presente, apri dettaglio"
+                                title="Apri fiche {{ title|lower }} {{ i }}"
+                            >
+                                {{ i }}
+                            </a>
+                        {% else %}
+                            <span
+                                class="progress-cell done"
+                                role="listitem"
+                                aria-label="{{ title }} {{ i }}: fiche presente"
+                                title="Fiche {{ title|lower }} {{ i }}"
+                            >
+                                {{ i }}
+                            </span>
+                        {% endif %}
+                    {% else %}
+                        <div
+                            class="progress-cell missing"
+                            role="listitem"
+                            aria-label="{{ title }} {{ i }}: fiche mancante"
+                            title="{% if lang == 'fr' %}Fiche pas encore créée{% else %}Fiche mancante - non ancora creata{% endif %}"
+                        >
+                            {{ i }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
 {% endmacro %}
-<div class="card mt-3 site-panel-schema" id="schema-pannelli">
+{% set numero_totale_paratie = numero_totale_paratie|default(progress_summary.paratie.total|default(0), true) %}
+{% set numero_totale_pali = numero_totale_pali|default(progress_summary.pali.total if progress_summary.pali is defined else 0, true) %}
+{% set paratie_fiches_map = paratie_fiches_map|default({}, true) %}
+{% set pali_fiches_map = pali_fiches_map|default({}, true) %}
+{% set paratie_progress_map = paratie_progress_map|default({'done': progress_summary.paratie.done|default(0), 'total': numero_totale_paratie, 'percent': progress_summary.paratie.percent|default(0)}, true) %}
+{% set pali_progress_map = pali_progress_map|default({'done': progress_summary.pali.done if progress_summary.pali is defined else 0, 'total': numero_totale_pali, 'percent': progress_summary.pali.percent if progress_summary.pali is defined else 0}, true) %}
+<div class="card mt-3 site-panel-schema progress-map-card" id="schema-pannelli">
     <div class="card-header">
         <h2 class="card-title mb-0">
-            {% if lang == 'fr' %}Schéma panneaux / pieux{% else %}Schema pannelli / pali{% endif %}
+            {% if lang == 'fr' %}Avancement des travaux{% else %}Avanzamento lavori{% endif %}
         </h2>
     </div>
     <div class="card-body">
-        {% if panel_schema or pali_schema %}
+        {% if numero_totale_paratie > 0 or numero_totale_pali > 0 %}
             <p class="text-muted mb-3">
                 {% if lang == 'fr' %}
-                    Vert = fiche déjà créée, gris = fiche absente.{% if can_open_fiche_details|default(true) %} Cliquez sur une case verte pour ouvrir la fiche liée.{% endif %} Parois et pieux restent séparés.
+                    Vert = fiche créée, gris = fiche absente.{% if can_open_fiche_details|default(false) %} Cliquez sur une case verte pour ouvrir le détail de la fiche.{% endif %} Parois et pieux restent séparés.
                 {% else %}
-                    Verde = fiche già creata, grigio = fiche non presente.{% if can_open_fiche_details|default(true) %} Clicca un quadratino verde per aprire la fiche collegata.{% endif %} Paratie e pali restano separati.
+                    Verde = fiche creata, grigio = fiche mancante.{% if can_open_fiche_details|default(false) %} Clicca una casella verde per aprire il dettaglio fiche.{% endif %} Paratie e pali restano separati.
                 {% endif %}
             </p>
-            {% if panel_schema %}
-                {{ fiche_grid(panel_schema, 'Paratie' if lang == 'it' else 'Parois', progress_summary.paratie.done, progress_summary.paratie.total, progress_summary.paratie.percent, 'Schema paratie', can_open_fiche_details|default(true)) }}
-            {% endif %}
-            {% if pali_schema %}
-                {{ fiche_grid(pali_schema, 'Pali' if lang == 'it' else 'Pieux', progress_summary.pali.done, progress_summary.pali.total, progress_summary.pali.percent, 'Schema pali', can_open_fiche_details|default(true)) }}
-            {% endif %}
+            {{ progress_map_section('Paratie' if lang == 'it' else 'Parois', 'completate' if lang == 'it' else 'complétées', numero_totale_paratie, paratie_fiches_map, paratie_progress_map, 'Schema avanzamento paratie', can_open_fiche_details|default(false)) }}
+            {{ progress_map_section('Pali' if lang == 'it' else 'Pieux', 'completati' if lang == 'it' else 'complétés', numero_totale_pali, pali_fiches_map, pali_progress_map, 'Schema avanzamento pali', can_open_fiche_details|default(false)) }}
             {% if request.query_params.get('debug_grid') == '1' %}
-                <pre class="text-muted mt-3">totale_paratie={{ progress_summary.paratie.total }}
-pannelli_esistenti={{ panel_schema|selectattr('is_completed')|map(attribute='number')|list }}</pre>
+                <pre class="text-muted mt-3">totale_paratie={{ numero_totale_paratie }}
+paratie_esistenti={{ paratie_fiches_map.keys()|list }}
+totale_pali={{ numero_totale_pali }}
+pali_esistenti={{ pali_fiches_map.keys()|list }}</pre>
             {% endif %}
         {% else %}
             <p class="text-muted mb-0">
                 {% if lang == 'fr' %}
-                    Aucun élément à afficher: renseigner le total des parois ou des pieux pour générer le schéma.
+                    Aucun élément à afficher: renseigner le total des parois ou des pieux pour générer la carte.
                 {% else %}
-                    Nessun elemento da mostrare: valorizzare il totale paratie o il totale pali per generare lo schema.
+                    Nessun elemento da mostrare: valorizzare il totale paratie o il totale pali per generare la mappa.
                 {% endif %}
             </p>
         {% endif %}
     </div>
 </div>
-
 
 <div class="card mt-3" id="todo-operative">
     <div class="card-header d-flex justify-content-between align-items-center">
