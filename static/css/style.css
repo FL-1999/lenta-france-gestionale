@@ -4473,36 +4473,70 @@ label.form-label[for="profondita_totale"]{
   }
 }
 
+.soil-layer::before,
+.layer-side::before {
+  background:
+    radial-gradient(circle at 11% 18%, rgba(255, 255, 255, 0.12) 0 0.8px, transparent 1.2px),
+    radial-gradient(circle at 31% 71%, rgba(0, 0, 0, 0.14) 0 0.9px, transparent 1.35px),
+    radial-gradient(circle at 68% 36%, rgba(255, 255, 255, 0.08) 0 0.7px, transparent 1.2px),
+    radial-gradient(circle at 89% 83%, rgba(0, 0, 0, 0.12) 0 1px, transparent 1.45px);
+  background-position: 0 0, 17px 9px, 29px 21px, 43px 31px;
+  background-size: 37px 29px, 53px 41px, 47px 35px, 61px 49px;
+  content: "";
+  inset: 0;
+  mix-blend-mode: soft-light;
+  opacity: 0.72;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
 .soil-layer--riporto {
   background:
-    repeating-linear-gradient(158deg, rgba(67, 39, 22, 0.18) 0 3px, transparent 3px 18px),
-    repeating-linear-gradient(22deg, rgba(255, 237, 204, 0.045) 0 1px, transparent 1px 22px),
-    linear-gradient(180deg, #946039 0%, #744323 52%, #5d351f 100%);
+    radial-gradient(ellipse at 17% 28%, rgba(43, 25, 15, 0.48) 0 4px, transparent 8px),
+    radial-gradient(ellipse at 71% 63%, rgba(111, 76, 47, 0.34) 0 6px, transparent 11px),
+    radial-gradient(circle at 43% 81%, rgba(23, 17, 12, 0.28) 0 3px, transparent 7px),
+    radial-gradient(circle at 86% 23%, rgba(158, 123, 82, 0.22) 0 2px, transparent 6px),
+    linear-gradient(97deg, rgba(255, 235, 202, 0.035), transparent 34%, rgba(0, 0, 0, 0.11) 78%),
+    linear-gradient(180deg, #6f472c 0%, #52331f 48%, #3f281a 100%);
+  background-position: 0 0, 19px 13px, 31px 7px, 44px 27px, 0 0, 0 0;
+  background-size: 83px 59px, 111px 77px, 67px 53px, 97px 71px, auto, auto;
 }
 
 .soil-layer--ghiaia {
   background:
-    radial-gradient(circle at 14% 24%, #d1d5db 0 3px, transparent 4px),
-    radial-gradient(circle at 36% 68%, #737b86 0 5px, transparent 6px),
-    radial-gradient(circle at 64% 38%, #b6bec9 0 4px, transparent 5px),
-    radial-gradient(circle at 84% 74%, #4b5563 0 6px, transparent 7px),
-    radial-gradient(circle at 52% 12%, #e5e7eb 0 2px, transparent 3px),
-    linear-gradient(180deg, #929aa6 0%, #68717c 100%);
-  background-size: 56px 44px, 72px 58px, 64px 52px, 86px 66px, 40px 32px, auto;
+    radial-gradient(ellipse at 14% 24%, #c8cdd1 0 3px, #7b858d 3.8px 5px, transparent 6px),
+    radial-gradient(ellipse at 38% 72%, #545d66 0 4px, #a7adb3 4.8px 6px, transparent 7px),
+    radial-gradient(ellipse at 67% 39%, #d7dadc 0 2px, #79818a 2.8px 4px, transparent 5.5px),
+    radial-gradient(ellipse at 86% 76%, #3f4750 0 5px, #9aa2aa 5.8px 7px, transparent 8px),
+    radial-gradient(circle at 53% 13%, #eef0f1 0 1.6px, transparent 3px),
+    radial-gradient(circle at 24% 88%, rgba(31, 41, 55, 0.44) 0 2px, transparent 4px),
+    linear-gradient(180deg, #8e969e 0%, #68727b 46%, #4f5962 100%);
+  background-position: 0 0, 23px 11px, 41px 29px, 7px 37px, 35px 5px, 58px 33px, 0 0;
+  background-size: 58px 43px, 79px 61px, 67px 51px, 91px 69px, 44px 31px, 73px 57px, auto;
 }
 
 .soil-layer--argilla {
   background:
-    repeating-linear-gradient(0deg, rgba(64, 30, 16, 0.28) 0 2px, transparent 2px 14px),
-    repeating-linear-gradient(0deg, transparent 0 22px, rgba(255, 205, 154, 0.07) 22px 23px, transparent 23px 34px),
-    linear-gradient(180deg, #9e4d24 0%, #803719 50%, #642b15 100%);
+    linear-gradient(177deg, transparent 0 18%, rgba(79, 36, 19, 0.28) 19%, transparent 23% 44%, rgba(255, 196, 136, 0.07) 46%, transparent 49% 100%),
+    linear-gradient(183deg, transparent 0 32%, rgba(53, 28, 18, 0.22) 34%, transparent 39% 70%, rgba(255, 227, 184, 0.05) 72%, transparent 75% 100%),
+    radial-gradient(ellipse at 26% 31%, rgba(124, 58, 31, 0.28) 0 8px, transparent 18px),
+    radial-gradient(ellipse at 78% 67%, rgba(72, 34, 20, 0.26) 0 10px, transparent 22px),
+    linear-gradient(180deg, #995735 0%, #7b4329 48%, #5f331f 100%);
+  background-position: 0 0, 17px 9px, 0 0, 38px 21px, 0 0;
+  background-size: 100% 42px, 100% 67px, 124px 86px, 151px 103px, auto;
 }
 
 .soil-layer--sabbia {
   background:
-    repeating-linear-gradient(8deg, rgba(120, 83, 28, 0.075) 0 1px, transparent 1px 11px),
-    repeating-linear-gradient(96deg, rgba(255, 245, 210, 0.08) 0 1px, transparent 1px 17px),
-    linear-gradient(180deg, #e3c173 0%, #d0a654 50%, #bb8736 100%);
+    radial-gradient(circle at 12% 19%, rgba(255, 246, 210, 0.62) 0 0.9px, transparent 1.5px),
+    radial-gradient(circle at 37% 61%, rgba(116, 83, 45, 0.34) 0 0.85px, transparent 1.45px),
+    radial-gradient(circle at 71% 35%, rgba(255, 235, 184, 0.46) 0 0.7px, transparent 1.35px),
+    radial-gradient(circle at 89% 79%, rgba(92, 65, 36, 0.25) 0 1px, transparent 1.7px),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.08), transparent 31%, rgba(111, 80, 39, 0.1) 72%),
+    linear-gradient(180deg, #d3b06b 0%, #c29b57 52%, #a9783e 100%);
+  background-position: 0 0, 13px 7px, 29px 19px, 41px 31px, 0 0, 0 0;
+  background-size: 19px 17px, 23px 21px, 31px 27px, 37px 33px, auto, auto;
   color: #1f2937;
   text-shadow: 0 1px 1px rgba(255, 255, 255, 0.32);
 }
@@ -4516,9 +4550,14 @@ label.form-label[for="profondita_totale"]{
 
 .soil-layer--roccia {
   background:
-    repeating-linear-gradient(172deg, transparent 0 18px, rgba(255, 255, 255, 0.1) 18px 20px, transparent 20px 42px),
-    repeating-linear-gradient(8deg, rgba(15, 23, 42, 0.28) 0 2px, transparent 2px 34px),
-    linear-gradient(180deg, #5f6874 0%, #39414b 48%, #242b34 100%);
+    linear-gradient(158deg, transparent 0 22%, rgba(18, 24, 31, 0.42) 23%, transparent 25% 52%, rgba(236, 240, 244, 0.09) 53%, transparent 56% 100%),
+    linear-gradient(27deg, transparent 0 35%, rgba(12, 18, 24, 0.36) 36%, transparent 38% 69%, rgba(196, 205, 214, 0.08) 71%, transparent 74% 100%),
+    linear-gradient(181deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 3px 21px, rgba(0, 0, 0, 0.2) 22px 24px, transparent 25px 58px),
+    radial-gradient(ellipse at 24% 36%, rgba(209, 213, 219, 0.13) 0 9px, transparent 24px),
+    radial-gradient(ellipse at 74% 69%, rgba(17, 24, 39, 0.28) 0 12px, transparent 28px),
+    linear-gradient(180deg, #67717b 0%, #48515a 48%, #2f3740 100%);
+  background-position: 0 0, 21px 11px, 0 0, 13px 7px, 47px 31px, 0 0;
+  background-size: 140px 92px, 117px 83px, 100% 61px, 131px 89px, 163px 111px, auto;
 }
 
 .soil-layer--limo {
