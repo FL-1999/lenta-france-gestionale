@@ -740,6 +740,35 @@ def _validate_metri_cubi_gettati(metri_cubi_gettati: float | None) -> None:
         )
 
 
+def _validate_stratigrafia_matches_depth(
+    profondita_totale: float | None,
+    strato_a: list[float] | None,
+    strato_materiale: list[str] | None,
+) -> None:
+    if profondita_totale is None:
+        return
+
+    valid_last_a: float | None = None
+    strato_a = strato_a or []
+    strato_materiale = strato_materiale or []
+    for a_val, mat in zip(strato_a, strato_materiale):
+        if not mat or a_val is None:
+            continue
+        valid_last_a = float(a_val)
+
+    if valid_last_a is None:
+        return
+
+    if abs(float(profondita_totale) - valid_last_a) > 0.001:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "La profondità totale scavata deve corrispondere "
+                "all'ultimo valore A (m) della stratigrafia."
+            ),
+        )
+
+
 def _build_fiche_form_data(
     cantiere_id: int | str | None = None,
     numero_pannello: int | str | None = None,
@@ -1573,7 +1602,14 @@ async def manager_fiche_create(
             profondita_totale=profondita_totale,
         )
         _validate_metri_cubi_gettati(metri_cubi_gettati)
-        _validate_fiche_stratigrafia(profondita_totale, strato_da, strato_a)
+
+        _validate_stratigrafia_matches_depth(
+            profondita_totale=profondita_totale,
+            strato_a=strato_a,
+            strato_materiale=strato_materiale,
+        )
+
+
 
         db = SessionLocal()
         try:
@@ -4694,7 +4730,12 @@ async def capo_fiche_nuova_post(
             profondita_totale=profondita_totale,
         )
         _validate_metri_cubi_gettati(metri_cubi_gettati)
-        _validate_fiche_stratigrafia(profondita_totale, strato_da, strato_a)
+
+        _validate_stratigrafia_matches_depth(
+            profondita_totale=profondita_totale,
+            strato_a=strato_a,
+            strato_materiale=strato_materiale,
+        )
 
         db = SessionLocal()
         try:
@@ -4832,6 +4873,91 @@ async def capo_fiche_nuova_post(
     return RedirectResponse(url="/capo/dashboard", status_code=303)
 
 
+def _materiale_stratigrafia_color(materiale: str | None) -> str:
+    label = (materiale or "").lower()
+    if "riporto" in label or "remblai" in label:
+        return "#8b5a2b"
+    if "ghia" in label or "gravier" in label or "gravel" in label:
+        return "#8f98a3"
+    if "argill" in label or "argile" in label or "clay" in label:
+        return "#b86b3d"
+    if "rocc" in label or "roche" in label or "rock" in label:
+        return "#555f6d"
+    if "sabb" in label or "sable" in label or "sand" in label:
+        return "#d6b45f"
+    if "lim" in label or "silt" in label:
+        return "#9c8766"
+    return "#3f7cac"
+
+
+def _build_stratigrafia_visual_layers(fiche: Fiche) -> list[dict]:
+    visual_layers: list[dict] = []
+    structured_layers = sorted(
+        list(fiche.stratigrafie or []), key=lambda layer: layer.da_profondita
+    )
+    if structured_layers:
+        total_depth = float(
+            fiche.profondita_totale or structured_layers[-1].a_profondita or 0
+        )
+        for layer in structured_layers:
+            da_val = float(layer.da_profondita or 0)
+            a_val = float(layer.a_profondita or 0)
+            thickness = max(a_val - da_val, 0)
+            visual_layers.append(
+                {
+                    "da": da_val,
+                    "a": a_val,
+                    "materiale": layer.materiale,
+                    "height_percent": round((thickness / total_depth) * 100, 2)
+                    if total_depth > 0
+                    else 0,
+                    "color": _materiale_stratigrafia_color(layer.materiale),
+                }
+            )
+        return visual_layers
+
+    progressive_depth = 0.0
+    fallback_layers = sorted(
+        list(fiche.layers or []), key=lambda layer: layer.layer_index
+    )
+    total_depth = float(fiche.profondita_totale or 0) or sum(
+        float(layer.thickness_m or 0) for layer in fallback_layers
+    )
+    for layer in fallback_layers:
+        thickness = float(layer.thickness_m or 0)
+        da_val = progressive_depth
+        progressive_depth += thickness
+        visual_layers.append(
+            {
+                "da": da_val,
+                "a": progressive_depth,
+                "materiale": layer.material,
+                "height_percent": round((thickness / total_depth) * 100, 2)
+                if total_depth > 0
+                else 0,
+                "color": _materiale_stratigrafia_color(layer.material),
+            }
+        )
+    return visual_layers
+
+
+def _build_fiche_site_progress_card(site: Site, fiches_count: int) -> dict:
+    total = int(
+        site.totale_paratie_da_scavare
+        if site.totale_paratie_da_scavare is not None
+        else (site.paratie_total_panels or 0)
+    )
+    percent = _progress_percent(fiches_count, total) if total > 0 else 0
+    is_completed = total > 0 and fiches_count >= total
+    return {
+        "site": site,
+        "created": int(fiches_count),
+        "total": total,
+        "percent": percent,
+        "is_completed": is_completed,
+    }
+
+
 @app.get(
     "/manager/fiches",
     response_class=HTMLResponse,
@@ -4854,6 +4980,7 @@ def manager_fiches(
     parsed_to_date: date | None = None
     parsed_site_id: int | None = None
     parsed_fiche_type: FicheTypeEnum | None = None
+    selected_site: Site | None = None
 
     try:
         if from_date:
@@ -4880,6 +5007,23 @@ def manager_fiches(
             except ValueError:
                 parsed_fiche_type = None
 
+        fiche_counts = dict(
+            db.query(Fiche.site_id, func.count(Fiche.id))
+            .group_by(Fiche.site_id)
+            .all()
+        )
+        sites = db.query(Site).order_by(Site.name.asc()).all()
+        site_progress = [
+            _build_fiche_site_progress_card(site, fiche_counts.get(site.id, 0))
+            for site in sites
+        ]
+        active_site_progress = [
+            card for card in site_progress if not card["is_completed"]
+        ]
+        completed_site_progress = [
+            card for card in site_progress if card["is_completed"]
+        ]
+
         query = db.query(Fiche).options(
             joinedload(Fiche.site),
             joinedload(Fiche.machine),
@@ -4891,6 +5035,7 @@ def manager_fiches(
         if parsed_to_date:
             query = query.filter(Fiche.date <= parsed_to_date)
         if parsed_site_id:
+            selected_site = db.query(Site).filter(Site.id == parsed_site_id).first()
             query = query.filter(Fiche.site_id == parsed_site_id)
         if parsed_fiche_type:
             query = query.filter(Fiche.fiche_type == parsed_fiche_type)
@@ -4907,6 +5052,15 @@ def manager_fiches(
             current_user,
             fiches=fiches_list,
             total_fiches=len(fiches_list),
+            active_site_progress=active_site_progress,
+            completed_site_progress=completed_site_progress,
+            selected_site=selected_site,
+            selected_site_id=parsed_site_id,
+            filters={
+                "from_date": from_date or "",
+                "to_date": to_date or "",
+                "fiche_type": fiche_type or "",
+            },
         ),
     )
 
@@ -4952,6 +5106,7 @@ def manager_fiche_dettaglio(
             request,
             current_user,
             fiche=fiche,
+            stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
         ),
     )
 

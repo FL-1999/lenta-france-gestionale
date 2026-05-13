@@ -14,6 +14,7 @@
 {% set spessore_m = fiche.altezza_pannello if fiche.altezza_pannello is not none else None %}
 {% set stratigrafie = fiche.stratigrafie or [] %}
 {% set strat_layers = fiche.layers or [] %}
+{% set visual_layers = stratigrafia_visual_layers or [] %}
 {% set tipologia_scavo = fiche.tipologia_scavo|lower if fiche.tipologia_scavo else "" %}
 {% set is_palo = tipologia_scavo == "palo" %}
 {% set is_paratia = tipologia_scavo == "paratia" %}
@@ -189,6 +190,11 @@
         <div class="card-title">
             🪨 Stratigrafia
         </div>
+        <div class="card-actions">
+            <button type="button" class="btn btn-sm btn-secondary" data-stratigrafia-toggle>
+                {% if lang == 'fr' %}Voir stratigraphie{% else %}Visualizza stratigrafia{% endif %}
+            </button>
+        </div>
     </div>
     <div class="card-body">
         {% set strat_text = fiche.stratigrafia %}
@@ -213,6 +219,26 @@
                     Nessuna descrizione testuale fornita.
                 {% endif %}
             </p>
+        {% endif %}
+
+        {% if visual_layers %}
+            <div id="stratigrafia-visual" class="stratigrafia-visual" hidden>
+                <p class="text-muted" style="margin-top: 0;">
+                    {% if lang == 'fr' %}
+                        Hauteur totale = profondeur totale excavée. Chaque strate est proportionnelle à son épaisseur.
+                    {% else %}
+                        Altezza totale = profondità totale scavata. Ogni strato è proporzionale al suo spessore.
+                    {% endif %}
+                </p>
+                <div class="stratigrafia-column">
+                    {% for layer in visual_layers %}
+                        <div class="stratigrafia-layer" style="height: {{ layer.height_percent }}%; background: {{ layer.color }};">
+                            <span class="stratigrafia-layer__range">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</span>
+                            <span class="stratigrafia-layer__material">{{ layer.materiale }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
         {% endif %}
 
         {% if stratigrafie %}
@@ -280,5 +306,16 @@
         {% endif %}
     </div>
 </section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const toggle = document.querySelector('[data-stratigrafia-toggle]');
+    const visual = document.getElementById('stratigrafia-visual');
+    if (!toggle || !visual) return;
+    toggle.addEventListener('click', () => {
+      visual.hidden = !visual.hidden;
+    });
+  });
+</script>
 
 {% endblock %}
