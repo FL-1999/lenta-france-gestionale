@@ -79,6 +79,11 @@ SITES_COLUMNS: tuple[str, ...] = (
 
 NOTIFICATIONS_COLUMNS: tuple[str, ...] = ("is_read BOOLEAN NOT NULL DEFAULT 0",)
 PERSONALE_COLUMNS: tuple[str, ...] = ("user_id INTEGER",)
+FICHES_COLUMNS: tuple[str, ...] = (
+    "quota_ngf_testa FLOAT",
+    "quota_ngf_fondo FLOAT",
+    "quota_ngf_note TEXT",
+)
 
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "veicoli": VEICOLI_COLUMNS,
@@ -92,6 +97,7 @@ UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "sites": SITES_COLUMNS,
     "notifications": NOTIFICATIONS_COLUMNS,
     "personale": PERSONALE_COLUMNS,
+    "fiches": FICHES_COLUMNS,
 }
 
 
@@ -339,6 +345,9 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 altezza_pannello FLOAT,
                 data_getto DATE,
                 metri_cubi_gettati FLOAT,
+                quota_ngf_testa FLOAT,
+                quota_ngf_fondo FLOAT,
+                quota_ngf_note TEXT,
                 created_at DATETIME NOT NULL,
                 updated_at DATETIME NOT NULL,
                 FOREIGN KEY(site_id) REFERENCES sites(id),
@@ -355,13 +364,15 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 id, date, site_id, machine_id, created_by_id, fiche_type, description,
                 operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
-                data_getto, metri_cubi_gettati, created_at, updated_at
+                data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
+                quota_ngf_note, created_at, updated_at
             )
             SELECT
                 id, date, site_id, machine_id, created_by_id, fiche_type, description,
                 operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
-                data_getto, metri_cubi_gettati, created_at, updated_at
+                data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
+                quota_ngf_note, created_at, updated_at
             FROM fiches
             """
         )

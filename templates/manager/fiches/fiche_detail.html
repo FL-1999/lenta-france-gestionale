@@ -18,6 +18,9 @@
 {% set tipologia_scavo = fiche.tipologia_scavo|lower if fiche.tipologia_scavo else "" %}
 {% set is_palo = tipologia_scavo == "palo" %}
 {% set is_paratia = tipologia_scavo == "paratia" %}
+{% set volume_gettato = fiche.metri_cubi_gettati %}
+{% set volume_diff = volume_gettato - volume_teorico if volume_gettato is not none and volume_teorico is not none else none %}
+{% set has_ngf_quote = fiche.quota_ngf_testa is not none or fiche.quota_ngf_fondo is not none or fiche.quota_ngf_note %}
 
 <div class="page-header">
     <div class="page-header-main">
@@ -40,6 +43,9 @@
         </p>
     </div>
     <div class="page-actions">
+        <a href="{{ url_for('manager_fiches_edit_form', fiche_id=fiche.id) }}" class="btn btn-primary">
+            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+        </a>
         <a href="{{ url_for('manager_fiches_list') }}" class="btn btn-secondary">
             ← {% if lang == 'fr' %}Retour à la liste{% else %}Torna alla lista{% endif %}
         </a>
@@ -67,6 +73,51 @@
                     {% else %}
                         Profondità finale dello scavo
                     {% endif %}
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">🧱 {% if lang == 'fr' %}Volume coulé{% else %}Volume gettato{% endif %}</div>
+                <div class="kpi-value kpi-value--geometry">
+                    {% if volume_gettato is not none %}
+                        <span class="kpi-number">{{ "%.2f"|format(volume_gettato) }}</span>
+                        <span class="unit-badge unit-badge--kpi">m³</span>
+                    {% else %}
+                        <span class="kpi-number">-</span>
+                    {% endif %}
+                </div>
+                <div class="kpi-sub">
+                    {% if lang == 'fr' %}Valeur saisie manuellement{% else %}Valore inserito manualmente{% endif %}
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">📐 {% if lang == 'fr' %}Volume théorique{% else %}Volume teorico{% endif %}</div>
+                <div class="kpi-value kpi-value--geometry">
+                    {% if volume_teorico is not none %}
+                        <span class="kpi-number">{{ "%.2f"|format(volume_teorico) }}</span>
+                        <span class="unit-badge unit-badge--kpi">m³</span>
+                    {% else %}
+                        <span class="kpi-number">-</span>
+                    {% endif %}
+                </div>
+                <div class="kpi-sub">
+                    {% if lang == 'fr' %}Calculé automatiquement selon la géométrie{% else %}Calcolato automaticamente dalla geometria{% endif %}
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">↔️ {% if lang == 'fr' %}Écart volume{% else %}Differenza volume{% endif %}</div>
+                <div class="kpi-value kpi-value--geometry">
+                    {% if volume_diff is not none %}
+                        <span class="kpi-number">{{ "%+.2f"|format(volume_diff) }}</span>
+                        <span class="unit-badge unit-badge--kpi">m³</span>
+                    {% else %}
+                        <span class="kpi-number">-</span>
+                    {% endif %}
+                </div>
+                <div class="kpi-sub">
+                    {% if lang == 'fr' %}Volume coulé − volume théorique{% else %}Volume gettato − volume teorico{% endif %}
                 </div>
             </div>
 
@@ -184,6 +235,32 @@
         </div>
     </div>
 </section>
+
+{% if has_ngf_quote %}
+<section class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <div class="card-title">
+            📍 {% if lang == 'fr' %}Cotes NGF réelles{% else %}Quote NGF reali{% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Cote NGF tête{% else %}Quota NGF testa{% endif %}</p>
+                <p class="mb-0">{{ "%.2f"|format(fiche.quota_ngf_testa) if fiche.quota_ngf_testa is not none else "-" }}</p>
+            </div>
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Cote NGF fond{% else %}Quota NGF fondo{% endif %}</p>
+                <p class="mb-0">{{ "%.2f"|format(fiche.quota_ngf_fondo) if fiche.quota_ngf_fondo is not none else "-" }}</p>
+            </div>
+            <div>
+                <p class="text-muted">{% if lang == 'fr' %}Notes cote{% else %}Note quota{% endif %}</p>
+                <p class="mb-0">{{ fiche.quota_ngf_note or "-" }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
 
 <section class="card" style="margin-top: 1.5rem;">
     <div class="card-header">

@@ -156,6 +156,9 @@ class FicheRead(BaseModel):
     altezza_pannello: Optional[float] = None
     data_getto: Optional[date] = None
     metri_cubi_gettati: Optional[float] = None
+    quota_ngf_testa: Optional[float] = None
+    quota_ngf_fondo: Optional[float] = None
+    quota_ngf_note: Optional[str] = None
     site_name: str
     machine_name: Optional[str]
     created_by_name: str
