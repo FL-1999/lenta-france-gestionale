@@ -408,6 +408,8 @@ class Site(Base):
     paratie_total_panels = Column(Integer, nullable=True)
     paratie_done_panels = Column(Integer, nullable=True)
     totale_paratie_da_scavare = Column(Integer, nullable=True)
+    numero_totale_paratie = Column(Integer, nullable=True)
+    numero_totale_pali = Column(Integer, nullable=True)
     strut_levels_count = Column(Integer, nullable=True)
     installazione_cantiere_pct = Column(Integer, nullable=False, default=0)
     rabotage_pct = Column(Integer, nullable=False, default=0)

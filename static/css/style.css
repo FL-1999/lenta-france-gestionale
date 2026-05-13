@@ -4573,3 +4573,20 @@ label.form-label[for="profondita_totale"]{
     radial-gradient(circle at 28% 48%, rgba(255, 255, 255, 0.14) 0 2px, transparent 3px),
     linear-gradient(180deg, #427895 0%, #24586f 100%);
 }
+
+.site-panel-schema__group + .site-panel-schema__group {
+  margin-top: 1.5rem;
+}
+
+.site-panel-schema__group-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.site-panel-schema__group .progress-bar {
+  margin-bottom: 0.75rem;
+}

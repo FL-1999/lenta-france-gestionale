@@ -2980,37 +2980,54 @@ def _ensure_unique_numero_pannello(
 
 def _site_paratie_total(site: Site) -> int:
     return int(
-        site.totale_paratie_da_scavare
-        if site.totale_paratie_da_scavare is not None
-        else (site.paratie_total_panels or 0)
+        site.numero_totale_paratie
+        if getattr(site, "numero_totale_paratie", None) is not None
+        else (
+            site.totale_paratie_da_scavare
+            if site.totale_paratie_da_scavare is not None
+            else (site.paratie_total_panels or 0)
+        )
     )
 
 
-def _build_site_panel_schema(site: Site, fiches: list[Fiche]) -> list[dict]:
-    """Build a panel grid model decoupled from rendering.
+def _site_pali_total(site: Site) -> int:
+    return int(getattr(site, "numero_totale_pali", None) or 0)
 
-    The placeholder coordinate fields keep the structure ready for a future
-    planimetry/image layer without changing the admin/manager template contract.
-    """
 
-    total_panels = int(site.totale_paratie_da_scavare or 0)
-    if total_panels <= 0:
+def _fiche_schema_kind(fiche: Fiche) -> str:
+    tipologia = (fiche.tipologia_scavo or "").strip().lower()
+    if tipologia == "palo" or fiche.diametro_palo is not None:
+        return "palo"
+    return "paratia"
+
+
+def _build_site_fiche_grid_schema(
+    total_elements: int, fiches: list[Fiche], element_kind: str
+) -> list[dict]:
+    """Build a green/grey fiche grid for one element type only."""
+
+    if total_elements <= 0:
         return []
 
-    fiches_by_panel: dict[int, Fiche] = {}
-    for fiche in sorted(fiches, key=lambda item: (item.numero_pannello, item.id)):
-        panel_number = int(fiche.numero_pannello or 0)
-        if panel_number < 1 or panel_number > total_panels:
+    fiches_by_number: dict[int, Fiche] = {}
+    filtered_fiches = [
+        fiche for fiche in fiches if _fiche_schema_kind(fiche) == element_kind
+    ]
+    for fiche in sorted(
+        filtered_fiches, key=lambda item: (item.numero_pannello, item.id)
+    ):
+        element_number = int(fiche.numero_pannello or 0)
+        if element_number < 1 or element_number > total_elements:
             continue
-        fiches_by_panel.setdefault(panel_number, fiche)
+        fiches_by_number.setdefault(element_number, fiche)
 
-    panels: list[dict] = []
-    for panel_number in range(1, total_panels + 1):
-        fiche = fiches_by_panel.get(panel_number)
+    elements: list[dict] = []
+    for element_number in range(1, total_elements + 1):
+        fiche = fiches_by_number.get(element_number)
         created_by = getattr(fiche, "created_by", None) if fiche else None
-        panels.append(
+        elements.append(
             {
-                "number": panel_number,
+                "number": element_number,
                 "status": "completed" if fiche else "missing",
                 "is_completed": fiche is not None,
                 "fiche_id": fiche.id if fiche else None,
@@ -3031,16 +3048,90 @@ def _build_site_panel_schema(site: Site, fiches: list[Fiche]) -> list[dict]:
                 },
             }
         )
-    return panels
+    return elements
+
+
+def _build_site_panel_schema(site: Site, fiches: list[Fiche]) -> list[dict]:
+    """Build the paratie/pannelli grid model decoupled from rendering."""
+
+    return _build_site_fiche_grid_schema(_site_paratie_total(site), fiches, "paratia")
+
+
+def _build_site_pali_schema(site: Site, fiches: list[Fiche]) -> list[dict]:
+    """Build the pali grid model decoupled from rendering."""
+
+    return _build_site_fiche_grid_schema(_site_pali_total(site), fiches, "palo")
+
+
+def _update_progress_summary_for_fiche_grids(
+    progress_summary: dict[str, dict[str, object]],
+    site: Site,
+    fiches: list[Fiche],
+    lang: str,
+) -> None:
+    paratie_total = _site_paratie_total(site)
+    pali_total = _site_pali_total(site)
+    paratie_done = len(
+        {
+            int(fiche.numero_pannello)
+            for fiche in fiches
+            if _fiche_schema_kind(fiche) == "paratia"
+            and fiche.numero_pannello
+            and 1 <= int(fiche.numero_pannello) <= paratie_total
+        }
+    )
+    pali_done = len(
+        {
+            int(fiche.numero_pannello)
+            for fiche in fiches
+            if _fiche_schema_kind(fiche) == "palo"
+            and fiche.numero_pannello
+            and 1 <= int(fiche.numero_pannello) <= pali_total
+        }
+    )
+    progress_summary["paratie"].update(
+        {
+            "total": paratie_total,
+            "done": paratie_done,
+            "percent": _progress_percent(paratie_done, paratie_total),
+            "subtitle": f"{paratie_done} / {paratie_total} "
+            f"{'pannelli' if lang == 'it' else 'panneaux'}",
+        }
+    )
+    progress_summary["paratie"]["status"] = _progress_status(
+        progress_summary["paratie"]["percent"], lang
+    )
+    progress_summary["pali"] = {
+        "label": "Pali" if lang == "it" else "Pieux",
+        "total": pali_total,
+        "done": pali_done,
+        "percent": _progress_percent(pali_done, pali_total),
+        "unit": "pali" if lang == "it" else "pieux",
+        "subtitle": f"{pali_done} / {pali_total} "
+        f"{'pali' if lang == 'it' else 'pieux'}",
+    }
+    progress_summary["pali"]["status"] = _progress_status(
+        progress_summary["pali"]["percent"], lang
+    )
 
 
 def _sync_site_fiche_progress(db: Session, site: Site) -> None:
-    paratie_scavate = (
-        db.query(func.count(Fiche.id)).filter(Fiche.site_id == site.id).scalar() or 0
+    site_fiches = db.query(Fiche).filter(Fiche.site_id == site.id).all()
+    paratie_total = _site_paratie_total(site)
+    paratie_scavate = len(
+        {
+            int(fiche.numero_pannello)
+            for fiche in site_fiches
+            if _fiche_schema_kind(fiche) == "paratia"
+            and fiche.numero_pannello
+            and 1 <= int(fiche.numero_pannello) <= paratie_total
+        }
     )
     site.paratie_done_panels = int(paratie_scavate)
     if site.totale_paratie_da_scavare is not None:
         site.paratie_total_panels = site.totale_paratie_da_scavare
+    if getattr(site, "numero_totale_paratie", None) is None:
+        site.numero_totale_paratie = site.totale_paratie_da_scavare
     paratie_total = _site_paratie_total(site)
     site.progress = _progress_percent(paratie_scavate, paratie_total)
 
@@ -3069,6 +3160,8 @@ def _build_site_progress(
     cordoli_done = float(site.cordoli_done_m or 0)
     paratie_total = _site_paratie_total(site)
     paratie_done = int(site.paratie_done_panels or 0)
+    pali_total = _site_pali_total(site)
+    pali_done = 0
     installazione_cantiere_pct = _clamp_progress_percent(site.installazione_cantiere_pct)
     rabotage_pct = _clamp_progress_percent(site.rabotage_pct)
     pozzi_pompaggio_pct = _clamp_progress_percent(site.pozzi_pompaggio_pct)
@@ -3080,6 +3173,7 @@ def _build_site_progress(
     labels = {
         "cordoli": "Cordoli guida" if lang == "it" else "Guides (cordons)",
         "paratie": "Scavo + paratie" if lang == "it" else "Excavation + parois",
+        "pali": "Pali" if lang == "it" else "Pieux",
         "puntoni": "Posa puntoni" if lang == "it" else "Pose des butons",
         "installazione_cantiere": "Installazione cantiere" if lang == "it" else "Installation chantier",
         "rabotage": "Rabotage" if lang == "it" else "Rabotage",
@@ -3088,6 +3182,7 @@ def _build_site_progress(
     units = {
         "cordoli": "m",
         "paratie": "pannelli" if lang == "it" else "panneaux",
+        "pali": "pali" if lang == "it" else "pieux",
         "puntoni": "puntoni" if lang == "it" else "butons",
         "installazione_cantiere": "%",
         "rabotage": "%",
@@ -3098,6 +3193,8 @@ def _build_site_progress(
     cordoli_total_display = _format_progress_value(cordoli_total)
     paratie_done_display = _format_progress_value(paratie_done)
     paratie_total_display = _format_progress_value(paratie_total)
+    pali_done_display = _format_progress_value(pali_done)
+    pali_total_display = _format_progress_value(pali_total)
     strut_done_display = _format_progress_value(strut_done)
     strut_total_display = _format_progress_value(strut_total)
 
@@ -3125,6 +3222,14 @@ def _build_site_progress(
             "percent": _progress_percent(paratie_done, paratie_total),
             "unit": units["paratie"],
             "subtitle": f"{paratie_done_display} / {paratie_total_display} {units['paratie']}",
+        },
+        "pali": {
+            "label": labels["pali"],
+            "total": pali_total,
+            "done": pali_done,
+            "percent": _progress_percent(pali_done, pali_total),
+            "unit": units["pali"],
+            "subtitle": f"{pali_done_display} / {pali_total_display} {units['pali']}",
         },
         "pozzi_pompaggio": {
             "label": labels["pozzi_pompaggio"],
@@ -3504,6 +3609,7 @@ def manager_site_progress_paratie(
         )
         total_value = max(int(submitted_total or 0), 0)
         site.totale_paratie_da_scavare = total_value
+        site.numero_totale_paratie = total_value
         site.paratie_total_panels = total_value
         _sync_site_fiche_progress(db, site)
         _apply_extra_site_progress(
@@ -3669,6 +3775,7 @@ def manager_cantiere_nuovo_post(
     is_active: str | None = Form(None),
     caposquadra_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
+    numero_totale_pali: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "sites.create"):
@@ -3709,6 +3816,7 @@ def manager_cantiere_nuovo_post(
     lat_value = parse_coordinate(lat)
     lng_value = parse_coordinate(lng)
     total_paratie_value = _parse_optional_non_negative_int(totale_paratie_da_scavare)
+    total_pali_value = _parse_optional_non_negative_int(numero_totale_pali)
     has_address = bool(address and address.strip())
 
     if start_date and start_date_parsed is None:
@@ -3796,6 +3904,7 @@ def manager_cantiere_nuovo_post(
                         "is_active": is_active,
                         "caposquadra_id": parsed_capo_id,
                         "totale_paratie_da_scavare": totale_paratie_da_scavare or "",
+                        "numero_totale_pali": numero_totale_pali or "",
                         "confirm_unverified": confirm_unverified,
                     },
                     form_submitted=True,
@@ -3818,6 +3927,8 @@ def manager_cantiere_nuovo_post(
             is_active=is_active is not None,
             caposquadra_id=parsed_capo_id,
             totale_paratie_da_scavare=total_paratie_value,
+            numero_totale_paratie=total_paratie_value,
+            numero_totale_pali=total_pali_value,
             paratie_total_panels=total_paratie_value,
             paratie_done_panels=0,
         )
@@ -3870,6 +3981,12 @@ def manager_site_detail(
                 .all()
             )
             panel_schema = _build_site_panel_schema(site, site_fiches)
+            pali_schema = _build_site_pali_schema(site, site_fiches)
+            _update_progress_summary_for_fiche_grids(
+                progress_summary, site, site_fiches, lang
+            )
+        else:
+            pali_schema = []
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
         manager_users = (
             db.query(User)
@@ -3892,6 +4009,7 @@ def manager_site_detail(
             strut_levels=strut_levels_view,
             strut_levels_count=strut_levels_count,
             panel_schema=panel_schema,
+            pali_schema=pali_schema,
             site_tasks=site_tasks,
             open_tasks=open_tasks,
             completed_tasks=completed_tasks,
@@ -4578,6 +4696,7 @@ def manager_cantiere_modifica_post(
     is_active: str | None = Form(None),
     caposquadra_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
+    numero_totale_pali: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role == RoleEnum.caposquadra:
@@ -4619,6 +4738,7 @@ def manager_cantiere_modifica_post(
     lat_value = parse_coordinate(lat)
     lng_value = parse_coordinate(lng)
     total_paratie_value = _parse_optional_non_negative_int(totale_paratie_da_scavare)
+    total_pali_value = _parse_optional_non_negative_int(numero_totale_pali)
     has_address = bool(address and address.strip())
 
     if status not in SiteStatusEnum.__members__:
@@ -4680,6 +4800,8 @@ def manager_cantiere_modifica_post(
         site.is_active = is_active is not None
         site.caposquadra_id = parsed_capo_id
         site.totale_paratie_da_scavare = total_paratie_value
+        site.numero_totale_paratie = total_paratie_value
+        site.numero_totale_pali = total_pali_value
         site.paratie_total_panels = total_paratie_value
         _sync_site_fiche_progress(db, site)
 

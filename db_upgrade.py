@@ -75,6 +75,8 @@ SITES_COLUMNS: tuple[str, ...] = (
     "auto_cost_labor_enabled BOOLEAN NOT NULL DEFAULT 1",
     "manual_material_entries_override_auto BOOLEAN NOT NULL DEFAULT 1",
     "totale_paratie_da_scavare INTEGER",
+    "numero_totale_paratie INTEGER",
+    "numero_totale_pali INTEGER",
 )
 
 NOTIFICATIONS_COLUMNS: tuple[str, ...] = ("is_read BOOLEAN NOT NULL DEFAULT 0",)

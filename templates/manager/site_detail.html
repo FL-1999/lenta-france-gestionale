@@ -57,9 +57,8 @@
         <p><strong>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}:</strong> {{ site.city or '—' }}</p>
         <p><strong>{% if lang == 'fr' %}Pays{% else %}Paese{% endif %}:</strong> {{ site.country or '—' }}</p>
         <p><strong>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}:</strong> {{ site.status.value if site.status else '—' }}</p>
-        <p><strong>{% if lang == 'fr' %}Panneaux excavés{% else %}Pannelli scavati{% endif %}:</strong> {{ progress_summary.paratie.done }}</p>
-        <p><strong>{% if lang == 'fr' %}Total panneaux{% else %}Totale pannelli{% endif %}:</strong> {{ progress_summary.paratie.total }}</p>
-        <p><strong>{% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}:</strong> {{ progress_summary.paratie.percent }}%</p>
+        <p><strong>{% if lang == 'fr' %}Parois / panneaux{% else %}Paratie / pannelli{% endif %}:</strong> {{ progress_summary.paratie.done }}/{{ progress_summary.paratie.total }} · {{ progress_summary.paratie.percent }}%</p>
+        <p><strong>{% if lang == 'fr' %}Pieux{% else %}Pali{% endif %}:</strong> {{ progress_summary.pali.done if progress_summary.pali is defined else 0 }}/{{ progress_summary.pali.total if progress_summary.pali is defined else 0 }} · {{ progress_summary.pali.percent if progress_summary.pali is defined else 0 }}%</p>
         <p><strong>{% if lang == 'fr' %}Début{% else %}Inizio{% endif %}:</strong> {{ site.start_date.strftime("%d/%m/%Y") if site.start_date else '—' }}</p>
         <p><strong>{% if lang == 'fr' %}Fin{% else %}Fine{% endif %}:</strong> {{ site.end_date.strftime("%d/%m/%Y") if site.end_date else '—' }}</p>
         <p><strong>{% if lang == 'fr' %}Chef d'équipe{% else %}Caposquadra{% endif %}:</strong>
@@ -79,59 +78,77 @@
     </div>
 </div>
 {% if has_perm(user, "manager.access") %}
+{% macro fiche_grid(schema, label, done, total, percent, aria_label) %}
+    <div class="site-panel-schema__group">
+        <div class="site-panel-schema__group-header">
+            <h3 class="h5 mb-0">{{ label }}</h3>
+            <span class="progress-card-percent">{{ done }}/{{ total }} · {{ percent }}%</span>
+        </div>
+        <div class="progress-bar" aria-hidden="true">
+            <div class="progress-bar-fill" style="width: {{ percent }}%;"></div>
+        </div>
+        <div class="panel-grid" role="list" aria-label="{{ aria_label }}">
+            {% for panel in schema %}
+                {% if panel.is_completed %}
+                    <a
+                        href="{{ url_for('manager_fiches_detail', fiche_id=panel.fiche_id) }}"
+                        class="panel-tile panel-tile--completed"
+                        role="listitem"
+                        aria-label="{{ label }} {{ panel.number }}: fiche presente"
+                        title="Apri fiche {{ label|lower }} {{ panel.number }}"
+                    >
+                        <span class="panel-tile__number">{{ panel.number }}</span>
+                        <span class="panel-tile__status">Fiche</span>
+                    </a>
+                {% else %}
+                    <span
+                        class="panel-tile panel-tile--missing"
+                        role="listitem"
+                        aria-label="{{ label }} {{ panel.number }}: fiche non presente"
+                        title="{% if lang == 'fr' %}Fiche pas encore créée{% else %}Fiche non presente - non ancora creata{% endif %}"
+                    >
+                        <span class="panel-tile__number">{{ panel.number }}</span>
+                        <span class="panel-tile__status">—</span>
+                    </span>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% endmacro %}
 <div class="card mt-4 site-panel-schema" id="schema-pannelli">
     <div class="card-header">
         <h2 class="card-title mb-0">
-            {% if lang == 'fr' %}Schéma panneaux{% else %}Schema pannelli{% endif %}
+            {% if lang == 'fr' %}Schéma panneaux / pieux{% else %}Schema pannelli / pali{% endif %}
         </h2>
     </div>
     <div class="card-body">
-        {% if panel_schema %}
+        {% if panel_schema or pali_schema %}
             <p class="text-muted mb-3">
                 {% if lang == 'fr' %}
-                    Vert = fiche déjà créée, gris = fiche absente. Cliquez sur un panneau vert pour ouvrir la fiche liée.
+                    Vert = fiche déjà créée, gris = fiche absente. Cliquez sur une case verte pour ouvrir la fiche liée. Parois et pieux restent séparés.
                 {% else %}
-                    Verde = fiche già creata, grigio = fiche non presente. Clicca un pannello verde per aprire la fiche collegata.
+                    Verde = fiche già creata, grigio = fiche non presente. Clicca un quadratino verde per aprire la fiche collegata. Paratie e pali restano separati.
                 {% endif %}
             </p>
-            <div class="panel-grid" role="list" aria-label="Schema pannelli">
-                {% for panel in panel_schema %}
-                    {% if panel.is_completed %}
-                        <a
-                            href="{{ url_for('manager_fiches_detail', fiche_id=panel.fiche_id) }}"
-                            class="panel-tile panel-tile--completed"
-                            role="listitem"
-                            aria-label="Pannello {{ panel.number }}: fiche presente"
-                            title="Apri fiche pannello {{ panel.number }}"
-                        >
-                            <span class="panel-tile__number">{{ panel.number }}</span>
-                            <span class="panel-tile__status">Fiche</span>
-                        </a>
-                    {% else %}
-                        <span
-                            class="panel-tile panel-tile--missing"
-                            role="listitem"
-                            aria-label="Pannello {{ panel.number }}: fiche non presente"
-                            title="Fiche non presente"
-                        >
-                            <span class="panel-tile__number">{{ panel.number }}</span>
-                            <span class="panel-tile__status">—</span>
-                        </span>
-                    {% endif %}
-                {% endfor %}
-            </div>
+            {% if panel_schema %}
+                {{ fiche_grid(panel_schema, 'Paratie' if lang == 'it' else 'Parois', progress_summary.paratie.done, progress_summary.paratie.total, progress_summary.paratie.percent, 'Schema paratie') }}
+            {% endif %}
+            {% if pali_schema %}
+                {{ fiche_grid(pali_schema, 'Pali' if lang == 'it' else 'Pieux', progress_summary.pali.done, progress_summary.pali.total, progress_summary.pali.percent, 'Schema pali') }}
+            {% endif %}
         {% else %}
             <p class="text-muted mb-0">
                 {% if lang == 'fr' %}
-                    Aucun panneau à afficher: renseigner le total des panneaux à excaver pour générer le schéma.
+                    Aucun élément à afficher: renseigner le total des parois ou des pieux pour générer le schéma.
                 {% else %}
-                    Nessun pannello da mostrare: valorizzare il totale paratie da scavare per generare lo schema.
+                    Nessun elemento da mostrare: valorizzare il totale paratie o il totale pali per generare lo schema.
                 {% endif %}
             </p>
         {% endif %}
     </div>
 </div>
 {% endif %}
+
 
 
 {% if has_perm(user, "manager.access") %}
