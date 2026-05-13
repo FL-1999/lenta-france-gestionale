@@ -231,16 +231,19 @@
                     {% endif %}
                 </p>
                 <div class="soil-visual" aria-label="{% if lang == 'fr' %}Section verticale du terrain avec bâtiment{% else %}Sezione verticale del terreno con edificio{% endif %}">
-                    <div class="soil-surface">
-                        <div class="building" aria-hidden="true"></div>
-                    </div>
-                    <div class="soil-layers">
-                        {% for layer in visual_layers %}
-                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;">
-                                <span class="label-left">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</span>
-                                <span class="label-right">{{ layer.materiale or '-' }}</span>
-                            </div>
-                        {% endfor %}
+                    <div class="soil-container">
+                        <div class="ground-top">
+                            <div class="ground-line"></div>
+                            <div class="building" aria-hidden="true"></div>
+                        </div>
+                        <div class="soil-layers">
+                            {% for layer in visual_layers %}
+                                <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};">
+                                    <span class="label label-left">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</span>
+                                    <span class="label label-right">{{ layer.materiale or '-' }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
