@@ -228,9 +228,9 @@
                                     <label class="form-label">
                                         {% if lang == 'fr' %}De (m){% else %}Da (m){% endif %}
                                     </label>
-                                    <input type="number"
-                                           step="0.1"
-                                           min="0"
+                                    <input type="text"
+                                           inputmode="decimal"
+                                           pattern="[0-9]+([\.,][0-9]+)?"
                                            name="strato_da"
                                            data-strato-da
                                            class="form-control"
@@ -240,9 +240,9 @@
                                     <label class="form-label">
                                         {% if lang == 'fr' %}À (m){% else %}A (m){% endif %}
                                     </label>
-                                    <input type="number"
-                                           step="0.1"
-                                           min="0"
+                                    <input type="text"
+                                           inputmode="decimal"
+                                           pattern="[0-9]+([\.,][0-9]+)?"
                                            name="strato_a"
                                            data-strato-a
                                            class="form-control {% if 'strato_a_last' in invalid_fields and loop.last %}is-invalid{% endif %}"
@@ -397,9 +397,9 @@
                                         <div class="input-group input-with-unit">
                                             <input id="profondita_totale"
                                                    name="profondita_totale"
-                                                   type="number"
-                                                   step="0.1"
-                                                   min="0.1"
+                                                   type="text"
+                                                   inputmode="decimal"
+                                                   pattern="[0-9]+([\.,][0-9]+)?"
                                                    class="form-control geometry-input input-field {% if 'profondita_totale' in invalid_fields %}is-invalid{% endif %}"
                                                    data-profondita-totale
                                                    value="{{ form_data.get('profondita_totale', '') }}" />
@@ -522,8 +522,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const depthMismatchMessage = "La profondità totale scavata deve corrispondere all’ultimo strato di stratigrafia";
 
     function parseNumber(input) {
-        if (!input || input.value === "") return null;
-        const value = Number.parseFloat(input.value);
+        if (!input) return null;
+        const normalizedValue = input.value.trim().replace(/,/g, ".");
+        if (normalizedValue === "") return null;
+        const value = Number(normalizedValue);
         return Number.isFinite(value) ? value : null;
     }
 
@@ -564,6 +566,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function normalizeDecimalInputs() {
+        form.querySelectorAll("[data-profondita-totale], [data-strato-da], [data-strato-a]").forEach(function (input) {
+            input.value = input.value.trim().replace(/,/g, ".");
+        });
+    }
+
     function validateStratigrafia() {
         clearValidation();
         const completedRows = [];
@@ -571,11 +579,7 @@ document.addEventListener("DOMContentLoaded", function () {
         for (const item of rows()) {
             const da = parseNumber(item.daInput);
             const a = parseNumber(item.aInput);
-            if (da === null && a === null) continue;
-            if (da === null || a === null) {
-                showError("Ogni strato di stratigrafia deve avere sia Da (m) sia A (m).", [item.daInput, item.aInput]);
-                return false;
-            }
+            if (da === null || a === null) continue;
             if (da >= a) {
                 showError("Ogni valore Da (m) deve essere minore del relativo A (m).", [item.daInput, item.aInput]);
                 return false;
@@ -593,7 +597,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (completedRows.length > 0) {
             const depth = parseNumber(depthInput);
             const lastA = completedRows[completedRows.length - 1].a;
-            if (depth === null || Math.abs(depth - lastA) > 0.000001) {
+            if (depth === null || Math.abs(depth - lastA) > 0.01) {
                 showError(depthMismatchMessage, [depthInput, completedRows[completedRows.length - 1].aInput]);
                 return false;
             }
@@ -605,7 +609,9 @@ document.addEventListener("DOMContentLoaded", function () {
     form.addEventListener("submit", function (event) {
         if (!validateStratigrafia()) {
             event.preventDefault();
+            return;
         }
+        normalizeDecimalInputs();
     });
 
     form.addEventListener("input", function (event) {

@@ -676,6 +676,32 @@ FICHE_STRATIGRAFIA_DEPTH_ERROR = (
 )
 
 
+def _parse_decimal_comma_float(
+    value: str | int | float | None, field_label: str
+) -> float | None:
+    if value in (None, ""):
+        return None
+    normalized_value = str(value).strip().replace(",", ".")
+    if not normalized_value:
+        return None
+    try:
+        return float(normalized_value)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Il campo {field_label} non è valido.",
+        )
+
+
+def _parse_decimal_comma_float_list(
+    values: list[str | int | float | None] | None, field_label: str
+) -> list[float | None]:
+    return [
+        _parse_decimal_comma_float(value, field_label)
+        for value in (values or [])
+    ]
+
+
 def _invalid_fields_for_fiche_error(error_message: str | None) -> list[str]:
     if error_message == FICHE_STRATIGRAFIA_DEPTH_ERROR:
         return ["profondita_totale", "strato_a_last"]
@@ -697,13 +723,8 @@ def _validate_fiche_stratigrafia(
     for index in range(max_len):
         da_val = strato_da[index] if index < len(strato_da) else None
         a_val = strato_a[index] if index < len(strato_a) else None
-        if da_val is None and a_val is None:
-            continue
         if da_val is None or a_val is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Ogni strato di stratigrafia deve avere sia Da (m) sia A (m).",
-            )
+            continue
         if da_val >= a_val:
             raise HTTPException(
                 status_code=400,
@@ -723,7 +744,7 @@ def _validate_fiche_stratigrafia(
             )
         previous_a = a_val
 
-    if profondita_totale is None or abs(profondita_totale - layers[-1][1]) > 0.000001:
+    if profondita_totale is None or abs(profondita_totale - layers[-1][1]) > 0.01:
         raise HTTPException(status_code=400, detail=FICHE_STRATIGRAFIA_DEPTH_ERROR)
 
 
@@ -740,32 +761,55 @@ def _validate_metri_cubi_gettati(metri_cubi_gettati: float | None) -> None:
         )
 
 
+def _get_complete_stratigrafia_layers(
+    strato_da: list[float | None] | None,
+    strato_a: list[float | None] | None,
+    strato_materiale: list[str] | None = None,
+) -> list[tuple[float, float, str]]:
+    strato_da = strato_da or []
+    strato_a = strato_a or []
+    strato_materiale = strato_materiale or []
+    max_len = max(len(strato_da), len(strato_a), len(strato_materiale), 0)
+    layers: list[tuple[float, float, str]] = []
+
+    for index in range(max_len):
+        da_val = strato_da[index] if index < len(strato_da) else None
+        a_val = strato_a[index] if index < len(strato_a) else None
+        material = strato_materiale[index] if index < len(strato_materiale) else ""
+        if da_val is None or a_val is None:
+            continue
+        if da_val >= a_val:
+            raise HTTPException(
+                status_code=400,
+                detail="Ogni valore Da (m) deve essere minore del relativo A (m).",
+            )
+        layers.append((float(da_val), float(a_val), material or ""))
+
+    return layers
+
+
 def _validate_stratigrafia_matches_depth(
     profondita_totale: float | None,
-    strato_a: list[float] | None,
-    strato_materiale: list[str] | None,
+    strato_da: list[float | None] | None,
+    strato_a: list[float | None] | None,
+    strato_materiale: list[str] | None = None,
 ) -> None:
     if profondita_totale is None:
         return
 
-    valid_last_a: float | None = None
-    strato_a = strato_a or []
-    strato_materiale = strato_materiale or []
-    for a_val, mat in zip(strato_a, strato_materiale):
-        if not mat or a_val is None:
-            continue
-        valid_last_a = float(a_val)
-
-    if valid_last_a is None:
+    layers = _get_complete_stratigrafia_layers(
+        strato_da=strato_da,
+        strato_a=strato_a,
+        strato_materiale=strato_materiale,
+    )
+    if not layers:
         return
 
-    if abs(float(profondita_totale) - valid_last_a) > 0.001:
+    valid_last_a = layers[-1][1]
+    if abs(float(profondita_totale) - valid_last_a) > 0.01:
         raise HTTPException(
             status_code=400,
-            detail=(
-                "La profondità totale scavata deve corrispondere "
-                "all'ultimo valore A (m) della stratigrafia."
-            ),
+            detail=FICHE_STRATIGRAFIA_DEPTH_ERROR,
         )
 
 
@@ -1559,30 +1603,48 @@ async def manager_fiche_create(
     macchinario_id: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
-    metri_cubi_gettati: float | None = Form(None),
+    metri_cubi_gettati: str | None = Form(None),
     operatore: str = Form(...),
     descrizione: str = Form(""),
     ore_lavorate: str | None = Form(None),
     note: str | None = Form(None),
     tipologia_scavo: str | None = Form(None),
     materiale: str | None = Form(None),
-    profondita_totale: float | None = Form(None),
-    diametro_palo_cm: float | None = Form(None),
-    larghezza_pannello: float | None = Form(None),
-    altezza_pannello: float | None = Form(None),
-    strato_da: List[float] = Form(default_factory=list),
-    strato_a: List[float] = Form(default_factory=list),
+    profondita_totale: str | None = Form(None),
+    diametro_palo_cm: str | None = Form(None),
+    larghezza_pannello: str | None = Form(None),
+    altezza_pannello: str | None = Form(None),
+    strato_da: List[str] = Form(default_factory=list),
+    strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
     diametro_value_cm = diametro_palo_cm
-    diametro_value_m = (
-        diametro_value_cm / 100 if diametro_value_cm is not None else None
-    )
+    diametro_value_m = None
 
     try:
+        metri_cubi_gettati = _parse_decimal_comma_float(
+            metri_cubi_gettati, "Metri cubi gettati"
+        )
+        profondita_totale = _parse_decimal_comma_float(
+            profondita_totale, "profondità totale"
+        )
+        diametro_value_cm = _parse_decimal_comma_float(
+            diametro_palo_cm, "diametro palo"
+        )
+        larghezza_pannello = _parse_decimal_comma_float(
+            larghezza_pannello, "larghezza pannello"
+        )
+        altezza_pannello = _parse_decimal_comma_float(
+            altezza_pannello, "altezza pannello"
+        )
+        strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
+        strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
+        diametro_value_m = (
+            diametro_value_cm / 100 if diametro_value_cm is not None else None
+        )
         parsed_machine_id: int | None = None
         if macchinario_id not in (None, ""):
             parsed_machine_id = int(macchinario_id)
@@ -1605,11 +1667,10 @@ async def manager_fiche_create(
 
         _validate_stratigrafia_matches_depth(
             profondita_totale=profondita_totale,
+            strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
         )
-
-
 
         db = SessionLocal()
         try:
@@ -1652,7 +1713,9 @@ async def manager_fiche_create(
             db.refresh(fiche)
             notify_new_fiche(db, fiche, current_user)
 
-            for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
+            for da_val, a_val, mat in _get_complete_stratigrafia_layers(
+                strato_da, strato_a, strato_materiale
+            ):
                 if not mat:
                     continue
                 layer = FicheStratigrafia(
@@ -2492,7 +2555,7 @@ def _parse_optional_non_negative_float(
     if value in (None, ""):
         return None
     try:
-        parsed_value = float(value)
+        parsed_value = float(str(value).strip().replace(",", "."))
     except (TypeError, ValueError):
         raise HTTPException(
             status_code=400,
@@ -4687,30 +4750,48 @@ async def capo_fiche_nuova_post(
     macchinario_id: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
-    metri_cubi_gettati: float | None = Form(None),
+    metri_cubi_gettati: str | None = Form(None),
     operatore: str = Form(...),
     descrizione: str = Form(""),
     ore_lavorate: str | None = Form(None),
     note: str | None = Form(None),
     tipologia_scavo: str | None = Form(None),
     materiale: str | None = Form(None),
-    profondita_totale: float | None = Form(None),
-    diametro_palo_cm: float | None = Form(None),
-    larghezza_pannello: float | None = Form(None),
-    altezza_pannello: float | None = Form(None),
-    strato_da: List[float] = Form(default_factory=list),
-    strato_a: List[float] = Form(default_factory=list),
+    profondita_totale: str | None = Form(None),
+    diametro_palo_cm: str | None = Form(None),
+    larghezza_pannello: str | None = Form(None),
+    altezza_pannello: str | None = Form(None),
+    strato_da: List[str] = Form(default_factory=list),
+    strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
 ):
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
     diametro_value_cm = diametro_palo_cm
-    diametro_value_m = (
-        diametro_value_cm / 100 if diametro_value_cm is not None else None
-    )
+    diametro_value_m = None
 
     try:
+        metri_cubi_gettati = _parse_decimal_comma_float(
+            metri_cubi_gettati, "Metri cubi gettati"
+        )
+        profondita_totale = _parse_decimal_comma_float(
+            profondita_totale, "profondità totale"
+        )
+        diametro_value_cm = _parse_decimal_comma_float(
+            diametro_palo_cm, "diametro palo"
+        )
+        larghezza_pannello = _parse_decimal_comma_float(
+            larghezza_pannello, "larghezza pannello"
+        )
+        altezza_pannello = _parse_decimal_comma_float(
+            altezza_pannello, "altezza pannello"
+        )
+        strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
+        strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
+        diametro_value_m = (
+            diametro_value_cm / 100 if diametro_value_cm is not None else None
+        )
         parsed_machine_id: int | None = None
         if macchinario_id not in (None, ""):
             parsed_machine_id = int(macchinario_id)
@@ -4733,6 +4814,7 @@ async def capo_fiche_nuova_post(
 
         _validate_stratigrafia_matches_depth(
             profondita_totale=profondita_totale,
+            strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
         )
@@ -4780,7 +4862,9 @@ async def capo_fiche_nuova_post(
             db.refresh(fiche)
             notify_new_fiche(db, fiche, current_user)
 
-            for da_val, a_val, mat in zip(strato_da, strato_a, strato_materiale):
+            for da_val, a_val, mat in _get_complete_stratigrafia_layers(
+                strato_da, strato_a, strato_materiale
+            ):
                 if not mat:
                     continue
                 layer = FicheStratigrafia(
