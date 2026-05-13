@@ -167,6 +167,61 @@ def test_cantiere_form_edit_renders() -> None:
     assert "Modifica cantiere" in output
 
 
+def test_cantiere_form_edit_renders_pali_progress_and_detail_grids() -> None:
+    site = Site(
+        id=6,
+        name="Cantiere Pali",
+        code="PA-006",
+        status=SiteStatusEnum.aperto,
+        is_active=True,
+        numero_totale_paratie=2,
+        numero_totale_pali=3,
+    )
+    progress_summary = {
+        "installazione_cantiere": {"percent": 0, "status": "Da fare"},
+        "cordoli": {"percent": 0, "done": 0, "total": 0, "status": "Da fare"},
+        "paratie": {"percent": 50, "done": 1, "total": 2, "status": "In corso"},
+        "pali": {"percent": 33, "done": 1, "total": 3, "status": "In corso"},
+        "pozzi_pompaggio": {"percent": 0, "status": "Da fare"},
+        "rabotage": {"percent": 0, "status": "Da fare"},
+        "puntoni": {"percent": 0, "done": 0, "total": 0, "status": "Da fare"},
+    }
+
+    output = render_template(
+        "manager/cantiere_form.html",
+        {
+            "request": build_request("/manager/cantieri/6/modifica"),
+            "user": build_manager_user(),
+            "mode": "edit",
+            "site": site,
+            "site_status_values": [status.value for status in SiteStatusEnum],
+            "capisquadra": [],
+            "google_maps_api_key": None,
+            "scarichi_recenti": [],
+            "progress_summary": progress_summary,
+            "strut_levels": [],
+            "strut_levels_count": 0,
+            "numero_totale_paratie": 2,
+            "numero_totale_pali": 3,
+            "paratie_fiches_map": {1: SimpleNamespace(id=61)},
+            "pali_fiches_map": {2: SimpleNamespace(id=62)},
+            "paratie_progress_map": {"done": 1, "total": 2, "percent": 50},
+            "pali_progress_map": {"done": 1, "total": 3, "percent": 33},
+            "pali_fatti": 1,
+            "pali_percent": 33,
+            "pali_map": {2: SimpleNamespace(id=62)},
+        },
+    )
+
+    assert "Avanzamento lavori" in output
+    assert "Pali —" in output
+    assert "1/3" in output
+    assert "Dettaglio avanzamento" in output
+    assert "Paratie — 1/2 completate — 50%" in output
+    assert "Pali — 1/3 completati — 33%" in output
+    assert 'href="http://testserver/manager/fiches/61"' in output
+    assert 'href="http://testserver/manager/fiches/62"' in output
+
 def test_cantieri_map_data_is_json_serializable() -> None:
     site = Site(
         id=2,
