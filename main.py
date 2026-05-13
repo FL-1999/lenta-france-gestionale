@@ -3099,6 +3099,67 @@ def _progress_map_summary(done: int, total: int) -> dict[str, int]:
     return {"done": done, "total": total, "percent": _progress_percent(done, total)}
 
 
+def _build_avanzamento_grid_items(
+    fiches_map: dict[int, Fiche], total_elements: int, label: str
+) -> list[dict[str, object]]:
+    """Build the dedicated progress-grid view model with fiche preview data."""
+
+    items: list[dict[str, object]] = []
+    if total_elements <= 0:
+        return items
+
+    for element_number in range(1, total_elements + 1):
+        fiche = fiches_map.get(element_number)
+        if not fiche:
+            items.append(
+                {
+                    "number": element_number,
+                    "label": label,
+                    "is_completed": False,
+                    "preview": {
+                        "title": f"{label} {element_number}",
+                        "missing": True,
+                        "message": "Fiche non ancora creata",
+                    },
+                }
+            )
+            continue
+
+        volume_teorico = _calculate_fiche_volume_teorico(fiche)
+        volume_gettato = fiche.metri_cubi_gettati
+        differenza_volume = (
+            volume_gettato - volume_teorico
+            if volume_gettato is not None and volume_teorico is not None
+            else None
+        )
+        created_by = getattr(fiche, "created_by", None)
+        operatore = (
+            fiche.operator
+            or ((created_by.full_name or created_by.email) if created_by else None)
+            or "—"
+        )
+        items.append(
+            {
+                "number": element_number,
+                "label": label,
+                "is_completed": True,
+                "fiche_id": fiche.id,
+                "preview": {
+                    "title": f"{label} {element_number}",
+                    "missing": False,
+                    "number": element_number,
+                    "date": fiche.date.strftime("%d/%m/%Y") if fiche.date else "—",
+                    "operator": operatore,
+                    "volume_gettato": _format_progress_value(volume_gettato),
+                    "volume_teorico": _format_progress_value(volume_teorico),
+                    "differenza_volume": _format_progress_value(differenza_volume),
+                    "profondita": _format_progress_value(fiche.profondita_totale),
+                },
+            }
+        )
+    return items
+
+
 def _update_progress_summary_for_fiche_grids(
     progress_summary: dict[str, dict[str, object]],
     site: Site,
@@ -4076,6 +4137,80 @@ def manager_site_detail(
             site_task_status_values=SITE_TASK_STATUSES,
             site_task_priority_values=SITE_TASK_PRIORITIES,
             manager_users=manager_users,
+        ),
+    )
+
+
+@app.get(
+    "/manager/cantieri/{site_id}/avanzamento-griglie",
+    response_class=HTMLResponse,
+    name="manager_site_progress_grids",
+)
+@app.get(
+    "/admin/cantieri/{site_id}/avanzamento-griglie",
+    response_class=HTMLResponse,
+    name="admin_site_progress_grids",
+)
+def manager_site_progress_grids(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    lang = request.cookies.get("lang", "it")
+    db = SessionLocal()
+    try:
+        site = _get_site_for_detail(db, site_id, current_user)
+        site_fiches = (
+            db.query(Fiche)
+            .options(joinedload(Fiche.created_by))
+            .filter(Fiche.site_id == site.id)
+            .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
+            .all()
+        )
+        numero_totale_paratie = _site_paratie_total(site)
+        numero_totale_pali = _site_pali_total(site)
+        paratie_fiches_map = _build_site_fiches_map(
+            db, site.id, "paratia", numero_totale_paratie
+        )
+        pali_fiches_map = _build_site_fiches_map(
+            db, site.id, "palo", numero_totale_pali
+        )
+        paratie_progress_map = _progress_map_summary(
+            len(paratie_fiches_map), numero_totale_paratie
+        )
+        pali_progress_map = _progress_map_summary(
+            len(pali_fiches_map), numero_totale_pali
+        )
+        progress_summary, _, _ = _build_site_progress(site, lang)
+        _update_progress_summary_for_fiche_grids(
+            progress_summary, site, site_fiches, lang
+        )
+        paratie_grid = _build_avanzamento_grid_items(
+            paratie_fiches_map, numero_totale_paratie, "Paratia"
+        )
+        pali_grid = _build_avanzamento_grid_items(
+            pali_fiches_map, numero_totale_pali, "Palo"
+        )
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "manager/avanzamento_griglie.html",
+        build_template_context(
+            request,
+            current_user,
+            site=site,
+            progress_summary=progress_summary,
+            numero_totale_paratie=numero_totale_paratie,
+            numero_totale_pali=numero_totale_pali,
+            paratie_progress_map=paratie_progress_map,
+            pali_progress_map=pali_progress_map,
+            paratie_grid=paratie_grid,
+            pali_grid=pali_grid,
         ),
     )
 

@@ -1,0 +1,182 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+
+{% block title %}Griglie avanzamento – {{ site.name }}{% endblock %}
+
+{% macro summary_card(title, summary) %}
+  <article class="advanced-progress-summary-card">
+    <span class="advanced-progress-summary-card__label">{{ title }}</span>
+    <strong>{{ summary.done }}/{{ summary.total }}</strong>
+    <div class="progress-bar advanced-progress-summary-card__bar" aria-hidden="true">
+      <div class="progress-bar-fill" style="width: {{ summary.percent }}%;"></div>
+    </div>
+    <span class="advanced-progress-summary-card__percent">{{ summary.percent }}%</span>
+  </article>
+{% endmacro %}
+
+{% macro progress_grid_section(kind, title, summary, items) %}
+  <section class="advanced-progress-section" aria-labelledby="advanced-progress-{{ kind }}">
+    <div class="advanced-progress-section__header">
+      <div>
+        <p class="advanced-progress-section__eyebrow">{{ kind|upper }}</p>
+        <h2 id="advanced-progress-{{ kind }}">{{ title }}</h2>
+        <p>{{ summary.done }}/{{ summary.total }} fiche create · {{ summary.percent }}%</p>
+      </div>
+      <span class="progress-map-badge">{{ summary.percent }}%</span>
+    </div>
+    <div class="progress-bar progress-map-bar" aria-hidden="true">
+      <div class="progress-bar-fill" style="width: {{ summary.percent }}%;"></div>
+    </div>
+    {% if items %}
+      <div class="advanced-progress-grid" role="list" aria-label="Griglia avanzamento {{ title|lower }}">
+        {% for item in items %}
+          {% set fiche_url = url_for('manager_fiches_detail', fiche_id=item.fiche_id) if item.is_completed else '' %}
+          <button
+            type="button"
+            class="advanced-progress-cell {{ 'advanced-progress-cell--done' if item.is_completed else 'advanced-progress-cell--missing' }}"
+            role="listitem"
+            data-progress-cell
+            data-preview='{{ item.preview|tojson }}'
+            data-fiche-url="{{ fiche_url }}"
+            aria-label="{{ title }} {{ item.number }}: {{ 'fiche creata' if item.is_completed else 'fiche non ancora creata' }}"
+          >
+            <span>{{ item.number }}</span>
+          </button>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted mb-0">Nessun elemento configurato per {{ title|lower }}.</p>
+    {% endif %}
+  </section>
+{% endmacro %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">Avanzamento lavori</p>
+    <h1 class="page-title">
+      <span class="page-icon page-icon--sites" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 11.5L12 5l8 6.5V20H4z" stroke-linejoin="round" />
+          <path d="M10 20v-5h4v5" stroke-linecap="round" />
+        </svg>
+      </span>
+      Griglie avanzamento
+    </h1>
+    <p class="page-subtitle">{{ site.name }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('manager_site_detail', site_id=site.id) }}#schema-pannelli" class="btn btn-secondary">Torna ad Avanzamento lavori</a>
+  </div>
+</div>
+
+<section class="card advanced-progress-hero">
+  <div class="card-body">
+    <div>
+      <p class="page-eyebrow mb-1">Cantiere</p>
+      <h2 class="card-title mb-1">{{ site.name }}</h2>
+      <p class="text-muted mb-0">Paratie e pali sono gestiti in griglie separate. Verde = fiche creata, grigio = mancante.</p>
+    </div>
+    <div class="advanced-progress-summary">
+      {{ summary_card('Paratie', paratie_progress_map) }}
+      {{ summary_card('Pali', pali_progress_map) }}
+    </div>
+  </div>
+</section>
+
+{{ progress_grid_section('paratie', 'Paratie', paratie_progress_map, paratie_grid) }}
+{{ progress_grid_section('pali', 'Pali', pali_progress_map, pali_grid) }}
+
+<div class="advanced-preview-modal" id="advanced-preview-modal" aria-hidden="true">
+  <div class="advanced-preview-modal__backdrop" data-preview-close></div>
+  <div class="advanced-preview-modal__panel" role="dialog" aria-modal="true" aria-labelledby="advanced-preview-title">
+    <div class="advanced-preview-modal__header">
+      <div>
+        <p class="page-eyebrow mb-1">Preview fiche</p>
+        <h2 id="advanced-preview-title">Dettaglio</h2>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" data-preview-close aria-label="Chiudi preview">×</button>
+    </div>
+    <div class="advanced-preview-modal__body" id="advanced-preview-body"></div>
+    <div class="advanced-preview-modal__footer">
+      <a href="#" class="btn btn-secondary" id="advanced-preview-open-full-secondary">Apri fiche completa</a>
+      <a href="#" class="btn btn-primary" id="advanced-preview-open-full">Visualizza fiche</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const modal = document.getElementById("advanced-preview-modal");
+    const title = document.getElementById("advanced-preview-title");
+    const body = document.getElementById("advanced-preview-body");
+    const openFull = document.getElementById("advanced-preview-open-full");
+    const openFullSecondary = document.getElementById("advanced-preview-open-full-secondary");
+    if (!modal || !title || !body || !openFull || !openFullSecondary) return;
+
+    const setLinkState = (url) => {
+      [openFull, openFullSecondary].forEach((link) => {
+        if (url) {
+          link.href = url;
+          link.classList.remove("hidden");
+        } else {
+          link.href = "#";
+          link.classList.add("hidden");
+        }
+      });
+    };
+
+    const escapeHtml = (value) => String(value ?? "—")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+    const row = (label, value) => `
+      <div class="advanced-preview-row">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value || "—")}</strong>
+      </div>`;
+
+    const openModal = (preview, ficheUrl) => {
+      title.textContent = preview.title || "Preview fiche";
+      if (preview.missing) {
+        body.innerHTML = `<div class="advanced-preview-empty">${escapeHtml(preview.message || "Fiche non ancora creata")}</div>`;
+        setLinkState("");
+      } else {
+        body.innerHTML = [
+          row("Numero pannello/palo", preview.number),
+          row("Data", preview.date),
+          row("Operatore", preview.operator),
+          row("Volume gettato", `${preview.volume_gettato || "—"} m³`),
+          row("Volume teorico", `${preview.volume_teorico || "—"} m³`),
+          row("Differenza volume", `${preview.differenza_volume || "—"} m³`),
+          row("Profondità", `${preview.profondita || "—"} m`),
+        ].join("");
+        setLinkState(ficheUrl);
+      }
+      modal.classList.add("is-open");
+      modal.setAttribute("aria-hidden", "false");
+    };
+
+    const closeModal = () => {
+      modal.classList.remove("is-open");
+      modal.setAttribute("aria-hidden", "true");
+    };
+
+    document.querySelectorAll("[data-progress-cell]").forEach((cell) => {
+      cell.addEventListener("click", () => {
+        const preview = JSON.parse(cell.dataset.preview || "{}");
+        openModal(preview, cell.dataset.ficheUrl || "");
+      });
+    });
+    modal.querySelectorAll("[data-preview-close]").forEach((button) => button.addEventListener("click", closeModal));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && modal.classList.contains("is-open")) closeModal();
+    });
+  })();
+</script>
+{% endblock %}

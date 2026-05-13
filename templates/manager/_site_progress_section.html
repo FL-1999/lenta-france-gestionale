@@ -10,6 +10,13 @@
       Riassunto delle macro-fasi con stato e percentuale.
     {% endif %}
   </p>
+  {% if site is defined and site.id %}
+    <div class="mb-3">
+      <a href="{{ url_for('manager_site_progress_grids', site_id=site.id) }}" class="btn btn-primary">
+        Apri griglie avanzamento
+      </a>
+    </div>
+  {% endif %}
 
   {# --- CARD RIASSUNTIVE IN ALTO --- #}
   <div class="progress-card-grid">
