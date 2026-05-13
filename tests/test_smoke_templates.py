@@ -300,6 +300,13 @@ def test_manager_site_detail_renders_panel_schema() -> None:
                 {"number": 1, "is_completed": True, "fiche_id": 44},
                 {"number": 2, "is_completed": False, "fiche_id": None},
             ],
+            "pali_schema": [],
+            "numero_totale_paratie": 2,
+            "numero_totale_pali": 0,
+            "paratie_fiches_map": {1: SimpleNamespace(id=44)},
+            "pali_fiches_map": {},
+            "paratie_progress_map": {"done": 1, "total": 2, "percent": 50},
+            "pali_progress_map": {"done": 0, "total": 0, "percent": 0},
             "site_tasks": [],
             "open_tasks": [],
             "completed_tasks": [],
@@ -310,14 +317,13 @@ def test_manager_site_detail_renders_panel_schema() -> None:
         },
     )
 
-    assert "Schema pannelli" in output
+    assert "Mappa avanzamento fiches" in output
+    assert "Paratie — 1/2 completate — 50%" in output
     assert 'href="http://testserver/manager/fiches/44"' in output
-    assert "Fiche non presente" in output
-    assert "grid-avanzamento" in output
-    assert "cell done" in output
-    assert "cell missing" in output
-    assert "panel-tile--completed" in output
-    assert "panel-tile--missing" in output
+    assert "Fiche mancante" in output
+    assert "progress-map-grid" in output
+    assert "progress-cell done" in output
+    assert "progress-cell missing" in output
 
 
 def test_capo_site_detail_renders_non_clickable_panel_schema() -> None:

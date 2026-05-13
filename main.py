@@ -3063,6 +3063,36 @@ def _build_site_pali_schema(site: Site, fiches: list[Fiche]) -> list[dict]:
     return _build_site_fiche_grid_schema(_site_pali_total(site), fiches, "palo")
 
 
+def _build_site_fiches_map(
+    db: Session, site_id: int, tipologia: str, total_elements: int
+) -> dict[int, Fiche]:
+    """Return fiches keyed by numero_pannello for one excavation type only."""
+
+    if total_elements <= 0:
+        return {}
+
+    fiches = (
+        db.query(Fiche)
+        .options(joinedload(Fiche.created_by))
+        .filter(
+            Fiche.site_id == site_id,
+            func.lower(Fiche.tipologia_scavo) == tipologia.lower(),
+            Fiche.numero_pannello >= 1,
+            Fiche.numero_pannello <= total_elements,
+        )
+        .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
+        .all()
+    )
+    fiches_map: dict[int, Fiche] = {}
+    for fiche in fiches:
+        fiches_map.setdefault(int(fiche.numero_pannello), fiche)
+    return fiches_map
+
+
+def _progress_map_summary(done: int, total: int) -> dict[str, int]:
+    return {"done": done, "total": total, "percent": _progress_percent(done, total)}
+
+
 def _update_progress_summary_for_fiche_grids(
     progress_summary: dict[str, dict[str, object]],
     site: Site,
@@ -3980,6 +4010,20 @@ def manager_site_detail(
         )
         panel_schema = _build_site_panel_schema(site, site_fiches)
         pali_schema = _build_site_pali_schema(site, site_fiches)
+        numero_totale_paratie = _site_paratie_total(site)
+        numero_totale_pali = _site_pali_total(site)
+        paratie_fiches_map = _build_site_fiches_map(
+            db, site.id, "paratia", numero_totale_paratie
+        )
+        pali_fiches_map = _build_site_fiches_map(
+            db, site.id, "palo", numero_totale_pali
+        )
+        paratie_progress_map = _progress_map_summary(
+            len(paratie_fiches_map), numero_totale_paratie
+        )
+        pali_progress_map = _progress_map_summary(
+            len(pali_fiches_map), numero_totale_pali
+        )
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
@@ -4006,6 +4050,12 @@ def manager_site_detail(
             strut_levels_count=strut_levels_count,
             panel_schema=panel_schema,
             pali_schema=pali_schema,
+            numero_totale_paratie=numero_totale_paratie,
+            numero_totale_pali=numero_totale_pali,
+            paratie_fiches_map=paratie_fiches_map,
+            pali_fiches_map=pali_fiches_map,
+            paratie_progress_map=paratie_progress_map,
+            pali_progress_map=pali_progress_map,
             can_open_fiche_details=has_perm(current_user, "manager.access"),
             site_tasks=site_tasks,
             open_tasks=open_tasks,
