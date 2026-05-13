@@ -230,13 +230,18 @@
                         Altezza totale = profondità totale scavata. Ogni strato è proporzionale al suo spessore.
                     {% endif %}
                 </p>
-                <div class="stratigrafia-column">
-                    {% for layer in visual_layers %}
-                        <div class="stratigrafia-layer" style="height: {{ layer.height_percent }}%; background: {{ layer.color }};">
-                            <span class="stratigrafia-layer__range">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</span>
-                            <span class="stratigrafia-layer__material">{{ layer.materiale }}</span>
-                        </div>
-                    {% endfor %}
+                <div class="soil-visual" aria-label="{% if lang == 'fr' %}Section verticale du terrain avec bâtiment{% else %}Sezione verticale del terreno con edificio{% endif %}">
+                    <div class="soil-surface">
+                        <div class="building" aria-hidden="true"></div>
+                    </div>
+                    <div class="soil-layers">
+                        {% for layer in visual_layers %}
+                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;">
+                                <span class="label-left">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</span>
+                                <span class="label-right">{{ layer.materiale or '-' }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         {% endif %}
