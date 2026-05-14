@@ -35,6 +35,9 @@
             </a>
         {% endif %}
         {% if has_perm(user, "sites.update") %}
+            <a href="{{ url_for('manager_site_project_config_get', site_id=site.id) }}" class="btn btn-secondary">
+                ⚙️ Configurazione progetto
+            </a>
             <a href="{{ url_for('manager_cantiere_modifica_get', site_id=site.id) }}" class="btn btn-primary">
                 {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
             </a>

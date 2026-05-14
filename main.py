@@ -3062,6 +3062,7 @@ def manager_cantieri(
                     User.full_name,
                     User.email,
                 ),
+                joinedload(Site.coupes).joinedload(SiteCoupe.assignments),
             )
             .order_by(
                 Site.is_active.desc(),
@@ -3083,6 +3084,9 @@ def manager_cantieri(
         site_caposquadra_map = {
             site.id: site.caposquadra for site in sites_list
         }
+        site_project_configured_map = {
+            site.id: _site_project_configuration_complete(site) for site in sites_list
+        }
     finally:
         db.close()
 
@@ -3094,6 +3098,7 @@ def manager_cantieri(
             current_user,
             sites=sites_list,
             site_caposquadra_map=site_caposquadra_map,
+            site_project_configured_map=site_project_configured_map,
             page=page,
             per_page=per_page,
             total_pages=max(1, ceil(total_count / per_page)),
@@ -4173,7 +4178,14 @@ def _sync_site_coupes_from_form(
     coupe_note: list[str] | None,
     coupe_paratie: list[str] | None,
     coupe_pali: list[str] | None,
+    delete_coupe_id: list[str] | None = None,
 ) -> None:
+    requested_delete_ids = {str(value).strip() for value in (delete_coupe_id or []) if str(value).strip()}
+    coupe_ids_with_fiches = {str(fiche.coupe_id) for fiche in (site.fiches or []) if fiche.coupe_id is not None}
+    blocked_delete_ids = requested_delete_ids & coupe_ids_with_fiches
+    if blocked_delete_ids:
+        raise HTTPException(status_code=400, detail="Non puoi eliminare una coupe già associata a fiches salvate.")
+    delete_ids = requested_delete_ids - blocked_delete_ids
     existing = {str(coupe.id): coupe for coupe in (site.coupes or [])}
     row_count = max(
         len(coupe_id or []), len(coupe_nome or []), len(coupe_descrizione_zona or []),
@@ -4201,6 +4213,8 @@ def _sync_site_coupes_from_form(
             )
         )
         row_id = value(coupe_id, index).strip()
+        if row_id in delete_ids:
+            continue
         if not name and not has_any_value:
             continue
         if not name:
@@ -4241,8 +4255,36 @@ def _sync_site_coupes_from_form(
         db.add(SiteCoupeAssignment(site_id=site.id, coupe_id=coupe.id, tipologia_scavo=tipologia, numero_elemento=numero))
 
     for coupe in list(site.coupes or []):
-        if coupe.id not in seen and not any(fiche.coupe_id == coupe.id for fiche in site.fiches or []):
+        should_delete = coupe.id not in seen or str(coupe.id) in delete_ids
+        if should_delete and not any(fiche.coupe_id == coupe.id for fiche in site.fiches or []):
             db.delete(coupe)
+
+
+def _site_project_configuration_complete(site: Site) -> bool:
+    """Return True when the site has at least one materially complete project coupe."""
+    for coupe in site.coupes or []:
+        has_main_quotes = (
+            coupe.nome
+            and coupe.quota_tn is not None
+            and coupe.quota_testa is not None
+            and coupe.quota_fondo_teorica is not None
+            and coupe.profondita_teorica is not None
+            and coupe.quota_testa_getto_prevista is not None
+        )
+        has_geometry = coupe.spessore is not None or coupe.larghezza is not None or coupe.diametro is not None
+        has_assignment = bool(coupe.assignments)
+        if has_main_quotes and has_geometry and has_assignment:
+            return True
+    return False
+
+
+def _format_coupe_assignments(coupe: SiteCoupe, tipologia: str) -> str:
+    numbers = sorted(
+        assignment.numero_elemento
+        for assignment in (coupe.assignments or [])
+        if assignment.tipologia_scavo == tipologia
+    )
+    return ", ".join(str(number) for number in numbers)
 
 def _load_real_depots_for_forms(db: Session):
     default_names = ["montauroux", "st. jeannet", "st jeannet", "sommariva", "cantieri"]
@@ -4313,23 +4355,6 @@ def manager_cantiere_nuovo_post(
     caposquadra_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
     numero_totale_pali: str | None = Form(None),
-    coupe_id: List[str] = Form(default_factory=list),
-    coupe_nome: List[str] = Form(default_factory=list),
-    coupe_descrizione_zona: List[str] = Form(default_factory=list),
-    coupe_quota_tn: List[str] = Form(default_factory=list),
-    coupe_quota_testa: List[str] = Form(default_factory=list),
-    coupe_quota_fondo_teorica: List[str] = Form(default_factory=list),
-    coupe_profondita_teorica: List[str] = Form(default_factory=list),
-    coupe_scavo_da_tn: List[str] = Form(default_factory=list),
-    coupe_quota_partenza_scavo: List[str] = Form(default_factory=list),
-    coupe_quota_testa_getto_prevista: List[str] = Form(default_factory=list),
-    coupe_spessore: List[str] = Form(default_factory=list),
-    coupe_larghezza: List[str] = Form(default_factory=list),
-    coupe_diametro: List[str] = Form(default_factory=list),
-    coupe_terreno_teorico: List[str] = Form(default_factory=list),
-    coupe_note: List[str] = Form(default_factory=list),
-    coupe_paratie: List[str] = Form(default_factory=list),
-    coupe_pali: List[str] = Form(default_factory=list),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "sites.create"):
@@ -4488,18 +4513,6 @@ def manager_cantiere_nuovo_post(
         )
         db.add(new_site)
         db.flush()
-        _sync_site_coupes_from_form(
-            db, new_site, coupe_id=coupe_id, coupe_nome=coupe_nome,
-            coupe_descrizione_zona=coupe_descrizione_zona,
-            coupe_quota_tn=coupe_quota_tn, coupe_quota_testa=coupe_quota_testa,
-            coupe_quota_fondo_teorica=coupe_quota_fondo_teorica,
-            coupe_profondita_teorica=coupe_profondita_teorica, coupe_scavo_da_tn=coupe_scavo_da_tn,
-            coupe_quota_partenza_scavo=coupe_quota_partenza_scavo,
-            coupe_quota_testa_getto_prevista=coupe_quota_testa_getto_prevista,
-            coupe_spessore=coupe_spessore, coupe_larghezza=coupe_larghezza, coupe_diametro=coupe_diametro,
-            coupe_terreno_teorico=coupe_terreno_teorico, coupe_note=coupe_note,
-            coupe_paratie=coupe_paratie, coupe_pali=coupe_pali,
-        )
         log_audit_event(
             db,
             current_user,
@@ -4517,6 +4530,147 @@ def manager_cantiere_nuovo_post(
         db.close()
 
     return RedirectResponse(url="/manager/cantieri", status_code=303)
+
+@app.get(
+    "/manager/cantieri/{site_id}/configurazione-progetto",
+    response_class=HTMLResponse,
+    name="manager_site_project_config_get",
+)
+def manager_site_project_config_get(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "sites.update"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = (
+            db.query(Site)
+            .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments))
+            .filter(Site.id == site_id)
+            .first()
+        )
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        return templates.TemplateResponse(
+            request,
+            "manager/site_project_configuration.html",
+            build_template_context(
+                request,
+                current_user,
+                site=site,
+                is_project_configured=_site_project_configuration_complete(site),
+                format_coupe_assignments=_format_coupe_assignments,
+            ),
+        )
+    finally:
+        db.close()
+
+
+@app.post(
+    "/manager/cantieri/{site_id}/configurazione-progetto",
+    response_class=HTMLResponse,
+    name="manager_site_project_config_post",
+)
+def manager_site_project_config_post(
+    request: Request,
+    site_id: int,
+    coupe_id: List[str] = Form(default_factory=list),
+    coupe_nome: List[str] = Form(default_factory=list),
+    coupe_descrizione_zona: List[str] = Form(default_factory=list),
+    coupe_quota_tn: List[str] = Form(default_factory=list),
+    coupe_quota_testa: List[str] = Form(default_factory=list),
+    coupe_quota_fondo_teorica: List[str] = Form(default_factory=list),
+    coupe_profondita_teorica: List[str] = Form(default_factory=list),
+    coupe_scavo_da_tn: List[str] = Form(default_factory=list),
+    coupe_quota_partenza_scavo: List[str] = Form(default_factory=list),
+    coupe_quota_testa_getto_prevista: List[str] = Form(default_factory=list),
+    coupe_spessore: List[str] = Form(default_factory=list),
+    coupe_larghezza: List[str] = Form(default_factory=list),
+    coupe_diametro: List[str] = Form(default_factory=list),
+    coupe_terreno_teorico: List[str] = Form(default_factory=list),
+    coupe_note: List[str] = Form(default_factory=list),
+    coupe_paratie: List[str] = Form(default_factory=list),
+    coupe_pali: List[str] = Form(default_factory=list),
+    delete_coupe_id: List[str] = Form(default_factory=list),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "sites.update"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+
+    db = SessionLocal()
+    try:
+        site = (
+            db.query(Site)
+            .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments), joinedload(Site.fiches))
+            .filter(Site.id == site_id)
+            .first()
+        )
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+        try:
+            _sync_site_coupes_from_form(
+                db,
+                site,
+                coupe_id=coupe_id,
+                coupe_nome=coupe_nome,
+                coupe_descrizione_zona=coupe_descrizione_zona,
+                coupe_quota_tn=coupe_quota_tn,
+                coupe_quota_testa=coupe_quota_testa,
+                coupe_quota_fondo_teorica=coupe_quota_fondo_teorica,
+                coupe_profondita_teorica=coupe_profondita_teorica,
+                coupe_scavo_da_tn=coupe_scavo_da_tn,
+                coupe_quota_partenza_scavo=coupe_quota_partenza_scavo,
+                coupe_quota_testa_getto_prevista=coupe_quota_testa_getto_prevista,
+                coupe_spessore=coupe_spessore,
+                coupe_larghezza=coupe_larghezza,
+                coupe_diametro=coupe_diametro,
+                coupe_terreno_teorico=coupe_terreno_teorico,
+                coupe_note=coupe_note,
+                coupe_paratie=coupe_paratie,
+                coupe_pali=coupe_pali,
+                delete_coupe_id=delete_coupe_id,
+            )
+            _sync_site_fiche_progress(db, site)
+            log_audit_event(
+                db,
+                current_user,
+                "SITE_PROJECT_CONFIGURATION_UPDATED",
+                "site",
+                site.id,
+                {"name": site.name, "coupe_count": len(site.coupes or [])},
+            )
+            db.commit()
+        except HTTPException as exc:
+            db.rollback()
+            site = (
+                db.query(Site)
+                .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments))
+                .filter(Site.id == site_id)
+                .first()
+            )
+            return templates.TemplateResponse(
+                request,
+                "manager/site_project_configuration.html",
+                build_template_context(
+                    request,
+                    current_user,
+                    site=site,
+                    is_project_configured=_site_project_configuration_complete(site) if site else False,
+                    format_coupe_assignments=_format_coupe_assignments,
+                    error_message=exc.detail,
+                ),
+                status_code=exc.status_code or 400,
+            )
+    finally:
+        db.close()
+
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}/configurazione-progetto?saved=1",
+        status_code=303,
+    )
 
 
 @app.get("/manager/cantieri/{site_id}", response_class=HTMLResponse, name="manager_site_detail")
@@ -5471,23 +5625,6 @@ def manager_cantiere_modifica_post(
     caposquadra_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
     numero_totale_pali: str | None = Form(None),
-    coupe_id: List[str] = Form(default_factory=list),
-    coupe_nome: List[str] = Form(default_factory=list),
-    coupe_descrizione_zona: List[str] = Form(default_factory=list),
-    coupe_quota_tn: List[str] = Form(default_factory=list),
-    coupe_quota_testa: List[str] = Form(default_factory=list),
-    coupe_quota_fondo_teorica: List[str] = Form(default_factory=list),
-    coupe_profondita_teorica: List[str] = Form(default_factory=list),
-    coupe_scavo_da_tn: List[str] = Form(default_factory=list),
-    coupe_quota_partenza_scavo: List[str] = Form(default_factory=list),
-    coupe_quota_testa_getto_prevista: List[str] = Form(default_factory=list),
-    coupe_spessore: List[str] = Form(default_factory=list),
-    coupe_larghezza: List[str] = Form(default_factory=list),
-    coupe_diametro: List[str] = Form(default_factory=list),
-    coupe_terreno_teorico: List[str] = Form(default_factory=list),
-    coupe_note: List[str] = Form(default_factory=list),
-    coupe_paratie: List[str] = Form(default_factory=list),
-    coupe_pali: List[str] = Form(default_factory=list),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role == RoleEnum.caposquadra:
@@ -5594,19 +5731,6 @@ def manager_cantiere_modifica_post(
         site.numero_totale_paratie = total_paratie_value
         site.numero_totale_pali = total_pali_value
         site.paratie_total_panels = total_paratie_value
-        if not is_caposquadra:
-            _sync_site_coupes_from_form(
-                db, site, coupe_id=coupe_id, coupe_nome=coupe_nome,
-                coupe_descrizione_zona=coupe_descrizione_zona,
-                coupe_quota_tn=coupe_quota_tn, coupe_quota_testa=coupe_quota_testa,
-                coupe_quota_fondo_teorica=coupe_quota_fondo_teorica,
-                coupe_profondita_teorica=coupe_profondita_teorica, coupe_scavo_da_tn=coupe_scavo_da_tn,
-                coupe_quota_partenza_scavo=coupe_quota_partenza_scavo,
-                coupe_quota_testa_getto_prevista=coupe_quota_testa_getto_prevista,
-                coupe_spessore=coupe_spessore, coupe_larghezza=coupe_larghezza, coupe_diametro=coupe_diametro,
-                coupe_terreno_teorico=coupe_terreno_teorico, coupe_note=coupe_note,
-                coupe_paratie=coupe_paratie, coupe_pali=coupe_pali,
-            )
         _sync_site_fiche_progress(db, site)
 
         new_status = site.status.value if site.status else None

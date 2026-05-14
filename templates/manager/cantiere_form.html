@@ -135,71 +135,11 @@
         </div>
 
 
-        {% if not is_capo %}
-        <div>
-          <div class="card" style="margin-bottom: 1rem;">
-            <div class="card-header"><div class="card-title">Coupe di progetto</div></div>
-            <div class="card-body">
-              <p class="text-muted">Admin e manager preconfigurano quote, profondità teoriche e terreno teorico; le fiche operative ereditano questi dati.</p>
-              {% set coupe_rows = site.coupes if site and site.coupes else [] %}
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Nome / zona</th><th>Quote NGF</th><th>Scavo / getto</th><th>Dimensioni</th><th>Associazioni</th><th>Terreno / note</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for coupe in coupe_rows %}
-                    <tr>
-                      <td>
-                        <input type="hidden" name="coupe_id" value="{{ coupe.id }}">
-                        <input class="form-control" name="coupe_nome" value="{{ coupe.nome }}" placeholder="Coupe {{ loop.index }}">
-                        <textarea class="form-textarea" name="coupe_descrizione_zona" rows="2" placeholder="Descrizione zona">{{ coupe.descrizione_zona or '' }}</textarea>
-                      </td>
-                      <td>
-                        <input class="form-control" type="number" step="0.01" name="coupe_quota_tn" value="{{ coupe.quota_tn if coupe.quota_tn is not none else '' }}" placeholder="Quota TN">
-                        <input class="form-control" type="number" step="0.01" name="coupe_quota_testa" value="{{ coupe.quota_testa if coupe.quota_testa is not none else '' }}" placeholder="Testa paratia/palo">
-                        <input class="form-control" type="number" step="0.01" name="coupe_quota_fondo_teorica" value="{{ coupe.quota_fondo_teorica if coupe.quota_fondo_teorica is not none else '' }}" placeholder="Fondo teorico">
-                        <input class="form-control" type="number" step="0.01" name="coupe_profondita_teorica" value="{{ coupe.profondita_teorica if coupe.profondita_teorica is not none else '' }}" placeholder="Profondità teorica">
-                      </td>
-                      <td>
-                        <select class="form-select" name="coupe_scavo_da_tn">
-                          <option value="1" {% if coupe.scavo_da_tn %}selected{% endif %}>Scavo da TN: sì</option>
-                          <option value="0" {% if not coupe.scavo_da_tn %}selected{% endif %}>Scavo da quota diversa</option>
-                        </select>
-                        <input class="form-control" type="number" step="0.01" name="coupe_quota_partenza_scavo" value="{{ coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not none else '' }}" placeholder="Quota partenza scavo">
-                        <input class="form-control" type="number" step="0.01" name="coupe_quota_testa_getto_prevista" value="{{ coupe.quota_testa_getto_prevista if coupe.quota_testa_getto_prevista is not none else '' }}" placeholder="Quota testa getto prevista">
-                      </td>
-                      <td>
-                        <input class="form-control" type="number" step="0.01" name="coupe_spessore" value="{{ coupe.spessore if coupe.spessore is not none else '' }}" placeholder="Spessore">
-                        <input class="form-control" type="number" step="0.01" name="coupe_larghezza" value="{{ coupe.larghezza if coupe.larghezza is not none else '' }}" placeholder="Larghezza paratia">
-                        <input class="form-control" type="number" step="0.01" name="coupe_diametro" value="{{ coupe.diametro if coupe.diametro is not none else '' }}" placeholder="Diametro palo (m)">
-                      </td>
-                      <td>
-                        <input class="form-control" name="coupe_paratie" placeholder="Paratie es. 1,2,5-8" value="{% for a in coupe.assignments if a.tipologia_scavo == 'paratia' %}{{ a.numero_elemento }}{% if not loop.last %}, {% endif %}{% endfor %}">
-                        <input class="form-control" name="coupe_pali" placeholder="Pali es. 1,2,5-8" value="{% for a in coupe.assignments if a.tipologia_scavo == 'palo' %}{{ a.numero_elemento }}{% if not loop.last %}, {% endif %}{% endfor %}">
-                      </td>
-                      <td>
-                        <textarea class="form-textarea" name="coupe_terreno_teorico" rows="2" placeholder="Stratigrafia teorica">{{ coupe.terreno_teorico or '' }}</textarea>
-                        <textarea class="form-textarea" name="coupe_note" rows="2" placeholder="Note / futuro confronto reale vs teorico">{{ coupe.note or '' }}</textarea>
-                      </td>
-                    </tr>
-                    {% endfor %}
-                    <tr>
-                      <td><input type="hidden" name="coupe_id" value=""><input class="form-control" name="coupe_nome" placeholder="Coupe {{ coupe_rows|length + 1 }}"><textarea class="form-textarea" name="coupe_descrizione_zona" rows="2" placeholder="Descrizione zona"></textarea></td>
-                      <td><input class="form-control" type="number" step="0.01" name="coupe_quota_tn" placeholder="Quota TN"><input class="form-control" type="number" step="0.01" name="coupe_quota_testa" placeholder="Testa paratia/palo"><input class="form-control" type="number" step="0.01" name="coupe_quota_fondo_teorica" placeholder="Fondo teorico"><input class="form-control" type="number" step="0.01" name="coupe_profondita_teorica" placeholder="Profondità teorica"></td>
-                      <td><select class="form-select" name="coupe_scavo_da_tn"><option value="1">Scavo da TN: sì</option><option value="0">Scavo da quota diversa</option></select><input class="form-control" type="number" step="0.01" name="coupe_quota_partenza_scavo" placeholder="Quota partenza scavo"><input class="form-control" type="number" step="0.01" name="coupe_quota_testa_getto_prevista" placeholder="Quota testa getto prevista"></td>
-                      <td><input class="form-control" type="number" step="0.01" name="coupe_spessore" placeholder="Spessore"><input class="form-control" type="number" step="0.01" name="coupe_larghezza" placeholder="Larghezza paratia"><input class="form-control" type="number" step="0.01" name="coupe_diametro" placeholder="Diametro palo (m)"></td>
-                      <td><input class="form-control" name="coupe_paratie" placeholder="Paratie es. 1,2,5-8"><input class="form-control" name="coupe_pali" placeholder="Pali es. 1,2,5-8"></td>
-                      <td><textarea class="form-textarea" name="coupe_terreno_teorico" rows="2" placeholder="Stratigrafia teorica"></textarea><textarea class="form-textarea" name="coupe_note" rows="2" placeholder="Note"></textarea></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        {% if mode == "edit" and not is_capo %}
+          <div class="alert alert-info" role="status" style="margin: 0 0 1rem;">
+            Le coupe non si gestiscono più da questa scheda. Usa la sezione dedicata
+            <a href="/manager/cantieri/{{ site.id }}/configurazione-progetto">Configurazione progetto</a>.
           </div>
-        </div>
         {% endif %}
 
         <div class="cantiere-step" data-step="2">
