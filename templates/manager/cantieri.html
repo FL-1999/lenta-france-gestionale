@@ -115,9 +115,9 @@
           </td>
           <td class="text-center">
             {% if project_configured %}
-              <span class="project-status project-status--ok" title="Configurazione progetto presente">✔️</span>
+              <span class="project-status project-status--ok" title="Almeno una coupe configurata">✅</span>
             {% else %}
-              <span class="project-status project-status--warning" title="Configurazione progetto mancante">⚠️</span>
+              <span class="project-status project-status--warning" title="Nessuna coupe configurata">⚠️</span>
             {% endif %}
           </td>
           <td class="text-center">
@@ -181,9 +181,9 @@
             {{ s.status.value if s.status else "-" }}
           </span>
           {% if project_configured %}
-            <span class="badge badge-success" title="Configurazione progetto presente">✔️ Progetto</span>
+            <span class="badge badge-success" title="Almeno una coupe configurata">✅ Progetto</span>
           {% else %}
-            <span class="badge badge-danger" title="Configurazione progetto mancante">⚠️ Progetto</span>
+            <span class="badge badge-danger" title="Nessuna coupe configurata">⚠️ Progetto</span>
           {% endif %}
         </div>
 

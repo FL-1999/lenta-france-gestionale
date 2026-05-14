@@ -17,6 +17,8 @@ from main import (
     _build_sites_map_data,
     _build_avanzamento_grid_items,
     _ensure_unique_numero_pannello,
+    _format_coupe_assignments,
+    _site_coupe_configuration_complete,
     app,
     get_current_active_user_html,
     templates,
@@ -31,6 +33,8 @@ from models import (
     FicheTypeEnum,
     RoleEnum,
     Site,
+    SiteCoupe,
+    SiteCoupeAssignment,
     SiteStatusEnum,
     User,
 )
@@ -168,6 +172,56 @@ def test_cantiere_form_edit_renders() -> None:
 
     assert "Modifica cantiere" in output
 
+
+
+def test_site_project_configuration_renders_multi_coupe_cards() -> None:
+    site = Site(
+        id=12,
+        name="Cantiere Config",
+        code="CFG-012",
+        status=SiteStatusEnum.aperto,
+        is_active=True,
+        numero_totale_paratie=8,
+        numero_totale_pali=4,
+    )
+    coupe = SiteCoupe(
+        id=3,
+        site_id=12,
+        nome="Coupe A",
+        descrizione_zona="Zona nord",
+        quota_tn=24.5,
+        quota_testa=23.8,
+        quota_fondo_teorica=11.3,
+        profondita_teorica=12.5,
+        quota_testa_getto_prevista=23.4,
+        spessore=0.8,
+    )
+    coupe.assignments = [
+        SiteCoupeAssignment(tipologia_scavo="paratia", numero_elemento=1),
+        SiteCoupeAssignment(tipologia_scavo="paratia", numero_elemento=2),
+        SiteCoupeAssignment(tipologia_scavo="paratia", numero_elemento=3),
+        SiteCoupeAssignment(tipologia_scavo="palo", numero_elemento=5),
+    ]
+    site.coupes = [coupe]
+
+    output = render_template(
+        "manager/site_project_configuration.html",
+        {
+            "request": build_request("/manager/cantieri/12/configurazione-progetto"),
+            "user": build_manager_user(),
+            "site": site,
+            "is_project_configured": True,
+            "is_coupe_configured": _site_coupe_configuration_complete,
+            "format_coupe_assignments": _format_coupe_assignments,
+            "error_message": None,
+        },
+    )
+
+    assert "Configurazione progetto — Cantiere Config" in output
+    assert "✅ Configurato" in output
+    assert "Coupe A" in output
+    assert 'value="1-3"' in output
+    assert "Totale pali" in output
 
 def test_cantiere_form_edit_renders_pali_progress_and_detail_grids() -> None:
     site = Site(

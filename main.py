@@ -4260,22 +4260,28 @@ def _sync_site_coupes_from_form(
             db.delete(coupe)
 
 
+def _site_coupe_configuration_complete(coupe: SiteCoupe) -> bool:
+    """Return True when a coupe has the minimum data needed by fiche creation."""
+    has_main_quotes = (
+        bool(coupe.nome)
+        and coupe.quota_tn is not None
+        and coupe.quota_testa is not None
+        and coupe.quota_fondo_teorica is not None
+        and coupe.profondita_teorica is not None
+        and coupe.quota_testa_getto_prevista is not None
+    )
+    has_geometry = (
+        coupe.spessore is not None
+        or coupe.larghezza is not None
+        or coupe.diametro is not None
+    )
+    has_assignment = bool(coupe.assignments)
+    return bool(has_main_quotes and has_geometry and has_assignment)
+
+
 def _site_project_configuration_complete(site: Site) -> bool:
     """Return True when the site has at least one materially complete project coupe."""
-    for coupe in site.coupes or []:
-        has_main_quotes = (
-            coupe.nome
-            and coupe.quota_tn is not None
-            and coupe.quota_testa is not None
-            and coupe.quota_fondo_teorica is not None
-            and coupe.profondita_teorica is not None
-            and coupe.quota_testa_getto_prevista is not None
-        )
-        has_geometry = coupe.spessore is not None or coupe.larghezza is not None or coupe.diametro is not None
-        has_assignment = bool(coupe.assignments)
-        if has_main_quotes and has_geometry and has_assignment:
-            return True
-    return False
+    return any(_site_coupe_configuration_complete(coupe) for coupe in site.coupes or [])
 
 
 def _format_coupe_assignments(coupe: SiteCoupe, tipologia: str) -> str:
@@ -4284,7 +4290,19 @@ def _format_coupe_assignments(coupe: SiteCoupe, tipologia: str) -> str:
         for assignment in (coupe.assignments or [])
         if assignment.tipologia_scavo == tipologia
     )
-    return ", ".join(str(number) for number in numbers)
+    if not numbers:
+        return ""
+
+    ranges: list[str] = []
+    start = previous = numbers[0]
+    for number in numbers[1:]:
+        if number == previous + 1:
+            previous = number
+            continue
+        ranges.append(str(start) if start == previous else f"{start}-{previous}")
+        start = previous = number
+    ranges.append(str(start) if start == previous else f"{start}-{previous}")
+    return ",".join(ranges)
 
 def _load_real_depots_for_forms(db: Session):
     default_names = ["montauroux", "st. jeannet", "st jeannet", "sommariva", "cantieri"]
@@ -4563,6 +4581,7 @@ def manager_site_project_config_get(
                 site=site,
                 is_project_configured=_site_project_configuration_complete(site),
                 format_coupe_assignments=_format_coupe_assignments,
+                is_coupe_configured=_site_coupe_configuration_complete,
             ),
         )
     finally:
@@ -4660,6 +4679,7 @@ def manager_site_project_config_post(
                     site=site,
                     is_project_configured=_site_project_configuration_complete(site) if site else False,
                     format_coupe_assignments=_format_coupe_assignments,
+                    is_coupe_configured=_site_coupe_configuration_complete,
                     error_message=exc.detail,
                 ),
                 status_code=exc.status_code or 400,
