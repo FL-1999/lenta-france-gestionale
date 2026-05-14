@@ -771,6 +771,20 @@ def _validate_metri_cubi_gettati(metri_cubi_gettati: float | None) -> None:
         )
 
 
+def _validate_quota_testa_getto_not_above_tn(
+    quota_testa_getto: float | None,
+    *,
+    quota_tn: float | None,
+) -> None:
+    if quota_testa_getto is None or quota_tn is None:
+        return
+    if quota_testa_getto > quota_tn:
+        raise HTTPException(
+            status_code=400,
+            detail="La quota testa getto non può essere superiore alla quota TN.",
+        )
+
+
 def _get_complete_stratigrafia_layers(
     strato_da: list[float | None] | None,
     strato_a: list[float | None] | None,
@@ -1127,6 +1141,9 @@ def _create_validated_fiche(
     quota_ngf_testa: str | float | None = None,
     quota_ngf_fondo: str | float | None = None,
     quota_ngf_note: str | None = None,
+    coupe_id: str | int | None = None,
+    scavo_da_tn: bool | str | None = True,
+    quota_testa_getto: str | float | None = None,
     strato_da: list[str | float | None] | None = None,
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
@@ -1194,8 +1211,11 @@ def _create_validated_fiche(
     if coupe:
         quota_partenza_value = coupe.quota_tn if scavo_da_tn_value else coupe.quota_testa
     quota_testa_getto_value = _parse_decimal_comma_float(quota_testa_getto, "quota testa getto")
-    if coupe and quota_testa_getto_value is not None and coupe.quota_tn is not None and quota_testa_getto_value > coupe.quota_tn:
-        raise HTTPException(status_code=400, detail="La quota testa getto non può essere superiore alla quota TN della coupe.")
+    quota_tn_limit = coupe.quota_tn if coupe and coupe.quota_tn is not None else quota_ngf_testa_value
+    _validate_quota_testa_getto_not_above_tn(
+        quota_testa_getto_value,
+        quota_tn=quota_tn_limit,
+    )
 
     normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
     _ensure_unique_numero_pannello(
@@ -1358,8 +1378,11 @@ def _update_validated_fiche(
     if coupe:
         quota_partenza_value = coupe.quota_tn if scavo_da_tn_value else coupe.quota_testa
     quota_testa_getto_value = _parse_decimal_comma_float(quota_testa_getto, "quota testa getto")
-    if coupe and quota_testa_getto_value is not None and coupe.quota_tn is not None and quota_testa_getto_value > coupe.quota_tn:
-        raise HTTPException(status_code=400, detail="La quota testa getto non può essere superiore alla quota TN della coupe.")
+    quota_tn_limit = coupe.quota_tn if coupe and coupe.quota_tn is not None else quota_ngf_testa_value
+    _validate_quota_testa_getto_not_above_tn(
+        quota_testa_getto_value,
+        quota_tn=quota_tn_limit,
+    )
 
     if parsed_machine_id is not None:
         machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()

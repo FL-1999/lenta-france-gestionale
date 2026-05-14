@@ -237,28 +237,129 @@
 </section>
 
 
+
+{% set schema_quota_tn = fiche.coupe.quota_tn if fiche.coupe and fiche.coupe.quota_tn is not none else (fiche.quota_ngf_testa if fiche.quota_ngf_testa is not none else fiche.quota_partenza) %}
+{% set schema_quota_partenza = fiche.quota_partenza if fiche.quota_partenza is not none else (fiche.coupe.quota_testa if fiche.coupe and fiche.coupe.quota_testa is not none else fiche.quota_ngf_testa) %}
+{% set schema_quota_fondo = fiche.quota_ngf_fondo %}
+{% set schema_quota_getto = fiche.quota_testa_getto %}
+{% set schema_depth = (schema_quota_tn - schema_quota_fondo) if schema_quota_tn is not none and schema_quota_fondo is not none else none %}
+{% set can_render_ngf_schema = schema_depth is not none and schema_depth > 0 %}
+{% set schema_fondo_teorico = fiche.coupe.quota_fondo_teorica if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else none %}
+{% set schema_depth_diff = fiche.profondita_totale - fiche.coupe.profondita_teorica if fiche.coupe and fiche.profondita_totale is not none and fiche.coupe.profondita_teorica is not none else none %}
+{% set schema_fondo_diff = schema_quota_fondo - schema_fondo_teorico if schema_quota_fondo is not none and schema_fondo_teorico is not none else none %}
+
 <section class="card technical-coupe-card" style="margin-top: 1.5rem;">
-    <div class="card-header"><div class="card-title">📈 Schema tecnico coupe</div></div>
+    <div class="card-header">
+        <div class="card-title">📈 {% if lang == 'fr' %}Coupe technique NGF + stratigraphie{% else %}Schema tecnico NGF + stratigrafia 3D{% endif %}</div>
+    </div>
     <div class="card-body">
-        <div style="display:grid; grid-template-columns: minmax(260px, 1fr) minmax(220px, .8fr); gap:1rem; align-items:stretch;">
-            <div style="position:relative; min-height:360px; border:1px solid var(--border-color, #e5e7eb); border-radius:18px; padding:1rem; background:linear-gradient(180deg,#f8fafc,#eef2ff); overflow:hidden;">
-                <div style="position:absolute; left:1rem; right:1rem; top:44px; border-top:3px solid #2563eb;"><strong style="background:#fff; padding:.2rem .5rem; border-radius:999px;">TN {{ '%.2f'|format(fiche.coupe.quota_tn) if fiche.coupe and fiche.coupe.quota_tn is not none else '—' }}</strong></div>
-                <div style="position:absolute; left:1rem; right:1rem; top:96px; border-top:2px dashed #0f172a;"><strong style="background:#fff; padding:.2rem .5rem; border-radius:999px;">Testa {{ '%.2f'|format(fiche.coupe.quota_testa) if fiche.coupe and fiche.coupe.quota_testa is not none else '—' }}</strong></div>
-                <div style="position:absolute; left:1rem; right:1rem; bottom:76px; border-top:3px solid #dc2626;"><strong style="background:#fff; padding:.2rem .5rem; border-radius:999px;">Fondo scavo {{ '%.2f'|format(fiche.quota_ngf_fondo) if fiche.quota_ngf_fondo is not none else '—' }}</strong></div>
-                <div style="position:absolute; left:1rem; right:1rem; bottom:132px; border-top:3px solid #16a34a;"><strong style="background:#fff; padding:.2rem .5rem; border-radius:999px;">Getto {{ '%.2f'|format(fiche.quota_testa_getto) if fiche.quota_testa_getto is not none else '—' }}</strong></div>
-                <div style="position:absolute; left:45%; top:96px; bottom:76px; width:90px; transform:translateX(-50%); border-radius:12px 12px 4px 4px; background:rgba(30,64,175,.18); border:2px solid #1d4ed8;"></div>
-                <div style="position:absolute; right:1.25rem; top:150px; max-width:220px; background:#fff; border-radius:14px; padding:.75rem; box-shadow:0 10px 25px rgba(15,23,42,.10);">
-                    <strong>Reale</strong><br>
-                    Profondità scavata: {{ fiche.profondita_totale if fiche.profondita_totale is not none else '—' }} m<br>
-                    Scavo da TN: {{ 'Sì' if fiche.scavo_da_tn else 'No' }}
+        {% if can_render_ngf_schema %}
+            <div class="technical-split-view">
+                <div class="ngf-schema-panel">
+                    <div class="technical-panel-heading">
+                        <span>{% if lang == 'fr' %}Schéma cotes NGF{% else %}Schema quote NGF{% endif %}</span>
+                        <strong>{{ "%.2f"|format(schema_depth) }} m</strong>
+                    </div>
+                    <div class="ngf-section-canvas" aria-label="Schema tecnico quote NGF">
+                        <div class="ngf-axis" aria-hidden="true"></div>
+                        <div class="ngf-excavation-core" aria-hidden="true"></div>
+                        {% set tn_top = 0 %}
+                        <div class="ngf-level ngf-level--tn" style="--level-top: {{ tn_top }}%;" title="TN · {{ '%.2f'|format(schema_quota_tn) }} NGF{% if fiche.coupe and fiche.coupe.quota_tn is not none %} · teorico coupe{% endif %}">
+                            <span class="ngf-value">{{ "%.2f"|format(schema_quota_tn) }} NGF</span>
+                            <span class="ngf-name">TN</span>
+                        </div>
+                        {% if schema_quota_partenza is not none %}
+                            {% set partenza_top = 100 - (((schema_quota_partenza - schema_quota_fondo) / schema_depth) * 100) %}
+                            <div class="ngf-level ngf-level--start" style="--level-top: {{ partenza_top }}%;" title="{% if lang == 'fr' %}Départ excavation{% else %}Partenza scavo{% endif %} · {{ '%.2f'|format(schema_quota_partenza) }} NGF{% if fiche.coupe and fiche.coupe.quota_testa is not none %} · Δ testa teorica {{ '%+.2f'|format(schema_quota_partenza - fiche.coupe.quota_testa) }} m{% endif %}">
+                                <span class="ngf-value">{{ "%.2f"|format(schema_quota_partenza) }} NGF</span>
+                                <span class="ngf-name">{% if lang == 'fr' %}Départ fouille{% else %}Partenza scavo{% endif %}</span>
+                            </div>
+                        {% endif %}
+                        <div class="ngf-level ngf-level--bottom" style="--level-top: 100%;" title="{% if lang == 'fr' %}Fond excavation{% else %}Fondo scavo{% endif %} · {{ '%.2f'|format(schema_quota_fondo) }} NGF{% if schema_fondo_diff is not none %} · Δ teorico {{ '%+.2f'|format(schema_fondo_diff) }} m{% endif %}">
+                            <span class="ngf-value">{{ "%.2f"|format(schema_quota_fondo) }} NGF</span>
+                            <span class="ngf-name">{% if lang == 'fr' %}Fond fouille{% else %}Fondo scavo{% endif %}</span>
+                        </div>
+                        {% if schema_quota_getto is not none %}
+                            {% set getto_top = 100 - (((schema_quota_getto - schema_quota_fondo) / schema_depth) * 100) %}
+                            <div class="ngf-level ngf-level--pour" style="--level-top: {{ getto_top }}%;" title="{% if lang == 'fr' %}Tête béton{% else %}Testa getto{% endif %} · {{ '%.2f'|format(schema_quota_getto) }} NGF · Δ quota getto pronta per confronto teorico">
+                                <span class="ngf-value">{{ "%.2f"|format(schema_quota_getto) }} NGF</span>
+                                <span class="ngf-name">{% if lang == 'fr' %}Tête béton{% else %}Testa getto{% endif %}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="stratigrafia-technical-panel">
+                    <div class="technical-panel-heading">
+                        <span>{% if lang == 'fr' %}Stratigraphie 3D réelle{% else %}Stratigrafia 3D reale{% endif %}</span>
+                        <strong>{{ fiche.profondita_totale if fiche.profondita_totale is not none else "—" }} m</strong>
+                    </div>
+                    {% if visual_layers %}
+                        <div class="stratigrafia-visual stratigrafia-visual--technical">
+                            <div class="soil-visual" aria-label="{% if lang == 'fr' %}Bloc technique 3D de stratigraphie du terrain{% else %}Blocco tecnico 3D di stratigrafia del terreno{% endif %}">
+                                <div class="soil-3d soil-3d--aligned">
+                                    <div class="top-surface" aria-hidden="true"></div>
+                                    <div class="soil-front">
+                                        <div class="soil-depth-marker soil-depth-marker--tn" style="--marker-top: 0%;" title="TN · {{ '%.2f'|format(schema_quota_tn) }} NGF"><span>TN</span></div>
+                                        <div class="soil-depth-marker soil-depth-marker--bottom" style="--marker-top: 100%;" title="Fondo scavo · {{ '%.2f'|format(schema_quota_fondo) }} NGF"><span>{% if lang == 'fr' %}Fond{% else %}Fondo{% endif %}</span></div>
+                                        {% if schema_quota_getto is not none %}
+                                            {% set soil_getto_top = 100 - (((schema_quota_getto - schema_quota_fondo) / schema_depth) * 100) %}
+                                            <div class="soil-depth-marker soil-depth-marker--pour" style="--marker-top: {{ soil_getto_top }}%;" title="Testa getto · {{ '%.2f'|format(schema_quota_getto) }} NGF"><span>{% if lang == 'fr' %}Béton{% else %}Getto{% endif %}</span></div>
+                                        {% endif %}
+                                        {% for layer in visual_layers %}
+                                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};">
+                                                <span class="label label-side">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m | {{ layer.materiale or '-' }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="soil-side" aria-hidden="true">
+                                        {% for layer in visual_layers %}
+                                            <div class="layer-side {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};"></div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="soil-bottom" aria-hidden="true"></div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="technical-empty-state">
+                            {% if lang == 'fr' %}Aucune stratigraphie structurée disponible pour le bloc 3D.{% else %}Nessuna stratigrafia strutturata disponibile per il blocco 3D.{% endif %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
-            <div style="display:grid; gap:1rem;">
-                <div class="card" style="box-shadow:none;"><div class="card-body"><strong>Coupe progetto</strong><br>{{ fiche.coupe.nome if fiche.coupe else 'Nessuna coupe associata' }}<br>Fondo teorico: {{ '%.2f'|format(fiche.coupe.quota_fondo_teorica) if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else '—' }}<br>Profondità teorica: {{ fiche.coupe.profondita_teorica if fiche.coupe and fiche.coupe.profondita_teorica is not none else '—' }} m</div></div>
-                <div class="card" style="box-shadow:none;"><div class="card-body"><strong>Terreno teorico</strong><p class="mb-0">{{ fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else 'Non compilato' }}</p></div></div>
-                <div class="card" style="box-shadow:none;"><div class="card-body"><strong>Stratigrafia reale</strong><p class="mb-0">{{ fiche.stratigrafia or 'Vedi strati reali sotto.' }}</p></div></div>
+
+            <div class="coupe-comparison-grid">
+                <div class="coupe-metric-card">
+                    <span>{% if lang == 'fr' %}Coupe projet{% else %}Coupe progetto{% endif %}</span>
+                    <strong>{{ fiche.coupe.nome if fiche.coupe else ('Aucune coupe associée' if lang == 'fr' else 'Nessuna coupe associata') }}</strong>
+                </div>
+                <div class="coupe-metric-card">
+                    <span>{% if lang == 'fr' %}TN théorique{% else %}Quota TN teorica{% endif %}</span>
+                    <strong>{{ "%.2f"|format(fiche.coupe.quota_tn) ~ " NGF" if fiche.coupe and fiche.coupe.quota_tn is not none else "—" }}</strong>
+                </div>
+                <div class="coupe-metric-card">
+                    <span>{% if lang == 'fr' %}Profondeur théorique{% else %}Profondità teorica{% endif %}</span>
+                    <strong>{{ fiche.coupe.profondita_teorica ~ " m" if fiche.coupe and fiche.coupe.profondita_teorica is not none else "—" }}</strong>
+                </div>
+                <div class="coupe-metric-card">
+                    <span>{% if lang == 'fr' %}Écart profondeur{% else %}Differenza profondità{% endif %}</span>
+                    <strong>{{ "%+.2f"|format(schema_depth_diff) ~ " m" if schema_depth_diff is not none else "—" }}</strong>
+                </div>
+                <div class="coupe-metric-card coupe-metric-card--future">
+                    <span>{% if lang == 'fr' %}Écarts futurs{% else %}Differenze future{% endif %}</span>
+                    <strong>TN / fondo / getto ready</strong>
+                </div>
             </div>
-        </div>
+        {% else %}
+            <div class="technical-empty-state">
+                {% if lang == 'fr' %}
+                    Saisir une cote TN et une cote de fond valides pour afficher le schéma technique proportionnel.
+                {% else %}
+                    Inserire una quota TN e una quota fondo valide per visualizzare lo schema tecnico proporzionale.
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 </section>
 
@@ -293,11 +394,6 @@
         <div class="card-title">
             🪨 Stratigrafia
         </div>
-        <div class="card-actions">
-            <button type="button" class="btn btn-sm btn-secondary" data-stratigrafia-toggle>
-                {% if lang == 'fr' %}Voir stratigraphie{% else %}Visualizza stratigrafia{% endif %}
-            </button>
-        </div>
     </div>
     <div class="card-body">
         {% set strat_text = fiche.stratigrafia %}
@@ -324,28 +420,6 @@
             </p>
         {% endif %}
 
-        {% if visual_layers %}
-            <div id="stratigrafia-visual" class="stratigrafia-visual" hidden>
-                <div class="soil-visual" aria-label="{% if lang == 'fr' %}Bloc technique 3D de stratigraphie du terrain{% else %}Blocco tecnico 3D di stratigrafia del terreno{% endif %}">
-                    <div class="soil-3d">
-                        <div class="top-surface" aria-hidden="true"></div>
-                        <div class="soil-front">
-                            {% for layer in visual_layers %}
-                                <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};">
-                                    <span class="label label-side">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m | {{ layer.materiale or '-' }}</span>
-                                </div>
-                            {% endfor %}
-                        </div>
-                        <div class="soil-side" aria-hidden="true">
-                            {% for layer in visual_layers %}
-                                <div class="layer-side {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};"></div>
-                            {% endfor %}
-                        </div>
-                        <div class="soil-bottom" aria-hidden="true"></div>
-                    </div>
-                </div>
-            </div>
-        {% endif %}
 
         {% if stratigrafie %}
             <div class="table-card">
@@ -413,15 +487,5 @@
     </div>
 </section>
 
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const toggle = document.querySelector('[data-stratigrafia-toggle]');
-    const visual = document.getElementById('stratigrafia-visual');
-    if (!toggle || !visual) return;
-    toggle.addEventListener('click', () => {
-      visual.hidden = !visual.hidden;
-    });
-  });
-</script>
 
 {% endblock %}
