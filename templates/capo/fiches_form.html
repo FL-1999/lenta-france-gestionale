@@ -12,6 +12,7 @@
 {% set fiche_cancel_url = fiche_cancel_url or '/capo/dashboard' %}
 {% set is_edit = is_edit|default(false) %}
 {% set show_ngf_fields = show_ngf_fields|default(false) %}
+{% set show_project_coupe_fields = show_project_coupe_fields|default(false) %}
 
 <div class="form-page">
     <div class="form-page-header">
@@ -86,12 +87,13 @@
                     </div>
 
 
+                    {% if show_project_coupe_fields %}
                     <div class="form-group">
                         <label class="form-label" for="coupe_id">Coupe di progetto</label>
                         <select id="coupe_id" name="coupe_id" class="form-select" data-selected-coupe="{{ selected_coupe }}">
                             <option value="">Nessuna coupe</option>
                             {% for coupe in coupes or [] %}
-                                <option value="{{ coupe.id }}" data-site-id="{{ coupe.site_id }}" data-quota-tn="{{ coupe.quota_tn if coupe.quota_tn is not none else '' }}" data-quota-testa="{{ coupe.quota_testa if coupe.quota_testa is not none else '' }}" data-quota-fondo="{{ coupe.quota_fondo_teorica if coupe.quota_fondo_teorica is not none else '' }}" {% if selected_coupe == coupe.id|string %}selected{% endif %}>
+                                <option value="{{ coupe.id }}" data-site-id="{{ coupe.site_id }}" data-quota-tn="{{ coupe.quota_tn if coupe.quota_tn is not none else '' }}" data-quota-testa="{{ coupe.quota_testa if coupe.quota_testa is not none else '' }}" data-quota-fondo="{{ coupe.quota_fondo_teorica if coupe.quota_fondo_teorica is not none else '' }}" data-profondita="{{ coupe.profondita_teorica if coupe.profondita_teorica is not none else '' }}" data-getto="{{ coupe.quota_testa_getto_prevista if coupe.quota_testa_getto_prevista is not none else '' }}" data-larghezza="{{ coupe.larghezza if coupe.larghezza is not none else '' }}" data-diametro-cm="{{ (coupe.diametro * 100)|round(1) if coupe.diametro is not none else '' }}" data-spessore="{{ coupe.spessore if coupe.spessore is not none else '' }}" {% if selected_coupe == coupe.id|string %}selected{% endif %}>
                                     {{ coupe.nome }}{% if coupe.quota_tn is not none %} – TN {{ coupe.quota_tn }}{% endif %}
                                 </option>
                             {% endfor %}
@@ -106,6 +108,8 @@
                             <option value="0" {% if form_data.get('scavo_da_tn') == '0' %}selected{% endif %}>No, usa quota partenza coupe</option>
                         </select>
                     </div>
+
+                    {% endif %}
 
                     <div class="form-group">
                         <label class="form-label" for="macchinario_id">
@@ -610,8 +614,27 @@ document.addEventListener("DOMContentLoaded", function () {
             if (option.hidden && option.selected) coupeSelect.value = "";
         });
     }
+    function fillIfEmpty(inputId, value) {
+        const input = document.getElementById(inputId);
+        if (!input || value === undefined || value === null || value === "") return;
+        if (!input.value) input.value = value;
+    }
+    function applyCoupeDefaults() {
+        if (!coupeSelect) return;
+        const option = coupeSelect.selectedOptions && coupeSelect.selectedOptions[0];
+        if (!option || !option.value) return;
+        fillIfEmpty("quota_ngf_testa", option.dataset.quotaTesta);
+        fillIfEmpty("quota_ngf_fondo", option.dataset.quotaFondo);
+        fillIfEmpty("profondita_totale", option.dataset.profondita);
+        fillIfEmpty("quota_testa_getto", option.dataset.getto);
+        fillIfEmpty("larghezza_pannello", option.dataset.larghezza);
+        fillIfEmpty("diametro_palo_cm", option.dataset.diametroCm);
+        fillIfEmpty("altezza_pannello", option.dataset.spessore);
+    }
     siteSelect?.addEventListener("change", filterCoupesBySite);
+    coupeSelect?.addEventListener("change", applyCoupeDefaults);
     filterCoupesBySite();
+    applyCoupeDefaults();
     const depthMismatchMessage = "La profondità totale scavata deve corrispondere all’ultimo strato di stratigrafia";
 
     function parseNumber(input) {

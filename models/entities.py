@@ -701,15 +701,52 @@ class SiteCoupe(Base, TimestampMixin):
     site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
     site = relationship("Site", back_populates="coupes")
     nome = Column(String(100), nullable=False)
+    descrizione_zona = Column(Text, nullable=True)
     quota_tn = Column(Float, nullable=True)
     quota_testa = Column(Float, nullable=True)
     quota_fondo_teorica = Column(Float, nullable=True)
     profondita_teorica = Column(Float, nullable=True)
+    scavo_da_tn = Column(Boolean, nullable=False, default=True)
+    quota_partenza_scavo = Column(Float, nullable=True)
+    quota_testa_getto_prevista = Column(Float, nullable=True)
     spessore = Column(Float, nullable=True)
+    larghezza = Column(Float, nullable=True)
+    diametro = Column(Float, nullable=True)
     terreno_teorico = Column(Text, nullable=True)
     note = Column(Text, nullable=True)
 
     fiches = relationship("Fiche", back_populates="coupe")
+    assignments = relationship(
+        "SiteCoupeAssignment",
+        back_populates="coupe",
+        cascade="all, delete-orphan",
+        order_by="SiteCoupeAssignment.numero_elemento",
+    )
+
+
+class SiteCoupeAssignment(Base, TimestampMixin):
+    __tablename__ = "site_coupe_assignments"
+    __table_args__ = (
+        UniqueConstraint(
+            "site_id",
+            "tipologia_scavo",
+            "numero_elemento",
+            name="uq_site_coupe_assignments_site_tipo_numero",
+        ),
+        CheckConstraint(
+            "numero_elemento > 0",
+            name="ck_site_coupe_assignments_numero_positive",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    coupe_id = Column(Integer, ForeignKey("site_coupes.id", ondelete="CASCADE"), nullable=False, index=True)
+    tipologia_scavo = Column(String(50), nullable=False)
+    numero_elemento = Column(Integer, nullable=False)
+
+    site = relationship("Site")
+    coupe = relationship("SiteCoupe", back_populates="assignments")
 
 
 class Fiche(Base, TimestampMixin):
