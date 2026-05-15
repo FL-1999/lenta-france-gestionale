@@ -135,6 +135,7 @@ def get_fiche_detail(
             joinedload(Fiche.site),
             joinedload(Fiche.machine),
             joinedload(Fiche.created_by),
+            joinedload(Fiche.capocantiere),
         )
         .filter(Fiche.id == fiche_id)
         .first()
@@ -151,6 +152,7 @@ def get_fiche_detail(
         site_id=fiche.site_id,
         numero_pannello=fiche.numero_pannello,
         machine_id=fiche.machine_id,
+        capocantiere_id=fiche.capocantiere_id,
         fiche_type=fiche.fiche_type,
         description=fiche.description,
         operator=fiche.operator,
@@ -170,6 +172,7 @@ def get_fiche_detail(
         quota_ngf_note=fiche.quota_ngf_note,
         site_name=fiche.site.name if fiche.site else "",
         machine_name=fiche.machine.name if fiche.machine else None,
+        capocantiere_name=(fiche.capocantiere.full_name or fiche.capocantiere.email) if fiche.capocantiere else None,
         created_by_name=fiche.created_by.full_name or fiche.created_by.email,
         created_by_role=fiche.created_by.role.value,
     )
@@ -198,6 +201,7 @@ def create_fiche(
         numero_pannello=fiche_in.numero_pannello,
         site_id=fiche_in.site_id,
         machine_id=fiche_in.machine_id,
+        capocantiere_id=fiche_in.capocantiere_id if current_user.role in {RoleEnum.admin, RoleEnum.manager} else None,
         fiche_type=fiche_in.fiche_type,
         description=fiche_in.description,
         operator=fiche_in.operator,
@@ -231,6 +235,7 @@ def create_fiche(
         site_id=fiche.site_id,
         numero_pannello=fiche.numero_pannello,
         machine_id=fiche.machine_id,
+        capocantiere_id=fiche.capocantiere_id,
         fiche_type=fiche.fiche_type,
         description=fiche.description,
         operator=fiche.operator,
@@ -250,6 +255,7 @@ def create_fiche(
         quota_ngf_note=fiche.quota_ngf_note,
         site_name=site.name,
         machine_name=machine.name if machine else None,
+        capocantiere_name=None,
         created_by_name=current_user.full_name or current_user.email,
         created_by_role=current_user.role.value,
     )

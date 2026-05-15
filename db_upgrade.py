@@ -89,6 +89,7 @@ FICHES_COLUMNS: tuple[str, ...] = (
     "scavo_da_tn BOOLEAN NOT NULL DEFAULT 1",
     "quota_partenza FLOAT",
     "quota_testa_getto FLOAT",
+    "capocantiere_id INTEGER",
 )
 
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {

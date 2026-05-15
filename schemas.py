@@ -119,6 +119,7 @@ class FicheCreate(BaseModel):
     site_id: int
     numero_pannello: int = Field(..., gt=0)
     machine_id: Optional[int] = None
+    capocantiere_id: Optional[int] = None
     fiche_type: FicheTypeEnum
     description: str
     operator: Optional[str] = None
@@ -142,6 +143,7 @@ class FicheRead(BaseModel):
     site_id: int
     numero_pannello: int
     machine_id: Optional[int]
+    capocantiere_id: Optional[int] = None
     fiche_type: FicheTypeEnum
     description: str
     operator: Optional[str]
@@ -161,6 +163,7 @@ class FicheRead(BaseModel):
     quota_ngf_note: Optional[str] = None
     site_name: str
     machine_name: Optional[str]
+    capocantiere_name: Optional[str] = None
     created_by_name: str
     created_by_role: str
 

@@ -13,6 +13,7 @@
 {% set is_edit = is_edit|default(false) %}
 {% set show_ngf_fields = show_ngf_fields|default(false) %}
 {% set show_project_coupe_fields = show_project_coupe_fields|default(false) %}
+{% set show_capocantiere_field = show_capocantiere_field|default(false) %}
 
 <div class="form-page">
     <div class="form-page-header">
@@ -21,7 +22,7 @@
         </p>
         <h1 class="page-title">
             {% if is_edit %}
-                {% if lang == 'fr' %}Modifier fiche{% else %}Modifica fiche{% endif %}
+                {% if lang == 'fr' %}Modifier fiche technique{% else %}Modifica scheda tecnica{% endif %}
             {% else %}
                 {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
             {% endif %}
@@ -86,6 +87,23 @@
                                oninput="this.setCustomValidity('')" />
                     </div>
 
+
+                    {% if show_capocantiere_field and capocantieri is defined and capocantieri %}
+                    <div class="form-group">
+                        <label class="form-label" for="capocantiere_id">
+                            {% if lang == 'fr' %}Chef de chantier officiel{% else %}Capocantiere{% endif %}
+                        </label>
+                        <select id="capocantiere_id" name="capocantiere_id" class="form-select">
+                            <option value="">{% if lang == 'fr' %}Sélectionnez le responsable PDF{% else %}Seleziona responsabile ufficiale PDF{% endif %}</option>
+                            {% for responsabile in capocantieri %}
+                                <option value="{{ responsabile.id }}" {% if form_data.get('capocantiere_id', '') == responsabile.id|string %}selected{% endif %}>
+                                    {{ responsabile.full_name or responsabile.email }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">{% if lang == 'fr' %}Responsable officiel imprimé dans la fiche PDF; le chef d'équipe reste opérationnel.{% else %}Responsabile ufficiale stampato nella fiche/PDF; il caposquadra resta operativo.{% endif %}</small>
+                    </div>
+                    {% endif %}
 
                     {% if show_project_coupe_fields %}
                     <div class="form-group">

@@ -44,7 +44,7 @@
     </div>
     <div class="page-actions">
         <a href="{{ url_for('manager_fiches_edit_form', fiche_id=fiche.id) }}" class="btn btn-primary">
-            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            ✏️ {% if lang == 'fr' %}Modifier fiche technique{% else %}Modifica scheda tecnica{% endif %}
         </a>
         <a href="{{ url_for('manager_fiches_list') }}" class="btn btn-secondary">
             ← {% if lang == 'fr' %}Retour à la liste{% else %}Torna alla lista{% endif %}
@@ -252,7 +252,7 @@
     <div class="card-header technical-coupe-card__header">
         <div class="card-title">📈 {% if lang == 'fr' %}Coupe technique NGF + stratigraphie{% else %}Schema tecnico NGF + stratigrafia 3D{% endif %}</div>
         <button type="button" class="btn btn-primary btn-sm technical-print-button" data-print-technical-sheet>
-            🖨️ {% if lang == 'fr' %}Exporter fiche technique PDF{% else %}Esporta scheda tecnica PDF{% endif %}
+            🖨️ {% if lang == 'fr' %}Exporter PDF{% else %}Esporta PDF{% endif %}
         </button>
     </div>
     <div class="card-body">
@@ -282,7 +282,8 @@
                                 <dl>
                                     <div><dt>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</dt><dd>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</dd></div>
                                     <div><dt>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</dt><dd>{{ fiche.site.name if fiche.site else '—' }}</dd></div>
-                                    <div><dt>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</dt><dd>{{ fiche.operator or fiche.created_by.full_name or fiche.created_by.email or '—' }}</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Chef de chantier{% else %}Capocantiere{% endif %}</dt><dd>{{ (fiche.capocantiere.full_name or fiche.capocantiere.email) if fiche.capocantiere else '—' }}</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Équipe / opérateur{% else %}Squadra / operatore{% endif %}</dt><dd>{{ fiche.operator or '—' }}</dd></div>
                                     <div><dt>{% if lang == 'fr' %}Machine{% else %}Macchina{% endif %}</dt><dd>{{ fiche.machine.name if fiche.machine else '—' }}</dd></div>
                                 </dl>
                             </section>
@@ -339,10 +340,10 @@
                         <section class="technical-drawing-column" aria-label="{% if lang == 'fr' %}Section paroi/pieu avec cotes NGF{% else %}Sezione paratia/palo con quote NGF{% endif %}">
                             <div class="technical-drawing-header">
                                 <span>{% if is_palo %}PALO{% elif is_paratia %}PARATIA{% else %}SEZIONE{% endif %}</span>
-                                <strong>{{ schema_width_label }} × {{ schema_thickness_label }}</strong>
+                                <strong>{% if is_palo %}Ø {{ schema_width_label }}{% else %}L {{ schema_width_label }} · S {{ schema_thickness_label }}{% endif %}</strong>
                             </div>
                             <div class="technical-section-canvas">
-                                <div class="technical-depth-arrow" aria-hidden="true"><span>{{ "%.2f"|format(schema_depth) }} m</span></div>
+                                <div class="technical-depth-arrow" aria-hidden="true"><span>{% if lang == 'fr' %}profondeur{% else %}profondità{% endif %} {{ "%.2f"|format(schema_depth) }} m</span></div>
                                 <div class="technical-element {{ 'technical-element--pile' if is_palo else 'technical-element--panel' }}" aria-hidden="true"></div>
                                 <div class="technical-dimension technical-dimension--width"><span>{% if lang == 'fr' %}largeur{% else %}larghezza{% endif %} {{ schema_width_label }}</span></div>
                                 <div class="technical-dimension technical-dimension--thickness"><span>{% if lang == 'fr' %}épaisseur{% else %}spessore{% endif %} {{ schema_thickness_label }}</span></div>
