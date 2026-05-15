@@ -248,48 +248,154 @@
 {% set schema_depth_diff = fiche.profondita_totale - fiche.coupe.profondita_teorica if fiche.coupe and fiche.profondita_totale is not none and fiche.coupe.profondita_teorica is not none else none %}
 {% set schema_fondo_diff = schema_quota_fondo - schema_fondo_teorico if schema_quota_fondo is not none and schema_fondo_teorico is not none else none %}
 
-<section class="card technical-coupe-card" style="margin-top: 1.5rem;">
-    <div class="card-header">
+<section class="card technical-coupe-card technical-coupe-card--sheet" style="margin-top: 1.5rem;">
+    <div class="card-header technical-coupe-card__header">
         <div class="card-title">📈 {% if lang == 'fr' %}Coupe technique NGF + stratigraphie{% else %}Schema tecnico NGF + stratigrafia 3D{% endif %}</div>
+        <button type="button" class="btn btn-primary btn-sm technical-print-button" data-print-technical-sheet>
+            🖨️ {% if lang == 'fr' %}Exporter fiche technique PDF{% else %}Esporta scheda tecnica PDF{% endif %}
+        </button>
     </div>
     <div class="card-body">
         {% if can_render_ngf_schema %}
+            {% set schema_quota_base_meccanica = fiche.coupe.quota_fondo_teorica if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else schema_quota_fondo %}
+            {% set schema_quota_base_idraulica = schema_quota_fondo %}
+            {% set schema_width_label = ("%.2f m"|format(larghezza_m)) if larghezza_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
+            {% set schema_thickness_label = ("%.2f m"|format(spessore_m)) if spessore_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
+            {% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
             <div class="technical-split-view">
-                <div class="ngf-schema-panel">
-                    <div class="technical-panel-heading">
-                        <span>{% if lang == 'fr' %}Schéma cotes NGF{% else %}Schema quote NGF{% endif %}</span>
-                        <strong>{{ "%.2f"|format(schema_depth) }} m</strong>
-                    </div>
-                    <div class="ngf-section-canvas" aria-label="Schema tecnico quote NGF">
-                        <div class="ngf-axis" aria-hidden="true"></div>
-                        <div class="ngf-excavation-core" aria-hidden="true"></div>
-                        {% set tn_top = 0 %}
-                        <div class="ngf-level ngf-level--tn" style="--level-top: {{ tn_top }}%;" title="TN · {{ '%.2f'|format(schema_quota_tn) }} NGF{% if fiche.coupe and fiche.coupe.quota_tn is not none %} · teorico coupe{% endif %}">
-                            <span class="ngf-value">{{ "%.2f"|format(schema_quota_tn) }} NGF</span>
-                            <span class="ngf-name">TN</span>
+                <article class="technical-sheet" id="technical-sheet-export" aria-label="{% if lang == 'fr' %}Fiche technique NGF imprimable{% else %}Scheda tecnica NGF stampabile{% endif %}">
+                    <header class="technical-sheet__titlebar">
+                        <div>
+                            <p class="technical-sheet__eyebrow">{% if lang == 'fr' %}Fiche de chantier · NGF{% else %}Scheda di cantiere · NGF{% endif %}</p>
+                            <h2>{{ fiche.tipologia_scavo|capitalize if fiche.tipologia_scavo else ("Elemento" if lang == 'it' else "Élément") }} {{ fiche.numero_pannello or "—" }}</h2>
                         </div>
-                        {% if schema_quota_partenza is not none %}
-                            {% set partenza_top = 100 - (((schema_quota_partenza - schema_quota_fondo) / schema_depth) * 100) %}
-                            <div class="ngf-level ngf-level--start" style="--level-top: {{ partenza_top }}%;" title="{% if lang == 'fr' %}Départ excavation{% else %}Partenza scavo{% endif %} · {{ '%.2f'|format(schema_quota_partenza) }} NGF{% if fiche.coupe and fiche.coupe.quota_testa is not none %} · Δ testa teorica {{ '%+.2f'|format(schema_quota_partenza - fiche.coupe.quota_testa) }} m{% endif %}">
-                                <span class="ngf-value">{{ "%.2f"|format(schema_quota_partenza) }} NGF</span>
-                                <span class="ngf-name">{% if lang == 'fr' %}Départ fouille{% else %}Partenza scavo{% endif %}</span>
-                            </div>
-                        {% endif %}
-                        <div class="ngf-level ngf-level--bottom" style="--level-top: 100%;" title="{% if lang == 'fr' %}Fond excavation{% else %}Fondo scavo{% endif %} · {{ '%.2f'|format(schema_quota_fondo) }} NGF{% if schema_fondo_diff is not none %} · Δ teorico {{ '%+.2f'|format(schema_fondo_diff) }} m{% endif %}">
-                            <span class="ngf-value">{{ "%.2f"|format(schema_quota_fondo) }} NGF</span>
-                            <span class="ngf-name">{% if lang == 'fr' %}Fond fouille{% else %}Fondo scavo{% endif %}</span>
+                        <div class="technical-sheet__stamp">
+                            <span>NGF</span>
+                            <strong>{{ "%.2f"|format(schema_depth) }} m</strong>
                         </div>
-                        {% if schema_quota_getto is not none %}
-                            {% set getto_top = 100 - (((schema_quota_getto - schema_quota_fondo) / schema_depth) * 100) %}
-                            <div class="ngf-level ngf-level--pour" style="--level-top: {{ getto_top }}%;" title="{% if lang == 'fr' %}Tête béton{% else %}Testa getto{% endif %} · {{ '%.2f'|format(schema_quota_getto) }} NGF · Δ quota getto pronta per confronto teorico">
-                                <span class="ngf-value">{{ "%.2f"|format(schema_quota_getto) }} NGF</span>
-                                <span class="ngf-name">{% if lang == 'fr' %}Tête béton{% else %}Testa getto{% endif %}</span>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
+                    </header>
 
-                <div class="stratigrafia-technical-panel">
+                    <div class="technical-sheet-grid">
+                        <aside class="technical-data-column">
+                            <section class="technical-data-block">
+                                <h3>A. {% if lang == 'fr' %}Données générales{% else %}Dati generali{% endif %}</h3>
+                                <dl>
+                                    <div><dt>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</dt><dd>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</dt><dd>{{ fiche.site.name if fiche.site else '—' }}</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Opérateur{% else %}Operatore{% endif %}</dt><dd>{{ fiche.operator or fiche.created_by.full_name or fiche.created_by.email or '—' }}</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Machine{% else %}Macchina{% endif %}</dt><dd>{{ fiche.machine.name if fiche.machine else '—' }}</dd></div>
+                                </dl>
+                            </section>
+
+                            <section class="technical-data-block">
+                                <h3>B. {% if lang == 'fr' %}Bétonnage{% else %}Betonnaggio{% endif %}</h3>
+                                <dl>
+                                    <div><dt>{% if lang == 'fr' %}Type béton{% else %}Tipo calcestruzzo{% endif %}</dt><dd>{{ fiche.materiale or '—' }}</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Volume théorique{% else %}Volume teorico{% endif %}</dt><dd>{{ "%.2f m³"|format(volume_teorico) if volume_teorico is not none else '—' }}</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Volume réel{% else %}Volume reale{% endif %}</dt><dd>{{ "%.2f m³"|format(volume_gettato) if volume_gettato is not none else '—' }}</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Différence{% else %}Differenza{% endif %}</dt><dd>{{ "%+.1f %%"|format(volume_diff_percent) if volume_diff_percent is not none else '—' }}</dd></div>
+                                </dl>
+                            </section>
+
+                            <section class="technical-data-block">
+                                <h3>C. {% if lang == 'fr' %}Contrôle boue{% else %}Controllo fango{% endif %}</h3>
+                                <dl>
+                                    <div><dt>{% if lang == 'fr' %}Densité{% else %}Densità{% endif %}</dt><dd>—</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Sable{% else %}Sabbia{% endif %} %</dt><dd>—</dd></div>
+                                    <div><dt>{% if lang == 'fr' %}Viscosité{% else %}Viscosità{% endif %}</dt><dd>—</dd></div>
+                                </dl>
+                            </section>
+
+                            <section class="technical-data-block technical-data-block--notes">
+                                <h3>D. {% if lang == 'fr' %}Observations{% else %}Osservazioni{% endif %}</h3>
+                                <p>{{ fiche.notes or fiche.quota_ngf_note or fiche.description or '—' }}</p>
+                            </section>
+
+                            <section class="technical-data-block">
+                                <h3>E. {% if lang == 'fr' %}Terrains rencontrés{% else %}Terreni incontrati{% endif %}</h3>
+                                {% if stratigrafie %}
+                                    <ol class="technical-soil-list">
+                                        {% for layer in stratigrafie|sort(attribute='da_profondita') %}
+                                            <li><span>{{ "%.2f"|format(layer.da_profondita) }}–{{ "%.2f"|format(layer.a_profondita) }} m</span>{{ layer.materiale }}</li>
+                                        {% endfor %}
+                                    </ol>
+                                {% elif strat_layers %}
+                                    <ol class="technical-soil-list">
+                                        {% for layer in strat_layers|sort(attribute='layer_index') %}
+                                            <li><span>{{ "%.2f"|format(layer.thickness_m) }} m</span>{{ layer.material }}</li>
+                                        {% endfor %}
+                                    </ol>
+                                {% else %}
+                                    <p>—</p>
+                                {% endif %}
+                            </section>
+
+                            <section class="technical-data-block">
+                                <h3>F. {% if lang == 'fr' %}Modèle géologique{% else %}Modello geologico{% endif %}</h3>
+                                <p>{{ fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '—' }}</p>
+                            </section>
+                        </aside>
+
+                        <section class="technical-drawing-column" aria-label="{% if lang == 'fr' %}Section paroi/pieu avec cotes NGF{% else %}Sezione paratia/palo con quote NGF{% endif %}">
+                            <div class="technical-drawing-header">
+                                <span>{% if is_palo %}PALO{% elif is_paratia %}PARATIA{% else %}SEZIONE{% endif %}</span>
+                                <strong>{{ schema_width_label }} × {{ schema_thickness_label }}</strong>
+                            </div>
+                            <div class="technical-section-canvas">
+                                <div class="technical-depth-arrow" aria-hidden="true"><span>{{ "%.2f"|format(schema_depth) }} m</span></div>
+                                <div class="technical-element {{ 'technical-element--pile' if is_palo else 'technical-element--panel' }}" aria-hidden="true"></div>
+                                <div class="technical-dimension technical-dimension--width"><span>{% if lang == 'fr' %}largeur{% else %}larghezza{% endif %} {{ schema_width_label }}</span></div>
+                                <div class="technical-dimension technical-dimension--thickness"><span>{% if lang == 'fr' %}épaisseur{% else %}spessore{% endif %} {{ schema_thickness_label }}</span></div>
+
+                                <div class="technical-level technical-level--tn" style="--level-top: 0%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_tn) }} NGF</span><span class="technical-level__name">TN</span></div>
+                                {% if schema_quota_partenza is not none %}
+                                    {% set partenza_top = 100 - (((schema_quota_partenza - schema_quota_fondo) / schema_depth) * 100) %}
+                                    <div class="technical-level" style="--level-top: {{ partenza_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_partenza) }} NGF</span><span class="technical-level__name">{% if lang == 'fr' %}tête{% else %}testa{% endif %}</span></div>
+                                {% endif %}
+                                {% if schema_quota_getto is not none %}
+                                    {% set getto_top = 100 - (((schema_quota_getto - schema_quota_fondo) / schema_depth) * 100) %}
+                                    <div class="technical-level technical-level--pour" style="--level-top: {{ getto_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_getto) }} NGF</span><span class="technical-level__name">{% if lang == 'fr' %}cote béton{% else %}quota getto{% endif %}</span></div>
+                                {% endif %}
+                                {% if schema_quota_base_meccanica is not none %}
+                                    {% set base_meccanica_top = 100 - (((schema_quota_base_meccanica - schema_quota_fondo) / schema_depth) * 100) %}
+                                    <div class="technical-level technical-level--mechanical" style="--level-top: {{ base_meccanica_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_base_meccanica) }} NGF</span><span class="technical-level__name">{% if lang == 'fr' %}base mécanique{% else %}base meccanica{% endif %}</span></div>
+                                {% endif %}
+                                <div class="technical-level technical-level--bottom" style="--level-top: 100%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_fondo) }} NGF</span><span class="technical-level__name">{% if lang == 'fr' %}fond / base hydraulique{% else %}fondo scavo / base idraulica{% endif %}</span></div>
+                            </div>
+                        </section>
+
+                        <section class="technical-ground-column" aria-label="{% if lang == 'fr' %}Comparaison stratigraphique réel théorique{% else %}Confronto stratigrafico reale teorico{% endif %}">
+                            <div class="technical-ground-header">
+                                <span>{% if lang == 'fr' %}Réel{% else %}Reale{% endif %}</span>
+                                <span>{% if lang == 'fr' %}Théorique{% else %}Teorico{% endif %}</span>
+                            </div>
+                            <div class="technical-ground-bars">
+                                <div class="technical-ground-bar">
+                                    {% if visual_layers %}
+                                        {% for layer in visual_layers %}
+                                            <div class="technical-ground-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;"><span>{{ layer.materiale }}</span></div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
+                                    {% endif %}
+                                </div>
+                                <div class="technical-ground-bar technical-ground-bar--theoretical">
+                                    {% if fiche.coupe and fiche.coupe.terreno_teorico %}
+                                        <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ fiche.coupe.terreno_teorico }}</span></div>
+                                    {% else %}
+                                        <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <footer class="technical-ground-footer">
+                                <span>TN {{ "%.2f"|format(schema_quota_tn) }}</span>
+                                <span>{% if lang == 'fr' %}Fond{% else %}Fondo{% endif %} {{ "%.2f"|format(schema_quota_fondo) }}</span>
+                            </footer>
+                        </section>
+                    </div>
+                </article>
+
+                <div class="stratigrafia-technical-panel stratigrafia-technical-panel--preserved">
                     <div class="technical-panel-heading">
                         <span>{% if lang == 'fr' %}Stratigraphie 3D réelle{% else %}Stratigrafia 3D reale{% endif %}</span>
                         <strong>{{ fiche.profondita_totale if fiche.profondita_totale is not none else "—" }} m</strong>
@@ -307,16 +413,12 @@
                                             <div class="soil-depth-marker soil-depth-marker--pour" style="--marker-top: {{ soil_getto_top }}%;" title="Testa getto · {{ '%.2f'|format(schema_quota_getto) }} NGF"><span>{% if lang == 'fr' %}Béton{% else %}Getto{% endif %}</span></div>
                                         {% endif %}
                                         {% for layer in visual_layers %}
-                                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};">
-                                                <span class="label label-side">{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m | {{ layer.materiale or '-' }}</span>
+                                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;" title="{{ layer.materiale }} · {{ '%.2f'|format(layer.da) }}–{{ '%.2f'|format(layer.a) }} m">
+                                                <span class="soil-layer-label">{{ layer.materiale }}<small>{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</small></span>
                                             </div>
                                         {% endfor %}
                                     </div>
-                                    <div class="soil-side" aria-hidden="true">
-                                        {% for layer in visual_layers %}
-                                            <div class="layer-side {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%; --layer-index: {{ loop.index0 }};"></div>
-                                        {% endfor %}
-                                    </div>
+                                    <div class="soil-side" aria-hidden="true"></div>
                                     <div class="soil-bottom" aria-hidden="true"></div>
                                 </div>
                             </div>
@@ -326,29 +428,6 @@
                             {% if lang == 'fr' %}Aucune stratigraphie structurée disponible pour le bloc 3D.{% else %}Nessuna stratigrafia strutturata disponibile per il blocco 3D.{% endif %}
                         </div>
                     {% endif %}
-                </div>
-            </div>
-
-            <div class="coupe-comparison-grid">
-                <div class="coupe-metric-card">
-                    <span>{% if lang == 'fr' %}Coupe projet{% else %}Coupe progetto{% endif %}</span>
-                    <strong>{{ fiche.coupe.nome if fiche.coupe else ('Aucune coupe associée' if lang == 'fr' else 'Nessuna coupe associata') }}</strong>
-                </div>
-                <div class="coupe-metric-card">
-                    <span>{% if lang == 'fr' %}TN théorique{% else %}Quota TN teorica{% endif %}</span>
-                    <strong>{{ "%.2f"|format(fiche.coupe.quota_tn) ~ " NGF" if fiche.coupe and fiche.coupe.quota_tn is not none else "—" }}</strong>
-                </div>
-                <div class="coupe-metric-card">
-                    <span>{% if lang == 'fr' %}Profondeur théorique{% else %}Profondità teorica{% endif %}</span>
-                    <strong>{{ fiche.coupe.profondita_teorica ~ " m" if fiche.coupe and fiche.coupe.profondita_teorica is not none else "—" }}</strong>
-                </div>
-                <div class="coupe-metric-card">
-                    <span>{% if lang == 'fr' %}Écart profondeur{% else %}Differenza profondità{% endif %}</span>
-                    <strong>{{ "%+.2f"|format(schema_depth_diff) ~ " m" if schema_depth_diff is not none else "—" }}</strong>
-                </div>
-                <div class="coupe-metric-card coupe-metric-card--future">
-                    <span>{% if lang == 'fr' %}Écarts futurs{% else %}Differenze future{% endif %}</span>
-                    <strong>TN / fondo / getto ready</strong>
                 </div>
             </div>
         {% else %}
@@ -363,6 +442,15 @@
     </div>
 </section>
 
+<script>
+(function () {
+    const button = document.querySelector("[data-print-technical-sheet]");
+    if (!button) return;
+    button.addEventListener("click", function () {
+        window.print();
+    });
+}());
+</script>
 {% if has_ngf_quote %}
 <section class="card" style="margin-top: 1.5rem;">
     <div class="card-header">
