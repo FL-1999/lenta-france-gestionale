@@ -92,7 +92,17 @@
       <section class="project-block">
         <h4>6. Terreno teorico</h4>
         <div class="form-grid">
-          <div class="project-field"><label class="form-label">Stratigrafia teorica</label><textarea class="form-textarea" name="coupe_terreno_teorico" rows="4" placeholder="Descrivi gli strati teorici previsti">{{ coupe.terreno_teorico if coupe and coupe.terreno_teorico else '' }}</textarea></div>
+          <div class="project-field project-field--theoretical-soil" data-theoretical-soil>
+            <label class="form-label">Terreno teorico</label>
+            <textarea class="form-textarea" name="coupe_terreno_teorico" rows="4" placeholder="0.00-1.20 m: Limo sabbioso
+1.20-4.50 m: Argilla" data-theoretical-soil-text>{{ coupe.terreno_teorico if coupe and coupe.terreno_teorico else '' }}</textarea>
+            <div class="theoretical-soil-builder" aria-label="Stratigrafia teorica strutturata">
+              <div class="theoretical-soil-row theoretical-soil-row--head"><span>Da (m)</span><span>A (m)</span><span>Tipo terreno</span><span></span></div>
+              <div data-theoretical-soil-rows></div>
+              <button type="button" class="btn btn-secondary btn-sm" data-add-theoretical-layer>+ Aggiungi strato teorico</button>
+            </div>
+            <small class="form-text text-muted">Gli strati salvati nella coupe vengono caricati automaticamente nella fiche associata come modello geologico teorico.</small>
+          </div>
           <div class="project-field"><label class="form-label">Note</label><textarea class="form-textarea" name="coupe_note" rows="4" placeholder="Note operative per fiches e controllo">{{ coupe.note if coupe and coupe.note else '' }}</textarea></div>
         </div>
       </section>
@@ -198,6 +208,10 @@
   .project-field .form-label{color:#cbd5e1;font-weight:800;}.project-field .form-control,.project-field .form-select,.project-field .form-textarea{background:rgba(15,23,42,.74);border-color:rgba(148,163,184,.32);color:#f8fafc;}
   .form-grid--two{grid-template-columns:repeat(2,minmax(0,1fr));}.form-grid--four{grid-template-columns:repeat(4,minmax(0,1fr));}
   .project-sticky-actions{position:sticky;bottom:1rem;z-index:5;border:1px solid rgba(148,163,184,.24);border-radius:18px;padding:1rem;background:rgba(15,23,42,.94);box-shadow:0 18px 45px rgba(2,6,23,.3);}
+  .theoretical-soil-builder{display:grid;gap:.5rem;margin-top:.55rem;border:1px dashed rgba(148,163,184,.34);border-radius:14px;padding:.75rem;background:rgba(15,23,42,.36);}
+  .theoretical-soil-row{display:grid;grid-template-columns:90px 90px 1fr auto;gap:.5rem;align-items:center;}
+  .theoretical-soil-row--head{color:#cbd5e1;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
+  .theoretical-soil-row .btn{padding:.35rem .55rem;}
   @media (max-width:1100px){.project-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.project-section-grid,.form-grid--four{grid-template-columns:1fr 1fr;}}
   @media (max-width:720px){.project-summary-grid,.project-section-grid,.form-grid--two,.form-grid--four{grid-template-columns:1fr;}.project-coupe-card__header,.project-section-heading{flex-direction:column;align-items:stretch;}.project-coupe-card__actions{justify-content:flex-start;}.project-sticky-actions{position:static;}}
 </style>
@@ -207,12 +221,56 @@
     const templateCard = document.querySelector('.project-coupe-card--new');
     if (!list || !templateCard) return;
 
+    function parseTheoreticalText(text) {
+      return (text || '').split(/\n+/).map((line) => {
+        const match = line.match(/([0-9]+(?:[.,][0-9]+)?)\s*[-–]\s*([0-9]+(?:[.,][0-9]+)?)\s*m?\s*:?\s*(.*)/i);
+        return match ? { da: match[1], a: match[2], materiale: match[3] || '' } : null;
+      }).filter(Boolean);
+    }
+
+    function syncTheoreticalText(builder) {
+      const textarea = builder.querySelector('[data-theoretical-soil-text]');
+      const rows = Array.from(builder.querySelectorAll('[data-theoretical-layer]'));
+      const lines = rows.map((row) => {
+        const da = row.querySelector('[data-layer-da]')?.value.trim();
+        const a = row.querySelector('[data-layer-a]')?.value.trim();
+        const materiale = row.querySelector('[data-layer-materiale]')?.value.trim();
+        return da || a || materiale ? `${da || '0'}-${a || da || '0'} m: ${materiale || 'Terreno'}` : '';
+      }).filter(Boolean);
+      textarea.value = lines.join('\n');
+    }
+
+    function addTheoreticalLayer(builder, layer = {}) {
+      const container = builder.querySelector('[data-theoretical-soil-rows]');
+      const row = document.createElement('div');
+      row.className = 'theoretical-soil-row';
+      row.dataset.theoreticalLayer = '1';
+      row.innerHTML = `
+        <input class="form-control" type="number" step="0.01" data-layer-da placeholder="0.00" value="${layer.da || ''}">
+        <input class="form-control" type="number" step="0.01" data-layer-a placeholder="1.20" value="${layer.a || ''}">
+        <input class="form-control" data-layer-materiale placeholder="Tipo terreno" value="${(layer.materiale || '').replace(/"/g, '&quot;')}">
+        <button type="button" class="btn btn-secondary btn-sm" data-remove-theoretical-layer>×</button>`;
+      row.querySelectorAll('input').forEach((input) => input.addEventListener('input', () => syncTheoreticalText(builder)));
+      row.querySelector('[data-remove-theoretical-layer]').addEventListener('click', () => { row.remove(); syncTheoreticalText(builder); });
+      container.appendChild(row);
+    }
+
+    function bindTheoreticalSoil(card) {
+      card.querySelectorAll('[data-theoretical-soil]').forEach((builder) => {
+        const textarea = builder.querySelector('[data-theoretical-soil-text]');
+        const parsed = parseTheoreticalText(textarea.value);
+        (parsed.length ? parsed : [{}]).forEach((layer) => addTheoreticalLayer(builder, layer));
+        builder.querySelector('[data-add-theoretical-layer]')?.addEventListener('click', () => addTheoreticalLayer(builder));
+      });
+    }
+
     function bindFocusButton(card) {
       card.querySelector('[data-focus-coupe]')?.addEventListener('click', () => {
         const field = card.querySelector('input[name="coupe_nome"]');
         field?.focus();
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+      bindTheoreticalSoil(card);
     }
 
     document.querySelectorAll('[data-coupe-card]').forEach(bindFocusButton);
@@ -224,6 +282,7 @@
           else if (field.name === 'coupe_scavo_da_tn') field.value = '1';
           else field.value = '';
         });
+        clone.querySelectorAll('[data-theoretical-layer]').forEach((row) => row.remove());
         const index = list.querySelectorAll('[data-coupe-card]').length + 1;
         clone.querySelector('.project-coupe-card__eyebrow').textContent = `Coupe ${index}`;
         clone.querySelector('h3').textContent = 'Nuova coupe';

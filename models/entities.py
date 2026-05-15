@@ -224,7 +224,8 @@ class User(Base, TimestampMixin):
         lazy="selectin",
     )
     reports = relationship("Report", back_populates="created_by", cascade="all, delete-orphan")
-    fiches = relationship("Fiche", back_populates="created_by", cascade="all, delete-orphan")
+    fiches = relationship("Fiche", back_populates="created_by", cascade="all, delete-orphan", foreign_keys="Fiche.created_by_id")
+    official_fiches = relationship("Fiche", back_populates="capocantiere", foreign_keys="Fiche.capocantiere_id")
     assigned_sites = relationship("Site", back_populates="caposquadra")
     magazzino_movimenti_creati = relationship(
         "MagazzinoMovimento",
@@ -775,7 +776,10 @@ class Fiche(Base, TimestampMixin):
     machine = relationship("Machine", back_populates="fiches")
 
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_by = relationship("User", back_populates="fiches")
+    created_by = relationship("User", back_populates="fiches", foreign_keys=[created_by_id])
+
+    capocantiere_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    capocantiere = relationship("User", back_populates="official_fiches", foreign_keys=[capocantiere_id])
 
     fiche_type = Column(Enum(FicheTypeEnum), nullable=False)
     description = Column(Text, nullable=False)
