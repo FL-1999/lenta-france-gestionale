@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -133,6 +133,12 @@ class FicheCreate(BaseModel):
     altezza_pannello: Optional[float] = Field(default=None, gt=0)
     data_getto: Optional[date] = None
     metri_cubi_gettati: float = Field(..., ge=0)
+    courbe_beton_active: bool = False
+    courbe_beton_realisee: Optional[List[dict[str, Any]]] = None
+    courbe_beton_tube: Optional[List[dict[str, Any]]] = None
+    courbe_beton_volume_total: Optional[float] = Field(default=None, ge=0)
+    courbe_beton_hauteur_initiale: Optional[float] = None
+    courbe_beton_hauteur_finale: Optional[float] = 0
 
     model_config = {"from_attributes": True}
 
@@ -161,6 +167,12 @@ class FicheRead(BaseModel):
     quota_ngf_testa: Optional[float] = None
     quota_ngf_fondo: Optional[float] = None
     quota_ngf_note: Optional[str] = None
+    courbe_beton_active: bool = False
+    courbe_beton_realisee: Optional[List[dict[str, Any]]] = None
+    courbe_beton_tube: Optional[List[dict[str, Any]]] = None
+    courbe_beton_volume_total: Optional[float] = None
+    courbe_beton_hauteur_initiale: Optional[float] = None
+    courbe_beton_hauteur_finale: Optional[float] = None
     site_name: str
     machine_name: Optional[str]
     capocantiere_name: Optional[str] = None

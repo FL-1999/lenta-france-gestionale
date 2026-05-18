@@ -2,6 +2,7 @@
 {% block title %}
     {% set lang = request.cookies.get('lang', 'it') %}
     {% if lang == 'fr' %}Nouvelle fiche – Chef d'équipe{% else %}Nuova fiche – Caposquadra{% endif %}
+
 {% endblock %}
 {% block content %}
 {% set lang = request.cookies.get('lang', 'it') %}
@@ -14,6 +15,7 @@
 {% set show_ngf_fields = show_ngf_fields|default(false) %}
 {% set show_project_coupe_fields = show_project_coupe_fields|default(false) %}
 {% set show_capocantiere_field = show_capocantiere_field|default(false) %}
+{% set show_courbe_beton_fields = show_courbe_beton_fields|default(false) %}
 
 <div class="form-page">
     <div class="form-page-header">
@@ -621,6 +623,76 @@
                     </div>
                 {% endif %}
 
+
+                {% if show_courbe_beton_fields %}
+                    <div class="form-section-wrapper courbe-beton-form" data-courbe-beton-form>
+                        <div class="form-section-header">
+                            <h3 class="form-section-title">Courbe de bétonnage (optionnelle)</h3>
+                            <p class="text-muted">Activez la courbe uniquement si vous souhaitez saisir les points réels et l’intégrer au PDF.</p>
+                        </div>
+                        <label class="courbe-toggle">
+                            <input type="checkbox" name="courbe_beton_active" value="1" data-courbe-beton-active {% if form_data.get('courbe_beton_active') == '1' %}checked{% endif %}>
+                            <span>Activer la courbe de bétonnage</span>
+                        </label>
+                        <div class="courbe-beton-panel" data-courbe-beton-panel {% if form_data.get('courbe_beton_active') != '1' %}hidden{% endif %}>
+                            <div class="form-grid form-grid--three">
+                                <div class="form-group">
+                                    <label class="form-label" for="courbe_beton_volume_total">Volume total théorique</label>
+                                    <input id="courbe_beton_volume_total" name="courbe_beton_volume_total" type="number" step="0.01" min="0" class="form-control" value="{{ form_data.get('courbe_beton_volume_total', '') }}" data-courbe-theoretical-volume>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="courbe_beton_hauteur_initiale">Hauteur initiale</label>
+                                    <input id="courbe_beton_hauteur_initiale" name="courbe_beton_hauteur_initiale" type="number" step="0.01" class="form-control" value="{{ form_data.get('courbe_beton_hauteur_initiale', '') }}" data-courbe-theoretical-start>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="courbe_beton_hauteur_finale">Hauteur finale</label>
+                                    <input id="courbe_beton_hauteur_finale" name="courbe_beton_hauteur_finale" type="number" step="0.01" class="form-control" value="{{ form_data.get('courbe_beton_hauteur_finale', '0') }}" data-courbe-theoretical-end>
+                                    <small class="form-text text-muted">Par défaut : 0 m.</small>
+                                </div>
+                            </div>
+
+                            <div class="courbe-input-grid">
+                                <section>
+                                    <h4>Réalisée</h4>
+                                    <div class="courbe-table" data-courbe-table="realisee">
+                                        <div class="courbe-table__head"><span>Volume (m³)</span><span>Hauteur (m)</span><span></span></div>
+                                        <div data-courbe-rows>
+                                            {% for point in form_data.get('courbe_beton_realisee', [{'volume':'','hauteur':''}]) %}
+                                                <div class="courbe-row">
+                                                    <input class="form-control" name="courbe_realisee_volume" type="number" step="0.01" min="0" value="{{ point.volume }}" data-courbe-volume>
+                                                    <input class="form-control" name="courbe_realisee_hauteur" type="number" step="0.01" value="{{ point.hauteur }}" data-courbe-hauteur>
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-remove-courbe-row>Supprimer</button>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                        <button type="button" class="btn btn-primary btn-sm" data-add-courbe-row="realisee">➕ Ajouter une ligne</button>
+                                    </div>
+                                </section>
+                                <section>
+                                    <h4>Tube (optionnel)</h4>
+                                    <div class="courbe-table" data-courbe-table="tube">
+                                        <div class="courbe-table__head"><span>Volume (m³)</span><span>Hauteur (m)</span><span></span></div>
+                                        <div data-courbe-rows>
+                                            {% for point in form_data.get('courbe_beton_tube', [{'volume':'','hauteur':''}]) %}
+                                                <div class="courbe-row">
+                                                    <input class="form-control" name="courbe_tube_volume" type="number" step="0.01" min="0" value="{{ point.volume }}" data-courbe-volume>
+                                                    <input class="form-control" name="courbe_tube_hauteur" type="number" step="0.01" value="{{ point.hauteur }}" data-courbe-hauteur>
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-remove-courbe-row>Supprimer</button>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                        <button type="button" class="btn btn-primary btn-sm" data-add-courbe-row="tube">➕ Ajouter une ligne</button>
+                                    </div>
+                                </section>
+                            </div>
+                            <div class="courbe-chart-card">
+                                <canvas data-courbe-chart width="920" height="420" aria-label="COURBE DE BÉTONNAGE"></canvas>
+                                <div class="courbe-legend"><span class="courbe-legend__item courbe-legend__item--realisee">Réalisée</span><span class="courbe-legend__item courbe-legend__item--theorique">Théorique</span><span class="courbe-legend__item courbe-legend__item--tube">Tube</span></div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
                 <div class="form-group">
                     <label class="form-label" for="note">
                         {% if lang == 'fr' %}Remarques{% else %}Note{% endif %}
@@ -1136,6 +1208,135 @@ document.addEventListener("DOMContentLoaded", function () {
     altezzaInput?.addEventListener("input", updateLabels);
 
     updateSketchAndGeom();
+});
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const root = document.querySelector("[data-courbe-beton-form]");
+    if (!root) return;
+    const checkbox = root.querySelector("[data-courbe-beton-active]");
+    const panel = root.querySelector("[data-courbe-beton-panel]");
+    const canvas = root.querySelector("[data-courbe-chart]");
+    const ctx = canvas?.getContext("2d");
+
+    function parseValue(input) {
+        const value = (input?.value || "").trim().replace(/,/g, ".");
+        if (!value) return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    function readSeries(tableName) {
+        const table = root.querySelector(`[data-courbe-table="${tableName}"]`);
+        return Array.from(table?.querySelectorAll(".courbe-row") || [])
+            .map(row => ({ volume: parseValue(row.querySelector("[data-courbe-volume]")), hauteur: parseValue(row.querySelector("[data-courbe-hauteur]")) }))
+            .filter(point => point.volume !== null && point.hauteur !== null)
+            .sort((a, b) => a.volume - b.volume);
+    }
+    function theoreticalSeries() {
+        const volume = parseValue(root.querySelector("[data-courbe-theoretical-volume]"));
+        const start = parseValue(root.querySelector("[data-courbe-theoretical-start]"));
+        const end = parseValue(root.querySelector("[data-courbe-theoretical-end]")) ?? 0;
+        return volume !== null && start !== null ? [{ volume: 0, hauteur: start }, { volume, hauteur: end }] : [];
+    }
+    function drawSeries(points, color) {
+        if (!ctx || points.length === 0) return;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        points.forEach((point, index) => {
+            const x = mapX(point.volume);
+            const y = mapY(point.hauteur);
+            if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        points.forEach(point => {
+            const x = mapX(point.volume);
+            const y = mapY(point.hauteur);
+            ctx.beginPath();
+            ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        });
+    }
+    let bounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 };
+    const plot = { left: 70, right: 24, top: 54, bottom: 58 };
+    function mapX(value) { return plot.left + ((value - bounds.minX) / (bounds.maxX - bounds.minX || 1)) * (canvas.width - plot.left - plot.right); }
+    function mapY(value) { return canvas.height - plot.bottom - ((value - bounds.minY) / (bounds.maxY - bounds.minY || 1)) * (canvas.height - plot.top - plot.bottom); }
+    function drawChart() {
+        if (!ctx || !canvas) return;
+        const realised = readSeries("realisee");
+        const theoretical = theoreticalSeries();
+        const tube = readSeries("tube");
+        const all = realised.concat(theoretical, tube);
+        const maxX = Math.max(1, ...all.map(point => point.volume));
+        const maxY = Math.max(1, ...all.map(point => point.hauteur));
+        const minY = Math.min(0, ...all.map(point => point.hauteur));
+        bounds = { minX: 0, maxX: maxX * 1.08, minY, maxY: maxY * 1.08 };
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "bold 20px Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("COURBE DE BÉTONNAGE", canvas.width / 2, 30);
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.lineWidth = 1;
+        ctx.font = "12px Arial, sans-serif";
+        ctx.fillStyle = "#475569";
+        ctx.textAlign = "right";
+        for (let i = 0; i <= 5; i++) {
+            const x = plot.left + ((canvas.width - plot.left - plot.right) / 5) * i;
+            const y = plot.top + ((canvas.height - plot.top - plot.bottom) / 5) * i;
+            ctx.beginPath(); ctx.moveTo(x, plot.top); ctx.lineTo(x, canvas.height - plot.bottom); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(plot.left, y); ctx.lineTo(canvas.width - plot.right, y); ctx.stroke();
+            ctx.fillText((bounds.maxY - ((bounds.maxY - bounds.minY) / 5) * i).toFixed(1), plot.left - 8, y + 4);
+            ctx.textAlign = "center";
+            ctx.fillText((bounds.maxX / 5 * i).toFixed(0), x, canvas.height - plot.bottom + 20);
+            ctx.textAlign = "right";
+        }
+        ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(plot.left, plot.top); ctx.lineTo(plot.left, canvas.height - plot.bottom); ctx.lineTo(canvas.width - plot.right, canvas.height - plot.bottom); ctx.stroke();
+        ctx.fillStyle = "#0f172a"; ctx.font = "bold 13px Arial, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("Volume (m³)", (canvas.width + plot.left - plot.right) / 2, canvas.height - 12);
+        ctx.save(); ctx.translate(18, canvas.height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("Hauteur (m)", 0, 0); ctx.restore();
+        drawSeries(realised, "#2563eb");
+        drawSeries(theoretical, "#dc2626");
+        drawSeries(tube, "#16a34a");
+    }
+    function sortRows(table) {
+        const rowsContainer = table.querySelector("[data-courbe-rows]");
+        Array.from(rowsContainer.querySelectorAll(".courbe-row"))
+            .sort((a, b) => (parseValue(a.querySelector("[data-courbe-volume]")) ?? Infinity) - (parseValue(b.querySelector("[data-courbe-volume]")) ?? Infinity))
+            .forEach(row => rowsContainer.appendChild(row));
+    }
+    function addRow(tableName) {
+        const table = root.querySelector(`[data-courbe-table="${tableName}"]`);
+        const rows = table.querySelector("[data-courbe-rows]");
+        const prefix = tableName === "tube" ? "courbe_tube" : "courbe_realisee";
+        const row = document.createElement("div");
+        row.className = "courbe-row";
+        row.innerHTML = `<input class="form-control" name="${prefix}_volume" type="number" step="0.01" min="0" data-courbe-volume><input class="form-control" name="${prefix}_hauteur" type="number" step="0.01" data-courbe-hauteur><button type="button" class="btn btn-secondary btn-sm" data-remove-courbe-row>Supprimer</button>`;
+        rows.appendChild(row);
+        row.querySelector("input")?.focus();
+        drawChart();
+    }
+    root.addEventListener("click", event => {
+        const add = event.target.closest("[data-add-courbe-row]");
+        if (add) addRow(add.dataset.addCourbeRow);
+        const remove = event.target.closest("[data-remove-courbe-row]");
+        if (remove) { remove.closest(".courbe-row")?.remove(); drawChart(); }
+    });
+    root.addEventListener("input", event => {
+        if (event.target.matches("[data-courbe-volume]")) sortRows(event.target.closest("[data-courbe-table]"));
+        drawChart();
+    });
+    checkbox?.addEventListener("change", () => { panel.hidden = !checkbox.checked; drawChart(); });
+    drawChart();
 });
 </script>
 

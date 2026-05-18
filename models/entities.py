@@ -809,6 +809,12 @@ class Fiche(Base, TimestampMixin):
     type_beton = Column(String(100), nullable=True)
     type_coulage = Column(String(100), nullable=False, default="Gravitaire")
     terreno_teorico = Column(Text, nullable=True)
+    courbe_beton_active = Column(Boolean, nullable=False, default=False)
+    courbe_beton_realisee = Column(Text, nullable=True)
+    courbe_beton_tube = Column(Text, nullable=True)
+    courbe_beton_volume_total = Column(Float, nullable=True)
+    courbe_beton_hauteur_initiale = Column(Float, nullable=True)
+    courbe_beton_hauteur_finale = Column(Float, nullable=True, default=0)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
     stratigrafie = relationship(
