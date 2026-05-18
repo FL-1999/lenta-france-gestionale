@@ -617,66 +617,47 @@ async def set_language(lang_code: str, request: Request):
 # -------------------------------------------------
 
 def _validate_fiche_geometria(
+    tipologia_scavo: str,
     diametro_palo_cm: float | None,
     larghezza_pannello: float | None,
     altezza_pannello: float | None,
     profondita_totale: float | None,
 ) -> None:
-    has_diametro = diametro_palo_cm is not None
-    has_larghezza = larghezza_pannello is not None
-    has_altezza = altezza_pannello is not None
-
-    if diametro_palo_cm is not None and diametro_palo_cm <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Il diametro del palo deve essere maggiore di zero.",
-        )
-
-    if larghezza_pannello is not None and larghezza_pannello <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail="La larghezza del pannello deve essere maggiore di zero.",
-        )
-
-    if altezza_pannello is not None and altezza_pannello <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail="L'altezza del pannello deve essere maggiore di zero.",
-        )
-
-    if profondita_totale is not None and profondita_totale <= 0:
+    if profondita_totale is None or profondita_totale <= 0:
         raise HTTPException(
             status_code=400,
             detail="La profondità totale deve essere maggiore di zero.",
         )
 
-    if has_diametro and (has_larghezza or has_altezza):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Se inserisci il diametro del palo, lascia vuote le misure del pannello."
-            ),
-        )
-
-    if has_larghezza or has_altezza:
-        if not (has_larghezza and has_altezza):
+    if tipologia_scavo == "palo":
+        if diametro_palo_cm is None:
             raise HTTPException(
                 status_code=400,
-                detail="Per il pannello devi indicare sia larghezza sia altezza.",
+                detail="Inserisci il diametro del palo in centimetri.",
             )
-        if has_diametro:
+        if diametro_palo_cm <= 0:
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "Se compili larghezza e altezza del pannello, il diametro del palo deve restare vuoto."
-                ),
+                detail="Il diametro del palo deve essere maggiore di zero.",
             )
+        return
 
-    if (has_diametro or has_larghezza or has_altezza) and profondita_totale is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Se compili i dati geometrici devi indicare anche la profondità totale.",
-        )
+    if tipologia_scavo == "paratia":
+        if larghezza_pannello is None or altezza_pannello is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Per la paratia devi indicare larghezza e spessore pannello.",
+            )
+        if larghezza_pannello <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="La larghezza del pannello deve essere maggiore di zero.",
+            )
+        if altezza_pannello <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Lo spessore del pannello deve essere maggiore di zero.",
+            )
 
 
 FICHE_STRATIGRAFIA_DEPTH_ERROR = (
@@ -1157,7 +1138,6 @@ def _apply_coupe_defaults_to_fiche_values(
             quota_partenza_value = coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not None else coupe.quota_testa
         quota_testa_getto_value = quota_testa_getto_value if quota_testa_getto_value is not None else coupe.quota_testa_getto_prevista
         quota_ngf_testa_value = quota_ngf_testa_value if quota_ngf_testa_value is not None else coupe.quota_testa
-        quota_ngf_fondo_value = quota_ngf_fondo_value if quota_ngf_fondo_value is not None else coupe.quota_fondo_teorica
         profondita_value = profondita_value if profondita_value is not None else coupe.profondita_teorica
         larghezza_value = larghezza_value if larghezza_value is not None else coupe.larghezza
         diametro_value_cm = diametro_value_cm if diametro_value_cm is not None else (coupe.diametro * 100 if coupe.diametro is not None else None)
@@ -1167,8 +1147,8 @@ def _apply_coupe_defaults_to_fiche_values(
         quota_testa_getto_value,
         quota_tn=coupe.quota_tn if coupe and coupe.quota_tn is not None else quota_ngf_testa_value,
     )
-    if quota_ngf_fondo_value is None and quota_partenza_value is not None and profondita_value is not None:
-        quota_ngf_fondo_value = quota_partenza_value - profondita_value
+    if quota_ngf_fondo_value is None and quota_ngf_testa_value is not None and profondita_value is not None:
+        quota_ngf_fondo_value = quota_ngf_testa_value - profondita_value
 
     return {
         "scavo_da_tn_value": scavo_da_tn_value,
@@ -1295,19 +1275,7 @@ def _create_validated_fiche(
             detail="Il campo Operatore / squadra è obbligatorio.",
         )
 
-    _validate_fiche_geometria(
-        diametro_palo_cm=diametro_value_cm,
-        larghezza_pannello=larghezza_value,
-        altezza_pannello=altezza_value,
-        profondita_totale=profondita_value,
-    )
     _validate_metri_cubi_gettati(metri_cubi_value)
-    layers = _validate_required_fiche_stratigrafia(
-        profondita_totale=profondita_value,
-        strato_da=parsed_strato_da,
-        strato_a=parsed_strato_a,
-        strato_materiale=strato_materiale,
-    )
 
     site = db.query(Site).filter(Site.id == cantiere_id).first()
     if not site:
@@ -1318,6 +1286,12 @@ def _create_validated_fiche(
             raise HTTPException(status_code=403, detail="Cantiere non valido")
 
     normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
+    if normalized_tipologia == "palo":
+        larghezza_value = None
+        altezza_value = None
+    elif normalized_tipologia == "paratia":
+        diametro_value_cm = None
+
     coupe = _find_site_coupe_for_fiche(
         db,
         site_id=site.id,
@@ -1347,6 +1321,27 @@ def _create_validated_fiche(
     diametro_value_cm = coupe_values["diametro_value_cm"]
     larghezza_value = coupe_values["larghezza_value"]
     altezza_value = coupe_values["altezza_value"]
+    if normalized_tipologia == "palo":
+        larghezza_value = None
+        altezza_value = None
+    elif normalized_tipologia == "paratia":
+        diametro_value_cm = None
+    if quota_ngf_testa_value is not None and profondita_value is not None and quota_ngf_fondo_value is None:
+        quota_ngf_fondo_value = quota_ngf_testa_value - profondita_value
+
+    _validate_fiche_geometria(
+        tipologia_scavo=normalized_tipologia,
+        diametro_palo_cm=diametro_value_cm,
+        larghezza_pannello=larghezza_value,
+        altezza_pannello=altezza_value,
+        profondita_totale=profondita_value,
+    )
+    layers = _validate_required_fiche_stratigrafia(
+        profondita_totale=profondita_value,
+        strato_da=parsed_strato_da,
+        strato_a=parsed_strato_a,
+        strato_materiale=strato_materiale,
+    )
 
     _ensure_unique_numero_pannello(
         db, cantiere_id, normalized_tipologia, parsed_numero_pannello
@@ -1479,19 +1474,7 @@ def _update_validated_fiche(
             detail="Il campo Operatore / squadra è obbligatorio.",
         )
 
-    _validate_fiche_geometria(
-        diametro_palo_cm=diametro_value_cm,
-        larghezza_pannello=larghezza_value,
-        altezza_pannello=altezza_value,
-        profondita_totale=profondita_value,
-    )
     _validate_metri_cubi_gettati(metri_cubi_value)
-    layers = _validate_required_fiche_stratigrafia(
-        profondita_totale=profondita_value,
-        strato_da=parsed_strato_da,
-        strato_a=parsed_strato_a,
-        strato_materiale=strato_materiale,
-    )
 
     site = db.query(Site).filter(Site.id == cantiere_id).first()
     if not site:
@@ -1535,6 +1518,27 @@ def _update_validated_fiche(
     diametro_value_cm = coupe_values["diametro_value_cm"]
     larghezza_value = coupe_values["larghezza_value"]
     altezza_value = coupe_values["altezza_value"]
+    if normalized_tipologia == "palo":
+        larghezza_value = None
+        altezza_value = None
+    elif normalized_tipologia == "paratia":
+        diametro_value_cm = None
+    if quota_ngf_testa_value is not None and profondita_value is not None and quota_ngf_fondo_value is None:
+        quota_ngf_fondo_value = quota_ngf_testa_value - profondita_value
+
+    _validate_fiche_geometria(
+        tipologia_scavo=normalized_tipologia,
+        diametro_palo_cm=diametro_value_cm,
+        larghezza_pannello=larghezza_value,
+        altezza_pannello=altezza_value,
+        profondita_totale=profondita_value,
+    )
+    layers = _validate_required_fiche_stratigrafia(
+        profondita_totale=profondita_value,
+        strato_da=parsed_strato_da,
+        strato_a=parsed_strato_a,
+        strato_materiale=strato_materiale,
+    )
 
     if parsed_machine_id is not None:
         machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
@@ -4295,6 +4299,12 @@ def _sync_site_coupes_from_form(
         coupe.quota_testa = _optional_float_from_form(value(coupe_quota_testa, index))
         coupe.quota_fondo_teorica = _optional_float_from_form(value(coupe_quota_fondo_teorica, index))
         coupe.profondita_teorica = _optional_float_from_form(value(coupe_profondita_teorica, index))
+        if (
+            coupe.quota_fondo_teorica is None
+            and coupe.quota_testa is not None
+            and coupe.profondita_teorica is not None
+        ):
+            coupe.quota_fondo_teorica = round(coupe.quota_testa - coupe.profondita_teorica, 2)
         coupe.scavo_da_tn = value(coupe_scavo_da_tn, index) != "0"
         coupe.quota_partenza_scavo = _optional_float_from_form(value(coupe_quota_partenza_scavo, index))
         coupe.quota_testa_getto_prevista = _optional_float_from_form(value(coupe_quota_testa_getto_prevista, index))
@@ -6275,7 +6285,7 @@ def capo_fiche_nuova_get(
         current_user,
         template_name="capo/fiches_form.html",
         collections_loader=lambda: _load_capo_form_collections(current_user),
-        extra_context={"show_ngf_fields": True, "show_project_coupe_fields": True},
+        extra_context={"show_ngf_fields": False, "show_project_coupe_fields": True},
     )
 
 
@@ -6320,7 +6330,7 @@ async def capo_fiche_nuova_post(
                 macchinario_id=macchinario_id,
                 coupe_id=coupe_id,
                 scavo_da_tn=scavo_da_tn,
-                quota_testa_getto=quota_testa_getto,
+                quota_testa_getto=None,
                 data_scavo=data_scavo,
                 data_getto=data_getto,
                 metri_cubi_gettati=metri_cubi_gettati,
@@ -6375,7 +6385,7 @@ async def capo_fiche_nuova_post(
             status_code=exc.status_code or 400,
             form_data=form_data,
             error_message=exc.detail,
-            extra_context={"show_ngf_fields": True, "show_project_coupe_fields": True},
+            extra_context={"show_ngf_fields": False, "show_project_coupe_fields": True},
         )
 
     return RedirectResponse(url="/capo/dashboard", status_code=303)
@@ -6449,6 +6459,37 @@ def _build_stratigrafia_visual_layers(fiche: Fiche) -> list[dict]:
             }
         )
     return visual_layers
+
+
+def _parse_theoretical_soil_layers(text: str | None, fallback_depth: float | None = None) -> list[dict]:
+    import re
+
+    layers: list[dict] = []
+    for line in (text or "").splitlines():
+        match = re.search(
+            r"([0-9]+(?:[\.,][0-9]+)?)\s*[-–]\s*([0-9]+(?:[\.,][0-9]+)?)\s*m?\s*:?\s*(.*)",
+            line,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            continue
+        da_val = float(match.group(1).replace(",", "."))
+        a_val = float(match.group(2).replace(",", "."))
+        if a_val <= da_val:
+            continue
+        layers.append(
+            {
+                "da": da_val,
+                "a": a_val,
+                "materiale": (match.group(3) or "Terreno").strip() or "Terreno",
+            }
+        )
+    total_depth = float(fallback_depth or 0) or (max((layer["a"] for layer in layers), default=0))
+    for layer in layers:
+        thickness = max(layer["a"] - layer["da"], 0)
+        layer["height_percent"] = round((thickness / total_depth) * 100, 2) if total_depth > 0 else 0
+        layer["texture_class"] = _materiale_stratigrafia_texture_class(layer["materiale"])
+    return layers
 
 
 def _build_fiche_site_progress_card(site: Site, fiches_count: int) -> dict:
@@ -6867,6 +6908,10 @@ def manager_fiche_dettaglio(
             fiche=fiche,
             volume_teorico=_calculate_fiche_volume_teorico(fiche),
             stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
+            theoretical_soil_layers=_parse_theoretical_soil_layers(
+                fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe else None),
+                fiche.profondita_totale,
+            ),
         ),
     )
 

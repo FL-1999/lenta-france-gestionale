@@ -98,6 +98,8 @@
             <label class="form-label">Terreno teorico</label>
             <textarea class="form-textarea" name="coupe_terreno_teorico" rows="4" placeholder="0.00-1.20 m: Limo sabbioso
 1.20-4.50 m: Argilla" data-theoretical-soil-text>{{ coupe.terreno_teorico if coupe and coupe.terreno_teorico else '' }}</textarea>
+            <div class="theoretical-soil-preview" data-theoretical-soil-preview></div>
+            <div class="soil-legend soil-legend--compact" data-theoretical-soil-legend></div>
             <div class="theoretical-soil-builder" aria-label="Stratigrafia teorica strutturata">
               <div class="theoretical-soil-row theoretical-soil-row--head"><span>Da (m)</span><span>A (m)</span><span>Tipo terreno</span><span></span></div>
               <div data-theoretical-soil-rows></div>
@@ -214,6 +216,11 @@
   .theoretical-soil-row{display:grid;grid-template-columns:90px 90px 1fr auto;gap:.5rem;align-items:center;}
   .theoretical-soil-row--head{color:#cbd5e1;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
   .theoretical-soil-row .btn{padding:.35rem .55rem;}
+  .theoretical-soil-preview{display:flex;flex-direction:column;overflow:hidden;min-height:220px;border-radius:16px;border:1px solid rgba(148,163,184,.35);background:#0f172a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);}
+  .theoretical-soil-preview:empty{display:none;}
+  .soil-legend{display:flex;flex-wrap:wrap;gap:.45rem .75rem;margin:.55rem 0;color:#cbd5e1;font-size:.8rem;font-weight:800;}
+  .soil-legend-item{display:inline-flex;align-items:center;gap:.35rem;}
+  .soil-legend-swatch{width:1rem;height:1rem;border-radius:4px;border:1px solid rgba(255,255,255,.35);display:inline-block;}
   @media (max-width:1100px){.project-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.project-section-grid,.form-grid--four{grid-template-columns:1fr 1fr;}}
   @media (max-width:720px){.project-summary-grid,.project-section-grid,.form-grid--two,.form-grid--four{grid-template-columns:1fr;}.project-coupe-card__header,.project-section-heading{flex-direction:column;align-items:stretch;}.project-coupe-card__actions{justify-content:flex-start;}.project-sticky-actions{position:static;}}
 </style>
@@ -228,6 +235,60 @@
         const match = line.match(/([0-9]+(?:[.,][0-9]+)?)\s*[-–]\s*([0-9]+(?:[.,][0-9]+)?)\s*m?\s*:?\s*(.*)/i);
         return match ? { da: match[1], a: match[2], materiale: match[3] || '' } : null;
       }).filter(Boolean);
+    }
+
+    function textureClass(materiale) {
+      const label = String(materiale || '').toLowerCase();
+      if (label.includes('riporto') || label.includes('remblai')) return 'soil-layer--riporto';
+      if (label.includes('ghia') || label.includes('gravier') || label.includes('gravel')) return 'soil-layer--ghiaia';
+      if (label.includes('argill') || label.includes('argile') || label.includes('clay')) return 'soil-layer--argilla';
+      if (label.includes('rocc') || label.includes('roche') || label.includes('rock')) return 'soil-layer--roccia';
+      if (label.includes('sabb') || label.includes('sable') || label.includes('sand')) return 'soil-layer--sabbia';
+      if (label.includes('lim') || label.includes('silt')) return 'soil-layer--limo';
+      return 'soil-layer--generico';
+    }
+
+    function renderTheoreticalPreview(builder) {
+      const textarea = builder.querySelector('[data-theoretical-soil-text]');
+      const preview = builder.querySelector('[data-theoretical-soil-preview]');
+      const legend = builder.querySelector('[data-theoretical-soil-legend]');
+      if (!textarea || !preview || !legend) return;
+      const layers = parseTheoreticalText(textarea.value);
+      preview.innerHTML = '';
+      legend.innerHTML = '';
+      if (!layers.length) return;
+      const numericLayers = layers.map((layer) => ({
+        da: Number(String(layer.da || '0').replace(',', '.')),
+        a: Number(String(layer.a || '0').replace(',', '.')),
+        materiale: layer.materiale || 'Terreno',
+      }));
+      const totalDepth = Math.max(...numericLayers.map((layer) => layer.a), 0);
+      const used = new Map();
+      numericLayers.forEach((layer) => {
+        const div = document.createElement('div');
+        const cls = textureClass(layer.materiale);
+        div.className = `soil-layer ${cls}`;
+        div.style.height = `${totalDepth > 0 ? Math.max(((layer.a - layer.da) / totalDepth) * 100, 4) : 100}%`;
+        div.innerHTML = `<span class="soil-layer-label">${layer.materiale}<small>${layer.da.toFixed(2)}–${layer.a.toFixed(2)} m</small></span>`;
+        preview.appendChild(div);
+        if (!used.has(layer.materiale)) used.set(layer.materiale, cls);
+      });
+      used.forEach((cls, material) => {
+        const item = document.createElement('span');
+        item.className = 'soil-legend-item';
+        item.innerHTML = `<span class="soil-legend-swatch ${cls}"></span>${material}`;
+        legend.appendChild(item);
+      });
+    }
+
+    function syncQuotaFondo(card) {
+      const testaInput = card.querySelector('input[name="coupe_quota_testa"]');
+      const depthInput = card.querySelector('input[name="coupe_profondita_teorica"]');
+      const fondoInput = card.querySelector('input[name="coupe_quota_fondo_teorica"]');
+      if (!testaInput || !depthInput || !fondoInput || fondoInput.dataset.manual === '1') return;
+      const testa = Number(String(testaInput.value || '').replace(',', '.'));
+      const depth = Number(String(depthInput.value || '').replace(',', '.'));
+      if (Number.isFinite(testa) && Number.isFinite(depth)) fondoInput.value = (testa - depth).toFixed(2);
     }
 
     function syncTheoreticalText(builder) {
@@ -262,7 +323,9 @@
         const textarea = builder.querySelector('[data-theoretical-soil-text]');
         const parsed = parseTheoreticalText(textarea.value);
         (parsed.length ? parsed : [{}]).forEach((layer) => addTheoreticalLayer(builder, layer));
+        textarea.addEventListener('input', () => renderTheoreticalPreview(builder));
         builder.querySelector('[data-add-theoretical-layer]')?.addEventListener('click', () => addTheoreticalLayer(builder));
+        renderTheoreticalPreview(builder);
       });
     }
 
@@ -273,6 +336,12 @@
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
       bindTheoreticalSoil(card);
+      const testaInput = card.querySelector('input[name="coupe_quota_testa"]');
+      const depthInput = card.querySelector('input[name="coupe_profondita_teorica"]');
+      const fondoInput = card.querySelector('input[name="coupe_quota_fondo_teorica"]');
+      fondoInput?.addEventListener('input', () => { fondoInput.dataset.manual = '1'; });
+      [testaInput, depthInput].forEach((input) => input?.addEventListener('input', () => syncQuotaFondo(card)));
+      syncQuotaFondo(card);
     }
 
     document.querySelectorAll('[data-coupe-card]').forEach(bindFocusButton);
