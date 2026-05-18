@@ -119,6 +119,12 @@
                         <small class="form-text text-muted">Carica automaticamente quota TN, partenza e fondo teorico impostati da admin/manager.</small>
                     </div>
 
+                    <div class="form-group project-soil-preview" data-coupe-soil-preview hidden>
+                        <label class="form-label">Modèle géologique</label>
+                        <div class="theoretical-soil-preview" data-theoretical-soil-preview></div>
+                        <div class="soil-legend soil-legend--compact" data-theoretical-soil-legend></div>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label" for="scavo_da_tn">Scavo da TN?</label>
                         <select id="scavo_da_tn" name="scavo_da_tn" class="form-select">
@@ -361,10 +367,14 @@
                         <div class="card fiche-sketch fiche-geometry-card">
                             <div class="card-body">
                                 <div class="element-drawing-label">
-                              {% if diametro_value_cm %}
+                              {% if selected_tipologia == 'palo' and diametro_value_cm %}
                                 {{ diametro_value_cm }} cm
-                              {% else %}
+                              {% elif selected_tipologia == 'palo' %}
                                 Inserisci diametro (cm)
+                              {% elif selected_tipologia == 'paratia' %}
+                                Inserisci larghezza e spessore pannello
+                              {% else %}
+                                Seleziona palo o paratia
                               {% endif %}
                             </div>
                             <svg id="fiche-sketch-svg" class="diagram-sketch" width="240" height="170" viewBox="0 0 240 170" aria-hidden="true">
@@ -385,9 +395,9 @@
                                       x="120" y="22"
                                       text-anchor="middle"
                                       style="display:none;">
-                                  {% if diametro_value_cm %}
+                                  {% if selected_tipologia == 'palo' and diametro_value_cm %}
                                     {{ diametro_value_cm }} cm
-                                  {% else %}
+                                  {% elif selected_tipologia == 'palo' %}
                                     Inserisci diametro (cm)
                                   {% endif %}
                                 </text>
@@ -623,6 +633,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const errorBox = form.querySelector("[data-fiche-stratigrafia-error]");
     const siteSelect = document.getElementById("cantiere_id");
     const coupeSelect = document.getElementById("coupe_id");
+    const typeSelect = document.getElementById("tipologia_scavo");
+    const quotaTestaInput = document.getElementById("quota_ngf_testa");
+    const quotaFondoInput = document.getElementById("quota_ngf_fondo");
+    const diametroInput = document.getElementById("diametro_palo_cm");
+    const larghezzaInput = document.getElementById("larghezza_pannello");
+    const spessoreInput = document.getElementById("altezza_pannello");
+    const soilPreviewWrap = form.querySelector("[data-coupe-soil-preview]");
+    const soilPreview = form.querySelector("[data-theoretical-soil-preview]");
+    const soilLegend = form.querySelector("[data-theoretical-soil-legend]");
+    let fondoManuallyEdited = Boolean(quotaFondoInput?.value);
     function filterCoupesBySite() {
         if (!siteSelect || !coupeSelect) return;
         const siteId = siteSelect.value;
@@ -637,22 +657,97 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!input || value === undefined || value === null || value === "") return;
         if (!input.value) input.value = value;
     }
+    function numberFromInput(input) {
+        if (!input) return null;
+        const value = Number(String(input.value || "").trim().replace(/,/g, "."));
+        return Number.isFinite(value) ? value : null;
+    }
+    function formatNumber(value) {
+        return Number.isFinite(value) ? value.toFixed(2) : "";
+    }
+    function syncQuotaFondo(force = false) {
+        if (!quotaFondoInput) return;
+        const testa = numberFromInput(quotaTestaInput);
+        const depth = numberFromInput(depthInput);
+        if (testa === null || depth === null) return;
+        if (force || !fondoManuallyEdited || !quotaFondoInput.value) {
+            quotaFondoInput.value = formatNumber(testa - depth);
+            quotaFondoInput.dataset.autoCalculated = "1";
+            fondoManuallyEdited = false;
+        }
+    }
+    function textureClass(materiale) {
+        const label = String(materiale || "").toLowerCase();
+        if (label.includes("riporto") || label.includes("remblai")) return "soil-layer--riporto";
+        if (label.includes("ghia") || label.includes("gravier") || label.includes("gravel")) return "soil-layer--ghiaia";
+        if (label.includes("argill") || label.includes("argile") || label.includes("clay")) return "soil-layer--argilla";
+        if (label.includes("rocc") || label.includes("roche") || label.includes("rock")) return "soil-layer--roccia";
+        if (label.includes("sabb") || label.includes("sable") || label.includes("sand")) return "soil-layer--sabbia";
+        if (label.includes("lim") || label.includes("silt")) return "soil-layer--limo";
+        return "soil-layer--generico";
+    }
+    function parseTheoreticalText(text) {
+        return (text || "").split(/\n+/).map((line) => {
+            const match = line.match(/([0-9]+(?:[.,][0-9]+)?)\s*[-–]\s*([0-9]+(?:[.,][0-9]+)?)\s*m?\s*:?\s*(.*)/i);
+            if (!match) return null;
+            return { da: Number(match[1].replace(",", ".")), a: Number(match[2].replace(",", ".")), materiale: (match[3] || "Terreno").trim() || "Terreno" };
+        }).filter(Boolean);
+    }
+    function renderSoilPreview(text) {
+        if (!soilPreviewWrap || !soilPreview || !soilLegend) return;
+        const layers = parseTheoreticalText(text);
+        soilPreview.innerHTML = "";
+        soilLegend.innerHTML = "";
+        if (!layers.length) { soilPreviewWrap.hidden = true; return; }
+        const totalDepth = Math.max(...layers.map((layer) => layer.a), 0);
+        const used = new Map();
+        layers.forEach((layer) => {
+            const div = document.createElement("div");
+            const cls = textureClass(layer.materiale);
+            div.className = `soil-layer ${cls}`;
+            div.style.height = `${totalDepth > 0 ? Math.max(((layer.a - layer.da) / totalDepth) * 100, 4) : 100}%`;
+            div.innerHTML = `<span class="soil-layer-label">${layer.materiale}<small>${layer.da.toFixed(2)}–${layer.a.toFixed(2)} m</small></span>`;
+            soilPreview.appendChild(div);
+            if (!used.has(layer.materiale)) used.set(layer.materiale, cls);
+        });
+        used.forEach((cls, material) => {
+            const item = document.createElement("span");
+            item.className = "soil-legend-item";
+            item.innerHTML = `<span class="soil-legend-swatch ${cls}"></span>${material}`;
+            soilLegend.appendChild(item);
+        });
+        soilPreviewWrap.hidden = false;
+    }
     function applyCoupeDefaults() {
         if (!coupeSelect) return;
         const option = coupeSelect.selectedOptions && coupeSelect.selectedOptions[0];
-        if (!option || !option.value) return;
+        if (!option || !option.value) { renderSoilPreview(""); return; }
         fillIfEmpty("quota_ngf_testa", option.dataset.quotaTesta);
-        fillIfEmpty("quota_ngf_fondo", option.dataset.quotaFondo);
         fillIfEmpty("profondita_totale", option.dataset.profondita);
         fillIfEmpty("quota_testa_getto", option.dataset.getto);
-        fillIfEmpty("larghezza_pannello", option.dataset.larghezza);
-        fillIfEmpty("diametro_palo_cm", option.dataset.diametroCm);
-        fillIfEmpty("altezza_pannello", option.dataset.spessore);
+        const tipo = typeSelect?.value;
+        if (tipo === "palo") {
+            fillIfEmpty("diametro_palo_cm", option.dataset.diametroCm);
+            if (larghezzaInput) larghezzaInput.value = "";
+            if (spessoreInput) spessoreInput.value = "";
+        } else if (tipo === "paratia") {
+            fillIfEmpty("larghezza_pannello", option.dataset.larghezza);
+            fillIfEmpty("altezza_pannello", option.dataset.spessore);
+            if (diametroInput) diametroInput.value = "";
+        }
+        if (!quotaFondoInput?.value && option.dataset.quotaFondo) quotaFondoInput.value = option.dataset.quotaFondo;
+        syncQuotaFondo(!fondoManuallyEdited);
+        renderSoilPreview(option.dataset.terrenoTeorico || "");
     }
     siteSelect?.addEventListener("change", filterCoupesBySite);
     coupeSelect?.addEventListener("change", applyCoupeDefaults);
+    typeSelect?.addEventListener("change", applyCoupeDefaults);
+    quotaFondoInput?.addEventListener("input", () => { fondoManuallyEdited = true; });
+    quotaTestaInput?.addEventListener("input", () => syncQuotaFondo());
+    depthInput?.addEventListener("input", () => syncQuotaFondo());
     filterCoupesBySite();
     applyCoupeDefaults();
+    syncQuotaFondo();
     const depthMismatchMessage = "La profondità totale scavata deve corrispondere all’ultimo strato di stratigrafia";
 
     function parseNumber(input) {
@@ -866,7 +961,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 labelDiametro.style.display = "none";
             }
             if (elementDrawingLabel) {
-                elementDrawingLabel.textContent = "Inserisci diametro (cm)";
+                elementDrawingLabel.textContent = "Inserisci larghezza e spessore pannello";
             }
 
         } else {
@@ -876,7 +971,7 @@ document.addEventListener("DOMContentLoaded", function () {
             labelLarghezza.style.display = "none";
             labelAltezza.style.display   = "none";
             if (elementDrawingLabel) {
-                elementDrawingLabel.textContent = "Inserisci diametro (cm)";
+                elementDrawingLabel.textContent = "Seleziona palo o paratia";
             }
         }
     }
@@ -889,12 +984,15 @@ document.addEventListener("DOMContentLoaded", function () {
             rect.style.display   = "none";
             setDisplay(geomPalo, "block");
             setDisplay(geomParatia, "none");
+            if (larghezzaInput) larghezzaInput.value = "";
+            if (altezzaInput) altezzaInput.value = "";
 
         } else if (value === "paratia") {
             circle.style.display = "none";
             rect.style.display   = "block";
             setDisplay(geomPalo, "none");
             setDisplay(geomParatia, "block");
+            if (diametroInput) diametroInput.value = "";
 
         } else {
             circle.style.display = "none";

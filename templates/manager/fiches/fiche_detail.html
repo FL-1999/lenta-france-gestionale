@@ -15,6 +15,7 @@
 {% set stratigrafie = fiche.stratigrafie or [] %}
 {% set strat_layers = fiche.layers or [] %}
 {% set visual_layers = stratigrafia_visual_layers or [] %}
+{% set theoretical_layers = theoretical_soil_layers or [] %}
 {% set tipologia_scavo = fiche.tipologia_scavo|lower if fiche.tipologia_scavo else "" %}
 {% set is_palo = tipologia_scavo == "palo" %}
 {% set is_paratia = tipologia_scavo == "paratia" %}
@@ -404,7 +405,11 @@
                                     {% endif %}
                                 </div>
                                 <div class="technical-ground-bar technical-ground-bar--theoretical">
-                                    {% if fiche.coupe and fiche.coupe.terreno_teorico %}
+                                    {% if theoretical_layers %}
+                                        {% for layer in theoretical_layers %}
+                                            <div class="technical-ground-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;"><span>{{ layer.materiale }}</span></div>
+                                        {% endfor %}
+                                    {% elif fiche.terreno_teorico or (fiche.coupe and fiche.coupe.terreno_teorico) %}
                                         <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ fiche.terreno_teorico or fiche.coupe.terreno_teorico }}</span></div>
                                     {% else %}
                                         <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
@@ -451,6 +456,33 @@
                         <div class="technical-empty-state">
                             {% if lang == 'fr' %}Aucune stratigraphie structurée disponible pour le bloc 3D.{% else %}Nessuna stratigrafia strutturata disponibile per il blocco 3D.{% endif %}
                         </div>
+                    {% endif %}
+                </div>
+
+                <div class="stratigrafia-technical-panel stratigrafia-technical-panel--preserved">
+                    <div class="technical-panel-heading">
+                        <span>Modèle géologique</span>
+                        <strong>{{ fiche.profondita_totale if fiche.profondita_totale is not none else "—" }} m</strong>
+                    </div>
+                    {% if theoretical_layers %}
+                        <div class="stratigrafia-visual stratigrafia-visual--technical">
+                            <div class="soil-visual" aria-label="Modèle géologique théorique">
+                                <div class="soil-3d soil-3d--aligned">
+                                    <div class="top-surface" aria-hidden="true"></div>
+                                    <div class="soil-front">
+                                        {% for layer in theoretical_layers %}
+                                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;" title="{{ layer.materiale }} · {{ '%.2f'|format(layer.da) }}–{{ '%.2f'|format(layer.a) }} m">
+                                                <span class="soil-layer-label">{{ layer.materiale }}<small>{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</small></span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="soil-side" aria-hidden="true"></div>
+                                    <div class="soil-bottom" aria-hidden="true"></div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="technical-empty-state">Modèle géologique théorique non disponible.</div>
                     {% endif %}
                 </div>
             </div>
