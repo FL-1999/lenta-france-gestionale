@@ -367,6 +367,7 @@
                                 <strong>{% if is_palo %}Ø {{ schema_width_label }}{% else %}L {{ schema_width_label }} · S {{ schema_thickness_label }}{% endif %}</strong>
                             </div>
                             <div class="technical-section-canvas">
+                                <div class="technical-section-title" aria-hidden="true">{% if is_palo %}PIEU{% elif is_paratia %}PAROI{% else %}SECTION{% endif %}</div>
                                 <div class="technical-depth-arrow" aria-hidden="true"><span>profondeur {{ "%.2f"|format(schema_depth) }} m</span></div>
                                 <div class="technical-element {{ 'technical-element--pile' if is_palo else 'technical-element--panel' }}" aria-hidden="true"></div>
                                 <div class="technical-dimension technical-dimension--width"><span>largeur {{ schema_width_label }}</span></div>
