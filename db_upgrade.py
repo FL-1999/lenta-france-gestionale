@@ -101,6 +101,10 @@ FICHES_COLUMNS: tuple[str, ...] = (
     "courbe_beton_volume_total FLOAT",
     "courbe_beton_hauteur_initiale FLOAT",
     "courbe_beton_hauteur_finale FLOAT DEFAULT 0",
+    "sonic_previsto BOOLEAN NOT NULL DEFAULT 0",
+    "sonic_realizzato BOOLEAN",
+    "inclinometre_previsto BOOLEAN NOT NULL DEFAULT 0",
+    "inclinometre_realizzato BOOLEAN",
 )
 
 SITE_COUPES_COLUMNS: tuple[str, ...] = (
@@ -566,8 +570,34 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
     logger.info("Migrated fiches unique constraint to include tipologia_scavo.")
 
 
+
+def _ensure_site_special_equipment_table(connection: Connection) -> None:
+    connection.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS site_special_equipment_configs (
+                id INTEGER PRIMARY KEY,
+                site_id INTEGER NOT NULL,
+                tipologia_scavo VARCHAR(50) NOT NULL,
+                numero_elemento INTEGER NOT NULL,
+                sonic_previsto BOOLEAN NOT NULL DEFAULT 0,
+                inclinometre_previsto BOOLEAN NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE,
+                CONSTRAINT uq_site_special_equipment_site_tipo_numero UNIQUE (site_id, tipologia_scavo, numero_elemento),
+                CONSTRAINT ck_site_special_equipment_numero_positive CHECK (numero_elemento > 0)
+            )
+            """
+        )
+    )
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_site_special_equipment_configs_id ON site_special_equipment_configs (id)"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_site_special_equipment_configs_site_id ON site_special_equipment_configs (site_id)"))
+
 def upgrade_db(engine: Engine) -> None:
     """Run idempotent SQLite schema upgrades for configured tables."""
+    with engine.begin() as connection:
+        _ensure_site_special_equipment_table(connection)
     site_labor_columns_added = False
     for table_name, column_definitions in UPGRADE_TARGETS.items():
         added_columns: list[str] = []

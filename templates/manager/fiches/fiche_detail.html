@@ -67,6 +67,13 @@
             <div class="form-group"><label class="form-label">Type béton</label><input class="form-control" name="type_beton" value="{{ fiche.type_beton or fiche.materiale or '' }}"></div>
             <div class="form-group"><label class="form-label">Type coulage</label><input class="form-control" name="type_coulage" value="{{ fiche.type_coulage or 'Gravitaire' }}"></div>
             <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '') }}</textarea></div>
+            {% if fiche.sonic_previsto %}
+              <div class="form-group"><label class="form-label">Sonic réalisé ?</label><select class="form-select" name="sonic_realizzato" required><option value="" {% if fiche.sonic_realizzato is none %}selected{% endif %}>—</option><option value="1" {% if fiche.sonic_realizzato is sameas true %}selected{% endif %}>Oui</option><option value="0" {% if fiche.sonic_realizzato is sameas false %}selected{% endif %}>Non</option></select></div>
+            {% endif %}
+            {% if fiche.inclinometre_previsto %}
+              <div class="form-group"><label class="form-label">Inclinomètre réalisé ?</label><select class="form-select" name="inclinometre_realizzato" required><option value="" {% if fiche.inclinometre_realizzato is none %}selected{% endif %}>—</option><option value="1" {% if fiche.inclinometre_realizzato is sameas true %}selected{% endif %}>Oui</option><option value="0" {% if fiche.inclinometre_realizzato is sameas false %}selected{% endif %}>Non</option></select></div>
+            {% endif %}
+
             <div class="form-group" style="grid-column: 1 / -1;"><button class="btn btn-primary" type="submit">Enregistrer les données PDF</button><small class="form-text text-muted">Ces champs modifient uniquement la fiche technique/PDF; l’historique opérationnel du créateur reste inchangé.</small></div>
         </form>
     </div>
@@ -325,6 +332,19 @@
                                     <div><dt>Différence / surconsommation</dt><dd>{% if volume_diff is not none %}{{ "%+.2f m³"|format(volume_diff) }}{% if volume_diff_percent is not none %} ({{ "%+.1f %%"|format(volume_diff_percent) }}){% endif %}{% else %}—{% endif %}</dd></div>
                                 </dl>
                             </section>
+
+
+                            {% if fiche.sonic_previsto or fiche.inclinometre_previsto %}
+                            <section class="technical-data-block">
+                                <h3>C. Contrôles spéciaux / Équipements</h3>
+                                <dl>
+                                    <div><dt>Sonic prévu</dt><dd>{{ 'Oui' if fiche.sonic_previsto else 'Non' }}</dd></div>
+                                    <div><dt>Sonic réalisé</dt><dd>{% if fiche.sonic_realizzato is sameas true %}Oui{% elif fiche.sonic_realizzato is sameas false %}Non{% else %}—{% endif %}</dd></div>
+                                    <div><dt>Inclinomètre prévu</dt><dd>{{ 'Oui' if fiche.inclinometre_previsto else 'Non' }}</dd></div>
+                                    <div><dt>Inclinomètre réalisé</dt><dd>{% if fiche.inclinometre_realizzato is sameas true %}Oui{% elif fiche.inclinometre_realizzato is sameas false %}Non{% else %}—{% endif %}</dd></div>
+                                </dl>
+                            </section>
+                            {% endif %}
 
                             <section class="technical-data-block">
                                 <h3>C. Contrôle boue</h3>

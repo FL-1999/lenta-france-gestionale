@@ -438,6 +438,12 @@ class Site(Base):
         cascade="all, delete-orphan",
         order_by="SiteCoupe.id",
     )
+    special_equipment_configs = relationship(
+        "SiteSpecialEquipmentConfig",
+        back_populates="site",
+        cascade="all, delete-orphan",
+        order_by="(SiteSpecialEquipmentConfig.tipologia_scavo, SiteSpecialEquipmentConfig.numero_elemento)",
+    )
     machines = relationship("Machine", back_populates="site", cascade="all, delete-orphan")
     strut_levels = relationship(
         "SiteStrutLevel",
@@ -753,6 +759,31 @@ class SiteCoupeAssignment(Base, TimestampMixin):
     coupe = relationship("SiteCoupe", back_populates="assignments")
 
 
+class SiteSpecialEquipmentConfig(Base, TimestampMixin):
+    __tablename__ = "site_special_equipment_configs"
+    __table_args__ = (
+        UniqueConstraint(
+            "site_id",
+            "tipologia_scavo",
+            "numero_elemento",
+            name="uq_site_special_equipment_site_tipo_numero",
+        ),
+        CheckConstraint(
+            "numero_elemento > 0",
+            name="ck_site_special_equipment_numero_positive",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    tipologia_scavo = Column(String(50), nullable=False)
+    numero_elemento = Column(Integer, nullable=False)
+    sonic_previsto = Column(Boolean, nullable=False, default=False)
+    inclinometre_previsto = Column(Boolean, nullable=False, default=False)
+
+    site = relationship("Site", back_populates="special_equipment_configs")
+
+
 class Fiche(Base, TimestampMixin):
     __tablename__ = "fiches"
     __table_args__ = (
@@ -815,6 +846,10 @@ class Fiche(Base, TimestampMixin):
     courbe_beton_volume_total = Column(Float, nullable=True)
     courbe_beton_hauteur_initiale = Column(Float, nullable=True)
     courbe_beton_hauteur_finale = Column(Float, nullable=True, default=0)
+    sonic_previsto = Column(Boolean, nullable=False, default=False)
+    sonic_realizzato = Column(Boolean, nullable=True)
+    inclinometre_previsto = Column(Boolean, nullable=False, default=False)
+    inclinometre_realizzato = Column(Boolean, nullable=True)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
     stratigrafie = relationship(
