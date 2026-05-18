@@ -646,8 +646,8 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="courbe_beton_hauteur_finale">Hauteur finale</label>
-                                    <input id="courbe_beton_hauteur_finale" name="courbe_beton_hauteur_finale" type="number" step="0.01" class="form-control" value="{{ form_data.get('courbe_beton_hauteur_finale', '0') }}" data-courbe-theoretical-end>
-                                    <small class="form-text text-muted">Par défaut : 0 m.</small>
+                                    <input id="courbe_beton_hauteur_finale" name="courbe_beton_hauteur_finale" type="number" step="0.01" class="form-control" value="0" readonly data-courbe-theoretical-end>
+                                    <small class="form-text text-muted">Calcul automatique : 0 m.</small>
                                 </div>
                             </div>
 
@@ -655,7 +655,7 @@
                                 <section>
                                     <h4>Réalisée</h4>
                                     <div class="courbe-table" data-courbe-table="realisee">
-                                        <div class="courbe-table__head"><span>Volume (m³)</span><span>Hauteur (m)</span><span></span></div>
+                                        <div class="courbe-table__head"><span>Volume</span><span>Hauteur</span><span></span></div>
                                         <div data-courbe-rows>
                                             {% for point in form_data.get('courbe_beton_realisee', [{'volume':'','hauteur':''}]) %}
                                                 <div class="courbe-row">
@@ -671,7 +671,7 @@
                                 <section>
                                     <h4>Tube (optionnel)</h4>
                                     <div class="courbe-table" data-courbe-table="tube">
-                                        <div class="courbe-table__head"><span>Volume (m³)</span><span>Hauteur (m)</span><span></span></div>
+                                        <div class="courbe-table__head"><span>Volume</span><span>Hauteur</span><span></span></div>
                                         <div data-courbe-rows>
                                             {% for point in form_data.get('courbe_beton_tube', [{'volume':'','hauteur':''}]) %}
                                                 <div class="courbe-row">
@@ -1237,14 +1237,15 @@ document.addEventListener("DOMContentLoaded", function () {
     function theoreticalSeries() {
         const volume = parseValue(root.querySelector("[data-courbe-theoretical-volume]"));
         const start = parseValue(root.querySelector("[data-courbe-theoretical-start]"));
-        const end = parseValue(root.querySelector("[data-courbe-theoretical-end]")) ?? 0;
-        return volume !== null && start !== null ? [{ volume: 0, hauteur: start }, { volume, hauteur: end }] : [];
+        return volume !== null && start !== null ? [{ volume: 0, hauteur: start }, { volume, hauteur: 0 }] : [];
     }
-    function drawSeries(points, color) {
+    function drawSeries(points, { color, dashed = false, markers = false }) {
         if (!ctx || points.length === 0) return;
+        ctx.save();
         ctx.strokeStyle = color;
         ctx.fillStyle = color;
         ctx.lineWidth = 3;
+        ctx.setLineDash(dashed ? [10, 6] : []);
         ctx.beginPath();
         points.forEach((point, index) => {
             const x = mapX(point.volume);
@@ -1252,21 +1253,26 @@ document.addEventListener("DOMContentLoaded", function () {
             if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         });
         ctx.stroke();
-        points.forEach(point => {
-            const x = mapX(point.volume);
-            const y = mapY(point.hauteur);
-            ctx.beginPath();
-            ctx.arc(x, y, 4.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-        });
+        ctx.setLineDash([]);
+        if (markers) {
+            points.forEach(point => {
+                const x = mapX(point.volume);
+                const y = mapY(point.hauteur);
+                ctx.beginPath();
+                ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.strokeStyle = color;
+            });
+        }
+        ctx.restore();
     }
     let bounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 };
     const plot = { left: 70, right: 24, top: 54, bottom: 58 };
     function mapX(value) { return plot.left + ((value - bounds.minX) / (bounds.maxX - bounds.minX || 1)) * (canvas.width - plot.left - plot.right); }
-    function mapY(value) { return canvas.height - plot.bottom - ((value - bounds.minY) / (bounds.maxY - bounds.minY || 1)) * (canvas.height - plot.top - plot.bottom); }
+    function mapY(value) { return plot.top + ((value - bounds.minY) / (bounds.maxY - bounds.minY || 1)) * (canvas.height - plot.top - plot.bottom); }
     function drawChart() {
         if (!ctx || !canvas) return;
         const realised = readSeries("realisee");
@@ -1275,16 +1281,15 @@ document.addEventListener("DOMContentLoaded", function () {
         const all = realised.concat(theoretical, tube);
         const maxX = Math.max(1, ...all.map(point => point.volume));
         const maxY = Math.max(1, ...all.map(point => point.hauteur));
-        const minY = Math.min(0, ...all.map(point => point.hauteur));
-        bounds = { minX: 0, maxX: maxX * 1.08, minY, maxY: maxY * 1.08 };
+        bounds = { minX: 0, maxX: maxX * 1.08, minY: 0, maxY: maxY * 1.08 };
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#f8fafc";
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "#0f172a";
         ctx.font = "bold 20px Arial, sans-serif";
         ctx.textAlign = "center";
         ctx.fillText("COURBE DE BÉTONNAGE", canvas.width / 2, 30);
-        ctx.strokeStyle = "#cbd5e1";
+        ctx.strokeStyle = "#d9d9d9";
         ctx.lineWidth = 1;
         ctx.font = "12px Arial, sans-serif";
         ctx.fillStyle = "#475569";
@@ -1294,19 +1299,19 @@ document.addEventListener("DOMContentLoaded", function () {
             const y = plot.top + ((canvas.height - plot.top - plot.bottom) / 5) * i;
             ctx.beginPath(); ctx.moveTo(x, plot.top); ctx.lineTo(x, canvas.height - plot.bottom); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(plot.left, y); ctx.lineTo(canvas.width - plot.right, y); ctx.stroke();
-            ctx.fillText((bounds.maxY - ((bounds.maxY - bounds.minY) / 5) * i).toFixed(1), plot.left - 8, y + 4);
+            ctx.fillText((bounds.minY + ((bounds.maxY - bounds.minY) / 5) * i).toFixed(1), plot.left - 8, y + 4);
             ctx.textAlign = "center";
             ctx.fillText((bounds.maxX / 5 * i).toFixed(0), x, canvas.height - plot.bottom + 20);
             ctx.textAlign = "right";
         }
-        ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(plot.left, plot.top); ctx.lineTo(plot.left, canvas.height - plot.bottom); ctx.lineTo(canvas.width - plot.right, canvas.height - plot.bottom); ctx.stroke();
+        ctx.strokeStyle = "#000000"; ctx.lineWidth = 1;
+        ctx.strokeRect(plot.left, plot.top, canvas.width - plot.left - plot.right, canvas.height - plot.top - plot.bottom);
         ctx.fillStyle = "#0f172a"; ctx.font = "bold 13px Arial, sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("Volume (m³)", (canvas.width + plot.left - plot.right) / 2, canvas.height - 12);
-        ctx.save(); ctx.translate(18, canvas.height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("Hauteur (m)", 0, 0); ctx.restore();
-        drawSeries(realised, "#2563eb");
-        drawSeries(theoretical, "#dc2626");
-        drawSeries(tube, "#16a34a");
+        ctx.fillText("Volume en m³", (canvas.width + plot.left - plot.right) / 2, canvas.height - 12);
+        ctx.save(); ctx.translate(18, canvas.height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("Hauteur en m", 0, 0); ctx.restore();
+        drawSeries(realised, { color: "#2563eb", markers: true });
+        drawSeries(theoretical, { color: "#dc2626", dashed: true });
+        drawSeries(tube, { color: "#16a34a", dashed: true, markers: true });
     }
     function sortRows(table) {
         const rowsContainer = table.querySelector("[data-courbe-rows]");

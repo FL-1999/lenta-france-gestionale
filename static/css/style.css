@@ -6102,16 +6102,17 @@ label.form-label[for="profondita_totale"]{
 }
 
 .courbe-chart-card {
-  background: #f8fafc;
-  border: 1px solid rgba(15, 23, 42, 0.16);
-  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #000000;
+  border-radius: 0;
   padding: .75rem;
 }
 
 .courbe-chart-card canvas,
 .courbe-beton-pdf-chart {
-  background: #f8fafc;
-  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #000000;
+  border-radius: 0;
   display: block;
   height: auto;
   max-width: 100%;
@@ -6137,16 +6138,25 @@ label.form-label[for="profondita_totale"]{
 }
 
 .courbe-legend__item::before {
-  border-radius: 999px;
+  border-top: 3px solid currentColor;
   content: "";
   display: inline-block;
-  height: 9px;
-  width: 24px;
+  height: 0;
+  width: 28px;
 }
 
-.courbe-legend__item--realisee::before { background: #2563eb; }
-.courbe-legend__item--theorique::before { background: #dc2626; }
-.courbe-legend__item--tube::before { background: #16a34a; }
+.courbe-legend__item--realisee { color: #2563eb; }
+.courbe-legend__item--theorique { color: #dc2626; }
+.courbe-legend__item--tube { color: #16a34a; }
+.courbe-legend__item--realisee::before,
+.courbe-legend__item--tube::before {
+  background: radial-gradient(circle, currentColor 0 3px, transparent 3.5px) center / 100% 9px no-repeat;
+  height: 9px;
+}
+.courbe-legend__item--theorique::before,
+.courbe-legend__item--tube::before {
+  border-top-style: dashed;
+}
 
 .technical-data-block--courbe {
   margin-top: auto;
@@ -6154,7 +6164,7 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-data-block--courbe .courbe-beton-pdf-chart {
-  border: 1px solid rgba(15, 23, 42, 0.14);
+  border: 1px solid #000000;
 }
 
 .courbe-legend--pdf {

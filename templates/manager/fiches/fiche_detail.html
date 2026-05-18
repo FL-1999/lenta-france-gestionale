@@ -365,7 +365,7 @@
                             </section>
                             {% if has_courbe_beton %}
                                 <section class="technical-data-block technical-data-block--courbe">
-                                    <canvas class="courbe-beton-pdf-chart" data-courbe-beton-detail width="620" height="360"></canvas>
+                                    <canvas class="courbe-beton-pdf-chart" data-courbe-beton-detail width="620" height="360" aria-label="COURBE DE BÉTONNAGE"></canvas>
                                     <div class="courbe-legend courbe-legend--pdf"><span class="courbe-legend__item courbe-legend__item--realisee">Réalisée</span><span class="courbe-legend__item courbe-legend__item--theorique">Théorique</span><span class="courbe-legend__item courbe-legend__item--tube">Tube</span></div>
                                 </section>
                             {% endif %}
@@ -531,32 +531,32 @@
     const all = series.flat();
     const maxX = Math.max(1, ...all.map(point => Number(point.volume) || 0));
     const maxY = Math.max(1, ...all.map(point => Number(point.hauteur) || 0));
-    const minY = Math.min(0, ...all.map(point => Number(point.hauteur) || 0));
-    const bounds = { minX: 0, maxX: maxX * 1.08, minY, maxY: maxY * 1.08 };
+    const bounds = { minX: 0, maxX: maxX * 1.08, minY: 0, maxY: maxY * 1.08 };
     function x(value) { return plot.left + (((Number(value) || 0) - bounds.minX) / (bounds.maxX - bounds.minX || 1)) * (canvas.width - plot.left - plot.right); }
-    function y(value) { return canvas.height - plot.bottom - (((Number(value) || 0) - bounds.minY) / (bounds.maxY - bounds.minY || 1)) * (canvas.height - plot.top - plot.bottom); }
-    function draw(points, color) {
+    function y(value) { return plot.top + (((Number(value) || 0) - bounds.minY) / (bounds.maxY - bounds.minY || 1)) * (canvas.height - plot.top - plot.bottom); }
+    function draw(points, { color, dashed = false, markers = false }) {
         if (!points.length) return;
-        ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3; ctx.beginPath();
+        ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.6; ctx.setLineDash(dashed ? [9, 5] : []); ctx.beginPath();
         points.forEach((point, i) => { if (i === 0) ctx.moveTo(x(point.volume), y(point.hauteur)); else ctx.lineTo(x(point.volume), y(point.hauteur)); });
-        ctx.stroke();
-        points.forEach(point => { ctx.beginPath(); ctx.arc(x(point.volume), y(point.hauteur), 4, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = color; });
+        ctx.stroke(); ctx.setLineDash([]);
+        if (markers) points.forEach(point => { ctx.beginPath(); ctx.arc(x(point.volume), y(point.hauteur), 4, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.strokeStyle = color; });
+        ctx.restore();
     }
-    ctx.fillStyle = "#f8fafc"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#0f172a"; ctx.font = "bold 17px Arial, sans-serif"; ctx.textAlign = "center"; ctx.fillText("COURBE DE BÉTONNAGE", canvas.width / 2, 28);
-    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1; ctx.font = "11px Arial, sans-serif"; ctx.fillStyle = "#475569";
+    ctx.strokeStyle = "#d9d9d9"; ctx.lineWidth = 1; ctx.font = "11px Arial, sans-serif"; ctx.fillStyle = "#475569";
     for (let i = 0; i <= 5; i++) {
         const gx = plot.left + ((canvas.width - plot.left - plot.right) / 5) * i;
         const gy = plot.top + ((canvas.height - plot.top - plot.bottom) / 5) * i;
         ctx.beginPath(); ctx.moveTo(gx, plot.top); ctx.lineTo(gx, canvas.height - plot.bottom); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(plot.left, gy); ctx.lineTo(canvas.width - plot.right, gy); ctx.stroke();
-        ctx.textAlign = "right"; ctx.fillText((bounds.maxY - ((bounds.maxY - bounds.minY) / 5) * i).toFixed(1), plot.left - 6, gy + 4);
+        ctx.textAlign = "right"; ctx.fillText((bounds.minY + ((bounds.maxY - bounds.minY) / 5) * i).toFixed(1), plot.left - 6, gy + 4);
         ctx.textAlign = "center"; ctx.fillText((bounds.maxX / 5 * i).toFixed(0), gx, canvas.height - plot.bottom + 17);
     }
-    ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(plot.left, plot.top); ctx.lineTo(plot.left, canvas.height - plot.bottom); ctx.lineTo(canvas.width - plot.right, canvas.height - plot.bottom); ctx.stroke();
-    ctx.fillStyle = "#0f172a"; ctx.font = "bold 12px Arial, sans-serif"; ctx.textAlign = "center"; ctx.fillText("Volume (m³)", canvas.width / 2, canvas.height - 8);
-    ctx.save(); ctx.translate(15, canvas.height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("Hauteur (m)", 0, 0); ctx.restore();
-    draw(payload.realisee || [], "#2563eb"); draw(payload.theorique || [], "#dc2626"); draw(payload.tube || [], "#16a34a");
+    ctx.strokeStyle = "#000000"; ctx.lineWidth = 1; ctx.strokeRect(plot.left, plot.top, canvas.width - plot.left - plot.right, canvas.height - plot.top - plot.bottom);
+    ctx.fillStyle = "#0f172a"; ctx.font = "bold 12px Arial, sans-serif"; ctx.textAlign = "center"; ctx.fillText("Volume en m³", canvas.width / 2, canvas.height - 8);
+    ctx.save(); ctx.translate(15, canvas.height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("Hauteur en m", 0, 0); ctx.restore();
+    draw(payload.realisee || [], { color: "#2563eb", markers: true }); draw(payload.theorique || [], { color: "#dc2626", dashed: true }); draw(payload.tube || [], { color: "#16a34a", dashed: true, markers: true });
 }());
 </script>
 {% endif %}
