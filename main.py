@@ -1137,6 +1137,7 @@ def _apply_coupe_defaults_to_fiche_values(
     coupe: SiteCoupe | None,
     *,
     scavo_da_tn: bool | str | None,
+    quota_tn_value: float | None,
     quota_testa_getto_value: float | None,
     quota_ngf_testa_value: float | None,
     quota_ngf_fondo_value: float | None,
@@ -1149,6 +1150,7 @@ def _apply_coupe_defaults_to_fiche_values(
     quota_partenza_value = None
     if coupe:
         scavo_da_tn_value = coupe.scavo_da_tn if scavo_da_tn is None else scavo_da_tn_value
+        quota_tn_value = quota_tn_value if quota_tn_value is not None else coupe.quota_tn
         if scavo_da_tn_value:
             quota_partenza_value = coupe.quota_tn
         else:
@@ -1170,6 +1172,7 @@ def _apply_coupe_defaults_to_fiche_values(
 
     return {
         "scavo_da_tn_value": scavo_da_tn_value,
+        "quota_tn_value": quota_tn_value,
         "quota_partenza_value": quota_partenza_value,
         "quota_testa_getto_value": quota_testa_getto_value,
         "quota_ngf_testa_value": quota_ngf_testa_value,
@@ -1325,6 +1328,7 @@ def _create_validated_fiche(
     coupe_values = _apply_coupe_defaults_to_fiche_values(
         coupe,
         scavo_da_tn=scavo_da_tn,
+        quota_tn_value=None,
         quota_testa_getto_value=_parse_decimal_comma_float(quota_testa_getto, "quota testa getto"),
         quota_ngf_testa_value=quota_ngf_testa_value,
         quota_ngf_fondo_value=quota_ngf_fondo_value,
@@ -1334,6 +1338,7 @@ def _create_validated_fiche(
         altezza_value=altezza_value,
     )
     scavo_da_tn_value = bool(coupe_values["scavo_da_tn_value"])
+    quota_tn_value = coupe_values["quota_tn_value"]
     quota_partenza_value = coupe_values["quota_partenza_value"]
     quota_testa_getto_value = coupe_values["quota_testa_getto_value"]
     quota_ngf_testa_value = coupe_values["quota_ngf_testa_value"]
@@ -1367,7 +1372,7 @@ def _create_validated_fiche(
         hours=ore_scavate,
         notes=note or None,
         tipologia_scavo=normalized_tipologia,
-        materiale=materiale or None,
+        materiale=(materiale or (coupe.type_beton if coupe else None) or None),
         profondita_totale=profondita_value,
         diametro_palo=diametro_value_m,
         larghezza_pannello=larghezza_value,
@@ -1376,6 +1381,11 @@ def _create_validated_fiche(
         metri_cubi_gettati=metri_cubi_value,
         quota_ngf_testa=quota_ngf_testa_value,
         quota_ngf_note=(quota_ngf_note or "").strip() or None,
+        quota_tn=quota_tn_value,
+        responsable_pdf=None,
+        type_beton=(coupe.type_beton if coupe and coupe.type_beton else (materiale or None)),
+        type_coulage=(coupe.type_coulage if coupe and coupe.type_coulage else "Gravitaire"),
+        terreno_teorico=(coupe.terreno_teorico if coupe and coupe.terreno_teorico else None),
         scavo_da_tn=scavo_da_tn_value,
         quota_partenza=quota_partenza_value,
         quota_testa_getto=quota_testa_getto_value,
@@ -1506,6 +1516,7 @@ def _update_validated_fiche(
     coupe_values = _apply_coupe_defaults_to_fiche_values(
         coupe,
         scavo_da_tn=scavo_da_tn,
+        quota_tn_value=fiche.quota_tn,
         quota_testa_getto_value=_parse_decimal_comma_float(quota_testa_getto, "quota testa getto"),
         quota_ngf_testa_value=quota_ngf_testa_value,
         quota_ngf_fondo_value=quota_ngf_fondo_value,
@@ -1515,6 +1526,7 @@ def _update_validated_fiche(
         altezza_value=altezza_value,
     )
     scavo_da_tn_value = bool(coupe_values["scavo_da_tn_value"])
+    quota_tn_value = coupe_values["quota_tn_value"]
     quota_partenza_value = coupe_values["quota_partenza_value"]
     quota_testa_getto_value = coupe_values["quota_testa_getto_value"]
     quota_ngf_testa_value = coupe_values["quota_ngf_testa_value"]
@@ -1544,7 +1556,7 @@ def _update_validated_fiche(
     fiche.hours = ore_scavate
     fiche.notes = note or None
     fiche.tipologia_scavo = normalized_tipologia
-    fiche.materiale = materiale or None
+    fiche.materiale = materiale or (coupe.type_beton if coupe else None) or None
     fiche.profondita_totale = profondita_value
     fiche.diametro_palo = diametro_value_m
     fiche.larghezza_pannello = larghezza_value
@@ -1554,6 +1566,13 @@ def _update_validated_fiche(
     fiche.quota_ngf_testa = quota_ngf_testa_value
     fiche.quota_ngf_fondo = quota_ngf_fondo_value
     fiche.quota_ngf_note = (quota_ngf_note or "").strip() or None
+    fiche.quota_tn = quota_tn_value
+    if coupe:
+        fiche.type_beton = coupe.type_beton or fiche.materiale
+        fiche.type_coulage = coupe.type_coulage or "Gravitaire"
+        fiche.terreno_teorico = coupe.terreno_teorico
+    elif not fiche.type_coulage:
+        fiche.type_coulage = "Gravitaire"
     fiche.scavo_da_tn = scavo_da_tn_value
     fiche.quota_partenza = quota_partenza_value
     fiche.quota_testa_getto = quota_testa_getto_value
@@ -4215,6 +4234,8 @@ def _sync_site_coupes_from_form(
     coupe_scavo_da_tn: list[str] | None,
     coupe_quota_partenza_scavo: list[str] | None,
     coupe_quota_testa_getto_prevista: list[str] | None,
+    coupe_type_beton: list[str] | None,
+    coupe_type_coulage: list[str] | None,
     coupe_spessore: list[str] | None,
     coupe_larghezza: list[str] | None,
     coupe_diametro: list[str] | None,
@@ -4235,7 +4256,8 @@ def _sync_site_coupes_from_form(
         len(coupe_id or []), len(coupe_nome or []), len(coupe_descrizione_zona or []),
         len(coupe_quota_tn or []), len(coupe_quota_testa or []), len(coupe_quota_fondo_teorica or []),
         len(coupe_profondita_teorica or []), len(coupe_scavo_da_tn or []), len(coupe_quota_partenza_scavo or []),
-        len(coupe_quota_testa_getto_prevista or []), len(coupe_spessore or []), len(coupe_larghezza or []),
+        len(coupe_quota_testa_getto_prevista or []), len(coupe_type_beton or []), len(coupe_type_coulage or []),
+        len(coupe_spessore or []), len(coupe_larghezza or []),
         len(coupe_diametro or []), len(coupe_terreno_teorico or []), len(coupe_note or []),
         len(coupe_paratie or []), len(coupe_pali or []), 0
     )
@@ -4252,7 +4274,7 @@ def _sync_site_coupes_from_form(
             for values in (
                 coupe_descrizione_zona, coupe_quota_tn, coupe_quota_testa, coupe_quota_fondo_teorica,
                 coupe_profondita_teorica, coupe_quota_partenza_scavo, coupe_quota_testa_getto_prevista,
-                coupe_spessore, coupe_larghezza, coupe_diametro, coupe_terreno_teorico, coupe_note,
+                coupe_type_beton, coupe_type_coulage, coupe_spessore, coupe_larghezza, coupe_diametro, coupe_terreno_teorico, coupe_note,
                 coupe_paratie, coupe_pali,
             )
         )
@@ -4277,6 +4299,8 @@ def _sync_site_coupes_from_form(
         coupe.quota_partenza_scavo = _optional_float_from_form(value(coupe_quota_partenza_scavo, index))
         coupe.quota_testa_getto_prevista = _optional_float_from_form(value(coupe_quota_testa_getto_prevista, index))
         _validate_quota_testa_getto_not_above_tn(coupe.quota_testa_getto_prevista, quota_tn=coupe.quota_tn)
+        coupe.type_beton = value(coupe_type_beton, index).strip() or None
+        coupe.type_coulage = value(coupe_type_coulage, index).strip() or "Gravitaire"
         coupe.spessore = _optional_float_from_form(value(coupe_spessore, index))
         coupe.larghezza = _optional_float_from_form(value(coupe_larghezza, index))
         coupe.diametro = _optional_float_from_form(value(coupe_diametro, index))
@@ -4650,6 +4674,8 @@ def manager_site_project_config_post(
     coupe_scavo_da_tn: List[str] = Form(default_factory=list),
     coupe_quota_partenza_scavo: List[str] = Form(default_factory=list),
     coupe_quota_testa_getto_prevista: List[str] = Form(default_factory=list),
+    coupe_type_beton: List[str] = Form(default_factory=list),
+    coupe_type_coulage: List[str] = Form(default_factory=list),
     coupe_spessore: List[str] = Form(default_factory=list),
     coupe_larghezza: List[str] = Form(default_factory=list),
     coupe_diametro: List[str] = Form(default_factory=list),
@@ -4687,6 +4713,8 @@ def manager_site_project_config_post(
                 coupe_scavo_da_tn=coupe_scavo_da_tn,
                 coupe_quota_partenza_scavo=coupe_quota_partenza_scavo,
                 coupe_quota_testa_getto_prevista=coupe_quota_testa_getto_prevista,
+                coupe_type_beton=coupe_type_beton,
+                coupe_type_coulage=coupe_type_coulage,
                 coupe_spessore=coupe_spessore,
                 coupe_larghezza=coupe_larghezza,
                 coupe_diametro=coupe_diametro,
@@ -6247,6 +6275,7 @@ def capo_fiche_nuova_get(
         current_user,
         template_name="capo/fiches_form.html",
         collections_loader=lambda: _load_capo_form_collections(current_user),
+        extra_context={"show_ngf_fields": True, "show_project_coupe_fields": True},
     )
 
 
@@ -6290,8 +6319,8 @@ async def capo_fiche_nuova_post(
                 numero_pannello=numero_pannello,
                 macchinario_id=macchinario_id,
                 coupe_id=coupe_id,
-                scavo_da_tn=None,
-                quota_testa_getto=None,
+                scavo_da_tn=scavo_da_tn,
+                quota_testa_getto=quota_testa_getto,
                 data_scavo=data_scavo,
                 data_getto=data_getto,
                 metri_cubi_gettati=metri_cubi_gettati,
@@ -6318,8 +6347,8 @@ async def capo_fiche_nuova_post(
             numero_pannello=numero_pannello,
             macchinario_id=macchinario_id,
             coupe_id=coupe_id,
-            scavo_da_tn=None,
-            quota_testa_getto=None,
+            scavo_da_tn=scavo_da_tn,
+            quota_testa_getto=quota_testa_getto,
             data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
@@ -6346,6 +6375,7 @@ async def capo_fiche_nuova_post(
             status_code=exc.status_code or 400,
             form_data=form_data,
             error_message=exc.detail,
+            extra_context={"show_ngf_fields": True, "show_project_coupe_fields": True},
         )
 
     return RedirectResponse(url="/capo/dashboard", status_code=303)
@@ -6744,6 +6774,52 @@ async def manager_fiche_update(
     return RedirectResponse(
         url=request.url_for("manager_fiches_detail", fiche_id=fiche_id), status_code=303
     )
+
+
+@app.post(
+    "/manager/fiches/{fiche_id}/dati-pdf",
+    response_class=HTMLResponse,
+    name="manager_fiches_update_pdf_data",
+)
+def manager_fiche_update_pdf_data(
+    request: Request,
+    fiche_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+    responsable_pdf: str | None = Form(None),
+    quota_tn: str | None = Form(None),
+    quota_testa_getto: str | None = Form(None),
+    larghezza_pannello: str | None = Form(None),
+    altezza_pannello: str | None = Form(None),
+    profondita_totale: str | None = Form(None),
+    type_beton: str | None = Form(None),
+    type_coulage: str | None = Form("Gravitaire"),
+    terreno_teorico: str | None = Form(None),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        fiche = db.query(Fiche).filter(Fiche.id == fiche_id).first()
+        if not fiche:
+            return RedirectResponse(url=request.url_for("manager_fiches_list"), status_code=303)
+
+        fiche.responsable_pdf = (responsable_pdf or "").strip() or None
+        fiche.quota_tn = _parse_decimal_comma_float(quota_tn, "TN")
+        fiche.quota_testa_getto = _parse_decimal_comma_float(quota_testa_getto, "quota testa getto")
+        fiche.larghezza_pannello = _parse_decimal_comma_float(larghezza_pannello, "larghezza")
+        fiche.altezza_pannello = _parse_decimal_comma_float(altezza_pannello, "spessore")
+        fiche.profondita_totale = _parse_decimal_comma_float(profondita_totale, "profondità scavata")
+        fiche.type_beton = (type_beton or "").strip() or None
+        fiche.materiale = fiche.type_beton or fiche.materiale
+        fiche.type_coulage = (type_coulage or "").strip() or "Gravitaire"
+        fiche.terreno_teorico = (terreno_teorico or "").strip() or None
+        _validate_quota_testa_getto_not_above_tn(fiche.quota_testa_getto, quota_tn=fiche.quota_tn)
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(url=request.url_for("manager_fiches_detail", fiche_id=fiche_id), status_code=303)
 
 
 @app.get(
