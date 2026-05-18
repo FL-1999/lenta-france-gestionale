@@ -52,7 +52,8 @@
         <div class="form-grid form-grid--four">
           <div class="project-field"><label class="form-label">Quota TN</label><input class="form-control" type="number" step="0.01" name="coupe_quota_tn" value="{{ coupe_value(coupe.quota_tn) if coupe else '' }}" placeholder="es. 24.50"></div>
           <div class="project-field"><label class="form-label">Quota testa paratia/palo</label><input class="form-control" type="number" step="0.01" name="coupe_quota_testa" value="{{ coupe_value(coupe.quota_testa) if coupe else '' }}" placeholder="es. 23.80"></div>
-          <div class="project-field"><label class="form-label">Quota fondo teorica</label><input class="form-control" type="number" step="0.01" name="coupe_quota_fondo_teorica" value="{{ coupe_value(coupe.quota_fondo_teorica) if coupe else '' }}" placeholder="es. 11.30"></div>
+          <div class="project-field"><label class="form-label">Quota fondo scavo / base hydraulique</label><input class="form-control" type="number" step="0.01" name="coupe_quota_fondo_teorica" value="{{ coupe_value(coupe.quota_fondo_teorica) if coupe else '' }}" placeholder="es. 11.30"><small class="form-text text-muted">La base paroi hydraulique du PDF reprend cette cote.</small></div>
+          <div class="project-field"><label class="form-label">Base paroi mécanique (NGF)</label><input class="form-control" type="number" step="0.01" name="coupe_base_paroi_mecanique" value="{{ coupe_value(coupe.base_paroi_mecanique) if coupe else '' }}" placeholder="NGF"></div>
           <div class="project-field"><label class="form-label">Profondità teorica</label><input class="form-control" type="number" step="0.01" name="coupe_profondita_teorica" value="{{ coupe_value(coupe.profondita_teorica) if coupe else '' }}" placeholder="m"></div>
         </div>
       </section>

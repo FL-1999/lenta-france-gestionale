@@ -706,6 +706,7 @@ class SiteCoupe(Base, TimestampMixin):
     quota_tn = Column(Float, nullable=True)
     quota_testa = Column(Float, nullable=True)
     quota_fondo_teorica = Column(Float, nullable=True)
+    base_paroi_mecanique = Column(Float, nullable=True)
     profondita_teorica = Column(Float, nullable=True)
     scavo_da_tn = Column(Boolean, nullable=False, default=True)
     quota_partenza_scavo = Column(Float, nullable=True)

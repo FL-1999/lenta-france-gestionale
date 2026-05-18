@@ -794,6 +794,25 @@ def _get_complete_stratigrafia_layers(
     return layers
 
 
+def _normalize_stratigrafia_materials(
+    strato_materiale: list[str] | None,
+    strato_materiale_altro: list[str] | None = None,
+) -> list[str]:
+    materials = list(strato_materiale or [])
+    other_descriptions = list(strato_materiale_altro or [])
+    for index, material in enumerate(materials):
+        if (material or "").strip().lower() != "altro":
+            continue
+        description = (other_descriptions[index] if index < len(other_descriptions) else "").strip()
+        if not description:
+            raise HTTPException(
+                status_code=400,
+                detail="Décrire le sol rencontré est obligatoire pour le terrain Autre.",
+            )
+        materials[index] = f"Autre: {description}"
+    return materials
+
+
 def _validate_stratigrafia_matches_depth(
     profondita_totale: float | None,
     strato_da: list[float | None] | None,
@@ -849,6 +868,7 @@ def _build_fiche_form_data(
     strato_da: list[float] | None = None,
     strato_a: list[float] | None = None,
     strato_materiale: list[str] | None = None,
+    strato_materiale_altro: list[str] | None = None,
     invalid_fields: list[str] | None = None,
 ) -> dict:
     def _fmt(value):
@@ -857,17 +877,22 @@ def _build_fiche_form_data(
     strato_da = strato_da or []
     strato_a = strato_a or []
     strato_materiale = strato_materiale or []
+    strato_materiale_altro = strato_materiale_altro or []
 
     max_len = max(len(strato_da), len(strato_a), len(strato_materiale), 1)
     strati = []
     for i in range(max_len):
+        material_value = _fmt(strato_materiale[i]) if i < len(strato_materiale) else ""
+        other_value = _fmt(strato_materiale_altro[i]) if i < len(strato_materiale_altro) else ""
+        if material_value.lower().startswith("autre:"):
+            other_value = material_value.split(":", 1)[1].strip()
+            material_value = "altro"
         strati.append(
             {
                 "da": _fmt(strato_da[i]) if i < len(strato_da) else "",
                 "a": _fmt(strato_a[i]) if i < len(strato_a) else "",
-                "materiale": _fmt(strato_materiale[i])
-                if i < len(strato_materiale)
-                else "",
+                "materiale": material_value,
+                "materiale_altro": other_value,
             }
         )
 
@@ -1020,6 +1045,7 @@ def _build_fiche_error_form_data(
     strato_da: list[str | float | None] | None = None,
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
+    strato_materiale_altro: list[str] | None = None,
     invalid_fields: list[str] | None = None,
 ) -> dict:
     return _build_fiche_form_data(
@@ -1051,6 +1077,7 @@ def _build_fiche_error_form_data(
         strato_da=strato_da,
         strato_a=strato_a,
         strato_materiale=strato_materiale,
+        strato_materiale_altro=strato_materiale_altro,
     )
 
 
@@ -1260,6 +1287,7 @@ def _create_validated_fiche(
     strato_da: list[str | float | None] | None = None,
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
+    strato_materiale_altro: list[str] | None = None,
     restrict_to_capo_sites: bool = False,
 ) -> Fiche:
     metri_cubi_value = _parse_decimal_comma_float(
@@ -1277,6 +1305,7 @@ def _create_validated_fiche(
     quota_ngf_fondo_value = _parse_decimal_comma_float(quota_ngf_fondo, "quota NGF fondo")
     parsed_strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
     parsed_strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
+    normalized_strato_materiale = _normalize_stratigrafia_materials(strato_materiale, strato_materiale_altro)
     parsed_machine_id = _parse_optional_machine_id(macchinario_id)
     parsed_capocantiere_id = _parse_optional_user_id(capocantiere_id, "Capocantiere")
     parsed_numero_pannello = _parse_required_positive_int(
@@ -1357,7 +1386,7 @@ def _create_validated_fiche(
         profondita_totale=profondita_value,
         strato_da=parsed_strato_da,
         strato_a=parsed_strato_a,
-        strato_materiale=strato_materiale,
+        strato_materiale=normalized_strato_materiale,
     )
 
     _ensure_unique_numero_pannello(
@@ -1460,6 +1489,7 @@ def _update_validated_fiche(
     strato_da: list[str | float | None] | None = None,
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
+    strato_materiale_altro: list[str] | None = None,
 ) -> Fiche:
     metri_cubi_value = _parse_decimal_comma_float(
         metri_cubi_gettati, "Metri cubi gettati"
@@ -1476,6 +1506,7 @@ def _update_validated_fiche(
     quota_ngf_fondo_value = _parse_decimal_comma_float(quota_ngf_fondo, "quota NGF fondo")
     parsed_strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
     parsed_strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
+    normalized_strato_materiale = _normalize_stratigrafia_materials(strato_materiale, strato_materiale_altro)
     parsed_machine_id = _parse_optional_machine_id(macchinario_id)
     parsed_capocantiere_id = _parse_optional_user_id(capocantiere_id, "Capocantiere")
     parsed_numero_pannello = _parse_required_positive_int(
@@ -1554,7 +1585,7 @@ def _update_validated_fiche(
         profondita_totale=profondita_value,
         strato_da=parsed_strato_da,
         strato_a=parsed_strato_a,
-        strato_materiale=strato_materiale,
+        strato_materiale=normalized_strato_materiale,
     )
 
     if parsed_machine_id is not None:
@@ -2380,6 +2411,7 @@ async def manager_fiche_create(
     strato_da: List[str] = Form(default_factory=list),
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
+    strato_materiale_altro: List[str] = Form(default_factory=list),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -2416,6 +2448,7 @@ async def manager_fiche_create(
                 strato_da=strato_da,
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
+                strato_materiale_altro=strato_materiale_altro,
             )
         finally:
             db.close()
@@ -2447,6 +2480,7 @@ async def manager_fiche_create(
             strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
+            strato_materiale_altro=strato_materiale_altro,
             invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
         )
         return _render_fiche_create_form(
@@ -4251,6 +4285,7 @@ def _sync_site_coupes_from_form(
     coupe_quota_tn: list[str] | None,
     coupe_quota_testa: list[str] | None,
     coupe_quota_fondo_teorica: list[str] | None,
+    coupe_base_paroi_mecanique: list[str] | None,
     coupe_profondita_teorica: list[str] | None,
     coupe_scavo_da_tn: list[str] | None,
     coupe_quota_partenza_scavo: list[str] | None,
@@ -4276,7 +4311,7 @@ def _sync_site_coupes_from_form(
     row_count = max(
         len(coupe_id or []), len(coupe_nome or []), len(coupe_descrizione_zona or []),
         len(coupe_quota_tn or []), len(coupe_quota_testa or []), len(coupe_quota_fondo_teorica or []),
-        len(coupe_profondita_teorica or []), len(coupe_scavo_da_tn or []), len(coupe_quota_partenza_scavo or []),
+        len(coupe_base_paroi_mecanique or []), len(coupe_profondita_teorica or []), len(coupe_scavo_da_tn or []), len(coupe_quota_partenza_scavo or []),
         len(coupe_quota_testa_getto_prevista or []), len(coupe_type_beton or []), len(coupe_type_coulage or []),
         len(coupe_spessore or []), len(coupe_larghezza or []),
         len(coupe_diametro or []), len(coupe_terreno_teorico or []), len(coupe_note or []),
@@ -4294,7 +4329,7 @@ def _sync_site_coupes_from_form(
             value(values, index).strip()
             for values in (
                 coupe_descrizione_zona, coupe_quota_tn, coupe_quota_testa, coupe_quota_fondo_teorica,
-                coupe_profondita_teorica, coupe_quota_partenza_scavo, coupe_quota_testa_getto_prevista,
+                coupe_base_paroi_mecanique, coupe_profondita_teorica, coupe_quota_partenza_scavo, coupe_quota_testa_getto_prevista,
                 coupe_type_beton, coupe_type_coulage, coupe_spessore, coupe_larghezza, coupe_diametro, coupe_terreno_teorico, coupe_note,
                 coupe_paratie, coupe_pali,
             )
@@ -4315,6 +4350,7 @@ def _sync_site_coupes_from_form(
         coupe.quota_tn = _optional_float_from_form(value(coupe_quota_tn, index))
         coupe.quota_testa = _optional_float_from_form(value(coupe_quota_testa, index))
         coupe.quota_fondo_teorica = _optional_float_from_form(value(coupe_quota_fondo_teorica, index))
+        coupe.base_paroi_mecanique = _optional_float_from_form(value(coupe_base_paroi_mecanique, index))
         coupe.profondita_teorica = _optional_float_from_form(value(coupe_profondita_teorica, index))
         if (
             coupe.quota_fondo_teorica is None
@@ -4697,6 +4733,7 @@ def manager_site_project_config_post(
     coupe_quota_tn: List[str] = Form(default_factory=list),
     coupe_quota_testa: List[str] = Form(default_factory=list),
     coupe_quota_fondo_teorica: List[str] = Form(default_factory=list),
+    coupe_base_paroi_mecanique: List[str] = Form(default_factory=list),
     coupe_profondita_teorica: List[str] = Form(default_factory=list),
     coupe_scavo_da_tn: List[str] = Form(default_factory=list),
     coupe_quota_partenza_scavo: List[str] = Form(default_factory=list),
@@ -4736,6 +4773,7 @@ def manager_site_project_config_post(
                 coupe_quota_tn=coupe_quota_tn,
                 coupe_quota_testa=coupe_quota_testa,
                 coupe_quota_fondo_teorica=coupe_quota_fondo_teorica,
+                coupe_base_paroi_mecanique=coupe_base_paroi_mecanique,
                 coupe_profondita_teorica=coupe_profondita_teorica,
                 coupe_scavo_da_tn=coupe_scavo_da_tn,
                 coupe_quota_partenza_scavo=coupe_quota_partenza_scavo,
@@ -6332,6 +6370,7 @@ async def capo_fiche_nuova_post(
     strato_da: List[str] = Form(default_factory=list),
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
+    strato_materiale_altro: List[str] = Form(default_factory=list),
 ):
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
@@ -6364,6 +6403,7 @@ async def capo_fiche_nuova_post(
                 strato_da=strato_da,
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
+                strato_materiale_altro=strato_materiale_altro,
                 restrict_to_capo_sites=True,
             )
         finally:
@@ -6392,6 +6432,7 @@ async def capo_fiche_nuova_post(
             strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
+            strato_materiale_altro=strato_materiale_altro,
             invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
         )
         return _render_fiche_create_form(
@@ -6422,6 +6463,7 @@ FICHE_TECHNICAL_FR_TRANSLATIONS: tuple[tuple[str, str], ...] = (
     ("Argilla", "Argile"),
     ("Ghiaia", "Gravier"),
     ("Limo", "Limon"),
+    ("Altro", "Autre"),
 )
 
 
@@ -6765,6 +6807,7 @@ async def manager_fiche_update(
     strato_da: List[str] = Form(default_factory=list),
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
+    strato_materiale_altro: List[str] = Form(default_factory=list),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -6807,6 +6850,7 @@ async def manager_fiche_update(
                 strato_da=strato_da,
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
+                strato_materiale_altro=strato_materiale_altro,
             )
         finally:
             db.close()
@@ -6838,6 +6882,7 @@ async def manager_fiche_update(
             strato_da=strato_da,
             strato_a=strato_a,
             strato_materiale=strato_materiale,
+            strato_materiale_altro=strato_materiale_altro,
             invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
         )
         return _render_fiche_create_form(

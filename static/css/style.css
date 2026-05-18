@@ -5945,3 +5945,91 @@ label.form-label[for="profondita_totale"]{
         grid-template-columns: 1fr;
     }
 }
+
+/* Fiche technique paroi/pieu — annotations modèle Excel */
+.technical-guide-wall {
+  background: linear-gradient(180deg, #f1f5f9, #cbd5e1 60%, #94a3b8);
+  border: 2px solid #475569;
+  box-shadow: 8px 6px 0 rgba(71, 85, 105, 0.25), inset 0 1px 0 rgba(255,255,255,0.7);
+  height: 18px;
+  left: calc(50% - 74px);
+  position: absolute;
+  top: 93px;
+  transform: skewX(-18deg);
+  width: 148px;
+  z-index: 10;
+}
+
+.technical-guide-wall--back {
+  left: calc(50% - 58px);
+  top: 70px;
+  width: 116px;
+  z-index: 9;
+}
+
+.technical-guide-wall-label {
+  background: #fff;
+  border: 1px solid rgba(71, 85, 105, 0.28);
+  border-radius: 4px;
+  color: #334155;
+  font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  font-weight: 950;
+  left: 50%;
+  padding: 2px 7px;
+  position: absolute;
+  top: 43px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 13;
+}
+
+.technical-depth-arrow {
+  border-left-color: #dc2626;
+  border-left-width: 2px;
+}
+
+.technical-depth-arrow::before { border-bottom-color: #dc2626; }
+.technical-depth-arrow::after { border-top-color: #dc2626; }
+
+.technical-depth-arrow span,
+.technical-dimension span {
+  border-color: rgba(220, 38, 38, 0.28);
+  color: #dc2626;
+  font-size: 15px;
+  font-weight: 950;
+  text-transform: none;
+}
+
+.technical-dimension,
+.technical-dimension--thickness {
+  border-color: #dc2626;
+  border-width: 2px;
+}
+
+.technical-dimension--width::before,
+.technical-dimension--thickness::before { border-right-color: #dc2626; }
+.technical-dimension--width::after,
+.technical-dimension--thickness::after { border-left-color: #dc2626; }
+
+.technical-level--tn .technical-level__name,
+.technical-level--pour .technical-level__name {
+  font-size: 13px;
+  text-transform: none;
+}
+
+.technical-base-summary {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 8px 10px;
+}
+
+.technical-base-summary strong {
+  color: #0f172a;
+  font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+}
