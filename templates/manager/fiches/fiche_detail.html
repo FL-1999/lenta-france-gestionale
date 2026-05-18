@@ -276,7 +276,8 @@
     </div>
     <div class="card-body">
         {% if can_render_ngf_schema %}
-            {% set schema_quota_base_meccanica = fiche.coupe.quota_fondo_teorica if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else schema_quota_fondo %}
+            {% set coupe_base_mecanique = fiche.coupe.base_paroi_mecanique|default(none) if fiche.coupe else none %}
+            {% set schema_quota_base_meccanica = coupe_base_mecanique if coupe_base_mecanique is not none else (fiche.coupe.quota_fondo_teorica if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else schema_quota_fondo) %}
             {% set schema_quota_base_idraulica = schema_quota_fondo %}
             {% set schema_width_label = ("%.2f m"|format(larghezza_m)) if larghezza_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
             {% set schema_thickness_label = ("%.2f m"|format(spessore_m)) if spessore_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
@@ -315,7 +316,9 @@
                                     <div><dt>Cote tête béton</dt><dd>{{ "%.2f m"|format(fiche.quota_testa_getto) if fiche.quota_testa_getto is not none else '—' }}</dd></div>
                                     <div><dt>Largeur</dt><dd>{{ "%.2f m"|format(larghezza_m) if larghezza_m is not none else '—' }}</dd></div>
                                     <div><dt>Épaisseur</dt><dd>{{ "%.2f m"|format(spessore_m) if spessore_m is not none else '—' }}</dd></div>
-                                    <div><dt>Profondeur excavée</dt><dd>{{ "%.2f m"|format(fiche.profondita_totale) if fiche.profondita_totale is not none else '—' }}</dd></div>
+                                    <div><dt>Longueur forée</dt><dd>{{ "%.2f m"|format(fiche.profondita_totale) if fiche.profondita_totale is not none else '—' }}</dd></div>
+                                    <div><dt>Base paroi mécanique</dt><dd>{{ "%.2f NGF"|format(schema_quota_base_meccanica) if schema_quota_base_meccanica is not none else '—' }}</dd></div>
+                                    <div><dt>Base paroi hydraulique</dt><dd>{{ "%.2f NGF"|format(schema_quota_base_idraulica) if schema_quota_base_idraulica is not none else '—' }}</dd></div>
                                     <div><dt>Volume théorique</dt><dd>{{ "%.2f m³"|format(volume_teorico) if volume_teorico is not none else '—' }}</dd></div>
                                     <div><dt>Volume réel</dt><dd>{{ "%.2f m³"|format(volume_gettato) if volume_gettato is not none else '—' }}</dd></div>
                                     <div><dt>Différence / surconsommation</dt><dd>{% if volume_diff is not none %}{{ "%+.2f m³"|format(volume_diff) }}{% if volume_diff_percent is not none %} ({{ "%+.1f %%"|format(volume_diff_percent) }}){% endif %}{% else %}—{% endif %}</dd></div>
@@ -368,12 +371,13 @@
                             </div>
                             <div class="technical-section-canvas">
                                 <div class="technical-section-title" aria-hidden="true">{% if is_palo %}PIEU{% elif is_paratia %}PAROI{% else %}SECTION{% endif %}</div>
-                                <div class="technical-depth-arrow" aria-hidden="true"><span>profondeur {{ "%.2f"|format(schema_depth) }} m</span></div>
+                                {% if is_paratia %}<div class="technical-guide-wall technical-guide-wall--front" aria-hidden="true"></div><div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div><div class="technical-guide-wall-label" aria-hidden="true">Murette guide</div>{% endif %}
+                                <div class="technical-depth-arrow" aria-hidden="true"><span>Longueur forée = {{ "%.2f"|format(schema_depth) }} m</span></div>
                                 <div class="technical-element {{ 'technical-element--pile' if is_palo else 'technical-element--panel' }}" aria-hidden="true"></div>
-                                <div class="technical-dimension technical-dimension--width"><span>largeur {{ schema_width_label }}</span></div>
-                                <div class="technical-dimension technical-dimension--thickness"><span>épaisseur {{ schema_thickness_label }}</span></div>
+                                <div class="technical-dimension technical-dimension--width"><span>Largeur = {{ schema_width_label }}</span></div>
+                                <div class="technical-dimension technical-dimension--thickness"><span>Épaisseur = {{ schema_thickness_label }}</span></div>
 
-                                <div class="technical-level technical-level--tn" style="--level-top: 0%; --label-offset-y: 8px;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_tn) }} NGF</span><span class="technical-level__name">Terrain naturel (TN)</span></div>
+                                <div class="technical-level technical-level--tn" style="--level-top: 0%; --label-offset-y: 8px;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_tn) }} NGF</span><span class="technical-level__name">TN = {{ "%.2f"|format(schema_quota_tn) }} NGF</span></div>
                                 {% if schema_quota_partenza is not none %}
                                     {% set partenza_top = 100 - (((schema_quota_partenza - schema_quota_fondo) / schema_depth) * 100) %}
                                     {% set partenza_label_offset = 34 if partenza_top <= 7 else 8 %}
@@ -382,13 +386,17 @@
                                 {% if schema_quota_getto is not none %}
                                     {% set getto_top = 100 - (((schema_quota_getto - schema_quota_fondo) / schema_depth) * 100) %}
                                     {% set getto_label_offset = 60 if getto_top <= 7 and schema_quota_partenza is not none and partenza_top <= 7 else (34 if getto_top <= 7 else 8) %}
-                                    <div class="technical-level technical-level--pour" style="--level-top: {{ getto_top }}%; --label-offset-y: {{ getto_label_offset }}px;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_getto) }} NGF</span><span class="technical-level__name">Cote tête béton</span></div>
+                                    <div class="technical-level technical-level--pour" style="--level-top: {{ getto_top }}%; --label-offset-y: {{ getto_label_offset }}px;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_getto) }} NGF</span><span class="technical-level__name">Cote tête béton = {{ "%.2f"|format(schema_quota_getto) }} NGF</span></div>
                                 {% endif %}
                                 {% if schema_quota_base_meccanica is not none %}
                                     {% set base_meccanica_top = 100 - (((schema_quota_base_meccanica - schema_quota_fondo) / schema_depth) * 100) %}
-                                    <div class="technical-level technical-level--mechanical" style="--level-top: {{ base_meccanica_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_base_meccanica) }} NGF</span><span class="technical-level__name">base mécanique</span></div>
+                                    <div class="technical-level technical-level--mechanical" style="--level-top: {{ base_meccanica_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_base_meccanica) }} NGF</span><span class="technical-level__name">Base paroi mécanique</span></div>
                                 {% endif %}
-                                <div class="technical-level technical-level--bottom" style="--level-top: 100%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_fondo) }} NGF</span><span class="technical-level__name">fond / base hydraulique</span></div>
+                                <div class="technical-level technical-level--bottom" style="--level-top: 100%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_fondo) }} NGF</span><span class="technical-level__name">Base paroi hydraulique</span></div>
+                            </div>
+                            <div class="technical-base-summary">
+                                <strong>BASE PAROI MÉCANIQUE = {{ "%.2f"|format(schema_quota_base_meccanica) if schema_quota_base_meccanica is not none else '—' }} NGF</strong>
+                                <strong>BASE PAROI HYDRAULIQUE = {{ "%.2f"|format(schema_quota_base_idraulica) if schema_quota_base_idraulica is not none else '—' }} NGF</strong>
                             </div>
                         </section>
 

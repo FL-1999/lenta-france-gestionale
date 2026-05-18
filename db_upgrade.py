@@ -100,6 +100,7 @@ FICHES_COLUMNS: tuple[str, ...] = (
 SITE_COUPES_COLUMNS: tuple[str, ...] = (
     "type_beton TEXT",
     "type_coulage TEXT NOT NULL DEFAULT 'Gravitaire'",
+    "base_paroi_mecanique FLOAT",
 )
 
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
