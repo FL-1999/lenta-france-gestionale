@@ -6391,6 +6391,42 @@ async def capo_fiche_nuova_post(
     return RedirectResponse(url="/capo/dashboard", status_code=303)
 
 
+FICHE_TECHNICAL_FR_TRANSLATIONS: tuple[tuple[str, str], ...] = (
+    ("Quota testa getto", "Cote tête béton"),
+    ("Quota testa", "Cote tête"),
+    ("Quota fondo", "Cote fond"),
+    ("Paratia", "Paroi moulée"),
+    ("Pannello", "Paroi"),
+    ("Palo", "Pieu"),
+    ("Incontrato", "Rencontré"),
+    ("Teorico", "Théorique"),
+    ("Riporto", "Remblai"),
+    ("Sabbia", "Sable"),
+    ("Argilla", "Argile"),
+    ("Ghiaia", "Gravier"),
+    ("Limo", "Limon"),
+)
+
+
+def _translate_fiche_technical_text(value: object | None) -> str:
+    """Return French chantier terminology for fiche technical/PDF labels."""
+    import re
+
+    text = "" if value is None else str(value)
+    for source, target in FICHE_TECHNICAL_FR_TRANSLATIONS:
+        text = re.sub(re.escape(source), target, text, flags=re.IGNORECASE)
+    return re.sub(r"(?<!\()\bTN\b(?!\))", "Terrain naturel (TN)", text)
+
+
+def _fiche_element_label_fr(tipologia_scavo: str | None, *, panel_term: bool = False) -> str:
+    normalized = (tipologia_scavo or "").strip().lower()
+    if normalized == "palo":
+        return "Pieu"
+    if normalized == "paratia":
+        return "Paroi" if panel_term else "Paroi moulée"
+    return "Élément"
+
+
 def _materiale_stratigrafia_texture_class(materiale: str | None) -> str:
     label = (materiale or "").lower()
     if "riporto" in label or "remblai" in label:
@@ -6912,6 +6948,8 @@ def manager_fiche_dettaglio(
                 fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe else None),
                 fiche.profondita_totale,
             ),
+            technical_fr=_translate_fiche_technical_text,
+            fiche_element_label_fr=_fiche_element_label_fr,
         ),
     )
 
