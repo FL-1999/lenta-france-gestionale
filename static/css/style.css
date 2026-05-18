@@ -5428,7 +5428,7 @@ label.form-label[for="profondita_totale"]{
 
 .technical-section-canvas {
   --technical-bottom-offset: 28px;
-  --technical-top-offset: 84px;
+  --technical-top-offset: 132px;
   background:
     linear-gradient(90deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px) 0 0 / 24px 24px,
     linear-gradient(180deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px) 0 0 / 24px 24px,
@@ -5436,6 +5436,7 @@ label.form-label[for="profondita_totale"]{
   border: 1px solid #cbd5e1;
   height: 704px;
   overflow: hidden;
+  padding-top: 30px;
   position: relative;
 }
 
@@ -5449,7 +5450,7 @@ label.form-label[for="profondita_totale"]{
   position: absolute;
   text-align: center;
   text-transform: uppercase;
-  top: 24px;
+  top: 30px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 7;
@@ -5500,17 +5501,21 @@ label.form-label[for="profondita_totale"]{
 
 .technical-depth-arrow span {
   background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.16);
+  border-radius: 4px;
   color: #111827;
   font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 0.68rem;
+  font-size: 13px;
   font-weight: 900;
   left: 8px;
-  padding: 2px 4px;
+  line-height: 1.15;
+  padding: 2px 6px;
   position: absolute;
   top: 48%;
   transform: rotate(-90deg);
   transform-origin: left center;
   white-space: nowrap;
+  z-index: 12;
 }
 
 .technical-level {
@@ -5519,7 +5524,7 @@ label.form-label[for="profondita_totale"]{
   position: absolute;
   right: 8px;
   top: calc(var(--technical-top-offset) + (100% - var(--technical-top-offset) - var(--technical-bottom-offset)) * var(--level-top) / 100);
-  z-index: 4;
+  z-index: 11;
 }
 
 .technical-level--tn {
@@ -5540,16 +5545,20 @@ label.form-label[for="profondita_totale"]{
 
 .technical-level__value,
 .technical-level__name {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #cbd5e1;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.18);
   color: #111827;
   font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 0.62rem;
   font-weight: 900;
-  padding: 2px 4px;
   position: absolute;
-  top: -0.76rem;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  font-size: 13px;
+  line-height: 1.15;
+  padding: 2px 6px;
+  top: var(--label-offset-y, 8px);
   white-space: nowrap;
+  z-index: 12;
 }
 
 .technical-level__value {
@@ -5566,7 +5575,7 @@ label.form-label[for="profondita_totale"]{
   left: calc(50% - 43px);
   position: absolute;
   right: calc(50% - 43px);
-  top: 54px;
+  top: 62px;
   z-index: 8;
 }
 
@@ -5600,16 +5609,20 @@ label.form-label[for="profondita_totale"]{
 
 .technical-dimension span {
   background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.16);
+  border-radius: 4px;
   color: #111827;
   font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 0.62rem;
+  font-size: 13px;
   font-weight: 900;
   left: 50%;
-  padding: 2px 5px;
+  line-height: 1.15;
+  padding: 2px 6px;
   position: absolute;
-  top: 0.35rem;
+  top: 10px;
   transform: translateX(-50%);
   white-space: nowrap;
+  z-index: 12;
 }
 
 .technical-dimension--thickness span {
