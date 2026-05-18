@@ -54,19 +54,19 @@
 </div>
 
 <section class="card" style="margin-top: 1rem;">
-    <div class="card-header"><div class="card-title">📝 Modifica dati scheda tecnica</div></div>
+    <div class="card-header"><div class="card-title">📝 Données fiche technique</div></div>
     <div class="card-body">
         <form method="post" action="{{ url_for('manager_fiches_update_pdf_data', fiche_id=fiche.id) }}" class="form-grid form-grid--four">
             <div class="form-group"><label class="form-label">Responsable</label><input class="form-control" name="responsable_pdf" value="{{ fiche.responsable_pdf or '' }}"></div>
-            <div class="form-group"><label class="form-label">TN</label><input class="form-control" type="number" step="0.01" name="quota_tn" value="{{ fiche.quota_tn if fiche.quota_tn is not none else (fiche.coupe.quota_tn if fiche.coupe and fiche.coupe.quota_tn is not none else '') }}"></div>
-            <div class="form-group"><label class="form-label">Quota tête béton</label><input class="form-control" type="number" step="0.01" name="quota_testa_getto" value="{{ fiche.quota_testa_getto if fiche.quota_testa_getto is not none else '' }}"></div>
+            <div class="form-group"><label class="form-label">Terrain naturel (TN)</label><input class="form-control" type="number" step="0.01" name="quota_tn" value="{{ fiche.quota_tn if fiche.quota_tn is not none else (fiche.coupe.quota_tn if fiche.coupe and fiche.coupe.quota_tn is not none else '') }}"></div>
+            <div class="form-group"><label class="form-label">Cote tête béton</label><input class="form-control" type="number" step="0.01" name="quota_testa_getto" value="{{ fiche.quota_testa_getto if fiche.quota_testa_getto is not none else '' }}"></div>
             <div class="form-group"><label class="form-label">Largeur</label><input class="form-control" type="number" step="0.01" name="larghezza_pannello" value="{{ fiche.larghezza_pannello if fiche.larghezza_pannello is not none else '' }}"></div>
             <div class="form-group"><label class="form-label">Épaisseur</label><input class="form-control" type="number" step="0.01" name="altezza_pannello" value="{{ fiche.altezza_pannello if fiche.altezza_pannello is not none else '' }}"></div>
             <div class="form-group"><label class="form-label">Profondeur excavée</label><input class="form-control" type="number" step="0.01" name="profondita_totale" value="{{ fiche.profondita_totale if fiche.profondita_totale is not none else '' }}"></div>
             <div class="form-group"><label class="form-label">Type béton</label><input class="form-control" name="type_beton" value="{{ fiche.type_beton or fiche.materiale or '' }}"></div>
             <div class="form-group"><label class="form-label">Type coulage</label><input class="form-control" name="type_coulage" value="{{ fiche.type_coulage or 'Gravitaire' }}"></div>
             <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '') }}</textarea></div>
-            <div class="form-group" style="grid-column: 1 / -1;"><button class="btn btn-primary" type="submit">Salva dati PDF</button><small class="form-text text-muted">Questi campi modificano solo la scheda tecnica/PDF; lo storico operativo del creatore resta invariato.</small></div>
+            <div class="form-group" style="grid-column: 1 / -1;"><button class="btn btn-primary" type="submit">Enregistrer les données PDF</button><small class="form-text text-muted">Ces champs modifient uniquement la fiche technique/PDF; l’historique opérationnel du créateur reste inchangé.</small></div>
         </form>
     </div>
 </section>
@@ -143,7 +143,7 @@
             <div class="kpi-card">
                 <div class="kpi-top">🛠️ {% if lang == 'fr' %}Typologie{% else %}Tipologia{% endif %}</div>
                 <div class="kpi-value">
-                    {{ fiche.tipologia_scavo or "-" }}
+                    {% if lang == 'fr' %}{{ fiche_element_label_fr(fiche.tipologia_scavo) }}{% else %}{{ fiche.tipologia_scavo or "-" }}{% endif %}
                 </div>
                 <div class="kpi-sub">
                     {% if lang == 'fr' %}
@@ -269,7 +269,7 @@
 
 <section class="card technical-coupe-card technical-coupe-card--sheet" style="margin-top: 1.5rem;">
     <div class="card-header technical-coupe-card__header">
-        <div class="card-title">📈 Rapport d’exécution de panneau</div>
+        <div class="card-title">📈 Rapport d’exécution de paroi / pieu</div>
         <button type="button" class="btn btn-primary btn-sm technical-print-button" data-print-technical-sheet>
             🖨️ {% if lang == 'fr' %}Exporter PDF{% else %}Esporta PDF{% endif %}
         </button>
@@ -282,11 +282,11 @@
             {% set schema_thickness_label = ("%.2f m"|format(spessore_m)) if spessore_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
             {% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
             <div class="technical-split-view">
-                <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d’exécution de panneau imprimable">
+                <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d’exécution de paroi / pieu imprimable">
                     <header class="technical-sheet__titlebar">
                         <div>
-                            <p class="technical-sheet__eyebrow">Rapport d’exécution de panneau</p>
-                            <h2>{{ fiche.tipologia_scavo|capitalize if fiche.tipologia_scavo else ("Elemento" if lang == 'it' else "Élément") }} {{ fiche.numero_pannello or "—" }}</h2>
+                            <p class="technical-sheet__eyebrow">Rapport d’exécution de paroi / pieu</p>
+                            <h2>{{ fiche_element_label_fr(fiche.tipologia_scavo) }} {{ fiche.numero_pannello or "—" }}</h2>
                         </div>
                         <div class="technical-sheet__stamp">
                             <span>Profondeur</span>
@@ -311,8 +311,8 @@
                                 <dl>
                                     <div><dt>Type béton</dt><dd>{{ fiche.type_beton or fiche.materiale or '—' }}</dd></div>
                                     <div><dt>Type coulage</dt><dd>{{ fiche.type_coulage or 'Gravitaire' }}</dd></div>
-                                    <div><dt>TN</dt><dd>{{ "%.2f m"|format(schema_quota_tn) if schema_quota_tn is not none else '—' }}</dd></div>
-                                    <div><dt>Quota tête béton</dt><dd>{{ "%.2f m"|format(fiche.quota_testa_getto) if fiche.quota_testa_getto is not none else '—' }}</dd></div>
+                                    <div><dt>Terrain naturel (TN)</dt><dd>{{ "%.2f m"|format(schema_quota_tn) if schema_quota_tn is not none else '—' }}</dd></div>
+                                    <div><dt>Cote tête béton</dt><dd>{{ "%.2f m"|format(fiche.quota_testa_getto) if fiche.quota_testa_getto is not none else '—' }}</dd></div>
                                     <div><dt>Largeur</dt><dd>{{ "%.2f m"|format(larghezza_m) if larghezza_m is not none else '—' }}</dd></div>
                                     <div><dt>Épaisseur</dt><dd>{{ "%.2f m"|format(spessore_m) if spessore_m is not none else '—' }}</dd></div>
                                     <div><dt>Profondeur excavée</dt><dd>{{ "%.2f m"|format(fiche.profondita_totale) if fiche.profondita_totale is not none else '—' }}</dd></div>
@@ -333,7 +333,7 @@
 
                             <section class="technical-data-block technical-data-block--notes">
                                 <h3>D. Observation</h3>
-                                <p>{{ fiche.notes or fiche.quota_ngf_note or fiche.description or '—' }}</p>
+                                <p>{{ technical_fr(fiche.notes or fiche.quota_ngf_note or fiche.description or '—') }}</p>
                             </section>
 
                             <section class="technical-data-block">
@@ -341,13 +341,13 @@
                                 {% if stratigrafie %}
                                     <ol class="technical-soil-list">
                                         {% for layer in stratigrafie|sort(attribute='da_profondita') %}
-                                            <li><span>{{ "%.2f"|format(layer.da_profondita) }}–{{ "%.2f"|format(layer.a_profondita) }} m</span>{{ layer.materiale }}</li>
+                                            <li><span>{{ "%.2f"|format(layer.da_profondita) }}–{{ "%.2f"|format(layer.a_profondita) }} m</span>{{ technical_fr(layer.materiale) }}</li>
                                         {% endfor %}
                                     </ol>
                                 {% elif strat_layers %}
                                     <ol class="technical-soil-list">
                                         {% for layer in strat_layers|sort(attribute='layer_index') %}
-                                            <li><span>{{ "%.2f"|format(layer.thickness_m) }} m</span>{{ layer.material }}</li>
+                                            <li><span>{{ "%.2f"|format(layer.thickness_m) }} m</span>{{ technical_fr(layer.material) }}</li>
                                         {% endfor %}
                                     </ol>
                                 {% else %}
@@ -357,13 +357,13 @@
 
                             <section class="technical-data-block">
                                 <h3>F. Modèle géologique</h3>
-                                <p>{{ fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '—') }}</p>
+                                <p>{{ technical_fr(fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '—')) }}</p>
                             </section>
                         </aside>
 
-                        <section class="technical-drawing-column" aria-label="Section panneau/pieu avec cotes">
+                        <section class="technical-drawing-column" aria-label="Section paroi/pieu avec cotes">
                             <div class="technical-drawing-header">
-                                <span>{% if is_palo %}PIEU{% elif is_paratia %}PANNEAU{% else %}SECTION{% endif %}</span>
+                                <span>{% if is_palo %}PIEU{% elif is_paratia %}PAROI{% else %}SECTION{% endif %}</span>
                                 <strong>{% if is_palo %}Ø {{ schema_width_label }}{% else %}L {{ schema_width_label }} · S {{ schema_thickness_label }}{% endif %}</strong>
                             </div>
                             <div class="technical-section-canvas">
@@ -372,14 +372,14 @@
                                 <div class="technical-dimension technical-dimension--width"><span>largeur {{ schema_width_label }}</span></div>
                                 <div class="technical-dimension technical-dimension--thickness"><span>épaisseur {{ schema_thickness_label }}</span></div>
 
-                                <div class="technical-level technical-level--tn" style="--level-top: 0%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_tn) }} NGF</span><span class="technical-level__name">TN</span></div>
+                                <div class="technical-level technical-level--tn" style="--level-top: 0%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_tn) }} NGF</span><span class="technical-level__name">Terrain naturel (TN)</span></div>
                                 {% if schema_quota_partenza is not none %}
                                     {% set partenza_top = 100 - (((schema_quota_partenza - schema_quota_fondo) / schema_depth) * 100) %}
                                     <div class="technical-level" style="--level-top: {{ partenza_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_partenza) }} NGF</span><span class="technical-level__name">tête</span></div>
                                 {% endif %}
                                 {% if schema_quota_getto is not none %}
                                     {% set getto_top = 100 - (((schema_quota_getto - schema_quota_fondo) / schema_depth) * 100) %}
-                                    <div class="technical-level technical-level--pour" style="--level-top: {{ getto_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_getto) }} NGF</span><span class="technical-level__name">cote béton</span></div>
+                                    <div class="technical-level technical-level--pour" style="--level-top: {{ getto_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_getto) }} NGF</span><span class="technical-level__name">Cote tête béton</span></div>
                                 {% endif %}
                                 {% if schema_quota_base_meccanica is not none %}
                                     {% set base_meccanica_top = 100 - (((schema_quota_base_meccanica - schema_quota_fondo) / schema_depth) * 100) %}
@@ -398,7 +398,7 @@
                                 <div class="technical-ground-bar">
                                     {% if visual_layers %}
                                         {% for layer in visual_layers %}
-                                            <div class="technical-ground-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;"><span>{{ layer.materiale }}</span></div>
+                                            <div class="technical-ground-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;"><span>{{ technical_fr(layer.materiale) }}</span></div>
                                         {% endfor %}
                                     {% else %}
                                         <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
@@ -407,17 +407,17 @@
                                 <div class="technical-ground-bar technical-ground-bar--theoretical">
                                     {% if theoretical_layers %}
                                         {% for layer in theoretical_layers %}
-                                            <div class="technical-ground-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;"><span>{{ layer.materiale }}</span></div>
+                                            <div class="technical-ground-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;"><span>{{ technical_fr(layer.materiale) }}</span></div>
                                         {% endfor %}
                                     {% elif fiche.terreno_teorico or (fiche.coupe and fiche.coupe.terreno_teorico) %}
-                                        <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ fiche.terreno_teorico or fiche.coupe.terreno_teorico }}</span></div>
+                                        <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ technical_fr(fiche.terreno_teorico or fiche.coupe.terreno_teorico) }}</span></div>
                                     {% else %}
                                         <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
                                     {% endif %}
                                 </div>
                             </div>
                             <footer class="technical-ground-footer">
-                                <span>TN {{ "%.2f"|format(schema_quota_tn) }}</span>
+                                <span>Terrain naturel (TN) {{ "%.2f"|format(schema_quota_tn) }}</span>
                                 <span>Fond {{ "%.2f"|format(schema_quota_fondo) }}</span>
                             </footer>
                         </section>
@@ -435,15 +435,15 @@
                                 <div class="soil-3d soil-3d--aligned">
                                     <div class="top-surface" aria-hidden="true"></div>
                                     <div class="soil-front">
-                                        <div class="soil-depth-marker soil-depth-marker--tn" style="--marker-top: 0%;" title="TN · {{ '%.2f'|format(schema_quota_tn) }} NGF"><span>TN</span></div>
+                                        <div class="soil-depth-marker soil-depth-marker--tn" style="--marker-top: 0%;" title="Terrain naturel (TN) · {{ '%.2f'|format(schema_quota_tn) }} NGF"><span>Terrain naturel (TN)</span></div>
                                         <div class="soil-depth-marker soil-depth-marker--bottom" style="--marker-top: 100%;" title="Fond · {{ '%.2f'|format(schema_quota_fondo) }}"><span>Fond</span></div>
                                         {% if schema_quota_getto is not none %}
                                             {% set soil_getto_top = 100 - (((schema_quota_getto - schema_quota_fondo) / schema_depth) * 100) %}
-                                            <div class="soil-depth-marker soil-depth-marker--pour" style="--marker-top: {{ soil_getto_top }}%;" title="Testa getto · {{ '%.2f'|format(schema_quota_getto) }} NGF"><span>Béton</span></div>
+                                            <div class="soil-depth-marker soil-depth-marker--pour" style="--marker-top: {{ soil_getto_top }}%;" title="Cote tête béton · {{ '%.2f'|format(schema_quota_getto) }} NGF"><span>Béton</span></div>
                                         {% endif %}
                                         {% for layer in visual_layers %}
-                                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;" title="{{ layer.materiale }} · {{ '%.2f'|format(layer.da) }}–{{ '%.2f'|format(layer.a) }} m">
-                                                <span class="soil-layer-label">{{ layer.materiale }}<small>{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</small></span>
+                                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;" title="{{ technical_fr(layer.materiale) }} · {{ '%.2f'|format(layer.da) }}–{{ '%.2f'|format(layer.a) }} m">
+                                                <span class="soil-layer-label">{{ technical_fr(layer.materiale) }}<small>{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</small></span>
                                             </div>
                                         {% endfor %}
                                     </div>
@@ -471,8 +471,8 @@
                                     <div class="top-surface" aria-hidden="true"></div>
                                     <div class="soil-front">
                                         {% for layer in theoretical_layers %}
-                                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;" title="{{ layer.materiale }} · {{ '%.2f'|format(layer.da) }}–{{ '%.2f'|format(layer.a) }} m">
-                                                <span class="soil-layer-label">{{ layer.materiale }}<small>{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</small></span>
+                                            <div class="soil-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;" title="{{ technical_fr(layer.materiale) }} · {{ '%.2f'|format(layer.da) }}–{{ '%.2f'|format(layer.a) }} m">
+                                                <span class="soil-layer-label">{{ technical_fr(layer.materiale) }}<small>{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</small></span>
                                             </div>
                                         {% endfor %}
                                     </div>
@@ -489,7 +489,7 @@
         {% else %}
             <div class="technical-empty-state">
                 {% if lang == 'fr' %}
-                    Saisir une cote TN et une cote de fond valides pour afficher le schéma technique proportionnel.
+                    Saisir une cote Terrain naturel (TN) et une cote de fond valides pour afficher le schéma technique proportionnel.
                 {% else %}
                     Inserire una quota TN e una quota fondo valide per visualizzare lo schema tecnico proporzionale.
                 {% endif %}

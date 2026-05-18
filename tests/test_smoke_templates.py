@@ -19,6 +19,8 @@ from main import (
     _ensure_unique_numero_pannello,
     _format_coupe_assignments,
     _site_coupe_configuration_complete,
+    _translate_fiche_technical_text,
+    _fiche_element_label_fr,
     app,
     get_current_active_user_html,
     templates,
@@ -756,6 +758,86 @@ def test_new_trip_form_renders_with_unified_locations() -> None:
     assert "Seleziona un luogo" in output
     assert "[Deposito] Magazzino Nord" in output
 
+
+
+def test_manager_fiche_technical_sheet_is_french_and_hides_operator() -> None:
+    fiche = SimpleNamespace(
+        id=77,
+        date=date(2026, 5, 18),
+        site=SimpleNamespace(name="Grand Paris", code="GP"),
+        numero_pannello=4,
+        machine=SimpleNamespace(name="Hydrofraise 1", machine_type=None),
+        operator="Operatore PDF",
+        created_by=SimpleNamespace(full_name="Creatore"),
+        fiche_type=FicheTypeEnum.produzione,
+        hours=6.5,
+        tipologia_scavo="paratia",
+        diametro_palo=None,
+        larghezza_pannello=2.8,
+        altezza_pannello=0.8,
+        profondita_totale=12.5,
+        metri_cubi_gettati=29.0,
+        quota_tn=23.8,
+        quota_partenza=23.8,
+        quota_testa_getto=23.4,
+        quota_ngf_testa=23.8,
+        quota_ngf_fondo=11.3,
+        quota_ngf_note="Quota testa getto controllata",
+        responsable_pdf="Responsable Chantier",
+        type_beton="C35/45",
+        type_coulage="Gravitaire",
+        materiale="C35/45",
+        notes="Riporto e Sabbia incontrato",
+        description="Paratia completata",
+        terreno_teorico="0.00-1.20 m: Argilla\n1.20-12.50 m: Ghiaia",
+        stratigrafie=[
+            SimpleNamespace(da_profondita=0.0, a_profondita=1.2, materiale="Riporto"),
+            SimpleNamespace(da_profondita=1.2, a_profondita=12.5, materiale="Sabbia"),
+        ],
+        layers=[],
+        coupe=SimpleNamespace(
+            quota_tn=23.8,
+            quota_testa=23.8,
+            quota_fondo_teorica=11.3,
+            profondita_teorica=12.5,
+            terreno_teorico="0.00-1.20 m: Argilla",
+        ),
+    )
+
+    output = render_template(
+        "manager/fiches/fiche_detail.html",
+        {
+            "request": build_request("/manager/fiches/77"),
+            "user": build_manager_user(),
+            "fiche": fiche,
+            "volume_teorico": 28.0,
+            "stratigrafia_visual_layers": [
+                {"da": 0.0, "a": 1.2, "materiale": "Riporto", "height_percent": 9.6, "texture_class": "soil-layer--riporto"},
+                {"da": 1.2, "a": 12.5, "materiale": "Sabbia", "height_percent": 90.4, "texture_class": "soil-layer--sabbia"},
+            ],
+            "theoretical_soil_layers": [
+                {"da": 0.0, "a": 1.2, "materiale": "Argilla", "height_percent": 9.6, "texture_class": "soil-layer--argilla"},
+                {"da": 1.2, "a": 12.5, "materiale": "Ghiaia", "height_percent": 90.4, "texture_class": "soil-layer--ghiaia"},
+            ],
+            "technical_fr": _translate_fiche_technical_text,
+            "fiche_element_label_fr": _fiche_element_label_fr,
+        },
+    )
+
+    start = output.index('id="technical-sheet-export"')
+    end = output.index('</article>', start)
+    pdf_html = output[start:end]
+
+    assert "Paroi moulée 4" in pdf_html
+    assert "Cote tête béton" in pdf_html
+    assert "Terrain naturel (TN)" in pdf_html
+    assert "Rencontré" in pdf_html
+    assert "Théorique" in pdf_html
+    assert "Remblai" in pdf_html
+    assert "Sable" in pdf_html
+    assert "Argile" in pdf_html
+    assert "Gravier" in pdf_html
+    assert "Operatore PDF" not in pdf_html
 
 def test_deposito_form_renders_with_map_section() -> None:
     depot = Depot(
