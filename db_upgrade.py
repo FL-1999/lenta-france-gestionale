@@ -90,6 +90,16 @@ FICHES_COLUMNS: tuple[str, ...] = (
     "quota_partenza FLOAT",
     "quota_testa_getto FLOAT",
     "capocantiere_id INTEGER",
+    "quota_tn FLOAT",
+    "responsable_pdf TEXT",
+    "type_beton TEXT",
+    "type_coulage TEXT NOT NULL DEFAULT 'Gravitaire'",
+    "terreno_teorico TEXT",
+)
+
+SITE_COUPES_COLUMNS: tuple[str, ...] = (
+    "type_beton TEXT",
+    "type_coulage TEXT NOT NULL DEFAULT 'Gravitaire'",
 )
 
 UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
@@ -105,6 +115,7 @@ UPGRADE_TARGETS: dict[str, tuple[str, ...]] = {
     "notifications": NOTIFICATIONS_COLUMNS,
     "personale": PERSONALE_COLUMNS,
     "fiches": FICHES_COLUMNS,
+    "site_coupes": SITE_COUPES_COLUMNS,
 }
 
 
@@ -360,6 +371,12 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 scavo_da_tn BOOLEAN NOT NULL DEFAULT 1,
                 quota_partenza FLOAT,
                 quota_testa_getto FLOAT,
+                capocantiere_id INTEGER,
+                quota_tn FLOAT,
+                responsable_pdf TEXT,
+                type_beton TEXT,
+                type_coulage TEXT NOT NULL DEFAULT 'Gravitaire',
+                terreno_teorico TEXT,
                 created_at DATETIME NOT NULL,
                 updated_at DATETIME NOT NULL,
                 FOREIGN KEY(site_id) REFERENCES sites(id),
@@ -378,14 +395,16 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
-                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, created_at, updated_at
+                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, capocantiere_id,
+                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, created_at, updated_at
             )
             SELECT
                 id, date, numero_pannello, site_id, coupe_id, machine_id, created_by_id, fiche_type, description,
                 operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
-                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, created_at, updated_at
+                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, capocantiere_id,
+                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, created_at, updated_at
             FROM fiches
             """
         )
@@ -441,7 +460,7 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
         logger.warning("Skipped fiches unique migration: duplicate type/number rows exist.")
         return
 
-    optional_columns = ["quota_ngf_testa", "quota_ngf_fondo", "quota_ngf_note", "coupe_id", "scavo_da_tn", "quota_partenza", "quota_testa_getto"]
+    optional_columns = ["quota_ngf_testa", "quota_ngf_fondo", "quota_ngf_note", "coupe_id", "scavo_da_tn", "quota_partenza", "quota_testa_getto", "capocantiere_id", "quota_tn", "responsable_pdf", "type_beton", "type_coulage", "terreno_teorico"]
     select_optional = [col if col in columns else f"NULL AS {col}" for col in optional_columns]
 
     connection.execute(text("PRAGMA foreign_keys=OFF"))
@@ -476,6 +495,12 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
                 scavo_da_tn BOOLEAN NOT NULL DEFAULT 1,
                 quota_partenza FLOAT,
                 quota_testa_getto FLOAT,
+                capocantiere_id INTEGER,
+                quota_tn FLOAT,
+                responsable_pdf TEXT,
+                type_beton TEXT,
+                type_coulage TEXT NOT NULL DEFAULT 'Gravitaire',
+                terreno_teorico TEXT,
                 created_at DATETIME NOT NULL,
                 updated_at DATETIME NOT NULL,
                 CONSTRAINT uq_fiches_site_tipologia_numero_pannello UNIQUE (site_id, tipologia_scavo, numero_pannello),
@@ -496,14 +521,16 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
                 description, operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
-                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, created_at, updated_at
+                quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, capocantiere_id,
+                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, created_at, updated_at
             )
             SELECT
                 id, date, numero_pannello, site_id, {select_optional[3]}, machine_id, created_by_id, fiche_type,
                 description, operator, hours, notes, tipologia_scavo, stratigrafia, materiale,
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, {select_optional[0]}, {select_optional[1]},
-                {select_optional[2]}, {select_optional[4]}, {select_optional[5]}, {select_optional[6]}, created_at, updated_at
+                {select_optional[2]}, {select_optional[4]}, {select_optional[5]}, {select_optional[6]}, {select_optional[7]},
+                {select_optional[8]}, {select_optional[9]}, {select_optional[10]}, {select_optional[11]}, {select_optional[12]}, created_at, updated_at
             FROM fiches
             """
         )

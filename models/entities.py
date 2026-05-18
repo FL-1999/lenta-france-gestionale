@@ -714,6 +714,8 @@ class SiteCoupe(Base, TimestampMixin):
     larghezza = Column(Float, nullable=True)
     diametro = Column(Float, nullable=True)
     terreno_teorico = Column(Text, nullable=True)
+    type_beton = Column(String(100), nullable=True)
+    type_coulage = Column(String(100), nullable=False, default="Gravitaire")
     note = Column(Text, nullable=True)
 
     fiches = relationship("Fiche", back_populates="coupe")
@@ -800,7 +802,12 @@ class Fiche(Base, TimestampMixin):
     quota_ngf_note = Column(Text, nullable=True)
     scavo_da_tn = Column(Boolean, nullable=False, default=True)
     quota_partenza = Column(Float, nullable=True)
+    quota_tn = Column(Float, nullable=True)
     quota_testa_getto = Column(Float, nullable=True)
+    responsable_pdf = Column(String(255), nullable=True)
+    type_beton = Column(String(100), nullable=True)
+    type_coulage = Column(String(100), nullable=False, default="Gravitaire")
+    terreno_teorico = Column(Text, nullable=True)
 
     layers = relationship("StratigraphyLayer", back_populates="fiche", cascade="all, delete-orphan")
     stratigrafie = relationship(
