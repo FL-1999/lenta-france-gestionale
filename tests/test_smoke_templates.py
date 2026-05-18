@@ -12,6 +12,7 @@ from sqlmodel import SQLModel
 from starlette.requests import Request
 
 from main import (
+    _build_courbe_beton_payload,
     _build_site_pali_schema,
     _build_site_panel_schema,
     _build_sites_map_data,
@@ -883,6 +884,97 @@ def test_manager_fiche_technical_sheet_is_french_and_hides_operator() -> None:
     assert "Argile" in pdf_html
     assert "Gravier" in pdf_html
     assert "Operatore PDF" not in pdf_html
+
+
+
+def test_courbe_beton_payload_forces_theoretical_final_height_to_zero() -> None:
+    fiche = SimpleNamespace(
+        courbe_beton_realisee='[{"volume":10,"hauteur":4}]',
+        courbe_beton_tube=None,
+        courbe_beton_volume_total=30,
+        courbe_beton_hauteur_initiale=12.5,
+        courbe_beton_hauteur_finale=2.5,
+    )
+
+    payload = _build_courbe_beton_payload(fiche)
+
+    assert payload["theorique"] == [
+        {"volume": 0, "hauteur": 12.5},
+        {"volume": 30.0, "hauteur": 0.0},
+    ]
+    assert payload["tube"] == []
+
+def test_manager_fiche_technical_sheet_shows_courbe_beton_only_when_active() -> None:
+    base_fiche = {
+        "id": 78,
+        "date": date(2026, 5, 18),
+        "site": SimpleNamespace(name="Grand Paris", code="GP"),
+        "numero_pannello": 5,
+        "machine": SimpleNamespace(name="Hydrofraise 1", machine_type=None),
+        "operator": "Operatore PDF",
+        "created_by": SimpleNamespace(full_name="Creatore"),
+        "fiche_type": FicheTypeEnum.produzione,
+        "hours": 6.5,
+        "tipologia_scavo": "paratia",
+        "diametro_palo": None,
+        "larghezza_pannello": 2.8,
+        "altezza_pannello": 0.8,
+        "profondita_totale": 12.5,
+        "metri_cubi_gettati": 29.0,
+        "quota_tn": 23.8,
+        "quota_partenza": 23.8,
+        "quota_testa_getto": 23.4,
+        "quota_ngf_testa": 23.8,
+        "quota_ngf_fondo": 11.3,
+        "quota_ngf_note": "Quota testa getto contrôlée",
+        "responsable_pdf": "Responsable Chantier",
+        "type_beton": "C35/45",
+        "type_coulage": "Gravitaire",
+        "materiale": "C35/45",
+        "notes": "",
+        "description": "Paroi terminée",
+        "terreno_teorico": "",
+        "stratigrafie": [],
+        "layers": [],
+        "coupe": None,
+    }
+    context = {
+        "request": build_request("/manager/fiches/78"),
+        "user": build_manager_user(),
+        "volume_teorico": 28.0,
+        "stratigrafia_visual_layers": [],
+        "theoretical_soil_layers": [],
+        "technical_fr": _translate_fiche_technical_text,
+        "fiche_element_label_fr": _fiche_element_label_fr,
+    }
+
+    inactive_output = render_template(
+        "manager/fiches/fiche_detail.html",
+        {**context, "fiche": SimpleNamespace(**base_fiche, courbe_beton_active=False)},
+    )
+    inactive_pdf = inactive_output[inactive_output.index('id="technical-sheet-export"'):inactive_output.index('</article>', inactive_output.index('id="technical-sheet-export"'))]
+    assert "courbe-beton-pdf-chart" not in inactive_pdf
+
+    active_output = render_template(
+        "manager/fiches/fiche_detail.html",
+        {
+            **context,
+            "fiche": SimpleNamespace(**base_fiche, courbe_beton_active=True),
+            "courbe_beton_payload": {
+                "realisee": [{"volume": 0, "hauteur": 12.5}, {"volume": 29, "hauteur": 0}],
+                "theorique": [{"volume": 0, "hauteur": 12.5}, {"volume": 28, "hauteur": 0}],
+                "tube": [],
+            },
+        },
+    )
+    active_pdf = active_output[active_output.index('id="technical-sheet-export"'):active_output.index('</article>', active_output.index('id="technical-sheet-export"'))]
+    assert "courbe-beton-pdf-chart" in active_pdf
+    assert "Réalisée" in active_pdf
+    assert "Théorique" in active_pdf
+    assert "Tube" in active_pdf
+    assert "COURBE DE BÉTONNAGE" in active_output
+    assert "Volume en m³" in active_output
+    assert "Hauteur en m" in active_output
 
 def test_deposito_form_renders_with_map_section() -> None:
     depot = Depot(

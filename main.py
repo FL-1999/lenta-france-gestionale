@@ -778,12 +778,11 @@ def _apply_courbe_beton_fields(
     )
     volume_total = _parse_decimal_comma_float(courbe_beton_volume_total, "volume total théorique")
     hauteur_initiale = _parse_decimal_comma_float(courbe_beton_hauteur_initiale, "hauteur initiale")
-    hauteur_finale = _parse_decimal_comma_float(courbe_beton_hauteur_finale, "hauteur finale")
     if volume_total is not None and volume_total < 0:
         raise HTTPException(status_code=400, detail="Le volume total théorique ne peut pas être négatif.")
     fiche.courbe_beton_volume_total = volume_total
     fiche.courbe_beton_hauteur_initiale = hauteur_initiale
-    fiche.courbe_beton_hauteur_finale = 0 if hauteur_finale is None else hauteur_finale
+    fiche.courbe_beton_hauteur_finale = 0
 
 
 def _build_courbe_beton_payload(fiche: Fiche) -> dict:
@@ -791,10 +790,9 @@ def _build_courbe_beton_payload(fiche: Fiche) -> dict:
     tube = _deserialize_courbe_points(getattr(fiche, "courbe_beton_tube", None))
     theoretical = []
     if fiche.courbe_beton_volume_total is not None and fiche.courbe_beton_hauteur_initiale is not None:
-        final_height = fiche.courbe_beton_hauteur_finale if fiche.courbe_beton_hauteur_finale is not None else 0
         theoretical = [
             {"volume": 0, "hauteur": float(fiche.courbe_beton_hauteur_initiale)},
-            {"volume": float(fiche.courbe_beton_volume_total), "hauteur": float(final_height)},
+            {"volume": float(fiche.courbe_beton_volume_total), "hauteur": 0.0},
         ]
     return {"realisee": realised, "theorique": theoretical, "tube": tube}
 
@@ -1048,7 +1046,7 @@ def _build_fiche_form_data(
         "courbe_beton_tube": courbe_beton_tube or [{"volume": "", "hauteur": ""}],
         "courbe_beton_volume_total": _fmt(courbe_beton_volume_total),
         "courbe_beton_hauteur_initiale": _fmt(courbe_beton_hauteur_initiale),
-        "courbe_beton_hauteur_finale": _fmt(courbe_beton_hauteur_finale if courbe_beton_hauteur_finale is not None else 0),
+        "courbe_beton_hauteur_finale": "0",
         "strati": strati,
         "invalid_fields": invalid_fields or [],
     }
