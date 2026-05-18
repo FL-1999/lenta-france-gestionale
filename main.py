@@ -959,6 +959,7 @@ def _render_fiche_create_form(
         site_ids = [site.id for site in sites]
         coupes = (
             db.query(SiteCoupe)
+            .options(joinedload(SiteCoupe.assignments))
             .filter(SiteCoupe.site_id.in_(site_ids))
             .order_by(SiteCoupe.site_id.asc(), SiteCoupe.nome.asc())
             .all()
@@ -1097,6 +1098,22 @@ def _find_site_coupe_for_fiche(
         )
         if not coupe:
             raise HTTPException(status_code=400, detail="Coupe di progetto non valida")
+        normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
+        if normalized_tipologia and numero_elemento is not None:
+            is_assigned = (
+                db.query(SiteCoupeAssignment.id)
+                .filter(SiteCoupeAssignment.coupe_id == coupe.id)
+                .filter(SiteCoupeAssignment.site_id == site_id)
+                .filter(SiteCoupeAssignment.tipologia_scavo == normalized_tipologia)
+                .filter(SiteCoupeAssignment.numero_elemento == numero_elemento)
+                .first()
+                is not None
+            )
+            if not is_assigned:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Ce numéro n’appartient pas à la coupe sélectionnée",
+                )
         return coupe
 
     normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
