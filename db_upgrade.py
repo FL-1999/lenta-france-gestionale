@@ -95,6 +95,12 @@ FICHES_COLUMNS: tuple[str, ...] = (
     "type_beton TEXT",
     "type_coulage TEXT NOT NULL DEFAULT 'Gravitaire'",
     "terreno_teorico TEXT",
+    "courbe_beton_active BOOLEAN NOT NULL DEFAULT 0",
+    "courbe_beton_realisee TEXT",
+    "courbe_beton_tube TEXT",
+    "courbe_beton_volume_total FLOAT",
+    "courbe_beton_hauteur_initiale FLOAT",
+    "courbe_beton_hauteur_finale FLOAT DEFAULT 0",
 )
 
 SITE_COUPES_COLUMNS: tuple[str, ...] = (
@@ -378,6 +384,12 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 type_beton TEXT,
                 type_coulage TEXT NOT NULL DEFAULT 'Gravitaire',
                 terreno_teorico TEXT,
+                courbe_beton_active BOOLEAN NOT NULL DEFAULT 0,
+                courbe_beton_realisee TEXT,
+                courbe_beton_tube TEXT,
+                courbe_beton_volume_total FLOAT,
+                courbe_beton_hauteur_initiale FLOAT,
+                courbe_beton_hauteur_finale FLOAT DEFAULT 0,
                 created_at DATETIME NOT NULL,
                 updated_at DATETIME NOT NULL,
                 FOREIGN KEY(site_id) REFERENCES sites(id),
@@ -397,7 +409,7 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
                 quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, capocantiere_id,
-                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, created_at, updated_at
+                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, courbe_beton_active, courbe_beton_realisee, courbe_beton_tube, courbe_beton_volume_total, courbe_beton_hauteur_initiale, courbe_beton_hauteur_finale, created_at, updated_at
             )
             SELECT
                 id, date, numero_pannello, site_id, coupe_id, machine_id, created_by_id, fiche_type, description,
@@ -405,7 +417,7 @@ def _ensure_fiche_hours_nullable(connection: Connection) -> None:
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
                 quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, capocantiere_id,
-                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, created_at, updated_at
+                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, courbe_beton_active, courbe_beton_realisee, courbe_beton_tube, courbe_beton_volume_total, courbe_beton_hauteur_initiale, courbe_beton_hauteur_finale, created_at, updated_at
             FROM fiches
             """
         )
@@ -461,8 +473,12 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
         logger.warning("Skipped fiches unique migration: duplicate type/number rows exist.")
         return
 
-    optional_columns = ["quota_ngf_testa", "quota_ngf_fondo", "quota_ngf_note", "coupe_id", "scavo_da_tn", "quota_partenza", "quota_testa_getto", "capocantiere_id", "quota_tn", "responsable_pdf", "type_beton", "type_coulage", "terreno_teorico"]
-    select_optional = [col if col in columns else f"NULL AS {col}" for col in optional_columns]
+    optional_columns = ["quota_ngf_testa", "quota_ngf_fondo", "quota_ngf_note", "coupe_id", "scavo_da_tn", "quota_partenza", "quota_testa_getto", "capocantiere_id", "quota_tn", "responsable_pdf", "type_beton", "type_coulage", "terreno_teorico", "courbe_beton_active", "courbe_beton_realisee", "courbe_beton_tube", "courbe_beton_volume_total", "courbe_beton_hauteur_initiale", "courbe_beton_hauteur_finale"]
+    optional_defaults = {"scavo_da_tn": "1", "type_coulage": "'Gravitaire'", "courbe_beton_active": "0", "courbe_beton_hauteur_finale": "0"}
+    select_optional = [
+        col if col in columns else f"{optional_defaults.get(col, 'NULL')} AS {col}"
+        for col in optional_columns
+    ]
 
     connection.execute(text("PRAGMA foreign_keys=OFF"))
     connection.execute(
@@ -502,6 +518,12 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
                 type_beton TEXT,
                 type_coulage TEXT NOT NULL DEFAULT 'Gravitaire',
                 terreno_teorico TEXT,
+                courbe_beton_active BOOLEAN NOT NULL DEFAULT 0,
+                courbe_beton_realisee TEXT,
+                courbe_beton_tube TEXT,
+                courbe_beton_volume_total FLOAT,
+                courbe_beton_hauteur_initiale FLOAT,
+                courbe_beton_hauteur_finale FLOAT DEFAULT 0,
                 created_at DATETIME NOT NULL,
                 updated_at DATETIME NOT NULL,
                 CONSTRAINT uq_fiches_site_tipologia_numero_pannello UNIQUE (site_id, tipologia_scavo, numero_pannello),
@@ -523,7 +545,7 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, quota_ngf_testa, quota_ngf_fondo,
                 quota_ngf_note, scavo_da_tn, quota_partenza, quota_testa_getto, capocantiere_id,
-                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, created_at, updated_at
+                quota_tn, responsable_pdf, type_beton, type_coulage, terreno_teorico, courbe_beton_active, courbe_beton_realisee, courbe_beton_tube, courbe_beton_volume_total, courbe_beton_hauteur_initiale, courbe_beton_hauteur_finale, created_at, updated_at
             )
             SELECT
                 id, date, numero_pannello, site_id, {select_optional[3]}, machine_id, created_by_id, fiche_type,
@@ -531,7 +553,7 @@ def _ensure_fiches_unique_per_tipologia(connection: Connection) -> None:
                 profondita_totale, diametro_palo, larghezza_pannello, altezza_pannello,
                 data_getto, metri_cubi_gettati, {select_optional[0]}, {select_optional[1]},
                 {select_optional[2]}, {select_optional[4]}, {select_optional[5]}, {select_optional[6]}, {select_optional[7]},
-                {select_optional[8]}, {select_optional[9]}, {select_optional[10]}, {select_optional[11]}, {select_optional[12]}, created_at, updated_at
+                {select_optional[8]}, {select_optional[9]}, {select_optional[10]}, {select_optional[11]}, {select_optional[12]}, {select_optional[13]}, {select_optional[14]}, {select_optional[15]}, {select_optional[16]}, {select_optional[17]}, {select_optional[18]}, created_at, updated_at
             FROM fiches
             """
         )

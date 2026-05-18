@@ -1,4 +1,5 @@
 import logging
+import json
 import os
 import time
 import re
@@ -691,6 +692,113 @@ def _parse_decimal_comma_float_list(
     ]
 
 
+def _parse_courbe_points(
+    volumes: list[str | int | float | None] | None,
+    hauteurs: list[str | int | float | None] | None,
+    *,
+    label: str,
+) -> list[dict[str, float]]:
+    volumes = volumes or []
+    hauteurs = hauteurs or []
+    max_len = max(len(volumes), len(hauteurs), 0)
+    points: list[dict[str, float]] = []
+    for index in range(max_len):
+        volume_raw = volumes[index] if index < len(volumes) else None
+        hauteur_raw = hauteurs[index] if index < len(hauteurs) else None
+        volume = _parse_decimal_comma_float(volume_raw, f"{label} volume")
+        hauteur = _parse_decimal_comma_float(hauteur_raw, f"{label} hauteur")
+        if volume is None and hauteur is None:
+            continue
+        if volume is None or hauteur is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Chaque ligne {label} doit avoir Volume (m³) et Hauteur (m).",
+            )
+        if volume < 0:
+            raise HTTPException(status_code=400, detail=f"Le volume {label} ne peut pas être négatif.")
+        points.append({"volume": volume, "hauteur": hauteur})
+    points.sort(key=lambda point: point["volume"])
+    return points
+
+
+def _serialize_courbe_points(points: list[dict[str, float]]) -> str | None:
+    if not points:
+        return None
+    return json.dumps(points, ensure_ascii=False, separators=(",", ":"))
+
+
+def _deserialize_courbe_points(raw_points: str | None) -> list[dict[str, float]]:
+    if not raw_points:
+        return []
+    try:
+        decoded = json.loads(raw_points)
+    except (TypeError, ValueError):
+        return []
+    points: list[dict[str, float]] = []
+    for item in decoded if isinstance(decoded, list) else []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            volume = float(item.get("volume"))
+            hauteur = float(item.get("hauteur"))
+        except (TypeError, ValueError):
+            continue
+        points.append({"volume": volume, "hauteur": hauteur})
+    points.sort(key=lambda point: point["volume"])
+    return points
+
+
+def _apply_courbe_beton_fields(
+    fiche: Fiche,
+    *,
+    courbe_beton_active: str | bool | None,
+    courbe_realisee_volume: list[str | float | None] | None,
+    courbe_realisee_hauteur: list[str | float | None] | None,
+    courbe_tube_volume: list[str | float | None] | None = None,
+    courbe_tube_hauteur: list[str | float | None] | None = None,
+    courbe_beton_volume_total: str | float | None = None,
+    courbe_beton_hauteur_initiale: str | float | None = None,
+    courbe_beton_hauteur_finale: str | float | None = None,
+) -> None:
+    active = courbe_beton_active in (True, "1", "true", "on", "yes", "oui", "si")
+    fiche.courbe_beton_active = active
+    if not active:
+        fiche.courbe_beton_realisee = None
+        fiche.courbe_beton_tube = None
+        fiche.courbe_beton_volume_total = None
+        fiche.courbe_beton_hauteur_initiale = None
+        fiche.courbe_beton_hauteur_finale = None
+        return
+
+    fiche.courbe_beton_realisee = _serialize_courbe_points(
+        _parse_courbe_points(courbe_realisee_volume, courbe_realisee_hauteur, label="Réalisée")
+    )
+    fiche.courbe_beton_tube = _serialize_courbe_points(
+        _parse_courbe_points(courbe_tube_volume, courbe_tube_hauteur, label="Tube")
+    )
+    volume_total = _parse_decimal_comma_float(courbe_beton_volume_total, "volume total théorique")
+    hauteur_initiale = _parse_decimal_comma_float(courbe_beton_hauteur_initiale, "hauteur initiale")
+    hauteur_finale = _parse_decimal_comma_float(courbe_beton_hauteur_finale, "hauteur finale")
+    if volume_total is not None and volume_total < 0:
+        raise HTTPException(status_code=400, detail="Le volume total théorique ne peut pas être négatif.")
+    fiche.courbe_beton_volume_total = volume_total
+    fiche.courbe_beton_hauteur_initiale = hauteur_initiale
+    fiche.courbe_beton_hauteur_finale = 0 if hauteur_finale is None else hauteur_finale
+
+
+def _build_courbe_beton_payload(fiche: Fiche) -> dict:
+    realised = _deserialize_courbe_points(getattr(fiche, "courbe_beton_realisee", None))
+    tube = _deserialize_courbe_points(getattr(fiche, "courbe_beton_tube", None))
+    theoretical = []
+    if fiche.courbe_beton_volume_total is not None and fiche.courbe_beton_hauteur_initiale is not None:
+        final_height = fiche.courbe_beton_hauteur_finale if fiche.courbe_beton_hauteur_finale is not None else 0
+        theoretical = [
+            {"volume": 0, "hauteur": float(fiche.courbe_beton_hauteur_initiale)},
+            {"volume": float(fiche.courbe_beton_volume_total), "hauteur": float(final_height)},
+        ]
+    return {"realisee": realised, "theorique": theoretical, "tube": tube}
+
+
 def _invalid_fields_for_fiche_error(error_message: str | None) -> list[str]:
     normalized_message = (error_message or "").lower()
     if error_message == FICHE_STRATIGRAFIA_DEPTH_ERROR:
@@ -865,6 +973,12 @@ def _build_fiche_form_data(
     quota_ngf_testa: float | str | None = None,
     quota_ngf_fondo: float | str | None = None,
     quota_ngf_note: str | None = None,
+    courbe_beton_active: bool | str | None = False,
+    courbe_beton_realisee: list[dict[str, float]] | None = None,
+    courbe_beton_tube: list[dict[str, float]] | None = None,
+    courbe_beton_volume_total: float | str | None = None,
+    courbe_beton_hauteur_initiale: float | str | None = None,
+    courbe_beton_hauteur_finale: float | str | None = None,
     strato_da: list[float] | None = None,
     strato_a: list[float] | None = None,
     strato_materiale: list[str] | None = None,
@@ -878,6 +992,8 @@ def _build_fiche_form_data(
     strato_a = strato_a or []
     strato_materiale = strato_materiale or []
     strato_materiale_altro = strato_materiale_altro or []
+    courbe_beton_realisee = courbe_beton_realisee or []
+    courbe_beton_tube = courbe_beton_tube or []
 
     max_len = max(len(strato_da), len(strato_a), len(strato_materiale), 1)
     strati = []
@@ -927,6 +1043,12 @@ def _build_fiche_form_data(
         "quota_ngf_testa": _fmt(quota_ngf_testa),
         "quota_ngf_fondo": _fmt(quota_ngf_fondo),
         "quota_ngf_note": quota_ngf_note or "",
+        "courbe_beton_active": "1" if courbe_beton_active in (True, "1", "true", "on", "yes", "oui", "si") else "0",
+        "courbe_beton_realisee": courbe_beton_realisee or [{"volume": "", "hauteur": ""}],
+        "courbe_beton_tube": courbe_beton_tube or [{"volume": "", "hauteur": ""}],
+        "courbe_beton_volume_total": _fmt(courbe_beton_volume_total),
+        "courbe_beton_hauteur_initiale": _fmt(courbe_beton_hauteur_initiale),
+        "courbe_beton_hauteur_finale": _fmt(courbe_beton_hauteur_finale if courbe_beton_hauteur_finale is not None else 0),
         "strati": strati,
         "invalid_fields": invalid_fields or [],
     }
@@ -1042,6 +1164,14 @@ def _build_fiche_error_form_data(
     quota_ngf_testa: str | float | None = None,
     quota_ngf_fondo: str | float | None = None,
     quota_ngf_note: str | None = None,
+    courbe_beton_active: bool | str | None = False,
+    courbe_realisee_volume: list[str | float | None] | None = None,
+    courbe_realisee_hauteur: list[str | float | None] | None = None,
+    courbe_tube_volume: list[str | float | None] | None = None,
+    courbe_tube_hauteur: list[str | float | None] | None = None,
+    courbe_beton_volume_total: float | str | None = None,
+    courbe_beton_hauteur_initiale: float | str | None = None,
+    courbe_beton_hauteur_finale: float | str | None = None,
     strato_da: list[str | float | None] | None = None,
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
@@ -1073,6 +1203,12 @@ def _build_fiche_error_form_data(
         quota_ngf_testa=quota_ngf_testa,
         quota_ngf_fondo=quota_ngf_fondo,
         quota_ngf_note=quota_ngf_note,
+        courbe_beton_active=courbe_beton_active,
+        courbe_beton_realisee=[{"volume": v or "", "hauteur": h or ""} for v, h in zip(courbe_realisee_volume or [], courbe_realisee_hauteur or [])] or [{"volume": "", "hauteur": ""}],
+        courbe_beton_tube=[{"volume": v or "", "hauteur": h or ""} for v, h in zip(courbe_tube_volume or [], courbe_tube_hauteur or [])] or [{"volume": "", "hauteur": ""}],
+        courbe_beton_volume_total=courbe_beton_volume_total,
+        courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
+        courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
         invalid_fields=invalid_fields,
         strato_da=strato_da,
         strato_a=strato_a,
@@ -1288,6 +1424,14 @@ def _create_validated_fiche(
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
     strato_materiale_altro: list[str] | None = None,
+    courbe_beton_active: str | bool | None = False,
+    courbe_realisee_volume: list[str | float | None] | None = None,
+    courbe_realisee_hauteur: list[str | float | None] | None = None,
+    courbe_tube_volume: list[str | float | None] | None = None,
+    courbe_tube_hauteur: list[str | float | None] | None = None,
+    courbe_beton_volume_total: str | float | None = None,
+    courbe_beton_hauteur_initiale: str | float | None = None,
+    courbe_beton_hauteur_finale: str | float | None = None,
     restrict_to_capo_sites: bool = False,
 ) -> Fiche:
     metri_cubi_value = _parse_decimal_comma_float(
@@ -1433,6 +1577,19 @@ def _create_validated_fiche(
         quota_ngf_fondo=quota_ngf_fondo_value,
         created_by_id=current_user.id,
     )
+    if current_user.role in {RoleEnum.admin, RoleEnum.manager}:
+        _apply_courbe_beton_fields(
+            fiche,
+            courbe_beton_active=courbe_beton_active,
+            courbe_realisee_volume=courbe_realisee_volume,
+            courbe_realisee_hauteur=courbe_realisee_hauteur,
+            courbe_tube_volume=courbe_tube_volume,
+            courbe_tube_hauteur=courbe_tube_hauteur,
+            courbe_beton_volume_total=courbe_beton_volume_total,
+            courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
+            courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
+        )
+
     db.add(fiche)
     db.flush()
 
@@ -1490,6 +1647,14 @@ def _update_validated_fiche(
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
     strato_materiale_altro: list[str] | None = None,
+    courbe_beton_active: str | bool | None = False,
+    courbe_realisee_volume: list[str | float | None] | None = None,
+    courbe_realisee_hauteur: list[str | float | None] | None = None,
+    courbe_tube_volume: list[str | float | None] | None = None,
+    courbe_tube_hauteur: list[str | float | None] | None = None,
+    courbe_beton_volume_total: str | float | None = None,
+    courbe_beton_hauteur_initiale: str | float | None = None,
+    courbe_beton_hauteur_finale: str | float | None = None,
 ) -> Fiche:
     metri_cubi_value = _parse_decimal_comma_float(
         metri_cubi_gettati, "Metri cubi gettati"
@@ -1628,6 +1793,18 @@ def _update_validated_fiche(
     fiche.scavo_da_tn = scavo_da_tn_value
     fiche.quota_partenza = quota_partenza_value
     fiche.quota_testa_getto = quota_testa_getto_value
+    if current_user.role in {RoleEnum.admin, RoleEnum.manager}:
+        _apply_courbe_beton_fields(
+            fiche,
+            courbe_beton_active=courbe_beton_active,
+            courbe_realisee_volume=courbe_realisee_volume,
+            courbe_realisee_hauteur=courbe_realisee_hauteur,
+            courbe_tube_volume=courbe_tube_volume,
+            courbe_tube_hauteur=courbe_tube_hauteur,
+            courbe_beton_volume_total=courbe_beton_volume_total,
+            courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
+            courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
+        )
 
     db.query(FicheStratigrafia).filter(FicheStratigrafia.fiche_id == fiche.id).delete()
     db.flush()
@@ -1695,6 +1872,12 @@ def _build_fiche_form_data_from_model(fiche: Fiche) -> dict:
         quota_ngf_testa=fiche.quota_ngf_testa,
         quota_ngf_fondo=fiche.quota_ngf_fondo,
         quota_ngf_note=fiche.quota_ngf_note,
+        courbe_beton_active=fiche.courbe_beton_active,
+        courbe_beton_realisee=_deserialize_courbe_points(fiche.courbe_beton_realisee),
+        courbe_beton_tube=_deserialize_courbe_points(fiche.courbe_beton_tube),
+        courbe_beton_volume_total=fiche.courbe_beton_volume_total,
+        courbe_beton_hauteur_initiale=fiche.courbe_beton_hauteur_initiale,
+        courbe_beton_hauteur_finale=fiche.courbe_beton_hauteur_finale,
         strato_da=[layer.da_profondita for layer in stratigrafie],
         strato_a=[layer.a_profondita for layer in stratigrafie],
         strato_materiale=[layer.materiale for layer in stratigrafie],
@@ -2373,6 +2556,7 @@ def manager_fiche_new_form(
             "show_ngf_fields": True,
             "show_project_coupe_fields": True,
             "show_capocantiere_field": True,
+            "show_courbe_beton_fields": True,
         },
     )
 
@@ -2412,6 +2596,14 @@ async def manager_fiche_create(
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
     strato_materiale_altro: List[str] = Form(default_factory=list),
+    courbe_beton_active: str | None = Form(None),
+    courbe_realisee_volume: List[str] = Form(default_factory=list),
+    courbe_realisee_hauteur: List[str] = Form(default_factory=list),
+    courbe_tube_volume: List[str] = Form(default_factory=list),
+    courbe_tube_hauteur: List[str] = Form(default_factory=list),
+    courbe_beton_volume_total: str | None = Form(None),
+    courbe_beton_hauteur_initiale: str | None = Form(None),
+    courbe_beton_hauteur_finale: str | None = Form(None),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -2449,6 +2641,14 @@ async def manager_fiche_create(
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
                 strato_materiale_altro=strato_materiale_altro,
+                courbe_beton_active=courbe_beton_active,
+                courbe_realisee_volume=courbe_realisee_volume,
+                courbe_realisee_hauteur=courbe_realisee_hauteur,
+                courbe_tube_volume=courbe_tube_volume,
+                courbe_tube_hauteur=courbe_tube_hauteur,
+                courbe_beton_volume_total=courbe_beton_volume_total,
+                courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
+                courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
             )
         finally:
             db.close()
@@ -2481,6 +2681,14 @@ async def manager_fiche_create(
             strato_a=strato_a,
             strato_materiale=strato_materiale,
             strato_materiale_altro=strato_materiale_altro,
+            courbe_beton_active=courbe_beton_active,
+            courbe_realisee_volume=courbe_realisee_volume,
+            courbe_realisee_hauteur=courbe_realisee_hauteur,
+            courbe_tube_volume=courbe_tube_volume,
+            courbe_tube_hauteur=courbe_tube_hauteur,
+            courbe_beton_volume_total=courbe_beton_volume_total,
+            courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
+            courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
             invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
         )
         return _render_fiche_create_form(
@@ -2505,6 +2713,7 @@ async def manager_fiche_create(
                 "show_ngf_fields": True,
                 "show_project_coupe_fields": True,
                 "show_capocantiere_field": True,
+                "show_courbe_beton_fields": True,
             },
         )
 
@@ -6768,6 +6977,7 @@ def manager_fiche_edit_form(
             "show_ngf_fields": True,
             "show_project_coupe_fields": True,
             "show_capocantiere_field": True,
+            "show_courbe_beton_fields": True,
         },
     )
 
@@ -6808,6 +7018,14 @@ async def manager_fiche_update(
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
     strato_materiale_altro: List[str] = Form(default_factory=list),
+    courbe_beton_active: str | None = Form(None),
+    courbe_realisee_volume: List[str] = Form(default_factory=list),
+    courbe_realisee_hauteur: List[str] = Form(default_factory=list),
+    courbe_tube_volume: List[str] = Form(default_factory=list),
+    courbe_tube_hauteur: List[str] = Form(default_factory=list),
+    courbe_beton_volume_total: str | None = Form(None),
+    courbe_beton_hauteur_initiale: str | None = Form(None),
+    courbe_beton_hauteur_finale: str | None = Form(None),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -6851,6 +7069,14 @@ async def manager_fiche_update(
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
                 strato_materiale_altro=strato_materiale_altro,
+                courbe_beton_active=courbe_beton_active,
+                courbe_realisee_volume=courbe_realisee_volume,
+                courbe_realisee_hauteur=courbe_realisee_hauteur,
+                courbe_tube_volume=courbe_tube_volume,
+                courbe_tube_hauteur=courbe_tube_hauteur,
+                courbe_beton_volume_total=courbe_beton_volume_total,
+                courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
+                courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
             )
         finally:
             db.close()
@@ -6883,6 +7109,14 @@ async def manager_fiche_update(
             strato_a=strato_a,
             strato_materiale=strato_materiale,
             strato_materiale_altro=strato_materiale_altro,
+            courbe_beton_active=courbe_beton_active,
+            courbe_realisee_volume=courbe_realisee_volume,
+            courbe_realisee_hauteur=courbe_realisee_hauteur,
+            courbe_tube_volume=courbe_tube_volume,
+            courbe_tube_hauteur=courbe_tube_hauteur,
+            courbe_beton_volume_total=courbe_beton_volume_total,
+            courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
+            courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
             invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
         )
         return _render_fiche_create_form(
@@ -6907,6 +7141,7 @@ async def manager_fiche_update(
                 "show_ngf_fields": True,
                 "show_project_coupe_fields": True,
                 "show_capocantiere_field": True,
+                "show_courbe_beton_fields": True,
             },
         )
 
@@ -7012,6 +7247,7 @@ def manager_fiche_dettaglio(
             ),
             technical_fr=_translate_fiche_technical_text,
             fiche_element_label_fr=_fiche_element_label_fr,
+            courbe_beton_payload=_build_courbe_beton_payload(fiche),
         ),
     )
 

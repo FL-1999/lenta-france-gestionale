@@ -6033,3 +6033,145 @@ label.form-label[for="profondita_totale"]{
   font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 13px;
 }
+
+/* Courbe de bétonnage optionnelle */
+.courbe-beton-form {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.98));
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 18px;
+  padding: 1rem;
+}
+
+.courbe-toggle {
+  align-items: center;
+  color: #0f172a;
+  display: inline-flex;
+  font-weight: 800;
+  gap: .6rem;
+  margin-bottom: 1rem;
+}
+
+.courbe-toggle input {
+  height: 1.05rem;
+  width: 1.05rem;
+}
+
+.courbe-beton-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.courbe-input-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.courbe-input-grid h4 {
+  color: #0f172a;
+  font-size: .95rem;
+  font-weight: 900;
+  margin: 0 0 .55rem;
+  text-transform: uppercase;
+}
+
+.courbe-table {
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 14px;
+  padding: .75rem;
+}
+
+.courbe-table__head,
+.courbe-row {
+  display: grid;
+  gap: .5rem;
+  grid-template-columns: 1fr 1fr auto;
+}
+
+.courbe-table__head {
+  color: #475569;
+  font-size: .78rem;
+  font-weight: 900;
+  margin-bottom: .4rem;
+  text-transform: uppercase;
+}
+
+.courbe-row {
+  margin-bottom: .5rem;
+}
+
+.courbe-chart-card {
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 16px;
+  padding: .75rem;
+}
+
+.courbe-chart-card canvas,
+.courbe-beton-pdf-chart {
+  background: #f8fafc;
+  border-radius: 10px;
+  display: block;
+  height: auto;
+  max-width: 100%;
+  width: 100%;
+}
+
+.courbe-legend {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  justify-content: center;
+  margin-top: .5rem;
+}
+
+.courbe-legend__item {
+  align-items: center;
+  color: #0f172a;
+  display: inline-flex;
+  font-size: .78rem;
+  font-weight: 900;
+  gap: .35rem;
+}
+
+.courbe-legend__item::before {
+  border-radius: 999px;
+  content: "";
+  display: inline-block;
+  height: 9px;
+  width: 24px;
+}
+
+.courbe-legend__item--realisee::before { background: #2563eb; }
+.courbe-legend__item--theorique::before { background: #dc2626; }
+.courbe-legend__item--tube::before { background: #16a34a; }
+
+.technical-data-block--courbe {
+  margin-top: auto;
+  page-break-inside: avoid;
+}
+
+.technical-data-block--courbe .courbe-beton-pdf-chart {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+}
+
+.courbe-legend--pdf {
+  gap: .45rem;
+  justify-content: flex-start;
+}
+
+.courbe-legend--pdf .courbe-legend__item {
+  font-size: .62rem;
+}
+
+@media print {
+  .technical-data-block--courbe {
+    break-inside: avoid;
+  }
+
+  .technical-data-block--courbe .courbe-beton-pdf-chart {
+    width: 100%;
+  }
+}
