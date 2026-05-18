@@ -65,6 +65,7 @@ from models import (
     SiteProgressGridName,
     SiteCoupe,
     SiteCoupeAssignment,
+    SiteSpecialEquipmentConfig,
     Personale,
     MagazzinoMovimento,
     MagazzinoMovimentoTipoEnum,
@@ -977,6 +978,10 @@ def _build_fiche_form_data(
     courbe_beton_volume_total: float | str | None = None,
     courbe_beton_hauteur_initiale: float | str | None = None,
     courbe_beton_hauteur_finale: float | str | None = None,
+    sonic_previsto: bool | str | None = False,
+    sonic_realizzato: bool | str | None = None,
+    inclinometre_previsto: bool | str | None = False,
+    inclinometre_realizzato: bool | str | None = None,
     strato_da: list[float] | None = None,
     strato_a: list[float] | None = None,
     strato_materiale: list[str] | None = None,
@@ -1047,6 +1052,10 @@ def _build_fiche_form_data(
         "courbe_beton_volume_total": _fmt(courbe_beton_volume_total),
         "courbe_beton_hauteur_initiale": _fmt(courbe_beton_hauteur_initiale),
         "courbe_beton_hauteur_finale": "0",
+        "sonic_previsto": "1" if _parse_bool_choice(sonic_previsto) else "0",
+        "sonic_realizzato": "" if _parse_bool_choice(sonic_realizzato) is None else ("1" if _parse_bool_choice(sonic_realizzato) else "0"),
+        "inclinometre_previsto": "1" if _parse_bool_choice(inclinometre_previsto) else "0",
+        "inclinometre_realizzato": "" if _parse_bool_choice(inclinometre_realizzato) is None else ("1" if _parse_bool_choice(inclinometre_realizzato) else "0"),
         "strati": strati,
         "invalid_fields": invalid_fields or [],
     }
@@ -1116,6 +1125,17 @@ def _render_fiche_create_form(
             .order_by(User.full_name.asc(), User.email.asc())
             .all()
         )
+        equipment_configs = (
+            db.query(SiteSpecialEquipmentConfig)
+            .filter(SiteSpecialEquipmentConfig.site_id.in_(site_ids))
+            .order_by(
+                SiteSpecialEquipmentConfig.site_id.asc(),
+                SiteSpecialEquipmentConfig.tipologia_scavo.asc(),
+                SiteSpecialEquipmentConfig.numero_elemento.asc(),
+            )
+            .all()
+            if site_ids else []
+        )
     finally:
         db.close()
     context = {
@@ -1123,6 +1143,7 @@ def _render_fiche_create_form(
         "macchinari": machines,
         "capocantieri": capocantieri,
         "coupes": coupes,
+        "equipment_configs": _serialize_site_special_equipment_configs(equipment_configs),
         "form_data": form_data or _build_fiche_form_data(),
         "error_message": error_message,
     }
@@ -1170,6 +1191,10 @@ def _build_fiche_error_form_data(
     courbe_beton_volume_total: float | str | None = None,
     courbe_beton_hauteur_initiale: float | str | None = None,
     courbe_beton_hauteur_finale: float | str | None = None,
+    sonic_previsto: bool | str | None = False,
+    sonic_realizzato: bool | str | None = None,
+    inclinometre_previsto: bool | str | None = False,
+    inclinometre_realizzato: bool | str | None = None,
     strato_da: list[str | float | None] | None = None,
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
@@ -1207,6 +1232,10 @@ def _build_fiche_error_form_data(
         courbe_beton_volume_total=courbe_beton_volume_total,
         courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
         courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
+        sonic_previsto=sonic_previsto,
+        sonic_realizzato=sonic_realizzato,
+        inclinometre_previsto=inclinometre_previsto,
+        inclinometre_realizzato=inclinometre_realizzato,
         invalid_fields=invalid_fields,
         strato_da=strato_da,
         strato_a=strato_a,
@@ -1241,6 +1270,157 @@ def _validate_capocantiere(db: Session, capocantiere_id: int | None) -> User | N
         raise HTTPException(status_code=400, detail="Capocantiere non valido")
     return user
 
+
+
+def _parse_bool_choice(value: str | bool | None) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "on", "yes", "oui", "si", "sì"}:
+        return True
+    if normalized in {"0", "false", "no", "non"}:
+        return False
+    return None
+
+
+def _equipment_mode_from_flags(sonic: bool | None, inclino: bool | None) -> str:
+    if sonic and inclino:
+        return "sonic_inclinometre"
+    if sonic:
+        return "sonic"
+    if inclino:
+        return "inclinometre"
+    return "aucun"
+
+
+def _equipment_flags_from_mode(mode: str | None) -> tuple[bool, bool]:
+    normalized = (mode or "aucun").strip().lower()
+    return (normalized in {"sonic", "sonic_inclinometre"}, normalized in {"inclinometre", "sonic_inclinometre"})
+
+
+def _get_site_special_equipment_config(
+    db: Session,
+    *,
+    site_id: int,
+    tipologia_scavo: str | None,
+    numero_elemento: int | None,
+) -> SiteSpecialEquipmentConfig | None:
+    normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
+    if not normalized_tipologia or numero_elemento is None:
+        return None
+    return (
+        db.query(SiteSpecialEquipmentConfig)
+        .filter(SiteSpecialEquipmentConfig.site_id == site_id)
+        .filter(SiteSpecialEquipmentConfig.tipologia_scavo == normalized_tipologia)
+        .filter(SiteSpecialEquipmentConfig.numero_elemento == numero_elemento)
+        .first()
+    )
+
+
+def _build_site_special_equipment_rows(site: Site) -> list[dict[str, object]]:
+    configs = {
+        (config.tipologia_scavo, config.numero_elemento): config
+        for config in (site.special_equipment_configs or [])
+    }
+    total_paratie = int(
+        site.numero_totale_paratie
+        if site.numero_totale_paratie is not None
+        else (site.totale_paratie_da_scavare if site.totale_paratie_da_scavare is not None else (site.paratie_total_panels or 0))
+    )
+    total_pali = int(site.numero_totale_pali or 0)
+    rows: list[dict[str, object]] = []
+    for tipologia, total in (("paratia", total_paratie), ("palo", total_pali)):
+        for numero in range(1, max(total, 0) + 1):
+            config = configs.get((tipologia, numero))
+            rows.append(
+                {
+                    "tipologia_scavo": tipologia,
+                    "numero_elemento": numero,
+                    "mode": _equipment_mode_from_flags(
+                        bool(config.sonic_previsto) if config else False,
+                        bool(config.inclinometre_previsto) if config else False,
+                    ),
+                }
+            )
+    return rows
+
+
+def _serialize_site_special_equipment_configs(configs: list[SiteSpecialEquipmentConfig]) -> list[dict[str, object]]:
+    return [
+        {
+            "site_id": config.site_id,
+            "tipologia_scavo": config.tipologia_scavo,
+            "numero_elemento": config.numero_elemento,
+            "sonic_previsto": bool(config.sonic_previsto),
+            "inclinometre_previsto": bool(config.inclinometre_previsto),
+        }
+        for config in configs
+    ]
+
+
+def _sync_site_special_equipment_from_form(
+    db: Session,
+    site: Site,
+    *,
+    equipment_tipologia: list[str] | None,
+    equipment_numero: list[str] | None,
+    equipment_mode: list[str] | None,
+) -> None:
+    existing = {
+        (config.tipologia_scavo, config.numero_elemento): config
+        for config in (site.special_equipment_configs or [])
+    }
+    row_count = max(len(equipment_tipologia or []), len(equipment_numero or []), len(equipment_mode or []), 0)
+
+    def value(values: list[str] | None, index: int) -> str:
+        return (values[index] if values and index < len(values) else "") or ""
+
+    for index in range(row_count):
+        tipologia = _normalize_fiche_tipologia(value(equipment_tipologia, index))
+        if not tipologia:
+            continue
+        try:
+            numero = int(value(equipment_numero, index))
+        except (TypeError, ValueError):
+            continue
+        if numero <= 0:
+            continue
+        sonic_previsto, inclinometre_previsto = _equipment_flags_from_mode(value(equipment_mode, index))
+        key = (tipologia, numero)
+        config = existing.get(key)
+        if not (sonic_previsto or inclinometre_previsto):
+            if config:
+                db.delete(config)
+            continue
+        if config is None:
+            config = SiteSpecialEquipmentConfig(site_id=site.id, tipologia_scavo=tipologia, numero_elemento=numero)
+            db.add(config)
+        config.sonic_previsto = sonic_previsto
+        config.inclinometre_previsto = inclinometre_previsto
+
+    db.flush()
+    current_configs = {
+        (config.tipologia_scavo, config.numero_elemento): config
+        for config in db.query(SiteSpecialEquipmentConfig)
+        .filter(SiteSpecialEquipmentConfig.site_id == site.id)
+        .all()
+    }
+    for fiche in site.fiches or []:
+        config = current_configs.get((fiche.tipologia_scavo, fiche.numero_pannello))
+        if config:
+            fiche.sonic_previsto = bool(config.sonic_previsto)
+            fiche.inclinometre_previsto = bool(config.inclinometre_previsto)
+            if not fiche.sonic_previsto:
+                fiche.sonic_realizzato = None
+            if not fiche.inclinometre_previsto:
+                fiche.inclinometre_realizzato = None
+        else:
+            fiche.sonic_previsto = False
+            fiche.inclinometre_previsto = False
+            fiche.sonic_realizzato = None
+            fiche.inclinometre_realizzato = None
 
 def _find_site_coupe_for_fiche(
     db: Session,
@@ -1418,6 +1598,8 @@ def _create_validated_fiche(
     coupe_id: str | int | None = None,
     scavo_da_tn: bool | str | None = True,
     quota_testa_getto: str | float | None = None,
+    sonic_realizzato: str | bool | None = None,
+    inclinometre_realizzato: str | bool | None = None,
     strato_da: list[str | float | None] | None = None,
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
@@ -1535,6 +1717,25 @@ def _create_validated_fiche(
         db, cantiere_id, normalized_tipologia, parsed_numero_pannello
     )
 
+    equipment_config = _get_site_special_equipment_config(
+        db,
+        site_id=site.id,
+        tipologia_scavo=normalized_tipologia,
+        numero_elemento=parsed_numero_pannello,
+    )
+    sonic_previsto = bool(equipment_config.sonic_previsto) if equipment_config else False
+    inclinometre_previsto = bool(equipment_config.inclinometre_previsto) if equipment_config else False
+    sonic_realizzato_value = _parse_bool_choice(sonic_realizzato)
+    inclinometre_realizzato_value = _parse_bool_choice(inclinometre_realizzato)
+    if sonic_previsto and sonic_realizzato_value is None:
+        raise HTTPException(status_code=400, detail="Sonic réalisé ? è obbligatorio.")
+    if inclinometre_previsto and inclinometre_realizzato_value is None:
+        raise HTTPException(status_code=400, detail="Inclinomètre réalisé ? è obbligatorio.")
+    if not sonic_previsto:
+        sonic_realizzato_value = None
+    if not inclinometre_previsto:
+        inclinometre_realizzato_value = None
+
     if parsed_machine_id is not None:
         machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
         if not machine:
@@ -1573,6 +1774,10 @@ def _create_validated_fiche(
         quota_partenza=quota_partenza_value,
         quota_testa_getto=quota_testa_getto_value,
         quota_ngf_fondo=quota_ngf_fondo_value,
+        sonic_previsto=sonic_previsto,
+        sonic_realizzato=sonic_realizzato_value,
+        inclinometre_previsto=inclinometre_previsto,
+        inclinometre_realizzato=inclinometre_realizzato_value,
         created_by_id=current_user.id,
     )
     if current_user.role in {RoleEnum.admin, RoleEnum.manager}:
@@ -1641,6 +1846,8 @@ def _update_validated_fiche(
     coupe_id: str | int | None = None,
     scavo_da_tn: bool | str | None = True,
     quota_testa_getto: str | float | None = None,
+    sonic_realizzato: str | bool | None = None,
+    inclinometre_realizzato: str | bool | None = None,
     strato_da: list[str | float | None] | None = None,
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
@@ -1751,6 +1958,25 @@ def _update_validated_fiche(
         strato_materiale=normalized_strato_materiale,
     )
 
+    equipment_config = _get_site_special_equipment_config(
+        db,
+        site_id=site.id,
+        tipologia_scavo=normalized_tipologia,
+        numero_elemento=parsed_numero_pannello,
+    )
+    sonic_previsto = bool(equipment_config.sonic_previsto) if equipment_config else False
+    inclinometre_previsto = bool(equipment_config.inclinometre_previsto) if equipment_config else False
+    sonic_realizzato_value = _parse_bool_choice(sonic_realizzato)
+    inclinometre_realizzato_value = _parse_bool_choice(inclinometre_realizzato)
+    if sonic_previsto and sonic_realizzato_value is None:
+        raise HTTPException(status_code=400, detail="Sonic réalisé ? è obbligatorio.")
+    if inclinometre_previsto and inclinometre_realizzato_value is None:
+        raise HTTPException(status_code=400, detail="Inclinomètre réalisé ? è obbligatorio.")
+    if not sonic_previsto:
+        sonic_realizzato_value = None
+    if not inclinometre_previsto:
+        inclinometre_realizzato_value = None
+
     if parsed_machine_id is not None:
         machine = db.query(Machine).filter(Machine.id == parsed_machine_id).first()
         if not machine:
@@ -1791,6 +2017,10 @@ def _update_validated_fiche(
     fiche.scavo_da_tn = scavo_da_tn_value
     fiche.quota_partenza = quota_partenza_value
     fiche.quota_testa_getto = quota_testa_getto_value
+    fiche.sonic_previsto = sonic_previsto
+    fiche.sonic_realizzato = sonic_realizzato_value
+    fiche.inclinometre_previsto = inclinometre_previsto
+    fiche.inclinometre_realizzato = inclinometre_realizzato_value
     if current_user.role in {RoleEnum.admin, RoleEnum.manager}:
         _apply_courbe_beton_fields(
             fiche,
@@ -1876,6 +2106,10 @@ def _build_fiche_form_data_from_model(fiche: Fiche) -> dict:
         courbe_beton_volume_total=fiche.courbe_beton_volume_total,
         courbe_beton_hauteur_initiale=fiche.courbe_beton_hauteur_initiale,
         courbe_beton_hauteur_finale=fiche.courbe_beton_hauteur_finale,
+        sonic_previsto=fiche.sonic_previsto,
+        sonic_realizzato=fiche.sonic_realizzato,
+        inclinometre_previsto=fiche.inclinometre_previsto,
+        inclinometre_realizzato=fiche.inclinometre_realizzato,
         strato_da=[layer.da_profondita for layer in stratigrafie],
         strato_a=[layer.a_profondita for layer in stratigrafie],
         strato_materiale=[layer.materiale for layer in stratigrafie],
@@ -2574,6 +2808,8 @@ async def manager_fiche_create(
     coupe_id: str | None = Form(None),
     scavo_da_tn: str | None = Form("1"),
     quota_testa_getto: str | None = Form(None),
+    sonic_realizzato: str | None = Form(None),
+    inclinometre_realizzato: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
     metri_cubi_gettati: str | None = Form(None),
@@ -2635,6 +2871,8 @@ async def manager_fiche_create(
                 quota_ngf_testa=quota_ngf_testa,
                 quota_ngf_fondo=quota_ngf_fondo,
                 quota_ngf_note=quota_ngf_note,
+                sonic_realizzato=sonic_realizzato,
+                inclinometre_realizzato=inclinometre_realizzato,
                 strato_da=strato_da,
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
@@ -2659,6 +2897,8 @@ async def manager_fiche_create(
             coupe_id=coupe_id,
             scavo_da_tn=scavo_da_tn,
             quota_testa_getto=quota_testa_getto,
+            sonic_realizzato=sonic_realizzato,
+            inclinometre_realizzato=inclinometre_realizzato,
             data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
@@ -4423,7 +4663,7 @@ def manager_site_progress_puntoni(
 
     db = SessionLocal()
     try:
-        site = db.query(Site).options(joinedload(Site.strut_levels), joinedload(Site.coupes).joinedload(SiteCoupe.assignments)).filter(Site.id == site_id).first()
+        site = db.query(Site).options(joinedload(Site.strut_levels), joinedload(Site.coupes).joinedload(SiteCoupe.assignments), joinedload(Site.special_equipment_configs)).filter(Site.id == site_id).first()
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
@@ -4904,7 +5144,7 @@ def manager_site_project_config_get(
     try:
         site = (
             db.query(Site)
-            .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments))
+            .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments), joinedload(Site.special_equipment_configs))
             .filter(Site.id == site_id)
             .first()
         )
@@ -4920,6 +5160,7 @@ def manager_site_project_config_get(
                 is_project_configured=_site_project_configuration_complete(site),
                 format_coupe_assignments=_format_coupe_assignments,
                 is_coupe_configured=_site_coupe_configuration_complete,
+                equipment_rows=_build_site_special_equipment_rows(site),
             ),
         )
     finally:
@@ -4955,6 +5196,9 @@ def manager_site_project_config_post(
     coupe_paratie: List[str] = Form(default_factory=list),
     coupe_pali: List[str] = Form(default_factory=list),
     delete_coupe_id: List[str] = Form(default_factory=list),
+    equipment_tipologia: List[str] = Form(default_factory=list),
+    equipment_numero: List[str] = Form(default_factory=list),
+    equipment_mode: List[str] = Form(default_factory=list),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "sites.update"):
@@ -4964,7 +5208,7 @@ def manager_site_project_config_post(
     try:
         site = (
             db.query(Site)
-            .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments), joinedload(Site.fiches))
+            .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments), joinedload(Site.special_equipment_configs), joinedload(Site.fiches))
             .filter(Site.id == site_id)
             .first()
         )
@@ -4996,6 +5240,13 @@ def manager_site_project_config_post(
                 coupe_pali=coupe_pali,
                 delete_coupe_id=delete_coupe_id,
             )
+            _sync_site_special_equipment_from_form(
+                db,
+                site,
+                equipment_tipologia=equipment_tipologia,
+                equipment_numero=equipment_numero,
+                equipment_mode=equipment_mode,
+            )
             _sync_site_fiche_progress(db, site)
             log_audit_event(
                 db,
@@ -5010,7 +5261,7 @@ def manager_site_project_config_post(
             db.rollback()
             site = (
                 db.query(Site)
-                .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments))
+                .options(joinedload(Site.coupes).joinedload(SiteCoupe.assignments), joinedload(Site.special_equipment_configs))
                 .filter(Site.id == site_id)
                 .first()
             )
@@ -5024,6 +5275,7 @@ def manager_site_project_config_post(
                     is_project_configured=_site_project_configuration_complete(site) if site else False,
                     format_coupe_assignments=_format_coupe_assignments,
                     is_coupe_configured=_site_coupe_configuration_complete,
+                    equipment_rows=_build_site_special_equipment_rows(site) if site else [],
                     error_message=exc.detail,
                 ),
                 status_code=exc.status_code or 400,
@@ -5877,7 +6129,7 @@ def manager_cantiere_modifica_get(
     try:
         site = (
             db.query(Site)
-            .options(joinedload(Site.strut_levels), joinedload(Site.coupes).joinedload(SiteCoupe.assignments))
+            .options(joinedload(Site.strut_levels), joinedload(Site.coupes).joinedload(SiteCoupe.assignments), joinedload(Site.special_equipment_configs))
             .filter(Site.id == site_id)
             .first()
         )
@@ -6561,6 +6813,8 @@ async def capo_fiche_nuova_post(
     coupe_id: str | None = Form(None),
     scavo_da_tn: str | None = Form("1"),
     quota_testa_getto: str | None = Form(None),
+    sonic_realizzato: str | None = Form(None),
+    inclinometre_realizzato: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
     metri_cubi_gettati: str | None = Form(None),
@@ -6607,6 +6861,8 @@ async def capo_fiche_nuova_post(
                 diametro_palo_cm=diametro_palo_cm,
                 larghezza_pannello=larghezza_pannello,
                 altezza_pannello=altezza_pannello,
+                sonic_realizzato=sonic_realizzato,
+                inclinometre_realizzato=inclinometre_realizzato,
                 strato_da=strato_da,
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
@@ -6623,6 +6879,8 @@ async def capo_fiche_nuova_post(
             coupe_id=coupe_id,
             scavo_da_tn=scavo_da_tn,
             quota_testa_getto=quota_testa_getto,
+            sonic_realizzato=sonic_realizzato,
+            inclinometre_realizzato=inclinometre_realizzato,
             data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
@@ -6996,6 +7254,8 @@ async def manager_fiche_update(
     coupe_id: str | None = Form(None),
     scavo_da_tn: str | None = Form("1"),
     quota_testa_getto: str | None = Form(None),
+    sonic_realizzato: str | None = Form(None),
+    inclinometre_realizzato: str | None = Form(None),
     data_scavo: date = Form(...),
     data_getto: date | None = Form(None),
     metri_cubi_gettati: str | None = Form(None),
@@ -7063,6 +7323,8 @@ async def manager_fiche_update(
                 quota_ngf_testa=quota_ngf_testa,
                 quota_ngf_fondo=quota_ngf_fondo,
                 quota_ngf_note=quota_ngf_note,
+                sonic_realizzato=sonic_realizzato,
+                inclinometre_realizzato=inclinometre_realizzato,
                 strato_da=strato_da,
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
@@ -7087,6 +7349,8 @@ async def manager_fiche_update(
             coupe_id=coupe_id,
             scavo_da_tn=scavo_da_tn,
             quota_testa_getto=quota_testa_getto,
+            sonic_realizzato=sonic_realizzato,
+            inclinometre_realizzato=inclinometre_realizzato,
             data_scavo=data_scavo,
             data_getto=data_getto,
             metri_cubi_gettati=metri_cubi_gettati,
@@ -7166,6 +7430,8 @@ def manager_fiche_update_pdf_data(
     type_beton: str | None = Form(None),
     type_coulage: str | None = Form("Gravitaire"),
     terreno_teorico: str | None = Form(None),
+    sonic_realizzato: str | None = Form(None),
+    inclinometre_realizzato: str | None = Form(None),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -7186,6 +7452,20 @@ def manager_fiche_update_pdf_data(
         fiche.materiale = fiche.type_beton or fiche.materiale
         fiche.type_coulage = (type_coulage or "").strip() or "Gravitaire"
         fiche.terreno_teorico = (terreno_teorico or "").strip() or None
+        if fiche.sonic_previsto:
+            sonic_value = _parse_bool_choice(sonic_realizzato)
+            if sonic_value is None:
+                raise HTTPException(status_code=400, detail="Sonic réalisé ? è obbligatorio.")
+            fiche.sonic_realizzato = sonic_value
+        else:
+            fiche.sonic_realizzato = None
+        if fiche.inclinometre_previsto:
+            inclino_value = _parse_bool_choice(inclinometre_realizzato)
+            if inclino_value is None:
+                raise HTTPException(status_code=400, detail="Inclinomètre réalisé ? è obbligatorio.")
+            fiche.inclinometre_realizzato = inclino_value
+        else:
+            fiche.inclinometre_realizzato = None
         _validate_quota_testa_getto_not_above_tn(fiche.quota_testa_getto, quota_tn=fiche.quota_tn)
         db.commit()
     finally:

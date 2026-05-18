@@ -42,6 +42,7 @@
                 </div>
             {% endif %}
             <div class="alert alert-danger fiche-client-error" data-fiche-stratigrafia-error role="alert" hidden></div>
+            <script type="application/json" data-equipment-configs>{{ (equipment_configs or [])|tojson }}</script>
 
             {% set selected_site = form_data.get('cantiere_id', '') %}
             {% set selected_machine = form_data.get('macchinario_id', '') %}
@@ -273,6 +274,29 @@
                         </option>
                     </select>
                 </div>
+
+                <section class="form-section-wrapper special-equipment-confirmation" data-special-equipment-section hidden>
+                    <div class="form-section-header">
+                        <h3 class="form-section-title">Contrôles spéciaux / Équipements</h3>
+                        <p class="text-muted">La configuration prévue est chargée automatiquement depuis le chantier. Le chef d'équipe confirme seulement la réalisation.</p>
+                    </div>
+                    <div class="form-grid form-grid--two">
+                        <div class="form-group" data-sonic-realise-group hidden>
+                            <label class="form-label">Sonic réalisé ?</label>
+                            <div class="radio-pill-group">
+                                <label class="radio-pill"><input type="radio" name="sonic_realizzato" value="1" {% if form_data.get('sonic_realizzato') == '1' %}checked{% endif %}> Oui</label>
+                                <label class="radio-pill"><input type="radio" name="sonic_realizzato" value="0" {% if form_data.get('sonic_realizzato') == '0' %}checked{% endif %}> Non</label>
+                            </div>
+                        </div>
+                        <div class="form-group" data-inclinometre-realise-group hidden>
+                            <label class="form-label">Inclinomètre réalisé ?</label>
+                            <div class="radio-pill-group">
+                                <label class="radio-pill"><input type="radio" name="inclinometre_realizzato" value="1" {% if form_data.get('inclinometre_realizzato') == '1' %}checked{% endif %}> Oui</label>
+                                <label class="radio-pill"><input type="radio" name="inclinometre_realizzato" value="0" {% if form_data.get('inclinometre_realizzato') == '0' %}checked{% endif %}> Non</label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
                 <h2 class="page-title" style="font-size: 1.1rem; margin-top: 1.5rem;">
                     {% if lang == 'fr' %}
@@ -717,6 +741,10 @@
     </div>
 </div>
 
+<style>
+.radio-pill-group{display:flex;gap:.75rem;flex-wrap:wrap}.radio-pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:.55rem .85rem;font-weight:800;background:rgba(15,23,42,.06)}
+.special-equipment-confirmation{border:1px solid rgba(59,130,246,.25);border-radius:16px;padding:1rem;background:rgba(59,130,246,.07);}
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -742,6 +770,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const soilPreviewWrap = form.querySelector("[data-coupe-soil-preview]");
     const soilPreview = form.querySelector("[data-theoretical-soil-preview]");
     const soilLegend = form.querySelector("[data-theoretical-soil-legend]");
+    const equipmentScript = form.querySelector("[data-equipment-configs]");
+    const specialEquipmentSection = form.querySelector("[data-special-equipment-section]");
+    const sonicGroup = form.querySelector("[data-sonic-realise-group]");
+    const inclinometreGroup = form.querySelector("[data-inclinometre-realise-group]");
+    const equipmentConfigs = (() => { try { return JSON.parse(equipmentScript?.textContent || "[]"); } catch { return []; } })();
     let fondoManuallyEdited = Boolean(quotaFondoInput?.value);
     function selectedElementKey() {
         const tipo = typeSelect?.value || "";
@@ -766,6 +799,23 @@ document.addEventListener("DOMContentLoaded", function () {
             if (wrongSite && option.selected) coupeSelect.value = "";
         });
     }
+    function selectedEquipmentConfig() {
+        const siteId = Number(siteSelect?.value || 0);
+        const tipo = typeSelect?.value || "";
+        const numero = Number(String(numberInput?.value || "").trim());
+        if (!siteId || !tipo || !Number.isInteger(numero) || numero <= 0) return null;
+        return equipmentConfigs.find((config) => Number(config.site_id) === siteId && config.tipologia_scavo === tipo && Number(config.numero_elemento) === numero) || null;
+    }
+    function updateSpecialEquipmentFields() {
+        const config = selectedEquipmentConfig();
+        const sonicRequired = Boolean(config?.sonic_previsto);
+        const inclinoRequired = Boolean(config?.inclinometre_previsto);
+        if (specialEquipmentSection) specialEquipmentSection.hidden = !(sonicRequired || inclinoRequired);
+        if (sonicGroup) sonicGroup.hidden = !sonicRequired;
+        if (inclinometreGroup) inclinometreGroup.hidden = !inclinoRequired;
+        form.querySelectorAll('input[name="sonic_realizzato"]').forEach((input) => { input.required = sonicRequired; if (!sonicRequired) input.checked = false; });
+        form.querySelectorAll('input[name="inclinometre_realizzato"]').forEach((input) => { input.required = inclinoRequired; if (!inclinoRequired) input.checked = false; });
+    }
     function updateFicheSummary() {
         if (summarySite) {
             const selectedSiteOption = siteSelect?.selectedOptions?.[0];
@@ -789,6 +839,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     function validateCoupeAssociation() {
         updateFicheSummary();
+        updateSpecialEquipmentFields();
         const selectedCoupeOption = coupeSelect?.selectedOptions?.[0];
         if (!coupeSelect || !selectedCoupeOption?.value) {
             if (submitButton) submitButton.disabled = false;
@@ -912,6 +963,7 @@ document.addEventListener("DOMContentLoaded", function () {
     filterCoupesBySite();
     applyCoupeDefaults();
     validateCoupeAssociation();
+    updateSpecialEquipmentFields();
     syncQuotaFondo();
     const depthMismatchMessage = "La profondità totale scavata deve corrispondere all’ultimo strato di stratigrafia";
 
@@ -1025,6 +1077,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+<style>
+.radio-pill-group{display:flex;gap:.75rem;flex-wrap:wrap}.radio-pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:.55rem .85rem;font-weight:800;background:rgba(15,23,42,.06)}
+.special-equipment-confirmation{border:1px solid rgba(59,130,246,.25);border-radius:16px;padding:1rem;background:rgba(59,130,246,.07);}
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -1097,6 +1153,10 @@ document.addEventListener("DOMContentLoaded", function () {
     bindRemoveButtons();
 });
 </script>
+<style>
+.radio-pill-group{display:flex;gap:.75rem;flex-wrap:wrap}.radio-pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:.55rem .85rem;font-weight:800;background:rgba(15,23,42,.06)}
+.special-equipment-confirmation{border:1px solid rgba(59,130,246,.25);border-radius:16px;padding:1rem;background:rgba(59,130,246,.07);}
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -1211,6 +1271,10 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
+<style>
+.radio-pill-group{display:flex;gap:.75rem;flex-wrap:wrap}.radio-pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:.55rem .85rem;font-weight:800;background:rgba(15,23,42,.06)}
+.special-equipment-confirmation{border:1px solid rgba(59,130,246,.25);border-radius:16px;padding:1rem;background:rgba(59,130,246,.07);}
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {

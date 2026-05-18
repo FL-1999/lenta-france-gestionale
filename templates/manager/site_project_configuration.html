@@ -182,6 +182,39 @@
       {{ render_coupe_card(None, coupe_rows|length + 1, true) }}
     </div>
 
+  <section class="project-equipment-section">
+    <div class="project-section-heading">
+      <div>
+        <p class="page-eyebrow">Contrôles spéciaux / Équipements</p>
+        <h2>Contrôles spéciaux / Équipements</h2>
+      </div>
+    </div>
+    <div class="project-config-note">
+      Imposta qui, separatamente dalle coupe, se ogni paroi/pieu deve avere controlli Sonic, Inclinomètre, entrambi o nessuno.
+    </div>
+    {% if equipment_rows %}
+      <div class="project-equipment-grid">
+        <div class="project-equipment-row project-equipment-row--head"><span>Type</span><span>Numéro</span><span>Contrôle prévu</span></div>
+        {% for row in equipment_rows %}
+          <div class="project-equipment-row">
+            <input type="hidden" name="equipment_tipologia" value="{{ row.tipologia_scavo }}">
+            <input type="hidden" name="equipment_numero" value="{{ row.numero_elemento }}">
+            <strong>{{ 'Paroi' if row.tipologia_scavo == 'paratia' else 'Pieu' }}</strong>
+            <span>#{{ row.numero_elemento }}</span>
+            <select class="form-select" name="equipment_mode">
+              <option value="aucun" {% if row.mode == 'aucun' %}selected{% endif %}>Aucun</option>
+              <option value="sonic" {% if row.mode == 'sonic' %}selected{% endif %}>Sonic</option>
+              <option value="inclinometre" {% if row.mode == 'inclinometre' %}selected{% endif %}>Inclinomètre</option>
+              <option value="sonic_inclinometre" {% if row.mode == 'sonic_inclinometre' %}selected{% endif %}>Sonic + Inclinomètre</option>
+            </select>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-warning">Definisci prima il numero totale di paratie/pali nel cantiere per configurare i controlli speciali.</div>
+    {% endif %}
+  </section>
+
     <div class="form-actions project-sticky-actions">
       <button type="submit" class="btn btn-primary">Salva configurazione progetto</button>
       <button type="button" class="btn btn-secondary" data-add-coupe-card>+ Aggiungi coupe</button>
@@ -201,7 +234,10 @@
   .project-coupes-section{display:grid;gap:1rem;}
   .project-section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;border:1px solid rgba(148,163,184,.18);border-radius:18px;padding:1rem;background:rgba(15,23,42,.55);}
   .project-section-heading h2{margin:.15rem 0 0;color:#f8fafc;}
-  .project-coupe-list{display:grid;gap:1.25rem;}
+  .project-coupe-list,.project-equipment-section{display:grid;gap:1.25rem;}
+  .project-equipment-grid{display:grid;gap:.5rem;border:1px solid rgba(148,163,184,.24);border-radius:18px;padding:1rem;background:rgba(15,23,42,.55);}
+  .project-equipment-row{display:grid;grid-template-columns:1fr 90px minmax(220px,2fr);gap:.75rem;align-items:center;color:#e2e8f0;padding:.35rem 0;}
+  .project-equipment-row--head{color:#94a3b8;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(148,163,184,.18);padding-bottom:.65rem;}
   .project-coupe-card{border:1px solid rgba(148,163,184,.28);border-radius:22px;padding:1.15rem;background:linear-gradient(160deg,rgba(15,23,42,.96),rgba(30,41,59,.86));box-shadow:0 18px 50px rgba(2,6,23,.2);}
   .project-coupe-card--new{border-style:dashed;border-color:rgba(96,165,250,.55);}
   .project-coupe-card__header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid rgba(148,163,184,.18);}
@@ -223,7 +259,7 @@
   .soil-legend-item{display:inline-flex;align-items:center;gap:.35rem;}
   .soil-legend-swatch{width:1rem;height:1rem;border-radius:4px;border:1px solid rgba(255,255,255,.35);display:inline-block;}
   @media (max-width:1100px){.project-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.project-section-grid,.form-grid--four{grid-template-columns:1fr 1fr;}}
-  @media (max-width:720px){.project-summary-grid,.project-section-grid,.form-grid--two,.form-grid--four{grid-template-columns:1fr;}.project-coupe-card__header,.project-section-heading{flex-direction:column;align-items:stretch;}.project-coupe-card__actions{justify-content:flex-start;}.project-sticky-actions{position:static;}}
+  @media (max-width:720px){.project-summary-grid,.project-section-grid,.form-grid--two,.form-grid--four{grid-template-columns:1fr;}.project-coupe-card__header,.project-section-heading{flex-direction:column;align-items:stretch;}.project-coupe-card__actions{justify-content:flex-start;}.project-sticky-actions{position:static;}.project-equipment-row{grid-template-columns:1fr;}}
 </style>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
