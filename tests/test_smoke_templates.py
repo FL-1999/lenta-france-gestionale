@@ -17,6 +17,7 @@ from main import (
     _build_sites_map_data,
     _build_avanzamento_grid_items,
     _ensure_unique_numero_pannello,
+    _find_site_coupe_for_fiche,
     _format_coupe_assignments,
     _site_coupe_configuration_complete,
     _translate_fiche_technical_text,
@@ -383,6 +384,50 @@ def test_build_site_schemas_keep_pali_and_paratie_separate() -> None:
 
     assert [panel["fiche_id"] for panel in panel_schema] == [20, None]
     assert [palo_item["fiche_id"] for palo_item in pali_schema] == [None, 21]
+
+
+def test_selected_coupe_must_contain_fiche_number_assignment() -> None:
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+    SQLModel.metadata.create_all(bind=engine)
+
+    db = TestingSessionLocal()
+    try:
+        site = Site(id=120, name="Cantiere Coupe", status=SiteStatusEnum.aperto)
+        coupe = SiteCoupe(id=220, site_id=site.id, nome="Coupe 1")
+        db.add_all([site, coupe])
+        db.flush()
+        db.add(SiteCoupeAssignment(site_id=site.id, coupe_id=coupe.id, tipologia_scavo="paratia", numero_elemento=3))
+        db.flush()
+
+        assert _find_site_coupe_for_fiche(
+            db,
+            site_id=site.id,
+            coupe_id=str(coupe.id),
+            tipologia_scavo="paratia",
+            numero_elemento=3,
+        ).id == coupe.id
+
+        try:
+            _find_site_coupe_for_fiche(
+                db,
+                site_id=site.id,
+                coupe_id=str(coupe.id),
+                tipologia_scavo="paratia",
+                numero_elemento=12,
+            )
+        except Exception as exc:
+            assert getattr(exc, "status_code", None) == 400
+            assert getattr(exc, "detail", "") == "Ce numéro n’appartient pas à la coupe sélectionnée"
+        else:
+            raise AssertionError("Coupe mismatch non bloccato")
+    finally:
+        db.close()
 
 
 def test_unique_numero_pannello_is_scoped_by_tipologia() -> None:

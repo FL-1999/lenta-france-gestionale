@@ -55,6 +55,26 @@
             {% endif %}
 
             <form method="post" class="form-grid form-grid--single" data-fiche-form>
+                <section class="fiche-creation-summary" aria-label="Résumé fiche">
+                    <div class="fiche-summary-grid">
+                        <div class="fiche-summary-item">
+                            <span class="fiche-summary-label">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</span>
+                            <strong data-summary-site>—</strong>
+                        </div>
+                        <div class="fiche-summary-item">
+                            <span class="fiche-summary-label">{% if lang == 'fr' %}Numéro{% else %}Numero{% endif %}</span>
+                            <strong data-summary-number>—</strong>
+                        </div>
+                        <div class="fiche-summary-item">
+                            <span class="fiche-summary-label">Coupe</span>
+                            <strong data-summary-coupe>—</strong>
+                        </div>
+                    </div>
+                    <div class="fiche-coupe-validation fiche-coupe-validation--neutral" data-coupe-validation-status>
+                        {% if lang == 'fr' %}Sélectionnez numéro et coupe pour vérifier l’association.{% else %}Seleziona numero e coupe per verificare l’associazione.{% endif %}
+                    </div>
+                </section>
+
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="cantiere_id">
@@ -65,7 +85,7 @@
                                 {% if lang == 'fr' %}Sélectionnez un chantier{% else %}Seleziona un cantiere{% endif %}
                             </option>
                             {% for c in cantieri %}
-                                <option value="{{ c.id }}" {% if selected_site == c.id|string %}selected{% endif %}>
+                                <option value="{{ c.id }}" data-site-name="{{ c.name }}" {% if selected_site == c.id|string %}selected{% endif %}>
                                     {{ c.name }}{% if c.code %} ({{ c.code }}){% endif %}
                                 </option>
                             {% endfor %}
@@ -82,9 +102,7 @@
                                min="1"
                                required
                                class="form-control input-field"
-                               value="{{ form_data.get('numero_pannello', '') }}"
-                               oninvalid="this.setCustomValidity('Inserire numero paratia / palo')"
-                               oninput="this.setCustomValidity('')" />
+                               value="{{ form_data.get('numero_pannello', '') }}" />
                     </div>
 
 
@@ -111,7 +129,7 @@
                         <select id="coupe_id" name="coupe_id" class="form-select" data-selected-coupe="{{ selected_coupe }}">
                             <option value="">Nessuna coupe</option>
                             {% for coupe in coupes or [] %}
-                                <option value="{{ coupe.id }}" data-site-id="{{ coupe.site_id }}" data-quota-tn="{{ coupe.quota_tn if coupe.quota_tn is not none else '' }}" data-quota-testa="{{ coupe.quota_testa if coupe.quota_testa is not none else '' }}" data-quota-fondo="{{ coupe.quota_fondo_teorica if coupe.quota_fondo_teorica is not none else '' }}" data-profondita="{{ coupe.profondita_teorica if coupe.profondita_teorica is not none else '' }}" data-getto="{{ coupe.quota_testa_getto_prevista if coupe.quota_testa_getto_prevista is not none else '' }}" data-larghezza="{{ coupe.larghezza if coupe.larghezza is not none else '' }}" data-diametro-cm="{{ (coupe.diametro * 100)|round(1) if coupe.diametro is not none else '' }}" data-spessore="{{ coupe.spessore if coupe.spessore is not none else '' }}" data-type-beton="{{ coupe.type_beton if coupe.type_beton else '' }}" data-type-coulage="{{ coupe.type_coulage if coupe.type_coulage else 'Gravitaire' }}" data-terreno-teorico="{{ coupe.terreno_teorico if coupe.terreno_teorico else '' }}" {% if selected_coupe == coupe.id|string %}selected{% endif %}>
+                                <option value="{{ coupe.id }}" data-site-id="{{ coupe.site_id }}" data-label="{{ coupe.nome }}{% if coupe.quota_tn is not none %} – TN {{ coupe.quota_tn }}{% endif %}" data-assignments="{% for assignment in coupe.assignments %}{{ assignment.tipologia_scavo }}:{{ assignment.numero_elemento }}{% if not loop.last %},{% endif %}{% endfor %}" data-quota-tn="{{ coupe.quota_tn if coupe.quota_tn is not none else '' }}" data-quota-testa="{{ coupe.quota_testa if coupe.quota_testa is not none else '' }}" data-quota-fondo="{{ coupe.quota_fondo_teorica if coupe.quota_fondo_teorica is not none else '' }}" data-profondita="{{ coupe.profondita_teorica if coupe.profondita_teorica is not none else '' }}" data-getto="{{ coupe.quota_testa_getto_prevista if coupe.quota_testa_getto_prevista is not none else '' }}" data-larghezza="{{ coupe.larghezza if coupe.larghezza is not none else '' }}" data-diametro-cm="{{ (coupe.diametro * 100)|round(1) if coupe.diametro is not none else '' }}" data-spessore="{{ coupe.spessore if coupe.spessore is not none else '' }}" data-type-beton="{{ coupe.type_beton if coupe.type_beton else '' }}" data-type-coulage="{{ coupe.type_coulage if coupe.type_coulage else 'Gravitaire' }}" data-terreno-teorico="{{ coupe.terreno_teorico if coupe.terreno_teorico else '' }}" {% if selected_coupe == coupe.id|string %}selected{% endif %}>
                                     {{ coupe.nome }}{% if coupe.quota_tn is not none %} – TN {{ coupe.quota_tn }}{% endif %}
                                 </option>
                             {% endfor %}
@@ -610,7 +628,7 @@
                     <a href="{{ fiche_cancel_url }}" class="btn btn-secondary">
                         {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
                     </a>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" data-fiche-submit>
                         {% if is_edit %}
                             {% if lang == 'fr' %}Mettre à jour{% else %}Aggiorna{% endif %}
                         {% else %}
@@ -632,8 +650,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const depthInput = form.querySelector("[data-profondita-totale]");
     const errorBox = form.querySelector("[data-fiche-stratigrafia-error]");
     const siteSelect = document.getElementById("cantiere_id");
+    const numberInput = document.getElementById("numero_pannello");
     const coupeSelect = document.getElementById("coupe_id");
     const typeSelect = document.getElementById("tipologia_scavo");
+    const submitButton = form.querySelector("[data-fiche-submit]");
+    const summarySite = form.querySelector("[data-summary-site]");
+    const summaryNumber = form.querySelector("[data-summary-number]");
+    const summaryCoupe = form.querySelector("[data-summary-coupe]");
+    const coupeValidationStatus = form.querySelector("[data-coupe-validation-status]");
     const quotaTestaInput = document.getElementById("quota_ngf_testa");
     const quotaFondoInput = document.getElementById("quota_ngf_fondo");
     const diametroInput = document.getElementById("diametro_palo_cm");
@@ -643,14 +667,76 @@ document.addEventListener("DOMContentLoaded", function () {
     const soilPreview = form.querySelector("[data-theoretical-soil-preview]");
     const soilLegend = form.querySelector("[data-theoretical-soil-legend]");
     let fondoManuallyEdited = Boolean(quotaFondoInput?.value);
+    function selectedElementKey() {
+        const tipo = typeSelect?.value || "";
+        const numero = Number(String(numberInput?.value || "").trim());
+        if (!tipo || !Number.isInteger(numero) || numero <= 0) return "";
+        return `${tipo}:${numero}`;
+    }
+    function optionMatchesElement(option) {
+        const key = selectedElementKey();
+        if (!key) return true;
+        if (!option?.dataset.assignments) return false;
+        return option.dataset.assignments.split(",").map((item) => item.trim()).includes(key);
+    }
     function filterCoupesBySite() {
         if (!siteSelect || !coupeSelect) return;
         const siteId = siteSelect.value;
         Array.from(coupeSelect.options).forEach((option) => {
             if (!option.value) { option.hidden = false; return; }
-            option.hidden = option.dataset.siteId !== siteId;
-            if (option.hidden && option.selected) coupeSelect.value = "";
+            const wrongSite = option.dataset.siteId !== siteId;
+            const incompatibleElement = !optionMatchesElement(option);
+            option.hidden = wrongSite || (incompatibleElement && !option.selected);
+            if (wrongSite && option.selected) coupeSelect.value = "";
         });
+    }
+    function updateFicheSummary() {
+        if (summarySite) {
+            const selectedSiteOption = siteSelect?.selectedOptions?.[0];
+            summarySite.textContent = selectedSiteOption?.dataset.siteName || selectedSiteOption?.textContent?.trim() || "—";
+        }
+        if (summaryNumber) summaryNumber.textContent = numberInput?.value || "—";
+        if (summaryCoupe) {
+            const selectedCoupeOption = coupeSelect?.selectedOptions?.[0];
+            summaryCoupe.textContent = selectedCoupeOption?.dataset.label || selectedCoupeOption?.textContent?.trim() || "—";
+        }
+    }
+    function setCoupeValidationState(state, message) {
+        if (!coupeValidationStatus) return;
+        coupeValidationStatus.textContent = message;
+        coupeValidationStatus.classList.remove(
+            "fiche-coupe-validation--neutral",
+            "fiche-coupe-validation--valid",
+            "fiche-coupe-validation--invalid"
+        );
+        coupeValidationStatus.classList.add(`fiche-coupe-validation--${state}`);
+    }
+    function validateCoupeAssociation() {
+        updateFicheSummary();
+        const selectedCoupeOption = coupeSelect?.selectedOptions?.[0];
+        if (!coupeSelect || !selectedCoupeOption?.value) {
+            if (submitButton) submitButton.disabled = false;
+            numberInput?.setCustomValidity("");
+            coupeSelect?.setCustomValidity("");
+            setCoupeValidationState("neutral", "Sélectionnez une coupe pour vérifier l’association.");
+            return true;
+        }
+        const key = selectedElementKey();
+        if (!key) {
+            if (submitButton) submitButton.disabled = false;
+            numberInput?.setCustomValidity("");
+            coupeSelect.setCustomValidity("");
+            setCoupeValidationState("neutral", "Sélectionnez numéro et type d’excavation pour vérifier l’association.");
+            return true;
+        }
+        const isValid = optionMatchesElement(selectedCoupeOption);
+        if (submitButton) submitButton.disabled = !isValid;
+        const message = isValid ? "✔ Associato correttamente" : "❌ Numero non presente nella coupe";
+        setCoupeValidationState(isValid ? "valid" : "invalid", message);
+        const validityMessage = isValid ? "" : "Ce numéro n’appartient pas à la coupe sélectionnée";
+        numberInput?.setCustomValidity(validityMessage);
+        coupeSelect.setCustomValidity(validityMessage);
+        return isValid;
     }
     function fillIfEmpty(inputId, value) {
         const input = document.getElementById(inputId);
@@ -721,7 +807,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function applyCoupeDefaults() {
         if (!coupeSelect) return;
         const option = coupeSelect.selectedOptions && coupeSelect.selectedOptions[0];
-        if (!option || !option.value) { renderSoilPreview(""); return; }
+        if (!option || !option.value) { renderSoilPreview(""); validateCoupeAssociation(); return; }
         fillIfEmpty("quota_ngf_testa", option.dataset.quotaTesta);
         fillIfEmpty("profondita_totale", option.dataset.profondita);
         fillIfEmpty("quota_testa_getto", option.dataset.getto);
@@ -738,15 +824,18 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!quotaFondoInput?.value && option.dataset.quotaFondo) quotaFondoInput.value = option.dataset.quotaFondo;
         syncQuotaFondo(!fondoManuallyEdited);
         renderSoilPreview(option.dataset.terrenoTeorico || "");
+        validateCoupeAssociation();
     }
-    siteSelect?.addEventListener("change", filterCoupesBySite);
-    coupeSelect?.addEventListener("change", applyCoupeDefaults);
-    typeSelect?.addEventListener("change", applyCoupeDefaults);
+    siteSelect?.addEventListener("change", () => { filterCoupesBySite(); validateCoupeAssociation(); });
+    numberInput?.addEventListener("input", () => { filterCoupesBySite(); validateCoupeAssociation(); });
+    coupeSelect?.addEventListener("change", () => { applyCoupeDefaults(); filterCoupesBySite(); validateCoupeAssociation(); });
+    typeSelect?.addEventListener("change", () => { applyCoupeDefaults(); filterCoupesBySite(); validateCoupeAssociation(); });
     quotaFondoInput?.addEventListener("input", () => { fondoManuallyEdited = true; });
     quotaTestaInput?.addEventListener("input", () => syncQuotaFondo());
     depthInput?.addEventListener("input", () => syncQuotaFondo());
     filterCoupesBySite();
     applyCoupeDefaults();
+    validateCoupeAssociation();
     syncQuotaFondo();
     const depthMismatchMessage = "La profondità totale scavata deve corrispondere all’ultimo strato di stratigrafia";
 
@@ -836,6 +925,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     form.addEventListener("submit", function (event) {
+        if (!validateCoupeAssociation()) {
+            event.preventDefault();
+            numberInput?.reportValidity();
+            return;
+        }
         if (!validateStratigrafia()) {
             event.preventDefault();
             return;
