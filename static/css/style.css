@@ -5948,22 +5948,22 @@ label.form-label[for="profondita_totale"]{
 
 /* Fiche technique paroi/pieu — annotations modèle Excel */
 .technical-guide-wall {
-  background: linear-gradient(180deg, #f1f5f9, #cbd5e1 60%, #94a3b8);
-  border: 2px solid #475569;
-  box-shadow: 8px 6px 0 rgba(71, 85, 105, 0.25), inset 0 1px 0 rgba(255,255,255,0.7);
-  height: 18px;
-  left: calc(50% - 74px);
+  background: linear-gradient(180deg, #dfe7f0, #b8c6d8 62%, #8ea2bc);
+  border: 1.6px solid #334155;
+  box-shadow: 5px 4px 0 rgba(71, 85, 105, 0.2), inset 0 1px 0 rgba(255,255,255,0.75);
+  height: 14px;
+  left: calc(50% - 62px);
   position: absolute;
-  top: 93px;
-  transform: skewX(-18deg);
-  width: 148px;
+  top: 104px;
+  transform: skewX(-14deg);
+  width: 124px;
   z-index: 10;
 }
 
 .technical-guide-wall--back {
-  left: calc(50% - 58px);
-  top: 70px;
-  width: 116px;
+  left: calc(50% - 52px);
+  top: 86px;
+  width: 104px;
   z-index: 9;
 }
 
@@ -5978,10 +5978,32 @@ label.form-label[for="profondita_totale"]{
   left: 50%;
   padding: 2px 7px;
   position: absolute;
-  top: 43px;
+  top: 58px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 13;
+}
+
+.technical-data-block--courbe-detail {
+  margin: 1rem auto 0;
+  max-width: 980px;
+  text-align: center;
+  width: 100%;
+}
+
+.technical-data-block--courbe-detail h3 {
+  margin-bottom: .5rem;
+}
+
+.courbe-legend--pdf {
+  justify-content: center;
+}
+
+.special-equipment-card {
+  background: rgba(248, 250, 252, .9);
+  border: 1px solid rgba(148, 163, 184, .4);
+  border-radius: 12px;
+  padding: .85rem;
 }
 
 .technical-depth-arrow {

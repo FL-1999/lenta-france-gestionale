@@ -277,22 +277,22 @@
 
                 <section class="form-section-wrapper special-equipment-confirmation" data-special-equipment-section hidden>
                     <div class="form-section-header">
-                        <h3 class="form-section-title">Contrôles spéciaux / Équipements</h3>
+                        <h3 class="form-section-title">Controlli speciali / Attrezzature</h3>
                         <p class="text-muted">La configuration prévue est chargée automatiquement depuis le chantier. Le chef d'équipe confirme seulement la réalisation.</p>
                     </div>
                     <div class="form-grid form-grid--two">
-                        <div class="form-group" data-sonic-realise-group hidden>
-                            <label class="form-label">Sonic réalisé ?</label>
+                        <div class="form-group special-equipment-card" data-sonic-realise-group hidden>
+                            <label class="form-label">Prova sonica eseguita?</label>
                             <div class="radio-pill-group">
-                                <label class="radio-pill"><input type="radio" name="sonic_realizzato" value="1" {% if form_data.get('sonic_realizzato') == '1' %}checked{% endif %}> Oui</label>
-                                <label class="radio-pill"><input type="radio" name="sonic_realizzato" value="0" {% if form_data.get('sonic_realizzato') == '0' %}checked{% endif %}> Non</label>
+                                <label class="radio-pill"><input type="radio" name="sonic_realizzato" value="1" {% if form_data.get('sonic_realizzato') == '1' %}checked{% endif %}> Sì</label>
+                                <label class="radio-pill"><input type="radio" name="sonic_realizzato" value="0" {% if form_data.get('sonic_realizzato') == '0' %}checked{% endif %}> No</label>
                             </div>
                         </div>
-                        <div class="form-group" data-inclinometre-realise-group hidden>
-                            <label class="form-label">Inclinomètre réalisé ?</label>
+                        <div class="form-group special-equipment-card" data-inclinometre-realise-group hidden>
+                            <label class="form-label">Inclinometro eseguito?</label>
                             <div class="radio-pill-group">
-                                <label class="radio-pill"><input type="radio" name="inclinometre_realizzato" value="1" {% if form_data.get('inclinometre_realizzato') == '1' %}checked{% endif %}> Oui</label>
-                                <label class="radio-pill"><input type="radio" name="inclinometre_realizzato" value="0" {% if form_data.get('inclinometre_realizzato') == '0' %}checked{% endif %}> Non</label>
+                                <label class="radio-pill"><input type="radio" name="inclinometre_realizzato" value="1" {% if form_data.get('inclinometre_realizzato') == '1' %}checked{% endif %}> Sì</label>
+                                <label class="radio-pill"><input type="radio" name="inclinometre_realizzato" value="0" {% if form_data.get('inclinometre_realizzato') == '0' %}checked{% endif %}> No</label>
                             </div>
                         </div>
                     </div>
@@ -366,7 +366,7 @@
                                             {% if lang == 'fr' %}Sable{% else %}Sabbia{% endif %}
                                         </option>
                                         <option value="limo" {% if strato.materiale == 'limo' %}selected{% endif %}>
-                                            {% if lang == 'fr' %}Limon{% else %}Limon{% endif %}
+                                            {% if lang == 'fr' %}Limon{% else %}Limo{% endif %}
                                         </option>
                                         <option value="ghiaia" {% if strato.materiale == 'ghiaia' %}selected{% endif %}>
                                             {% if lang == 'fr' %}Gravier{% else %}Ghiaia{% endif %}

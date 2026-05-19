@@ -7233,7 +7233,7 @@ def manager_fiche_edit_form(
             "show_ngf_fields": True,
             "show_project_coupe_fields": True,
             "show_capocantiere_field": True,
-            "show_courbe_beton_fields": True,
+            "show_courbe_beton_fields": False,
         },
     )
 
@@ -7403,7 +7403,7 @@ async def manager_fiche_update(
                 "show_ngf_fields": True,
                 "show_project_coupe_fields": True,
                 "show_capocantiere_field": True,
-                "show_courbe_beton_fields": True,
+                "show_courbe_beton_fields": False,
             },
         )
 
@@ -7432,6 +7432,7 @@ def manager_fiche_update_pdf_data(
     terreno_teorico: str | None = Form(None),
     sonic_realizzato: str | None = Form(None),
     inclinometre_realizzato: str | None = Form(None),
+    courbe_beton_active: str | None = Form(None),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -7452,6 +7453,7 @@ def manager_fiche_update_pdf_data(
         fiche.materiale = fiche.type_beton or fiche.materiale
         fiche.type_coulage = (type_coulage or "").strip() or "Gravitaire"
         fiche.terreno_teorico = (terreno_teorico or "").strip() or None
+        fiche.courbe_beton_active = courbe_beton_active == "1"
         if fiche.sonic_previsto:
             sonic_value = _parse_bool_choice(sonic_realizzato)
             if sonic_value is None:
