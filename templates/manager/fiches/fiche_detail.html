@@ -66,6 +66,12 @@
             <div class="form-group"><label class="form-label">Profondeur excavée</label><input class="form-control" type="number" step="0.01" name="profondita_totale" value="{{ fiche.profondita_totale if fiche.profondita_totale is not none else '' }}"></div>
             <div class="form-group"><label class="form-label">Type béton</label><input class="form-control" name="type_beton" value="{{ fiche.type_beton or fiche.materiale or '' }}"></div>
             <div class="form-group"><label class="form-label">Type coulage</label><input class="form-control" name="type_coulage" value="{{ fiche.type_coulage or 'Gravitaire' }}"></div>
+            <div class="form-group" style="display:flex;align-items:flex-end;">
+                <label class="courbe-toggle" style="margin-bottom:0;">
+                    <input type="checkbox" name="courbe_beton_active" value="1" {% if fiche.courbe_beton_active %}checked{% endif %}>
+                    <span>Attiva courbe de bétonnage</span>
+                </label>
+            </div>
             <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '') }}</textarea></div>
             {% if fiche.sonic_previsto %}
               <div class="form-group"><label class="form-label">Sonic réalisé ?</label><select class="form-select" name="sonic_realizzato" required><option value="" {% if fiche.sonic_realizzato is none %}selected{% endif %}>—</option><option value="1" {% if fiche.sonic_realizzato is sameas true %}selected{% endif %}>Oui</option><option value="0" {% if fiche.sonic_realizzato is sameas false %}selected{% endif %}>Non</option></select></div>
@@ -326,7 +332,6 @@
                                     <div><dt>Épaisseur</dt><dd>{{ "%.2f m"|format(spessore_m) if spessore_m is not none else '—' }}</dd></div>
                                     <div><dt>Longueur forée</dt><dd>{{ "%.2f m"|format(fiche.profondita_totale) if fiche.profondita_totale is not none else '—' }}</dd></div>
                                     <div><dt>Base paroi mécanique</dt><dd>{{ "%.2f NGF"|format(schema_quota_base_meccanica) if schema_quota_base_meccanica is not none else '—' }}</dd></div>
-                                    <div><dt>Base paroi hydraulique</dt><dd>{{ "%.2f NGF"|format(schema_quota_base_idraulica) if schema_quota_base_idraulica is not none else '—' }}</dd></div>
                                     <div><dt>Volume théorique</dt><dd>{{ "%.2f m³"|format(volume_teorico) if volume_teorico is not none else '—' }}</dd></div>
                                     <div><dt>Volume réel</dt><dd>{{ "%.2f m³"|format(volume_gettato) if volume_gettato is not none else '—' }}</dd></div>
                                     <div><dt>Différence / surconsommation</dt><dd>{% if volume_diff is not none %}{{ "%+.2f m³"|format(volume_diff) }}{% if volume_diff_percent is not none %} ({{ "%+.1f %%"|format(volume_diff_percent) }}){% endif %}{% else %}—{% endif %}</dd></div>
@@ -383,12 +388,6 @@
                                 <h3>F. Modèle géologique</h3>
                                 <p>{{ technical_fr(fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '—')) }}</p>
                             </section>
-                            {% if has_courbe_beton %}
-                                <section class="technical-data-block technical-data-block--courbe">
-                                    <canvas class="courbe-beton-pdf-chart" data-courbe-beton-detail width="620" height="360" aria-label="COURBE DE BÉTONNAGE"></canvas>
-                                    <div class="courbe-legend courbe-legend--pdf"><span class="courbe-legend__item courbe-legend__item--realisee">Réalisée</span><span class="courbe-legend__item courbe-legend__item--theorique">Théorique</span><span class="courbe-legend__item courbe-legend__item--tube">Tube</span></div>
-                                </section>
-                            {% endif %}
                         </aside>
 
                         <section class="technical-drawing-column" aria-label="Section paroi/pieu avec cotes">
@@ -461,6 +460,13 @@
                         </section>
                     </div>
                 </article>
+                {% if has_courbe_beton %}
+                    <section class="technical-data-block technical-data-block--courbe technical-data-block--courbe-detail">
+                        <h3>COURBE DE BÉTONNAGE</h3>
+                        <canvas class="courbe-beton-pdf-chart" data-courbe-beton-detail width="980" height="360" aria-label="COURBE DE BÉTONNAGE"></canvas>
+                        <div class="courbe-legend courbe-legend--pdf"><span class="courbe-legend__item courbe-legend__item--realisee">Réalisée</span><span class="courbe-legend__item courbe-legend__item--theorique">Théorique</span><span class="courbe-legend__item courbe-legend__item--tube">Tube</span></div>
+                    </section>
+                {% endif %}
 
                 <div class="stratigrafia-technical-panel stratigrafia-technical-panel--preserved">
                     <div class="technical-panel-heading">
