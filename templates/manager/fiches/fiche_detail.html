@@ -72,6 +72,15 @@
                     <span>Attiva courbe de bétonnage</span>
                 </label>
             </div>
+            <div class="form-group" style="grid-column: 1 / -1;" data-courbe-beton-form>
+                <div class="courbe-beton-panel" data-courbe-beton-panel {% if not fiche.courbe_beton_active %}hidden{% endif %}>
+                    <div class="form-grid form-grid--three">
+                        <div class="form-group"><label class="form-label">Volume total théorique</label><input class="form-control" type="number" step="0.01" min="0" name="courbe_beton_volume_total" value="{{ fiche.courbe_beton_volume_total if fiche.courbe_beton_volume_total is not none else '' }}" data-courbe-theoretical-volume></div>
+                        <div class="form-group"><label class="form-label">Hauteur initiale</label><input class="form-control" type="number" step="0.01" name="courbe_beton_hauteur_initiale" value="{{ fiche.courbe_beton_hauteur_initiale if fiche.courbe_beton_hauteur_initiale is not none else '' }}" data-courbe-theoretical-start></div>
+                        <div class="form-group"><label class="form-label">Hauteur finale</label><input class="form-control" type="number" step="0.01" name="courbe_beton_hauteur_finale" value="0" readonly data-courbe-theoretical-end></div>
+                    </div>
+                </div>
+            </div>
             <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '') }}</textarea></div>
             {% if fiche.sonic_previsto %}
               <div class="form-group"><label class="form-label">Sonic réalisé ?</label><select class="form-select" name="sonic_realizzato" required><option value="" {% if fiche.sonic_realizzato is none %}selected{% endif %}>—</option><option value="1" {% if fiche.sonic_realizzato is sameas true %}selected{% endif %}>Oui</option><option value="0" {% if fiche.sonic_realizzato is sameas false %}selected{% endif %}>Non</option></select></div>
@@ -396,7 +405,7 @@
                                 <strong>{% if is_palo %}Ø {{ schema_width_label }}{% else %}L {{ schema_width_label }} · S {{ schema_thickness_label }}{% endif %}</strong>
                             </div>
                             <div class="technical-section-canvas">
-                                <div class="technical-section-title" aria-hidden="true">{% if is_palo %}PIEU{% elif is_paratia %}PAROI{% else %}SECTION{% endif %}</div>
+                                
                                 {% if is_paratia %}<div class="technical-guide-wall technical-guide-wall--front" aria-hidden="true"></div><div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div><div class="technical-guide-wall-label" aria-hidden="true">Murette guide</div>{% endif %}
                                 <div class="technical-depth-arrow" aria-hidden="true"><span>Longueur forée = {{ "%.2f"|format(schema_depth) }} m</span></div>
                                 <div class="technical-element {{ 'technical-element--pile' if is_palo else 'technical-element--panel' }}" aria-hidden="true"></div>
@@ -418,7 +427,7 @@
                                     {% set base_meccanica_top = 100 - (((schema_quota_base_meccanica - schema_quota_fondo) / schema_depth) * 100) %}
                                     <div class="technical-level technical-level--mechanical" style="--level-top: {{ base_meccanica_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_base_meccanica) }} NGF</span><span class="technical-level__name">Base paroi mécanique</span></div>
                                 {% endif %}
-                                <div class="technical-level technical-level--bottom" style="--level-top: 100%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_fondo) }} NGF</span><span class="technical-level__name">Base paroi hydraulique</span></div>
+                                <div class="technical-level technical-level--bottom" style="--level-top: 100%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_fondo) }} NGF</span></div>
                             </div>
                             <div class="technical-base-summary">
                                 <strong>BASE PAROI MÉCANIQUE = {{ "%.2f"|format(schema_quota_base_meccanica) if schema_quota_base_meccanica is not none else '—' }} NGF</strong>
@@ -720,5 +729,6 @@
     </div>
 </section>
 
+<script>document.addEventListener("DOMContentLoaded",function(){const cb=document.querySelector("input[name=courbe_beton_active]");const panel=document.querySelector("[data-courbe-beton-panel]");if(cb&&panel){cb.addEventListener("change",()=>{panel.hidden=!cb.checked;});}});</script>
 
 {% endblock %}

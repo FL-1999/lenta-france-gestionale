@@ -7433,6 +7433,13 @@ def manager_fiche_update_pdf_data(
     sonic_realizzato: str | None = Form(None),
     inclinometre_realizzato: str | None = Form(None),
     courbe_beton_active: str | None = Form(None),
+    courbe_realisee_volume: List[str] = Form(default_factory=list),
+    courbe_realisee_hauteur: List[str] = Form(default_factory=list),
+    courbe_tube_volume: List[str] = Form(default_factory=list),
+    courbe_tube_hauteur: List[str] = Form(default_factory=list),
+    courbe_beton_volume_total: str | None = Form(None),
+    courbe_beton_hauteur_initiale: str | None = Form(None),
+    courbe_beton_hauteur_finale: str | None = Form(None),
 ):
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
@@ -7453,7 +7460,17 @@ def manager_fiche_update_pdf_data(
         fiche.materiale = fiche.type_beton or fiche.materiale
         fiche.type_coulage = (type_coulage or "").strip() or "Gravitaire"
         fiche.terreno_teorico = (terreno_teorico or "").strip() or None
-        fiche.courbe_beton_active = courbe_beton_active == "1"
+        _apply_courbe_beton_fields(
+            fiche,
+            courbe_beton_active=courbe_beton_active,
+            courbe_realisee_volume=courbe_realisee_volume,
+            courbe_realisee_hauteur=courbe_realisee_hauteur,
+            courbe_tube_volume=courbe_tube_volume,
+            courbe_tube_hauteur=courbe_tube_hauteur,
+            courbe_beton_volume_total=courbe_beton_volume_total,
+            courbe_beton_hauteur_initiale=courbe_beton_hauteur_initiale,
+            courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
+        )
         if fiche.sonic_previsto:
             sonic_value = _parse_bool_choice(sonic_realizzato)
             if sonic_value is None:
