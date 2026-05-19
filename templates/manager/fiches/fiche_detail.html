@@ -425,7 +425,7 @@
                                 {% endif %}
                                 {% if schema_quota_base_meccanica is not none %}
                                     {% set base_meccanica_top = 100 - (((schema_quota_base_meccanica - schema_quota_fondo) / schema_depth) * 100) %}
-                                    <div class="technical-level technical-level--mechanical" style="--level-top: {{ base_meccanica_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_base_meccanica) }} NGF</span><span class="technical-level__name">Base paroi mécanique</span></div>
+                                    <div class="technical-level technical-level--mechanical" style="--level-top: {{ base_meccanica_top }}%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_base_meccanica) }} NGF</span></div>
                                 {% endif %}
                                 <div class="technical-level technical-level--bottom" style="--level-top: 100%;"><span class="technical-level__value">{{ "%.2f"|format(schema_quota_fondo) }} NGF</span></div>
                             </div>
@@ -472,6 +472,14 @@
                 {% if has_courbe_beton %}
                     <section class="technical-data-block technical-data-block--courbe technical-data-block--courbe-detail">
                         <h3>COURBE DE BÉTONNAGE</h3>
+                        <p class="courbe-detail-intro">Synthèse des valeurs théoriques et des relevés réalisés avant le tableau de saisie et le graphique final.</p>
+                        <div class="courbe-detail-metrics" aria-label="Données théoriques courbe de bétonnage">
+                            <div><dt>Volume total théorique</dt><dd>{{ "%.2f m³"|format(fiche.courbe_beton_volume_total) if fiche.courbe_beton_volume_total is not none else "—" }}</dd></div>
+                            <div><dt>Hauteur initiale</dt><dd>{{ "%.2f m"|format(fiche.courbe_beton_hauteur_initiale) if fiche.courbe_beton_hauteur_initiale is not none else "—" }}</dd></div>
+                            <div><dt>Hauteur finale</dt><dd>{{ "%.2f m"|format(fiche.courbe_beton_hauteur_finale) if fiche.courbe_beton_hauteur_finale is not none else "—" }}</dd></div>
+                            <div><dt>Réalisée</dt><dd>{{ fiche.courbe_beton_realisee|length if fiche.courbe_beton_realisee else 0 }} points</dd></div>
+                            <div><dt>Tube (optionnel)</dt><dd>{{ fiche.courbe_beton_tube|length if fiche.courbe_beton_tube else 0 }} points</dd></div>
+                        </div>
                         <canvas class="courbe-beton-pdf-chart" data-courbe-beton-detail width="980" height="360" aria-label="COURBE DE BÉTONNAGE"></canvas>
                         <div class="courbe-legend courbe-legend--pdf"><span class="courbe-legend__item courbe-legend__item--realisee">Réalisée</span><span class="courbe-legend__item courbe-legend__item--theorique">Théorique</span><span class="courbe-legend__item courbe-legend__item--tube">Tube</span></div>
                     </section>
