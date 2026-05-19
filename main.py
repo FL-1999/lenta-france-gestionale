@@ -2788,7 +2788,7 @@ def manager_fiche_new_form(
             "show_ngf_fields": True,
             "show_project_coupe_fields": True,
             "show_capocantiere_field": True,
-            "show_courbe_beton_fields": True,
+            "show_courbe_beton_fields": False,
         },
     )
 
@@ -2951,7 +2951,7 @@ async def manager_fiche_create(
                 "show_ngf_fields": True,
                 "show_project_coupe_fields": True,
                 "show_capocantiere_field": True,
-                "show_courbe_beton_fields": True,
+                "show_courbe_beton_fields": False,
             },
         )
 
