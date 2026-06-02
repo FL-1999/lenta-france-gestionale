@@ -6947,3 +6947,219 @@ label.form-label[for="profondita_totale"]{
     height: 249mm;
   }
 }
+
+/* Fiche Excel originale: dessin central prioritaire et proportions historiques */
+.technical-sheet-grid {
+  grid-template-columns: minmax(132px, 0.22fr) minmax(620px, 0.78fr);
+}
+
+.technical-drawing-column--historic {
+  min-height: 730px;
+}
+
+.technical-drawing-layout {
+  align-items: stretch;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 70%) minmax(110px, 1fr);
+  min-height: 724px;
+}
+
+.technical-drawing-column--historic .technical-section-canvas {
+  --technical-top-offset: 108px;
+  --technical-bottom-offset: 20px;
+  border: 0;
+  height: 724px;
+  overflow: hidden;
+  position: relative;
+}
+
+.technical-drawing-column--historic .technical-top-levels {
+  align-items: flex-start;
+  display: grid;
+  font-size: 13px;
+  gap: 4px;
+  justify-content: start;
+  left: 72px;
+  right: 8px;
+  top: 8px;
+}
+
+.technical-drawing-column--historic .technical-guide-wall {
+  border: 2px solid #111827;
+  height: 30px;
+  top: 52px;
+  width: 154px;
+  z-index: 24;
+}
+
+.technical-drawing-column--historic .technical-guide-wall--front {
+  left: calc(50% - 188px);
+  transform: skewX(-26deg);
+}
+
+.technical-drawing-column--historic .technical-guide-wall--back {
+  left: calc(50% + 34px);
+  transform: skewX(26deg);
+}
+
+.technical-drawing-column--historic .technical-guide-wall-label {
+  font-size: 13px;
+  left: 50%;
+  top: 34px;
+  transform: translateX(-50%);
+}
+
+.technical-drawing-column--historic .technical-element {
+  border: 2.5px solid #111827;
+  left: 50%;
+  top: var(--technical-top-offset);
+  width: 176px;
+}
+
+.technical-drawing-column--historic .technical-element--panel::before {
+  border-left: 2px solid #111827;
+  border-top: 2px solid #111827;
+  height: 100%;
+  left: -28px;
+  top: -9px;
+  transform: skewY(-8deg);
+  width: 44px;
+}
+
+.technical-drawing-column--historic .technical-element--panel::after {
+  border: 2px solid #111827;
+  bottom: -16px;
+  height: 16px;
+  left: -2px;
+  transform: skewX(-56deg);
+  width: 176px;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow {
+  border-left: 3px solid #c00000;
+  bottom: var(--technical-bottom-offset);
+  left: 34px;
+  top: var(--technical-top-offset);
+}
+
+.technical-drawing-column--historic .technical-depth-arrow::before {
+  border-bottom-color: #c00000;
+  border-bottom-width: 12px;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow::after {
+  border-top-color: #c00000;
+  border-top-width: 12px;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow span,
+.technical-drawing-column--historic .technical-dimension span {
+  background: #ffffff;
+  border: 0;
+  color: #c00000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  padding: 1px 4px;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow span {
+  left: 14px;
+}
+
+.technical-drawing-column--historic .technical-dimension--width {
+  border-top: 3px solid #c00000;
+  left: calc(50% - 88px);
+  right: calc(50% - 88px);
+  top: 88px;
+  z-index: 28;
+}
+
+.technical-drawing-column--historic .technical-dimension--width::before {
+  border-right-color: #c00000;
+  border-right-width: 8px;
+}
+
+.technical-drawing-column--historic .technical-dimension--width::after {
+  border-left-color: #c00000;
+  border-left-width: 8px;
+}
+
+.technical-drawing-column--historic .technical-dimension--thickness {
+  border-left: 0;
+  border-top: 3px solid #c00000;
+  left: calc(50% + 92px);
+  top: 126px;
+  transform: rotate(-24deg);
+  width: 106px;
+  z-index: 28;
+}
+
+.technical-drawing-column--historic .technical-dimension--thickness::before {
+  border-right-color: #c00000;
+}
+
+.technical-drawing-column--historic .technical-dimension--thickness::after {
+  border-left-color: #c00000;
+}
+
+.technical-drawing-column--historic .technical-dimension--thickness span {
+  left: 50%;
+  top: -30px;
+  transform: translateX(-50%);
+}
+
+.technical-drawing-column--historic .technical-level {
+  border-top: 1px solid #111827;
+  left: 70px;
+  right: 10px;
+  z-index: 10;
+}
+
+.technical-drawing-column--historic .technical-level--tn,
+.technical-drawing-column--historic .technical-level--bottom {
+  border-top-width: 1.5px;
+}
+
+.technical-drawing-column--historic .technical-level--pour,
+.technical-drawing-column--historic .technical-level--mechanical {
+  border-top: 1px dashed #111827;
+}
+
+.technical-drawing-column--historic .technical-level__value,
+.technical-drawing-column--historic .technical-level__name {
+  display: none;
+}
+
+.technical-drawing-column--historic .technical-ground-column {
+  border: 1px solid #111827;
+  min-height: 724px;
+  padding: 3px;
+}
+
+.technical-drawing-column--historic .technical-ground-header {
+  display: grid;
+  font-size: 0.58rem;
+  grid-template-columns: 1fr 1fr;
+  margin: 0 0 3px;
+  padding: 2px 3px;
+  text-align: center;
+}
+
+.technical-drawing-column--historic .technical-ground-bars {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.technical-drawing-column--historic .technical-ground-bar {
+  height: 704px;
+}
+
+@media (max-width: 991.98px) {
+  .technical-sheet-grid,
+  .technical-drawing-layout {
+    grid-template-columns: 1fr;
+  }
+}
