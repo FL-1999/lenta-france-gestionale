@@ -6643,3 +6643,307 @@ label.form-label[for="profondita_totale"]{
     background: #ffffff;
   }
 }
+
+/* Fiche historique Excel: digitalizzazione fedele, senza reinterpretazione grafica */
+.technical-sheet {
+  border: 1px solid #111827;
+  box-shadow: none;
+  padding: 10px;
+}
+
+.technical-sheet__titlebar--historic {
+  border: 0;
+  border-bottom: 1px solid #111827;
+  margin-bottom: 6px;
+  padding: 0 0 5px;
+}
+
+.technical-sheet__titlebar--historic h2 {
+  font-size: 0.98rem;
+  letter-spacing: 0.02em;
+}
+
+.technical-sheet-grid {
+  gap: 6px;
+  grid-template-columns: minmax(128px, 0.42fr) minmax(430px, 1.55fr) minmax(116px, 0.36fr);
+}
+
+.technical-data-column,
+.technical-drawing-column,
+.technical-ground-column {
+  border: 1px solid #111827;
+  min-height: 730px;
+}
+
+.technical-data-block {
+  padding: 4px 5px;
+}
+
+.technical-data-block h3,
+.technical-ground-header {
+  background: #ffffff;
+  border: 0;
+  border-bottom: 1px solid #111827;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0;
+  margin: -4px -5px 4px;
+  padding: 3px 5px;
+}
+
+.technical-data-block dl {
+  gap: 2px;
+}
+
+.technical-data-block dl > div {
+  border-bottom: 1px solid #d1d5db;
+  gap: 2px;
+  grid-template-columns: 0.82fr 1fr;
+  padding-bottom: 1px;
+}
+
+.technical-data-block dt,
+.technical-data-block dd,
+.technical-data-block p,
+.technical-soil-list {
+  font-size: 0.58rem;
+  line-height: 1.14;
+}
+
+.technical-drawing-column,
+.technical-ground-column {
+  padding: 5px;
+}
+
+.technical-section-canvas {
+  --technical-top-offset: 86px;
+  --technical-bottom-offset: 16px;
+  background: #ffffff;
+  background-image: none;
+  border: 0;
+  height: 724px;
+  padding-top: 0;
+}
+
+.technical-top-levels {
+  color: #111827;
+  display: flex;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  justify-content: space-between;
+  left: 46px;
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  z-index: 22;
+}
+
+.technical-guide-wall {
+  background: #ffffff;
+  border: 1.5px solid #111827;
+  box-shadow: none;
+  height: 18px;
+  left: calc(50% - 118px);
+  top: 48px;
+  transform: skewX(-24deg);
+  width: 106px;
+  z-index: 16;
+}
+
+.technical-guide-wall::before,
+.technical-guide-wall::after {
+  content: none;
+}
+
+.technical-guide-wall--front {
+  left: calc(50% - 124px);
+}
+
+.technical-guide-wall--back {
+  background: #ffffff;
+  height: 18px;
+  left: calc(50% + 18px);
+  top: 48px;
+  transform: skewX(24deg);
+  width: 106px;
+  z-index: 16;
+}
+
+.technical-guide-wall-label {
+  background: transparent;
+  border: 0;
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  top: 29px;
+}
+
+.technical-element {
+  background: #ffffff;
+  border: 2px solid #111827;
+  top: var(--technical-top-offset);
+  width: 108px;
+}
+
+.technical-element--panel::before {
+  background: #ffffff;
+  border-left: 1.5px solid #111827;
+  border-top: 1.5px solid #111827;
+  top: -8px;
+  transform: skewY(-12deg);
+  width: 34px;
+}
+
+.technical-element--panel::after {
+  background: #ffffff;
+  border: 1.5px solid #111827;
+  bottom: -12px;
+  height: 12px;
+  transform: skewX(-58deg);
+  width: 108px;
+}
+
+.technical-depth-arrow,
+.technical-dimension,
+.technical-dimension--thickness {
+  border-color: #c00000;
+  border-width: 2.5px;
+}
+
+.technical-depth-arrow {
+  left: 22px;
+}
+
+.technical-depth-arrow::before {
+  border-bottom-color: #c00000;
+  border-bottom-width: 10px;
+}
+
+.technical-depth-arrow::after {
+  border-top-color: #c00000;
+  border-top-width: 10px;
+}
+
+.technical-depth-arrow span,
+.technical-dimension span {
+  border: 0;
+  color: #c00000;
+  font-size: 17px;
+  font-weight: 900;
+  padding: 1px 3px;
+}
+
+.technical-dimension--width {
+  left: calc(50% - 54px);
+  right: calc(50% - 54px);
+  top: 34px;
+}
+
+.technical-dimension--thickness {
+  border-left: 0;
+  border-top: 2.5px solid #c00000;
+  left: calc(50% + 56px);
+  top: 69px;
+  transform: rotate(-24deg);
+  width: 74px;
+}
+
+.technical-level {
+  left: 48px;
+  right: 8px;
+}
+
+.technical-level__value,
+.technical-level__name {
+  border: 0;
+  font-size: 11px;
+  min-height: 0;
+  min-width: 0;
+  padding: 1px 3px;
+}
+
+.technical-level--tn .technical-level__name,
+.technical-level--pour .technical-level__name {
+  display: none;
+}
+
+.technical-base-summary {
+  border: 0;
+  font-size: 11px;
+  margin-top: 3px;
+  padding: 0;
+}
+
+.technical-base-summary strong {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+}
+
+.technical-ground-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+.technical-ground-bars {
+  gap: 4px;
+}
+
+.technical-ground-bar {
+  background: #ffffff;
+  border: 1px solid #111827;
+  height: 704px;
+}
+
+.technical-ground-layer,
+.technical-ground-layer.soil-layer--riporto,
+.technical-ground-layer.soil-layer--ghiaia,
+.technical-ground-layer.soil-layer--argilla,
+.technical-ground-layer.soil-layer--sabbia,
+.technical-ground-layer.soil-layer--roccia,
+.technical-ground-layer.soil-layer--limo,
+.technical-ground-layer.soil-layer--generico {
+  background: #ffffff;
+  background-image: none !important;
+  border-bottom: 1px solid #111827;
+  padding: 1px;
+}
+
+.technical-ground-layer span {
+  background: transparent;
+  border: 0;
+  font-size: 0.55rem;
+  font-weight: 700;
+}
+
+.technical-ground-footer {
+  display: none;
+}
+
+@media print {
+  .technical-sheet {
+    padding: 4mm;
+  }
+
+  .technical-sheet-grid {
+    gap: 2mm;
+    grid-template-columns: 34mm 120mm 28mm;
+  }
+
+  .technical-data-column,
+  .technical-drawing-column,
+  .technical-ground-column {
+    min-height: 265mm;
+  }
+
+  .technical-section-canvas {
+    height: 256mm;
+  }
+
+  .technical-ground-bar {
+    height: 249mm;
+  }
+}
