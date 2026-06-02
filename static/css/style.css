@@ -7163,3 +7163,310 @@ label.form-label[for="profondita_totale"]{
     grid-template-columns: 1fr;
   }
 }
+
+/* Blueprint Excel storico: rifacimento completo del disegno centrale fiche */
+.technical-drawing-column--historic {
+  background: #ffffff;
+  background-image:
+    linear-gradient(#dedede 1px, transparent 1px),
+    linear-gradient(90deg, #dedede 1px, transparent 1px);
+  background-size: 24px 24px;
+  border: 0;
+  min-height: 760px;
+  padding: 0;
+}
+
+.technical-drawing-column--historic .technical-drawing-layout {
+  background: transparent;
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(520px, 1fr) 196px;
+  min-height: 760px;
+}
+
+.technical-drawing-column--historic .technical-section-canvas {
+  --technical-top-offset: 124px;
+  --technical-bottom-offset: 14px;
+  background: transparent;
+  border: 0;
+  height: 760px;
+  overflow: hidden;
+  position: relative;
+}
+
+.technical-drawing-column--historic .technical-top-levels {
+  color: #000000;
+  display: grid;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 18px;
+  font-weight: 900;
+  gap: 24px;
+  justify-items: center;
+  left: 116px;
+  line-height: 1.1;
+  position: absolute;
+  right: 8px;
+  text-align: center;
+  top: 26px;
+  z-index: 40;
+}
+
+.technical-drawing-column--historic .technical-guide-wall {
+  border: 1.5px solid #111111;
+  box-shadow: none;
+  height: 31px;
+  position: absolute;
+  transform: skewX(-40deg);
+  z-index: 34;
+}
+
+.technical-drawing-column--historic .technical-guide-wall--back {
+  background: #eeeeee;
+  left: calc(50% - 96px);
+  top: 98px;
+  width: 270px;
+  z-index: 33;
+}
+
+.technical-drawing-column--historic .technical-guide-wall--front {
+  background: #d9d9d9;
+  left: calc(50% - 116px);
+  top: 112px;
+  width: 290px;
+  z-index: 35;
+}
+
+.technical-drawing-column--historic .technical-guide-wall::before,
+.technical-drawing-column--historic .technical-guide-wall::after {
+  content: none;
+}
+
+.technical-drawing-column--historic .technical-guide-wall-label {
+  color: #333333;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  left: calc(50% + 24px);
+  position: absolute;
+  top: 104px;
+  transform: translateX(-50%);
+  z-index: 38;
+}
+
+.technical-drawing-column--historic .technical-element {
+  background: rgba(255, 253, 250, 0.68);
+  border: 1.5px solid #f59e0b;
+  box-shadow: none;
+  height: calc(100% - var(--technical-top-offset) - var(--technical-bottom-offset));
+  left: calc(50% - 92px);
+  position: absolute;
+  top: var(--technical-top-offset);
+  width: 276px;
+  z-index: 20;
+}
+
+.technical-drawing-column--historic .technical-element--panel::before {
+  background: rgba(255, 255, 255, 0.72);
+  border-left: 1.5px solid #f59e0b;
+  border-top: 1.5px solid #111111;
+  content: "";
+  height: 100%;
+  left: 100%;
+  position: absolute;
+  top: -10px;
+  transform: skewY(-8deg);
+  width: 30px;
+}
+
+.technical-drawing-column--historic .technical-element--panel::after {
+  content: none;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow,
+.technical-drawing-column--historic .technical-dimension,
+.technical-drawing-column--historic .technical-dimension--thickness {
+  border-color: #ff0000;
+  border-width: 2.5px;
+  position: absolute;
+  z-index: 45;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow {
+  border-left: 3px solid #ff0000;
+  bottom: var(--technical-bottom-offset);
+  left: calc(50% - 116px);
+  top: var(--technical-top-offset);
+}
+
+.technical-drawing-column--historic .technical-depth-arrow::before {
+  border-bottom-color: #ff0000;
+  border-bottom-width: 10px;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow::after {
+  border-top-color: #ff0000;
+  border-top-width: 10px;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow span,
+.technical-drawing-column--historic .technical-dimension span {
+  background: #ffffff;
+  border: 0;
+  border-radius: 0;
+  color: #ff0000;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.05;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.technical-drawing-column--historic .technical-depth-arrow span {
+  left: -2px;
+  top: 62%;
+  transform: rotate(90deg) translate(-50%, -50%);
+  transform-origin: left center;
+}
+
+.technical-drawing-column--historic .technical-dimension--width {
+  border-top: 3px solid #ff0000;
+  left: calc(50% - 90px);
+  right: calc(50% - 184px);
+  top: 52%;
+}
+
+.technical-drawing-column--historic .technical-dimension--width::before {
+  border-right-color: #ff0000;
+  border-right-width: 10px;
+}
+
+.technical-drawing-column--historic .technical-dimension--width::after {
+  border-left-color: #ff0000;
+  border-left-width: 10px;
+}
+
+.technical-drawing-column--historic .technical-dimension--width span {
+  left: 50%;
+  top: -33px;
+  transform: translateX(-50%);
+}
+
+.technical-drawing-column--historic .technical-dimension--thickness {
+  border-left: 0;
+  border-top: 3px solid #ff0000;
+  height: 0;
+  left: calc(50% + 180px);
+  top: 38%;
+  transform: rotate(-42deg);
+  width: 96px;
+}
+
+.technical-drawing-column--historic .technical-dimension--thickness::before {
+  border-right-color: #ff0000;
+  border-right-width: 9px;
+}
+
+.technical-drawing-column--historic .technical-dimension--thickness::after {
+  border-left-color: #ff0000;
+  border-left-width: 9px;
+}
+
+.technical-drawing-column--historic .technical-dimension--thickness span {
+  left: -220px;
+  top: -8px;
+  transform: rotate(42deg);
+}
+
+.technical-drawing-column--historic .technical-level {
+  border-top: 1px solid rgba(80, 80, 80, 0.38);
+  left: calc(50% - 92px);
+  right: 0;
+  z-index: 12;
+}
+
+.technical-drawing-column--historic .technical-level--tn,
+.technical-drawing-column--historic .technical-level--bottom {
+  border-top-width: 1px;
+}
+
+.technical-drawing-column--historic .technical-level--pour,
+.technical-drawing-column--historic .technical-level--mechanical {
+  border-top: 1px solid rgba(102, 51, 153, 0.55);
+}
+
+.technical-drawing-column--historic .technical-ground-column {
+  background: transparent;
+  border: 0;
+  min-height: 760px;
+  padding: 100px 0 0;
+}
+
+.technical-drawing-column--historic .technical-ground-header {
+  background: #ffffff;
+  border: 1px solid #547047;
+  border-bottom: 0;
+  color: #000000;
+  display: grid;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 16px;
+  font-weight: 400;
+  grid-template-columns: 1fr 1fr;
+  height: 25px;
+  margin: 0;
+  padding: 2px 0;
+  text-align: center;
+}
+
+.technical-drawing-column--historic .technical-ground-bars {
+  display: grid;
+  gap: 0;
+  grid-template-columns: 1fr 1fr;
+}
+
+.technical-drawing-column--historic .technical-ground-bar {
+  background: #ded9e8;
+  border: 1px solid #547047;
+  height: 635px;
+}
+
+.technical-drawing-column--historic .technical-ground-bar + .technical-ground-bar {
+  border-left: 0;
+}
+
+.technical-drawing-column--historic .technical-ground-bar--theoretical {
+  background: #f5cfa9;
+}
+
+.technical-drawing-column--historic .technical-ground-layer,
+.technical-drawing-column--historic .technical-ground-layer.soil-layer--riporto,
+.technical-drawing-column--historic .technical-ground-layer.soil-layer--ghiaia,
+.technical-drawing-column--historic .technical-ground-layer.soil-layer--argilla,
+.technical-drawing-column--historic .technical-ground-layer.soil-layer--sabbia,
+.technical-drawing-column--historic .technical-ground-layer.soil-layer--roccia,
+.technical-drawing-column--historic .technical-ground-layer.soil-layer--limo,
+.technical-drawing-column--historic .technical-ground-layer.soil-layer--generico {
+  background-image: none !important;
+  border-bottom: 0;
+  color: #111111;
+  padding: 0;
+}
+
+.technical-drawing-column--historic .technical-ground-bar:not(.technical-ground-bar--theoretical) .technical-ground-layer {
+  background-color: #f5aa3d;
+}
+
+.technical-drawing-column--historic .technical-ground-bar--theoretical .technical-ground-layer {
+  background-color: #f5cfa9;
+}
+
+.technical-drawing-column--historic .technical-ground-layer span {
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .technical-drawing-column--historic .technical-drawing-layout {
+    grid-template-columns: minmax(520px, 1fr) 196px;
+    overflow-x: auto;
+  }
+}

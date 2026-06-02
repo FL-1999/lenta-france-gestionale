@@ -302,8 +302,8 @@
             {% set coupe_base_mecanique = fiche.coupe.base_paroi_mecanique|default(none) if fiche.coupe else none %}
             {% set schema_quota_base_meccanica = coupe_base_mecanique if coupe_base_mecanique is not none else (fiche.coupe.quota_fondo_teorica if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else schema_quota_fondo) %}
             {% set schema_quota_base_idraulica = schema_quota_fondo %}
-            {% set schema_width_label = ("%.2f m"|format(larghezza_m)) if larghezza_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
-            {% set schema_thickness_label = ("%.2f m"|format(spessore_m)) if spessore_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
+            {% set schema_width_label = (("%.2f"|format(larghezza_m)).replace(".", ",") ~ " m") if larghezza_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
+            {% set schema_thickness_label = (("%.2f"|format(spessore_m)).replace(".", ",") ~ " m") if spessore_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
             {% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
             <div class="technical-split-view">
                 <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d’exécution de paroi / pieu imprimable">
@@ -401,14 +401,14 @@
                             <div class="technical-drawing-layout">
                                 <div class="technical-section-canvas">
                                     <div class="technical-top-levels" aria-hidden="true">
-                                        <span>TN = {{ "%.2f"|format(schema_quota_tn) }} NGF</span>
-                                        <span>ARASE SUPERIEURE PANNEAU = {{ "%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto) if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—" }} NGF</span>
+                                        <span>TN = {{ ("%.2f"|format(schema_quota_tn)).replace(".", ",") }} NGF</span>
+                                        <span>ARASE SUPERIEURE PANNEAU = {{ (("%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto)).replace(".", ",") if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—") }} NGF</span>
                                     </div>
-                                    {% if is_paratia %}<div class="technical-guide-wall technical-guide-wall--front" aria-hidden="true"></div><div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div><div class="technical-guide-wall-label" aria-hidden="true">Murettes guides</div>{% endif %}
-                                    <div class="technical-depth-arrow" aria-hidden="true"><span>Longueur forée = {{ "%.2f"|format(schema_depth) }} m</span></div>
+                                    {% if is_paratia %}<div class="technical-guide-wall technical-guide-wall--front" aria-hidden="true"></div><div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div><div class="technical-guide-wall-label" aria-hidden="true">Murette Guide</div>{% endif %}
+                                    <div class="technical-depth-arrow" aria-hidden="true"><span>Longueur forée = {{ ("%.2f"|format(schema_depth)).replace(".", ",") }} m</span></div>
                                     <div class="technical-element {{ 'technical-element--pile' if is_palo else 'technical-element--panel' }}" aria-hidden="true"></div>
                                     <div class="technical-dimension technical-dimension--width"><span>Largeur = {{ schema_width_label }}</span></div>
-                                    <div class="technical-dimension technical-dimension--thickness"><span>Épaisseur = {{ schema_thickness_label }}</span></div>
+                                    <div class="technical-dimension technical-dimension--thickness"><span>Epaisseur = {{ schema_thickness_label }}</span></div>
                                     <div class="technical-level technical-level--tn" style="--level-top: 0%;" aria-hidden="true"></div>
                                     {% if schema_quota_partenza is not none %}
                                         {% set partenza_top = 100 - (((schema_quota_partenza - schema_quota_fondo) / schema_depth) * 100) %}
