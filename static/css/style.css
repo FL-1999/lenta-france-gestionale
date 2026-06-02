@@ -6272,3 +6272,374 @@ label.form-label[for="profondita_totale"]{
     width: 100%;
   }
 }
+
+/* Refonte fiche technique — rendu rapport chantier proche Excel */
+.technical-coupe-card--sheet .card-body {
+  background: #e9edf2;
+}
+
+.technical-sheet {
+  background: #ffffff;
+  border: 1.5px solid #111827;
+  box-shadow: none;
+  color: #111827;
+  padding: 14px;
+}
+
+.technical-sheet__titlebar {
+  background: #f3f4f6;
+  border: 1.5px solid #111827;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+}
+
+.technical-sheet__eyebrow,
+.technical-sheet__stamp span,
+.technical-data-block h3,
+.technical-drawing-header,
+.technical-ground-header,
+.technical-base-summary strong {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.technical-sheet__titlebar h2 {
+  font-size: 1.05rem;
+}
+
+.technical-sheet__stamp {
+  background: #ffffff;
+  border: 1px solid #111827;
+  min-width: 110px;
+}
+
+.technical-sheet-grid {
+  gap: 8px;
+  grid-template-columns: minmax(215px, 0.82fr) minmax(330px, 1.18fr) minmax(170px, 0.62fr);
+}
+
+.technical-data-column,
+.technical-drawing-column,
+.technical-ground-column {
+  border: 1px solid #111827;
+  min-height: 760px;
+}
+
+.technical-data-block {
+  border-bottom: 1px solid #9ca3af;
+  padding: 8px 9px;
+}
+
+.technical-data-block h3,
+.technical-drawing-header,
+.technical-ground-header {
+  background: #d9dde3;
+  border: 1px solid #111827;
+  color: #111827;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 7px;
+  padding: 5px 6px;
+}
+
+.technical-data-block dl {
+  gap: 5px;
+}
+
+.technical-data-block dl > div {
+  border-bottom: 1px solid #d1d5db;
+  gap: 8px;
+  grid-template-columns: 1.05fr 0.95fr;
+  padding-bottom: 4px;
+}
+
+.technical-data-block dt {
+  color: #1f2937;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.technical-data-block dd,
+.technical-data-block p,
+.technical-soil-list {
+  color: #111827;
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
+
+.technical-data-block dd {
+  font-weight: 700;
+}
+
+.technical-check-list {
+  display: grid;
+  gap: 6px;
+}
+
+.technical-check-row {
+  align-items: center;
+  border-bottom: 1px solid #d1d5db;
+  color: #111827;
+  display: flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 7px;
+  line-height: 1.25;
+  padding: 2px 0 5px;
+}
+
+.technical-check-row:last-child {
+  border-bottom: 0;
+}
+
+.technical-check-box {
+  color: #111827;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.technical-section-canvas {
+  --technical-bottom-offset: 30px;
+  --technical-top-offset: 134px;
+  background: #fbfbfb;
+  background-image:
+    linear-gradient(#edf0f3 1px, transparent 1px),
+    linear-gradient(90deg, #edf0f3 1px, transparent 1px);
+  background-size: 24px 24px;
+  border: 1px solid #111827;
+  height: 690px;
+}
+
+.technical-element {
+  background: #f7f7f7;
+  border: 1.5px solid #111827;
+  box-shadow: none;
+  width: 92px;
+}
+
+.technical-element--panel::before {
+  background: #eceff2;
+  border-left: 1px solid #111827;
+  border-top: 1px solid #111827;
+  content: "";
+  height: 100%;
+  left: 100%;
+  position: absolute;
+  top: -10px;
+  transform: skewY(-14deg);
+  width: 28px;
+}
+
+.technical-element--panel::after {
+  background: #ffffff;
+  border: 1px solid #111827;
+  bottom: -12px;
+  content: "";
+  height: 12px;
+  left: 0;
+  position: absolute;
+  transform: skewX(-55deg);
+  transform-origin: top left;
+  width: 92px;
+}
+
+.technical-guide-wall {
+  background: #d7dce2;
+  border: 1.5px solid #111827;
+  box-shadow: none;
+  height: 22px;
+  left: calc(50% - 96px);
+  top: 103px;
+  transform: skewX(-18deg);
+  width: 192px;
+  z-index: 16;
+}
+
+.technical-guide-wall::before,
+.technical-guide-wall::after {
+  background: #f3f4f6;
+  border: 1px solid #111827;
+  content: "";
+  height: 18px;
+  position: absolute;
+  top: -16px;
+  transform: skewX(18deg);
+  width: 56px;
+}
+
+.technical-guide-wall::before {
+  left: 22px;
+}
+
+.technical-guide-wall::after {
+  right: 22px;
+}
+
+.technical-guide-wall--back {
+  background: #eef0f3;
+  height: 20px;
+  left: calc(50% - 84px);
+  top: 80px;
+  width: 168px;
+  z-index: 14;
+}
+
+.technical-guide-wall-label {
+  background: transparent;
+  border: 0;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+  top: 54px;
+}
+
+.technical-depth-arrow,
+.technical-dimension,
+.technical-dimension--thickness {
+  border-color: #c00000;
+  border-width: 1.5px;
+}
+
+.technical-depth-arrow {
+  left: 28px;
+}
+
+.technical-depth-arrow::before { border-bottom-color: #c00000; }
+.technical-depth-arrow::after { border-top-color: #c00000; }
+.technical-dimension--width::before,
+.technical-dimension--thickness::before { border-right-color: #c00000; }
+.technical-dimension--width::after,
+.technical-dimension--thickness::after { border-left-color: #c00000; }
+
+.technical-depth-arrow span,
+.technical-dimension span {
+  background: #ffffff;
+  border: 0;
+  border-radius: 0;
+  color: #c00000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 1px 4px;
+}
+
+.technical-dimension--width {
+  left: calc(50% - 46px);
+  right: calc(50% - 46px);
+  top: 70px;
+}
+
+.technical-dimension--thickness {
+  border-left: 0;
+  border-top: 1.5px solid #c00000;
+  height: 0;
+  left: calc(50% + 48px);
+  right: auto;
+  top: 111px;
+  transform: rotate(-25deg);
+  width: 58px;
+}
+
+.technical-dimension--thickness span {
+  left: 50%;
+  top: -22px;
+  transform: translateX(-50%);
+}
+
+.technical-level {
+  border-top: 1px solid #111827;
+  left: 54px;
+  right: 10px;
+}
+
+.technical-level--tn,
+.technical-level--bottom {
+  border-top-width: 1.5px;
+}
+
+.technical-level--pour,
+.technical-level--mechanical {
+  border-top: 1px dashed #111827;
+}
+
+.technical-level__value,
+.technical-level__name {
+  background: #ffffff;
+  border: 1px solid #111827;
+  border-radius: 0;
+  box-shadow: none;
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 22px;
+  min-width: 96px;
+  padding: 3px 6px;
+  text-align: center;
+}
+
+.technical-level__name {
+  min-width: 134px;
+  text-transform: none;
+}
+
+.technical-base-summary {
+  background: #ffffff;
+  border: 1px solid #111827;
+  border-radius: 0;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 6px 8px;
+}
+
+.technical-ground-bars {
+  gap: 8px;
+}
+
+.technical-ground-bar {
+  border: 1px solid #111827;
+  height: 654px;
+}
+
+.technical-ground-layer {
+  background-image: none !important;
+  border-bottom: 1px solid #111827;
+  color: #111827;
+  padding: 3px;
+}
+
+.technical-ground-layer span {
+  background: transparent;
+  border: 0;
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.1;
+  padding: 0;
+}
+
+.technical-ground-footer {
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.6rem;
+  margin-top: 5px;
+}
+
+.technical-ground-layer.soil-layer--riporto { background: #d9d9d9; }
+.technical-ground-layer.soil-layer--ghiaia { background: #d8c0a0; }
+.technical-ground-layer.soil-layer--argilla { background: #c7d8a4; }
+.technical-ground-layer.soil-layer--sabbia { background: #f1df9a; }
+.technical-ground-layer.soil-layer--roccia { background: #b7b7b7; }
+.technical-ground-layer.soil-layer--limo { background: #d6c6a8; }
+.technical-ground-layer.soil-layer--generico { background: #eeeeee; }
+
+@media print {
+  .technical-sheet {
+    border: 1.2px solid #111827;
+    box-shadow: none;
+  }
+
+  .technical-section-canvas {
+    background: #ffffff;
+  }
+}
