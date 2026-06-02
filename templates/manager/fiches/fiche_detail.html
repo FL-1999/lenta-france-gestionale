@@ -349,14 +349,16 @@
 
 
                             {% if fiche.sonic_previsto or fiche.inclinometre_previsto %}
-                            <section class="technical-data-block">
-                                <h3>C. Contrôles spéciaux / Équipements</h3>
-                                <dl>
-                                    <div><dt>Sonic prévu</dt><dd>{{ 'Oui' if fiche.sonic_previsto else 'Non' }}</dd></div>
-                                    <div><dt>Sonic réalisé</dt><dd>{% if fiche.sonic_realizzato is sameas true %}Oui{% elif fiche.sonic_realizzato is sameas false %}Non{% else %}—{% endif %}</dd></div>
-                                    <div><dt>Inclinomètre prévu</dt><dd>{{ 'Oui' if fiche.inclinometre_previsto else 'Non' }}</dd></div>
-                                    <div><dt>Inclinomètre réalisé</dt><dd>{% if fiche.inclinometre_realizzato is sameas true %}Oui{% elif fiche.inclinometre_realizzato is sameas false %}Non{% else %}—{% endif %}</dd></div>
-                                </dl>
+                            <section class="technical-data-block technical-data-block--special-controls">
+                                <h3>C. Contrôles spéciaux</h3>
+                                <div class="technical-check-list" aria-label="Contrôles spéciaux réalisés">
+                                    {% if fiche.sonic_previsto %}
+                                        <div class="technical-check-row"><span class="technical-check-box">{% if fiche.sonic_realizzato is sameas true %}☑{% else %}☐{% endif %}</span><span>Sonique réalisé</span></div>
+                                    {% endif %}
+                                    {% if fiche.inclinometre_previsto %}
+                                        <div class="technical-check-row"><span class="technical-check-box">{% if fiche.inclinometre_realizzato is sameas true %}☑{% else %}☐{% endif %}</span><span>Inclinomètre réalisé</span></div>
+                                    {% endif %}
+                                </div>
                             </section>
                             {% endif %}
 
@@ -468,22 +470,27 @@
                             </footer>
                         </section>
                     </div>
-                </article>
                 {% if has_courbe_beton %}
                     <section class="technical-data-block technical-data-block--courbe technical-data-block--courbe-detail">
+                        {% set courbe_volume_total = fiche.courbe_beton_volume_total|default(none) %}
+                        {% set courbe_hauteur_initiale = fiche.courbe_beton_hauteur_initiale|default(none) %}
+                        {% set courbe_hauteur_finale = fiche.courbe_beton_hauteur_finale|default(none) %}
+                        {% set courbe_realisee_points = fiche.courbe_beton_realisee|default([]) %}
+                        {% set courbe_tube_points = fiche.courbe_beton_tube|default([]) %}
                         <h3>COURBE DE BÉTONNAGE</h3>
                         <p class="courbe-detail-intro">Synthèse des valeurs théoriques et des relevés réalisés avant le tableau de saisie et le graphique final.</p>
                         <div class="courbe-detail-metrics" aria-label="Données théoriques courbe de bétonnage">
-                            <div><dt>Volume total théorique</dt><dd>{{ "%.2f m³"|format(fiche.courbe_beton_volume_total) if fiche.courbe_beton_volume_total is not none else "—" }}</dd></div>
-                            <div><dt>Hauteur initiale</dt><dd>{{ "%.2f m"|format(fiche.courbe_beton_hauteur_initiale) if fiche.courbe_beton_hauteur_initiale is not none else "—" }}</dd></div>
-                            <div><dt>Hauteur finale</dt><dd>{{ "%.2f m"|format(fiche.courbe_beton_hauteur_finale) if fiche.courbe_beton_hauteur_finale is not none else "—" }}</dd></div>
-                            <div><dt>Réalisée</dt><dd>{{ fiche.courbe_beton_realisee|length if fiche.courbe_beton_realisee else 0 }} points</dd></div>
-                            <div><dt>Tube (optionnel)</dt><dd>{{ fiche.courbe_beton_tube|length if fiche.courbe_beton_tube else 0 }} points</dd></div>
+                            <div><dt>Volume total théorique</dt><dd>{{ "%.2f m³"|format(courbe_volume_total) if courbe_volume_total is not none else "—" }}</dd></div>
+                            <div><dt>Hauteur initiale</dt><dd>{{ "%.2f m"|format(courbe_hauteur_initiale) if courbe_hauteur_initiale is not none else "—" }}</dd></div>
+                            <div><dt>Hauteur finale</dt><dd>{{ "%.2f m"|format(courbe_hauteur_finale) if courbe_hauteur_finale is not none else "—" }}</dd></div>
+                            <div><dt>Réalisée</dt><dd>{{ courbe_realisee_points|length if courbe_realisee_points else 0 }} points</dd></div>
+                            <div><dt>Tube (optionnel)</dt><dd>{{ courbe_tube_points|length if courbe_tube_points else 0 }} points</dd></div>
                         </div>
                         <canvas class="courbe-beton-pdf-chart" data-courbe-beton-detail width="980" height="360" aria-label="COURBE DE BÉTONNAGE"></canvas>
                         <div class="courbe-legend courbe-legend--pdf"><span class="courbe-legend__item courbe-legend__item--realisee">Réalisée</span><span class="courbe-legend__item courbe-legend__item--theorique">Théorique</span><span class="courbe-legend__item courbe-legend__item--tube">Tube</span></div>
                     </section>
                 {% endif %}
+                </article>
 
                 <div class="stratigrafia-technical-panel stratigrafia-technical-panel--preserved">
                     <div class="technical-panel-heading">
