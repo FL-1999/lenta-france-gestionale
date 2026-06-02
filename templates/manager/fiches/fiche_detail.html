@@ -307,14 +307,10 @@
             {% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
             <div class="technical-split-view">
                 <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d’exécution de paroi / pieu imprimable">
-                    <header class="technical-sheet__titlebar">
+                    <header class="technical-sheet__titlebar technical-sheet__titlebar--historic">
                         <div>
                             <p class="technical-sheet__eyebrow">Rapport d’exécution de paroi / pieu</p>
                             <h2>{{ fiche_element_label_fr(fiche.tipologia_scavo) }} {{ fiche.numero_pannello or "—" }}</h2>
-                        </div>
-                        <div class="technical-sheet__stamp">
-                            <span>Profondeur</span>
-                            <strong>{{ "%.2f m"|format(fiche.profondita_totale) if fiche.profondita_totale is not none else "—" }}</strong>
                         </div>
                     </header>
 
@@ -402,13 +398,12 @@
                         </aside>
 
                         <section class="technical-drawing-column" aria-label="Section paroi/pieu avec cotes">
-                            <div class="technical-drawing-header">
-                                <span>{% if is_palo %}PIEU{% elif is_paratia %}PAROI{% else %}SECTION{% endif %}</span>
-                                <strong>{% if is_palo %}Ø {{ schema_width_label }}{% else %}L {{ schema_width_label }} · S {{ schema_thickness_label }}{% endif %}</strong>
-                            </div>
                             <div class="technical-section-canvas">
-                                
-                                {% if is_paratia %}<div class="technical-guide-wall technical-guide-wall--front" aria-hidden="true"></div><div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div><div class="technical-guide-wall-label" aria-hidden="true">Murette guide</div>{% endif %}
+                                <div class="technical-top-levels" aria-hidden="true">
+                                    <span>TN = {{ "%.2f"|format(schema_quota_tn) }} NGF</span>
+                                    <span>Arase supérieure = {{ "%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto) if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—" }} NGF</span>
+                                </div>
+                                {% if is_paratia %}<div class="technical-guide-wall technical-guide-wall--front" aria-hidden="true"></div><div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div><div class="technical-guide-wall-label" aria-hidden="true">Murettes guides</div>{% endif %}
                                 <div class="technical-depth-arrow" aria-hidden="true"><span>Longueur forée = {{ "%.2f"|format(schema_depth) }} m</span></div>
                                 <div class="technical-element {{ 'technical-element--pile' if is_palo else 'technical-element--panel' }}" aria-hidden="true"></div>
                                 <div class="technical-dimension technical-dimension--width"><span>Largeur = {{ schema_width_label }}</span></div>
