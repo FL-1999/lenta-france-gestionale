@@ -6,21 +6,11 @@
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">
-            {% if lang == 'fr' %}
-                Espace Chef d'équipe
-            {% else %}
-                Area Caposquadra
-            {% endif %}
+            {% if lang == 'fr' %}Espace Chef d'équipe{% else %}Area Caposquadra{% endif %}
         </p>
-
         <h1 class="page-title">
-            {% if lang == 'fr' %}
-                Tableau de bord Chef d'équipe
-            {% else %}
-                Dashboard Caposquadra
-            {% endif %}
+            {% if lang == 'fr' %}Tableau de bord Chef d'équipe{% else %}Dashboard Caposquadra{% endif %}
         </h1>
-
         <p class="page-subtitle">
             {% if lang == 'fr' %}
                 Vue d'ensemble des chantiers et des rapports de votre équipe.
@@ -32,25 +22,57 @@
 </div>
 
 <div class="card-grid">
-    <div class="card">
-        <h3>🏗️ {% if lang == 'fr' %}Votre chantier{% else %}Il tuo cantiere{% endif %}</h3>
-        <p>{{ cantiere_nome or ("Cantiere assegnato" if lang != 'fr' else "Chantier attribué") }}</p>
-        <p class="page-subtitle">{% if lang == 'fr' %}Gérez la documentation de votre chantier.{% else %}Gestisci la documentazione del tuo cantiere.{% endif %}</p>
+
+    <div class="card dash-card">
+        <span class="dash-card__icon">🏗️</span>
+        <h3 class="dash-card__title">
+            {% if lang == 'fr' %}Votre chantier{% else %}Il tuo cantiere{% endif %}
+        </h3>
+        <p class="dash-card__desc">
+            {{ cantiere_nome or ("Chantier attribué" if lang == 'fr' else "Cantiere assegnato") }}
+        </p>
+        <p class="dash-card__desc">
+            {% if lang == 'fr' %}Gérez la documentation de votre chantier.
+            {% else %}Gestisci la documentazione del tuo cantiere.{% endif %}
+        </p>
     </div>
 
-    <div class="card">
-        <h3>📝 {% if lang == 'fr' %}Rapports journaliers{% else %}Rapportini Giornalieri{% endif %}</h3>
-        <p>{% if lang == 'fr' %}Enregistrez les activités effectuées dans la journée.{% else %}Registra le attività fatte in giornata.{% endif %}</p>
-        <a href="/caposquadra/rapportino/nuovo" class="btn">➕ {% if lang == 'fr' %}Nouveau rapport{% else %}Nuovo Rapportino{% endif %}</a>
-        <a href="/caposquadra/rapportini" class="btn btn-red">📋 {% if lang == 'fr' %}Liste des rapports{% else %}Lista Rapportini{% endif %}</a>
+    <div class="card dash-card">
+        <span class="dash-card__icon">📝</span>
+        <h3 class="dash-card__title">
+            {% if lang == 'fr' %}Rapports journaliers{% else %}Rapportini Giornalieri{% endif %}
+        </h3>
+        <p class="dash-card__desc">
+            {% if lang == 'fr' %}Enregistrez les activités effectuées dans la journée.
+            {% else %}Registra le attività fatte in giornata.{% endif %}
+        </p>
+        <div class="dash-card__actions">
+            <a href="/caposquadra/rapportino/nuovo" class="btn btn-primary">
+                ➕ {% if lang == 'fr' %}Nouveau rapport{% else %}Nuovo Rapportino{% endif %}
+            </a>
+            <a href="/caposquadra/rapportini" class="btn btn-secondary">
+                📋 {% if lang == 'fr' %}Liste{% else %}Lista{% endif %}
+            </a>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>📄 Fiches</h3>
-        <p>{% if lang == 'fr' %}Renseignez des fiches pour les machines, heures, etc.{% else %}Compila fiches per macchinari, ore, ecc.{% endif %}</p>
-        <a href="/caposquadra/fiche/nuova" class="btn">➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova Fiche{% endif %}</a>
-        <a href="/caposquadra/fiches" class="btn btn-red">📋 {% if lang == 'fr' %}Liste des fiches{% else %}Lista Fiches{% endif %}</a>
+    <div class="card dash-card">
+        <span class="dash-card__icon">📄</span>
+        <h3 class="dash-card__title">Fiches</h3>
+        <p class="dash-card__desc">
+            {% if lang == 'fr' %}Renseignez des fiches pour les machines, heures, etc.
+            {% else %}Compila fiches per macchinari, ore, ecc.{% endif %}
+        </p>
+        <div class="dash-card__actions">
+            <a href="/caposquadra/fiche/nuova" class="btn btn-primary">
+                ➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova Fiche{% endif %}
+            </a>
+            <a href="/caposquadra/fiches" class="btn btn-secondary">
+                📋 {% if lang == 'fr' %}Liste{% else %}Lista{% endif %}
+            </a>
+        </div>
     </div>
+
 </div>
 
 {% endblock %}

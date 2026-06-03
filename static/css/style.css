@@ -2231,6 +2231,22 @@ body {
     margin-bottom: var(--space-4);
 }
 
+/* Dashboard module card grid */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+
+/* Global responsive table wrapper */
+.table-responsive-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-lg);
+}
+
 .card {
     background: var(--color-bg-card);
     border-radius: var(--radius-lg);
@@ -2277,6 +2293,8 @@ body {
     gap: var(--space-3);
     color: var(--color-text-main);
     background: transparent;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .card-body canvas {
@@ -2293,6 +2311,41 @@ body {
 .module-card p {
     margin: 0;
     color: var(--color-text-subtle);
+}
+
+/* Dashboard module cards */
+.dash-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.dash-card__icon {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.dash-card__title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+    margin: 0;
+}
+
+.dash-card__desc {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    flex: 1;
+    line-height: 1.5;
+}
+
+.dash-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: var(--space-2);
 }
 
 /* MAGAZZINO */
