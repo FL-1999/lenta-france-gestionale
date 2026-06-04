@@ -219,11 +219,7 @@
                     {% set manager_badges = manager_badge_counts(request, user) %}
                     <a href="{{ url_for('manager_magazzino_home') }}" class="nav-link nav-right__item">
                         📦
-                        {% if lang == 'fr' %}
-                            Magasin
-                        {% else %}
-                            Magazzino
-                        {% endif %}
+                        {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}
                         {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
                             <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
                                 {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
@@ -233,11 +229,7 @@
                 {% elif is_capo %}
                     <a href="{{ url_for('capo_magazzino_list') }}" class="nav-link nav-right__item">
                         📦
-                        {% if lang == 'fr' %}
-                            Magasin
-                        {% else %}
-                            Magazzino
-                        {% endif %}
+                        {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}
                         {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
                             <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
                                 {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
@@ -246,48 +238,34 @@
                     </a>
                 {% endif %}
 
-                {% if show_personale %}
-                    <a href="{{ url_for('manager_personale_presenze') }}" class="nav-link nav-right__item">
-                        📅
-                        {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_fiches %}
-                    <a href="{{ fiches_path }}" class="nav-link nav-right__item">
-                        🧾
-                        {% if lang == 'fr' %}Fiches{% else %}Fiches{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_cantieri %}
-                    <a href="{{ cantieri_path }}" class="nav-link nav-right__item">
-                        🏗️
-                        {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_depositi %}
-                    <a href="{{ depositi_path }}" class="nav-link nav-right__item">
-                        📦
-                        {% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}
-                    </a>
-                {% endif %}
-
-                {% if show_reports %}
-                    <a href="{{ report_path }}" class="nav-link nav-right__item">
-                        📊
-                        {% if lang == 'fr' %}
-                            {% if is_manager %}Rapports{% else %}Rapports journaliers{% endif %}
-                        {% else %}
-                            {% if is_manager %}Report{% else %}Rapportini{% endif %}
-                        {% endif %}
-                    </a>
-                {% endif %}
-                {% if show_trasporti %}
-                    <a href="{{ trasporti_path }}" class="nav-link nav-right__item">
-                        🚚 Trasporti
-                    </a>
+                {# Operational navigation grouped in one dropdown to keep the navbar clean #}
+                {% set show_nav_dropdown = show_cantieri or show_fiches or show_personale or show_depositi or show_reports or show_trasporti %}
+                {% if show_nav_dropdown %}
+                    <div class="nav-dropdown nav-right__item" data-nav-dropdown>
+                        <button type="button" class="nav-link nav-dropdown__toggle" data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                            {% if lang == 'fr' %}Navigation ▾{% else %}Menu ▾{% endif %}
+                        </button>
+                        <div class="nav-dropdown__menu" data-nav-dropdown-menu>
+                            {% if show_cantieri %}
+                                <a href="{{ cantieri_path }}" class="nav-dropdown__item">🏗️ {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}</a>
+                            {% endif %}
+                            {% if show_fiches %}
+                                <a href="{{ fiches_path }}" class="nav-dropdown__item">📄 Fiches</a>
+                            {% endif %}
+                            {% if show_personale %}
+                                <a href="{{ url_for('manager_personale_presenze') }}" class="nav-dropdown__item">📅 {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}</a>
+                            {% endif %}
+                            {% if show_depositi %}
+                                <a href="{{ depositi_path }}" class="nav-dropdown__item">📦 {% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</a>
+                            {% endif %}
+                            {% if show_reports %}
+                                <a href="{{ report_path }}" class="nav-dropdown__item">📊 {% if lang == 'fr' %}{% if is_manager %}Rapports{% else %}Rapports journaliers{% endif %}{% else %}{% if is_manager %}Report{% else %}Rapportini{% endif %}{% endif %}</a>
+                            {% endif %}
+                            {% if show_trasporti %}
+                                <a href="{{ trasporti_path }}" class="nav-dropdown__item">🚚 Trasporti</a>
+                            {% endif %}
+                        </div>
+                    </div>
                 {% endif %}
 
                 <div class="nav-lang-switch nav-right__item">

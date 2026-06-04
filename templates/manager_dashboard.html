@@ -2,94 +2,138 @@
 {% block content %}
 {% set lang = request.cookies.get('lang', 'it') %}
 
-<h1 class="page-title">
-    👔 {% if lang == 'fr' %}Tableau de bord Manager{% else %}Dashboard Manager{% endif %}
-</h1>
-
-<p class="page-subtitle">
-    {% if lang == 'fr' %}
-        Ici, vous pouvez gérer les chantiers, machines, fiches, rapports, chefs d'équipe et tout le personnel.
-    {% else %}
-        Qui puoi gestire cantieri, macchinari, fiches, rapportini, capisquadra e tutto il personale.
-    {% endif %}
-</p>
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">
+            {% if lang == 'fr' %}Tableau de bord{% else %}Area Manager{% endif %}
+        </p>
+        <h1 class="page-title">
+            {% if lang == 'fr' %}Tableau de bord Manager{% else %}Dashboard Manager{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if lang == 'fr' %}
+                Gérez les chantiers, machines, fiches, rapports, personnel et présences.
+            {% else %}
+                Gestisci cantieri, macchinari, fiches, rapportini, personale e presenze.
+            {% endif %}
+        </p>
+    </div>
+</div>
 
 <div class="card-grid">
-    <div class="card">
-        <h3>🏗️ {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}</h3>
-        <p>
+
+    <div class="card dash-card">
+        <span class="dash-card__icon">🏗️</span>
+        <h3 class="dash-card__title">
+            {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}
+        </h3>
+        <p class="dash-card__desc">
             {% if lang == 'fr' %}
                 Gérez tous les chantiers actifs, clients et adresses.
             {% else %}
                 Gestisci tutti i cantieri attivi, clienti e indirizzi.
             {% endif %}
         </p>
-        <a href="/manager/cantieri" class="btn">
-            📋 {% if lang == 'fr' %}Liste des chantiers{% else %}Lista Cantieri{% endif %}
-        </a>
+        <div class="dash-card__actions">
+            <a href="/manager/cantieri" class="btn btn-primary">
+                {% if lang == 'fr' %}Liste des chantiers{% else %}Lista Cantieri{% endif %}
+            </a>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>🚜 {% if lang == 'fr' %}Machines{% else %}Macchinari{% endif %}</h3>
-        <p>
+    <div class="card dash-card">
+        <span class="dash-card__icon">🚜</span>
+        <h3 class="dash-card__title">
+            {% if lang == 'fr' %}Machines{% else %}Macchinari{% endif %}
+        </h3>
+        <p class="dash-card__desc">
             {% if lang == 'fr' %}
                 Surveillez les machines affectées aux chantiers.
             {% else %}
                 Monitora i macchinari assegnati ai cantieri.
             {% endif %}
         </p>
-        <a href="/manager/macchinari" class="btn">
-            📋 {% if lang == 'fr' %}Liste des machines{% else %}Lista Macchinari{% endif %}
-        </a>
+        <div class="dash-card__actions">
+            <a href="/manager/macchinari" class="btn btn-primary">
+                {% if lang == 'fr' %}Liste des machines{% else %}Lista Macchinari{% endif %}
+            </a>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>📄 Fiches</h3>
-        <p>
+    <div class="card dash-card">
+        <span class="dash-card__icon">📄</span>
+        <h3 class="dash-card__title">Fiches</h3>
+        <p class="dash-card__desc">
             {% if lang == 'fr' %}
                 Contrôlez les fiches saisies par les chefs d'équipe.
             {% else %}
                 Controlla le fiches inserite dai capisquadra.
             {% endif %}
         </p>
-        <a href="/manager/fiches" class="btn">
-            📋 {% if lang == 'fr' %}Liste des fiches{% else %}Lista Fiches{% endif %}
-        </a>
+        <div class="dash-card__actions">
+            <a href="/manager/fiches" class="btn btn-primary">
+                {% if lang == 'fr' %}Liste des fiches{% else %}Lista Fiches{% endif %}
+            </a>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>📝 {% if lang == 'fr' %}Rapports{% else %}Rapportini{% endif %}</h3>
-        <p>
+    <div class="card dash-card">
+        <span class="dash-card__icon">📝</span>
+        <h3 class="dash-card__title">
+            {% if lang == 'fr' %}Rapports{% else %}Rapportini{% endif %}
+        </h3>
+        <p class="dash-card__desc">
             {% if lang == 'fr' %}
                 Vérifiez les rapports journaliers des chantiers.
             {% else %}
                 Verifica i rapportini giornalieri dei cantieri.
             {% endif %}
         </p>
-        <a href="/manager/rapportini" class="btn">
-            📋 {% if lang == 'fr' %}Liste des rapports{% else %}Lista Rapportini{% endif %}
-        </a>
+        <div class="dash-card__actions">
+            <a href="/manager/rapportini" class="btn btn-primary">
+                {% if lang == 'fr' %}Liste des rapports{% else %}Lista Rapportini{% endif %}
+            </a>
+        </div>
     </div>
 
-    <!-- Nuova card per il modulo Personale -->
-    <div class="card">
-        <h3>👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</h3>
-        <p>
+    <div class="card dash-card">
+        <span class="dash-card__icon">👥</span>
+        <h3 class="dash-card__title">
+            {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}
+        </h3>
+        <p class="dash-card__desc">
             {% if lang == 'fr' %}
-                Gérez l'ensemble du personnel (équipes, opérateurs, chefs d'équipe, etc.).
+                Gérez l'ensemble du personnel (équipes, opérateurs, chefs d'équipe).
             {% else %}
                 Gestisci tutto il personale (operatori, capisquadra, ecc.).
             {% endif %}
         </p>
-        <a href="{{ url_for('manager_personale_list') }}" class="btn">
-            📋 {% if lang == 'fr' %}Liste du personnel{% else %}Lista personale{% endif %}
-        </a>
+        <div class="dash-card__actions">
+            <a href="{{ url_for('manager_personale_list') }}" class="btn btn-primary">
+                {% if lang == 'fr' %}Liste du personnel{% else %}Lista Personale{% endif %}
+            </a>
+        </div>
     </div>
+
+    <div class="card dash-card">
+        <span class="dash-card__icon">📅</span>
+        <h3 class="dash-card__title">
+            {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}
+        </h3>
+        <p class="dash-card__desc">
+            {% if lang == 'fr' %}
+                Visualisez et mettez à jour les présences hebdomadaires du personnel.
+            {% else %}
+                Visualizza e aggiorna le presenze settimanali del personale.
+            {% endif %}
+        </p>
+        <div class="dash-card__actions">
+            <a href="/manager/personale/presenze" class="btn btn-primary">
+                {% if lang == 'fr' %}Voir les présences{% else %}Apri Presenze{% endif %}
+            </a>
+        </div>
+    </div>
+
 </div>
 
 {% endblock %}
-<div class="card module-card">
-    <h3>Presenze</h3>
-    <p>Visualizza e aggiorna le presenze settimanali del personale.</p>
-    <a href="/manager/personale/presenze" class="btn">Apri presenze</a>
-</div>
