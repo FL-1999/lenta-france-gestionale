@@ -7071,40 +7071,50 @@ label.form-label[for="profondita_totale"]{
   top: 8px;
 }
 
+/* Murette guide 3D — faccia frontale + faccia superiore (parallelogramma) */
 .technical-drawing-column--historic .technical-guide-wall {
-  border: 2px solid #374151;
-  height: 28px;
-  top: 76px;
+  border: 1.5px solid #222;
+  box-shadow: none;
+  height: 26px;
+  position: absolute;
+  transform: none;
+  z-index: 24;
+}
+
+/* Faccia frontale — rettangolo grigio senza trasformazione */
+.technical-drawing-column--historic .technical-guide-wall--front {
+  background: #c8cacd;
+  height: 26px;
+  left: calc(50% - 88px);
+  top: 80px;
+  transform: none;
   width: 176px;
   z-index: 24;
 }
 
-/* Front face — gray, centered over the panel */
-.technical-drawing-column--historic .technical-guide-wall--front {
-  background: #c8cdd4;
-  left: calc(50% - 88px);
-  transform: none;
-}
-
-/* Top face — orange-tan, offset for isometric 3D depth */
+/* Faccia superiore — parallelogramma sopra la faccia frontale */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #c8915a;
-  border: 2px solid #374151;
-  height: 16px;
-  left: calc(50% - 72px);
-  top: 61px;
-  transform: skewX(-18deg);
+  background: #e2ded8;
+  border: 1.5px solid #222;
+  height: 12px;
+  left: calc(50% - 88px);
+  top: 68px;
+  transform: skewX(-28deg);
+  transform-origin: bottom left;
   width: 176px;
-  z-index: 23;
+  z-index: 25;
 }
 
 .technical-drawing-column--historic .technical-guide-wall-label {
-  font-size: 11px;
-  font-weight: 800;
-  left: 50%;
-  top: 84px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  left: calc(50% - 2px);
+  top: 72px;
   transform: translateX(-50%);
-  z-index: 25;
+  white-space: nowrap;
+  z-index: 26;
+  color: #333;
 }
 
 
@@ -7314,24 +7324,32 @@ label.form-label[for="profondita_totale"]{
   box-shadow: none;
   height: 31px;
   position: absolute;
-  transform: skewX(-40deg);
+  transform: none;
   z-index: 34;
 }
 
-.technical-drawing-column--historic .technical-guide-wall--back {
-  background: #eeeeee;
-  left: calc(50% - 96px);
-  top: 98px;
-  width: 270px;
-  z-index: 33;
-}
-
+/* Faccia frontale */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #d9d9d9;
+  background: #c8cacd;
+  height: 31px;
   left: calc(50% - 116px);
   top: 112px;
-  width: 290px;
+  transform: none;
+  width: 232px;
   z-index: 35;
+}
+
+/* Faccia superiore — parallelogramma */
+.technical-drawing-column--historic .technical-guide-wall--back {
+  background: #e2ded8;
+  border: 1.5px solid #111111;
+  height: 14px;
+  left: calc(50% - 116px);
+  top: 98px;
+  transform: skewX(-28deg);
+  transform-origin: bottom left;
+  width: 232px;
+  z-index: 36;
 }
 
 .technical-drawing-column--historic .technical-guide-wall::before,
@@ -7342,11 +7360,11 @@ label.form-label[for="profondita_totale"]{
 .technical-drawing-column--historic .technical-guide-wall-label {
   color: #333333;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
-  left: calc(50% + 24px);
+  left: calc(50% - 8px);
   position: absolute;
-  top: 104px;
+  top: 103px;
   transform: translateX(-50%);
   z-index: 38;
 }
@@ -7685,6 +7703,11 @@ label.form-label[for="profondita_totale"]{
   padding: 0;
 }
 
+/* Tutti i blocchi dati nella colonna historic devono avere il bordo inferiore chiuso */
+.technical-data-column .technical-data-block:last-child {
+  border-bottom: 1px solid #111111;
+}
+
 .technical-drawing-column--historic .technical-drawing-layout {
   display: grid;
   gap: 0;
@@ -7723,23 +7746,31 @@ label.form-label[for="profondita_totale"]{
   box-shadow: none;
   height: 30px;
   position: absolute;
-  transform: skewX(-42deg);
+  transform: none;
 }
 
-.technical-drawing-column--historic .technical-guide-wall--back {
-  background: #efefef;
-  left: calc(50% - 138px);
-  top: 166px;
-  width: 286px;
-  z-index: 36;
-}
-
+/* Faccia frontale */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #d8d8d8;
-  left: calc(50% - 170px);
+  background: #c8cacd;
+  height: 30px;
+  left: calc(50% - 153px);
   top: 184px;
+  transform: none;
   width: 306px;
   z-index: 38;
+}
+
+/* Faccia superiore — parallelogramma */
+.technical-drawing-column--historic .technical-guide-wall--back {
+  background: #e2ded8;
+  border: 1px solid #111111;
+  height: 16px;
+  left: calc(50% - 153px);
+  top: 168px;
+  transform: skewX(-28deg);
+  transform-origin: bottom left;
+  width: 306px;
+  z-index: 37;
 }
 
 .technical-drawing-column--historic .technical-guide-wall-label {
@@ -7747,7 +7778,7 @@ label.form-label[for="profondita_totale"]{
   border: 0;
   color: #333333;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   left: calc(50% - 4px);
   padding: 0;
