@@ -306,20 +306,26 @@
                                 </dl>
                             </section>
 
-                            {# C. Contrôles spéciaux — toujours visible #}
+                            {# C. Contrôles spéciaux (sonic + inclinomètre) #}
+                            {% if fiche.sonic_previsto or fiche.inclinometre_previsto %}
                             <section class="technical-data-block technical-data-block--special-controls">
                                 <h3>C. Contrôles spéciaux</h3>
                                 <div class="technical-check-list" aria-label="Contrôles spéciaux réalisés">
-                                    <div class="technical-check-row">
-                                        <span class="technical-check-box">{% if fiche.sonic_previsto and fiche.sonic_realizzato is sameas true %}☑{% elif fiche.sonic_previsto %}☐{% else %}—{% endif %}</span>
-                                        <span>Sonique{% if not fiche.sonic_previsto %} (non prévu){% endif %}</span>
-                                    </div>
-                                    <div class="technical-check-row">
-                                        <span class="technical-check-box">{% if fiche.inclinometre_previsto and fiche.inclinometre_realizzato is sameas true %}☑{% elif fiche.inclinometre_previsto %}☐{% else %}—{% endif %}</span>
-                                        <span>Inclinomètre{% if not fiche.inclinometre_previsto %} (non prévu){% endif %}</span>
-                                    </div>
+                                    {% if fiche.sonic_previsto %}
+                                        <div class="technical-check-row">
+                                            <span class="technical-check-box">{% if fiche.sonic_realizzato is sameas true %}☑{% else %}☐{% endif %}</span>
+                                            <span>Sonique réalisé</span>
+                                        </div>
+                                    {% endif %}
+                                    {% if fiche.inclinometre_previsto %}
+                                        <div class="technical-check-row">
+                                            <span class="technical-check-box">{% if fiche.inclinometre_realizzato is sameas true %}☑{% else %}☐{% endif %}</span>
+                                            <span>Inclinomètre réalisé</span>
+                                        </div>
+                                    {% endif %}
                                 </div>
                             </section>
+                            {% endif %}
 
                             {# D. Contrôle boue #}
                             <section class="technical-data-block">
@@ -467,6 +473,16 @@
                         </section>
                     {% endif %}
 
+                    {# ── Zone photos ── #}
+                    <section class="technical-photos-zone" aria-label="Photos de chantier facultatives">
+                        <h3>Photos</h3>
+                        <div class="technical-photos-grid">
+                            <figure><div class="technical-photo-placeholder"></div><figcaption>Photo excavation</figcaption></figure>
+                            <figure><div class="technical-photo-placeholder"></div><figcaption>Photo armature</figcaption></figure>
+                            <figure><div class="technical-photo-placeholder"></div><figcaption>Photo bétonnage</figcaption></figure>
+                            <figure><div class="technical-photo-placeholder"></div><figcaption>Photo finale</figcaption></figure>
+                        </div>
+                    </section>
                 </article>
 
                 {# ── Pannello stratigrafia visuale 3D ── #}
