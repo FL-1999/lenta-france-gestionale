@@ -7071,50 +7071,76 @@ label.form-label[for="profondita_totale"]{
   top: 8px;
 }
 
-/* Murette guide 3D — faccia frontale + faccia superiore (parallelogramma) */
+/* ===== Murette Guide — parallelepipedo 3D (3 facce visibili) ===== */
+
+/* Reset base */
 .technical-drawing-column--historic .technical-guide-wall {
-  border: 1.5px solid #222;
+  border: 1.5px solid #2a2a2a;
   box-shadow: none;
-  height: 26px;
+  overflow: visible;
   position: absolute;
   transform: none;
-  z-index: 24;
 }
 
-/* Faccia frontale — rettangolo grigio senza trasformazione */
+/* Faccia FRONTALE — rettangolo grigio piatto */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #c8cacd;
-  height: 26px;
+  background: #b4b8be;
+  border: 1.5px solid #2a2a2a;
+  height: 30px;
   left: calc(50% - 88px);
+  overflow: visible;
   top: 80px;
   transform: none;
   width: 176px;
   z-index: 24;
 }
 
-/* Faccia superiore — parallelogramma sopra la faccia frontale */
+/* Faccia LATERALE DESTRA — pseudo-elemento sul lato destro della faccia frontale */
+.technical-drawing-column--historic .technical-guide-wall--front::before {
+  background: #8a9098;
+  border: 1.5px solid #2a2a2a;
+  border-left: none;
+  content: '';
+  height: 30px;
+  position: absolute;
+  right: -10px;
+  top: 0;
+  transform: skewY(-62deg);
+  transform-origin: top left;
+  width: 9px;
+  z-index: 24;
+}
+
+/* Pseudo-elemento ::after non usato */
+.technical-drawing-column--historic .technical-guide-wall--front::after {
+  content: none;
+}
+
+/* Faccia SUPERIORE — parallelogramma che si estende verso l'alto-destra */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #e2ded8;
-  border: 1.5px solid #222;
-  height: 12px;
+  background: #d4d0c8;
+  border: 1.5px solid #2a2a2a;
+  height: 16px;
   left: calc(50% - 88px);
-  top: 68px;
+  top: 64px;
   transform: skewX(-28deg);
   transform-origin: bottom left;
   width: 176px;
   z-index: 25;
 }
 
+/* Label centrata nella faccia superiore */
 .technical-drawing-column--historic .technical-guide-wall-label {
+  color: #333;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 9px;
-  font-weight: 600;
-  left: calc(50% - 2px);
-  top: 72px;
+  font-weight: 500;
+  left: calc(50% + 4px);
+  position: absolute;
+  top: 70px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 26;
-  color: #333;
 }
 
 
@@ -7319,53 +7345,71 @@ label.form-label[for="profondita_totale"]{
   z-index: 40;
 }
 
+/* Murette Guide scala media */
 .technical-drawing-column--historic .technical-guide-wall {
-  border: 1.5px solid #111111;
+  border: 1.5px solid #2a2a2a;
   box-shadow: none;
-  height: 31px;
+  overflow: visible;
   position: absolute;
   transform: none;
-  z-index: 34;
 }
 
 /* Faccia frontale */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #c8cacd;
-  height: 31px;
+  background: #b4b8be;
+  border: 1.5px solid #2a2a2a;
+  height: 34px;
   left: calc(50% - 116px);
+  overflow: visible;
   top: 112px;
   transform: none;
   width: 232px;
   z-index: 35;
 }
 
-/* Faccia superiore — parallelogramma */
+/* Faccia laterale destra */
+.technical-drawing-column--historic .technical-guide-wall--front::before {
+  background: #8a9098;
+  border: 1.5px solid #2a2a2a;
+  border-left: none;
+  content: '';
+  height: 34px;
+  position: absolute;
+  right: -12px;
+  top: 0;
+  transform: skewY(-62deg);
+  transform-origin: top left;
+  width: 11px;
+  z-index: 35;
+}
+
+.technical-drawing-column--historic .technical-guide-wall--front::after {
+  content: none;
+}
+
+/* Faccia superiore */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #e2ded8;
-  border: 1.5px solid #111111;
-  height: 14px;
+  background: #d4d0c8;
+  border: 1.5px solid #2a2a2a;
+  height: 18px;
   left: calc(50% - 116px);
-  top: 98px;
+  top: 94px;
   transform: skewX(-28deg);
   transform-origin: bottom left;
   width: 232px;
   z-index: 36;
 }
 
-.technical-drawing-column--historic .technical-guide-wall::before,
-.technical-drawing-column--historic .technical-guide-wall::after {
-  content: none;
-}
-
 .technical-drawing-column--historic .technical-guide-wall-label {
   color: #333333;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  left: calc(50% - 8px);
+  font-size: 11px;
+  font-weight: 500;
+  left: calc(50% + 5px);
   position: absolute;
   top: 103px;
   transform: translateX(-50%);
+  white-space: nowrap;
   z-index: 38;
 }
 
@@ -7741,32 +7785,55 @@ label.form-label[for="profondita_totale"]{
   z-index: 50;
 }
 
+/* Murette Guide scala grande / PDF */
 .technical-drawing-column--historic .technical-guide-wall {
-  border: 1px solid #111111;
+  border: 1px solid #2a2a2a;
   box-shadow: none;
-  height: 30px;
+  overflow: visible;
   position: absolute;
   transform: none;
 }
 
 /* Faccia frontale */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #c8cacd;
-  height: 30px;
+  background: #b4b8be;
+  border: 1.5px solid #2a2a2a;
+  height: 40px;
   left: calc(50% - 153px);
+  overflow: visible;
   top: 184px;
   transform: none;
   width: 306px;
   z-index: 38;
 }
 
-/* Faccia superiore — parallelogramma */
+/* Faccia laterale destra */
+.technical-drawing-column--historic .technical-guide-wall--front::before {
+  background: #8a9098;
+  border: 1.5px solid #2a2a2a;
+  border-left: none;
+  content: '';
+  height: 40px;
+  position: absolute;
+  right: -14px;
+  top: 0;
+  transform: skewY(-62deg);
+  transform-origin: top left;
+  width: 13px;
+  z-index: 38;
+}
+
+.technical-drawing-column--historic .technical-guide-wall--front::after {
+  content: none;
+}
+
+/* Faccia superiore */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #e2ded8;
-  border: 1px solid #111111;
-  height: 16px;
+  background: #d4d0c8;
+  border: 1.5px solid #2a2a2a;
+  height: 22px;
   left: calc(50% - 153px);
-  top: 168px;
+  top: 162px;
   transform: skewX(-28deg);
   transform-origin: bottom left;
   width: 306px;
@@ -7778,13 +7845,14 @@ label.form-label[for="profondita_totale"]{
   border: 0;
   color: #333333;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  left: calc(50% - 4px);
+  font-size: 12px;
+  font-weight: 500;
+  left: calc(50% + 6px);
   padding: 0;
   position: absolute;
-  top: 174px;
+  top: 172px;
   transform: translateX(-50%);
+  white-space: nowrap;
   z-index: 44;
 }
 
