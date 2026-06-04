@@ -7073,40 +7073,37 @@ label.form-label[for="profondita_totale"]{
 
 .technical-drawing-column--historic .technical-guide-wall {
   border: 2px solid #374151;
-  height: 26px;
-  top: 80px;
+  height: 28px;
+  top: 76px;
   width: 176px;
   z-index: 24;
 }
 
 /* Front face — gray, centered over the panel */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #cacfd6;
+  background: #c8cdd4;
   left: calc(50% - 88px);
   transform: none;
 }
 
-/* Top face — tan, sits directly above front face, perspective via skewY */
+/* Top face — orange-tan, offset for isometric 3D depth */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #b8855a;
+  background: #c8915a;
   border: 2px solid #374151;
-  height: 14px;
-  left: calc(50% - 88px);
-  top: 67px;
-  transform: skewY(-6deg);
-  transform-origin: bottom left;
+  height: 16px;
+  left: calc(50% - 72px);
+  top: 61px;
+  transform: skewX(-18deg);
   width: 176px;
   z-index: 23;
 }
 
 .technical-drawing-column--historic .technical-guide-wall-label {
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   left: 50%;
-  top: 86px;
+  top: 84px;
   transform: translateX(-50%);
-  white-space: nowrap;
   z-index: 25;
 }
 
@@ -7686,11 +7683,6 @@ label.form-label[for="profondita_totale"]{
   border: 0;
   min-height: 890px;
   padding: 0;
-}
-
-/* Tutti i blocchi dati nella colonna historic devono avere il bordo inferiore chiuso */
-.technical-data-column .technical-data-block:last-child {
-  border-bottom: 1px solid #111111;
 }
 
 .technical-drawing-column--historic .technical-drawing-layout {
