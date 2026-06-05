@@ -7071,14 +7071,12 @@ label.form-label[for="profondita_totale"]{
   top: 8px;
 }
 
-/* ===== Murette Guide — DUE MURI in prospettiva ===== */
+/* ===== Murette Guide — DUE MURI separati in prospettiva ===== */
 /*
-  Geometria: muro anteriore + muro posteriore visibile sopra-destra.
-  Profondità (offset): right=+30px, up=-22px
-  --front  = muro anteriore (in primo piano, z alto)
-  --back   = muro posteriore (offset su+destra, z basso — visibile sopra il muro ant.)
-  ::before = faccia laterale destra del muro anteriore
-  ::after  = striscia di collegamento in cima (top del muro anteriore)
+  Muro anteriore: basso, grigio scuro, in primo piano
+  Muro posteriore: alto, grigio chiaro, offset +30px destra e -36px su
+  Gap visibile tra i due muri (spazio vuoto)
+  Muro posteriore ha faccia superiore (top face parallelogramma) e faccia destra
 */
 
 .technical-drawing-column--historic .technical-guide-wall {
@@ -7089,64 +7087,86 @@ label.form-label[for="profondita_totale"]{
   transform: none;
 }
 
-/* MURO ANTERIORE — faccia frontale, grigio medio */
+/* MURO ANTERIORE — grigio più scuro, in basso */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #9ea2a8;
+  background: #8a8e94;
   border: 1.5px solid #1a1a1a;
   height: 28px;
   left: calc(50% - 90px);
   overflow: visible;
-  top: 88px;
+  top: 92px;
   transform: none;
   width: 180px;
-  z-index: 26;
+  z-index: 24;
 }
 
-/* Faccia laterale destra del muro anteriore */
+/* Faccia destra del muro anteriore */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
-  background: #5a6068;
+  background: #565a62;
   border: 1.5px solid #1a1a1a;
   border-left: none;
   content: '';
   height: 28px;
   position: absolute;
-  right: -31px;
+  right: -29px;
   top: 0;
   transform: skewY(-35deg);
   transform-origin: top left;
-  width: 30px;
-  z-index: 26;
+  width: 28px;
+  z-index: 24;
 }
 
-/* Striscia superiore del muro anteriore (collegamento verso il muro posteriore) */
+/* Nessuna striscia di collegamento — gap vuoto tra i due muri */
 .technical-drawing-column--historic .technical-guide-wall--front::after {
-  background: #c2bfb8;
-  border: 1.5px solid #1a1a1a;
-  border-bottom: none;
-  content: '';
-  height: 22px;
-  left: 0;
-  position: absolute;
-  top: -22px;
-  transform: skewX(-54deg);
-  transform-origin: bottom left;
-  width: 180px;
-  z-index: 25;
+  content: none;
 }
 
-/* MURO POSTERIORE — stesso formato, offset +30px destra e -22px su */
+/* MURO POSTERIORE — grigio chiaro, in alto-destra, gap di 8px dal muro anteriore */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #aeb2b8;
+  background: #c8ccd2;
   border: 1.5px solid #1a1a1a;
   height: 28px;
   left: calc(50% - 60px);
-  top: 66px;
+  overflow: visible;
+  top: 56px;
   transform: none;
   width: 180px;
-  z-index: 23;
+  z-index: 26;
 }
 
-/* Label sopra il muro posteriore */
+/* Faccia SUPERIORE del muro posteriore (top face — parallelogramma verso destra) */
+.technical-drawing-column--historic .technical-guide-wall--back::before {
+  background: #dedad4;
+  border: 1.5px solid #1a1a1a;
+  border-bottom: none;
+  content: '';
+  height: 18px;
+  left: 0;
+  position: absolute;
+  top: -18px;
+  transform: skewX(-54deg);
+  transform-origin: bottom left;
+  width: 180px;
+  z-index: 27;
+}
+
+/* Faccia destra del muro posteriore */
+.technical-drawing-column--historic .technical-guide-wall--back::after {
+  background: #6a6e76;
+  border: 1.5px solid #1a1a1a;
+  border-left: none;
+  content: '';
+  height: 28px;
+  position: absolute;
+  right: -29px;
+  top: 0;
+  transform: skewY(-35deg);
+  transform-origin: top left;
+  width: 28px;
+  z-index: 26;
+}
+
+/* Label centrata sul muro posteriore */
 .technical-drawing-column--historic .technical-guide-wall-label {
   color: #222;
   font-family: Arial, Helvetica, sans-serif;
@@ -7154,7 +7174,7 @@ label.form-label[for="profondita_totale"]{
   font-weight: 600;
   left: calc(50% + 20px);
   position: absolute;
-  top: 74px;
+  top: 65px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 28;
@@ -7377,7 +7397,7 @@ label.form-label[for="profondita_totale"]{
   z-index: 40;
 }
 
-/* Murette Guide scala media — due muri in prospettiva */
+/* Murette Guide scala media — due muri separati */
 .technical-drawing-column--historic .technical-guide-wall {
   border: 1.5px solid #1a1a1a;
   box-shadow: none;
@@ -7388,59 +7408,80 @@ label.form-label[for="profondita_totale"]{
 
 /* Muro anteriore */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #9ea2a8;
+  background: #8a8e94;
   border: 1.5px solid #1a1a1a;
   height: 36px;
   left: calc(50% - 118px);
   overflow: visible;
-  top: 118px;
+  top: 120px;
   transform: none;
   width: 236px;
-  z-index: 35;
+  z-index: 34;
 }
 
 /* Faccia destra muro anteriore */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
-  background: #5a6068;
+  background: #565a62;
   border: 1.5px solid #1a1a1a;
   border-left: none;
   content: '';
   height: 36px;
   position: absolute;
-  right: -40px;
+  right: -38px;
   top: 0;
   transform: skewY(-35deg);
   transform-origin: top left;
-  width: 39px;
-  z-index: 35;
+  width: 37px;
+  z-index: 34;
 }
 
-/* Striscia superiore muro anteriore */
 .technical-drawing-column--historic .technical-guide-wall--front::after {
-  background: #c2bfb8;
-  border: 1.5px solid #1a1a1a;
-  border-bottom: none;
-  content: '';
-  height: 28px;
-  left: 0;
-  position: absolute;
-  top: -28px;
-  transform: skewX(-54deg);
-  transform-origin: bottom left;
-  width: 236px;
-  z-index: 34;
+  content: none;
 }
 
 /* Muro posteriore */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #aeb2b8;
+  background: #c8ccd2;
   border: 1.5px solid #1a1a1a;
   height: 36px;
   left: calc(50% - 79px);
-  top: 82px;
+  overflow: visible;
+  top: 72px;
   transform: none;
   width: 236px;
-  z-index: 32;
+  z-index: 36;
+}
+
+/* Faccia superiore muro posteriore */
+.technical-drawing-column--historic .technical-guide-wall--back::before {
+  background: #dedad4;
+  border: 1.5px solid #1a1a1a;
+  border-bottom: none;
+  content: '';
+  height: 24px;
+  left: 0;
+  position: absolute;
+  top: -24px;
+  transform: skewX(-54deg);
+  transform-origin: bottom left;
+  width: 236px;
+  z-index: 37;
+}
+
+/* Faccia destra muro posteriore */
+.technical-drawing-column--historic .technical-guide-wall--back::after {
+  background: #6a6e76;
+  border: 1.5px solid #1a1a1a;
+  border-left: none;
+  content: '';
+  height: 36px;
+  position: absolute;
+  right: -38px;
+  top: 0;
+  transform: skewY(-35deg);
+  transform-origin: top left;
+  width: 37px;
+  z-index: 36;
 }
 
 .technical-drawing-column--historic .technical-guide-wall-label {
@@ -7828,7 +7869,7 @@ label.form-label[for="profondita_totale"]{
   z-index: 50;
 }
 
-/* Murette Guide scala grande / PDF — due muri in prospettiva */
+/* Murette Guide scala grande / PDF — due muri separati */
 .technical-drawing-column--historic .technical-guide-wall {
   border: 1px solid #1a1a1a;
   box-shadow: none;
@@ -7839,12 +7880,12 @@ label.form-label[for="profondita_totale"]{
 
 /* Muro anteriore */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #9ea2a8;
+  background: #8a8e94;
   border: 1.5px solid #1a1a1a;
   height: 46px;
   left: calc(50% - 155px);
   overflow: visible;
-  top: 194px;
+  top: 200px;
   transform: none;
   width: 310px;
   z-index: 38;
@@ -7852,46 +7893,67 @@ label.form-label[for="profondita_totale"]{
 
 /* Faccia destra muro anteriore */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
-  background: #5a6068;
+  background: #565a62;
   border: 1.5px solid #1a1a1a;
   border-left: none;
   content: '';
   height: 46px;
   position: absolute;
-  right: -52px;
+  right: -50px;
   top: 0;
   transform: skewY(-35deg);
   transform-origin: top left;
-  width: 51px;
+  width: 49px;
   z-index: 38;
 }
 
-/* Striscia superiore muro anteriore */
 .technical-drawing-column--historic .technical-guide-wall--front::after {
-  background: #c2bfb8;
-  border: 1.5px solid #1a1a1a;
-  border-bottom: none;
-  content: '';
-  height: 36px;
-  left: 0;
-  position: absolute;
-  top: -36px;
-  transform: skewX(-54deg);
-  transform-origin: bottom left;
-  width: 310px;
-  z-index: 37;
+  content: none;
 }
 
 /* Muro posteriore */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #aeb2b8;
+  background: #c8ccd2;
   border: 1.5px solid #1a1a1a;
   height: 46px;
-  left: calc(50% - 105px);
-  top: 148px;
+  left: calc(50% - 104px);
+  overflow: visible;
+  top: 140px;
   transform: none;
   width: 310px;
-  z-index: 35;
+  z-index: 40;
+}
+
+/* Faccia superiore muro posteriore */
+.technical-drawing-column--historic .technical-guide-wall--back::before {
+  background: #dedad4;
+  border: 1.5px solid #1a1a1a;
+  border-bottom: none;
+  content: '';
+  height: 30px;
+  left: 0;
+  position: absolute;
+  top: -30px;
+  transform: skewX(-54deg);
+  transform-origin: bottom left;
+  width: 310px;
+  z-index: 41;
+}
+
+/* Faccia destra muro posteriore */
+.technical-drawing-column--historic .technical-guide-wall--back::after {
+  background: #6a6e76;
+  border: 1.5px solid #1a1a1a;
+  border-left: none;
+  content: '';
+  height: 46px;
+  position: absolute;
+  right: -50px;
+  top: 0;
+  transform: skewY(-35deg);
+  transform-origin: top left;
+  width: 49px;
+  z-index: 40;
 }
 
 .technical-drawing-column--historic .technical-guide-wall-label {
