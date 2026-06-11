@@ -7810,7 +7810,7 @@ label.form-label[for="profondita_totale"]{
   overflow: visible;
   top: 178px;
   width: 306px;
-  z-index: 38;
+  z-index: 40;
 }
 
 /* Faccia DESTRA — clip-path per forma precisa senza artefatti */
@@ -7824,7 +7824,7 @@ label.form-label[for="profondita_totale"]{
   right: -18px;
   top: -18px;
   width: 18px;
-  z-index: 38;
+  z-index: 40;
 }
 
 .technical-drawing-column--historic .technical-guide-wall--front::after {
@@ -7836,7 +7836,6 @@ label.form-label[for="profondita_totale"]{
   background: #e4e4e4;
   border: 1.5px solid #333;
   border-bottom: none;
-  border-left: none;
   display: block;
   height: 18px;
   left: calc(50% - 142px);
@@ -7844,7 +7843,7 @@ label.form-label[for="profondita_totale"]{
   transform: skewX(-45deg);
   transform-origin: bottom left;
   width: 306px;
-  z-index: 39;
+  z-index: 38;
 }
 
 .technical-drawing-column--historic .technical-guide-wall--back::before,
@@ -7865,11 +7864,11 @@ label.form-label[for="profondita_totale"]{
   top: 182px;
   transform: translateX(-50%);
   white-space: nowrap;
-  z-index: 40;
+  z-index: 42;
 }
 
 .technical-drawing-column--historic .technical-element {
-  background: rgba(255, 252, 248, 0.68);
+  background: rgba(255, 240, 210, 0.75);
   border: 2px solid #c07820;
   box-shadow: none;
   height: calc(100% - var(--technical-top-offset) - var(--technical-bottom-offset));
@@ -7882,7 +7881,7 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-drawing-column--historic .technical-element--panel::before {
-  background: rgba(255, 252, 248, 0.72);
+  background: rgba(210, 140, 40, 0.35);
   border: 0;
   border-left: 2px solid #c07820;
   border-top: 2px solid #c07820;
@@ -7890,9 +7889,10 @@ label.form-label[for="profondita_totale"]{
   height: 100%;
   left: 100%;
   position: absolute;
-  top: -20px;
-  transform: skewY(-8deg);
-  width: 30px;
+  top: -18px;
+  transform: skewY(-45deg);
+  transform-origin: top left;
+  width: 18px;
 }
 
 .technical-drawing-column--historic .technical-element--panel::after {
@@ -7964,7 +7964,7 @@ label.form-label[for="profondita_totale"]{
 
 .technical-drawing-column--historic .technical-depth-arrow span {
   left: -32px;
-  top: 74%;
+  top: 50%;
   transform: rotate(90deg) translate(-50%, -50%);
   transform-origin: left center;
 }
@@ -8003,12 +8003,12 @@ label.form-label[for="profondita_totale"]{
   border-top: 3px solid #ff0000;
   content: '';
   height: 0;
+  left: 100%;
   position: absolute;
-  right: -6px;
   top: 0;
-  transform: rotate(-38deg);
+  transform: rotate(-45deg);
   transform-origin: left center;
-  width: 38px;
+  width: 26px;
 }
 
 /* Punta della freccia diagonale */
@@ -8018,10 +8018,10 @@ label.form-label[for="profondita_totale"]{
   border-top: 5px solid transparent;
   content: '';
   height: 0;
+  left: calc(100% + 18px);
   position: absolute;
-  right: -44px;
-  top: -26px;
-  transform: rotate(-38deg);
+  top: -18px;
+  transform: rotate(-45deg);
   width: 0;
 }
 
