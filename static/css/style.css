@@ -7813,12 +7813,12 @@ label.form-label[for="profondita_totale"]{
   z-index: 40;
 }
 
-/* Faccia DESTRA — clip-path per forma precisa senza artefatti */
+/* Faccia DESTRA — clip-path per forma precisa, bordi su tutti i lati */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
   background: #909090;
   clip-path: polygon(0px 18px, 18px 0px, 18px 22px, 0px 40px);
   content: '';
-  filter: drop-shadow(1px 0 0 #333) drop-shadow(0 -1px 0 #333);
+  filter: drop-shadow(1px 0 0 #333) drop-shadow(0 -1px 0 #333) drop-shadow(-1px 0 0 #333) drop-shadow(0 1px 0 #333);
   height: 40px;
   position: absolute;
   right: -18px;
@@ -7831,11 +7831,12 @@ label.form-label[for="profondita_totale"]{
   content: none;
 }
 
-/* Faccia SUPERIORE — skewX con bordi corretti */
+/* Faccia SUPERIORE — skewX, border-left rimosso (triangolo scuro) */
 .technical-drawing-column--historic .technical-guide-wall--back {
   background: #e4e4e4;
   border: 1.5px solid #333;
   border-bottom: none;
+  border-left: none;
   display: block;
   height: 18px;
   left: calc(50% - 142px);
@@ -7882,16 +7883,14 @@ label.form-label[for="profondita_totale"]{
 
 .technical-drawing-column--historic .technical-element--panel::before {
   background: rgba(210, 140, 40, 0.35);
-  border: 0;
-  border-left: 2px solid #c07820;
-  border-top: 2px solid #c07820;
+  clip-path: polygon(0 18px, 18px 0, 18px calc(100% - 18px), 0 100%);
   content: "";
-  height: 100%;
+  filter: drop-shadow(0 0 1.5px #c07820);
+  height: calc(100% + 18px);
   left: 100%;
   position: absolute;
   top: -18px;
-  transform: skewY(-45deg);
-  transform-origin: top left;
+  transform: none;
   width: 18px;
 }
 
