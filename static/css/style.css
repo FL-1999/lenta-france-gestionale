@@ -8024,60 +8024,60 @@ label.form-label[for="profondita_totale"]{
 
 .technical-drawing-column--historic .technical-dimension--width span { left: 50%; top: -34px; transform: translateX(-50%); }
 
-/* Epaisseur — freccia bidirezionale diagonale 45° come riferimento Excel */
+/* Epaisseur — testo centrato pannello + freccia diagonale verso la faccia 3D */
 .technical-drawing-column--historic .technical-dimension--thickness {
-  border-top: 3px solid #ff0000;
+  border-top: 0;
   height: 0;
-  left: calc(50% + 164px);
+  left: calc(50% - 142px);
   position: absolute;
   top: 33%;
-  transform: rotate(-45deg);
-  transform-origin: left center;
-  width: 26px;
+  transform: none;
+  width: 306px;
   z-index: 45;
 }
 
-/* Freccetta iniziale — punta verso l'alto-destra (↗) */
+/* Linea diagonale dal bordo destro */
 .technical-drawing-column--historic .technical-dimension--thickness::before {
+  border-top: 3px solid #ff0000;
+  content: '';
+  height: 0;
+  left: 100%;
+  position: absolute;
+  top: 0;
+  transform: rotate(-45deg);
+  transform-origin: left center;
+  width: 24px;
+}
+
+/* Punta freccia */
+.technical-drawing-column--historic .technical-dimension--thickness::after {
   background: #ff0000;
   border: none;
   clip-path: polygon(100% 50%, 0 0, 0 100%);
   content: '';
   height: 12px;
-  left: 0;
+  left: calc(100% + 14px);
   position: absolute;
-  top: -6px;
-  transform: none;
-  width: 10px;
+  top: -17px;
+  transform: rotate(-45deg);
+  transform-origin: center center;
+  width: 12px;
 }
 
-/* Freccetta finale — punta verso il basso-sinistra (↙) */
-.technical-drawing-column--historic .technical-dimension--thickness::after {
-  background: #ff0000;
-  border: none;
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
-  content: '';
-  height: 12px;
-  left: auto;
-  position: absolute;
-  right: 0;
-  top: -6px;
-  transform: none;
-  width: 10px;
-}
-
-/* Testo centrato nel pannello — counter-ruotato per restare orizzontale */
+/* Testo centrato nel pannello */
 .technical-drawing-column--historic .technical-dimension--thickness span {
   background: rgba(255, 255, 255, 0.85);
   color: #ff0000;
   font-family: "Courier New", Courier, monospace;
   font-size: 20px;
   font-weight: 900;
-  left: -110px;
+  left: 50%;
   padding: 0 4px;
   position: absolute;
-  top: -110px;
-  transform: rotate(45deg) translateX(-50%);
+  top: -32px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
   white-space: nowrap;
 }
 
