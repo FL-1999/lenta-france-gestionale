@@ -7117,6 +7117,8 @@ label.form-label[for="profondita_totale"]{
 .technical-drawing-column--historic .technical-guide-wall--back {
   background: #e8e6e2;
   border: 1.5px solid #2a2a2a;
+  border-bottom: none;
+  border-left: none;
   height: 14px;
   left: calc(50% - 90px);
   top: 70px;
@@ -7389,6 +7391,8 @@ label.form-label[for="profondita_totale"]{
 .technical-drawing-column--historic .technical-guide-wall--back {
   background: #e8e6e2;
   border: 1.5px solid #2a2a2a;
+  border-bottom: none;
+  border-left: none;
   height: 18px;
   left: calc(50% - 118px);
   top: 94px;
@@ -7831,6 +7835,8 @@ label.form-label[for="profondita_totale"]{
 .technical-drawing-column--historic .technical-guide-wall--back {
   background: #e8e6e2;
   border: 1.5px solid #2a2a2a;
+  border-bottom: none;
+  border-left: none;
   height: 24px;
   left: calc(50% - 155px);
   top: 160px;
