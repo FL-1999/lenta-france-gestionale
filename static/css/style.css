@@ -7767,7 +7767,7 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-drawing-column--historic .technical-section-canvas {
-  --technical-top-offset: 138px;
+  --technical-top-offset: 152px;
   --technical-bottom-offset: 20px;
   background: transparent;
   border: 0;
@@ -7792,101 +7792,108 @@ label.form-label[for="profondita_totale"]{
   z-index: 50;
 }
 
-/* ── MURETTE GUIDE — parallelepipedo 3D (ref. Excel) ── */
+/* ══════════════════════════════════════════
+   MURETTE GUIDE — parallelepipedo 3D
+   top face  : clip-path polygon cavalier
+   front face: rettangolo con bordo
+   right face : clip-path polygon via ::before
+   ══════════════════════════════════════════ */
 .technical-drawing-column--historic .technical-guide-wall {
   border: none; box-shadow: none; overflow: visible; position: absolute; transform: none;
 }
-/* faccia superiore */
+/* top face */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #b4b4b4;
-  clip-path: polygon(28px 0px, 330px 0px, 302px 28px, 0px 28px);
+  background: #aaaaaa;
+  clip-path: polygon(36px 0px, 436px 0px, 400px 36px, 0px 36px);
   display: block;
   filter: drop-shadow(0 -1px 0 #555) drop-shadow(1px 0 0 #555) drop-shadow(-1px 0 0 #555);
-  height: 28px;
-  left: calc(50% - 151px);
-  top: 60px;
-  width: 330px;
+  height: 36px;
+  left: calc(50% - 200px);
+  top: 62px;
+  width: 436px;
   z-index: 36;
 }
-/* faccia frontale */
+/* front face */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #d4d4d4;
+  background: #d0d0d0;
   border: 1.5px solid #555;
-  height: 42px;
-  left: calc(50% - 151px);
+  height: 48px;
+  left: calc(50% - 200px);
   overflow: visible;
-  top: 88px;
-  width: 302px;
+  top: 98px;
+  width: 400px;
   z-index: 38;
 }
-/* faccia laterale destra */
+/* right face */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
-  background: #9e9e9e;
-  clip-path: polygon(0px 28px, 28px 0px, 28px 42px, 0px 70px);
+  background: #999999;
+  clip-path: polygon(0px 36px, 36px 0px, 36px 48px, 0px 84px);
   content: '';
   filter: drop-shadow(1px 0 0 #555);
-  height: 70px;
+  height: 84px;
   position: absolute;
-  right: -28px;
-  top: -28px;
-  width: 28px;
+  right: -36px;
+  top: -36px;
+  width: 36px;
   z-index: 37;
 }
 .technical-drawing-column--historic .technical-guide-wall--front::after { content: none; }
-/* label centrata sulla faccia frontale */
+/* label */
 .technical-drawing-column--historic .technical-guide-wall-label {
-  background: rgba(255,255,255,0.0);
   color: #222;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  left: calc(50% - 2px);
-  letter-spacing: 0.03em;
-  padding: 0;
+  left: 50%;
   position: absolute;
-  top: 103px;
+  top: 116px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 42;
 }
 
-/* ── PANNELLO — parallelepipedo 3D (ref. Excel) ── */
+/* ══════════════════════════════════════════
+   PARATIA — parallelepipedo 3D
+   front face : rettangolo principale beige
+   right face : ::before  amber — indica epaisseur
+   top face   : ::after   cavalier
+   ══════════════════════════════════════════ */
 .technical-drawing-column--historic .technical-element {
   background: rgba(255, 248, 220, 0.95);
   border: 2px solid #c07820;
   box-shadow: none;
   height: calc(100% - var(--technical-top-offset) - var(--technical-bottom-offset));
-  left: calc(50% - 151px);
+  left: calc(50% - 200px);
   position: absolute;
   top: var(--technical-top-offset);
   transform: none;
-  width: 302px;
+  width: 400px;
   z-index: 20;
 }
-/* faccia laterale destra — amber, ampia per rendere la profondità */
+/* right face (epaisseur visuale — amber) */
 .technical-drawing-column--historic .technical-element--panel::before {
-  background: rgba(185, 110, 10, 0.32);
-  clip-path: polygon(0px 28px, 28px 0px, 28px 100%, 0px 100%);
+  background: rgba(180, 105, 10, 0.38);
+  clip-path: polygon(0px 36px, 36px 0px, 36px 100%, 0px 100%);
   content: '';
   filter: drop-shadow(1px 0 0 #c07820);
-  height: calc(100% + 28px);
+  height: calc(100% + 36px);
   left: 100%;
   position: absolute;
-  top: -28px;
-  width: 28px;
+  top: -36px;
+  width: 36px;
   z-index: 20;
 }
-/* faccia superiore */
+/* top face */
 .technical-drawing-column--historic .technical-element--panel::after {
-  background: rgba(210, 165, 50, 0.30);
-  clip-path: polygon(28px 0px, 330px 0px, 302px 28px, 0px 28px);
+  background: rgba(210, 160, 45, 0.28);
+  clip-path: polygon(36px 0px, 436px 0px, 400px 36px, 0px 36px);
   content: '';
   filter: drop-shadow(0 -1px 0 #c07820) drop-shadow(1px 0 0 #c07820);
-  height: 28px;
+  height: 36px;
   left: 0;
   position: absolute;
-  top: -28px;
-  width: 330px;
+  top: -36px;
+  width: 436px;
   z-index: 21;
 }
 
@@ -7915,11 +7922,15 @@ label.form-label[for="profondita_totale"]{
   position: absolute;
 }
 
-/* ── LONGUEUR FORÉE — freccia verticale, esterna a sinistra ── */
+/* ══════════════════════════════════════════
+   LONGUEUR FORÉE
+   freccia verticale esterna a sinistra
+   molto distante dalla paratia
+   ══════════════════════════════════════════ */
 .technical-drawing-column--historic .technical-depth-arrow {
   border-left: 2.5px solid #cc0000;
   bottom: var(--technical-bottom-offset);
-  left: calc(50% - 220px);
+  left: calc(50% - 270px);
   position: absolute;
   top: var(--technical-top-offset);
   z-index: 45;
@@ -7927,105 +7938,118 @@ label.form-label[for="profondita_totale"]{
 .technical-drawing-column--historic .technical-depth-arrow::before {
   background: #cc0000; border: none;
   clip-path: polygon(50% 0, 0 100%, 100% 100%);
-  height: 13px; left: -6px; top: -13px; width: 13px;
+  content: ''; height: 14px; left: -7px; position: absolute; top: -14px; width: 14px;
 }
 .technical-drawing-column--historic .technical-depth-arrow::after {
-  background: #cc0000; border: none; bottom: -13px;
+  background: #cc0000; border: none;
   clip-path: polygon(50% 100%, 0 0, 100% 0);
-  height: 13px; left: -6px; top: auto; width: 13px;
+  bottom: -14px; content: ''; height: 14px; left: -7px; position: absolute; top: auto; width: 14px;
 }
 .technical-drawing-column--historic .technical-depth-arrow span {
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.92);
   color: #cc0000;
   font-family: "Courier New", Courier, monospace;
   font-size: 17px;
   font-weight: 900;
-  left: -28px;
+  left: -30px;
   padding: 0 4px;
+  position: absolute;
   top: 50%;
   transform: rotate(90deg) translate(-50%, -50%);
   transform-origin: left center;
   white-space: nowrap;
 }
 
-/* ── LARGEUR — freccia orizzontale, allineata al pannello ── */
+/* ══════════════════════════════════════════
+   LARGEUR
+   freccia orizzontale dentro la paratia
+   spanning intera larghezza front face
+   ══════════════════════════════════════════ */
 .technical-drawing-column--historic .technical-dimension--width {
   border-top: 2.5px solid #cc0000;
-  left: calc(50% - 151px);
+  left: calc(50% - 200px);
   position: absolute;
-  right: calc(50% - 151px);
+  right: calc(50% - 200px);
   top: 62%;
   z-index: 45;
 }
 .technical-drawing-column--historic .technical-dimension--width::before {
   background: #cc0000; border: none;
   clip-path: polygon(100% 50%, 0 0, 0 100%);
-  height: 13px; left: 0; top: -6px; width: 11px;
+  content: ''; height: 14px; left: 0; position: absolute; top: -7px; width: 12px;
 }
 .technical-drawing-column--historic .technical-dimension--width::after {
   background: #cc0000; border: none;
   clip-path: polygon(0 50%, 100% 0, 100% 100%);
-  height: 13px; left: auto; right: 0; top: -6px; width: 11px;
+  content: ''; height: 14px; left: auto; position: absolute; right: 0; top: -7px; width: 12px;
 }
 .technical-drawing-column--historic .technical-dimension--width span {
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.92);
   color: #cc0000;
   font-family: "Courier New", Courier, monospace;
   font-size: 17px;
   font-weight: 900;
   left: 50%;
   padding: 0 4px;
+  position: absolute;
   top: -34px;
   transform: translateX(-50%);
   white-space: nowrap;
 }
 
-/* ── EPAISSEUR — freccia diagonale verso faccia laterale (ref. Excel) ── */
-/* il container si posiziona dove parte la linea diagonale */
+/* ══════════════════════════════════════════
+   EPAISSEUR
+   freccia diagonale -45° ancorata al bordo
+   destro della paratia — punta verso la
+   faccia laterale amber
+   container: punto di partenza della linea
+   ══════════════════════════════════════════ */
 .technical-drawing-column--historic .technical-dimension--thickness {
   height: 1px;
-  left: calc(50% + 110px);
+  left: calc(50% + 145px);
   position: absolute;
-  top: 36%;
+  top: 38%;
   width: 1px;
-  z-index: 45;
+  z-index: 48;
 }
-/* linea diagonale: 52px a -45° — punta verso la faccia laterale destra */
+/* shaft diagonale: 58px a -45° */
 .technical-drawing-column--historic .technical-dimension--thickness::before {
   background: #cc0000;
   content: '';
-  height: 2px;
+  height: 2.5px;
   left: 0;
   position: absolute;
-  top: 0;
+  top: -1px;
   transform: rotate(-45deg);
   transform-origin: 0 50%;
-  width: 52px;
+  width: 58px;
 }
-/* punta della freccia alla fine della linea diagonale (≈ 37px, -37px dal container) */
+/* punta freccia — posizionata al tip della linea
+   tip a: left = 58*cos45° ≈ 41px, top = -58*sin45° ≈ -41px
+   arrowhead punta verso upper-right (triangolo pointing-right, ruotato -45°) */
 .technical-drawing-column--historic .technical-dimension--thickness::after {
   background: #cc0000;
   clip-path: polygon(0 0, 100% 50%, 0 100%);
   content: '';
-  height: 10px;
-  left: 33px;
+  height: 12px;
+  left: 37px;
   position: absolute;
-  top: -42px;
+  top: -47px;
   transform: rotate(-45deg);
   transform-origin: center;
-  width: 10px;
+  width: 12px;
 }
-/* testo orizzontale sotto/a sinistra rispetto al punto di partenza */
+/* testo orizzontale: a sinistra e sotto del punto di partenza */
 .technical-drawing-column--historic .technical-dimension--thickness span {
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.92);
   color: #cc0000;
   font-family: "Courier New", Courier, monospace;
   font-size: 17px;
   font-weight: 900;
-  left: -55px;
+  left: -70px;
   padding: 0 4px;
   position: absolute;
-  top: 12px;
+  top: 14px;
   transform: none;
   white-space: nowrap;
 }
@@ -8035,7 +8059,7 @@ label.form-label[for="profondita_totale"]{
   left: calc(50% - 58px); right: calc(50% - 58px); top: 176px;
 }
 .technical-drawing-column--historic .technical-section-canvas--pile .technical-depth-arrow {
-  left: calc(50% - 104px);
+  left: calc(50% - 110px);
 }
 
 .technical-drawing-column--historic .technical-level {
