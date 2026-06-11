@@ -7833,11 +7833,11 @@ label.form-label[for="profondita_totale"]{
   content: none;
 }
 
-/* Faccia SUPERIORE — clip-path parallelogramma senza transforms, nessun artefatto */
+/* Faccia SUPERIORE — bordo sinistro verticale, diagonale solo a destra */
 .technical-drawing-column--historic .technical-guide-wall--back {
   background: #e4e4e4;
   border: none;
-  clip-path: polygon(18px 0px, 100% 0px, calc(100% - 18px) 100%, 0px 100%);
+  clip-path: polygon(0 18px, calc(100% - 18px) 18px, 100% 0, 0 0);
   display: block;
   filter: drop-shadow(0 1px 0 #333) drop-shadow(0 -1px 0 #333) drop-shadow(1px 0 0 #333) drop-shadow(-1px 0 0 #333);
   height: 18px;
@@ -8024,19 +8024,20 @@ label.form-label[for="profondita_totale"]{
 
 .technical-drawing-column--historic .technical-dimension--width span { left: 50%; top: -34px; transform: translateX(-50%); }
 
-/* Epaisseur — linea orizzontale bidirezionale sul bordo destro del pannello */
+/* Epaisseur — freccia bidirezionale diagonale 45° come riferimento Excel */
 .technical-drawing-column--historic .technical-dimension--thickness {
   border-top: 3px solid #ff0000;
   height: 0;
   left: calc(50% + 164px);
   position: absolute;
   top: 33%;
-  transform: none;
-  width: 18px;
+  transform: rotate(-45deg);
+  transform-origin: left center;
+  width: 26px;
   z-index: 45;
 }
 
-/* Freccetta sinistra — punta verso destra */
+/* Freccetta iniziale — punta verso l'alto-destra (↗) */
 .technical-drawing-column--historic .technical-dimension--thickness::before {
   background: #ff0000;
   border: none;
@@ -8050,7 +8051,7 @@ label.form-label[for="profondita_totale"]{
   width: 10px;
 }
 
-/* Freccetta destra — punta verso sinistra */
+/* Freccetta finale — punta verso il basso-sinistra (↙) */
 .technical-drawing-column--historic .technical-dimension--thickness::after {
   background: #ff0000;
   border: none;
@@ -8065,18 +8066,18 @@ label.form-label[for="profondita_totale"]{
   width: 10px;
 }
 
-/* Testo centrato nel pannello — spostato a sinistra rispetto al contenitore */
+/* Testo centrato nel pannello — counter-ruotato per restare orizzontale */
 .technical-drawing-column--historic .technical-dimension--thickness span {
   background: rgba(255, 255, 255, 0.85);
   color: #ff0000;
   font-family: "Courier New", Courier, monospace;
   font-size: 20px;
   font-weight: 900;
-  left: -153px;
+  left: -110px;
   padding: 0 4px;
   position: absolute;
-  top: -32px;
-  transform: translateX(-50%);
+  top: -110px;
+  transform: rotate(45deg) translateX(-50%);
   white-space: nowrap;
 }
 
