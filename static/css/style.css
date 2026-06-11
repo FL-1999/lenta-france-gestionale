@@ -7843,7 +7843,7 @@ label.form-label[for="profondita_totale"]{
 
 .technical-drawing-column--historic .technical-element {
   background: rgba(255, 252, 248, 0.68);
-  border: 1px solid #f5a142;
+  border: 2px solid #c07820;
   box-shadow: none;
   height: calc(100% - var(--technical-top-offset) - var(--technical-bottom-offset));
   left: calc(50% - 142px);
@@ -7857,8 +7857,8 @@ label.form-label[for="profondita_totale"]{
 .technical-drawing-column--historic .technical-element--panel::before {
   background: rgba(255, 252, 248, 0.72);
   border: 0;
-  border-left: 1px solid #f5a142;
-  border-top: 1px solid #f5a142;
+  border-left: 2px solid #c07820;
+  border-top: 2px solid #c07820;
   content: "";
   height: 100%;
   left: 100%;
@@ -7956,23 +7956,61 @@ label.form-label[for="profondita_totale"]{
 .technical-drawing-column--historic .technical-dimension--width::after { border-left-color: #ff0000; border-left-width: 10px; }
 .technical-drawing-column--historic .technical-dimension--width span { left: 50%; top: -34px; transform: translateX(-50%); }
 
-/* Epaisseur — freccia diagonale che segue la direzione della profondità 3D */
+/* Epaisseur — testo centrato nel pannello + freccia corta verso la faccia 3D */
 .technical-drawing-column--historic .technical-dimension--thickness {
-  border-left: 0;
-  border-top: 3px solid #ff0000;
+  border-top: 0;
   height: 0;
-  left: calc(50% + 164px);
+  left: calc(50% - 142px);
   position: absolute;
-  top: 32%;
-  transform: rotate(-38deg);
-  transform-origin: left center;
-  width: 58px;
+  top: 33%;
+  width: 306px;
   z-index: 45;
 }
 
-.technical-drawing-column--historic .technical-dimension--thickness::before { border-right-color: #ff0000; border-right-width: 9px; }
-.technical-drawing-column--historic .technical-dimension--thickness::after { border-left-color: #ff0000; border-left-width: 9px; }
-.technical-drawing-column--historic .technical-dimension--thickness span { left: -210px; top: -8px; transform: rotate(38deg); }
+/* Freccia diagonale corta al bordo destro, nella direzione della profondità 3D */
+.technical-drawing-column--historic .technical-dimension--thickness::before {
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 3px solid #ff0000;
+  content: '';
+  height: 0;
+  position: absolute;
+  right: -6px;
+  top: 0;
+  transform: rotate(-38deg);
+  transform-origin: left center;
+  width: 38px;
+}
+
+/* Punta della freccia diagonale */
+.technical-drawing-column--historic .technical-dimension--thickness::after {
+  border-bottom: 5px solid transparent;
+  border-left: 9px solid #ff0000;
+  border-top: 5px solid transparent;
+  content: '';
+  height: 0;
+  position: absolute;
+  right: -44px;
+  top: -26px;
+  transform: rotate(-38deg);
+  width: 0;
+}
+
+/* Testo centrato nel pannello */
+.technical-drawing-column--historic .technical-dimension--thickness span {
+  background: rgba(255, 255, 255, 0.85);
+  color: #ff0000;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 20px;
+  font-weight: 900;
+  left: 50%;
+  padding: 0 4px;
+  position: absolute;
+  top: -32px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
 
 .technical-drawing-column--historic .technical-section-canvas--pile .technical-dimension--width {
   left: calc(50% - 58px);
