@@ -7767,7 +7767,7 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-drawing-column--historic .technical-section-canvas {
-  --technical-top-offset: 128px;
+  --technical-top-offset: 138px;
   --technical-bottom-offset: 20px;
   background: transparent;
   border: 0;
@@ -7782,7 +7782,7 @@ label.form-label[for="profondita_totale"]{
   font-family: "Courier New", Courier, monospace;
   font-size: 17px;
   font-weight: 900;
-  gap: 20px;
+  gap: 18px;
   left: 0;
   line-height: 1;
   position: absolute;
@@ -7792,100 +7792,101 @@ label.form-label[for="profondita_totale"]{
   z-index: 50;
 }
 
-/* ── MURETTE GUIDE — parallelepipedo 3D cavalier projection ── */
+/* ── MURETTE GUIDE — parallelepipedo 3D (ref. Excel) ── */
 .technical-drawing-column--historic .technical-guide-wall {
   border: none; box-shadow: none; overflow: visible; position: absolute; transform: none;
 }
-/* faccia superiore: parallelogramma con clip-path */
+/* faccia superiore */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  background: #c8c8c8;
-  clip-path: polygon(18px 0px, 290px 0px, 272px 18px, 0px 18px);
+  background: #b4b4b4;
+  clip-path: polygon(28px 0px, 330px 0px, 302px 28px, 0px 28px);
   display: block;
-  filter: drop-shadow(0 -1px 0 #444) drop-shadow(1px 0 0 #444) drop-shadow(0 1px 0 #444) drop-shadow(-1px 0 0 #444);
-  height: 18px;
-  left: calc(50% - 136px);
-  top: 68px;
-  width: 290px;
+  filter: drop-shadow(0 -1px 0 #555) drop-shadow(1px 0 0 #555) drop-shadow(-1px 0 0 #555);
+  height: 28px;
+  left: calc(50% - 151px);
+  top: 60px;
+  width: 330px;
   z-index: 36;
 }
 /* faccia frontale */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #d8d8d8;
-  border: 1.5px solid #444;
-  height: 28px;
-  left: calc(50% - 136px);
+  background: #d4d4d4;
+  border: 1.5px solid #555;
+  height: 42px;
+  left: calc(50% - 151px);
   overflow: visible;
-  top: 86px;
-  width: 272px;
+  top: 88px;
+  width: 302px;
   z-index: 38;
 }
-/* faccia laterale destra: parallelogramma */
+/* faccia laterale destra */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
-  background: #b0b0b0;
-  clip-path: polygon(0px 18px, 18px 0px, 18px 28px, 0px 46px);
+  background: #9e9e9e;
+  clip-path: polygon(0px 28px, 28px 0px, 28px 42px, 0px 70px);
   content: '';
-  filter: drop-shadow(1px 0 0 #444) drop-shadow(0 1px 0 #444);
-  height: 46px;
+  filter: drop-shadow(1px 0 0 #555);
+  height: 70px;
   position: absolute;
-  right: -18px;
-  top: -18px;
-  width: 18px;
-  z-index: 38;
+  right: -28px;
+  top: -28px;
+  width: 28px;
+  z-index: 37;
 }
 .technical-drawing-column--historic .technical-guide-wall--front::after { content: none; }
+/* label centrata sulla faccia frontale */
 .technical-drawing-column--historic .technical-guide-wall-label {
-  background: rgba(255,255,255,0.82);
+  background: rgba(255,255,255,0.0);
   color: #222;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  left: 50%;
+  left: calc(50% - 2px);
   letter-spacing: 0.03em;
-  padding: 1px 5px;
+  padding: 0;
   position: absolute;
-  top: 94px;
+  top: 103px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 42;
 }
 
-/* ── PANNELLO — faccia frontale + faccia laterale 3D ── */
+/* ── PANNELLO — parallelepipedo 3D (ref. Excel) ── */
 .technical-drawing-column--historic .technical-element {
-  background: rgba(255, 246, 218, 0.93);
-  border: 2px solid #b06010;
+  background: rgba(255, 248, 220, 0.95);
+  border: 2px solid #c07820;
   box-shadow: none;
   height: calc(100% - var(--technical-top-offset) - var(--technical-bottom-offset));
-  left: calc(50% - 136px);
+  left: calc(50% - 151px);
   position: absolute;
   top: var(--technical-top-offset);
   transform: none;
-  width: 272px;
+  width: 302px;
   z-index: 20;
 }
-/* faccia laterale destra (epaisseur visuale) */
+/* faccia laterale destra — amber, ampia per rendere la profondità */
 .technical-drawing-column--historic .technical-element--panel::before {
-  background: rgba(160, 85, 5, 0.22);
-  clip-path: polygon(0px 18px, 18px 0px, 18px 100%, 0px 100%);
+  background: rgba(185, 110, 10, 0.32);
+  clip-path: polygon(0px 28px, 28px 0px, 28px 100%, 0px 100%);
   content: '';
-  filter: drop-shadow(1px 0 0 #b06010);
-  height: calc(100% + 18px);
+  filter: drop-shadow(1px 0 0 #c07820);
+  height: calc(100% + 28px);
   left: 100%;
   position: absolute;
-  top: -18px;
-  width: 18px;
+  top: -28px;
+  width: 28px;
   z-index: 20;
 }
-/* faccia superiore del pannello */
+/* faccia superiore */
 .technical-drawing-column--historic .technical-element--panel::after {
-  background: rgba(200, 155, 40, 0.30);
-  clip-path: polygon(18px 0px, 290px 0px, 272px 18px, 0px 18px);
+  background: rgba(210, 165, 50, 0.30);
+  clip-path: polygon(28px 0px, 330px 0px, 302px 28px, 0px 28px);
   content: '';
-  filter: drop-shadow(0 -1px 0 #b06010) drop-shadow(1px 0 0 #b06010);
-  height: 18px;
+  filter: drop-shadow(0 -1px 0 #c07820) drop-shadow(1px 0 0 #c07820);
+  height: 28px;
   left: 0;
   position: absolute;
-  top: -18px;
-  width: 290px;
+  top: -28px;
+  width: 330px;
   z-index: 21;
 }
 
@@ -7914,11 +7915,11 @@ label.form-label[for="profondita_totale"]{
   position: absolute;
 }
 
-/* ── LONGUEUR FORÉE — freccia verticale sinistra ── */
+/* ── LONGUEUR FORÉE — freccia verticale, esterna a sinistra ── */
 .technical-drawing-column--historic .technical-depth-arrow {
   border-left: 2.5px solid #cc0000;
   bottom: var(--technical-bottom-offset);
-  left: calc(50% - 184px);
+  left: calc(50% - 220px);
   position: absolute;
   top: var(--technical-top-offset);
   z-index: 45;
@@ -7947,13 +7948,13 @@ label.form-label[for="profondita_totale"]{
   white-space: nowrap;
 }
 
-/* ── LARGEUR — freccia orizzontale con punte interne ── */
+/* ── LARGEUR — freccia orizzontale, allineata al pannello ── */
 .technical-drawing-column--historic .technical-dimension--width {
   border-top: 2.5px solid #cc0000;
-  left: calc(50% - 136px);
+  left: calc(50% - 151px);
   position: absolute;
-  right: calc(50% - 136px);
-  top: 60%;
+  right: calc(50% - 151px);
+  top: 62%;
   z-index: 45;
 }
 .technical-drawing-column--historic .technical-dimension--width::before {
@@ -7979,36 +7980,52 @@ label.form-label[for="profondita_totale"]{
   white-space: nowrap;
 }
 
-/* ── EPAISSEUR — righina sul bordo destro del pannello ── */
+/* ── EPAISSEUR — freccia diagonale verso faccia laterale (ref. Excel) ── */
+/* il container si posiziona dove parte la linea diagonale */
 .technical-drawing-column--historic .technical-dimension--thickness {
-  border-top: 2.5px solid #cc0000;
-  height: 0;
-  left: calc(50% + 136px);
+  height: 1px;
+  left: calc(50% + 110px);
   position: absolute;
-  top: 30%;
-  width: 18px;
+  top: 36%;
+  width: 1px;
   z-index: 45;
 }
+/* linea diagonale: 52px a -45° — punta verso la faccia laterale destra */
 .technical-drawing-column--historic .technical-dimension--thickness::before {
-  background: #cc0000; border: none;
-  clip-path: polygon(100% 50%, 0 0, 0 100%);
-  content: ''; height: 11px; left: 0; position: absolute; top: -5px; width: 9px;
+  background: #cc0000;
+  content: '';
+  height: 2px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  transform: rotate(-45deg);
+  transform-origin: 0 50%;
+  width: 52px;
 }
+/* punta della freccia alla fine della linea diagonale (≈ 37px, -37px dal container) */
 .technical-drawing-column--historic .technical-dimension--thickness::after {
-  background: #cc0000; border: none;
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
-  content: ''; height: 11px; left: auto; position: absolute; right: 0; top: -5px; width: 9px;
+  background: #cc0000;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  content: '';
+  height: 10px;
+  left: 33px;
+  position: absolute;
+  top: -42px;
+  transform: rotate(-45deg);
+  transform-origin: center;
+  width: 10px;
 }
+/* testo orizzontale sotto/a sinistra rispetto al punto di partenza */
 .technical-drawing-column--historic .technical-dimension--thickness span {
   background: rgba(255,255,255,0.9);
   color: #cc0000;
   font-family: "Courier New", Courier, monospace;
   font-size: 17px;
   font-weight: 900;
-  left: 26px;
+  left: -55px;
   padding: 0 4px;
   position: absolute;
-  top: -26px;
+  top: 12px;
   transform: none;
   white-space: nowrap;
 }
