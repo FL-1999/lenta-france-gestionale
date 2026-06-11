@@ -7792,7 +7792,7 @@ label.form-label[for="profondita_totale"]{
   z-index: 50;
 }
 
-/* Murette Guide — semplificato 2D, barra piatta */
+/* Murette Guide — box 3D cabinet 45deg */
 .technical-drawing-column--historic .technical-guide-wall {
   border: none;
   box-shadow: none;
@@ -7801,23 +7801,50 @@ label.form-label[for="profondita_totale"]{
   transform: none;
 }
 
+/* Faccia FRONTALE */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #c8c8c8;
-  border: 2px solid #333;
-  height: 20px;
+  background: #d0d0d0;
+  border: 1.5px solid #333;
+  height: 22px;
   left: calc(50% - 142px);
-  top: 180px;
+  overflow: visible;
+  top: 178px;
   width: 306px;
   z-index: 38;
 }
 
-.technical-drawing-column--historic .technical-guide-wall--front::before,
+/* Faccia DESTRA — clip-path per forma precisa senza artefatti */
+.technical-drawing-column--historic .technical-guide-wall--front::before {
+  background: #909090;
+  clip-path: polygon(0px 18px, 18px 0px, 18px 22px, 0px 40px);
+  content: '';
+  filter: drop-shadow(1px 0 0 #333) drop-shadow(0 -1px 0 #333);
+  height: 40px;
+  position: absolute;
+  right: -18px;
+  top: -18px;
+  width: 18px;
+  z-index: 38;
+}
+
 .technical-drawing-column--historic .technical-guide-wall--front::after {
   content: none;
 }
 
+/* Faccia SUPERIORE — skewX con bordi corretti */
 .technical-drawing-column--historic .technical-guide-wall--back {
-  display: none;
+  background: #e4e4e4;
+  border: 1.5px solid #333;
+  border-bottom: none;
+  border-left: none;
+  display: block;
+  height: 18px;
+  left: calc(50% - 142px);
+  top: 160px;
+  transform: skewX(-45deg);
+  transform-origin: bottom left;
+  width: 306px;
+  z-index: 39;
 }
 
 .technical-drawing-column--historic .technical-guide-wall--back::before,
@@ -7835,7 +7862,7 @@ label.form-label[for="profondita_totale"]{
   left: 50%;
   padding: 0 4px;
   position: absolute;
-  top: 183px;
+  top: 182px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 40;
