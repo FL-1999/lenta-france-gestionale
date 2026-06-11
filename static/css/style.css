@@ -7767,7 +7767,7 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-drawing-column--historic .technical-section-canvas {
-  --technical-top-offset: 140px;
+  --technical-top-offset: 128px;
   --technical-bottom-offset: 20px;
   background: transparent;
   border: 0;
@@ -7780,63 +7780,114 @@ label.form-label[for="profondita_totale"]{
   color: #000000;
   display: grid;
   font-family: "Courier New", Courier, monospace;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 900;
-  gap: 30px;
-  left: 55px;
+  gap: 20px;
+  left: 0;
   line-height: 1;
   position: absolute;
   right: 0;
   text-align: center;
-  top: 54px;
+  top: 8px;
   z-index: 50;
 }
 
-/* ── MURETTE GUIDE — barra grigia piatta, nessun 3D ── */
+/* ── MURETTE GUIDE — parallelepipedo 3D cavalier projection ── */
 .technical-drawing-column--historic .technical-guide-wall {
   border: none; box-shadow: none; overflow: visible; position: absolute; transform: none;
 }
+/* faccia superiore: parallelogramma con clip-path */
+.technical-drawing-column--historic .technical-guide-wall--back {
+  background: #c8c8c8;
+  clip-path: polygon(18px 0px, 290px 0px, 272px 18px, 0px 18px);
+  display: block;
+  filter: drop-shadow(0 -1px 0 #444) drop-shadow(1px 0 0 #444) drop-shadow(0 1px 0 #444) drop-shadow(-1px 0 0 #444);
+  height: 18px;
+  left: calc(50% - 136px);
+  top: 68px;
+  width: 290px;
+  z-index: 36;
+}
+/* faccia frontale */
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #d0d0d0;
-  border: 2px solid #555;
+  background: #d8d8d8;
+  border: 1.5px solid #444;
   height: 28px;
-  left: calc(50% - 153px);
-  top: 106px;
-  width: 306px;
+  left: calc(50% - 136px);
+  overflow: visible;
+  top: 86px;
+  width: 272px;
   z-index: 38;
 }
-.technical-drawing-column--historic .technical-guide-wall--front::before,
+/* faccia laterale destra: parallelogramma */
+.technical-drawing-column--historic .technical-guide-wall--front::before {
+  background: #b0b0b0;
+  clip-path: polygon(0px 18px, 18px 0px, 18px 28px, 0px 46px);
+  content: '';
+  filter: drop-shadow(1px 0 0 #444) drop-shadow(0 1px 0 #444);
+  height: 46px;
+  position: absolute;
+  right: -18px;
+  top: -18px;
+  width: 18px;
+  z-index: 38;
+}
 .technical-drawing-column--historic .technical-guide-wall--front::after { content: none; }
-.technical-drawing-column--historic .technical-guide-wall--back { display: none; }
 .technical-drawing-column--historic .technical-guide-wall-label {
-  background: none;
-  color: #333;
+  background: rgba(255,255,255,0.82);
+  color: #222;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   left: 50%;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
   position: absolute;
-  top: 114px;
+  top: 94px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 42;
 }
 
-/* ── PANNELLO — rettangolo principale ── */
+/* ── PANNELLO — faccia frontale + faccia laterale 3D ── */
 .technical-drawing-column--historic .technical-element {
-  background: rgba(255, 240, 210, 0.85);
-  border: 2px solid #c07820;
+  background: rgba(255, 246, 218, 0.93);
+  border: 2px solid #b06010;
   box-shadow: none;
   height: calc(100% - var(--technical-top-offset) - var(--technical-bottom-offset));
-  left: calc(50% - 153px);
+  left: calc(50% - 136px);
   position: absolute;
   top: var(--technical-top-offset);
   transform: none;
-  width: 306px;
+  width: 272px;
   z-index: 20;
 }
-.technical-drawing-column--historic .technical-element--panel::before,
-.technical-drawing-column--historic .technical-element--panel::after { content: none; }
+/* faccia laterale destra (epaisseur visuale) */
+.technical-drawing-column--historic .technical-element--panel::before {
+  background: rgba(160, 85, 5, 0.22);
+  clip-path: polygon(0px 18px, 18px 0px, 18px 100%, 0px 100%);
+  content: '';
+  filter: drop-shadow(1px 0 0 #b06010);
+  height: calc(100% + 18px);
+  left: 100%;
+  position: absolute;
+  top: -18px;
+  width: 18px;
+  z-index: 20;
+}
+/* faccia superiore del pannello */
+.technical-drawing-column--historic .technical-element--panel::after {
+  background: rgba(200, 155, 40, 0.30);
+  clip-path: polygon(18px 0px, 290px 0px, 272px 18px, 0px 18px);
+  content: '';
+  filter: drop-shadow(0 -1px 0 #b06010) drop-shadow(1px 0 0 #b06010);
+  height: 18px;
+  left: 0;
+  position: absolute;
+  top: -18px;
+  width: 290px;
+  z-index: 21;
+}
 
 /* ── PIEUX — cerchio, invariato ── */
 .technical-drawing-column--historic .technical-section-canvas--pile .technical-element--pile {
@@ -7856,97 +7907,108 @@ label.form-label[for="profondita_totale"]{
   right: -2px; top: auto; transform: none; width: auto;
 }
 
-/* ── FRECCE — stile comune ── */
+/* ── FRECCE — posizione comune ── */
 .technical-drawing-column--historic .technical-depth-arrow span,
 .technical-drawing-column--historic .technical-dimension span {
-  background: #fff;
-  color: #ff0000;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 20px;
-  font-weight: 900;
   line-height: 1;
-  padding: 0 6px;
-  white-space: nowrap;
+  position: absolute;
 }
 
 /* ── LONGUEUR FORÉE — freccia verticale sinistra ── */
 .technical-drawing-column--historic .technical-depth-arrow {
-  border-left: 3px solid #ff0000;
+  border-left: 2.5px solid #cc0000;
   bottom: var(--technical-bottom-offset);
-  left: calc(50% - 196px);
+  left: calc(50% - 184px);
   position: absolute;
   top: var(--technical-top-offset);
   z-index: 45;
 }
 .technical-drawing-column--historic .technical-depth-arrow::before {
-  background: #ff0000; border: none;
+  background: #cc0000; border: none;
   clip-path: polygon(50% 0, 0 100%, 100% 100%);
-  height: 14px; left: -7px; top: -14px; width: 14px;
+  height: 13px; left: -6px; top: -13px; width: 13px;
 }
 .technical-drawing-column--historic .technical-depth-arrow::after {
-  background: #ff0000; border: none; bottom: -14px;
+  background: #cc0000; border: none; bottom: -13px;
   clip-path: polygon(50% 100%, 0 0, 100% 0);
-  height: 14px; left: -7px; top: auto; width: 14px;
+  height: 13px; left: -6px; top: auto; width: 13px;
 }
 .technical-drawing-column--historic .technical-depth-arrow span {
-  left: -32px; top: 50%;
+  background: rgba(255,255,255,0.9);
+  color: #cc0000;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 17px;
+  font-weight: 900;
+  left: -28px;
+  padding: 0 4px;
+  top: 50%;
   transform: rotate(90deg) translate(-50%, -50%);
   transform-origin: left center;
+  white-space: nowrap;
 }
 
 /* ── LARGEUR — freccia orizzontale con punte interne ── */
 .technical-drawing-column--historic .technical-dimension--width {
-  border-top: 3px solid #ff0000;
-  left: calc(50% - 153px);
+  border-top: 2.5px solid #cc0000;
+  left: calc(50% - 136px);
   position: absolute;
-  right: calc(50% - 153px);
+  right: calc(50% - 136px);
   top: 60%;
   z-index: 45;
 }
 .technical-drawing-column--historic .technical-dimension--width::before {
-  background: #ff0000; border: none;
+  background: #cc0000; border: none;
   clip-path: polygon(100% 50%, 0 0, 0 100%);
-  height: 14px; left: 0; top: -7px; width: 12px;
+  height: 13px; left: 0; top: -6px; width: 11px;
 }
 .technical-drawing-column--historic .technical-dimension--width::after {
-  background: #ff0000; border: none;
+  background: #cc0000; border: none;
   clip-path: polygon(0 50%, 100% 0, 100% 100%);
-  height: 14px; left: auto; right: 0; top: -7px; width: 12px;
+  height: 13px; left: auto; right: 0; top: -6px; width: 11px;
 }
 .technical-drawing-column--historic .technical-dimension--width span {
-  left: 50%; top: -36px; transform: translateX(-50%);
+  background: rgba(255,255,255,0.9);
+  color: #cc0000;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 17px;
+  font-weight: 900;
+  left: 50%;
+  padding: 0 4px;
+  top: -34px;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
-/* ── EPAISSEUR — indicatore orizzontale a destra del pannello ── */
+/* ── EPAISSEUR — righina sul bordo destro del pannello ── */
 .technical-drawing-column--historic .technical-dimension--thickness {
-  border-top: 3px solid #ff0000;
+  border-top: 2.5px solid #cc0000;
   height: 0;
-  left: calc(50% + 153px);
+  left: calc(50% + 136px);
   position: absolute;
-  top: 28%;
-  width: 40px;
+  top: 30%;
+  width: 18px;
   z-index: 45;
 }
 .technical-drawing-column--historic .technical-dimension--thickness::before {
-  background: #ff0000; border: none;
+  background: #cc0000; border: none;
   clip-path: polygon(100% 50%, 0 0, 0 100%);
-  content: ''; height: 12px; left: 0; position: absolute; top: -6px; width: 10px;
+  content: ''; height: 11px; left: 0; position: absolute; top: -5px; width: 9px;
 }
 .technical-drawing-column--historic .technical-dimension--thickness::after {
-  background: #ff0000; border: none;
+  background: #cc0000; border: none;
   clip-path: polygon(0 50%, 100% 0, 100% 100%);
-  content: ''; height: 12px; left: auto; position: absolute; right: 0; top: -6px; width: 10px;
+  content: ''; height: 11px; left: auto; position: absolute; right: 0; top: -5px; width: 9px;
 }
 .technical-drawing-column--historic .technical-dimension--thickness span {
   background: rgba(255,255,255,0.9);
-  color: #ff0000;
+  color: #cc0000;
   font-family: "Courier New", Courier, monospace;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 900;
-  left: 50px;
-  padding: 0 6px;
+  left: 26px;
+  padding: 0 4px;
   position: absolute;
-  top: -28px;
+  top: -26px;
   transform: none;
   white-space: nowrap;
 }
