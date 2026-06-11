@@ -7792,39 +7792,39 @@ label.form-label[for="profondita_totale"]{
   z-index: 50;
 }
 
-/* Murette Guide scala grande / PDF */
+/* Murette Guide — box 3D cabinet 45deg con clip-path */
 .technical-drawing-column--historic .technical-guide-wall {
-  border: 1px solid #2a2a2a;
+  border: none;
   box-shadow: none;
   overflow: visible;
   position: absolute;
   transform: none;
 }
 
+/* Faccia FRONTALE */
 .technical-drawing-column--historic .technical-guide-wall--front {
   background: #d4d4d4;
   border: 1.5px solid #2a2a2a;
-  height: 44px;
-  left: calc(50% - 155px);
+  height: 30px;
+  left: calc(50% - 145px);
   overflow: visible;
-  top: 184px;
+  top: 170px;
   transform: none;
-  width: 310px;
+  width: 290px;
   z-index: 38;
 }
 
+/* Faccia DESTRA — clip-path parallelogramma */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
   background: #909498;
-  border: 1.5px solid #2a2a2a;
-  border-left: none;
+  clip-path: polygon(0px 20px, 20px 0px, 20px 30px, 0px 50px);
   content: '';
-  height: 44px;
+  filter: drop-shadow(0 0 0.8px #2a2a2a);
+  height: 50px;
   position: absolute;
-  right: -25px;
-  top: 0;
-  transform: skewY(-45deg);
-  transform-origin: top left;
-  width: 24px;
+  right: -20px;
+  top: -20px;
+  width: 20px;
   z-index: 38;
 }
 
@@ -7832,16 +7832,15 @@ label.form-label[for="profondita_totale"]{
   content: none;
 }
 
+/* Faccia SUPERIORE — clip-path parallelogramma */
 .technical-drawing-column--historic .technical-guide-wall--back {
   background: #e8e6e2;
-  border: 1.5px solid #2a2a2a;
-  border-bottom: none;
-  border-left: none;
-  height: 24px;
-  left: calc(50% - 155px);
-  top: 160px;
-  transform: skewX(-45deg);
-  transform-origin: bottom left;
+  clip-path: polygon(20px 0px, 310px 0px, 290px 20px, 0px 20px);
+  filter: drop-shadow(0 0 0.8px #2a2a2a);
+  height: 20px;
+  left: calc(50% - 145px);
+  top: 150px;
+  transform: none;
   width: 310px;
   z-index: 39;
 }
@@ -7861,7 +7860,7 @@ label.form-label[for="profondita_totale"]{
   left: 50%;
   padding: 0;
   position: absolute;
-  top: 202px;
+  top: 178px;
   transform: translateX(-50%);
   white-space: nowrap;
   z-index: 40;
