@@ -7990,6 +7990,7 @@ label.form-label[for="profondita_totale"]{
   left: calc(50% - 142px);
   position: absolute;
   top: 33%;
+  transform: none;
   width: 306px;
   z-index: 45;
 }
