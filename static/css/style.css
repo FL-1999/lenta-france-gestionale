@@ -7813,12 +7813,12 @@ label.form-label[for="profondita_totale"]{
   z-index: 40;
 }
 
-/* Faccia DESTRA — clip-path per forma precisa, bordi su tutti i lati */
+/* Faccia DESTRA — clip-path per forma precisa, bordi solo verso l'esterno */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
   background: #909090;
   clip-path: polygon(0px 18px, 18px 0px, 18px 22px, 0px 40px);
   content: '';
-  filter: drop-shadow(1px 0 0 #333) drop-shadow(0 -1px 0 #333) drop-shadow(-1px 0 0 #333) drop-shadow(0 1px 0 #333);
+  filter: drop-shadow(2px 0 0 #333) drop-shadow(0 1px 0 #333);
   height: 40px;
   position: absolute;
   right: -18px;
@@ -7944,8 +7944,28 @@ label.form-label[for="profondita_totale"]{
   z-index: 45;
 }
 
-.technical-drawing-column--historic .technical-depth-arrow::before { border-bottom-color: #ff0000; border-bottom-width: 10px; }
-.technical-drawing-column--historic .technical-depth-arrow::after { border-top-color: #ff0000; border-top-width: 10px; }
+/* Punta in alto — triangolo solido verso l'alto */
+.technical-drawing-column--historic .technical-depth-arrow::before {
+  background: #ff0000;
+  border: none;
+  clip-path: polygon(50% 0, 0 100%, 100% 100%);
+  height: 14px;
+  left: -7px;
+  top: -14px;
+  width: 14px;
+}
+
+/* Punta in basso — triangolo solido verso il basso */
+.technical-drawing-column--historic .technical-depth-arrow::after {
+  background: #ff0000;
+  border: none;
+  bottom: -14px;
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  height: 14px;
+  left: -7px;
+  top: auto;
+  width: 14px;
+}
 
 .technical-drawing-column--historic .technical-depth-arrow span,
 .technical-drawing-column--historic .technical-dimension span {
@@ -7978,8 +7998,29 @@ label.form-label[for="profondita_totale"]{
   z-index: 45;
 }
 
-.technical-drawing-column--historic .technical-dimension--width::before { border-right-color: #ff0000; border-right-width: 10px; }
-.technical-drawing-column--historic .technical-dimension--width::after { border-left-color: #ff0000; border-left-width: 10px; }
+/* Punta sinistra Largeur — triangolo verso sinistra */
+.technical-drawing-column--historic .technical-dimension--width::before {
+  background: #ff0000;
+  border: none;
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  height: 14px;
+  left: -12px;
+  top: -7px;
+  width: 12px;
+}
+
+/* Punta destra Largeur — triangolo verso destra */
+.technical-drawing-column--historic .technical-dimension--width::after {
+  background: #ff0000;
+  border: none;
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
+  height: 14px;
+  left: auto;
+  right: -12px;
+  top: -7px;
+  width: 12px;
+}
+
 .technical-drawing-column--historic .technical-dimension--width span { left: 50%; top: -34px; transform: translateX(-50%); }
 
 /* Epaisseur — testo centrato nel pannello + freccia corta verso la faccia 3D */
@@ -8010,18 +8051,19 @@ label.form-label[for="profondita_totale"]{
   width: 26px;
 }
 
-/* Punta della freccia diagonale */
+/* Punta della freccia diagonale — triangolo solido */
 .technical-drawing-column--historic .technical-dimension--thickness::after {
-  border-bottom: 5px solid transparent;
-  border-left: 9px solid #ff0000;
-  border-top: 5px solid transparent;
+  background: #ff0000;
+  border: none;
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
   content: '';
-  height: 0;
-  left: calc(100% + 18px);
+  height: 12px;
+  left: calc(100% + 16px);
   position: absolute;
-  top: -18px;
+  top: -19px;
   transform: rotate(-45deg);
-  width: 0;
+  transform-origin: center center;
+  width: 12px;
 }
 
 /* Testo centrato nel pannello */
