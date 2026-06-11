@@ -7813,16 +7813,18 @@ label.form-label[for="profondita_totale"]{
   z-index: 40;
 }
 
-/* Faccia DESTRA — clip-path per forma precisa, bordi solo verso l'esterno */
+/* Faccia DESTRA — skewY(-45deg) per parallelogramma corretto senza clip-path/filter */
 .technical-drawing-column--historic .technical-guide-wall--front::before {
   background: #909090;
-  clip-path: polygon(0px 18px, 18px 0px, 18px 22px, 0px 40px);
+  border: 1.5px solid #333;
   content: '';
-  filter: drop-shadow(2px 0 0 #333) drop-shadow(0 1px 0 #333);
-  height: 40px;
+  filter: none;
+  height: 22px;
   position: absolute;
   right: -18px;
   top: -18px;
+  transform: skewY(-45deg);
+  transform-origin: bottom right;
   width: 18px;
   z-index: 40;
 }
@@ -7831,12 +7833,12 @@ label.form-label[for="profondita_totale"]{
   content: none;
 }
 
-/* Faccia SUPERIORE — skewX, border-left rimosso (triangolo scuro) */
+/* Faccia SUPERIORE — skewX, solo bordi laterali (no border-top che crea linea scura orizzontale) */
 .technical-drawing-column--historic .technical-guide-wall--back {
   background: #e4e4e4;
-  border: 1.5px solid #333;
-  border-bottom: none;
-  border-left: none;
+  border: none;
+  border-left: 1.5px solid #333;
+  border-right: 1.5px solid #333;
   display: block;
   height: 18px;
   left: calc(50% - 142px);
@@ -8035,11 +8037,8 @@ label.form-label[for="profondita_totale"]{
   z-index: 45;
 }
 
-/* Freccia diagonale corta al bordo destro, nella direzione della profondità 3D */
+/* Freccia diagonale corta al bordo destro — lunghezza = profondità 3D (18px) */
 .technical-drawing-column--historic .technical-dimension--thickness::before {
-  border-bottom: 0;
-  border-left: 0;
-  border-right: 0;
   border-top: 3px solid #ff0000;
   content: '';
   height: 0;
@@ -8048,19 +8047,19 @@ label.form-label[for="profondita_totale"]{
   top: 0;
   transform: rotate(-45deg);
   transform-origin: left center;
-  width: 26px;
+  width: 20px;
 }
 
-/* Punta della freccia diagonale — triangolo solido */
+/* Punta della freccia diagonale — triangolo solido puntato a destra */
 .technical-drawing-column--historic .technical-dimension--thickness::after {
   background: #ff0000;
   border: none;
   clip-path: polygon(100% 50%, 0 0, 0 100%);
   content: '';
   height: 12px;
-  left: calc(100% + 16px);
+  left: calc(100% + 12px);
   position: absolute;
-  top: -19px;
+  top: -14px;
   transform: rotate(-45deg);
   transform-origin: center center;
   width: 12px;
