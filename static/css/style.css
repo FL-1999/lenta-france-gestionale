@@ -7804,7 +7804,7 @@ label.form-label[for="profondita_totale"]{
 /* top face */
 .technical-drawing-column--historic .technical-guide-wall--back {
   background: #aaaaaa;
-  clip-path: polygon(36px 0px, 436px 0px, 400px 36px, 0px 36px);
+  clip-path: polygon(0px 0px, 436px 0px, 400px 36px, 0px 36px);
   display: block;
   filter: drop-shadow(0 -1px 0 #555) drop-shadow(1px 0 0 #555) drop-shadow(-1px 0 0 #555);
   height: 36px;
@@ -7873,7 +7873,7 @@ label.form-label[for="profondita_totale"]{
 /* right face (epaisseur visuale — amber) */
 .technical-drawing-column--historic .technical-element--panel::before {
   background: rgba(180, 105, 10, 0.38);
-  clip-path: polygon(0px 36px, 36px 0px, 36px 100%, 0px 100%);
+  clip-path: polygon(0px 0px, 36px 0px, 36px 100%, 0px 100%);
   content: '';
   filter: drop-shadow(1px 0 0 #c07820);
   height: calc(100% + 36px);
@@ -7886,7 +7886,7 @@ label.form-label[for="profondita_totale"]{
 /* top face */
 .technical-drawing-column--historic .technical-element--panel::after {
   background: rgba(210, 160, 45, 0.28);
-  clip-path: polygon(36px 0px, 436px 0px, 400px 36px, 0px 36px);
+  clip-path: polygon(0px 0px, 436px 0px, 400px 36px, 0px 36px);
   content: '';
   filter: drop-shadow(0 -1px 0 #c07820) drop-shadow(1px 0 0 #c07820);
   height: 36px;
@@ -8002,54 +8002,51 @@ label.form-label[for="profondita_totale"]{
    freccia diagonale -45° ancorata al bordo
    destro della paratia — punta verso la
    faccia laterale amber
-   container: punto di partenza della linea
+   freccia orizzontale sulla faccia laterale destra
    ══════════════════════════════════════════ */
 .technical-drawing-column--historic .technical-dimension--thickness {
-  height: 1px;
-  left: calc(50% + 145px);
+  border-top: 2.5px solid #cc0000;
+  height: 0;
+  left: calc(50% + 200px);
   position: absolute;
-  top: 38%;
-  width: 1px;
+  top: 42%;
+  width: 36px;
   z-index: 48;
 }
-/* shaft diagonale: 58px a -45° */
+/* arrowhead sinistro — punta verso sinistra */
 .technical-drawing-column--historic .technical-dimension--thickness::before {
   background: #cc0000;
-  content: '';
-  height: 2.5px;
-  left: 0;
-  position: absolute;
-  top: -1px;
-  transform: rotate(-45deg);
-  transform-origin: 0 50%;
-  width: 58px;
-}
-/* punta freccia — posizionata al tip della linea
-   tip a: left = 58*cos45° ≈ 41px, top = -58*sin45° ≈ -41px
-   arrowhead punta verso upper-right (triangolo pointing-right, ruotato -45°) */
-.technical-drawing-column--historic .technical-dimension--thickness::after {
-  background: #cc0000;
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
   content: '';
   height: 12px;
-  left: 37px;
+  left: 0;
   position: absolute;
-  top: -47px;
-  transform: rotate(-45deg);
-  transform-origin: center;
-  width: 12px;
+  top: -6px;
+  width: 10px;
 }
-/* testo orizzontale: a sinistra e sotto del punto di partenza */
+/* arrowhead destro — punta verso destra */
+.technical-drawing-column--historic .technical-dimension--thickness::after {
+  background: #cc0000;
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
+  content: '';
+  height: 12px;
+  left: auto;
+  position: absolute;
+  right: 0;
+  top: -6px;
+  width: 10px;
+}
+/* testo orizzontale a destra della faccia laterale */
 .technical-drawing-column--historic .technical-dimension--thickness span {
   background: rgba(255,255,255,0.92);
   color: #cc0000;
   font-family: "Courier New", Courier, monospace;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 900;
-  left: -70px;
+  left: 44px;
   padding: 0 4px;
   position: absolute;
-  top: 14px;
+  top: -22px;
   transform: none;
   white-space: nowrap;
 }
