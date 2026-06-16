@@ -1,0 +1,262 @@
+{#
+  _production_block.html — Sprint 1
+  Requires: production_stats (dict), lang (str)
+  No economic data. Visible to all authorized roles (capo, manager, admin).
+#}
+{% if production_stats and production_stats.has_data %}
+{% set ps = production_stats %}
+{% set f = ps.fmt %}
+
+<div class="card mt-4 production-stats-card" id="produzione-cantiere">
+  <div class="card-header production-stats-card__header">
+    <h2 class="card-title mb-0">
+      {% if lang == 'fr' %}Production réalisée{% else %}Produzione realizzata{% endif %}
+    </h2>
+    <span class="production-stats-badge">
+      {{ ps.total_fiches_produzione }}
+      {% if lang == 'fr' %}fiches production{% else %}fiches produzione{% endif %}
+    </span>
+  </div>
+
+  <div class="card-body production-stats-body">
+
+    {# ── PARATIE ─────────────────────────────────────────────────────── #}
+    {% if ps.paratie.count > 0 or ps.paratie.target > 0 %}
+    <section class="production-group">
+      <h3 class="production-group__title">
+        {% if lang == 'fr' %}Parois moulées{% else %}Paratie{% endif %}
+      </h3>
+
+      <div class="production-stats-grid">
+
+        <div class="production-stat">
+          <span class="production-stat__value">
+            {{ ps.paratie.count }}{% if ps.paratie.target > 0 %} / {{ ps.paratie.target }}{% endif %}
+          </span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Panneaux exécutés{% else %}Pannelli eseguiti{% endif %}
+          </span>
+          {% if ps.paratie.target > 0 %}
+          <div class="production-progress-bar">
+            <div class="production-progress-bar__fill" style="width:{{ ps.paratie.avanzamento_pct }}%;"></div>
+          </div>
+          <span class="production-stat__sub">{{ ps.paratie.avanzamento_pct }}%</span>
+          {% endif %}
+        </div>
+
+        <div class="production-stat">
+          <span class="production-stat__value">
+            {% if ps.paratie.profondita_totale is not none %}
+              {{ f(ps.paratie.profondita_totale, 1) }} m
+            {% else %}—{% endif %}
+          </span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Profondeur totale réalisée{% else %}Profondità totale realizzata{% endif %}
+          </span>
+          {% if ps.paratie.profondita_media is not none %}
+          <span class="production-stat__sub">
+            {% if lang == 'fr' %}moy. {% else %}media {% endif %}{{ f(ps.paratie.profondita_media, 1) }} m
+          </span>
+          {% endif %}
+        </div>
+
+        {% if ps.paratie.superficie is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value">{{ f(ps.paratie.superficie) }} m²</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Surface réalisée{% else %}Superficie realizzata{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
+        {% if ps.paratie.volume_scavo_teorico is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value">{{ f(ps.paratie.volume_scavo_teorico) }} m³</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Volume fouille théorique{% else %}Volume scavo teorico{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
+        {% if ps.paratie.volume_cls_reale is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value">{{ f(ps.paratie.volume_cls_reale) }} m³</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Volume béton réel{% else %}Volume cls reale{% endif %}
+          </span>
+          {% if ps.paratie.cls_reale_coverage < ps.paratie.count %}
+          <span class="production-stat__sub production-stat__sub--warn">
+            {{ ps.paratie.cls_reale_coverage }}/{{ ps.paratie.count }}
+            {% if lang == 'fr' %}fiches avec volume{% else %}fiches con volume{% endif %}
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if ps.paratie.delta_cls is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value {% if ps.paratie.delta_cls > 0 %}production-stat__value--over{% elif ps.paratie.delta_cls < 0 %}production-stat__value--under{% endif %}">
+            {% if ps.paratie.delta_cls > 0 %}+{% endif %}{{ f(ps.paratie.delta_cls) }} m³
+          </span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Delta béton (réel − théorique){% else %}Delta cls (reale − teorico){% endif %}
+          </span>
+          {% if ps.paratie.delta_cls_pct is not none %}
+          <span class="production-stat__sub {% if ps.paratie.delta_cls_pct > 15 %}production-stat__sub--warn{% endif %}">
+            {% if ps.paratie.delta_cls_pct > 0 %}+{% endif %}{{ f(ps.paratie.delta_cls_pct, 1) }}%
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+      </div>{# /production-stats-grid #}
+    </section>
+    {% endif %}
+
+    {# ── PALI ────────────────────────────────────────────────────────── #}
+    {% if ps.pali.count > 0 or ps.pali.target > 0 %}
+    <section class="production-group {% if ps.paratie.count > 0 or ps.paratie.target > 0 %}production-group--bordered{% endif %}">
+      <h3 class="production-group__title">
+        {% if lang == 'fr' %}Pieux forés{% else %}Pali{% endif %}
+      </h3>
+
+      <div class="production-stats-grid">
+
+        <div class="production-stat">
+          <span class="production-stat__value">
+            {{ ps.pali.count }}{% if ps.pali.target > 0 %} / {{ ps.pali.target }}{% endif %}
+          </span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Pieux exécutés{% else %}Pali eseguiti{% endif %}
+          </span>
+          {% if ps.pali.target > 0 %}
+          <div class="production-progress-bar">
+            <div class="production-progress-bar__fill" style="width:{{ ps.pali.avanzamento_pct }}%;"></div>
+          </div>
+          <span class="production-stat__sub">{{ ps.pali.avanzamento_pct }}%</span>
+          {% endif %}
+        </div>
+
+        {% if ps.pali.ml is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value">{{ f(ps.pali.ml, 1) }} ml</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Mètres linéaires réalisés{% else %}Metri lineari realizzati{% endif %}
+          </span>
+          {% if ps.pali.profondita_media is not none %}
+          <span class="production-stat__sub">
+            {% if lang == 'fr' %}profond. moy. {% else %}profond. media {% endif %}{{ f(ps.pali.profondita_media, 1) }} m
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if ps.pali.volume_scavo_teorico is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value">{{ f(ps.pali.volume_scavo_teorico) }} m³</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Volume fouille théorique{% else %}Volume scavo teorico{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
+        {% if ps.pali.volume_cls_reale is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value">{{ f(ps.pali.volume_cls_reale) }} m³</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Volume béton réel{% else %}Volume cls reale{% endif %}
+          </span>
+          {% if ps.pali.cls_reale_coverage < ps.pali.count %}
+          <span class="production-stat__sub production-stat__sub--warn">
+            {{ ps.pali.cls_reale_coverage }}/{{ ps.pali.count }}
+            {% if lang == 'fr' %}fiches avec volume{% else %}fiches con volume{% endif %}
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if ps.pali.delta_cls is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value {% if ps.pali.delta_cls > 0 %}production-stat__value--over{% elif ps.pali.delta_cls < 0 %}production-stat__value--under{% endif %}">
+            {% if ps.pali.delta_cls > 0 %}+{% endif %}{{ f(ps.pali.delta_cls) }} m³
+          </span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Delta béton (réel − théorique){% else %}Delta cls (reale − teorico){% endif %}
+          </span>
+          {% if ps.pali.delta_cls_pct is not none %}
+          <span class="production-stat__sub {% if ps.pali.delta_cls_pct > 15 %}production-stat__sub--warn{% endif %}">
+            {% if ps.pali.delta_cls_pct > 0 %}+{% endif %}{{ f(ps.pali.delta_cls_pct, 1) }}%
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+      </div>
+    </section>
+    {% endif %}
+
+    {# ── TOTALE (solo se ci sono sia paratie che pali) ─────────────── #}
+    {% if ps.paratie.count > 0 and ps.pali.count > 0 %}
+    <section class="production-group production-group--total">
+      <h3 class="production-group__title">
+        {% if lang == 'fr' %}Total chantier{% else %}Totale cantiere{% endif %}
+      </h3>
+      <div class="production-stats-grid">
+
+        <div class="production-stat">
+          <span class="production-stat__value">{{ ps.totale.count }}</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Éléments exécutés{% else %}Elementi eseguiti{% endif %}
+          </span>
+        </div>
+
+        {% if ps.totale.volume_scavo_teorico is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value">{{ f(ps.totale.volume_scavo_teorico) }} m³</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Volume fouille total{% else %}Volume scavo totale{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
+        {% if ps.totale.volume_cls_reale is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value">{{ f(ps.totale.volume_cls_reale) }} m³</span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Volume béton total réel{% else %}Volume cls totale reale{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
+        {% if ps.totale.delta_cls is not none %}
+        <div class="production-stat">
+          <span class="production-stat__value {% if ps.totale.delta_cls > 0 %}production-stat__value--over{% elif ps.totale.delta_cls < 0 %}production-stat__value--under{% endif %}">
+            {% if ps.totale.delta_cls > 0 %}+{% endif %}{{ f(ps.totale.delta_cls) }} m³
+          </span>
+          <span class="production-stat__label">
+            {% if lang == 'fr' %}Delta béton total{% else %}Delta cls totale{% endif %}
+          </span>
+          {% if ps.totale.delta_cls_pct is not none %}
+          <span class="production-stat__sub {% if ps.totale.delta_cls_pct > 15 %}production-stat__sub--warn{% endif %}">
+            {% if ps.totale.delta_cls_pct > 0 %}+{% endif %}{{ f(ps.totale.delta_cls_pct, 1) }}%
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+      </div>
+    </section>
+    {% endif %}
+
+    <p class="production-stats-note">
+      {% if lang == 'fr' %}
+        Données calculées automatiquement depuis les fiches de production. Aucune saisie supplémentaire.
+      {% else %}
+        Dati calcolati automaticamente dalle fiches di produzione. Nessun inserimento aggiuntivo.
+      {% endif %}
+    </p>
+
+  </div>{# /card-body #}
+</div>
+
+{% endif %}{# /has_data #}

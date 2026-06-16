@@ -8050,3 +8050,151 @@ label.form-label[for="profondita_totale"]{
     min-height: 238mm;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   SPRINT 1 — PRODUCTION STATS BLOCK
+   Visible to: caposquadra, manager, admin. No economic data.
+   ══════════════════════════════════════════════════════════════════ */
+
+.production-stats-card {
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.production-stats-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.production-stats-badge {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 20px;
+  color: #a5b4fc;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.production-stats-body {
+  padding: 0;
+}
+
+/* ── Group (Paratie / Pali / Totale) ───────────────────────────── */
+
+.production-group {
+  padding: 20px 24px;
+}
+
+.production-group--bordered {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.production-group--total {
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.production-group__title {
+  color: #9fb0c7;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 16px;
+  text-transform: uppercase;
+}
+
+/* ── Stats grid ─────────────────────────────────────────────────── */
+
+.production-stats-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+/* ── Individual stat ────────────────────────────────────────────── */
+
+.production-stat {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.production-stat__value {
+  color: #e8ecf4;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.production-stat__value--over {
+  color: #f87171;
+}
+
+.production-stat__value--under {
+  color: #34d399;
+}
+
+.production-stat__label {
+  color: #6b7a99;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.production-stat__sub {
+  color: #9fb0c7;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.production-stat__sub--warn {
+  color: #fbbf24;
+}
+
+/* ── Mini progress bar inside stat ─────────────────────────────── */
+
+.production-progress-bar {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  height: 4px;
+  margin-top: 6px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.production-progress-bar__fill {
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 3px;
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+/* ── Footer note ────────────────────────────────────────────────── */
+
+.production-stats-note {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: #4a5568;
+  font-size: 11px;
+  margin: 0;
+  padding: 10px 24px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .production-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .production-group {
+    padding: 16px;
+  }
+}

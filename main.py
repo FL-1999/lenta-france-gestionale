@@ -106,6 +106,7 @@ from db_upgrade import upgrade_db, check_db_schema
 from utils.db_check import check_and_suggest_db_upgrade
 from utils.trips import compute_trip_progress
 from utils.reports import report_man_hours, report_total_hours
+from utils.production_stats import compute_site_production
 
 
 configure_logging()
@@ -5309,7 +5310,7 @@ def manager_site_detail(
         )
         site_fiches = (
             db.query(Fiche)
-            .options(joinedload(Fiche.created_by))
+            .options(joinedload(Fiche.created_by), joinedload(Fiche.coupe))
             .filter(Fiche.site_id == site.id)
             .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
             .all()
@@ -5342,6 +5343,7 @@ def manager_site_detail(
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
+        production_stats = compute_site_production(site, site_fiches)
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
         manager_users = (
             db.query(User)
@@ -5384,6 +5386,7 @@ def manager_site_detail(
             site_task_status_values=SITE_TASK_STATUSES,
             site_task_priority_values=SITE_TASK_PRIORITIES,
             manager_users=manager_users,
+            production_stats=production_stats,
         ),
     )
 
@@ -6399,7 +6402,7 @@ def capo_site_detail(
         progress_summary, _, _ = _build_site_progress(site, lang)
         site_fiches = (
             db.query(Fiche)
-            .options(joinedload(Fiche.created_by))
+            .options(joinedload(Fiche.created_by), joinedload(Fiche.coupe))
             .filter(Fiche.site_id == site.id)
             .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
             .all()
@@ -6426,6 +6429,7 @@ def capo_site_detail(
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
+        production_stats = compute_site_production(site, site_fiches)
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
     finally:
         db.close()
@@ -6454,6 +6458,7 @@ def capo_site_detail(
             open_tasks=open_tasks,
             completed_tasks=completed_tasks,
             can_add_tasks=has_perm(current_user, "manager.access"),
+            production_stats=production_stats,
         ),
     )
 
