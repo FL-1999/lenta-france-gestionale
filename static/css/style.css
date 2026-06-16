@@ -7776,6 +7776,26 @@ label.form-label[for="profondita_totale"]{
   position: relative;
 }
 
+/* ══════════════════════════════════════════
+   SVG PARAMETRICO — unico sistema geometrico
+   Cavalier 45°: offset (dx=30, dy=30)
+
+   Coordinata centro: x=285 → CSS 50%
+   x0=135 → calc(50%-150px)   x1=435 → calc(50%+150px)
+   x0+dx=165 → calc(50%-120px) x1+dx=465 → calc(50%+180px)
+   SVG longueur x=65 → calc(50%-220px)
+   SVG y=152 → --technical-top-offset
+
+   background-position:center top con background-size:570px 890px
+   garantisce l'allineamento SVG↔CSS su qualsiasi larghezza canvas
+   ══════════════════════════════════════════ */
+.technical-drawing-column--historic .technical-section-canvas--panel {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 570 890'%3E%3Cpolygon points='435,152 465,122 465,830 435,860' fill='rgba(180,105,10,.32)' stroke='%23c07820' stroke-width='1.5'/%3E%3Cpolygon points='135,152 435,152 435,860 135,860' fill='rgba(255,248,220,.95)' stroke='%23c07820' stroke-width='1.5'/%3E%3Cpolygon points='135,107 435,107 465,77 165,77' fill='%23b0b0b0' stroke='%23555' stroke-width='1.5'/%3E%3Cpolygon points='435,107 465,77 465,122 435,152' fill='%239a9a9a' stroke='%23555' stroke-width='1.5'/%3E%3Cpolygon points='135,107 435,107 435,152 135,152' fill='%23d2d2d2' stroke='%23555' stroke-width='1.5'/%3E%3Cline x1='65' y1='152' x2='65' y2='860' stroke='%23cc0000' stroke-width='2.5'/%3E%3Cpolygon points='65,145 59,158 71,158' fill='%23cc0000'/%3E%3Cpolygon points='65,867 59,854 71,854' fill='%23cc0000'/%3E%3Cline x1='135' y1='560' x2='435' y2='560' stroke='%23cc0000' stroke-width='2.5'/%3E%3Cpolygon points='128,560 141,554 141,566' fill='%23cc0000'/%3E%3Cpolygon points='442,560 429,554 429,566' fill='%23cc0000'/%3E%3Cline x1='435' y1='506' x2='465' y2='476' stroke='%23cc0000' stroke-width='2.5'/%3E%3Cpolygon points='435,506 446,502 439,495' fill='%23cc0000'/%3E%3Cpolygon points='465,476 461,487 454,480' fill='%23cc0000'/%3E%3C/svg%3E");
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: 570px 890px;
+}
+
 .technical-drawing-column--historic .technical-top-levels {
   color: #000000;
   display: grid;
@@ -7792,53 +7812,11 @@ label.form-label[for="profondita_totale"]{
   z-index: 50;
 }
 
-/* ══════════════════════════════════════════
-   MURETTE GUIDE — parallelepipedo 3D
-   top face  : clip-path polygon cavalier
-   front face: rettangolo con bordo
-   right face : clip-path polygon via ::before
-   ══════════════════════════════════════════ */
-.technical-drawing-column--historic .technical-guide-wall {
-  border: none; box-shadow: none; overflow: visible; position: absolute; transform: none;
-}
-/* top face */
-.technical-drawing-column--historic .technical-guide-wall--back {
-  background: #aaaaaa;
-  clip-path: polygon(0px 0px, 436px 0px, 400px 36px, 0px 36px);
-  display: block;
-  filter: drop-shadow(0 -1px 0 #555) drop-shadow(1px 0 0 #555) drop-shadow(-1px 0 0 #555);
-  height: 36px;
-  left: calc(50% - 200px);
-  top: 62px;
-  width: 436px;
-  z-index: 36;
-}
-/* front face */
+/* SVG disegna la murette guide — elementi CSS nascosti */
+.technical-drawing-column--historic .technical-guide-wall--back,
 .technical-drawing-column--historic .technical-guide-wall--front {
-  background: #d0d0d0;
-  border: 1.5px solid #555;
-  height: 48px;
-  left: calc(50% - 200px);
-  overflow: visible;
-  top: 98px;
-  width: 400px;
-  z-index: 38;
+  display: none;
 }
-/* right face */
-.technical-drawing-column--historic .technical-guide-wall--front::before {
-  background: #999999;
-  clip-path: polygon(0px 36px, 36px 0px, 36px 48px, 0px 84px);
-  content: '';
-  filter: drop-shadow(1px 0 0 #555);
-  height: 84px;
-  position: absolute;
-  right: -36px;
-  top: -36px;
-  width: 36px;
-  z-index: 37;
-}
-.technical-drawing-column--historic .technical-guide-wall--front::after { content: none; }
-/* label */
 .technical-drawing-column--historic .technical-guide-wall-label {
   color: #222;
   font-family: Arial, Helvetica, sans-serif;
@@ -7846,56 +7824,26 @@ label.form-label[for="profondita_totale"]{
   font-weight: 700;
   left: 50%;
   position: absolute;
-  top: 116px;
+  top: 123px;
   transform: translateX(-50%);
   white-space: nowrap;
-  z-index: 42;
+  z-index: 50;
 }
 
-/* ══════════════════════════════════════════
-   PARATIA — parallelepipedo 3D
-   front face : rettangolo principale beige
-   right face : ::before  amber — indica epaisseur
-   top face   : ::after   cavalier
-   ══════════════════════════════════════════ */
+/* SVG disegna la paratia — elemento CSS trasparente */
 .technical-drawing-column--historic .technical-element {
-  background: rgba(255, 248, 220, 0.95);
-  border: 2px solid #c07820;
+  background: transparent;
+  border: none;
   box-shadow: none;
   height: calc(100% - var(--technical-top-offset) - var(--technical-bottom-offset));
-  left: calc(50% - 200px);
+  left: calc(50% - 150px);
   position: absolute;
   top: var(--technical-top-offset);
-  transform: none;
-  width: 400px;
-  z-index: 20;
+  width: 300px;
+  z-index: 5;
 }
-/* right face (epaisseur visuale — amber) */
-.technical-drawing-column--historic .technical-element--panel::before {
-  background: rgba(180, 105, 10, 0.38);
-  clip-path: polygon(0px 0px, 36px 0px, 36px 100%, 0px 100%);
-  content: '';
-  filter: drop-shadow(1px 0 0 #c07820);
-  height: calc(100% + 36px);
-  left: 100%;
-  position: absolute;
-  top: -36px;
-  width: 36px;
-  z-index: 20;
-}
-/* top face */
-.technical-drawing-column--historic .technical-element--panel::after {
-  background: rgba(210, 160, 45, 0.28);
-  clip-path: polygon(0px 0px, 436px 0px, 400px 36px, 0px 36px);
-  content: '';
-  filter: drop-shadow(0 -1px 0 #c07820) drop-shadow(1px 0 0 #c07820);
-  height: 36px;
-  left: 0;
-  position: absolute;
-  top: -36px;
-  width: 436px;
-  z-index: 21;
-}
+.technical-drawing-column--historic .technical-element--panel::before,
+.technical-drawing-column--historic .technical-element--panel::after { content: none; }
 
 /* ── PIEUX — cerchio, invariato ── */
 .technical-drawing-column--historic .technical-section-canvas--pile .technical-element--pile {
@@ -7915,140 +7863,68 @@ label.form-label[for="profondita_totale"]{
   right: -2px; top: auto; transform: none; width: auto;
 }
 
-/* ── FRECCE — posizione comune ── */
+/* SVG disegna linee e punte frecce — CSS fornisce solo il testo dinamico */
 .technical-drawing-column--historic .technical-depth-arrow span,
 .technical-drawing-column--historic .technical-dimension span {
+  background: rgba(255,255,255,0.92);
+  color: #cc0000;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 17px;
+  font-weight: 900;
   line-height: 1;
+  padding: 0 4px;
   position: absolute;
+  white-space: nowrap;
 }
 
-/* ══════════════════════════════════════════
-   LONGUEUR FORÉE
-   freccia verticale esterna a sinistra
-   molto distante dalla paratia
-   ══════════════════════════════════════════ */
+/* LONGUEUR — testo verticale centrato sull'asse SVG x=65 = calc(50%-220px) */
 .technical-drawing-column--historic .technical-depth-arrow {
-  border-left: 2.5px solid #cc0000;
   bottom: var(--technical-bottom-offset);
-  left: calc(50% - 270px);
+  left: calc(50% - 220px);
   position: absolute;
   top: var(--technical-top-offset);
   z-index: 45;
 }
-.technical-drawing-column--historic .technical-depth-arrow::before {
-  background: #cc0000; border: none;
-  clip-path: polygon(50% 0, 0 100%, 100% 100%);
-  content: ''; height: 14px; left: -7px; position: absolute; top: -14px; width: 14px;
-}
-.technical-drawing-column--historic .technical-depth-arrow::after {
-  background: #cc0000; border: none;
-  clip-path: polygon(50% 100%, 0 0, 100% 0);
-  bottom: -14px; content: ''; height: 14px; left: -7px; position: absolute; top: auto; width: 14px;
-}
+.technical-drawing-column--historic .technical-depth-arrow::before,
+.technical-drawing-column--historic .technical-depth-arrow::after { content: none; }
 .technical-drawing-column--historic .technical-depth-arrow span {
-  background: rgba(255,255,255,0.92);
-  color: #cc0000;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 17px;
-  font-weight: 900;
   left: -30px;
-  padding: 0 4px;
-  position: absolute;
   top: 50%;
   transform: rotate(90deg) translate(-50%, -50%);
   transform-origin: left center;
-  white-space: nowrap;
 }
 
-/* ══════════════════════════════════════════
-   LARGEUR
-   freccia orizzontale dentro la paratia
-   spanning intera larghezza front face
-   ══════════════════════════════════════════ */
+/* LARGEUR — testo sopra la linea SVG y=560 */
 .technical-drawing-column--historic .technical-dimension--width {
-  border-top: 2.5px solid #cc0000;
-  left: calc(50% - 200px);
+  left: calc(50% - 150px);
   position: absolute;
-  right: calc(50% - 200px);
-  top: 62%;
+  right: calc(50% - 150px);
+  top: 560px;
   z-index: 45;
 }
-.technical-drawing-column--historic .technical-dimension--width::before {
-  background: #cc0000; border: none;
-  clip-path: polygon(100% 50%, 0 0, 0 100%);
-  content: ''; height: 14px; left: 0; position: absolute; top: -7px; width: 12px;
-}
-.technical-drawing-column--historic .technical-dimension--width::after {
-  background: #cc0000; border: none;
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
-  content: ''; height: 14px; left: auto; position: absolute; right: 0; top: -7px; width: 12px;
-}
+.technical-drawing-column--historic .technical-dimension--width::before,
+.technical-drawing-column--historic .technical-dimension--width::after { content: none; }
 .technical-drawing-column--historic .technical-dimension--width span {
-  background: rgba(255,255,255,0.92);
-  color: #cc0000;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 17px;
-  font-weight: 900;
   left: 50%;
-  padding: 0 4px;
-  position: absolute;
   top: -34px;
   transform: translateX(-50%);
-  white-space: nowrap;
 }
 
-/* ══════════════════════════════════════════
-   EPAISSEUR
-   freccia diagonale -45° ancorata al bordo
-   destro della paratia — punta verso la
-   faccia laterale amber
-   freccia orizzontale sulla faccia laterale destra
-   ══════════════════════════════════════════ */
+/* EPAISSEUR — testo a destra del punto finale SVG (465,476) = calc(50%+180px), 476px */
 .technical-drawing-column--historic .technical-dimension--thickness {
-  border-top: 2.5px solid #cc0000;
-  height: 0;
-  left: calc(50% + 200px);
+  height: 1px;
+  left: calc(50% + 180px);
   position: absolute;
-  top: 42%;
-  width: 36px;
+  top: 470px;
+  width: 1px;
   z-index: 48;
 }
-/* arrowhead sinistro — punta verso sinistra */
-.technical-drawing-column--historic .technical-dimension--thickness::before {
-  background: #cc0000;
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
-  content: '';
-  height: 12px;
-  left: 0;
-  position: absolute;
-  top: -6px;
-  width: 10px;
-}
-/* arrowhead destro — punta verso destra */
-.technical-drawing-column--historic .technical-dimension--thickness::after {
-  background: #cc0000;
-  clip-path: polygon(100% 50%, 0 0, 0 100%);
-  content: '';
-  height: 12px;
-  left: auto;
-  position: absolute;
-  right: 0;
-  top: -6px;
-  width: 10px;
-}
-/* testo orizzontale a destra della faccia laterale */
+.technical-drawing-column--historic .technical-dimension--thickness::before,
+.technical-drawing-column--historic .technical-dimension--thickness::after { content: none; }
 .technical-drawing-column--historic .technical-dimension--thickness span {
-  background: rgba(255,255,255,0.92);
-  color: #cc0000;
-  font-family: "Courier New", Courier, monospace;
   font-size: 15px;
-  font-weight: 900;
-  left: 44px;
-  padding: 0 4px;
-  position: absolute;
-  top: -22px;
-  transform: none;
-  white-space: nowrap;
+  left: 6px;
+  top: -18px;
 }
 
 /* ── PILE — override posizioni ── */
