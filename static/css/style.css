@@ -7913,7 +7913,7 @@ label.form-label[for="profondita_totale"]{
 /* EPAISSEUR — testo dentro paratia, frecce SVG x=435..465 y=665..695 (midpoint 680) */
 .technical-drawing-column--historic .technical-dimension--thickness {
   height: 1px;
-  left: calc(50% + 70px);
+  left: 50%;
   position: absolute;
   top: 680px;
   transform: none;
