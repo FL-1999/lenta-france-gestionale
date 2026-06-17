@@ -722,7 +722,8 @@
         var xhr = new XMLHttpRequest();
         xhr.open("GET", "/static/css/style.css", false);
         xhr.send();
-        var baseCss = xhr.status === 200 ? xhr.responseText : "";
+        var rawCss = xhr.status === 200 ? xhr.responseText : "";
+        var baseCss = rawCss.replace(/@media\s+print\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g, "");
         var printCss = [
             "@page { margin: 8mm; size: A4 portrait; }",
             "html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }",
