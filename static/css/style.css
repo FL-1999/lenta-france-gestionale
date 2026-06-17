@@ -8014,6 +8014,7 @@ label.form-label[for="profondita_totale"]{
 
   html, body {
     margin: 0 !important;
+    overflow: hidden !important;
     padding: 0 !important;
   }
 
@@ -8031,6 +8032,8 @@ label.form-label[for="profondita_totale"]{
   .stratigrafia-technical-panel,
   [data-print-technical-sheet] {
     display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
   }
 
   /* Strip all spacing from parent chain */
@@ -8089,12 +8092,14 @@ label.form-label[for="profondita_totale"]{
   }
   .technical-sheet__eyebrow { display: none !important; }
 
-  /* Grid — 2-column: data | drawing+ground */
+  /* Grid — 2-column: data (40mm) | drawing+ground (rest of 194mm - 4mm padding - 1.5mm gap) */
   .technical-sheet-grid {
     display: grid !important;
     gap: 1.5mm !important;
-    grid-template-columns: 40mm 1fr !important;
+    grid-template-columns: 38mm 1fr !important;
     padding: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
   }
 
   /* Column heights — fit in one page (281mm - title ~5mm - padding ~4mm = ~272mm) */
@@ -8125,37 +8130,47 @@ label.form-label[for="profondita_totale"]{
   .technical-check-list { font-size: 5.5pt; }
   .technical-data-block--notes p { font-size: 5pt; }
 
-  /* Drawing column — layout */
+  /* Drawing column — inner layout: canvas (60%) | ground bars (40%) */
   .technical-drawing-layout {
     display: grid !important;
-    gap: 1mm;
-    grid-template-columns: minmax(0, 70%) minmax(0, 30%);
+    gap: 1mm !important;
+    grid-template-columns: minmax(0, 60%) minmax(0, 40%) !important;
     height: 268mm;
     min-height: 0 !important;
+    overflow: hidden !important;
+    width: 100% !important;
   }
 
   .technical-drawing-column--historic .technical-section-canvas {
     height: 264mm !important;
     min-height: 0 !important;
+    overflow: hidden;
   }
 
   .technical-ground-column {
     min-height: 0 !important;
+    overflow: hidden !important;
     padding-top: 0;
   }
   .technical-ground-bar { height: 256mm !important; }
   .technical-ground-header { font-size: 5pt; padding: 1mm 0; }
   .technical-ground-layer span { font-size: 4.5pt; }
 
+  /* Scale drawing elements to fit reduced canvas */
+  .technical-section-canvas {
+    transform: scale(0.85);
+    transform-origin: top center;
+  }
+
   /* Top levels text */
-  .technical-top-levels { font-size: 6pt; gap: 2mm; top: 1mm; }
+  .technical-top-levels { font-size: 5pt; gap: 1mm; top: 1mm; }
 
   /* Dimension labels */
   .technical-depth-arrow span,
-  .technical-dimension span { font-size: 6pt !important; }
+  .technical-dimension span { font-size: 5pt !important; }
 
   /* Guide wall label */
-  .technical-guide-wall-label { font-size: 5pt; }
+  .technical-guide-wall-label { font-size: 4.5pt; }
 
   /* Hide courbe de bétonnage in print */
   .technical-data-block--courbe,
