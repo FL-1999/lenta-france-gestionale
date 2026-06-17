@@ -716,7 +716,72 @@
 (function () {
     const button = document.querySelector("[data-print-technical-sheet]");
     if (!button) return;
-    button.addEventListener("click", function () { window.print(); });
+    button.addEventListener("click", function () {
+        const sheet = document.getElementById("technical-sheet-export");
+        if (!sheet) return;
+        const printWin = window.open("", "_blank", "width=800,height=1100");
+        const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+            .map(el => el.outerHTML).join("\n");
+        printWin.document.write(
+            "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Print</title>" +
+            styles +
+            "<style>" +
+            "@page { margin: 8mm; size: A4 portrait; }" +
+            "html, body { margin: 0; padding: 0; background: #fff; }" +
+            "body { width: 194mm; }" +
+            "#technical-sheet-export { " +
+            "  border: 1px solid #111; box-shadow: none; margin: 0; padding: 2mm;" +
+            "  width: 194mm; background: #fff; background-image: none;" +
+            "  print-color-adjust: exact; -webkit-print-color-adjust: exact;" +
+            "}" +
+            "#technical-sheet-export * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }" +
+            ".technical-sheet__eyebrow { display: none; }" +
+            ".technical-data-block--courbe, .technical-data-block--courbe-detail { display: none; }" +
+            ".technical-sheet-grid {" +
+            "  display: grid; gap: 1.5mm; grid-template-columns: 38mm 1fr; padding: 0;" +
+            "}" +
+            ".technical-data-column, .technical-drawing-column," +
+            ".technical-drawing-column--historic, .technical-ground-column {" +
+            "  border: 0.5px solid #333; min-height: 0; max-height: 260mm; overflow: hidden;" +
+            "}" +
+            ".technical-drawing-layout {" +
+            "  display: grid; gap: 1mm; grid-template-columns: minmax(0,75%) minmax(0,25%);" +
+            "  height: 258mm; min-height: 0; overflow: hidden;" +
+            "}" +
+            ".technical-drawing-column--historic .technical-section-canvas {" +
+            "  height: 254mm; min-height: 0; overflow: hidden; transform: scale(0.85); transform-origin: top center;" +
+            "}" +
+            ".technical-ground-column { min-height: 0; padding-top: 22mm; overflow: hidden; }" +
+            ".technical-ground-bar { height: 220mm; }" +
+            ".technical-ground-header { font-size: 4.5pt; padding: 0.5mm 0; }" +
+            ".technical-ground-layer span { font-size: 3.5pt; }" +
+            ".technical-data-block { padding: 1mm 1.5mm; }" +
+            ".technical-data-block h3 { font-size: 5.5pt; margin: -1mm -1.5mm 1mm; padding: 0.5mm 1.5mm; }" +
+            ".technical-data-block dl { gap: 0.5mm; }" +
+            ".technical-data-block dt { font-size: 5pt; }" +
+            ".technical-data-block dd { font-size: 6pt; }" +
+            ".technical-data-block p { font-size: 5.5pt; line-height: 1.3; margin: 0; }" +
+            ".technical-soil-list { font-size: 5pt; margin: 0; padding-left: 2mm; }" +
+            ".technical-soil-list li { margin-bottom: 0.3mm; }" +
+            ".technical-check-list { font-size: 5.5pt; }" +
+            ".technical-data-block--notes p { font-size: 5pt; }" +
+            ".technical-top-levels { font-size: 5pt; gap: 1mm; top: 1mm; }" +
+            ".technical-depth-arrow span, .technical-dimension span { font-size: 5pt; }" +
+            ".technical-guide-wall-label { font-size: 4.5pt; }" +
+            ".technical-sheet__titlebar, .technical-sheet__titlebar--historic {" +
+            "  border: 0; border-bottom: 1px solid #111; margin: 0 0 1mm; padding: 0 0 1mm;" +
+            "}" +
+            ".technical-sheet__titlebar h2, .technical-sheet__titlebar--historic h2 { font-size: 8pt; margin: 0; }" +
+            "</style>" +
+            "</head><body>" + sheet.outerHTML + "</body></html>"
+        );
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(function () {
+            printWin.print();
+            printWin.close();
+        }, 500);
+    });
     const cb = document.querySelector("input[name=courbe_beton_active]");
     const panel = document.querySelector("[data-courbe-beton-panel]");
     if (cb && panel) { cb.addEventListener("change", () => { panel.hidden = !cb.checked; }); }
