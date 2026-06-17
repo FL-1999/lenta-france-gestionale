@@ -5786,52 +5786,7 @@ label.form-label[for="profondita_totale"]{
   }
 }
 
-@media print {
-  @page {
-    margin: 10mm;
-    size: A4 portrait;
-  }
-
-  body * {
-    visibility: hidden !important;
-  }
-
-  #technical-sheet-export,
-  #technical-sheet-export * {
-    visibility: visible !important;
-  }
-
-  #technical-sheet-export {
-    border: 0;
-    box-shadow: none;
-    left: 0;
-    margin: 0 auto;
-    min-height: 0;
-    padding: 0;
-    position: absolute;
-    top: 0;
-    width: 190mm;
-  }
-
-  .technical-sheet-grid {
-    gap: 7mm;
-    grid-template-columns: 52mm 75mm 49mm;
-  }
-
-  .technical-data-column,
-  .technical-drawing-column,
-  .technical-ground-column {
-    min-height: 248mm;
-  }
-
-  .technical-section-canvas {
-    height: 235mm;
-  }
-
-  .technical-ground-bar {
-    height: 228mm;
-  }
-}
+/* Print block 1 — overridden by final block at end of file */
 
 /* Schema tecnico fiche: profondità verticale distinta dallo spessore laterale */
 .technical-element {
@@ -8057,12 +8012,31 @@ label.form-label[for="profondita_totale"]{
     size: A4 portrait;
   }
 
-  /* Hide everything except the technical sheet */
-  body * { visibility: hidden !important; }
-  #technical-sheet-export,
+  /* Hide everything on the page */
+  body > *,
+  .page-header,
+  .fiche-section,
+  .card,
+  nav,
+  header,
+  footer,
+  .sidebar,
+  .navbar { display: none !important; }
+
+  /* Show only the technical-split-view parent chain */
+  .technical-split-view,
+  .technical-split-view > * { display: block !important; }
+  #technical-sheet-export { display: block !important; }
   #technical-sheet-export * { visibility: visible !important; }
 
+  /* The card that wraps the technical sheet must be visible */
+  .card:has(#technical-sheet-export),
+  .card-body:has(#technical-sheet-export) {
+    display: block !important;
+  }
+
   #technical-sheet-export {
+    background-image: none !important;
     border: 1px solid #111;
     box-shadow: none;
     left: 0;
@@ -8087,16 +8061,17 @@ label.form-label[for="profondita_totale"]{
     font-size: 9pt;
     margin: 0;
   }
-  .technical-sheet__eyebrow { display: none; }
+  .technical-sheet__eyebrow { display: none !important; }
 
-  /* Grid — 3-column: data | drawing+ground */
+  /* Grid — 2-column: data | drawing+ground */
   .technical-sheet-grid {
-    gap: 2mm;
-    grid-template-columns: 42mm 1fr;
-    padding: 0;
+    display: grid !important;
+    gap: 2mm !important;
+    grid-template-columns: 42mm 1fr !important;
+    padding: 0 !important;
   }
 
-  /* Column heights — fit in one page (281mm - titlebar ~8mm - padding ~6mm = 267mm max) */
+  /* Column heights — fit in one page */
   .technical-data-column,
   .technical-drawing-column,
   .technical-drawing-column--historic,
@@ -8125,6 +8100,7 @@ label.form-label[for="profondita_totale"]{
 
   /* Drawing column — layout */
   .technical-drawing-layout {
+    display: grid !important;
     gap: 1mm;
     grid-template-columns: minmax(0, 70%) minmax(0, 30%);
     min-height: 0 !important;
@@ -8154,7 +8130,7 @@ label.form-label[for="profondita_totale"]{
   /* Guide wall label */
   .technical-guide-wall-label { font-size: 5pt; }
 
-  /* Hide courbe de bétonnage in print (avoids second page) */
+  /* Hide courbe de bétonnage in print */
   .technical-data-block--courbe,
   .technical-data-block--courbe-detail { display: none !important; }
 
@@ -8163,13 +8139,8 @@ label.form-label[for="profondita_totale"]{
   .technical-coupe-card__header .btn,
   [data-print-technical-sheet] { display: none !important; }
 
-  /* Photos section — hide to keep single page */
+  /* Photos section — hide */
   .technical-photos-zone { display: none !important; }
-
-  /* No background patterns */
-  #technical-sheet-export {
-    background-image: none !important;
-  }
 }
 
 /* ══════════════════════════════════════════════════════════════════
