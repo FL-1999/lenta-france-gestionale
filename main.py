@@ -7555,6 +7555,90 @@ def manager_fiche_dettaglio(
 
 
 # -------------------------------------------------
+# PDF EXPORT — FICHE
+# -------------------------------------------------
+
+@app.get(
+    "/manager/fiches/{fiche_id}/pdf",
+    name="manager_fiche_pdf",
+)
+def manager_fiche_pdf(
+    request: Request,
+    fiche_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        fiche = (
+            db.query(Fiche)
+            .options(
+                joinedload(Fiche.site),
+                joinedload(Fiche.coupe),
+                joinedload(Fiche.machine),
+                joinedload(Fiche.created_by),
+                joinedload(Fiche.capocantiere),
+                joinedload(Fiche.stratigrafie),
+                joinedload(Fiche.layers),
+            )
+            .filter(Fiche.id == fiche_id)
+            .first()
+        )
+        if not fiche:
+            raise HTTPException(status_code=404, detail="Fiche non trovata")
+    finally:
+        db.close()
+
+    ctx = build_template_context(
+        request,
+        current_user,
+        fiche=fiche,
+        volume_teorico=_calculate_fiche_volume_teorico(fiche),
+        stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
+        theoretical_soil_layers=_parse_theoretical_soil_layers(
+            fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe else None),
+            fiche.profondita_totale,
+        ),
+        technical_fr=_translate_fiche_technical_text,
+        fiche_element_label_fr=_fiche_element_label_fr,
+        courbe_beton_payload=_build_courbe_beton_payload(fiche),
+        pdf_mode=True,
+    )
+
+    template = templates.get_template("manager/fiches/fiche_detail.html")
+    html = template.render(ctx)
+
+    import os, re
+    css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "css", "style.css")
+    with open(css_path) as f:
+        css_text = f.read()
+
+    html = re.sub(
+        r'<link\s+rel="stylesheet"\s+href="[^"]*style\.css[^"]*"\s*/?>',
+        f"<style>{css_text}</style>",
+        html,
+    )
+
+    from weasyprint import HTML as WeasyHTML
+    pdf_bytes = WeasyHTML(string=html).write_pdf()
+
+    tipo = fiche.tipologia_scavo or "fiche"
+    num = fiche.numero_pannello or 0
+    date_str = fiche.date.strftime("%Y%m%d") if fiche.date else "nodate"
+    site_code = fiche.site.code or "site" if fiche.site else "site"
+    filename = f"{site_code}_{tipo}_{num}_{date_str}.pdf"
+
+    from starlette.responses import Response as RawResponse
+    return RawResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# -------------------------------------------------
 # INCLUDE DEI ROUTER API
 # -------------------------------------------------
 

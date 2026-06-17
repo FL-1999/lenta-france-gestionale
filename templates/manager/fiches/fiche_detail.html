@@ -251,8 +251,11 @@
         <div class="card-title">
             📈 Rapport d'exécution — {{ 'Pieu' if is_palo else 'Paroi moulée' }}
         </div>
-        <button type="button" class="btn btn-primary btn-sm technical-print-button" data-print-technical-sheet>
-            🖨️ {% if lang == 'fr' %}Exporter PDF{% else %}Esporta PDF{% endif %}
+        <a href="{{ url_for('manager_fiche_pdf', fiche_id=fiche.id) }}" class="btn btn-primary btn-sm" download>
+            📄 {% if lang == 'fr' %}Télécharger PDF{% else %}Scarica PDF{% endif %}
+        </a>
+        <button type="button" class="btn btn-secondary btn-sm technical-print-button" data-print-technical-sheet>
+            🖨️ {% if lang == 'fr' %}Imprimer{% else %}Stampa{% endif %}
         </button>
     </div>
     <div class="card-body">
