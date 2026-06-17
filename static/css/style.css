@@ -6666,6 +6666,24 @@ label.form-label[for="profondita_totale"]{
   margin-top: 5px;
 }
 
+/* Soil color dots for data column list */
+.soil-color-dot {
+  border: 0.5px solid #666;
+  border-radius: 2px;
+  display: inline-block;
+  height: 8px;
+  margin-right: 3px;
+  vertical-align: middle;
+  width: 8px;
+}
+.soil-color-dot.soil-layer--riporto  { background: #c8cdd4; }
+.soil-color-dot.soil-layer--ghiaia   { background: #d8c0a0; }
+.soil-color-dot.soil-layer--argilla  { background: #a8c4a0; }
+.soil-color-dot.soil-layer--sabbia   { background: #e8d890; }
+.soil-color-dot.soil-layer--roccia   { background: #a0a8b0; }
+.soil-color-dot.soil-layer--limo     { background: #c8b898; }
+.soil-color-dot.soil-layer--generico { background: #dde4ed; }
+
 .technical-ground-layer.soil-layer--riporto { background: #d9d9d9; }
 .technical-ground-layer.soil-layer--ghiaia { background: #d8c0a0; }
 .technical-ground-layer.soil-layer--argilla { background: #c7d8a4; }
@@ -8018,7 +8036,7 @@ label.form-label[for="profondita_totale"]{
     padding: 0 !important;
   }
 
-  /* Hide all page chrome */
+  /* Hide all page chrome — use both display:none AND position:absolute to eliminate space */
   .navbar,
   .bottom-nav,
   .page-header,
@@ -8034,6 +8052,8 @@ label.form-label[for="profondita_totale"]{
     display: none !important;
     height: 0 !important;
     overflow: hidden !important;
+    position: absolute !important;
+    width: 0 !important;
   }
 
   /* Strip all spacing from parent chain */
@@ -8102,13 +8122,13 @@ label.form-label[for="profondita_totale"]{
     overflow: hidden !important;
   }
 
-  /* Column heights — fit in one page (281mm - title ~5mm - padding ~4mm = ~272mm) */
+  /* Column heights — fit in one page (281mm - title ~7mm - padding ~4mm = ~270mm) */
   .technical-data-column,
   .technical-drawing-column,
   .technical-drawing-column--historic,
   .technical-ground-column {
     border: 0.5px solid #333;
-    max-height: 270mm !important;
+    max-height: 260mm !important;
     min-height: 0 !important;
     overflow: hidden;
     page-break-inside: avoid;
@@ -8130,19 +8150,19 @@ label.form-label[for="profondita_totale"]{
   .technical-check-list { font-size: 5.5pt; }
   .technical-data-block--notes p { font-size: 5pt; }
 
-  /* Drawing column — inner layout: canvas (60%) | ground bars (40%) */
+  /* Drawing column — inner layout: canvas (75%) | ground bars (25% — thin like Excel) */
   .technical-drawing-layout {
     display: grid !important;
     gap: 1mm !important;
-    grid-template-columns: minmax(0, 60%) minmax(0, 40%) !important;
-    height: 268mm;
+    grid-template-columns: minmax(0, 75%) minmax(0, 25%) !important;
+    height: 258mm;
     min-height: 0 !important;
     overflow: hidden !important;
     width: 100% !important;
   }
 
   .technical-drawing-column--historic .technical-section-canvas {
-    height: 264mm !important;
+    height: 254mm !important;
     min-height: 0 !important;
     overflow: hidden;
   }
@@ -8152,9 +8172,12 @@ label.form-label[for="profondita_totale"]{
     overflow: hidden !important;
     padding-top: 0;
   }
-  .technical-ground-bar { height: 256mm !important; }
-  .technical-ground-header { font-size: 5pt; padding: 1mm 0; }
-  .technical-ground-layer span { font-size: 4.5pt; }
+  .technical-ground-bar {
+    height: 246mm !important;
+    width: 100% !important;
+  }
+  .technical-ground-header { font-size: 4.5pt; padding: 0.5mm 0; }
+  .technical-ground-layer span { font-size: 3.5pt; }
 
   /* Scale drawing elements to fit reduced canvas */
   .technical-section-canvas {

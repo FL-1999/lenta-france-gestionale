@@ -343,16 +343,22 @@
                             {# F. Nature des sols #}
                             <section class="technical-data-block">
                                 <h3>F. Nature des sols rencontrés</h3>
-                                {% if stratigrafie %}
+                                {% if visual_layers %}
+                                    <ol class="technical-soil-list">
+                                        {% for layer in visual_layers %}
+                                            <li><span class="soil-color-dot {{ layer.texture_class }}"></span><span>{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</span> {{ technical_fr(layer.materiale) }}</li>
+                                        {% endfor %}
+                                    </ol>
+                                {% elif stratigrafie %}
                                     <ol class="technical-soil-list">
                                         {% for layer in stratigrafie|sort(attribute='da_profondita') %}
-                                            <li><span>{{ "%.2f"|format(layer.da_profondita) }}–{{ "%.2f"|format(layer.a_profondita) }} m</span>{{ technical_fr(layer.materiale) }}</li>
+                                            <li><span>{{ "%.2f"|format(layer.da_profondita) }}–{{ "%.2f"|format(layer.a_profondita) }} m</span> {{ technical_fr(layer.materiale) }}</li>
                                         {% endfor %}
                                     </ol>
                                 {% elif strat_layers %}
                                     <ol class="technical-soil-list">
                                         {% for layer in strat_layers|sort(attribute='layer_index') %}
-                                            <li><span>{{ "%.2f"|format(layer.thickness_m) }} m</span>{{ technical_fr(layer.material) }}</li>
+                                            <li><span>{{ "%.2f"|format(layer.thickness_m) }} m</span> {{ technical_fr(layer.material) }}</li>
                                         {% endfor %}
                                     </ol>
                                 {% else %}
