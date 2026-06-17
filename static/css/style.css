@@ -8064,7 +8064,14 @@ label.form-label[for="profondita_totale"]{
     min-height: 0;
     padding: 2mm;
     page-break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
     width: 194mm;
+  }
+
+  #technical-sheet-export * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 
   /* Title bar — compact */
