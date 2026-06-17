@@ -8061,7 +8061,8 @@ label.form-label[for="profondita_totale"]{
     box-shadow: none;
     margin: 0;
     min-height: 0;
-    padding: 3mm;
+    padding: 2mm;
+    page-break-inside: avoid;
     width: 194mm;
   }
 
@@ -8070,12 +8071,12 @@ label.form-label[for="profondita_totale"]{
   .technical-sheet__titlebar--historic {
     border: 0;
     border-bottom: 1px solid #111;
-    margin: 0 0 2mm;
-    padding: 0 0 1.5mm;
+    margin: 0 0 1mm;
+    padding: 0 0 1mm;
   }
   .technical-sheet__titlebar h2,
   .technical-sheet__titlebar--historic h2 {
-    font-size: 9pt;
+    font-size: 8pt;
     margin: 0;
   }
   .technical-sheet__eyebrow { display: none !important; }
@@ -8083,20 +8084,21 @@ label.form-label[for="profondita_totale"]{
   /* Grid — 2-column: data | drawing+ground */
   .technical-sheet-grid {
     display: grid !important;
-    gap: 2mm !important;
-    grid-template-columns: 42mm 1fr !important;
+    gap: 1.5mm !important;
+    grid-template-columns: 40mm 1fr !important;
     padding: 0 !important;
   }
 
-  /* Column heights — fit in one page */
+  /* Column heights — fit in one page (281mm - title ~5mm - padding ~4mm = ~272mm) */
   .technical-data-column,
   .technical-drawing-column,
   .technical-drawing-column--historic,
   .technical-ground-column {
     border: 0.5px solid #333;
+    max-height: 270mm !important;
     min-height: 0 !important;
-    max-height: 264mm;
     overflow: hidden;
+    page-break-inside: avoid;
   }
 
   /* Data column — very compact */
@@ -8120,12 +8122,12 @@ label.form-label[for="profondita_totale"]{
     display: grid !important;
     gap: 1mm;
     grid-template-columns: minmax(0, 70%) minmax(0, 30%);
+    height: 268mm;
     min-height: 0 !important;
-    height: 262mm;
   }
 
   .technical-drawing-column--historic .technical-section-canvas {
-    height: 258mm !important;
+    height: 264mm !important;
     min-height: 0 !important;
   }
 
@@ -8133,7 +8135,7 @@ label.form-label[for="profondita_totale"]{
     min-height: 0 !important;
     padding-top: 0;
   }
-  .technical-ground-bar { height: 248mm !important; }
+  .technical-ground-bar { height: 256mm !important; }
   .technical-ground-header { font-size: 5pt; padding: 1mm 0; }
   .technical-ground-layer span { font-size: 4.5pt; }
 
