@@ -7886,6 +7886,7 @@ label.form-label[for="profondita_totale"]{
 
 /* LONGUEUR — testo verticale centrato sull'asse SVG x=65 = calc(50%-220px) */
 .technical-drawing-column--historic .technical-depth-arrow {
+  border-left: none;
   bottom: var(--technical-bottom-offset);
   left: calc(50% - 220px);
   position: absolute;
