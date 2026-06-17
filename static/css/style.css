@@ -8012,27 +8012,20 @@ label.form-label[for="profondita_totale"]{
     size: A4 portrait;
   }
 
-  /* Hide everything on the page */
-  body > *,
-  .page-header,
-  .fiche-section,
-  .card,
-  nav,
-  header,
-  footer,
-  .sidebar,
-  .navbar { display: none !important; }
+  html, body {
+    height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
 
-  /* Show only the technical-split-view parent chain */
-  .technical-split-view,
-  .technical-split-view > * { display: block !important; }
-  #technical-sheet-export { display: block !important; }
-  #technical-sheet-export * { visibility: visible !important; }
+  body {
+    visibility: hidden;
+  }
 
-  /* The card that wraps the technical sheet must be visible */
-  .card:has(#technical-sheet-export),
-  .card-body:has(#technical-sheet-export) {
-    display: block !important;
+  #technical-sheet-export,
+  #technical-sheet-export * {
+    visibility: visible !important;
   }
 
   #technical-sheet-export {
@@ -8043,9 +8036,10 @@ label.form-label[for="profondita_totale"]{
     margin: 0;
     min-height: 0;
     padding: 3mm;
-    position: absolute;
+    position: fixed;
     top: 0;
     width: 194mm;
+    z-index: 99999;
   }
 
   /* Title bar — compact */
