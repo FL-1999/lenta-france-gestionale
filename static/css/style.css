@@ -6666,6 +6666,40 @@ label.form-label[for="profondita_totale"]{
   margin-top: 5px;
 }
 
+/* NGF scale and base summary inside drawing canvas */
+.technical-ngf-scale {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  left: 8px;
+  position: absolute;
+  top: 55px;
+  z-index: 30;
+}
+.technical-ngf-row {
+  display: flex;
+  gap: 12px;
+}
+.ngf-label {
+  color: #666;
+  font-size: 9px;
+  font-weight: 700;
+}
+.technical-base-summary {
+  border-top: 1px solid #333;
+  bottom: 4px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  left: 0;
+  padding: 3px 0;
+  position: absolute;
+  text-align: center;
+  width: 100%;
+  z-index: 30;
+}
+.technical-base-summary p {
+  margin: 1px 0;
+}
+
 /* Soil color dots for data column list */
 .soil-color-dot {
   border: 0.5px solid #666;

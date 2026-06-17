@@ -412,6 +412,32 @@
                                         <div class="technical-level technical-level--mechanical" style="--level-top: {{ base_meccanica_top }}%;" aria-hidden="true"></div>
                                     {% endif %}
                                     <div class="technical-level technical-level--bottom" style="--level-top: 100%;" aria-hidden="true"></div>
+
+                                    {# NGF scale at top #}
+                                    {% if schema_quota_tn is not none %}
+                                    <div class="technical-ngf-scale" aria-hidden="true">
+                                        <div class="technical-ngf-row">
+                                            <span class="ngf-label">NGF</span>
+                                            <span class="ngf-label">Prof.</span>
+                                        </div>
+                                        <div class="technical-ngf-row">
+                                            <span>{{ ("%.1f"|format(schema_quota_tn)).replace(".", ",") }}</span>
+                                            <span>0,0</span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {# Base paroi info at bottom #}
+                                    {% if schema_quota_fondo is not none or schema_fondo_teorico is not none %}
+                                    <div class="technical-base-summary" aria-hidden="true">
+                                        {% if schema_quota_base_meccanica is not none %}
+                                            <p><strong>BASE PAROI MECANIQUE = {{ ("%.2f"|format(schema_quota_base_meccanica)).replace(".", ",") }} NGF</strong></p>
+                                        {% endif %}
+                                        {% if schema_quota_fondo is not none %}
+                                            <p><strong>BASE PAROI HYDRAULIQUE = {{ ("%.2f"|format(schema_quota_fondo)).replace(".", ",") }} NGF</strong></p>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
                                 </div>
 
                                 <section class="technical-ground-column" aria-label="{% if lang == 'fr' %}Comparaison stratigraphique réel / théorique{% else %}Confronto stratigrafico reale / teorico{% endif %}">
@@ -725,35 +751,41 @@
         var rawCss = xhr.status === 200 ? xhr.responseText : "";
         var baseCss = rawCss.replace(/@media\s+print\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g, "");
         var printCss = [
-            "@page { margin: 8mm; size: A4 portrait; }",
+            "@page { margin: 6mm; size: A4 portrait; }",
             "html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }",
-            "body { width: 194mm !important; }",
+            "body { width: 198mm !important; }",
             "#technical-sheet-export {",
-            "  border: 1px solid #111 !important; box-shadow: none !important; margin: 0 !important; padding: 2mm !important;",
-            "  width: 194mm !important; background: #fff !important; background-image: none !important;",
+            "  border: 1px solid #111 !important; box-shadow: none !important; margin: 0 !important; padding: 1.5mm !important;",
+            "  width: 198mm !important; background: #fff !important; background-image: none !important;",
             "  print-color-adjust: exact; -webkit-print-color-adjust: exact;",
             "}",
             "#technical-sheet-export * { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }",
             ".technical-sheet__eyebrow { display: none !important; }",
             ".technical-data-block--courbe, .technical-data-block--courbe-detail { display: none !important; }",
             ".technical-sheet-grid {",
-            "  display: grid !important; gap: 1.5mm !important; grid-template-columns: 42mm 1fr !important; padding: 0 !important;",
+            "  display: grid !important; gap: 1mm !important; grid-template-columns: 42mm 1fr !important; padding: 0 !important;",
             "}",
             ".technical-data-column, .technical-drawing-column,",
-            ".technical-drawing-column--historic, .technical-ground-column {",
-            "  border: 0.5px solid #333 !important; min-height: 0 !important; max-height: 260mm !important; overflow: hidden !important;",
+            ".technical-drawing-column--historic {",
+            "  border: 0.5px solid #333 !important; min-height: 0 !important; max-height: 265mm !important; overflow: hidden !important;",
             "}",
             ".technical-drawing-layout {",
-            "  display: grid !important; gap: 1mm !important; grid-template-columns: minmax(0,75%) minmax(0,25%) !important;",
-            "  height: 258mm !important; min-height: 0 !important; overflow: hidden !important;",
+            "  display: grid !important; gap: 0 !important; grid-template-columns: minmax(0,78%) minmax(0,22%) !important;",
+            "  height: 260mm !important; min-height: 0 !important; overflow: hidden !important;",
             "}",
             ".technical-drawing-column--historic .technical-section-canvas {",
-            "  height: 254mm !important; min-height: 0 !important; overflow: hidden !important;",
-            "  transform: scale(0.85) !important; transform-origin: top center !important;",
+            "  height: 260mm !important; min-height: 0 !important; overflow: visible !important;",
+            "  transform: none !important;",
             "}",
-            ".technical-ground-column { min-height: 0 !important; padding-top: 0 !important; overflow: hidden !important; }",
-            ".technical-ground-bar { height: 100% !important; min-height: 240mm !important; }",
-            ".technical-ground-header { font-size: 6pt !important; padding: 1mm 0 !important; }",
+            ".technical-drawing-column--historic .technical-section-canvas .technical-element {",
+            "  --technical-top-offset: 70px !important;",
+            "}",
+            ".technical-ground-column {",
+            "  min-height: 0 !important; overflow: hidden !important; border: 0.5px solid #333 !important;",
+            "  margin-top: 70px !important; max-height: calc(260mm - 70px) !important;",
+            "}",
+            ".technical-ground-bar { height: 100% !important; min-height: 0 !important; }",
+            ".technical-ground-header { font-size: 5.5pt !important; padding: 1mm 0 !important; height: auto !important; }",
             ".technical-ground-layer span { font-size: 5pt !important; }",
             ".technical-data-block { padding: 1.5mm 2mm !important; }",
             ".technical-data-block h3 { font-size: 7pt !important; margin: -1.5mm -2mm 1mm !important; padding: 0.8mm 2mm !important; }",
@@ -765,14 +797,17 @@
             ".technical-soil-list li { margin-bottom: 0.5mm !important; }",
             ".technical-check-list { font-size: 6.5pt !important; }",
             ".technical-data-block--notes p { font-size: 6pt !important; }",
-            ".technical-top-levels { font-size: 6.5pt !important; gap: 1.5mm !important; top: 1mm !important; }",
-            ".technical-depth-arrow span, .technical-dimension span { font-size: 6.5pt !important; }",
-            ".technical-guide-wall-label { font-size: 6pt !important; }",
+            ".technical-top-levels { font-size: 8pt !important; gap: 2mm !important; top: 2px !important; }",
+            ".technical-depth-arrow span { font-size: 8pt !important; }",
+            ".technical-dimension span { font-size: 8pt !important; }",
+            ".technical-guide-wall-label { font-size: 7pt !important; }",
             ".technical-sheet__titlebar, .technical-sheet__titlebar--historic {",
-            "  border: 0 !important; border-bottom: 1px solid #111 !important; margin: 0 0 1.5mm !important; padding: 0 0 1mm !important;",
+            "  border: 0 !important; border-bottom: 1px solid #111 !important; margin: 0 0 1mm !important; padding: 0 0 1mm !important;",
             "}",
             ".technical-sheet__titlebar h2, .technical-sheet__titlebar--historic h2 { font-size: 9pt !important; margin: 0 !important; }",
-            ".soil-color-dot { width: 6px !important; height: 6px !important; margin-right: 2px !important; }"
+            ".soil-color-dot { width: 6px !important; height: 6px !important; margin-right: 2px !important; }",
+            ".technical-base-summary { font-size: 6.5pt !important; padding: 1mm 0 !important; border-top: 1px solid #333 !important; margin-top: 1mm !important; }",
+            ".technical-base-summary p { margin: 0.3mm 0 !important; font-size: 6.5pt !important; }"
         ].join("\n");
         var printWin = window.open("", "_blank", "width=800,height=1100");
         printWin.document.write(
