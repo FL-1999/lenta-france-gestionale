@@ -8028,6 +8028,7 @@ label.form-label[for="profondita_totale"]{
   .technical-data-block--courbe-detail,
   .technical-photos-zone,
   .technical-print-button,
+  .stratigrafia-technical-panel,
   [data-print-technical-sheet] {
     display: none !important;
   }
