@@ -8061,7 +8061,9 @@ label.form-label[for="profondita_totale"]{
   .container {
     margin: 0 !important;
     max-width: none !important;
+    min-height: 0 !important;
     padding: 0 !important;
+    padding-bottom: 0 !important;
   }
   .technical-coupe-card--sheet {
     border: 0 !important;
@@ -8170,10 +8172,10 @@ label.form-label[for="profondita_totale"]{
   .technical-ground-column {
     min-height: 0 !important;
     overflow: hidden !important;
-    padding-top: 0;
+    padding-top: 22mm !important;
   }
   .technical-ground-bar {
-    height: 246mm !important;
+    height: 220mm !important;
     width: 100% !important;
   }
   .technical-ground-header { font-size: 4.5pt; padding: 0.5mm 0; }
