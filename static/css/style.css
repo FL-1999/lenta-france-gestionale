@@ -7693,31 +7693,31 @@ label.form-label[for="profondita_totale"]{
 .technical-sheet__header-top {
   border: 2px solid #111;
   border-bottom: 0;
-  display: flex;
-  align-items: stretch;
+  display: block;
 }
 
 .technical-sheet__header-logo {
-  align-items: center;
-  border-right: 2px solid #111;
-  display: flex;
-  flex: 1;
-  justify-content: center;
-  padding: 10px 20px;
+  border-bottom: 1px solid #111;
+  padding: 14px 30px;
+  text-align: center;
 }
 
 .technical-sheet__logo-img {
-  display: block;
+  display: inline-block;
   height: auto;
-  max-height: 80px;
-  max-width: 300px;
-  width: auto;
+  max-width: 450px;
+  width: 60%;
+}
+
+.technical-sheet__header-info-row {
+  display: flex;
+  align-items: stretch;
 }
 
 .technical-sheet__header-right {
   display: flex;
   flex-direction: column;
-  min-width: 200px;
+  flex: 1;
 }
 
 .technical-sheet__header-table {
@@ -7738,8 +7738,14 @@ label.form-label[for="profondita_totale"]{
   font-weight: 400;
 }
 
+.technical-sheet__header-info-row {
+  display: flex;
+  align-items: stretch;
+}
+
 .technical-sheet__header-site {
-  border-top: 1px solid #111;
+  border-right: 1px solid #111;
+  flex: 1;
   font-family: "Courier New", Courier, monospace;
   font-size: 11px;
   padding: 4px 10px;
