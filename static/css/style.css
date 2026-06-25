@@ -7698,7 +7698,7 @@ label.form-label[for="profondita_totale"]{
 
 .technical-sheet__header-logo {
   border-bottom: 1px solid #111;
-  padding: 14px 30px;
+  padding: 6px 20px;
   text-align: center;
 }
 
@@ -7709,15 +7709,9 @@ label.form-label[for="profondita_totale"]{
   width: 60%;
 }
 
-.technical-sheet__header-info-row {
+.technical-sheet__header-details-row {
   display: flex;
   align-items: stretch;
-}
-
-.technical-sheet__header-right {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
 }
 
 .technical-sheet__header-table {
@@ -7743,22 +7737,14 @@ label.form-label[for="profondita_totale"]{
   align-items: stretch;
 }
 
-.technical-sheet__header-site {
-  border-right: 1px solid #111;
-  flex: 1;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 11px;
-  padding: 4px 10px;
-}
-
-.technical-sheet__header-site div {
-  margin: 1px 0;
-}
-
 .technical-sheet__header-title {
+  align-items: center;
   background: #d9edf2;
-  border: 2px solid #111;
-  padding: 5px 0;
+  border-left: 2px solid #111;
+  display: flex;
+  justify-content: center;
+  min-width: 180px;
+  padding: 8px 12px;
   text-align: center;
 }
 

@@ -274,20 +274,16 @@
                             <div class="technical-sheet__header-logo">
                                 <img src="/static/img/logo.png" alt="Lenta France Fondations Spéciales" class="technical-sheet__logo-img">
                             </div>
-                            <div class="technical-sheet__header-info-row">
-                                <div class="technical-sheet__header-site">
-                                    <div>CHANTIER : <strong>{{ fiche.site.name|upper if fiche.site else '—' }}</strong></div>
-                                    <div>RESPONSABLE : <strong>{{ fiche.responsable_pdf or '—' }}</strong></div>
-                                </div>
+                            <div class="technical-sheet__header-details-row">
                                 <table class="technical-sheet__header-table">
-                                    <tr><td>{{ 'PIEU' if is_palo else 'PANNEAU' }}</td><td><strong>{{ fiche.numero_pannello or '—' }}</strong></td></tr>
-                                    <tr><td>COUPE</td><td><strong>{{ fiche.coupe.name if fiche.coupe else '—' }}</strong></td></tr>
-                                    <tr><td>DATE</td><td><strong>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</strong></td></tr>
+                                    <tr><td>CHANTIER</td><td><strong>{{ fiche.site.name|upper if fiche.site else '—' }}</strong></td><td>{{ 'PIEU' if is_palo else 'PANNEAU' }}</td><td><strong>{{ fiche.numero_pannello or '—' }}</strong></td></tr>
+                                    <tr><td>RESPONSABLE</td><td><strong>{{ fiche.responsable_pdf or '—' }}</strong></td><td>COUPE</td><td><strong>{{ fiche.coupe.name if fiche.coupe else '—' }}</strong></td></tr>
+                                    <tr><td colspan="3"></td><td><strong>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</strong></td></tr>
                                 </table>
+                                <div class="technical-sheet__header-title">
+                                    <h2>RAPPORT D'EXECUTION DE {{ 'PIEU' if is_palo else 'PANNEAU' }}</h2>
+                                </div>
                             </div>
-                        </div>
-                        <div class="technical-sheet__header-title">
-                            <h2>RAPPORT D'EXECUTION DE {{ 'PIEU' if is_palo else 'PANNEAU' }}</h2>
                         </div>
                     </header>
 
@@ -778,11 +774,10 @@
             ".technical-data-block--courbe, .technical-data-block--courbe-detail { display: none !important; }",
             ".technical-sheet__titlebar, .technical-sheet__titlebar--historic { margin: 0 !important; padding: 0 !important; }",
             ".technical-sheet__header-top { border: 1px solid #111 !important; border-bottom: 0 !important; }",
-            ".technical-sheet__header-logo { padding: 3mm 10mm !important; border-bottom: 0.5px solid #111 !important; text-align: center !important; }",
-            ".technical-sheet__logo-img { max-width: 80mm !important; width: 80mm !important; }",
-            ".technical-sheet__header-info-row { display: flex !important; }",
-            ".technical-sheet__header-site { font-size: 6pt !important; padding: 0.5mm 2mm !important; flex: 1 !important; border-right: 0.5px solid #111 !important; }",
-            ".technical-sheet__header-title { padding: 1mm 0 !important; border: 1px solid #111 !important; }",
+            ".technical-sheet__header-logo { padding: 1mm 4mm !important; border-bottom: 0.5px solid #111 !important; text-align: center !important; }",
+            ".technical-sheet__logo-img { max-width: 75mm !important; width: 75mm !important; }",
+            ".technical-sheet__header-details-row { display: flex !important; }",
+            ".technical-sheet__header-title { padding: 1mm 3mm !important; border-left: 1px solid #111 !important; min-width: 38mm !important; font-size: 7pt !important; }",
             ".technical-sheet__titlebar h2, .technical-sheet__titlebar--historic h2 { font-size: 8pt !important; margin: 0 !important; letter-spacing: 0.5px !important; }",
             ".technical-sheet__header-table td { font-size: 6pt !important; padding: 0.3mm 2mm !important; border: 0.5px solid #111 !important; }",
             ".technical-sheet-grid {",
