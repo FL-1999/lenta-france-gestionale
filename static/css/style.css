@@ -7686,33 +7686,28 @@ label.form-label[for="profondita_totale"]{
 .technical-sheet__titlebar--historic {
   background: #ffffff;
   border: 0;
-  border-bottom: 2px solid #111111;
   margin: 0;
   padding: 0;
 }
 
-.technical-sheet__header-row {
+.technical-sheet__header-top {
   align-items: center;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 120px 1fr auto;
-  padding: 8px 10px;
+  border: 2px solid #111;
+  border-bottom: 1px solid #111;
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px;
+}
+
+.technical-sheet__logo {
+  flex: 1;
 }
 
 .technical-sheet__logo-img {
   display: block;
   height: auto;
-  max-height: 55px;
-  width: 100%;
-}
-
-.technical-sheet__title-center {
-  text-align: center;
-}
-
-.technical-sheet__header-info {
-  font-family: "Courier New", Courier, monospace;
-  font-size: 10px;
+  max-height: 60px;
+  width: auto;
 }
 
 .technical-sheet__header-table {
@@ -7720,16 +7715,39 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-sheet__header-table td {
-  border: 1px solid #999;
+  border: 1.5px solid #111;
   font-family: "Courier New", Courier, monospace;
-  font-size: 10px;
-  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 60px;
+  padding: 2px 8px;
+  text-align: center;
   white-space: nowrap;
 }
 
 .technical-sheet__header-table td:first-child {
-  background: #f0f0f0;
+  background: #f5f5f5;
   font-weight: 400;
+  text-align: left;
+}
+
+.technical-sheet__header-mid {
+  border-left: 2px solid #111;
+  border-right: 2px solid #111;
+  display: flex;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  gap: 24px;
+  justify-content: space-between;
+  padding: 4px 8px;
+}
+
+.technical-sheet__header-title {
+  background: #d9edf2;
+  border: 2px solid #111;
+  border-top: 1px solid #111;
+  padding: 5px 0;
+  text-align: center;
 }
 
 .technical-sheet__titlebar--historic .technical-sheet__eyebrow {

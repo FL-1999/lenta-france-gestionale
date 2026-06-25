@@ -270,23 +270,22 @@
             <div class="technical-split-view">
                 <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d'exécution imprimable">
                     <header class="technical-sheet__titlebar technical-sheet__titlebar--historic">
-                        <div class="technical-sheet__header-row">
+                        <div class="technical-sheet__header-top">
                             <div class="technical-sheet__logo">
-                                <img src="/static/img/logo.png" alt="Lenta France" class="technical-sheet__logo-img">
+                                <img src="/static/img/logo.png" alt="Lenta France Fondations Spéciales" class="technical-sheet__logo-img">
                             </div>
-                            <div class="technical-sheet__title-center">
-                                <p class="technical-sheet__eyebrow">Rapport d'exécution de paroi / pieu</p>
-                                <h2 title="{{ fiche_element_label_fr(fiche.tipologia_scavo) }} {{ fiche.numero_pannello or '—' }}">
-                                    RAPPORT D'EXECUTION DE {{ 'PIEU' if is_palo else 'PANNEAU' }}
-                                </h2>
-                            </div>
-                            <div class="technical-sheet__header-info">
-                                <table class="technical-sheet__header-table">
-                                    <tr><td>Chantier</td><td><strong>{{ fiche.site.name if fiche.site else '—' }}</strong></td></tr>
-                                    <tr><td>{{ 'Pieu' if is_palo else 'Panneau' }} N°</td><td><strong>{{ fiche.numero_pannello or '—' }}</strong></td></tr>
-                                    <tr><td>Date</td><td><strong>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</strong></td></tr>
-                                </table>
-                            </div>
+                            <table class="technical-sheet__header-table">
+                                <tr><td>{{ 'PIEU' if is_palo else 'PANNEAU' }}</td><td></td></tr>
+                                <tr><td>N°</td><td><strong>{{ fiche.numero_pannello or '—' }}</strong></td></tr>
+                                <tr><td>COUPE</td><td><strong>{{ fiche.coupe.name if fiche.coupe else '—' }}</strong></td></tr>
+                            </table>
+                        </div>
+                        <div class="technical-sheet__header-mid">
+                            <span><strong>{{ fiche.site.name|upper if fiche.site else '—' }}</strong></span>
+                            <span>RESPONSABLE : {{ fiche.responsable_pdf or '—' }}</span>
+                        </div>
+                        <div class="technical-sheet__header-title">
+                            <h2>RAPPORT D'EXECUTION DE {{ 'PIEU' if is_palo else 'PANNEAU' }}</h2>
                         </div>
                     </header>
 
@@ -775,16 +774,13 @@
             "#technical-sheet-export * { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }",
             ".technical-sheet__eyebrow { display: none !important; }",
             ".technical-data-block--courbe, .technical-data-block--courbe-detail { display: none !important; }",
-            ".technical-sheet__titlebar, .technical-sheet__titlebar--historic {",
-            "  border: 0 !important; border-bottom: 1.5px solid #111 !important; margin: 0 0 1mm !important; padding: 0 !important;",
-            "}",
-            ".technical-sheet__header-row {",
-            "  display: grid !important; grid-template-columns: 28mm 1fr auto !important;",
-            "  gap: 2mm !important; align-items: center !important; padding: 2mm 2mm !important;",
-            "}",
-            ".technical-sheet__logo-img { max-height: 12mm !important; width: auto !important; }",
-            ".technical-sheet__titlebar h2, .technical-sheet__titlebar--historic h2 { font-size: 9pt !important; margin: 0 !important; letter-spacing: 0.5px !important; }",
-            ".technical-sheet__header-table td { font-size: 5.5pt !important; padding: 0.5mm 2mm !important; border: 0.5px solid #999 !important; }",
+            ".technical-sheet__titlebar, .technical-sheet__titlebar--historic { margin: 0 !important; padding: 0 !important; }",
+            ".technical-sheet__header-top { border: 1px solid #111 !important; padding: 1.5mm 2mm !important; }",
+            ".technical-sheet__logo-img { max-height: 10mm !important; }",
+            ".technical-sheet__header-mid { font-size: 7pt !important; padding: 1mm 2mm !important; border-left: 1px solid #111 !important; border-right: 1px solid #111 !important; }",
+            ".technical-sheet__header-title { padding: 1mm 0 !important; border: 1px solid #111 !important; }",
+            ".technical-sheet__titlebar h2, .technical-sheet__titlebar--historic h2 { font-size: 8pt !important; margin: 0 !important; letter-spacing: 0.5px !important; }",
+            ".technical-sheet__header-table td { font-size: 6pt !important; padding: 0.3mm 2mm !important; border: 0.5px solid #111 !important; min-width: 12mm !important; }",
             ".technical-sheet-grid {",
             "  display: grid !important; gap: 1mm !important; grid-template-columns: 40mm 1fr !important; padding: 0 !important;",
             "}",
