@@ -7684,16 +7684,52 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-sheet__titlebar--historic {
-  align-items: center;
-  background: #d9edf2;
+  background: #ffffff;
   border: 0;
   border-bottom: 2px solid #111111;
-  display: flex;
-  justify-content: center;
-  margin: 0 0 24px;
-  min-height: 74px;
+  margin: 0;
   padding: 0;
+}
+
+.technical-sheet__header-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 120px 1fr auto;
+  padding: 8px 10px;
+}
+
+.technical-sheet__logo-img {
+  display: block;
+  height: auto;
+  max-height: 55px;
+  width: 100%;
+}
+
+.technical-sheet__title-center {
   text-align: center;
+}
+
+.technical-sheet__header-info {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+}
+
+.technical-sheet__header-table {
+  border-collapse: collapse;
+}
+
+.technical-sheet__header-table td {
+  border: 1px solid #999;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.technical-sheet__header-table td:first-child {
+  background: #f0f0f0;
+  font-weight: 400;
 }
 
 .technical-sheet__titlebar--historic .technical-sheet__eyebrow {
@@ -7703,9 +7739,9 @@ label.form-label[for="profondita_totale"]{
 .technical-sheet__titlebar--historic h2 {
   color: #000000;
   font-family: "Courier New", Courier, monospace;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
-  letter-spacing: 0;
+  letter-spacing: 1px;
   margin: 0;
   text-transform: uppercase;
 }
