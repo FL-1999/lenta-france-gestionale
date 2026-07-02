@@ -7692,7 +7692,7 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-sheet__header-top {
-  border: 2px solid #111;
+  border: 1.5px solid #111;
   border-bottom: 0;
   display: block;
   width: 100%;
@@ -7713,13 +7713,13 @@ label.form-label[for="profondita_totale"]{
 }
 
 .technical-sheet__header-details-row {
-  display: flex;
   align-items: stretch;
+  display: flex;
 }
 
 .technical-sheet__header-table {
   border-collapse: collapse;
-  width: 100%;
+  width: auto;
 }
 
 .technical-sheet__header-table td {
@@ -7730,29 +7730,16 @@ label.form-label[for="profondita_totale"]{
   white-space: nowrap;
 }
 
-.technical-sheet__header-table td:first-child {
+.technical-sheet__header-table td:first-child,
+.technical-sheet__header-table td:nth-child(3) {
   background: #f0f0f0;
   font-weight: 400;
-}
-
-.technical-sheet__header-info-row {
-  display: flex;
-  align-items: stretch;
-}
-
-.technical-sheet__header-details-row {
-  display: flex;
-  align-items: stretch;
-}
-
-.technical-sheet__header-details-row .technical-sheet__header-table {
-  width: auto;
 }
 
 .technical-sheet__header-title {
   align-items: center;
   background: #d9edf2;
-  border-left: 2px solid #111;
+  border-left: 1px solid #111;
   display: flex;
   flex: 1;
   justify-content: center;
