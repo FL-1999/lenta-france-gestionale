@@ -7738,13 +7738,22 @@ label.form-label[for="profondita_totale"]{
   align-items: stretch;
 }
 
+.technical-sheet__header-details-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.technical-sheet__header-details-row .technical-sheet__header-table {
+  width: auto;
+}
+
 .technical-sheet__header-title {
   align-items: center;
   background: #d9edf2;
   border-left: 2px solid #111;
   display: flex;
+  flex: 1;
   justify-content: center;
-  min-width: 180px;
   padding: 8px 12px;
   text-align: center;
 }
