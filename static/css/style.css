@@ -7698,15 +7698,15 @@ label.form-label[for="profondita_totale"]{
 
 .technical-sheet__header-logo {
   border-bottom: 1px solid #111;
-  padding: 10px 0;
+  padding: 8px 12px;
   text-align: center;
 }
 
 .technical-sheet__logo-img {
-  display: inline-block;
+  display: block;
   height: auto;
-  max-height: 65px;
-  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .technical-sheet__header-details-row {
