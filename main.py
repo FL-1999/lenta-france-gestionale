@@ -7733,7 +7733,9 @@ def manager_site_fiches_pdf(
         cover_inner = templates.get_template("manager/fiches/_pdf_cover.html").render(cover_ctx)
         cover_html = (
             "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-            f"<style>{css_text}</style></head><body>{cover_inner}</body></html>"
+            f"<style>{css_text}</style>"
+            "<style>html,body{background:#fff !important;background-image:none !important;margin:0;padding:0;}</style>"
+            f"</head><body>{cover_inner}</body></html>"
         )
 
         try:

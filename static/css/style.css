@@ -8118,6 +8118,8 @@ label.form-label[for="profondita_totale"]{
   }
 
   html, body {
+    background: #fff !important;
+    background-image: none !important;
     margin: 0 !important;
     overflow: hidden !important;
     padding: 0 !important;
@@ -8486,6 +8488,7 @@ label.form-label[for="profondita_totale"]{
    PAGE DE GARDE — copertina PDF unico (WeasyPrint)
    ══════════════════════════════════════════════════════════════════ */
 .pdf-cover {
+  background: #fff;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
