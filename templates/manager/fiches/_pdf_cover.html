@@ -1,0 +1,77 @@
+{# ══════════════════════════════════════════════════════
+   PAGE DE GARDE — copertina PDF unico consegna cliente
+   Variabili attese:
+     site            → oggetto Site
+     is_palo         → bool (True = pali, False = paratie)
+     affaire         → str (numero affaire, default site.code)
+     indice          → str/int (indice révision, default 0)
+     mission         → str (es. "SUIVI DE MISSION G3")
+     descriptif_terrains → str (modello geologico teorico)
+     fiches_count    → int
+   ══════════════════════════════════════════════════════ #}
+<div class="pdf-cover">
+    <div class="pdf-cover__logo">
+        <img src="{{ logo_src }}" alt="Lenta France Fondations Spéciales">
+    </div>
+
+    <div class="pdf-cover__site-box">
+        <div class="pdf-cover__site-name">{{ (site.name|upper) if site and site.name else '—' }}</div>
+        <div class="pdf-cover__site-city">{{ (site.city|upper) if site and site.city else '' }}</div>
+    </div>
+
+    <div class="pdf-cover__title-block">
+        <h1 class="pdf-cover__type">{{ 'PIEUX' if is_palo else 'PAROI MOULEE' }}</h1>
+        <h2 class="pdf-cover__mission">{{ mission }}</h2>
+        <h3 class="pdf-cover__subtitle">FICHES DE FORAGES DES {{ 'PIEUX' if is_palo else 'PANNEAUX' }}</h3>
+    </div>
+
+    <div class="pdf-cover__affaire-row">
+        <span class="pdf-cover__affaire">AFFAIRE : &nbsp;<strong>{{ affaire or '—' }}</strong></span>
+        <span class="pdf-cover__indice">INDICE : &nbsp;<strong>{{ indice }}</strong></span>
+    </div>
+
+    <div class="pdf-cover__descriptif">
+        <p class="pdf-cover__descriptif-title">Descriptif des terrains :</p>
+        <p class="pdf-cover__descriptif-intro">Les rapports d'étude géotechnique du projet ont établi le modèle géologique suivant :</p>
+        <div class="pdf-cover__descriptif-box">
+            {% if descriptif_terrains %}
+                {% for ligne in descriptif_terrains.split('\n') %}
+                    {% if ligne.strip() %}<div class="pdf-cover__sol">{{ ligne.strip() }}</div>{% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="pdf-cover__sol">—</div>
+            {% endif %}
+        </div>
+        <p class="pdf-cover__descriptif-note">
+            L'exécution de {{ 'la fondation profonde' if is_palo else 'la paroi moulée' }} ne nous permet pas d'avoir une description aussi précise.
+        </p>
+        <p class="pdf-cover__descriptif-note">
+            Notre descriptif sera plus général car les outils utilisés pour la foration déorganisent le terrain en place (benne preneuse, bucket,…)
+        </p>
+    </div>
+
+    <table class="pdf-cover__revision">
+        <thead>
+            <tr>
+                <th>indice</th><th>date</th><th>Sujet révision</th><th>Rédaction</th><th>Contrôle</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ indice }}</td>
+                <td>{{ revision_date or '' }}</td>
+                <td>Première diffusion</td>
+                <td>{{ redaction or '' }}</td>
+                <td>{{ controle or '' }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="pdf-cover__footer">
+        <p class="pdf-cover__footer-address">ZAC ST ESTEVE – AVENUE ST ESTEVE – 06640 ST JEANNET</p>
+        <p class="pdf-cover__footer-contact">Tél : 04 93 29 82 40&nbsp;&nbsp;&nbsp;Fax : 04 93 29 81 12</p>
+        <p class="pdf-cover__footer-contact">lentafrance@lentafrance.com</p>
+        <p class="pdf-cover__footer-legal">S.A.S. au capital de 200.000 €uros</p>
+        <p class="pdf-cover__footer-legal">Siret 403 625 809 00054 – Code APE 4399 D</p>
+    </div>
+</div>

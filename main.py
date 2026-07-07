@@ -7558,39 +7558,51 @@ def manager_fiche_dettaglio(
 # PDF EXPORT — FICHE
 # -------------------------------------------------
 
-@app.get(
-    "/manager/fiches/{fiche_id}/pdf",
-    name="manager_fiche_pdf",
-)
-def manager_fiche_pdf(
-    request: Request,
-    fiche_id: int,
-    current_user: User = Depends(get_current_active_user_html),
-):
-    if not has_perm(current_user, "manager.access"):
-        raise HTTPException(status_code=403, detail="Non autorizzato")
+def _pdf_project_dir() -> str:
+    import os
+    return os.path.dirname(os.path.abspath(__file__))
 
-    db = SessionLocal()
-    try:
-        fiche = (
-            db.query(Fiche)
-            .options(
-                joinedload(Fiche.site),
-                joinedload(Fiche.coupe),
-                joinedload(Fiche.machine),
-                joinedload(Fiche.created_by),
-                joinedload(Fiche.capocantiere),
-                joinedload(Fiche.stratigrafie),
-                joinedload(Fiche.layers),
-            )
-            .filter(Fiche.id == fiche_id)
-            .first()
+
+def _pdf_logo_file_src() -> str:
+    import os
+    return "file://" + os.path.join(_pdf_project_dir(), "static", "img", "logo.png")
+
+
+def _load_style_css() -> str:
+    import os
+    css_path = os.path.join(_pdf_project_dir(), "static", "css", "style.css")
+    with open(css_path) as f:
+        return f.read()
+
+
+def _inline_style_css(html: str, css_text: str) -> str:
+    import re
+    return re.sub(
+        r'<link\s+rel="stylesheet"\s+href="[^"]*style\.css[^"]*"\s*/?>',
+        f"<style>{css_text}</style>",
+        html,
+    )
+
+
+def _load_fiche_for_pdf(db, fiche_id: int):
+    return (
+        db.query(Fiche)
+        .options(
+            joinedload(Fiche.site),
+            joinedload(Fiche.coupe),
+            joinedload(Fiche.machine),
+            joinedload(Fiche.created_by),
+            joinedload(Fiche.capocantiere),
+            joinedload(Fiche.stratigrafie),
+            joinedload(Fiche.layers),
         )
-        if not fiche:
-            raise HTTPException(status_code=404, detail="Fiche non trovata")
-    finally:
-        db.close()
+        .filter(Fiche.id == fiche_id)
+        .first()
+    )
 
+
+def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, css_text: str) -> str:
+    """Renderizza il rapport d'exécution di una fiche in HTML pronto per WeasyPrint."""
     ctx = build_template_context(
         request,
         current_user,
@@ -7605,30 +7617,140 @@ def manager_fiche_pdf(
         fiche_element_label_fr=_fiche_element_label_fr,
         courbe_beton_payload=_build_courbe_beton_payload(fiche),
         pdf_mode=True,
+        pdf_logo_src=_pdf_logo_file_src(),
+    )
+    html = templates.get_template("manager/fiches/fiche_detail.html").render(ctx)
+    return _inline_style_css(html, css_text)
+
+
+@app.get(
+    "/manager/fiches/{fiche_id}/pdf",
+    name="manager_fiche_pdf",
+)
+def manager_fiche_pdf(
+    request: Request,
+    fiche_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        fiche = _load_fiche_for_pdf(db, fiche_id)
+        if not fiche:
+            raise HTTPException(status_code=404, detail="Fiche non trovata")
+
+        css_text = _load_style_css()
+        html = _render_fiche_pdf_html(request, current_user, fiche, css_text)
+
+        from weasyprint import HTML as WeasyHTML
+        pdf_bytes = WeasyHTML(string=html, base_url=_pdf_project_dir()).write_pdf()
+
+        tipo = fiche.tipologia_scavo or "fiche"
+        num = fiche.numero_pannello or 0
+        date_str = fiche.date.strftime("%Y%m%d") if fiche.date else "nodate"
+        site_code = (fiche.site.code or "site") if fiche.site else "site"
+        filename = f"{site_code}_{tipo}_{num}_{date_str}.pdf"
+    finally:
+        db.close()
+
+    from starlette.responses import Response as RawResponse
+    return RawResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
-    template = templates.get_template("manager/fiches/fiche_detail.html")
-    html = template.render(ctx)
 
-    import os, re
-    css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "css", "style.css")
-    with open(css_path) as f:
-        css_text = f.read()
+@app.get(
+    "/manager/cantieri/{site_id}/fiches-pdf/{tipo}",
+    name="manager_site_fiches_pdf",
+)
+def manager_site_fiches_pdf(
+    request: Request,
+    site_id: int,
+    tipo: str,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """PDF unico di consegna cliente: copertina + tutte le fiches paratie o pali del cantiere."""
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
 
-    html = re.sub(
-        r'<link\s+rel="stylesheet"\s+href="[^"]*style\.css[^"]*"\s*/?>',
-        f"<style>{css_text}</style>",
-        html,
-    )
+    if tipo not in ("paratie", "pali"):
+        raise HTTPException(status_code=404, detail="Type non valide")
+    is_palo = tipo == "pali"
+    tipologia = "palo" if is_palo else "paratia"
 
-    from weasyprint import HTML as WeasyHTML
-    pdf_bytes = WeasyHTML(string=html).write_pdf()
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Chantier non trouvé")
 
-    tipo = fiche.tipologia_scavo or "fiche"
-    num = fiche.numero_pannello or 0
-    date_str = fiche.date.strftime("%Y%m%d") if fiche.date else "nodate"
-    site_code = fiche.site.code or "site" if fiche.site else "site"
-    filename = f"{site_code}_{tipo}_{num}_{date_str}.pdf"
+        fiches = (
+            db.query(Fiche)
+            .options(
+                joinedload(Fiche.site),
+                joinedload(Fiche.coupe),
+                joinedload(Fiche.machine),
+                joinedload(Fiche.created_by),
+                joinedload(Fiche.capocantiere),
+                joinedload(Fiche.stratigrafie),
+                joinedload(Fiche.layers),
+            )
+            .filter(Fiche.site_id == site_id, Fiche.tipologia_scavo == tipologia)
+            .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
+            .all()
+        )
+        if not fiches:
+            label = "pieux" if is_palo else "panneaux"
+            raise HTTPException(status_code=404, detail=f"Aucune fiche {label} pour ce chantier")
+
+        css_text = _load_style_css()
+
+        # Descriptif des terrains: primo modello geologico teorico disponibile
+        descriptif = next(
+            (f.coupe.terreno_teorico for f in fiches if f.coupe and f.coupe.terreno_teorico),
+            None,
+        ) or next((f.terreno_teorico for f in fiches if f.terreno_teorico), None)
+
+        cover_ctx = build_template_context(
+            request,
+            current_user,
+            site=site,
+            is_palo=is_palo,
+            affaire=site.code,
+            indice=0,
+            mission="SUIVI DE MISSION G3",
+            descriptif_terrains=descriptif,
+            fiches_count=len(fiches),
+            logo_src=_pdf_logo_file_src(),
+            revision_date="",
+            redaction="",
+            controle="",
+        )
+        cover_inner = templates.get_template("manager/fiches/_pdf_cover.html").render(cover_ctx)
+        cover_html = (
+            "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+            f"<style>{css_text}</style></head><body>{cover_inner}</body></html>"
+        )
+
+        htmls = [cover_html]
+        htmls.extend(
+            _render_fiche_pdf_html(request, current_user, fiche, css_text) for fiche in fiches
+        )
+
+        from weasyprint import HTML as WeasyHTML
+        base_url = _pdf_project_dir()
+        documents = [WeasyHTML(string=h, base_url=base_url).render() for h in htmls]
+        all_pages = [page for doc in documents for page in doc.pages]
+        pdf_bytes = documents[0].copy(all_pages).write_pdf()
+
+        site_code = site.code or "chantier"
+        filename = f"{site_code}_{tipo}_fiches.pdf"
+    finally:
+        db.close()
 
     from starlette.responses import Response as RawResponse
     return RawResponse(

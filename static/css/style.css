@@ -8481,3 +8481,153 @@ label.form-label[for="profondita_totale"]{
     padding: 16px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   PAGE DE GARDE — copertina PDF unico (WeasyPrint)
+   ══════════════════════════════════════════════════════════════════ */
+.pdf-cover {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-family: "Times New Roman", Times, serif;
+  height: 285mm;
+  padding: 4mm 2mm;
+  page-break-after: always;
+  width: 100%;
+}
+
+.pdf-cover__logo {
+  text-align: center;
+}
+
+.pdf-cover__logo img {
+  max-width: 90mm;
+  width: 60%;
+}
+
+.pdf-cover__site-box {
+  border: 1.5px solid #111;
+  margin: 22mm auto 0;
+  padding: 8mm 6mm;
+  text-align: center;
+  width: 70%;
+}
+
+.pdf-cover__site-name {
+  font-size: 17pt;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.pdf-cover__site-city {
+  font-size: 14pt;
+  font-weight: 700;
+  margin-top: 6mm;
+}
+
+.pdf-cover__title-block {
+  margin-top: 14mm;
+  text-align: center;
+}
+
+.pdf-cover__type {
+  font-size: 18pt;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.pdf-cover__mission {
+  font-size: 13pt;
+  font-weight: 700;
+  margin: 6mm 0 0;
+}
+
+.pdf-cover__subtitle {
+  font-size: 10pt;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin: 6mm 0 0;
+}
+
+.pdf-cover__affaire-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14mm;
+  padding: 0 10mm;
+}
+
+.pdf-cover__affaire,
+.pdf-cover__indice {
+  font-size: 11pt;
+}
+
+.pdf-cover__descriptif {
+  font-size: 9pt;
+  margin-top: 12mm;
+  padding: 0 4mm;
+}
+
+.pdf-cover__descriptif-title {
+  margin: 0 0 4mm;
+}
+
+.pdf-cover__descriptif-intro {
+  margin: 0 0 2mm;
+  padding-left: 6mm;
+}
+
+.pdf-cover__descriptif-box {
+  min-height: 28mm;
+  padding-left: 6mm;
+}
+
+.pdf-cover__sol {
+  background: #fce4c8;
+  display: inline-block;
+  margin-bottom: 1mm;
+  padding: 1mm 3mm;
+}
+
+.pdf-cover__descriptif-note {
+  margin: 3mm 0 0;
+  padding-left: 6mm;
+}
+
+.pdf-cover__revision {
+  border-collapse: collapse;
+  font-size: 8pt;
+  margin: auto 0 6mm;
+  width: 100%;
+}
+
+.pdf-cover__revision th,
+.pdf-cover__revision td {
+  border: 0.75px solid #111;
+  padding: 1mm 2mm;
+  text-align: center;
+}
+
+.pdf-cover__footer {
+  border-top: 0.75px solid #111;
+  padding-top: 3mm;
+  text-align: center;
+}
+
+.pdf-cover__footer-address {
+  font-size: 8pt;
+  font-weight: 700;
+  margin: 0 0 1mm;
+}
+
+.pdf-cover__footer-contact {
+  color: #c0202f;
+  font-size: 7.5pt;
+  margin: 0;
+}
+
+.pdf-cover__footer-legal {
+  color: #1a3a6b;
+  font-size: 7pt;
+  margin: 0;
+}

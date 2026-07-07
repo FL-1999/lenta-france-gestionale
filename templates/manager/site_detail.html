@@ -152,6 +152,14 @@
                 <a href="{{ url_for('manager_site_progress_grids', site_id=site.id) }}" class="btn btn-primary">
                     Apri griglie avanzamento
                 </a>
+                {% if has_perm(user, 'manager.access') %}
+                    <a href="{{ url_for('manager_site_fiches_pdf', site_id=site.id, tipo='paratie') }}" class="btn btn-secondary" download>
+                        📄 {% if lang == 'fr' %}PDF Parois (dossier complet){% else %}PDF Paratie (dossier completo){% endif %}
+                    </a>
+                    <a href="{{ url_for('manager_site_fiches_pdf', site_id=site.id, tipo='pali') }}" class="btn btn-secondary" download>
+                        📄 {% if lang == 'fr' %}PDF Pieux (dossier complet){% else %}PDF Pali (dossier completo){% endif %}
+                    </a>
+                {% endif %}
             </div>
             <p class="text-muted mb-3">
                 {% if lang == 'fr' %}
