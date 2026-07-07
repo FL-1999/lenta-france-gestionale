@@ -8326,6 +8326,12 @@ label.form-label[for="profondita_totale"]{
   .technical-ngf-scale { font-size: 6pt !important; top: 35px !important; }
   .ngf-label { font-size: 5pt !important; }
 
+  /* Bloc VISA — compact */
+  .technical-visa-block { margin-top: 2mm !important; border: 0.75px solid #111 !important; }
+  .technical-visa-title { font-size: 6pt !important; padding: 0.5mm 0 !important; }
+  .technical-visa-label { font-size: 5.5pt !important; padding: 0.5mm 0 !important; }
+  .technical-visa-space { min-height: 11mm !important; }
+
   /* Hide courbe + interactive */
   .technical-data-block--courbe,
   .technical-data-block--courbe-detail { display: none !important; }
@@ -8633,4 +8639,50 @@ label.form-label[for="profondita_totale"]{
   color: #1a3a6b;
   font-size: 7pt;
   margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BLOC VISA — signatures en bas de la fiche
+   ══════════════════════════════════════════════════════════════════ */
+.technical-visa-block {
+  border: 1.5px solid #111;
+  margin-top: 10px;
+}
+
+.technical-visa-title {
+  border-bottom: 1px solid #111;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  text-align: center;
+}
+
+.technical-visa-cells {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.technical-visa-cell {
+  border-right: 1px solid #111;
+  display: flex;
+  flex-direction: column;
+}
+
+.technical-visa-cell:last-child {
+  border-right: 0;
+}
+
+.technical-visa-label {
+  border-bottom: 1px solid #bbb;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  text-align: center;
+}
+
+.technical-visa-space {
+  min-height: 60px;
 }

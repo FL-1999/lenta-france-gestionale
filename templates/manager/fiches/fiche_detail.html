@@ -511,6 +511,25 @@
                         </section>
                     {% endif %}
 
+                    {# ── Bloc VISA (signatures) ── #}
+                    <div class="technical-visa-block">
+                        <div class="technical-visa-title">VISA</div>
+                        <div class="technical-visa-cells">
+                            <div class="technical-visa-cell">
+                                <div class="technical-visa-label">ENTREPRISE</div>
+                                <div class="technical-visa-space"></div>
+                            </div>
+                            <div class="technical-visa-cell">
+                                <div class="technical-visa-label">CLIENT</div>
+                                <div class="technical-visa-space"></div>
+                            </div>
+                            <div class="technical-visa-cell">
+                                <div class="technical-visa-label">MAÎTRE D'ŒUVRE</div>
+                                <div class="technical-visa-space"></div>
+                            </div>
+                        </div>
+                    </div>
+
                 </article>
 
                 {# ── Pannello stratigrafia visuale 3D ── #}
@@ -834,7 +853,11 @@
             ".technical-base-summary { font-size: 5.5pt !important; padding: 0.5mm 0 !important; border-top: 1px solid #333 !important; position: absolute !important; bottom: 2px !important; left: 0 !important; width: 100% !important; text-align: center !important; }",
             ".technical-base-summary p { margin: 0.2mm 0 !important; font-size: 5.5pt !important; }",
             ".technical-ngf-scale { font-size: 6pt !important; top: 35px !important; }",
-            ".ngf-label { font-size: 5pt !important; }"
+            ".ngf-label { font-size: 5pt !important; }",
+            ".technical-visa-block { margin-top: 2mm !important; border: 0.75px solid #111 !important; }",
+            ".technical-visa-title { font-size: 6pt !important; padding: 0.5mm 0 !important; }",
+            ".technical-visa-label { font-size: 5.5pt !important; padding: 0.5mm 0 !important; }",
+            ".technical-visa-space { min-height: 11mm !important; }"
         ].join("\n");
         var printWin = window.open("", "_blank", "width=800,height=1100");
         printWin.document.write(
