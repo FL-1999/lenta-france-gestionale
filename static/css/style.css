@@ -8113,7 +8113,7 @@ label.form-label[for="profondita_totale"]{
    ══════════════════════════════════════════════════════════════════ */
 @media print {
   @page {
-    margin: 8mm;
+    margin: 6mm;
     size: A4 portrait;
   }
 
@@ -8170,15 +8170,17 @@ label.form-label[for="profondita_totale"]{
   #technical-sheet-export {
     background: #fff !important;
     background-image: none !important;
-    border: 1px solid #111;
-    box-shadow: none;
-    margin: 0;
+    border: 1px solid #111 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
     min-height: 0;
-    padding: 2mm;
+    padding: 1.5mm !important;
+    max-height: 285mm !important;
+    overflow: hidden !important;
     page-break-inside: avoid;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
-    width: 194mm;
+    width: 198mm !important;
   }
 
   #technical-sheet-export * {
@@ -8186,116 +8188,151 @@ label.form-label[for="profondita_totale"]{
     -webkit-print-color-adjust: exact !important;
   }
 
-  /* Title bar — compact */
+  /* Header — professional logo band (ported from perfected print) */
   .technical-sheet__titlebar,
   .technical-sheet__titlebar--historic {
-    border: 0;
-    border-bottom: 1px solid #111;
-    margin: 0 0 1mm;
-    padding: 0 0 1mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  .technical-sheet__header-top {
+    border: 0.75px solid #111 !important;
+    border-bottom: 0 !important;
+    display: block !important;
+    width: 100% !important;
+  }
+  .technical-sheet__header-logo {
+    padding: 1.5mm 3mm !important;
+    border-bottom: 0.75px solid #111 !important;
+    text-align: center !important;
+  }
+  .technical-sheet__logo-img {
+    width: 55% !important;
+    max-width: 100mm !important;
+    display: block !important;
+    margin: 0 auto !important;
+  }
+  .technical-sheet__header-details-row { display: flex !important; }
+  .technical-sheet__header-details-row .technical-sheet__header-table { width: auto !important; }
+  .technical-sheet__header-title {
+    padding: 1mm 3mm !important;
+    border-left: 0.75px solid #111 !important;
+    flex: 1 !important;
+    font-size: 7pt !important;
   }
   .technical-sheet__titlebar h2,
   .technical-sheet__titlebar--historic h2 {
-    font-size: 8pt;
-    margin: 0;
+    font-size: 8pt !important;
+    margin: 0 !important;
+    letter-spacing: 0.5px !important;
+  }
+  .technical-sheet__header-table td {
+    font-size: 6pt !important;
+    padding: 0.3mm 2mm !important;
+    border: 0.75px solid #111 !important;
   }
   .technical-sheet__eyebrow { display: none !important; }
 
-  /* Grid — 2-column: data (40mm) | drawing+ground (rest of 194mm - 4mm padding - 1.5mm gap) */
+  /* Grid — data column (40mm) | drawing+ground */
   .technical-sheet-grid {
     display: grid !important;
-    gap: 1.5mm !important;
-    grid-template-columns: 38mm 1fr !important;
+    gap: 1mm !important;
+    grid-template-columns: 40mm 1fr !important;
     padding: 0 !important;
-    width: 100% !important;
-    overflow: hidden !important;
   }
 
-  /* Column heights — fit in one page (281mm - title ~7mm - padding ~4mm = ~270mm) */
   .technical-data-column,
   .technical-drawing-column,
-  .technical-drawing-column--historic,
-  .technical-ground-column {
-    border: 0.5px solid #333;
-    max-height: 260mm !important;
+  .technical-drawing-column--historic {
+    border: 0.5px solid #333 !important;
     min-height: 0 !important;
-    overflow: hidden;
-    page-break-inside: avoid;
+    max-height: 215mm !important;
+    overflow: visible !important;
   }
 
-  /* Data column — very compact */
-  .technical-data-block { padding: 1mm 1.5mm; }
-  .technical-data-block h3 {
-    font-size: 5.5pt;
-    margin: -1mm -1.5mm 1mm;
-    padding: 0.5mm 1.5mm;
-  }
-  .technical-data-block dl { gap: 0.5mm; }
-  .technical-data-block dt { font-size: 5pt; }
-  .technical-data-block dd { font-size: 6pt; }
-  .technical-data-block p { font-size: 5.5pt; line-height: 1.3; margin: 0; }
-  .technical-soil-list { font-size: 5pt; margin: 0; padding-left: 2mm; }
-  .technical-soil-list li { margin-bottom: 0.3mm; }
-  .technical-check-list { font-size: 5.5pt; }
-  .technical-data-block--notes p { font-size: 5pt; }
-
-  /* Drawing column — inner layout: canvas (75%) | ground bars (25% — thin like Excel) */
   .technical-drawing-layout {
     display: grid !important;
-    gap: 1mm !important;
-    grid-template-columns: minmax(0, 75%) minmax(0, 25%) !important;
-    height: 258mm;
+    gap: 0 !important;
+    grid-template-columns: minmax(0,70%) minmax(0,30%) !important;
+    height: 210mm !important;
     min-height: 0 !important;
-    overflow: hidden !important;
-    width: 100% !important;
+    overflow: visible !important;
   }
 
   .technical-drawing-column--historic .technical-section-canvas {
-    height: 254mm !important;
+    height: 240mm !important;
     min-height: 0 !important;
-    overflow: hidden;
+    overflow: visible !important;
+    transform: scale(0.75) translateX(30px) !important;
+    transform-origin: top left !important;
   }
 
-  .technical-ground-column {
+  /* Ground column aligned to panel */
+  .technical-ground-column,
+  .technical-drawing-column--historic .technical-ground-column {
     min-height: 0 !important;
     overflow: hidden !important;
-    padding-top: 22mm !important;
+    border: 0.5px solid #547047 !important;
+    margin-top: 18mm !important;
+    height: 158mm !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    align-self: start !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
   }
-  .technical-ground-bar {
-    height: 220mm !important;
-    width: 100% !important;
+  .technical-ground-bars,
+  .technical-drawing-column--historic .technical-ground-bars {
+    flex: 1 !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0 !important;
+    min-height: 0 !important;
   }
-  .technical-ground-header { font-size: 4.5pt; padding: 0.5mm 0; }
-  .technical-ground-layer span { font-size: 3.5pt; }
-
-  /* Scale drawing elements to fit reduced canvas */
-  .technical-section-canvas {
-    transform: scale(0.85);
-    transform-origin: top center;
+  .technical-ground-bar,
+  .technical-drawing-column--historic .technical-ground-bar {
+    height: auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
+  .technical-ground-layer { flex: none !important; }
+  .technical-ground-header { font-size: 5pt !important; padding: 0.5mm 0 !important; height: auto !important; }
+  .technical-ground-layer span { font-size: 4.5pt !important; }
 
-  /* Top levels text */
-  .technical-top-levels { font-size: 5pt; gap: 1mm; top: 1mm; }
+  /* Data column blocks */
+  .technical-data-block { padding: 1mm 1.5mm !important; }
+  .technical-data-block h3 { font-size: 6.5pt !important; margin: -1mm -1.5mm 0.8mm !important; padding: 0.5mm 1.5mm !important; }
+  .technical-data-block dl { gap: 0.5mm !important; }
+  .technical-data-block dt { font-size: 6pt !important; }
+  .technical-data-block dd { font-size: 6.5pt !important; }
+  .technical-data-block p { font-size: 6pt !important; line-height: 1.2 !important; margin: 0 !important; }
+  .technical-soil-list { font-size: 5.5pt !important; margin: 0 !important; padding-left: 2mm !important; }
+  .technical-soil-list li { margin-bottom: 0.3mm !important; }
+  .technical-check-list { font-size: 6pt !important; }
+  .technical-data-block--notes p { font-size: 5.5pt !important; }
 
-  /* Dimension labels */
-  .technical-depth-arrow span,
-  .technical-dimension span { font-size: 5pt !important; }
+  /* Drawing labels */
+  .technical-top-levels { font-size: 7pt !important; gap: 1.5mm !important; top: 2px !important; }
+  .technical-depth-arrow span { font-size: 7pt !important; }
+  .technical-dimension span { font-size: 7pt !important; }
+  .technical-guide-wall-label { font-size: 6pt !important; }
+  .soil-color-dot { width: 6px !important; height: 6px !important; margin-right: 2px !important; }
+  .technical-base-summary { font-size: 5.5pt !important; padding: 0.5mm 0 !important; border-top: 1px solid #333 !important; position: absolute !important; bottom: 2px !important; left: 0 !important; width: 100% !important; text-align: center !important; }
+  .technical-base-summary p { margin: 0.2mm 0 !important; font-size: 5.5pt !important; }
+  .technical-ngf-scale { font-size: 6pt !important; top: 35px !important; }
+  .ngf-label { font-size: 5pt !important; }
 
-  /* Guide wall label */
-  .technical-guide-wall-label { font-size: 4.5pt; }
-
-  /* Hide courbe de bétonnage in print */
+  /* Hide courbe + interactive */
   .technical-data-block--courbe,
   .technical-data-block--courbe-detail { display: none !important; }
-
-  /* Hide interactive elements */
   .technical-print-button,
   .technical-coupe-card__header .btn,
   [data-print-technical-sheet] { display: none !important; }
-
-  /* Photos section — hide */
   .technical-photos-zone { display: none !important; }
 }
+
 
 /* ══════════════════════════════════════════════════════════════════
    SPRINT 1 — PRODUCTION STATS BLOCK
