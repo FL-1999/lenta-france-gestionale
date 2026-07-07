@@ -153,10 +153,10 @@
                     Apri griglie avanzamento
                 </a>
                 {% if has_perm(user, 'manager.access') %}
-                    <a href="{{ url_for('manager_site_fiches_pdf', site_id=site.id, tipo='paratie') }}" class="btn btn-secondary" download>
+                    <a href="{{ url_for('manager_site_fiches_pdf', site_id=site.id, tipo='paratie') }}" class="btn btn-secondary" target="_blank" rel="noopener">
                         📄 {% if lang == 'fr' %}PDF Parois (dossier complet){% else %}PDF Paratie (dossier completo){% endif %}
                     </a>
-                    <a href="{{ url_for('manager_site_fiches_pdf', site_id=site.id, tipo='pali') }}" class="btn btn-secondary" download>
+                    <a href="{{ url_for('manager_site_fiches_pdf', site_id=site.id, tipo='pali') }}" class="btn btn-secondary" target="_blank" rel="noopener">
                         📄 {% if lang == 'fr' %}PDF Pieux (dossier complet){% else %}PDF Pali (dossier completo){% endif %}
                     </a>
                 {% endif %}

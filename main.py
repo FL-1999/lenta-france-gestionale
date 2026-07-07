@@ -7736,16 +7736,25 @@ def manager_site_fiches_pdf(
             f"<style>{css_text}</style></head><body>{cover_inner}</body></html>"
         )
 
-        htmls = [cover_html]
-        htmls.extend(
-            _render_fiche_pdf_html(request, current_user, fiche, css_text) for fiche in fiches
-        )
+        try:
+            htmls = [cover_html]
+            htmls.extend(
+                _render_fiche_pdf_html(request, current_user, fiche, css_text) for fiche in fiches
+            )
 
-        from weasyprint import HTML as WeasyHTML
-        base_url = _pdf_project_dir()
-        documents = [WeasyHTML(string=h, base_url=base_url).render() for h in htmls]
-        all_pages = [page for doc in documents for page in doc.pages]
-        pdf_bytes = documents[0].copy(all_pages).write_pdf()
+            from weasyprint import HTML as WeasyHTML
+            base_url = _pdf_project_dir()
+            documents = [WeasyHTML(string=h, base_url=base_url).render() for h in htmls]
+            all_pages = [page for doc in documents for page in doc.pages]
+            pdf_bytes = documents[0].copy(all_pages).write_pdf()
+        except Exception as exc:  # noqa: BLE001 — surface PDF errors to the operator
+            import traceback
+            logger.exception("Errore generazione PDF unico fiches (site_id=%s, tipo=%s)", site_id, tipo)
+            from starlette.responses import PlainTextResponse
+            return PlainTextResponse(
+                "Errore durante la generazione del PDF:\n\n" + traceback.format_exc(),
+                status_code=500,
+            )
 
         site_code = site.code or "chantier"
         filename = f"{site_code}_{tipo}_fiches.pdf"
