@@ -7584,6 +7584,33 @@ def _inline_style_css(html: str, css_text: str) -> str:
     )
 
 
+def _extract_technical_sheet(html: str) -> str:
+    """Estrae solo l'<article id='technical-sheet-export'> dalla pagina completa.
+
+    Evita di dare a WeasyPrint l'intera pagina (base.html, navbar, font e link
+    esterni) che rallenta/blocca la generazione del PDF.
+    """
+    marker = 'id="technical-sheet-export"'
+    idx = html.find(marker)
+    if idx == -1:
+        return html
+    start = html.rfind("<article", 0, idx)
+    end = html.find("</article>", idx)
+    if start == -1 or end == -1:
+        return html
+    return html[start:end + len("</article>")]
+
+
+def _wrap_sheet_document(article_html: str, css_text: str) -> str:
+    """Costruisce un documento HTML minimale con solo il rapport + CSS inline."""
+    return (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<style>{css_text}</style>"
+        "<style>html,body{background:#fff !important;background-image:none !important;margin:0;padding:0;}</style>"
+        f"</head><body>{article_html}</body></html>"
+    )
+
+
 def _load_fiche_for_pdf(db, fiche_id: int):
     return (
         db.query(Fiche)
@@ -7619,8 +7646,9 @@ def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, c
         pdf_mode=True,
         pdf_logo_src=_pdf_logo_file_src(),
     )
-    html = templates.get_template("manager/fiches/fiche_detail.html").render(ctx)
-    return _inline_style_css(html, css_text)
+    full_html = templates.get_template("manager/fiches/fiche_detail.html").render(ctx)
+    article = _extract_technical_sheet(full_html)
+    return _wrap_sheet_document(article, css_text)
 
 
 @app.get(
@@ -7731,12 +7759,7 @@ def manager_site_fiches_pdf(
             controle="",
         )
         cover_inner = templates.get_template("manager/fiches/_pdf_cover.html").render(cover_ctx)
-        cover_html = (
-            "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-            f"<style>{css_text}</style>"
-            "<style>html,body{background:#fff !important;background-image:none !important;margin:0;padding:0;}</style>"
-            f"</head><body>{cover_inner}</body></html>"
-        )
+        cover_html = _wrap_sheet_document(cover_inner, css_text)
 
         try:
             htmls = [cover_html]
