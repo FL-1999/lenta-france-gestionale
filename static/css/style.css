@@ -8266,8 +8266,8 @@ label.form-label[for="profondita_totale"]{
     height: 208mm !important;
     min-height: 0 !important;
     overflow: hidden !important;
-    transform: scale(0.75) translateX(30px) !important;
-    transform-origin: top left !important;
+    transform: scale(0.75) !important;
+    transform-origin: top center !important;
   }
 
   /* Ground column aligned to panel */
