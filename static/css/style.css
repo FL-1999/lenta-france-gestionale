@@ -8248,23 +8248,24 @@ label.form-label[for="profondita_totale"]{
   .technical-drawing-column--historic {
     border: 0.5px solid #333 !important;
     min-height: 0 !important;
-    max-height: 215mm !important;
-    overflow: visible !important;
+    height: 208mm !important;
+    max-height: 208mm !important;
+    overflow: hidden !important;
   }
 
   .technical-drawing-layout {
     display: grid !important;
     gap: 0 !important;
     grid-template-columns: minmax(0,70%) minmax(0,30%) !important;
-    height: 210mm !important;
+    height: 208mm !important;
     min-height: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .technical-drawing-column--historic .technical-section-canvas {
-    height: 240mm !important;
+    height: 208mm !important;
     min-height: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     transform: scale(0.75) translateX(30px) !important;
     transform-origin: top left !important;
   }
@@ -8276,7 +8277,7 @@ label.form-label[for="profondita_totale"]{
     overflow: hidden !important;
     border: 0.5px solid #547047 !important;
     margin-top: 18mm !important;
-    height: 158mm !important;
+    height: 150mm !important;
     max-height: none !important;
     box-sizing: border-box !important;
     align-self: start !important;
@@ -8496,6 +8497,7 @@ label.form-label[for="profondita_totale"]{
 .pdf-cover {
   background: #fff;
   box-sizing: border-box;
+  color: #111;
   display: flex;
   flex-direction: column;
   font-family: "Times New Roman", Times, serif;
@@ -8504,6 +8506,13 @@ label.form-label[for="profondita_totale"]{
   page-break-after: always;
   width: 100%;
 }
+
+.pdf-cover * {
+  color: #111;
+}
+
+.pdf-cover .pdf-cover__footer-contact { color: #c0202f; }
+.pdf-cover .pdf-cover__footer-legal { color: #1a3a6b; }
 
 .pdf-cover__logo {
   text-align: center;
