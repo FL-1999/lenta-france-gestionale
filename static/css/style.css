@@ -8323,6 +8323,15 @@ label.form-label[for="profondita_totale"]{
 
   /* Drawing labels */
   .technical-top-levels { font-size: 7pt !important; gap: 1.5mm !important; top: 2px !important; }
+  /* Longueur — linea profondità disegnata via CSS (l'SVG viene tagliato
+     dal canvas stretto in WeasyPrint) lungo il bordo sinistro della paratia */
+  .technical-drawing-column--historic .technical-depth-arrow {
+    left: calc(50% - 148px) !important;
+    border-left: 2.5px solid #cc0000 !important;
+    overflow: visible !important;
+    z-index: 60 !important;
+  }
+  .technical-drawing-column--historic .technical-depth-arrow span { left: 4px !important; color: #cc0000 !important; }
   .technical-depth-arrow span { font-size: 7pt !important; }
   .technical-dimension span { font-size: 7pt !important; }
   .technical-guide-wall-label { font-size: 6pt !important; }
