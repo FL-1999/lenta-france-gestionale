@@ -7628,8 +7628,8 @@ def _load_fiche_for_pdf(db, fiche_id: int):
     )
 
 
-def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, css_text: str) -> str:
-    """Renderizza il rapport d'exécution di una fiche in HTML pronto per WeasyPrint."""
+def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) -> str:
+    """Renderizza SOLO l'articolo del rapport d'exécution di una fiche."""
     ctx = build_template_context(
         request,
         current_user,
@@ -7647,8 +7647,12 @@ def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, c
         pdf_logo_src=_pdf_logo_file_src(),
     )
     full_html = templates.get_template("manager/fiches/fiche_detail.html").render(ctx)
-    article = _extract_technical_sheet(full_html)
-    return _wrap_sheet_document(article, css_text)
+    return _extract_technical_sheet(full_html)
+
+
+def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, css_text: str) -> str:
+    """Documento HTML completo con una sola fiche (per il PDF singolo)."""
+    return _wrap_sheet_document(_render_fiche_article(request, current_user, fiche), css_text)
 
 
 @app.get(
@@ -7762,19 +7766,21 @@ def manager_site_fiches_pdf(
             controle="",
         )
         cover_inner = templates.get_template("manager/fiches/_pdf_cover.html").render(cover_ctx)
-        cover_html = _wrap_sheet_document(cover_inner, css_text)
 
         try:
-            htmls = [cover_html]
-            htmls.extend(
-                _render_fiche_pdf_html(request, current_user, fiche, css_text) for fiche in fiches
-            )
+            # Un unico documento HTML: copertina + ogni fiche su pagina propria.
+            # Ogni fiche è renderizzata identica al PDF singolo.
+            parts = [cover_inner]
+            for fiche in fiches:
+                article = _render_fiche_article(request, current_user, fiche)
+                parts.append(
+                    f'<div style="page-break-before: always;">{article}</div>'
+                )
+            big_html = _wrap_sheet_document("".join(parts), css_text)
 
             from weasyprint import HTML as WeasyHTML
             base_url = _pdf_project_dir()
-            documents = [WeasyHTML(string=h, base_url=base_url).render() for h in htmls]
-            all_pages = [page for doc in documents for page in doc.pages]
-            pdf_bytes = documents[0].copy(all_pages).write_pdf()
+            pdf_bytes = WeasyHTML(string=big_html, base_url=base_url).write_pdf()
         except Exception as exc:  # noqa: BLE001 — surface PDF errors to the operator
             import traceback
             logger.exception("Errore generazione PDF unico fiches (site_id=%s, tipo=%s)", site_id, tipo)
