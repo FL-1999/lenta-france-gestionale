@@ -8235,11 +8235,15 @@ label.form-label[for="profondita_totale"]{
   }
   .technical-sheet__eyebrow { display: none !important; }
 
-  /* Grid — data column (40mm) | drawing+ground */
+  /* Grid — data column (40mm) | drawing+ground.
+     grid-template-rows fissa la riga così i track NON si espandono al
+     contenuto (canvas alto) e il foglio resta su una sola pagina. */
   .technical-sheet-grid {
     display: grid !important;
     gap: 1mm !important;
     grid-template-columns: 40mm 1fr !important;
+    grid-template-rows: 212mm !important;
+    align-items: start !important;
     padding: 0 !important;
   }
 
@@ -8248,8 +8252,8 @@ label.form-label[for="profondita_totale"]{
   .technical-drawing-column--historic {
     border: 0.5px solid #333 !important;
     min-height: 0 !important;
-    height: 208mm !important;
-    max-height: 208mm !important;
+    height: 210mm !important;
+    max-height: 210mm !important;
     overflow: hidden !important;
   }
 
@@ -8257,7 +8261,8 @@ label.form-label[for="profondita_totale"]{
     display: grid !important;
     gap: 0 !important;
     grid-template-columns: minmax(0,70%) minmax(0,30%) !important;
-    height: 208mm !important;
+    grid-template-rows: 210mm !important;
+    height: 210mm !important;
     min-height: 0 !important;
     overflow: hidden !important;
   }
@@ -8266,7 +8271,7 @@ label.form-label[for="profondita_totale"]{
     height: 246mm !important;
     min-height: 0 !important;
     overflow: hidden !important;
-    transform: scale(0.75) !important;
+    transform: scale(0.72) !important;
     transform-origin: top center !important;
   }
 
