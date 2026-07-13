@@ -12,3 +12,4 @@ pytest
 
 httpx>=0.28.0
 weasyprint
+playwright

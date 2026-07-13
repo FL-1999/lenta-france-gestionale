@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+import functools
 import time
 import re
 import uuid
@@ -7563,9 +7564,48 @@ def _pdf_project_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+@functools.lru_cache(maxsize=1)
 def _pdf_logo_file_src() -> str:
+    """Logo come data URI base64 — funziona sia con WeasyPrint sia con Chromium."""
+    import os, base64
+    path = os.path.join(_pdf_project_dir(), "static", "img", "logo.png")
+    with open(path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode()
+    return "data:image/png;base64," + b64
+
+
+def _html_to_pdf(html: str) -> bytes:
+    """Genera un PDF dall'HTML. Prova Chromium (identico alla stampa
+    browser); in caso di errore ripiega su WeasyPrint (sempre disponibile)."""
+    try:
+        return _html_to_pdf_chromium(html)
+    except Exception:
+        logger.exception("Chromium PDF non disponibile: fallback WeasyPrint")
+        from weasyprint import HTML as WeasyHTML
+        return WeasyHTML(string=html, base_url=_pdf_project_dir()).write_pdf()
+
+
+def _html_to_pdf_chromium(html: str) -> bytes:
     import os
-    return "file://" + os.path.join(_pdf_project_dir(), "static", "img", "logo.png")
+    from playwright.sync_api import sync_playwright
+    exe = os.getenv("PLAYWRIGHT_CHROMIUM_PATH")
+    with sync_playwright() as p:
+        launch_kwargs = {"args": ["--no-sandbox"]}
+        if exe:
+            launch_kwargs["executable_path"] = exe
+        browser = p.chromium.launch(**launch_kwargs)
+        try:
+            page = browser.new_page()
+            page.set_content(html, wait_until="load")
+            page.emulate_media(media="print")
+            pdf = page.pdf(
+                format="A4",
+                print_background=True,
+                margin={"top": "6mm", "bottom": "6mm", "left": "6mm", "right": "6mm"},
+            )
+        finally:
+            browser.close()
+    return pdf
 
 
 def _load_style_css() -> str:
@@ -7676,8 +7716,7 @@ def manager_fiche_pdf(
         css_text = _load_style_css()
         html = _render_fiche_pdf_html(request, current_user, fiche, css_text)
 
-        from weasyprint import HTML as WeasyHTML
-        pdf_bytes = WeasyHTML(string=html, base_url=_pdf_project_dir()).write_pdf()
+        pdf_bytes = _html_to_pdf(html)
 
         tipo = fiche.tipologia_scavo or "fiche"
         num = fiche.numero_pannello or 0
@@ -7778,9 +7817,7 @@ def manager_site_fiches_pdf(
                 )
             big_html = _wrap_sheet_document("".join(parts), css_text)
 
-            from weasyprint import HTML as WeasyHTML
-            base_url = _pdf_project_dir()
-            pdf_bytes = WeasyHTML(string=big_html, base_url=base_url).write_pdf()
+            pdf_bytes = _html_to_pdf(big_html)
         except Exception as exc:  # noqa: BLE001 — surface PDF errors to the operator
             import traceback
             logger.exception("Errore generazione PDF unico fiches (site_id=%s, tipo=%s)", site_id, tipo)
