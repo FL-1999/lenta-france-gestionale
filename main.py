@@ -7651,6 +7651,34 @@ def _wrap_sheet_document(article_html: str, css_text: str) -> str:
     )
 
 
+@app.get("/manager/pdf-engine-check", name="manager_pdf_engine_check")
+def manager_pdf_engine_check(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Diagnostica: prova a generare un PDF con Chromium e riporta l'esito."""
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+    from starlette.responses import PlainTextResponse
+    lines = []
+    try:
+        import playwright  # noqa: F401
+        lines.append("playwright: importato OK")
+    except Exception as e:
+        lines.append(f"playwright: NON importabile -> {e}")
+        return PlainTextResponse("\n".join(lines))
+    try:
+        pdf = _html_to_pdf_chromium("<html><body><h1>test</h1></body></html>")
+        lines.append(f"Chromium: OK — PDF generato ({len(pdf)} byte)")
+        lines.append("=> Il PDF delle fiches userà Chromium (come la stampa).")
+    except Exception as e:
+        import traceback
+        lines.append("Chromium: NON funziona — verrà usato WeasyPrint (fallback).")
+        lines.append("Errore:")
+        lines.append(traceback.format_exc())
+    return PlainTextResponse("\n".join(lines))
+
+
 def _load_fiche_for_pdf(db, fiche_id: int):
     return (
         db.query(Fiche)
