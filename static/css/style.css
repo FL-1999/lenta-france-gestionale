@@ -8263,7 +8263,7 @@ label.form-label[for="profondita_totale"]{
   }
 
   .technical-drawing-column--historic .technical-section-canvas {
-    height: 208mm !important;
+    height: 246mm !important;
     min-height: 0 !important;
     overflow: hidden !important;
     transform: scale(0.75) !important;
