@@ -7671,6 +7671,63 @@ def _extract_technical_sheet(html: str) -> str:
     return html[start:end + len("</article>")]
 
 
+def _courbe_svg(payload: dict) -> str:
+    """Genera la courbe de bétonnage come SVG (nessun JS, robusto in PDF)."""
+    if not payload:
+        return ""
+    W, H = 980, 360
+    pl, pr, pt, pb = 58, 18, 46, 48
+    series = [payload.get("realisee") or [], payload.get("theorique") or [], payload.get("tube") or []]
+    pts = [p for s in series for p in s]
+    if not pts:
+        return ""
+    def num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return 0.0
+    max_x = max([1.0] + [num(p.get("volume")) for p in pts]) * 1.08
+    max_y = max([1.0] + [num(p.get("hauteur")) for p in pts]) * 1.08
+
+    def sx(v):
+        return pl + (num(v) / max_x) * (W - pl - pr)
+
+    def sy(v):
+        return pt + (num(v) / max_y) * (H - pt - pb)
+
+    parts = [
+        f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {W} {H}' width='100%' style='display:block'>",
+        f"<rect x='0' y='0' width='{W}' height='{H}' fill='#ffffff'/>",
+    ]
+    # griglia + assi
+    for i in range(6):
+        gx = pl + (W - pl - pr) / 5 * i
+        gy = pt + (H - pt - pb) / 5 * i
+        parts.append(f"<line x1='{gx:.1f}' y1='{pt}' x2='{gx:.1f}' y2='{H-pb}' stroke='#d9d9d9' stroke-width='1'/>")
+        parts.append(f"<line x1='{pl}' y1='{gy:.1f}' x2='{W-pr}' y2='{gy:.1f}' stroke='#d9d9d9' stroke-width='1'/>")
+        parts.append(f"<text x='{pl-6}' y='{gy+4:.1f}' text-anchor='end' font-family='Arial' font-size='11' fill='#475569'>{(max_y/1.08)/5*i:.1f}</text>")
+        parts.append(f"<text x='{gx:.1f}' y='{H-pb+17}' text-anchor='middle' font-family='Arial' font-size='11' fill='#475569'>{(max_x/1.08)/5*i:.0f}</text>")
+    parts.append(f"<rect x='{pl}' y='{pt}' width='{W-pl-pr}' height='{H-pt-pb}' fill='none' stroke='#000' stroke-width='1'/>")
+    parts.append(f"<text x='{W/2:.0f}' y='{H-8}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a'>Volume en m³</text>")
+    parts.append(f"<text x='15' y='{H/2:.0f}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a' transform='rotate(-90 15 {H/2:.0f})'>Hauteur en m</text>")
+
+    def polyline(points, color, dashed, markers):
+        if not points:
+            return
+        coords = " ".join(f"{sx(p.get('volume')):.1f},{sy(p.get('hauteur')):.1f}" for p in points)
+        dash = " stroke-dasharray='9,5'" if dashed else ""
+        parts.append(f"<polyline points='{coords}' fill='none' stroke='{color}' stroke-width='2.6'{dash}/>")
+        if markers:
+            for p in points:
+                parts.append(f"<circle cx='{sx(p.get('volume')):.1f}' cy='{sy(p.get('hauteur')):.1f}' r='4' fill='{color}'/>")
+
+    polyline(payload.get("theorique") or [], "#dc2626", True, False)
+    polyline(payload.get("tube") or [], "#16a34a", True, False)
+    polyline(payload.get("realisee") or [], "#2563eb", False, True)
+    parts.append("</svg>")
+    return "".join(parts)
+
+
 def _wrap_sheet_document(article_html: str, css_text: str) -> str:
     """Costruisce un documento HTML minimale con solo il rapport + CSS inline."""
     return (
@@ -7745,7 +7802,19 @@ def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) ->
         pdf_logo_src=_pdf_logo_file_src(),
     )
     full_html = templates.get_template("manager/fiches/fiche_detail.html").render(ctx)
-    return _extract_technical_sheet(full_html)
+    article = _extract_technical_sheet(full_html)
+    # Sostituisce il canvas JS con una courbe SVG generata lato server (robusta nel PDF)
+    if fiche.courbe_beton_active:
+        import re
+        svg = _courbe_svg(_build_courbe_beton_payload(fiche))
+        if svg:
+            article = re.sub(
+                r"<canvas[^>]*data-courbe-beton-detail[^>]*>\s*</canvas>",
+                svg,
+                article,
+                count=1,
+            )
+    return article
 
 
 def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, css_text: str) -> str:
