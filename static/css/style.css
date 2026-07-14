@@ -8357,37 +8357,42 @@ label.form-label[for="profondita_totale"]{
   .technical-visa-label { font-size: 5.5pt !important; padding: 0.5mm 0 !important; }
   .technical-visa-space { min-height: 11mm !important; }
 
-  /* Courbe de bétonnage — SVG posizionato nell'area libera in basso a destra */
+  /* Courbe de bétonnage — area libera in basso a destra, senza riquadro:
+     a sinistra titolo + legenda, a destra il grafico. */
   .technical-data-block--courbe-detail {
-    display: block !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 3mm !important;
     position: absolute !important;
-    top: 200mm !important;
-    left: 66mm !important;
-    width: 130mm !important;
+    top: 206mm !important;
+    left: 62mm !important;
+    width: 134mm !important;
     height: auto !important;
     overflow: visible !important;
-    background: #fff !important;
+    background: transparent !important;
     color: #000 !important;
-    border: 0.75px solid #111 !important;
+    border: 0 !important;
     border-radius: 0 !important;
-    padding: 1mm 2mm !important;
+    padding: 0 !important;
     margin: 0 !important;
     z-index: 40 !important;
   }
+  .courbe-pdf-labels { flex: 0 0 26mm !important; }
   .technical-data-block--courbe-detail h3 {
     font-size: 7pt !important;
     color: #000 !important;
-    margin: 0 0 0.5mm !important;
-    text-align: center !important;
+    margin: 0 0 1.5mm !important;
+    text-align: left !important;
   }
-  .technical-data-block--courbe-detail svg { width: 100% !important; height: auto !important; display: block !important; }
+  .courbe-detail-intro, .courbe-detail-metrics { display: none !important; }
+  .technical-data-block--courbe-detail svg { flex: 1 1 auto !important; width: auto !important; height: 42mm !important; display: block !important; }
   .courbe-legend--pdf {
     font-size: 5.5pt !important;
     color: #000 !important;
     display: flex !important;
-    gap: 6mm !important;
-    justify-content: center !important;
-    text-align: center !important;
+    flex-direction: column !important;
+    gap: 1.5mm !important;
+    text-align: left !important;
   }
   /* Interattivi nascosti */
   .technical-print-button,
