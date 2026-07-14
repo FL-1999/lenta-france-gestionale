@@ -8323,16 +8323,25 @@ label.form-label[for="profondita_totale"]{
 
   /* Drawing labels */
   .technical-top-levels { font-size: 7pt !important; gap: 1.5mm !important; top: 2px !important; }
-  /* Longueur — la linea con le frecce è disegnata dall'SVG; qui posiziono
-     solo l'etichetta di testo accanto ad essa (niente bordo CSS duplicato). */
+  /* Longueur — la linea con le frecce è disegnata dall'SVG; l'etichetta è
+     centrata sulla linea (come Largeur), niente bordo CSS duplicato. */
   .technical-drawing-column--historic .technical-depth-arrow {
-    left: calc(50% - 148px) !important;
+    left: calc(50% - 180px) !important;
     border-left: 0 !important;
     overflow: visible !important;
     z-index: 60 !important;
   }
-  .technical-drawing-column--historic .technical-depth-arrow span { left: 4px !important; color: #cc0000 !important; }
+  .technical-drawing-column--historic .technical-depth-arrow span {
+    left: 0 !important;
+    top: 50% !important;
+    transform: rotate(90deg) translate(-50%, -50%) !important;
+    transform-origin: left center !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    color: #cc0000 !important;
+  }
   .technical-depth-arrow span { font-size: 7pt !important; }
+  /* Colonna dati spostata più in alto per liberare lo spazio in basso */
+  .technical-data-column { padding-top: 8px !important; }
   /* Épaisseur — testo vicino alla freccia diagonale (lato destro paratia) */
   .technical-drawing-column--historic .technical-dimension--thickness { left: calc(50% + 70px) !important; }
   .technical-dimension span { font-size: 7pt !important; }
