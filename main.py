@@ -7585,12 +7585,30 @@ def _html_to_pdf(html: str) -> bytes:
         return WeasyHTML(string=html, base_url=_pdf_project_dir()).write_pdf()
 
 
-def _html_to_pdf_chromium(html: str) -> bytes:
+_CHROMIUM_INSTALL_TRIED = False
+
+
+def _ensure_chromium_installed() -> None:
+    """Scarica il browser Chromium a runtime se manca (una sola volta)."""
+    global _CHROMIUM_INSTALL_TRIED
+    if _CHROMIUM_INSTALL_TRIED:
+        return
+    _CHROMIUM_INSTALL_TRIED = True
+    import subprocess, sys
+    logger.info("Installazione runtime di Chromium per Playwright…")
+    subprocess.run(
+        [sys.executable, "-m", "playwright", "install", "chromium"],
+        check=False,
+        timeout=900,
+    )
+
+
+def _render_pdf_with_chromium(html: str) -> bytes:
     import os
     from playwright.sync_api import sync_playwright
     exe = os.getenv("PLAYWRIGHT_CHROMIUM_PATH")
     with sync_playwright() as p:
-        launch_kwargs = {"args": ["--no-sandbox"]}
+        launch_kwargs = {"args": ["--no-sandbox", "--disable-gpu"]}
         if exe:
             launch_kwargs["executable_path"] = exe
         browser = p.chromium.launch(**launch_kwargs)
@@ -7606,6 +7624,18 @@ def _html_to_pdf_chromium(html: str) -> bytes:
         finally:
             browser.close()
     return pdf
+
+
+def _html_to_pdf_chromium(html: str) -> bytes:
+    try:
+        return _render_pdf_with_chromium(html)
+    except Exception as first_error:
+        # Il browser potrebbe non essere ancora scaricato: installa e riprova.
+        msg = str(first_error)
+        if "Executable doesn't exist" in msg or "playwright install" in msg:
+            _ensure_chromium_installed()
+            return _render_pdf_with_chromium(html)
+        raise
 
 
 def _load_style_css() -> str:
