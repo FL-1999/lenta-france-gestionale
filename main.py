@@ -6383,6 +6383,109 @@ def manager_cantiere_modifica_post(
     return RedirectResponse(url="/manager/cantieri", status_code=303)
 
 
+@app.post("/manager/cantieri/{site_id}/elimina", name="manager_cantiere_elimina")
+def manager_cantiere_elimina(
+    request: Request,
+    site_id: int,
+    conferma_nome: str = Form(...),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Elimina un cantiere e tutto ciò che è collegato. Solo admin. Registrato in audit."""
+    if not has_perm(current_user, "sites.delete"):
+        raise HTTPException(status_code=403, detail="Solo un amministratore può eliminare un cantiere")
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        # Conferma: il nome digitato deve coincidere
+        if (conferma_nome or "").strip() != (site.name or "").strip():
+            raise HTTPException(status_code=400, detail="Il nome digitato non coincide: eliminazione annullata")
+
+        site_name = site.name
+        site_code = site.code
+
+        # Annulla i riferimenti non gestiti dal cascade ORM (ordini, magazzino, trasporti)
+        from sqlalchemy import text as _sql_text
+        for stmt in (
+            "UPDATE purchase_orders SET site_id=NULL WHERE site_id=:sid",
+            "UPDATE purchase_orders SET delivery_site_id=NULL WHERE delivery_site_id=:sid",
+            "UPDATE magazzino_richieste SET cantiere_id=NULL WHERE cantiere_id=:sid",
+            "UPDATE magazzino_movimenti SET cantiere_id=NULL WHERE cantiere_id=:sid",
+            "UPDATE trasporti_viaggi SET origine_site_id=NULL WHERE origine_site_id=:sid",
+            "UPDATE trasporti_viaggi SET destinazione_site_id=NULL WHERE destinazione_site_id=:sid",
+            "UPDATE trasporto_tappe SET origine_site_id=NULL WHERE origine_site_id=:sid",
+            "UPDATE trasporto_tappe SET destinazione_site_id=NULL WHERE destinazione_site_id=:sid",
+        ):
+            try:
+                db.execute(_sql_text(stmt), {"sid": site_id})
+            except Exception:
+                logger.exception("Errore azzerando riferimenti al cantiere %s durante eliminazione", site_id)
+
+        db.delete(site)  # cascade ORM: fiches, coupes, rapportini, economia, ecc.
+        log_audit_event(
+            db,
+            current_user,
+            "SITE_DELETED",
+            "site",
+            site_id,
+            {"name": site_name, "code": site_code},
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/manager/cantieri", status_code=303)
+
+
+@app.post("/manager/cantieri/{site_id}/coupe/{coupe_id}/elimina", name="manager_coupe_elimina")
+def manager_coupe_elimina(
+    request: Request,
+    site_id: int,
+    coupe_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Elimina una coupe; le fiches che la usano vengono scollegate. Solo admin. Audit."""
+    if not has_perm(current_user, "sites.delete"):
+        raise HTTPException(status_code=403, detail="Solo un amministratore può eliminare una coupe")
+
+    db = SessionLocal()
+    try:
+        coupe = (
+            db.query(SiteCoupe)
+            .filter(SiteCoupe.id == coupe_id, SiteCoupe.site_id == site_id)
+            .first()
+        )
+        if not coupe:
+            raise HTTPException(status_code=404, detail="Coupe non trovata")
+
+        coupe_name = coupe.name
+        # Scollega le fiches che usano questa coupe (non le elimina)
+        detached = (
+            db.query(Fiche)
+            .filter(Fiche.coupe_id == coupe_id)
+            .update({Fiche.coupe_id: None}, synchronize_session=False)
+        )
+        db.delete(coupe)  # cascade: assignments
+        log_audit_event(
+            db,
+            current_user,
+            "COUPE_DELETED",
+            "coupe",
+            coupe_id,
+            {"name": coupe_name, "site_id": site_id, "fiches_scollegate": int(detached or 0)},
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    return RedirectResponse(
+        url=f"/manager/cantieri/{site_id}/configurazione-progetto", status_code=303
+    )
+
+
 @app.get(
     "/capo/cantieri/{site_id}",
     response_class=HTMLResponse,

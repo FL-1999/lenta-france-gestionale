@@ -6,7 +6,7 @@
   {{ value if value is not none else '' }}
 {%- endmacro %}
 
-{% macro render_coupe_card(coupe=None, index=1, is_new=false) %}
+{% macro render_coupe_card(coupe=None, index=1, is_new=false, site_id=None, can_delete=false) %}
   {% set complete = false if is_new else is_coupe_configured(coupe) %}
   <article class="project-coupe-card{% if is_new %} project-coupe-card--new{% endif %}" data-coupe-card>
     <div class="project-coupe-card__header">
@@ -26,6 +26,12 @@
             <input type="checkbox" name="delete_coupe_id" value="{{ coupe.id }}">
             Elimina
           </label>
+          {% if can_delete and site_id and coupe and coupe.id %}
+            <button type="button" class="btn btn-danger btn-sm"
+              onclick="if(confirm('Eliminare definitivamente questa coupe? Le fiches che la usano verranno scollegate (non eliminate).')){var f=document.createElement('form');f.method='post';f.action='/manager/cantieri/{{ site_id }}/coupe/{{ coupe.id }}/elimina';document.body.appendChild(f);f.submit();}">
+              🗑 Elimina def.
+            </button>
+          {% endif %}
         {% endif %}
       </div>
     </div>
@@ -177,7 +183,7 @@
 
     <div class="project-coupe-list">
       {% for coupe in coupe_rows %}
-        {{ render_coupe_card(coupe, loop.index, false) }}
+        {{ render_coupe_card(coupe, loop.index, false, site.id, has_perm(user, 'sites.delete')) }}
       {% endfor %}
       {{ render_coupe_card(None, coupe_rows|length + 1, true) }}
     </div>

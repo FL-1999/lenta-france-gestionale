@@ -48,6 +48,26 @@
     </div>
 </div>
 
+{% if has_perm(user, "sites.delete") %}
+<div class="card mt-3" style="border:1px solid #b91c1c;">
+    <div class="card-header"><div class="card-title" style="color:#b91c1c;">⚠️ Zona pericolosa</div></div>
+    <div class="card-body">
+        <p class="text-muted mb-2">
+            Eliminando questo cantiere si cancellano <strong>tutti</strong> i dati collegati
+            (fiches, coupe, rapportini, dati economici). Azione <strong>irreversibile</strong> e registrata.
+        </p>
+        <form method="post" action="{{ url_for('manager_cantiere_elimina', site_id=site.id) }}"
+              onsubmit="return confirm('ATTENZIONE: stai per eliminare il cantiere «{{ site.name }}» e TUTTI i dati collegati. Azione irreversibile. Continuare?');"
+              style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="text" name="conferma_nome" required autocomplete="off"
+                   placeholder="Digita «{{ site.name }}» per confermare"
+                   style="flex:1; min-width:220px; padding:8px; border:1px solid #b91c1c; border-radius:6px;">
+            <button type="submit" class="btn btn-danger">🗑 Elimina cantiere</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-header">
         <h2 class="card-title mb-0">
