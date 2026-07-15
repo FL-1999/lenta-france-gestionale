@@ -8362,11 +8362,11 @@ label.form-label[for="profondita_totale"]{
   .technical-data-block--courbe-detail {
     display: flex !important;
     align-items: center !important;
-    gap: 3mm !important;
+    gap: 2mm !important;
     position: absolute !important;
-    top: 206mm !important;
-    left: 62mm !important;
-    width: 134mm !important;
+    top: 217mm !important;
+    left: 66mm !important;
+    width: 130mm !important;
     height: auto !important;
     overflow: visible !important;
     background: transparent !important;
@@ -8377,21 +8377,25 @@ label.form-label[for="profondita_totale"]{
     margin: 0 !important;
     z-index: 40 !important;
   }
-  .courbe-pdf-labels { flex: 0 0 26mm !important; }
+  .courbe-pdf-labels { flex: 0 0 32mm !important; }
   .technical-data-block--courbe-detail h3 {
-    font-size: 7pt !important;
+    font-size: 6.5pt !important;
     color: #000 !important;
-    margin: 0 0 1.5mm !important;
+    margin: 0 0 1mm !important;
     text-align: left !important;
   }
   .courbe-detail-intro, .courbe-detail-metrics { display: none !important; }
-  .technical-data-block--courbe-detail svg { flex: 1 1 auto !important; width: auto !important; height: 42mm !important; display: block !important; }
+  .courbe-pdf-metrics { display: block !important; margin: 1.5mm 0 0 !important; }
+  .courbe-pdf-metrics > div { display: flex !important; justify-content: space-between !important; gap: 2mm !important; }
+  .courbe-pdf-metrics dt { font-size: 5pt !important; color: #333 !important; margin: 0 !important; }
+  .courbe-pdf-metrics dd { font-size: 5pt !important; color: #000 !important; font-weight: 700 !important; margin: 0 !important; }
+  .technical-data-block--courbe-detail svg { flex: 1 1 auto !important; width: auto !important; height: 36mm !important; display: block !important; }
   .courbe-legend--pdf {
     font-size: 5.5pt !important;
     color: #000 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 1.5mm !important;
+    gap: 1mm !important;
     text-align: left !important;
   }
   /* Interattivi nascosti */

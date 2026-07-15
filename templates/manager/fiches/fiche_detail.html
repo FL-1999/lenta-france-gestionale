@@ -506,6 +506,12 @@
                                     <span class="courbe-legend__item courbe-legend__item--theorique">Théorique</span>
                                     <span class="courbe-legend__item courbe-legend__item--tube">Tube</span>
                                 </div>
+                                <dl class="courbe-pdf-metrics">
+                                    <div><dt>Volume total</dt><dd>{{ "%.2f m³"|format(courbe_volume_total) if courbe_volume_total is not none else "—" }}</dd></div>
+                                    <div><dt>Hauteur init.</dt><dd>{{ "%.2f m"|format(courbe_hauteur_initiale) if courbe_hauteur_initiale is not none else "—" }}</dd></div>
+                                    <div><dt>Pts relevés</dt><dd>{{ courbe_realisee_points|length if courbe_realisee_points else 0 }}</dd></div>
+                                    <div><dt>Pts tube</dt><dd>{{ courbe_tube_points|length if courbe_tube_points else 0 }}</dd></div>
+                                </dl>
                             </div>
                             <p class="courbe-detail-intro">Synthèse des valeurs théoriques et des relevés réalisés.</p>
                             <div class="courbe-detail-metrics" aria-label="Données théoriques courbe de bétonnage">
