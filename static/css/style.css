@@ -8377,26 +8377,28 @@ label.form-label[for="profondita_totale"]{
     margin: 0 !important;
     z-index: 40 !important;
   }
-  .courbe-pdf-labels { flex: 0 0 32mm !important; }
+  .courbe-pdf-labels { flex: 0 0 30mm !important; }
   .technical-data-block--courbe-detail h3 {
-    font-size: 6.5pt !important;
+    font-size: 6pt !important;
     color: #000 !important;
     margin: 0 0 1mm !important;
     text-align: left !important;
+    letter-spacing: 0 !important;
   }
   .courbe-detail-intro, .courbe-detail-metrics { display: none !important; }
-  .courbe-pdf-metrics { display: block !important; margin: 1.5mm 0 0 !important; }
-  .courbe-pdf-metrics > div { display: flex !important; justify-content: space-between !important; gap: 2mm !important; }
-  .courbe-pdf-metrics dt { font-size: 5pt !important; color: #333 !important; margin: 0 !important; }
-  .courbe-pdf-metrics dd { font-size: 5pt !important; color: #000 !important; font-weight: 700 !important; margin: 0 !important; }
-  .technical-data-block--courbe-detail svg { flex: 1 1 auto !important; width: auto !important; height: 36mm !important; display: block !important; }
+  .courbe-pdf-metrics { display: block !important; margin: 1mm 0 0 !important; }
+  .courbe-pdf-metrics > div { display: flex !important; justify-content: space-between !important; gap: 2mm !important; line-height: 1.35 !important; }
+  .courbe-pdf-metrics dt { font-size: 4.5pt !important; color: #444 !important; margin: 0 !important; font-weight: 400 !important; }
+  .courbe-pdf-metrics dd { font-size: 4.5pt !important; color: #000 !important; font-weight: 700 !important; margin: 0 !important; }
+  .technical-data-block--courbe-detail svg { flex: 1 1 auto !important; width: auto !important; height: 34mm !important; display: block !important; }
   .courbe-legend--pdf {
-    font-size: 5.5pt !important;
+    font-size: 5pt !important;
     color: #000 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 1mm !important;
+    gap: 0.8mm !important;
     text-align: left !important;
+    margin: 0 !important;
   }
   /* Interattivi nascosti */
   .technical-print-button,
