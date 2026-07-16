@@ -712,6 +712,39 @@
                         <div class="form-group"><label class="form-label">Hauteur initiale</label><input class="form-control" type="number" step="0.01" name="courbe_beton_hauteur_initiale" value="{{ fiche.courbe_beton_hauteur_initiale if fiche.courbe_beton_hauteur_initiale is not none else '' }}" data-courbe-theoretical-start></div>
                         <div class="form-group"><label class="form-label">Hauteur finale</label><input class="form-control" type="number" step="0.01" name="courbe_beton_hauteur_finale" value="0" readonly data-courbe-theoretical-end></div>
                     </div>
+
+                    <div class="courbe-points-grid" data-courbe-points>
+                        <section class="courbe-points-col">
+                            <h4>Réalisée (relevés réels)</h4>
+                            <div class="courbe-points-head"><span>Volume (m³)</span><span>Hauteur (m)</span><span></span></div>
+                            <div data-courbe-rows="realisee">
+                                {% set realisee_rows = (courbe_beton_payload.realisee if courbe_beton_payload and courbe_beton_payload.realisee else [{'volume':'','hauteur':''}]) %}
+                                {% for p in realisee_rows %}
+                                <div class="courbe-point-row">
+                                    <input class="form-control" name="courbe_realisee_volume" type="number" step="0.01" min="0" value="{{ p.volume if p.volume is not none else '' }}">
+                                    <input class="form-control" name="courbe_realisee_hauteur" type="number" step="0.01" value="{{ p.hauteur if p.hauteur is not none else '' }}">
+                                    <button type="button" class="btn btn-secondary btn-sm" data-remove-courbe-row title="Supprimer">✕</button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm" data-add-courbe-row="realisee">➕ Ajouter une ligne</button>
+                        </section>
+                        <section class="courbe-points-col">
+                            <h4>Tube (optionnel)</h4>
+                            <div class="courbe-points-head"><span>Volume (m³)</span><span>Hauteur (m)</span><span></span></div>
+                            <div data-courbe-rows="tube">
+                                {% set tube_rows = (courbe_beton_payload.tube if courbe_beton_payload and courbe_beton_payload.tube else [{'volume':'','hauteur':''}]) %}
+                                {% for p in tube_rows %}
+                                <div class="courbe-point-row">
+                                    <input class="form-control" name="courbe_tube_volume" type="number" step="0.01" min="0" value="{{ p.volume if p.volume is not none else '' }}">
+                                    <input class="form-control" name="courbe_tube_hauteur" type="number" step="0.01" value="{{ p.hauteur if p.hauteur is not none else '' }}">
+                                    <button type="button" class="btn btn-secondary btn-sm" data-remove-courbe-row title="Supprimer">✕</button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm" data-add-courbe-row="tube">➕ Ajouter une ligne</button>
+                        </section>
+                    </div>
                 </div>
             </div>
             <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '') }}</textarea></div>
@@ -892,7 +925,41 @@
     const cb = document.querySelector("input[name=courbe_beton_active]");
     const panel = document.querySelector("[data-courbe-beton-panel]");
     if (cb && panel) { cb.addEventListener("change", () => { panel.hidden = !cb.checked; }); }
+
+    // Courbe: aggiungi/rimuovi righe punti (Réalisée / Tube)
+    function courbeRowHtml(kind) {
+        return '<div class="courbe-point-row">' +
+            '<input class="form-control" name="courbe_' + kind + '_volume" type="number" step="0.01" min="0">' +
+            '<input class="form-control" name="courbe_' + kind + '_hauteur" type="number" step="0.01">' +
+            '<button type="button" class="btn btn-secondary btn-sm" data-remove-courbe-row title="Supprimer">✕</button>' +
+            '</div>';
+    }
+    document.querySelectorAll("[data-add-courbe-row]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            var kind = btn.getAttribute("data-add-courbe-row");
+            var rows = document.querySelector('[data-courbe-rows="' + kind + '"]');
+            if (rows) { rows.insertAdjacentHTML("beforeend", courbeRowHtml(kind)); }
+        });
+    });
+    document.addEventListener("click", function (e) {
+        var rm = e.target.closest ? e.target.closest("[data-remove-courbe-row]") : null;
+        if (!rm) return;
+        var row = rm.closest(".courbe-point-row");
+        var container = row ? row.parentNode : null;
+        if (row && container && container.querySelectorAll(".courbe-point-row").length > 1) {
+            row.remove();
+        } else if (row) {
+            row.querySelectorAll("input").forEach(function (i) { i.value = ""; });
+        }
+    });
 }());
 </script>
+<style>
+.courbe-points-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+.courbe-points-col h4 { margin: 0 0 .4rem; font-size: .9rem; }
+.courbe-points-head { display: grid; grid-template-columns: 1fr 1fr 2rem; gap: .4rem; font-size: .72rem; color: #94a3b8; margin-bottom: .25rem; }
+.courbe-point-row { display: grid; grid-template-columns: 1fr 1fr 2rem; gap: .4rem; margin-bottom: .35rem; align-items: center; }
+@media (max-width: 720px) { .courbe-points-grid { grid-template-columns: 1fr; } }
+</style>
 
 {% endblock %}
