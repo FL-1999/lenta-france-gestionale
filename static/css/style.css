@@ -8170,7 +8170,7 @@ label.form-label[for="profondita_totale"]{
   #technical-sheet-export {
     background: #fff !important;
     background-image: none !important;
-    border: 1px solid #111 !important;
+    border: 0.5px solid #d0d0d0 !important;
     box-shadow: none !important;
     margin: 0 !important;
     min-height: 277mm;
@@ -8351,11 +8351,11 @@ label.form-label[for="profondita_totale"]{
   .technical-ngf-scale { font-size: 6pt !important; top: 35px !important; }
   .ngf-label { font-size: 5pt !important; }
 
-  /* Bloc VISA — compact */
-  .technical-visa-block { margin-top: 2mm !important; border: 0.75px solid #111 !important; }
-  .technical-visa-title { font-size: 6pt !important; padding: 0.5mm 0 !important; }
-  .technical-visa-label { font-size: 5.5pt !important; padding: 0.5mm 0 !important; }
-  .technical-visa-space { min-height: 11mm !important; }
+  /* Bloc VISA — compatto, metà altezza (solo piccola firma) */
+  .technical-visa-block { margin-top: 1.5mm !important; border: 0.75px solid #111 !important; }
+  .technical-visa-title { font-size: 5.5pt !important; padding: 0.3mm 0 !important; }
+  .technical-visa-label { font-size: 5pt !important; padding: 0.3mm 0 !important; }
+  .technical-visa-space { min-height: 6mm !important; }
 
   /* Courbe de bétonnage — area libera in basso a destra, senza riquadro:
      a sinistra titolo + legenda, a destra il grafico. */
@@ -8377,29 +8377,31 @@ label.form-label[for="profondita_totale"]{
     margin: 0 !important;
     z-index: 40 !important;
   }
-  .courbe-pdf-labels { flex: 0 0 30mm !important; }
+  .courbe-pdf-labels { flex: 0 0 26mm !important; }
   .technical-data-block--courbe-detail h3 {
-    font-size: 6pt !important;
+    font-size: 5.5pt !important;
     color: #000 !important;
-    margin: 0 0 1mm !important;
+    margin: 0 0 0.8mm !important;
     text-align: left !important;
     letter-spacing: 0 !important;
   }
   .courbe-detail-intro, .courbe-detail-metrics { display: none !important; }
-  .courbe-pdf-metrics { display: block !important; margin: 1mm 0 0 !important; }
-  .courbe-pdf-metrics > div { display: flex !important; justify-content: space-between !important; gap: 2mm !important; line-height: 1.35 !important; }
-  .courbe-pdf-metrics dt { font-size: 4.5pt !important; color: #444 !important; margin: 0 !important; font-weight: 400 !important; }
-  .courbe-pdf-metrics dd { font-size: 4.5pt !important; color: #000 !important; font-weight: 700 !important; margin: 0 !important; }
-  .technical-data-block--courbe-detail svg { flex: 1 1 auto !important; width: auto !important; height: 34mm !important; display: block !important; }
+  .courbe-pdf-metrics { display: block !important; margin: 0.8mm 0 0 !important; }
+  .courbe-pdf-metrics > div { display: flex !important; justify-content: space-between !important; gap: 1.5mm !important; line-height: 1.25 !important; }
+  .courbe-pdf-metrics dt { font-size: 4pt !important; color: #555 !important; margin: 0 !important; font-weight: 400 !important; }
+  .courbe-pdf-metrics dd { font-size: 4pt !important; color: #000 !important; font-weight: 700 !important; margin: 0 !important; }
+  .technical-data-block--courbe-detail svg { flex: 1 1 auto !important; width: auto !important; height: 32mm !important; display: block !important; }
   .courbe-legend--pdf {
-    font-size: 5pt !important;
+    font-size: 4.5pt !important;
     color: #000 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.8mm !important;
+    gap: 0.6mm !important;
     text-align: left !important;
     margin: 0 !important;
   }
+  .courbe-legend--pdf .courbe-legend__item { font-size: 5pt !important; padding: 0 !important; }
+  .courbe-legend--pdf .courbe-legend__item::before { width: 5mm !important; }
   /* Interattivi nascosti */
   .technical-print-button,
   .technical-coupe-card__header .btn,
