@@ -285,6 +285,15 @@ def run_post_startup_tasks() -> None:
         check_and_suggest_db_upgrade(engine, Base, auto_fix=AUTO_FIX)
 
     create_initial_admin()
+
+    # Pre-installa Chromium in background: su Render free il container è
+    # effimero e perde il browser ad ogni riavvio; così è pronto per il PDF
+    # senza bloccare l'avvio dell'app.
+    try:
+        _ensure_chromium_installed()
+    except Exception:
+        logger.exception("Pre-installazione Chromium fallita (si userà WeasyPrint come fallback).")
+
     logger.info("Post-startup tasks completati.")
 
 
