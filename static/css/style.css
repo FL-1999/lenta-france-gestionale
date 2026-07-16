@@ -8170,7 +8170,7 @@ label.form-label[for="profondita_totale"]{
   #technical-sheet-export {
     background: #fff !important;
     background-image: none !important;
-    border: 0.5px solid #d0d0d0 !important;
+    border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
     min-height: 277mm;
@@ -8351,11 +8351,11 @@ label.form-label[for="profondita_totale"]{
   .technical-ngf-scale { font-size: 6pt !important; top: 35px !important; }
   .ngf-label { font-size: 5pt !important; }
 
-  /* Bloc VISA — compatto, metà altezza (solo piccola firma) */
-  .technical-visa-block { margin-top: 1.5mm !important; border: 0.75px solid #111 !important; }
-  .technical-visa-title { font-size: 5.5pt !important; padding: 0.3mm 0 !important; }
-  .technical-visa-label { font-size: 5pt !important; padding: 0.3mm 0 !important; }
-  .technical-visa-space { min-height: 6mm !important; }
+  /* Bloc VISA — riempie lo spazio in basso per le firme */
+  .technical-visa-block { margin-top: 2mm !important; border: 0.75px solid #111 !important; }
+  .technical-visa-title { font-size: 6pt !important; padding: 0.5mm 0 !important; }
+  .technical-visa-label { font-size: 5.5pt !important; padding: 0.5mm 0 !important; }
+  .technical-visa-space { min-height: 15mm !important; }
 
   /* Courbe de bétonnage — area libera in basso a destra, senza riquadro:
      a sinistra titolo + legenda, a destra il grafico. */
