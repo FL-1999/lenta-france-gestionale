@@ -7814,19 +7814,25 @@ def _courbe_svg(payload: dict) -> str:
     parts.append(f"<text x='{W/2:.0f}' y='{H-8}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a'>Volume en m³</text>")
     parts.append(f"<text x='15' y='{H/2:.0f}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a' transform='rotate(-90 15 {H/2:.0f})'>Hauteur en m</text>")
 
-    def polyline(points, color, dashed, markers):
+    def polyline(points, color, width=2.2):
+        """Linea tratteggiata con pallini vuoti ai punti (stile foglio Excel)."""
         if not points:
             return
         coords = " ".join(f"{sx(p.get('volume')):.1f},{sy(p.get('hauteur')):.1f}" for p in points)
-        dash = " stroke-dasharray='9,5'" if dashed else ""
-        parts.append(f"<polyline points='{coords}' fill='none' stroke='{color}' stroke-width='2.6'{dash}/>")
-        if markers:
-            for p in points:
-                parts.append(f"<circle cx='{sx(p.get('volume')):.1f}' cy='{sy(p.get('hauteur')):.1f}' r='4' fill='{color}'/>")
+        parts.append(
+            f"<polyline points='{coords}' fill='none' stroke='{color}' "
+            f"stroke-width='{width}' stroke-dasharray='2,3'/>"
+        )
+        for p in points:
+            parts.append(
+                f"<circle cx='{sx(p.get('volume')):.1f}' cy='{sy(p.get('hauteur')):.1f}' "
+                f"r='3.2' fill='#ffffff' stroke='{color}' stroke-width='1.4'/>"
+            )
 
-    polyline(payload.get("theorique") or [], "#dc2626", True, False)
-    polyline(payload.get("tube") or [], "#16a34a", True, False)
-    polyline(payload.get("realisee") or [], "#2563eb", False, True)
+    # Ordine di disegno: réalisée e théorique sotto, tube (a gradini) sopra
+    polyline(payload.get("realisee") or [], "#2563eb", 1.8)
+    polyline(payload.get("theorique") or [], "#dc2626", 1.8)
+    polyline(payload.get("tube") or [], "#16a34a", 2.6)
     parts.append("</svg>")
     return "".join(parts)
 
