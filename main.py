@@ -60,6 +60,7 @@ from models import (
     SiteStrutLevel,
     SiteStatusEnum,
     Machine,
+    MachineSiteAssignment,
     FicheTypeEnum,
     Fiche,
     FicheStratigrafia,
@@ -2244,6 +2245,131 @@ def switch_role(
 # -------------------------------------------------
 # PAGINE FRONTEND — MANAGER & CAPOSQUADRA
 # -------------------------------------------------
+
+def _build_production_dashboard(db) -> dict:
+    """Aggrega le statistiche di produzione (tutto dalle fiches). Nessun dato inventato."""
+    from utils.production_stats import fmt as _pf_fmt
+
+    sites = (
+        db.query(Site)
+        .filter(Site.is_active.is_(True))
+        .order_by(Site.name.asc())
+        .all()
+    )
+    active_sites = [s for s in sites if s.status == SiteStatusEnum.aperto]
+
+    # Fiches di produzione dei cantieri attivi (una query, poi raggruppo in Python)
+    site_ids = [s.id for s in sites]
+    fiches = (
+        db.query(Fiche)
+        .options(joinedload(Fiche.coupe))
+        .filter(Fiche.site_id.in_(site_ids))
+        .all()
+        if site_ids
+        else []
+    )
+    fiches_by_site: dict[int, list] = {}
+    for f in fiches:
+        fiches_by_site.setdefault(f.site_id, []).append(f)
+
+    per_site = []
+    tot_paratie_done = tot_paratie_target = 0
+    tot_pali_done = tot_pali_target = 0
+    tot_ml = 0.0
+    tot_cls = 0.0
+    for s in active_sites:
+        prod = compute_site_production(s, fiches_by_site.get(s.id, []))
+        par = prod["paratie"]
+        pal = prod["pali"]
+        tot_paratie_done += par["count"]
+        tot_paratie_target += par["target"] or 0
+        tot_pali_done += pal["count"]
+        tot_pali_target += pal["target"] or 0
+        tot_ml += (par.get("profondita_totale") or 0) + (pal.get("profondita_totale") or 0)
+        tot_cls += prod["totale"]["volume_cls_reale"] or 0
+        per_site.append({"site": s, "prod": prod})
+
+    def _pct(done, total):
+        return min(100, round(done / total * 100)) if total else 0
+
+    # Produzione temporale (per data fiche, tipo produzione)
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+
+    def _period(start):
+        row = (
+            db.query(
+                func.count(Fiche.id),
+                func.coalesce(func.sum(Fiche.metri_cubi_gettati), 0.0),
+                func.coalesce(func.sum(Fiche.profondita_totale), 0.0),
+            )
+            .filter(
+                Fiche.fiche_type == FicheTypeEnum.produzione,
+                Fiche.date >= start,
+                Fiche.date <= today,
+            )
+            .first()
+        )
+        return {"fiches": int(row[0] or 0), "cls": round(row[1] or 0.0, 2), "ml": round(row[2] or 0.0, 2)}
+
+    # Mezzi impegnati: assegnazioni aperte (unassigned_at IS NULL)
+    mezzi_impegnati = (
+        db.query(func.count(func.distinct(MachineSiteAssignment.machine_id)))
+        .filter(MachineSiteAssignment.unassigned_at.is_(None))
+        .scalar()
+        or 0
+    )
+
+    # Personale presente oggi: lavoratori con rapportino odierno
+    personale_oggi = (
+        db.query(func.count(func.distinct(ReportWorker.personale_id)))
+        .filter(ReportWorker.attendance_date == today)
+        .scalar()
+        or 0
+    )
+
+    return {
+        "cantieri_attivi": len(active_sites),
+        "cantieri_totali": len(sites),
+        "paratie_done": tot_paratie_done,
+        "paratie_target": tot_paratie_target,
+        "paratie_pct": _pct(tot_paratie_done, tot_paratie_target),
+        "pali_done": tot_pali_done,
+        "pali_target": tot_pali_target,
+        "pali_pct": _pct(tot_pali_done, tot_pali_target),
+        "ml_totali": round(tot_ml, 2),
+        "cls_totali": round(tot_cls, 2),
+        "mezzi_impegnati": mezzi_impegnati,
+        "personale_oggi": personale_oggi,
+        "prod_oggi": _period(today),
+        "prod_settimana": _period(week_start),
+        "prod_mese": _period(month_start),
+        "per_site": per_site,
+        "pf_fmt": _pf_fmt,
+    }
+
+
+@app.get(
+    "/manager/dashboard/produzione",
+    response_class=HTMLResponse,
+    name="manager_production_dashboard",
+)
+def manager_production_dashboard(
+    request: Request,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Dashboard di produzione — dati aggregati dalle fiches."""
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    db = SessionLocal()
+    try:
+        data = _build_production_dashboard(db)
+        ctx = build_template_context(request, current_user, **data)
+    finally:
+        db.close()
+    return templates.TemplateResponse(request, "manager/production_dashboard.html", ctx)
+
 
 @app.get("/manager/dashboard", response_class=HTMLResponse, name="manager_dashboard")
 def manager_dashboard(
