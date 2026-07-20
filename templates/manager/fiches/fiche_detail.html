@@ -521,7 +521,7 @@
                                 <div><dt>Points relevés</dt><dd>{{ courbe_realisee_points|length if courbe_realisee_points else 0 }}</dd></div>
                                 <div><dt>Points tube</dt><dd>{{ courbe_tube_points|length if courbe_tube_points else 0 }}</dd></div>
                             </div>
-                            <canvas class="courbe-beton-pdf-chart" data-courbe-beton-detail width="980" height="360" aria-label="COURBE DE BÉTONNAGE"></canvas>
+                            <div class="courbe-beton-pdf-chart" data-courbe-beton-detail aria-label="COURBE DE BÉTONNAGE">{{ courbe_svg(courbe_beton_payload)|safe if courbe_svg and courbe_beton_payload else '' }}</div>
                         </section>
                     {% endif %}
 
@@ -772,7 +772,7 @@
 <script>
 (function () {
     const dataNode = document.getElementById("courbe-beton-data");
-    const canvas = document.querySelector("[data-courbe-beton-detail]");
+    const canvas = document.querySelector("canvas[data-courbe-beton-detail]");
     if (!dataNode || !canvas) return;
     const payload = JSON.parse(dataNode.textContent || "{}");
     const ctx = canvas.getContext("2d");
@@ -906,6 +906,19 @@
             ".technical-base-summary p { margin: 0.2mm 0 !important; font-size: 5.5pt !important; }",
             ".technical-ngf-scale { font-size: 6pt !important; top: 35px !important; }",
             ".ngf-label { font-size: 5pt !important; }",
+            "#technical-sheet-export { position: relative !important; min-height: 277mm !important; }",
+            ".technical-data-block--courbe-detail { display: flex !important; align-items: center !important; gap: 2mm !important; position: absolute !important; top: 217mm !important; left: 66mm !important; width: 130mm !important; height: auto !important; overflow: visible !important; background: transparent !important; color: #000 !important; border: 0 !important; padding: 0 !important; margin: 0 !important; z-index: 40 !important; }",
+            ".courbe-pdf-labels { flex: 0 0 26mm !important; }",
+            ".technical-data-block--courbe-detail h3 { font-size: 5.5pt !important; color:#000 !important; margin: 0 0 0.8mm !important; text-align: left !important; }",
+            ".courbe-detail-intro, .courbe-detail-metrics { display: none !important; }",
+            ".courbe-pdf-metrics { display: block !important; margin: 0.8mm 0 0 !important; }",
+            ".courbe-pdf-metrics > div { display: flex !important; justify-content: space-between !important; gap: 1.5mm !important; }",
+            ".courbe-pdf-metrics dt { font-size: 4pt !important; color:#555 !important; margin:0 !important; font-weight:400 !important; }",
+            ".courbe-pdf-metrics dd { font-size: 4pt !important; color:#000 !important; font-weight:700 !important; margin:0 !important; }",
+            ".technical-data-block--courbe-detail .courbe-beton-pdf-chart { flex: 1 1 auto !important; border:0 !important; background:transparent !important; width:auto !important; }",
+            ".technical-data-block--courbe-detail .courbe-beton-pdf-chart svg { width:100% !important; height:32mm !important; display:block !important; }",
+            ".courbe-legend--pdf { font-size: 4.5pt !important; color:#000 !important; display:flex !important; flex-direction: column !important; gap: 0.6mm !important; text-align:left !important; margin:0 !important; }",
+            ".courbe-legend--pdf .courbe-legend__item { font-size: 5pt !important; padding:0 !important; }",
             ".technical-visa-block { margin-top: 2mm !important; border: 0.75px solid #111 !important; }",
             ".technical-visa-title { font-size: 6pt !important; padding: 0.5mm 0 !important; }",
             ".technical-visa-label { font-size: 5.5pt !important; padding: 0.5mm 0 !important; }",

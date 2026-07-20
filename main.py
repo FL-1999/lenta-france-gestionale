@@ -7663,6 +7663,7 @@ def manager_fiche_dettaglio(
             technical_fr=_translate_fiche_technical_text,
             fiche_element_label_fr=_fiche_element_label_fr,
             courbe_beton_payload=_build_courbe_beton_payload(fiche),
+            courbe_svg=_courbe_svg,
         ),
     )
 
@@ -7916,23 +7917,12 @@ def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) ->
         technical_fr=_translate_fiche_technical_text,
         fiche_element_label_fr=_fiche_element_label_fr,
         courbe_beton_payload=_build_courbe_beton_payload(fiche),
+        courbe_svg=_courbe_svg,
         pdf_mode=True,
         pdf_logo_src=_pdf_logo_file_src(),
     )
     full_html = templates.get_template("manager/fiches/fiche_detail.html").render(ctx)
-    article = _extract_technical_sheet(full_html)
-    # Sostituisce il canvas JS con una courbe SVG generata lato server (robusta nel PDF)
-    if fiche.courbe_beton_active:
-        import re
-        svg = _courbe_svg(_build_courbe_beton_payload(fiche))
-        if svg:
-            article = re.sub(
-                r"<canvas[^>]*data-courbe-beton-detail[^>]*>\s*</canvas>",
-                svg,
-                article,
-                count=1,
-            )
-    return article
+    return _extract_technical_sheet(full_html)
 
 
 def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, css_text: str) -> str:

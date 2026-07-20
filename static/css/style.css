@@ -8390,7 +8390,8 @@ label.form-label[for="profondita_totale"]{
   .courbe-pdf-metrics > div { display: flex !important; justify-content: space-between !important; gap: 1.5mm !important; line-height: 1.25 !important; }
   .courbe-pdf-metrics dt { font-size: 4pt !important; color: #555 !important; margin: 0 !important; font-weight: 400 !important; }
   .courbe-pdf-metrics dd { font-size: 4pt !important; color: #000 !important; font-weight: 700 !important; margin: 0 !important; }
-  .technical-data-block--courbe-detail svg { flex: 1 1 auto !important; width: auto !important; height: 32mm !important; display: block !important; }
+  .technical-data-block--courbe-detail .courbe-beton-pdf-chart { flex: 1 1 auto !important; border: 0 !important; background: transparent !important; width: auto !important; }
+  .technical-data-block--courbe-detail .courbe-beton-pdf-chart svg { width: 100% !important; height: 32mm !important; display: block !important; }
   .courbe-legend--pdf {
     font-size: 4.5pt !important;
     color: #000 !important;
