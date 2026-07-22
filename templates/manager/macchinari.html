@@ -1,6 +1,6 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Macchinari – Manager{% endblock %}
+{% block title %}{{ t('Macchinari – Manager', 'Machines – Manager') }}{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-3">
@@ -13,12 +13,12 @@
           <circle cx="12" cy="12" r="2.3" />
         </svg>
       </span>
-      Macchinari
+      {{ t('Macchinari', 'Machines') }}
     </h1>
-    <p class="page-subtitle">Elenco di tutti i macchinari registrati.</p>
+    <p class="page-subtitle">{{ t('Elenco di tutti i macchinari registrati.', 'Liste de toutes les machines enregistrées.') }}</p>
   </div>
   <div class="actions">
-    <a href="{{ request.url_for('new_machine_form') }}" class="btn btn-lg btn-primary">➕ Nuovo macchinario</a>
+    <a href="{{ request.url_for('new_machine_form') }}" class="btn btn-lg btn-primary">➕ {{ t('Nuovo macchinario', 'Nouvelle machine') }}</a>
   </div>
 </div>
 
@@ -27,12 +27,12 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>Nome</th>
-          <th>Codice</th>
-          <th>Tipo</th>
-          <th>Cantiere associato</th>
-          <th>Attivo</th>
-          <th class="table-actions-col">Azioni</th>
+          <th>{{ t('Nome', 'Nom') }}</th>
+          <th>{{ t('Codice', 'Code') }}</th>
+          <th>{{ t('Tipo', 'Type') }}</th>
+          <th>{{ t('Cantiere associato', 'Chantier associé') }}</th>
+          <th>{{ t('Attivo', 'Actif') }}</th>
+          <th class="table-actions-col">{{ t('Azioni', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -48,16 +48,16 @@
               -
             {% endif %}
           </td>
-          <td>{{ "Sì" if m.is_active else "No" }}</td>
+          <td>{{ t('Sì', 'Oui') if m.is_active else t('No', 'Non') }}</td>
           <td class="table-actions">
-            <a href="/manager/macchinari/{{ m.id }}" class="btn btn-sm btn-secondary">Dettaglio</a>
-            <a href="/manager/macchinari/modifica/{{ m.id }}" class="btn btn-sm btn-primary">Modifica</a>
-            <a href="/manager/macchinari/assegna/{{ m.id }}" class="btn btn-sm btn-primary">Assegna a cantiere</a>
+            <a href="/manager/macchinari/{{ m.id }}" class="btn btn-sm btn-secondary">{{ t('Dettaglio', 'Détail') }}</a>
+            <a href="/manager/macchinari/modifica/{{ m.id }}" class="btn btn-sm btn-primary">{{ t('Modifica', 'Modifier') }}</a>
+            <a href="/manager/macchinari/assegna/{{ m.id }}" class="btn btn-sm btn-primary">{{ t('Assegna a cantiere', 'Affecter à un chantier') }}</a>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="table-empty">Nessun macchinario presente.</td>
+          <td colspan="6" class="table-empty">{{ t('Nessun macchinario presente.', 'Aucune machine présente.') }}</td>
         </tr>
         {% endfor %}
       </tbody>

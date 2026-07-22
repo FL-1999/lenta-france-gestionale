@@ -1,30 +1,30 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Esporta Rapportini – Manager{% endblock %}
+{% block title %}{{ t('Esporta Rapportini', 'Exporter les rapports') }} – Manager{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">📤 Esporta rapportini</h1>
+    <h1 class="page-title">📤 {{ t('Esporta rapportini', 'Exporter les rapports') }}</h1>
     <p class="page-subtitle">
-        Questa è una pagina dimostrativa. In futuro qui potremo generare PDF o file Excel.
+        {{ t('Questa è una pagina dimostrativa. In futuro qui potremo generare PDF o file Excel.', 'Ceci est une page de démonstration. À l’avenir, nous pourrons générer des PDF ou des fichiers Excel ici.') }}
     </p>
 </div>
 
 <div class="card">
     <p>
-        Per ora l’esportazione è solo simulata.
+        {{ t('Per ora l’esportazione è solo simulata.', "Pour l'instant, l'exportation est seulement simulée.") }}
     </p>
     <p>
-        Potremo aggiungere filtri per:
+        {{ t('Potremo aggiungere filtri per:', 'Nous pourrons ajouter des filtres pour :') }}
     </p>
     <ul>
-        <li>📅 Intervallo di date</li>
-        <li>🏗️ Cantiere</li>
-        <li>👷 Caposquadra</li>
+        <li>📅 {{ t('Intervallo di date', 'Plage de dates') }}</li>
+        <li>🏗️ {{ t('Cantiere', 'Chantier') }}</li>
+        <li>👷 {{ t('Caposquadra', "Chef d'équipe") }}</li>
     </ul>
 </div>
 
 <div class="form-actions">
-    <a href="/manager/rapportini" class="btn btn-secondary">⬅️ Torna ai rapportini</a>
+    <a href="/manager/rapportini" class="btn btn-secondary">⬅️ {{ t('Torna ai rapportini', 'Retour aux rapports') }}</a>
 </div>
 {% endblock %}

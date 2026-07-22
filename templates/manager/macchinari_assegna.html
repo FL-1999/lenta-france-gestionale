@@ -1,19 +1,19 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Assegna Macchinario – Manager{% endblock %}
+{% block title %}{{ t('Assegna Macchinario – Manager', 'Affecter Machine – Manager') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">📌 Assegna macchinario a cantiere</h1>
+    <h1 class="page-title">📌 {{ t('Assegna macchinario a cantiere', 'Affecter une machine à un chantier') }}</h1>
     <p class="page-subtitle">
-        Seleziona un macchinario e il cantiere a cui vuoi assegnarlo.
+        {{ t('Seleziona un macchinario e il cantiere a cui vuoi assegnarlo.', "Sélectionnez une machine et le chantier auquel vous souhaitez l'affecter.") }}
     </p>
 </div>
 
 <div class="form-card">
     <form method="post" action="#">
         <div class="form-row">
-            <label for="macchinario">🚜 Macchinario</label>
+            <label for="macchinario">🚜 {{ t('Macchinario', 'Machine') }}</label>
             <select id="macchinario" name="macchinario">
                 <option>Escavatore 30t (M-001)</option>
                 <option>Pala gommata (M-002)</option>
@@ -21,7 +21,7 @@
         </div>
 
         <div class="form-row">
-            <label for="cantiere">🏗️ Cantiere</label>
+            <label for="cantiere">🏗️ {{ t('Cantiere', 'Chantier') }}</label>
             <select id="cantiere" name="cantiere">
                 <option>Cantiere Lyon</option>
                 <option>Cantiere Marseille</option>
@@ -29,8 +29,8 @@
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">✅ Conferma assegnazione (mock)</button>
-            <a href="/manager/macchinari" class="btn btn-secondary">⬅️ Torna alla lista macchinari</a>
+            <button type="submit" class="btn btn-primary">✅ {{ t('Conferma assegnazione (mock)', "Confirmer l'affectation (mock)") }}</button>
+            <a href="/manager/macchinari" class="btn btn-secondary">⬅️ {{ t('Torna alla lista macchinari', 'Retour à la liste des machines') }}</a>
         </div>
     </form>
 </div>

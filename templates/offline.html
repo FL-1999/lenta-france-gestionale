@@ -2,8 +2,8 @@
 
 {% block content %}
 <section class="card">
-    <h1>Sei offline</h1>
-    <p>La connessione non è disponibile. Controlla la rete e riprova.</p>
-    <p>Quando torni online, la pagina si aggiornerà automaticamente.</p>
+    <h1>{{ t('Sei offline', 'Vous êtes hors ligne') }}</h1>
+    <p>{{ t('La connessione non è disponibile. Controlla la rete e riprova.', 'La connexion n’est pas disponible. Vérifiez le réseau et réessayez.') }}</p>
+    <p>{{ t('Quando torni online, la pagina si aggiornerà automaticamente.', 'Lorsque vous serez de nouveau en ligne, la page se rechargera automatiquement.') }}</p>
 </section>
 {% endblock %}

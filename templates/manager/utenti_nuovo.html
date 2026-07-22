@@ -1,60 +1,60 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Nuovo Utente – Admin{% endblock %}
+{% block title %}{{ t('Nuovo Utente', 'Nouvel utilisateur') }} – Admin{% endblock %}
 
 {% block content %}
 <div class="form-page">
     <div class="form-page-header">
-        <p class="eyebrow">Area Admin</p>
+        <p class="eyebrow">{{ t('Area Admin', 'Espace Admin') }}</p>
         <h1 class="page-title">
             <span class="page-icon page-icon--users" aria-hidden="true"></span>
-            Nuovo utente
+            {{ t('Nuovo utente', 'Nouvel utilisateur') }}
         </h1>
         <p class="subtitle">
-            Crea un nuovo utente del gestionale. Solo l’admin dovrebbe usare questa pagina.
+            {{ t('Crea un nuovo utente del gestionale. Solo l’admin dovrebbe usare questa pagina.', "Créez un nouvel utilisateur de l'application. Seul l'admin devrait utiliser cette page.") }}
         </p>
     </div>
 
     <div class="card form-card">
         <div class="card-header">
             <div class="card-title">
-                <span>Dettagli utente</span>
+                <span>{{ t('Dettagli utente', "Détails de l'utilisateur") }}</span>
             </div>
         </div>
         <div class="card-body">
             <form id="new-user-form">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label" for="email">Email</label>
-                        <input id="email" name="email" type="email" class="form-control" required placeholder="es. nome.cognome@azienda.com" />
+                        <label class="form-label" for="email">{{ t('Email', 'Email') }}</label>
+                        <input id="email" name="email" type="email" class="form-control" required placeholder="{{ t('es. nome.cognome@azienda.com', 'ex. prenom.nom@entreprise.com') }}" />
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="full_name">Nome completo</label>
-                        <input id="full_name" name="full_name" type="text" class="form-control" required placeholder="Nome Cognome" />
+                        <label class="form-label" for="full_name">{{ t('Nome completo', 'Nom complet') }}</label>
+                        <input id="full_name" name="full_name" type="text" class="form-control" required placeholder="{{ t('Nome Cognome', 'Prénom Nom') }}" />
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="password">Password iniziale</label>
-                        <input id="password" name="password" type="password" class="form-control" required placeholder="Password iniziale" />
+                        <label class="form-label" for="password">{{ t('Password iniziale', 'Mot de passe initial') }}</label>
+                        <input id="password" name="password" type="password" class="form-control" required placeholder="{{ t('Password iniziale', 'Mot de passe initial') }}" />
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="role">Ruolo</label>
+                        <label class="form-label" for="role">{{ t('Ruolo', 'Rôle') }}</label>
                         <select id="role" name="role" class="form-select" required>
-                            <option value="manager">Manager</option>
-                            <option value="admin">Admin</option>
-                            <option value="caposquadra">Caposquadra</option>
-                            <option value="driver">Driver</option>
-                            <option value="magazzino">Magazzino</option>
+                            <option value="manager">{{ t('Manager', 'Manager') }}</option>
+                            <option value="admin">{{ t('Admin', 'Admin') }}</option>
+                            <option value="caposquadra">{{ t('Caposquadra', "Chef d'équipe") }}</option>
+                            <option value="driver">{{ t('Driver', 'Chauffeur') }}</option>
+                            <option value="magazzino">{{ t('Magazzino', 'Entrepôt') }}</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="language">Lingua</label>
+                        <label class="form-label" for="language">{{ t('Lingua', 'Langue') }}</label>
                         <select id="language" name="language" class="form-select">
-                            <option value="it">Italiano</option>
-                            <option value="fr">Francese</option>
+                            <option value="it">{{ t('Italiano', 'Italien') }}</option>
+                            <option value="fr">{{ t('Francese', 'Français') }}</option>
                         </select>
                     </div>
                 </div>
@@ -63,8 +63,8 @@
                 <div id="user-success" class="form-help" style="display:none;"></div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Crea utente</button>
-                    <a href="/manager/utenti" class="btn btn-secondary">Torna alla lista utenti</a>
+                    <button type="submit" class="btn btn-primary">{{ t('Crea utente', "Créer l'utilisateur") }}</button>
+                    <a href="/manager/utenti" class="btn btn-secondary">{{ t('Torna alla lista utenti', 'Retour à la liste des utilisateurs') }}</a>
                 </div>
             </form>
         </div>

@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% block title %}Nuova Fiche – Manager{% endblock %}
+{% block title %}{{ t('Nuova Fiche – Manager', 'Nouvelle fiche – Manager') }}{% endblock %}
 
 {% block content %}
 
@@ -62,13 +62,13 @@
 <div class="form-page">
   <!-- HEADER -->
   <div class="form-page-header">
-    <p class="eyebrow">Area Manager</p>
+    <p class="eyebrow">{{ t('Area Manager', 'Espace Manager') }}</p>
     <h1 class="page-title">
       <span class="page-icon page-icon--fiches" aria-hidden="true"></span>
-      Nuova fiche di cantiere
+      {{ t('Nuova fiche di cantiere', 'Nouvelle fiche de chantier') }}
     </h1>
     <p class="subtitle">
-      Registra una fiche completa per un cantiere.
+      {{ t('Registra una fiche completa per un cantiere.', 'Enregistrez une fiche complète pour un chantier.') }}
     </p>
   </div>
 
@@ -76,7 +76,7 @@
   <div class="card form-card">
     <div class="card-header">
       <div class="card-title">
-        <span>Dettagli fiche</span>
+        <span>{{ t('Dettagli fiche', 'Détails de la fiche') }}</span>
       </div>
     </div>
 
@@ -86,53 +86,53 @@
         <!-- DATI BASE -->
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Data</label>
+            <label class="form-label">{{ t('Data', 'Date') }}</label>
             <input type="date" name="data" class="form-control" required>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Cantiere</label>
+            <label class="form-label">{{ t('Cantiere', 'Chantier') }}</label>
             <select name="cantiere_id" class="form-select" required>
-              <option value="">Seleziona un cantiere…</option>
+              <option value="">{{ t('Seleziona un cantiere…', 'Sélectionnez un chantier…') }}</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Macchinario</label>
+            <label class="form-label">{{ t('Macchinario', 'Machine') }}</label>
             <input type="text" name="macchinario" class="form-control"
-                   placeholder="Es. Trivella CFA">
+                   placeholder="{{ t('Es. Trivella CFA', 'Ex. Foreuse CFA') }}">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Ore utilizzo</label>
+            <label class="form-label">{{ t('Ore utilizzo', "Heures d'utilisation") }}</label>
             <input type="number" name="ore_uso" class="form-control"
-                   step="0.5" min="0" placeholder="Es. 6.5">
+                   step="0.5" min="0" placeholder="{{ t('Es. 6.5', 'Ex. 6.5') }}">
           </div>
         </div>
 
         <!-- GEOMETRIA -->
         <h2 class="section-title" style="margin-top:1.5rem;">
-          Geometria / Scavo
+          {{ t('Geometria / Scavo', 'Géométrie / Excavation') }}
         </h2>
 
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Diametro (mm)</label>
+            <label class="form-label">{{ t('Diametro (mm)', 'Diamètre (mm)') }}</label>
             <input type="number" name="diametro" class="form-control" placeholder="600">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Larghezza (cm)</label>
+            <label class="form-label">{{ t('Larghezza (cm)', 'Largeur (cm)') }}</label>
             <input type="number" name="larghezza" class="form-control" placeholder="120">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Altezza (cm)</label>
+            <label class="form-label">{{ t('Altezza (cm)', 'Hauteur (cm)') }}</label>
             <input type="number" name="altezza" class="form-control" placeholder="80">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Profondità (m)</label>
+            <label class="form-label">{{ t('Profondità (m)', 'Profondeur (m)') }}</label>
             <input type="number" name="profondita" class="form-control" placeholder="18">
           </div>
         </div>
@@ -146,7 +146,7 @@
           </div>
           <div class="fiche-shape-values">
             <div class="shape-main">Ø 600 mm</div>
-            <div class="shape-sub">Profondità 18 m</div>
+            <div class="shape-sub">{{ t('Profondità', 'Profondeur') }} 18 m</div>
           </div>
         </div>
 
@@ -160,21 +160,21 @@
           </div>
           <div class="fiche-shape-values">
             <div class="shape-main">120 × 80 cm</div>
-            <div class="shape-sub">Profondità 12 m</div>
+            <div class="shape-sub">{{ t('Profondità', 'Profondeur') }} 12 m</div>
           </div>
         </div>
 
         <!-- NOTE -->
         <div class="form-group" style="margin-top:1.5rem;">
-          <label class="form-label">Note operative</label>
+          <label class="form-label">{{ t('Note operative', 'Notes opérationnelles') }}</label>
           <textarea name="note" class="form-textarea" rows="4"
-            placeholder="Note, imprevisti, materiale utilizzato…"></textarea>
+            placeholder="{{ t('Note, imprevisti, materiale utilizzato…', 'Notes, imprévus, matériel utilisé…') }}"></textarea>
         </div>
 
         <!-- AZIONI -->
         <div class="form-actions">
-          <a href="/manager/fiches" class="btn btn-secondary">Annulla</a>
-          <button type="submit" class="btn btn-primary">Salva fiche</button>
+          <a href="/manager/fiches" class="btn btn-secondary">{{ t('Annulla', 'Annuler') }}</a>
+          <button type="submit" class="btn btn-primary">{{ t('Salva fiche', 'Enregistrer la fiche') }}</button>
         </div>
 
       </form>

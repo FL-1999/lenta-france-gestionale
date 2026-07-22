@@ -1,17 +1,17 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Fiches – Manager{% endblock %}
+{% block title %}{{ t('Fiches – Manager', 'Fiches – Manager') }}{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-3">
     <div>
-        <h1 class="page-title">📄 Fiches di cantiere</h1>
+        <h1 class="page-title">📄 {{ t('Fiches di cantiere', 'Fiches de chantier') }}</h1>
         <p class="page-subtitle">
-            Elenco delle fiches registrate per i vari cantieri.
+            {{ t('Elenco delle fiches registrate per i vari cantieri.', 'Liste des fiches enregistrées pour les différents chantiers.') }}
         </p>
     </div>
     <div class="actions">
-        <a href="/manager/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
+        <a href="/manager/fiches/nuova" class="btn btn-primary">➕ {{ t('Nuova fiche', 'Nouvelle fiche') }}</a>
     </div>
 </div>
 
@@ -20,23 +20,23 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Data</th>
-                    <th>Cantiere</th>
-                    <th>Macchinario</th>
-                    <th>Ore utilizzo</th>
+                    <th>{{ t('Data', 'Date') }}</th>
+                    <th>{{ t('Cantiere', 'Chantier') }}</th>
+                    <th>{{ t('Macchinario', 'Machine') }}</th>
+                    <th>{{ t('Ore utilizzo', "Heures d'utilisation") }}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>2025-01-01</td>
-                    <td>Cantiere Lyon</td>
-                    <td>Escavatore 30t</td>
+                    <td>{{ t('Cantiere Lyon', 'Chantier Lyon') }}</td>
+                    <td>{{ t('Escavatore 30t', 'Excavatrice 30t') }}</td>
                     <td>4</td>
                 </tr>
                 <tr>
                     <td>2025-01-02</td>
-                    <td>Cantiere Marseille</td>
-                    <td>Pala gommata</td>
+                    <td>{{ t('Cantiere Marseille', 'Chantier Marseille') }}</td>
+                    <td>{{ t('Pala gommata', 'Chargeuse sur pneus') }}</td>
                     <td>3.5</td>
                 </tr>
             </tbody>
@@ -45,6 +45,6 @@
 </div>
 
 <div class="form-actions">
-    <a href="/manager/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
+    <a href="/manager/dashboard" class="btn btn-secondary">⬅️ {{ t('Torna alla dashboard', 'Retour au tableau de bord') }}</a>
 </div>
 {% endblock %}

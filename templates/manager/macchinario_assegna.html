@@ -1,16 +1,16 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Assegna macchinario{% endblock %}
+{% block title %}{{ t('Assegna macchinario', 'Affecter machine') }}{% endblock %}
 
 {% block content %}
-<h1>Assegna macchinario a localizzazione</h1>
+<h1>{{ t('Assegna macchinario a localizzazione', 'Affecter une machine à une localisation') }}</h1>
 
-<p>Macchinario: <strong>{{ machine.name }}</strong></p>
+<p>{{ t('Macchinario', 'Machine') }}: <strong>{{ machine.name }}</strong></p>
 
 <form method="post">
-  <label>Localizzazione
+  <label>{{ t('Localizzazione', 'Localisation') }}
     <select name="site_id">
-      <option value="">Nessuno</option>
+      <option value="">{{ t('Nessuno', 'Aucun') }}</option>
       {% set open_assignment = (machine.assignments | selectattr('unassigned_at', 'equalto', none) | list | first) %}
       {% set current_location_label = open_assignment.location_label if open_assignment and open_assignment.location_label else '' %}
       {% set selected_location_value = 'site:' ~ machine.site_id if machine.site_id else '' %}
@@ -23,8 +23,8 @@
   </label>
 
   <div class="form-actions">
-    <button type="submit">Conferma assegnazione</button>
-    <a href="/manager/macchinari/{{ machine.id }}">Annulla</a>
+    <button type="submit">{{ t('Conferma assegnazione', "Confirmer l'affectation") }}</button>
+    <a href="/manager/macchinari/{{ machine.id }}">{{ t('Annulla', 'Annuler') }}</a>
   </div>
 </form>
 {% endblock %}

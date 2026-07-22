@@ -1,12 +1,12 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Le mie fiches – Caposquadra{% endblock %}
+{% block title %}{{ t('Le mie fiches – Caposquadra', "Mes fiches – Chef d'équipe") }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">📋 Le mie fiches</h1>
+    <h1 class="page-title">📋 {{ t('Le mie fiches', 'Mes fiches') }}</h1>
     <p class="page-subtitle">
-        Elenco delle fiches inserite per i cantieri a cui sei assegnato.
+        {{ t('Elenco delle fiches inserite per i cantieri a cui sei assegnato.', 'Liste des fiches saisies pour les chantiers auxquels vous êtes affecté.') }}
     </p>
 </div>
 
@@ -14,24 +14,24 @@
     <table class="table">
         <thead>
             <tr>
-                <th>Data</th>
-                <th>Cantiere</th>
-                <th>Macchinario</th>
-                <th>Ore</th>
+                <th>{{ t('Data', 'Date') }}</th>
+                <th>{{ t('Cantiere', 'Chantier') }}</th>
+                <th>{{ t('Macchinario', 'Machine') }}</th>
+                <th>{{ t('Ore', 'Heures') }}</th>
             </tr>
         </thead>
         <tbody>
             <!-- Esempio statico -->
             <tr>
                 <td>2025-01-01</td>
-                <td>Cantiere esempio 1</td>
-                <td>Escavatore 30t</td>
+                <td>{{ t('Cantiere esempio 1', 'Chantier exemple 1') }}</td>
+                <td>{{ t('Escavatore 30t', 'Excavatrice 30t') }}</td>
                 <td>4</td>
             </tr>
             <tr>
                 <td>2025-01-03</td>
-                <td>Cantiere esempio 2</td>
-                <td>Pala gommata</td>
+                <td>{{ t('Cantiere esempio 2', 'Chantier exemple 2') }}</td>
+                <td>{{ t('Pala gommata', 'Chargeuse sur pneus') }}</td>
                 <td>3.5</td>
             </tr>
         </tbody>
@@ -39,7 +39,7 @@
 </div>
 
 <div class="form-actions">
-    <a href="/capo/fiches/nuova" class="btn btn-primary">➕ Nuova fiche</a>
-    <a href="/capo/dashboard" class="btn btn-secondary">⬅️ Torna alla dashboard</a>
+    <a href="/capo/fiches/nuova" class="btn btn-primary">➕ {{ t('Nuova fiche', 'Nouvelle fiche') }}</a>
+    <a href="/capo/dashboard" class="btn btn-secondary">⬅️ {{ t('Torna alla dashboard', 'Retour au tableau de bord') }}</a>
 </div>
 {% endblock %}

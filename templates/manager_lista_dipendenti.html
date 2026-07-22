@@ -1,23 +1,23 @@
 {% extends "shared/base.html" %}
 {% block content %}
 
-<h1 class="page-title">👷 Dipendenti / Capisquadra</h1>
-<p class="page-subtitle">Gestisci utenti e ruoli.</p>
+<h1 class="page-title">👷 {{ t('Dipendenti / Capisquadra', "Employés / Chefs d'équipe") }}</h1>
+<p class="page-subtitle">{{ t('Gestisci utenti e ruoli.', 'Gérez les utilisateurs et les rôles.') }}</p>
 
 <div class="card">
     <table class="table">
         <thead>
             <tr>
-                <th>Nome</th>
-                <th>Email</th>
-                <th>Ruolo</th>
+                <th>{{ t('Nome', 'Nom') }}</th>
+                <th>{{ t('Email', 'Email') }}</th>
+                <th>{{ t('Ruolo', 'Rôle') }}</th>
             </tr>
         </thead>
         <tbody>
             <tr>
                 <td>Mario Rossi</td>
                 <td>mario@example.com</td>
-                <td>Caposquadra</td>
+                <td>{{ t('Caposquadra', "Chef d'équipe") }}</td>
             </tr>
         </tbody>
     </table>

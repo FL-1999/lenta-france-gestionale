@@ -1,25 +1,25 @@
 {% extends "shared/base.html" %}
 
-{% block title %}{{ 'Nuovo utente' if mode == 'create' else 'Modifica utente' }} – Manager{% endblock %}
+{% block title %}{{ t('Nuovo utente', 'Nouvel utilisateur') if mode == 'create' else t('Modifica utente', 'Modifier utilisateur') }} – Manager{% endblock %}
 
 {% block content %}
 <div class="form-page">
     <div class="form-page-header">
-        <p class="eyebrow">Area Manager</p>
+        <p class="eyebrow">{{ t('Area Manager', 'Espace Manager') }}</p>
         <h1 class="page-title">
             <span class="page-icon page-icon--users" aria-hidden="true"></span>
-            {{ 'Nuovo utente' if mode == 'create' else 'Modifica utente' }}
+            {{ t('Nuovo utente', 'Nouvel utilisateur') if mode == 'create' else t('Modifica utente', 'Modifier utilisateur') }}
         </h1>
         <p class="subtitle">
-            Gestisci dati anagrafici, ruoli assegnati e ruolo attivo dell'utente.
-            I ruoli disponibili sono: admin, manager, driver, magazzino, caposquadra.
+            {{ t("Gestisci dati anagrafici, ruoli assegnati e ruolo attivo dell'utente.", "Gérez les données personnelles, les rôles attribués et le rôle actif de l'utilisateur.") }}
+            {{ t('I ruoli disponibili sono: admin, manager, driver, magazzino, caposquadra.', 'Les rôles disponibles sont : admin, manager, driver, magazzino, caposquadra.') }}
         </p>
     </div>
 
     <div class="card form-card">
         <div class="card-header">
             <div class="card-title">
-                <span>Dettagli utente</span>
+                <span>{{ t('Dettagli utente', "Détails de l'utilisateur") }}</span>
             </div>
         </div>
         <div class="card-body">
@@ -35,27 +35,27 @@
             <form method="post" class="form" action="{{ '/manager/utenti/nuovo' if mode == 'create' else '/manager/utenti/' + ((user_obj.id if user_obj else user_id) | string) + '/modifica' }}">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label" for="email">Email*</label>
+                        <label class="form-label" for="email">{{ t('Email*', 'Email*') }}</label>
                         <input id="email" type="email" name="email" class="form-control" required value="{{ form_email or (user_obj.email if user_obj else '') }}">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="full_name">Nome completo</label>
+                        <label class="form-label" for="full_name">{{ t('Nome completo', 'Nom complet') }}</label>
                         <input id="full_name" type="text" name="full_name" class="form-control" value="{{ form_full_name or (user_obj.full_name if user_obj else '') }}">
                     </div>
 
                     {% if mode == 'create' %}
                     <div class="form-group">
-                        <label class="form-label" for="password">Password*</label>
+                        <label class="form-label" for="password">{{ t('Password*', 'Mot de passe*') }}</label>
                         <input id="password" type="password" name="password" class="form-control" required>
                     </div>
                     {% endif %}
 
                     <div class="form-group">
-                        <label class="form-label" for="language">Lingua</label>
+                        <label class="form-label" for="language">{{ t('Lingua', 'Langue') }}</label>
                         <select id="language" name="language" class="form-select">
                             {% set current_lang = form_language or (user_obj.language if user_obj else '') %}
-                            <option value="" {% if not current_lang %}selected{% endif %}>(Nessuna)</option>
+                            <option value="" {% if not current_lang %}selected{% endif %}>{{ t('(Nessuna)', '(Aucune)') }}</option>
                             {% for lang in language_choices %}
                             <option value="{{ lang }}" {% if current_lang == lang %}selected{% endif %}>{{ lang }}</option>
                             {% endfor %}
@@ -64,7 +64,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Ruoli assegnati*</label>
+                    <label class="form-label">{{ t('Ruoli assegnati*', 'Rôles attribués*') }}</label>
                     <div class="checkbox-grid">
                         {% for r in role_choices %}
                         <label class="checkbox-option">
@@ -73,14 +73,14 @@
                         </label>
                         {% endfor %}
                     </div>
-                    <p class="form-help">Seleziona uno o più ruoli. Solo i ruoli assegnati potranno diventare attivi.</p>
+                    <p class="form-help">{{ t('Seleziona uno o più ruoli. Solo i ruoli assegnati potranno diventare attivi.', 'Sélectionnez un ou plusieurs rôles. Seuls les rôles attribués pourront devenir actifs.') }}</p>
                 </div>
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label" for="active_role">Ruolo attivo*</label>
+                        <label class="form-label" for="active_role">{{ t('Ruolo attivo*', 'Rôle actif*') }}</label>
                         <select id="active_role" name="active_role" class="form-select" required>
-                            <option value="">Seleziona il ruolo attivo</option>
+                            <option value="">{{ t('Seleziona il ruolo attivo', 'Sélectionnez le rôle actif') }}</option>
                             {% for r in role_choices %}
                                 {% if r.value in selected_roles %}
                                 <option value="{{ r.value }}" {% if current_active_role == r.value %}selected{% endif %}>{{ r.value }}</option>
@@ -92,23 +92,23 @@
                     <div class="form-group form-group--checkbox">
                         <label class="checkbox-option checkbox-option--single" for="can_switch_roles">
                             <input id="can_switch_roles" type="checkbox" name="can_switch_roles" {% if current_switch_flag %}checked{% endif %}>
-                            <span>Può fare switch ruolo</span>
+                            <span>{{ t('Può fare switch ruolo', 'Peut changer de rôle') }}</span>
                         </label>
-                        <p class="form-help">Disponibile solo per utenti con più ruoli e profilo admin.</p>
+                        <p class="form-help">{{ t('Disponibile solo per utenti con più ruoli e profilo admin.', 'Disponible uniquement pour les utilisateurs ayant plusieurs rôles et un profil admin.') }}</p>
                     </div>
                 </div>
 
                 <div class="form-group form-group--checkbox">
                     <label class="checkbox-option checkbox-option--single" for="create_personale_profile">
                         <input id="create_personale_profile" type="checkbox" name="create_personale_profile" {% if current_personale_flag %}checked{% endif %}>
-                        <span>Crea/associa anche come personale</span>
+                        <span>{{ t('Crea/associa anche come personale', 'Créer/associer aussi comme personnel') }}</span>
                     </label>
-                    <p class="form-help">Preselezionato solo per utenti con ruolo esclusivo caposquadra. Serve a far comparire la persona in Personale, Presenze, rapportini giornalieri e conteggi.</p>
+                    <p class="form-help">{{ t('Preselezionato solo per utenti con ruolo esclusivo caposquadra. Serve a far comparire la persona in Personale, Presenze, rapportini giornalieri e conteggi.', "Présélectionné uniquement pour les utilisateurs ayant le rôle exclusif de chef d'équipe. Permet de faire apparaître la personne dans Personnel, Présences, rapports journaliers et comptages.") }}</p>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Salva</button>
-                    <a href="/manager/utenti" class="btn btn-secondary">Annulla</a>
+                    <button type="submit" class="btn btn-primary">{{ t('Salva', 'Enregistrer') }}</button>
+                    <a href="/manager/utenti" class="btn btn-secondary">{{ t('Annulla', 'Annuler') }}</a>
                 </div>
             </form>
         </div>

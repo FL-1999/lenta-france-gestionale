@@ -1,24 +1,24 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Nuova Fiche – Caposquadra{% endblock %}
+{% block title %}{{ t('Nuova Fiche – Caposquadra', "Nouvelle fiche – Chef d'équipe") }}{% endblock %}
 
 {% block content %}
 <div class="form-page">
     <div class="form-page-header">
-        <p class="eyebrow">Area Caposquadra</p>
+        <p class="eyebrow">{{ t('Area Caposquadra', "Espace chef d'équipe") }}</p>
         <h1 class="page-title">
             <span class="page-icon page-icon--fiches" aria-hidden="true"></span>
-            Nuova fiche di cantiere
+            {{ t('Nuova fiche di cantiere', 'Nouvelle fiche de chantier') }}
         </h1>
         <p class="subtitle">
-            Compila una fiche per descrivere macchinari, attività e ore nel cantiere assegnato.
+            {{ t('Compila una fiche per descrivere macchinari, attività e ore nel cantiere assegnato.', 'Remplissez une fiche pour décrire les machines, les activités et les heures sur le chantier assigné.') }}
         </p>
     </div>
 
     <div class="card form-card">
         <div class="card-header">
             <div class="card-title">
-                <span>Dettagli fiche</span>
+                <span>{{ t('Dettagli fiche', 'Détails de la fiche') }}</span>
             </div>
         </div>
         <div class="card-body">
@@ -26,41 +26,41 @@
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label" for="data">Data</label>
+                        <label class="form-label" for="data">{{ t('Data', 'Date') }}</label>
                         <input type="date" id="data" name="data" class="form-control" required />
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="cantiere">Cantiere</label>
+                        <label class="form-label" for="cantiere">{{ t('Cantiere', 'Chantier') }}</label>
                         <select id="cantiere" name="cantiere" class="form-select" required>
-                            <option value="">Seleziona un cantiere…</option>
-                            <option value="1">Cantiere esempio 1</option>
-                            <option value="2">Cantiere esempio 2</option>
+                            <option value="">{{ t('Seleziona un cantiere…', 'Sélectionnez un chantier…') }}</option>
+                            <option value="1">{{ t('Cantiere esempio 1', 'Chantier exemple 1') }}</option>
+                            <option value="2">{{ t('Cantiere esempio 2', 'Chantier exemple 2') }}</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="macchinario">Macchinario</label>
-                        <input type="text" id="macchinario" name="macchinario" class="form-control" placeholder="Es. Escavatore 30t" />
+                        <label class="form-label" for="macchinario">{{ t('Macchinario', 'Machine') }}</label>
+                        <input type="text" id="macchinario" name="macchinario" class="form-control" placeholder="{{ t('Es. Escavatore 30t', 'Ex. Excavatrice 30t') }}" />
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="ore_uso">Ore utilizzo macchinario</label>
-                        <input type="number" id="ore_uso" name="ore_uso" class="form-control" min="0" step="0.5" placeholder="Es. 4" />
+                        <label class="form-label" for="ore_uso">{{ t('Ore utilizzo macchinario', "Heures d'utilisation de la machine") }}</label>
+                        <input type="number" id="ore_uso" name="ore_uso" class="form-control" min="0" step="0.5" placeholder="{{ t('Es. 4', 'Ex. 4') }}" />
                     </div>
                 </div>
 
                 <div class="form-group form-grid form-grid--single">
                     <div class="form-group">
-                        <label class="form-label" for="descrizione">Dettagli / descrizione</label>
+                        <label class="form-label" for="descrizione">{{ t('Dettagli / descrizione', 'Détails / description') }}</label>
                         <textarea id="descrizione" name="descrizione" class="form-textarea" rows="4"
-                                  placeholder="Descrivi attività, macchinario, eventuali problemi..."></textarea>
+                                  placeholder="{{ t('Descrivi attività, macchinario, eventuali problemi...', 'Décrivez les activités, la machine, les éventuels problèmes...') }}"></textarea>
                     </div>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Salva (mock)</button>
-                    <a href="/capo/fiches" class="btn btn-secondary">Vai alle mie fiches</a>
+                    <button type="submit" class="btn btn-primary">{{ t('Salva (mock)', 'Enregistrer (mock)') }}</button>
+                    <a href="/capo/fiches" class="btn btn-secondary">{{ t('Vai alle mie fiches', 'Voir mes fiches') }}</a>
                 </div>
 
             </form>
