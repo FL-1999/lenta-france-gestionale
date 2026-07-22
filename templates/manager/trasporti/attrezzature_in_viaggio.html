@@ -1,8 +1,8 @@
 {% extends "shared/base.html" %}
-{% block title %}Attrezzature in viaggio{% endblock %}
+{% block title %}{{ t('Attrezzature in viaggio', 'Équipements en route') }}{% endblock %}
 {% block content %}
-<div class="page-header"><div class="page-header-main"><p class="page-eyebrow">Trasporti</p><h1 class="page-title">🧰 Attrezzature in transito</h1></div></div>
-<div class="card table-card"><div class="card-body"><table class="data-table"><thead><tr><th>Attrezzatura</th><th>Viaggio</th><th>Origine</th><th>Destinazione</th><th>Autista</th><th>Status</th></tr></thead><tbody>
+<div class="page-header"><div class="page-header-main"><p class="page-eyebrow">{{ t('Trasporti', 'Transports') }}</p><h1 class="page-title">🧰 {{ t('Attrezzature in transito', 'Équipements en transit') }}</h1></div></div>
+<div class="card table-card"><div class="card-body"><table class="data-table"><thead><tr><th>{{ t('Attrezzatura', 'Équipement') }}</th><th>{{ t('Viaggio', 'Trajet') }}</th><th>{{ t('Origine', 'Origine') }}</th><th>{{ t('Destinazione', 'Destination') }}</th><th>{{ t('Autista', 'Chauffeur') }}</th><th>{{ t('Status', 'Statut') }}</th></tr></thead><tbody>
 {% for a in assignments %}
 <tr>
   <td>{{ a.attrezzatura.codice }} · {{ a.attrezzatura.nome }}</td>
@@ -12,6 +12,6 @@
   <td>{{ a.viaggio.autista.full_name if a.viaggio.autista and a.viaggio.autista.full_name else (a.viaggio.autista.email if a.viaggio.autista else '-') }}</td>
   <td>{{ a.attrezzatura.stato.value }}</td>
 </tr>
-{% else %}<tr><td colspan="6">Nessuna attrezzatura in trasporto.</td></tr>{% endfor %}
+{% else %}<tr><td colspan="6">{{ t('Nessuna attrezzatura in trasporto.', 'Aucun équipement en transport.') }}</td></tr>{% endfor %}
 </tbody></table></div></div>
 {% endblock %}

@@ -1,26 +1,26 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
-{% block title %}Trasporti - Logistica{% endblock %}
+{% block title %}{{ t('Trasporti - Logistica', 'Transports - Logistique') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
-    <p class="page-eyebrow">Trasporti</p>
-    <h1 class="page-title">🚚 Dashboard Logistica</h1>
+    <p class="page-eyebrow">{{ t('Trasporti', 'Transports') }}</p>
+    <h1 class="page-title">🚚 {{ t('Dashboard Logistica', 'Tableau de bord Logistique') }}</h1>
   </div>
   <div class="header-actions">
-    {% if has_perm(user, 'manager.access') %}<a class="btn btn-primary" href="{{ url_for('manager_trasporti_viaggi_new') }}">➕ Nuovo viaggio</a>{% endif %}
-    {% if has_perm(user, 'manager.access') %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}">🗓 Planner settimanale</a>{% endif %}
-    {% if has_perm(user, 'manager.access') %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_mappa') }}">🗺 Mappa logistica</a>{% endif %}
-    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_attrezzature_in_viaggio') }}">🧰 Attrezzature in viaggio</a>
-    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_movimenti') }}">📍 Storico movimenti</a>
+    {% if has_perm(user, 'manager.access') %}<a class="btn btn-primary" href="{{ url_for('manager_trasporti_viaggi_new') }}">➕ {{ t('Nuovo viaggio', 'Nouveau trajet') }}</a>{% endif %}
+    {% if has_perm(user, 'manager.access') %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}">🗓 {{ t('Planner settimanale', 'Planning hebdomadaire') }}</a>{% endif %}
+    {% if has_perm(user, 'manager.access') %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_mappa') }}">🗺 {{ t('Mappa logistica', 'Carte logistique') }}</a>{% endif %}
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_attrezzature_in_viaggio') }}">🧰 {{ t('Attrezzature in viaggio', 'Équipements en route') }}</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_movimenti') }}">📍 {{ t('Storico movimenti', 'Historique des mouvements') }}</a>
   </div>
 </div>
 
 <div class="dashboard-kpi-grid" style="margin-bottom:1rem;">
-  <div class="kpi-card"><p class="kpi-label">LOGISTICA · Camion in viaggio</p><p class="kpi-value">{{ logistics_overview.trucks_in_travel }}</p></div>
-  <div class="kpi-card"><p class="kpi-label">LOGISTICA · Attrezzature in movimento</p><p class="kpi-value">{{ logistics_overview.equipment_moving }}</p></div>
-  <div class="kpi-card"><p class="kpi-label">LOGISTICA · Viaggi attivi</p><p class="kpi-value">{{ logistics_overview.active_trips }}</p></div>
-  <div class="kpi-card"><p class="kpi-label">LOGISTICA · Alert</p><p class="kpi-value">{{ logistics_overview.alerts }}</p></div>
+  <div class="kpi-card"><p class="kpi-label">{{ t('LOGISTICA · Camion in viaggio', 'LOGISTIQUE · Camions en route') }}</p><p class="kpi-value">{{ logistics_overview.trucks_in_travel }}</p></div>
+  <div class="kpi-card"><p class="kpi-label">{{ t('LOGISTICA · Attrezzature in movimento', 'LOGISTIQUE · Équipements en mouvement') }}</p><p class="kpi-value">{{ logistics_overview.equipment_moving }}</p></div>
+  <div class="kpi-card"><p class="kpi-label">{{ t('LOGISTICA · Viaggi attivi', 'LOGISTIQUE · Trajets actifs') }}</p><p class="kpi-value">{{ logistics_overview.active_trips }}</p></div>
+  <div class="kpi-card"><p class="kpi-label">{{ t('LOGISTICA · Alert', 'LOGISTIQUE · Alertes') }}</p><p class="kpi-value">{{ logistics_overview.alerts }}</p></div>
 </div>
 
 {% if request.query_params.get('msg') %}
@@ -29,7 +29,7 @@
 
 {% if equipment_alerts %}
 <div class="card card-body" style="margin-bottom:1rem; border-left:4px solid #d14343;">
-  <h3 style="margin-top:0;">⚠️ Alert attrezzatura mancante</h3>
+  <h3 style="margin-top:0;">⚠️ {{ t('Alert attrezzatura mancante', 'Alerte équipement manquant') }}</h3>
   <ul style="margin:0;">
     {% for alert in equipment_alerts %}
     <li>
@@ -42,35 +42,35 @@
 {% endif %}
 
 <form method="get" class="card card-body" style="margin-bottom:1rem;">
-  <h3 style="margin-top:0;">Filtri</h3>
+  <h3 style="margin-top:0;">{{ t('Filtri', 'Filtres') }}</h3>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;align-items:end;">
-    <label>Autista
-      <select name="autista_id"><option value="">Tutti</option>{% for a in autisti %}<option value="{{ a.id }}" {% if filters.autista_id == a.id %}selected{% endif %}>{{ a.full_name or a.email }}</option>{% endfor %}</select>
+    <label>{{ t('Autista', 'Chauffeur') }}
+      <select name="autista_id"><option value="">{{ t('Tutti', 'Tous') }}</option>{% for a in autisti %}<option value="{{ a.id }}" {% if filters.autista_id == a.id %}selected{% endif %}>{{ a.full_name or a.email }}</option>{% endfor %}</select>
     </label>
-    <label>Mezzo
-      <select name="mezzo_id"><option value="">Tutti</option>{% for m in mezzi %}<option value="{{ m.id }}" {% if filters.mezzo_id == m.id %}selected{% endif %}>{{ m.marca }} {{ m.modello }} ({{ m.targa }})</option>{% endfor %}</select>
+    <label>{{ t('Mezzo', 'Véhicule') }}
+      <select name="mezzo_id"><option value="">{{ t('Tutti', 'Tous') }}</option>{% for m in mezzi %}<option value="{{ m.id }}" {% if filters.mezzo_id == m.id %}selected{% endif %}>{{ m.marca }} {{ m.modello }} ({{ m.targa }})</option>{% endfor %}</select>
     </label>
-    <label>Stato
-      <select name="stato"><option value="">Tutti</option>{% for s in stati %}<option value="{{ s.value }}" {% if filters.stato == s.value %}selected{% endif %}>{{ s.value }}</option>{% endfor %}</select>
+    <label>{{ t('Stato', 'Statut') }}
+      <select name="stato"><option value="">{{ t('Tutti', 'Tous') }}</option>{% for s in stati %}<option value="{{ s.value }}" {% if filters.stato == s.value %}selected{% endif %}>{{ s.value }}</option>{% endfor %}</select>
     </label>
-    <label>Destinazione<input type="text" name="destinazione" value="{{ filters.destinazione }}" placeholder="Es. Marsiglia"></label>
-    <label>Data<input type="date" name="data" value="{{ filters.data }}"></label>
-    <div style="display:flex; gap:0.5rem;"><button class="btn btn-primary" type="submit">Applica</button><a class="btn btn-secondary" href="{{ url_for('manager_trasporti_dashboard') }}">Reset</a></div>
+    <label>{{ t('Destinazione', 'Destination') }}<input type="text" name="destinazione" value="{{ filters.destinazione }}" placeholder="{{ t('Es. Marsiglia', 'Ex. Marseille') }}"></label>
+    <label>{{ t('Data', 'Date') }}<input type="date" name="data" value="{{ filters.data }}"></label>
+    <div style="display:flex; gap:0.5rem;"><button class="btn btn-primary" type="submit">{{ t('Applica', 'Appliquer') }}</button><a class="btn btn-secondary" href="{{ url_for('manager_trasporti_dashboard') }}">{{ t('Reset', 'Réinitialiser') }}</a></div>
   </div>
 </form>
 
 <div class="card table-card">
-  <div class="card-body"><h3>Viaggi futuri / programmazione</h3><table class="data-table"><thead><tr><th>Codice</th><th>Partenza</th><th>Arrivo stimato</th><th>Autista</th><th>Mezzo</th><th>Tratta</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>
-  {% for v in future_trips %}<tr><td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td><td>{{ v.departure_display }}</td><td>{{ v.arrival_estimate_display }}</td><td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td><td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td><td>{{ v.route_summary }}</td><td>{{ v.stato.value }}</td><td>{% if has_perm(user, 'manager.access') and v.can_edit %}<a class="btn btn-secondary btn-sm" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=v.id) }}">Modifica viaggio</a>{% else %}<span class="text-muted">Bloccato</span>{% endif %}</td></tr>
-  {% else %}<tr><td colspan="8">Nessun viaggio pianificato.</td></tr>{% endfor %}
+  <div class="card-body"><h3>{{ t('Viaggi futuri / programmazione', 'Trajets futurs / planification') }}</h3><table class="data-table"><thead><tr><th>{{ t('Codice', 'Code') }}</th><th>{{ t('Partenza', 'Départ') }}</th><th>{{ t('Arrivo stimato', 'Arrivée estimée') }}</th><th>{{ t('Autista', 'Chauffeur') }}</th><th>{{ t('Mezzo', 'Véhicule') }}</th><th>{{ t('Tratta', 'Trajet') }}</th><th>{{ t('Stato', 'Statut') }}</th><th>{{ t('Azioni', 'Actions') }}</th></tr></thead><tbody>
+  {% for v in future_trips %}<tr><td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td><td>{{ v.departure_display }}</td><td>{{ v.arrival_estimate_display }}</td><td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td><td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td><td>{{ v.route_summary }}</td><td>{{ v.stato.value }}</td><td>{% if has_perm(user, 'manager.access') and v.can_edit %}<a class="btn btn-secondary btn-sm" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=v.id) }}">{{ t('Modifica viaggio', 'Modifier trajet') }}</a>{% else %}<span class="text-muted">{{ t('Bloccato', 'Bloqué') }}</span>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="8">{{ t('Nessun viaggio pianificato.', 'Aucun trajet planifié.') }}</td></tr>{% endfor %}
   </tbody></table></div>
 </div>
 
-<div class="card table-card" style="margin-top:1rem;"><div class="card-body"><h3>Viaggi in corso</h3><table class="data-table"><thead><tr><th>Codice</th><th>Partenza</th><th>Arrivo stimato</th><th>Avanzamento</th><th>Stima operativa</th><th>Autista</th><th>Mezzo</th><th>Tratta</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>
-{% for v in active_trips %}<tr><td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td><td>{{ v.departure_display }}</td><td>{{ v.arrival_estimate_display }}</td><td>{% if v.progress_percent is not none %}<strong>{{ v.progress_percent }}%</strong>{% else %}<span class="text-muted">N/D</span>{% endif %}</td><td>{{ v.progress_timing_text }}</td><td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td><td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td><td>{{ v.route_summary }}</td><td>{{ v.stato.value }}</td><td>{% if has_perm(user, 'manager.access') and v.can_edit %}<a class="btn btn-secondary btn-sm" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=v.id) }}">Modifica viaggio</a>{% else %}<span class="text-muted">Bloccato</span>{% endif %}</td></tr>{% else %}<tr><td colspan="10">Nessun viaggio in corso.</td></tr>{% endfor %}
+<div class="card table-card" style="margin-top:1rem;"><div class="card-body"><h3>{{ t('Viaggi in corso', 'Trajets en cours') }}</h3><table class="data-table"><thead><tr><th>{{ t('Codice', 'Code') }}</th><th>{{ t('Partenza', 'Départ') }}</th><th>{{ t('Arrivo stimato', 'Arrivée estimée') }}</th><th>{{ t('Avanzamento', 'Avancement') }}</th><th>{{ t('Stima operativa', 'Estimation opérationnelle') }}</th><th>{{ t('Autista', 'Chauffeur') }}</th><th>{{ t('Mezzo', 'Véhicule') }}</th><th>{{ t('Tratta', 'Trajet') }}</th><th>{{ t('Stato', 'Statut') }}</th><th>{{ t('Azioni', 'Actions') }}</th></tr></thead><tbody>
+{% for v in active_trips %}<tr><td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td><td>{{ v.departure_display }}</td><td>{{ v.arrival_estimate_display }}</td><td>{% if v.progress_percent is not none %}<strong>{{ v.progress_percent }}%</strong>{% else %}<span class="text-muted">{{ t('N/D', 'N/D') }}</span>{% endif %}</td><td>{{ v.progress_timing_text }}</td><td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td><td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td><td>{{ v.route_summary }}</td><td>{{ v.stato.value }}</td><td>{% if has_perm(user, 'manager.access') and v.can_edit %}<a class="btn btn-secondary btn-sm" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=v.id) }}">{{ t('Modifica viaggio', 'Modifier trajet') }}</a>{% else %}<span class="text-muted">{{ t('Bloccato', 'Bloqué') }}</span>{% endif %}</td></tr>{% else %}<tr><td colspan="10">{{ t('Nessun viaggio in corso.', 'Aucun trajet en cours.') }}</td></tr>{% endfor %}
 </tbody></table></div></div>
 
-<div class="card table-card" style="margin-top:1rem;"><div class="card-body"><h3>Viaggi completati</h3><table class="data-table"><thead><tr><th>Codice</th><th>Partenza</th><th>Arrivo stimato</th><th>Autista</th><th>Mezzo</th><th>Tratta</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>
-{% for v in completed_trips %}<tr><td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td><td>{{ v.departure_display }}</td><td>{{ v.arrival_estimate_display }}</td><td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td><td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td><td>{{ v.route_summary }}</td><td>{{ v.stato.value }}</td><td>{% if has_perm(user, 'manager.access') and v.can_edit %}<a class="btn btn-secondary btn-sm" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=v.id) }}">Modifica viaggio</a>{% else %}<span class="text-muted">Bloccato</span>{% endif %}</td></tr>{% else %}<tr><td colspan="8">Nessun viaggio completato.</td></tr>{% endfor %}
+<div class="card table-card" style="margin-top:1rem;"><div class="card-body"><h3>{{ t('Viaggi completati', 'Trajets terminés') }}</h3><table class="data-table"><thead><tr><th>{{ t('Codice', 'Code') }}</th><th>{{ t('Partenza', 'Départ') }}</th><th>{{ t('Arrivo stimato', 'Arrivée estimée') }}</th><th>{{ t('Autista', 'Chauffeur') }}</th><th>{{ t('Mezzo', 'Véhicule') }}</th><th>{{ t('Tratta', 'Trajet') }}</th><th>{{ t('Stato', 'Statut') }}</th><th>{{ t('Azioni', 'Actions') }}</th></tr></thead><tbody>
+{% for v in completed_trips %}<tr><td><a href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=v.id) }}">{{ v.codice_viaggio }}</a></td><td>{{ v.departure_display }}</td><td>{{ v.arrival_estimate_display }}</td><td>{{ v.autista.full_name if v.autista and v.autista.full_name else (v.autista.email if v.autista else '-') }}</td><td>{{ ((v.mezzo.marca ~ ' ' ~ v.mezzo.modello)|trim ~ ' (' ~ v.mezzo.targa ~ ')') if v.mezzo else '-' }}</td><td>{{ v.route_summary }}</td><td>{{ v.stato.value }}</td><td>{% if has_perm(user, 'manager.access') and v.can_edit %}<a class="btn btn-secondary btn-sm" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=v.id) }}">{{ t('Modifica viaggio', 'Modifier trajet') }}</a>{% else %}<span class="text-muted">{{ t('Bloccato', 'Bloqué') }}</span>{% endif %}</td></tr>{% else %}<tr><td colspan="8">{{ t('Nessun viaggio completato.', 'Aucun trajet terminé.') }}</td></tr>{% endfor %}
 </tbody></table></div></div>
 {% endblock %}

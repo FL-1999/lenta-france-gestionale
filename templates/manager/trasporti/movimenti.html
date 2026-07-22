@@ -1,10 +1,10 @@
 {% extends "shared/base.html" %}
-{% block title %}Movimenti attrezzature{% endblock %}
+{% block title %}{{ t('Movimenti attrezzature', 'Mouvements des équipements') }}{% endblock %}
 {% block content %}
-<div class="page-header"><h1 class="page-title">📍 Storico trasporti</h1></div>
+<div class="page-header"><h1 class="page-title">📍 {{ t('Storico trasporti', 'Historique des transports') }}</h1></div>
 <div class="card table-card"><div class="card-body">
 <table class="data-table">
-<thead><tr><th>Data</th><th>Attrezzatura</th><th>Viaggio</th><th>Tratta</th><th>Autista</th></tr></thead>
+<thead><tr><th>{{ t('Data', 'Date') }}</th><th>{{ t('Attrezzatura', 'Équipement') }}</th><th>{{ t('Viaggio', 'Trajet') }}</th><th>{{ t('Tratta', 'Trajet') }}</th><th>{{ t('Autista', 'Chauffeur') }}</th></tr></thead>
 <tbody>
 {% for m in movimenti %}
 <tr>
@@ -14,7 +14,7 @@
 <td>{{ m.origine_label }} → {{ m.destinazione_label }}</td>
 <td>{{ m.autista.full_name if m.autista and m.autista.full_name else (m.autista.email if m.autista else '-') }}</td>
 </tr>
-{% else %}<tr><td colspan="5">Nessun movimento</td></tr>{% endfor %}
+{% else %}<tr><td colspan="5">{{ t('Nessun movimento', 'Aucun mouvement') }}</td></tr>{% endfor %}
 </tbody></table>
 </div></div>
 {% endblock %}

@@ -1,17 +1,17 @@
 {% extends "shared/base.html" %}
-{% block title %}Planner Trasporti{% endblock %}
+{% block title %}{{ t('Planner Trasporti', 'Planning Transports') }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div class="page-header-main"><p class="page-eyebrow">Trasporti</p><h1 class="page-title">🗓 Weekly Truck Planner</h1></div>
+  <div class="page-header-main"><p class="page-eyebrow">{{ t('Trasporti', 'Transports') }}</p><h1 class="page-title">🗓 {{ t('Weekly Truck Planner', 'Planning hebdomadaire des camions') }}</h1></div>
   <div class="header-actions">
-    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}?week_start={{ prev_week }}">← Settimana precedente</a>
-    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}?week_start={{ next_week }}">Settimana successiva →</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}?week_start={{ prev_week }}">← {{ t('Settimana precedente', 'Semaine précédente') }}</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}?week_start={{ next_week }}">{{ t('Settimana successiva', 'Semaine suivante') }} →</a>
   </div>
 </div>
 
 <div class="card card-body" style="overflow-x:auto;">
   <table class="data-table" id="planner-table">
-    <thead><tr><th>Camion</th>{% for i in range(7) %}<th>{{ weekday_labels[i] }}<br><small>{{ week_dates[i] }}</small></th>{% endfor %}</tr></thead>
+    <thead><tr><th>{{ t('Camion', 'Camion') }}</th>{% for i in range(7) %}<th>{{ weekday_labels[i] }}<br><small>{{ week_dates[i] }}</small></th>{% endfor %}</tr></thead>
     <tbody>
       {% for mezzo in mezzi %}
       <tr>
@@ -26,7 +26,7 @@
       </tr>
       {% endfor %}
       <tr>
-        <td><strong>Senza camion</strong></td>
+        <td><strong>{{ t('Senza camion', 'Sans camion') }}</strong></td>
         {% for d in week_dates %}
         <td class="planner-day" data-date="{{ d.isoformat() }}">
           {% for trip in unassigned_by_date.get(d, []) %}

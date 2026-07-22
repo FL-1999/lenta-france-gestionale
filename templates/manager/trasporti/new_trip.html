@@ -1,16 +1,16 @@
 {% extends "shared/base.html" %}
-{% block title %}{{ "Modifica viaggio" if mode == "edit" else "Nuovo viaggio" }}{% endblock %}
+{% block title %}{{ t('Modifica viaggio', 'Modifier trajet') if mode == "edit" else t('Nuovo viaggio', 'Nouveau trajet') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
-    <p class="page-eyebrow">Trasporti</p>
-    <h1 class="page-title">🧭 {{ "Modifica viaggio multi-tappa" if mode == "edit" else "Nuovo viaggio multi-tappa" }}</h1>
-    <p class="page-subtitle">Origine, destinazione e tappe usano l’elenco unificato di cantieri e depositi.</p>
+    <p class="page-eyebrow">{{ t('Trasporti', 'Transports') }}</p>
+    <h1 class="page-title">🧭 {{ t('Modifica viaggio multi-tappa', 'Modifier trajet multi-étapes') if mode == "edit" else t('Nuovo viaggio multi-tappa', 'Nouveau trajet multi-étapes') }}</h1>
+    <p class="page-subtitle">{{ t('Origine, destinazione e tappe usano l’elenco unificato di cantieri e depositi.', 'Origine, destination et étapes utilisent la liste unifiée des chantiers et dépôts.') }}</p>
   </div>
   <div class="header-actions">
-    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_dashboard') }}">← Dashboard</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_dashboard') }}">← {{ t('Dashboard', 'Tableau de bord') }}</a>
     {% if viaggio %}
-    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=viaggio.id) }}">Dettaglio viaggio</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_viaggi_detail', viaggio_id=viaggio.id) }}">{{ t('Dettaglio viaggio', 'Détail trajet') }}</a>
     {% endif %}
   </div>
 </div>
@@ -25,28 +25,28 @@
 <form method="post" class="card card-body" action="{{ form_action }}">
   <div class="form-grid">
     <div class="form-group">
-      <label class="form-label">Codice viaggio</label>
+      <label class="form-label">{{ t('Codice viaggio', 'Code trajet') }}</label>
       <input class="form-control" name="codice_viaggio" required placeholder="TR-0021" value="{{ form_data.codice_viaggio }}" />
     </div>
     <div class="form-group">
-      <label class="form-label">Data partenza</label>
+      <label class="form-label">{{ t('Data partenza', 'Date de départ') }}</label>
       <input class="form-control" type="date" name="data_partenza" required value="{{ form_data.data_partenza }}" />
     </div>
     <div class="form-group">
-      <label class="form-label">Orario partenza</label>
+      <label class="form-label">{{ t('Orario partenza', 'Heure de départ') }}</label>
       <input class="form-control" type="time" name="orario_partenza" value="{{ form_data.orario_partenza }}" />
     </div>
     <div class="form-group">
-      <label class="form-label">Data arrivo prevista</label>
+      <label class="form-label">{{ t('Data arrivo prevista', 'Date d\'arrivée prévue') }}</label>
       <input class="form-control" type="date" name="data_arrivo_prevista" value="{{ form_data.data_arrivo_prevista }}" />
     </div>
     <div class="form-group">
-      <label class="form-label">Arrivo stimato manuale</label>
+      <label class="form-label">{{ t('Arrivo stimato manuale', 'Arrivée estimée manuelle') }}</label>
       <input class="form-control" type="time" name="arrivo_stimato_manuale" value="{{ form_data.arrivo_stimato_manuale }}" />
-      <small class="text-muted">Lascia vuoto per calcolo automatico con Google Maps, se disponibile.</small>
+      <small class="text-muted">{{ t('Lascia vuoto per calcolo automatico con Google Maps, se disponibile.', 'Laisser vide pour un calcul automatique avec Google Maps, si disponible.') }}</small>
     </div>
     <div class="form-group">
-      <label class="form-label">Autista</label>
+      <label class="form-label">{{ t('Autista', 'Chauffeur') }}</label>
       <select class="form-select" name="autista_id">
         <option value="">--</option>
         {% for a in autisti %}
@@ -55,7 +55,7 @@
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Mezzo</label>
+      <label class="form-label">{{ t('Mezzo', 'Véhicule') }}</label>
       <select class="form-select" name="mezzo_id">
         <option value="">--</option>
         {% for m in mezzi %}
@@ -64,41 +64,41 @@
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Origine</label>
+      <label class="form-label">{{ t('Origine', 'Origine') }}</label>
       <select class="form-select" name="origine_place" required>
-        <option value="">Seleziona un luogo</option>
+        <option value="">{{ t('Seleziona un luogo', 'Sélectionner un lieu') }}</option>
         {% for location in locations %}
         <option value="{{ location.value }}" {% if form_data.origine_place == location.value %}selected{% endif %}>{{ location.label }}</option>
         {% endfor %}
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Destinazione principale</label>
+      <label class="form-label">{{ t('Destinazione principale', 'Destination principale') }}</label>
       <select class="form-select" name="destinazione_place" required>
-        <option value="">Seleziona un luogo</option>
+        <option value="">{{ t('Seleziona un luogo', 'Sélectionner un lieu') }}</option>
         {% for location in locations %}
         <option value="{{ location.value }}" {% if form_data.destinazione_place == location.value %}selected{% endif %}>{{ location.label }}</option>
         {% endfor %}
       </select>
     </div>
     <div class="form-group" style="grid-column:1/-1;">
-      <label class="form-label">Materiali / attrezzature</label>
-      <textarea class="form-control" name="materiali_attrezzature" rows="3" placeholder="Dettagli materiali, attrezzature o carico speciale">{{ form_data.materiali_attrezzature }}</textarea>
+      <label class="form-label">{{ t('Materiali / attrezzature', 'Matériaux / équipements') }}</label>
+      <textarea class="form-control" name="materiali_attrezzature" rows="3" placeholder="{{ t('Dettagli materiali, attrezzature o carico speciale', 'Détails matériaux, équipements ou chargement spécial') }}">{{ form_data.materiali_attrezzature }}</textarea>
     </div>
     <div class="form-group" style="grid-column:1/-1;">
-      <label class="form-label">Note</label>
-      <textarea class="form-control" name="note" rows="3" placeholder="Indicazioni per autista, cantiere, accessi, vincoli orari...">{{ form_data.note }}</textarea>
+      <label class="form-label">{{ t('Note', 'Notes') }}</label>
+      <textarea class="form-control" name="note" rows="3" placeholder="{{ t('Indicazioni per autista, cantiere, accessi, vincoli orari...', 'Indications pour chauffeur, chantier, accès, contraintes horaires...') }}">{{ form_data.note }}</textarea>
     </div>
   </div>
 
-  <h3 style="margin-top:1.5rem;">Tappe</h3>
-  <p class="text-muted">Ogni tappa usa un luogo esistente. Se lasci vuoto, verrà usata la destinazione principale.</p>
+  <h3 style="margin-top:1.5rem;">{{ t('Tappe', 'Étapes') }}</h3>
+  <p class="text-muted">{{ t('Ogni tappa usa un luogo esistente. Se lasci vuoto, verrà usata la destinazione principale.', 'Chaque étape utilise un lieu existant. Si laissé vide, la destination principale sera utilisée.') }}</p>
   <div class="form-grid">
     {% for idx in range(0, form_data.tappa_destinazione|length) %}
     <div class="form-group">
-      <label class="form-label">Tappa {{ idx + 1 }}</label>
+      <label class="form-label">{{ t('Tappa', 'Étape') }} {{ idx + 1 }}</label>
       <select class="form-select" name="tappa_destinazione">
-        <option value="">Seleziona tappa</option>
+        <option value="">{{ t('Seleziona tappa', 'Sélectionner étape') }}</option>
         {% for location in locations %}
         <option value="{{ location.value }}" {% if form_data.tappa_destinazione[idx] == location.value %}selected{% endif %}>{{ location.label }}</option>
         {% endfor %}
@@ -107,15 +107,15 @@
     {% endfor %}
   </div>
 
-  <h3 style="margin-top:1.5rem;">Richiesta attrezzature</h3>
+  <h3 style="margin-top:1.5rem;">{{ t('Richiesta attrezzature', 'Demande d\'équipements') }}</h3>
   <div style="display:grid;grid-template-columns:minmax(180px,1fr) 120px 120px;gap:0.75rem;">
     {% for idx in range(0, form_data.tipo_attrezzatura|length) %}
-    <input class="form-control" name="tipo_attrezzatura" placeholder="pompa" value="{{ form_data.tipo_attrezzatura[idx] }}" />
+    <input class="form-control" name="tipo_attrezzatura" placeholder="{{ t('pompa', 'pompe') }}" value="{{ form_data.tipo_attrezzatura[idx] }}" />
     <input class="form-control" type="number" min="1" value="{{ form_data.quantita[idx] }}" name="quantita" />
-    <input class="form-control" type="number" min="1" value="{{ form_data.richiesta_tappa_idx[idx] }}" name="richiesta_tappa_idx" placeholder="Tappa" />
+    <input class="form-control" type="number" min="1" value="{{ form_data.richiesta_tappa_idx[idx] }}" name="richiesta_tappa_idx" placeholder="{{ t('Tappa', 'Étape') }}" />
     {% endfor %}
   </div>
   <br>
-  <button class="btn btn-primary" type="submit">{{ "Salva modifiche" if mode == "edit" else "Salva viaggio" }}</button>
+  <button class="btn btn-primary" type="submit">{{ t('Salva modifiche', 'Enregistrer les modifications') if mode == "edit" else t('Salva viaggio', 'Enregistrer trajet') }}</button>
 </form>
 {% endblock %}

@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% block title %}Dettaglio viaggio{% endblock %}
+{% block title %}{{ t('Dettaglio viaggio', 'Détail trajet') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
@@ -7,75 +7,75 @@
     <h1 class="page-title">{{ viaggio.origine_label }} → {{ viaggio.destinazione_label }}</h1>
   </div>
   <div class="header-actions">
-    {% if trip_google_maps_url %}<a class="btn btn-secondary" href="{{ trip_google_maps_url }}" target="_blank" rel="noopener">🧭 Apri in Google Maps</a>{% endif %}
-    {% if can_manage_trip and trip_editable %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=viaggio.id) }}">✏️ Modifica viaggio</a>{% endif %}
+    {% if trip_google_maps_url %}<a class="btn btn-secondary" href="{{ trip_google_maps_url }}" target="_blank" rel="noopener">🧭 {{ t('Apri in Google Maps', 'Ouvrir dans Google Maps') }}</a>{% endif %}
+    {% if can_manage_trip and trip_editable %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_viaggi_edit', viaggio_id=viaggio.id) }}">✏️ {{ t('Modifica viaggio', 'Modifier trajet') }}</a>{% endif %}
   </div>
 </div>
 <div class="card card-body">
   {% if trip_error == 'trip_locked' %}
-  <div class="alert alert-warning" style="margin-bottom:1rem;">Questo viaggio non è più modificabile perché è già partito o risulta chiuso.</div>
+  <div class="alert alert-warning" style="margin-bottom:1rem;">{{ t('Questo viaggio non è più modificabile perché è già partito o risulta chiuso.', 'Ce trajet n\'est plus modifiable car il est déjà parti ou clôturé.') }}</div>
   {% endif %}
   {% if trip_eta_message %}
   <div class="alert alert-info" style="margin-bottom:1rem;">{{ trip_eta_message }}</div>
   {% endif %}
-  <p><strong>Stato:</strong> {{ viaggio.stato.value }}</p>
-  <p><strong>Partenza prevista:</strong> {{ viaggio.departure_display }}</p>
-  <p><strong>Arrivo stimato:</strong> {{ viaggio.arrival_estimate_display }}{% if viaggio.arrival_estimate_status == 'manuale' %} <span class="text-muted">(manuale)</span>{% elif viaggio.arrival_estimate_status == 'automatico' %} <span class="text-muted">(Google Maps)</span>{% else %} <span class="text-muted">(non disponibile)</span>{% endif %}</p>
-  <p><strong>Autista:</strong> {{ viaggio.autista.full_name if viaggio.autista and viaggio.autista.full_name else (viaggio.autista.email if viaggio.autista else '-') }}</p>
-  <p><strong>Mezzo:</strong>{{ (viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')' if viaggio.mezzo else '-' }}</p>
-  <p><strong>Origine:</strong> {{ viaggio.origine_label }}</p>
-  <p><strong>Destinazione:</strong> {{ viaggio.destinazione_label }}</p>
-  <p><strong>Tratta:</strong> {{ viaggio.route_summary }}</p>
-  <p><strong>Materiali / attrezzature:</strong> {{ viaggio.materiali_attrezzature or '—' }}</p>
-  <p><strong>Note:</strong> {{ viaggio.note or '—' }}</p>
+  <p><strong>{{ t('Stato', 'Statut') }}:</strong> {{ viaggio.stato.value }}</p>
+  <p><strong>{{ t('Partenza prevista', 'Départ prévu') }}:</strong> {{ viaggio.departure_display }}</p>
+  <p><strong>{{ t('Arrivo stimato', 'Arrivée estimée') }}:</strong> {{ viaggio.arrival_estimate_display }}{% if viaggio.arrival_estimate_status == 'manuale' %} <span class="text-muted">({{ t('manuale', 'manuel') }})</span>{% elif viaggio.arrival_estimate_status == 'automatico' %} <span class="text-muted">(Google Maps)</span>{% else %} <span class="text-muted">({{ t('non disponibile', 'non disponible') }})</span>{% endif %}</p>
+  <p><strong>{{ t('Autista', 'Chauffeur') }}:</strong> {{ viaggio.autista.full_name if viaggio.autista and viaggio.autista.full_name else (viaggio.autista.email if viaggio.autista else '-') }}</p>
+  <p><strong>{{ t('Mezzo', 'Véhicule') }}:</strong>{{ (viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')' if viaggio.mezzo else '-' }}</p>
+  <p><strong>{{ t('Origine', 'Origine') }}:</strong> {{ viaggio.origine_label }}</p>
+  <p><strong>{{ t('Destinazione', 'Destination') }}:</strong> {{ viaggio.destinazione_label }}</p>
+  <p><strong>{{ t('Tratta', 'Trajet') }}:</strong> {{ viaggio.route_summary }}</p>
+  <p><strong>{{ t('Materiali / attrezzature', 'Matériaux / équipements') }}:</strong> {{ viaggio.materiali_attrezzature or '—' }}</p>
+  <p><strong>{{ t('Note', 'Notes') }}:</strong> {{ viaggio.note or '—' }}</p>
 
-  <h3>Tappe</h3>
+  <h3>{{ t('Tappe', 'Étapes') }}</h3>
   <ol style="padding-left: 1.2rem;">
     {% for point in trip_route_points %}
       <li>{{ point.role_label }}: {{ point.name }} <small class="text-muted">({{ point.type_label }})</small></li>
     {% else %}
-      <li>Nessun punto configurato.</li>
+      <li>{{ t('Nessun punto configurato.', 'Aucun point configuré.') }}</li>
     {% endfor %}
   </ol>
 
   {% if trip_has_any_coordinates and google_maps_api_key %}
     <div data-trip-map data-trip-points='{{ trip_route_points | tojson }}' style="margin-top: 1rem;">
-      <h3>🗺️ Mappa percorso</h3>
-      <p class="text-muted" data-trip-map-notice {% if trip_has_mappable_route %}hidden{% endif %}>Coordinate non disponibili per tutte le tappe: mostro solo i punti presenti.</p>
+      <h3>🗺️ {{ t('Mappa percorso', 'Carte de l\'itinéraire') }}</h3>
+      <p class="text-muted" data-trip-map-notice {% if trip_has_mappable_route %}hidden{% endif %}>{{ t('Coordinate non disponibili per tutte le tappe: mostro solo i punti presenti.', 'Coordonnées non disponibles pour toutes les étapes : seuls les points présents sont affichés.') }}</p>
       <div data-trip-map-canvas style="height: 320px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
     </div>
   {% elif trip_has_any_coordinates %}
-    <div class="alert alert-warning" role="alert" style="margin-top: 1rem;">Mappa interna non disponibile: manca la configurazione Google Maps.</div>
+    <div class="alert alert-warning" role="alert" style="margin-top: 1rem;">{{ t('Mappa interna non disponibile: manca la configurazione Google Maps.', 'Carte interne non disponible : la configuration Google Maps est absente.') }}</div>
   {% else %}
-    <div class="alert alert-warning" role="alert" style="margin-top: 1rem;">Coordinate non disponibili per questo viaggio.</div>
+    <div class="alert alert-warning" role="alert" style="margin-top: 1rem;">{{ t('Coordinate non disponibili per questo viaggio.', 'Coordonnées non disponibles pour ce trajet.') }}</div>
   {% endif %}
 
-  {% if can_manage_trip and trip_editable %}<h3>Gestione autista</h3>
+  {% if can_manage_trip and trip_editable %}<h3>{{ t('Gestione autista', 'Gestion du chauffeur') }}</h3>
   <form method="post" action="{{ url_for('manager_trasporti_viaggi_autista_update', viaggio_id=viaggio.id) }}" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
     <select name="autista_id">
-      <option value="">-- Nessun autista (viaggio aperto) --</option>
+      <option value="">{{ t('-- Nessun autista (viaggio aperto) --', '-- Aucun chauffeur (trajet ouvert) --') }}</option>
       {% for a in autisti %}<option value="{{ a.id }}" {% if viaggio.autista_id == a.id %}selected{% endif %}>{{ a.full_name if a.full_name else a.email }}</option>{% endfor %}
     </select>
-    <button class="btn btn-primary" type="submit">Salva assegnazione</button>
+    <button class="btn btn-primary" type="submit">{{ t('Salva assegnazione', 'Enregistrer l\'affectation') }}</button>
   </form>{% elif can_manage_trip %}
-  <p class="text-muted">Assegnazione autista bloccata: il viaggio non è più modificabile.</p>{% endif %}
+  <p class="text-muted">{{ t('Assegnazione autista bloccata: il viaggio non è più modificabile.', 'Affectation du chauffeur bloquée : le trajet n\'est plus modifiable.') }}</p>{% endif %}
 
-  <h3>Materiale richiesto</h3>
+  <h3>{{ t('Materiale richiesto', 'Matériel demandé') }}</h3>
   <table class="data-table">
-    <thead><tr><th>Tipo</th><th>Selezione</th></tr></thead>
+    <thead><tr><th>{{ t('Tipo', 'Type') }}</th><th>{{ t('Selezione', 'Sélection') }}</th></tr></thead>
     <tbody>
       {% for row in equipment_panel %}
-      <tr><td>{{ row.tipo|capitalize }}</td><td>{% if row.ok %}✔ {{ row.selected_code }}{% else %}❌ non selezionato{% endif %}</td></tr>
-      {% else %}<tr><td colspan="2">Nessuna attrezzatura richiesta</td></tr>{% endfor %}
+      <tr><td>{{ row.tipo|capitalize }}</td><td>{% if row.ok %}✔ {{ row.selected_code }}{% else %}❌ {{ t('non selezionato', 'non sélectionné') }}{% endif %}</td></tr>
+      {% else %}<tr><td colspan="2">{{ t('Nessuna attrezzatura richiesta', 'Aucun équipement demandé') }}</td></tr>{% endfor %}
     </tbody>
   </table>
 
 
   {% if can_prepare_trip_load %}
-  <h3>Preparazione carico</h3>
+  <h3>{{ t('Preparazione carico', 'Préparation du chargement') }}</h3>
   <form method="post" action="{{ url_for('manager_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     <table class="data-table">
-      <thead><tr><th>Tipo</th><th>Attrezzatura disponibile</th></tr></thead>
+      <thead><tr><th>{{ t('Tipo', 'Type') }}</th><th>{{ t('Attrezzatura disponibile', 'Équipement disponible') }}</th></tr></thead>
       <tbody>
         {% for req, disponibili in richieste_disponibili %}
           {% for idx in range(req.quantita) %}
@@ -83,7 +83,7 @@
             <td>{{ req.tipo_attrezzatura|capitalize }} #{{ idx + 1 }}</td>
             <td>
               <select name="req_{{ req.id }}_{{ idx }}">
-                <option value="">-- Seleziona --</option>
+                <option value="">{{ t('-- Seleziona --', '-- Sélectionner --') }}</option>
                 {% for att in disponibili %}
                 <option value="{{ att.id }}">{{ att.codice }} · {{ att.nome }}</option>
                 {% endfor %}
@@ -92,11 +92,11 @@
           </tr>
           {% endfor %}
         {% else %}
-        <tr><td colspan="2">Nessuna attrezzatura richiesta</td></tr>
+        <tr><td colspan="2">{{ t('Nessuna attrezzatura richiesta', 'Aucun équipement demandé') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    <button class="btn btn-primary" type="submit">Salva preparazione carico</button>
+    <button class="btn btn-primary" type="submit">{{ t('Salva preparazione carico', 'Enregistrer la préparation du chargement') }}</button>
   </form>
   {% endif %}
 </div>

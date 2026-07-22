@@ -1,39 +1,39 @@
 {% extends "shared/base.html" %}
-{% block title %}Mappa operativa{% endblock %}
+{% block title %}{{ t('Mappa operativa', 'Carte opérationnelle') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
-    <p class="page-eyebrow">Trasporti · Operatività</p>
-    <h1 class="page-title">🗺️ Mappa operativa centrale</h1>
-    <p class="text-muted" style="margin:0;max-width:80ch;">Vista unica di cantieri, depositi, viaggi, mezzi e autisti con filtri rapidi per controllo operativo quotidiano.</p>
+    <p class="page-eyebrow">{{ t('Trasporti · Operatività', 'Transports · Opérations') }}</p>
+    <h1 class="page-title">🗺️ {{ t('Mappa operativa centrale', 'Carte opérationnelle centrale') }}</h1>
+    <p class="text-muted" style="margin:0;max-width:80ch;">{{ t('Vista unica di cantieri, depositi, viaggi, mezzi e autisti con filtri rapidi per controllo operativo quotidiano.', 'Vue unique des chantiers, dépôts, trajets, véhicules et chauffeurs avec filtres rapides pour le contrôle opérationnel quotidien.') }}</p>
   </div>
 </div>
 
 <div class="card card-body" data-operational-map data-map-payload='{{ map_payload|tojson }}' data-google-maps-api-key="{{ google_maps_api_key or '' }}">
   <div class="map-toolbar">
-    <div class="map-view-toggle" role="group" aria-label="Viste mappa">
-      <button type="button" class="btn btn-secondary" data-view="generale">Generale</button>
-      <button type="button" class="btn btn-secondary" data-view="trasporti">Trasporti</button>
-      <button type="button" class="btn btn-secondary" data-view="cantieri_attivi">Cantieri attivi</button>
-      <button type="button" class="btn btn-secondary" data-view="cantieri_chiusi">Cantieri chiusi</button>
-      <button type="button" class="btn btn-secondary" data-view="depositi">Depositi</button>
-      <button type="button" class="btn btn-secondary" data-view="mezzi">Mezzi</button>
-      <button type="button" class="btn btn-secondary" data-view="autisti">Autisti / viaggi</button>
+    <div class="map-view-toggle" role="group" aria-label="{{ t('Viste mappa', 'Vues carte') }}">
+      <button type="button" class="btn btn-secondary" data-view="generale">{{ t('Generale', 'Général') }}</button>
+      <button type="button" class="btn btn-secondary" data-view="trasporti">{{ t('Trasporti', 'Transports') }}</button>
+      <button type="button" class="btn btn-secondary" data-view="cantieri_attivi">{{ t('Cantieri attivi', 'Chantiers actifs') }}</button>
+      <button type="button" class="btn btn-secondary" data-view="cantieri_chiusi">{{ t('Cantieri chiusi', 'Chantiers fermés') }}</button>
+      <button type="button" class="btn btn-secondary" data-view="depositi">{{ t('Depositi', 'Dépôts') }}</button>
+      <button type="button" class="btn btn-secondary" data-view="mezzi">{{ t('Mezzi', 'Véhicules') }}</button>
+      <button type="button" class="btn btn-secondary" data-view="autisti">{{ t('Autisti / viaggi', 'Chauffeurs / trajets') }}</button>
     </div>
 
     <div class="map-extra-filters">
-      <label>Dal <input type="date" data-filter="date_from"></label>
-      <label>Al <input type="date" data-filter="date_to"></label>
-      <label>Stato viaggio
+      <label>{{ t('Dal', 'Du') }} <input type="date" data-filter="date_from"></label>
+      <label>{{ t('Al', 'Au') }} <input type="date" data-filter="date_to"></label>
+      <label>{{ t('Stato viaggio', 'Statut trajet') }}
         <select data-filter="stato_viaggio"></select>
       </label>
-      <label>Cantiere
+      <label>{{ t('Cantiere', 'Chantier') }}
         <select data-filter="cantiere_id"></select>
       </label>
-      <label>Mezzo
+      <label>{{ t('Mezzo', 'Véhicule') }}
         <select data-filter="mezzo_id"></select>
       </label>
-      <label>Autista
+      <label>{{ t('Autista', 'Chauffeur') }}
         <select data-filter="autista_id"></select>
       </label>
     </div>
@@ -41,10 +41,10 @@
 
       <div class="map-sync-row">
       <form method="post" action="{{ url_for('manager_trasporti_gps_sync') }}">
-        <button type="submit" class="btn btn-secondary">🔄 Sincronizza GPS camion</button>
+        <button type="submit" class="btn btn-secondary">🔄 {{ t('Sincronizza GPS camion', 'Synchroniser GPS camions') }}</button>
       </form>
       {% if map_payload.gps_sync and map_payload.gps_sync.status == 'ok' %}
-        <span class="text-muted">Sync completata: {{ map_payload.gps_sync.updated or 0 }} camion aggiornati su {{ map_payload.gps_sync.trucks or 0 }} configurati.</span>
+        <span class="text-muted">{{ t('Sync completata:', 'Synchronisation terminée :') }} {{ map_payload.gps_sync.updated or 0 }} {{ t('camion aggiornati su', 'camions mis à jour sur') }} {{ map_payload.gps_sync.trucks or 0 }} {{ t('configurati.', 'configurés.') }}</span>
       {% endif %}
     </div>
 
@@ -54,7 +54,7 @@
   {% if google_maps_api_key %}
     <div data-operational-map-canvas style="height:560px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);"></div>
   {% else %}
-    <div class="alert alert-warning" role="alert">Mappa non disponibile: manca GOOGLE_MAPS_API_KEY.</div>
+    <div class="alert alert-warning" role="alert">{{ t('Mappa non disponibile: manca GOOGLE_MAPS_API_KEY.', 'Carte non disponible : GOOGLE_MAPS_API_KEY est absente.') }}</div>
   {% endif %}
 </div>
 
