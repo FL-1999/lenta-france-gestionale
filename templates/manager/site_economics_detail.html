@@ -1,34 +1,34 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
-{% block title %}Economica cantiere – {{ site.name }}{% endblock %}
+{% block title %}{{ t('Economica cantiere', 'Économie chantier') }} – {{ site.name }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="page-header-main">
-    <p class="page-eyebrow">Controllo economico cantiere</p>
+    <p class="page-eyebrow">{{ t('Controllo economico cantiere', 'Contrôle économique chantier') }}</p>
     <h1 class="page-title">💶 {{ site.name }}</h1>
     <p class="page-subtitle">
       {% if can_view_site_margin %}
-        Verifica ricavi, costi, manodopera settimanale lun-ven, weekend opzionali e marginalità nel tempo.
+        {{ t('Verifica ricavi, costi, manodopera settimanale lun-ven, weekend opzionali e marginalità nel tempo.', "Vérifiez recettes, coûts, main-d'œuvre hebdomadaire lun-ven, week-ends optionnels et marge dans le temps.") }}
       {% else %}
-        Verifica costi operativi, manodopera settimanale lun-ven, weekend opzionali e avanzamento economico operativo.
+        {{ t('Verifica costi operativi, manodopera settimanale lun-ven, weekend opzionali e avanzamento economico operativo.', "Vérifiez coûts opérationnels, main-d'œuvre hebdomadaire lun-ven, week-ends optionnels et avancement économique opérationnel.") }}
       {% endif %}
     </p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-secondary" href="{{ url_for('manager_site_detail', site_id=site.id) }}">Torna al cantiere</a>
-    <a class="btn btn-secondary" href="{{ url_for('manager_economics_dashboard') }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">Dashboard economica</a>
-    <a class="btn btn-secondary" href="{{ url_for('manager_site_economics_trend_data', site_id=site.id) }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">Serie trend JSON</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_site_detail', site_id=site.id) }}">{{ t('Torna al cantiere', 'Retour au chantier') }}</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_economics_dashboard') }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">{{ t('Dashboard economica', 'Tableau économique') }}</a>
+    <a class="btn btn-secondary" href="{{ url_for('manager_site_economics_trend_data', site_id=site.id) }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">{{ t('Serie trend JSON', 'Série de tendance JSON') }}</a>
   </div>
 </div>
 
 <section class="card" style="margin-bottom: 1rem;">
   <div class="card-body economics-report-filters">
-    <span class="stat-label">Report rapidi</span>
+    <span class="stat-label">{{ t('Report rapidi', 'Rapports rapides') }}</span>
     <div class="economics-filter-chips">
-      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=day&start_date={{ snapshot.report_filters.oggi.start_date }}&end_date={{ snapshot.report_filters.oggi.end_date }}">Oggi</a>
-      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=week&start_date={{ snapshot.report_filters.settimana_corrente.start_date }}&end_date={{ snapshot.report_filters.settimana_corrente.end_date }}">Settimana corrente</a>
-      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=month&start_date={{ snapshot.report_filters.mese_corrente.start_date }}&end_date={{ snapshot.report_filters.mese_corrente.end_date }}">Mese corrente</a>
-      <span class="text-muted">Intervallo personalizzato disponibile dal filtro qui sotto.</span>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=day&start_date={{ snapshot.report_filters.oggi.start_date }}&end_date={{ snapshot.report_filters.oggi.end_date }}">{{ t('Oggi', "Aujourd'hui") }}</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=week&start_date={{ snapshot.report_filters.settimana_corrente.start_date }}&end_date={{ snapshot.report_filters.settimana_corrente.end_date }}">{{ t('Settimana corrente', 'Semaine en cours') }}</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}?timeframe=month&start_date={{ snapshot.report_filters.mese_corrente.start_date }}&end_date={{ snapshot.report_filters.mese_corrente.end_date }}">{{ t('Mese corrente', 'Mois en cours') }}</a>
+      <span class="text-muted">{{ t('Intervallo personalizzato disponibile dal filtro qui sotto.', 'Intervalle personnalisé disponible via le filtre ci-dessous.') }}</span>
     </div>
   </div>
 </section>
@@ -36,7 +36,7 @@
 <form method="get" class="card" style="margin-bottom: 1rem;">
   <div class="card-body economics-filter-grid">
     <div>
-      <label class="form-label" for="timeframe">Periodo</label>
+      <label class="form-label" for="timeframe">{{ t('Periodo', 'Période') }}</label>
       <select class="form-select" id="timeframe" name="timeframe">
         {% for key, label in timeframe_options.items() %}
           <option value="{{ key }}" {% if timeframe == key %}selected{% endif %}>{{ label }}</option>
@@ -44,76 +44,76 @@
       </select>
     </div>
     <div>
-      <label class="form-label" for="start_date">Da</label>
+      <label class="form-label" for="start_date">{{ t('Da', 'Du') }}</label>
       <input class="form-control" type="date" id="start_date" name="start_date" value="{{ filters.start_date }}">
     </div>
     <div>
-      <label class="form-label" for="end_date">A</label>
+      <label class="form-label" for="end_date">{{ t('A', 'Au') }}</label>
       <input class="form-control" type="date" id="end_date" name="end_date" value="{{ filters.end_date }}">
     </div>
-    <div class="economics-filter-actions"><button class="btn btn-primary" type="submit">Aggiorna</button></div>
+    <div class="economics-filter-actions"><button class="btn btn-primary" type="submit">{{ t('Aggiorna', 'Actualiser') }}</button></div>
   </div>
 </form>
 
 <section class="economics-kpi-grid">
   {% if can_view_site_margin %}
-    <article class="card"><div class="card-body"><div class="stat-label">Margine previsto</div><div class="stat-value {% if snapshot.budget.margine_previsto < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.budget.margine_previsto) }}</div></div></article>
-    <article class="card"><div class="card-body"><div class="stat-label">Margine reale</div><div class="stat-value {% if snapshot.real_summary.margine_reale < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.real_summary.margine_reale) }}</div></div></article>
-    <article class="card"><div class="card-body"><div class="stat-label">Scostamento margine</div><div class="stat-value {% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.margine.scostamento) }}</div></div></article>
-    <article class="card"><div class="card-body"><div class="stat-label">Ricavi reali periodo</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.real_summary.ricavi_reali) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">{{ t('Margine previsto', 'Marge prévue') }}</div><div class="stat-value {% if snapshot.budget.margine_previsto < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.budget.margine_previsto) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">{{ t('Margine reale', 'Marge réelle') }}</div><div class="stat-value {% if snapshot.real_summary.margine_reale < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.real_summary.margine_reale) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">{{ t('Scostamento margine', 'Écart de marge') }}</div><div class="stat-value {% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.margine.scostamento) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">{{ t('Ricavi reali periodo', 'Recettes réelles période') }}</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.real_summary.ricavi_reali) }}</div></div></article>
   {% else %}
-    <article class="card"><div class="card-body"><div class="stat-label">Costi reali periodo</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.real_summary.costi_reali) }}</div></div></article>
-    <article class="card"><div class="card-body"><div class="stat-label">Manodopera reale</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.manodopera) }}</div></div></article>
-    <article class="card"><div class="card-body"><div class="stat-label">Materiali reali</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.materiali) }}</div></div></article>
-    <article class="card"><div class="card-body"><div class="stat-label">Trasporti + mezzi</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.mezzi_trasporti) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">{{ t('Costi reali periodo', 'Coûts réels période') }}</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.real_summary.costi_reali) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">{{ t('Manodopera reale', "Main-d'œuvre réelle") }}</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.manodopera) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">{{ t('Materiali reali', 'Matériaux réels') }}</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.materiali) }}</div></div></article>
+    <article class="card"><div class="card-body"><div class="stat-label">{{ t('Trasporti + mezzi', 'Transports + véhicules') }}</div><div class="stat-value">€ {{ '%.2f'|format(snapshot.cost_breakdown.mezzi_trasporti) }}</div></div></article>
   {% endif %}
 </section>
 
 <div class="economics-layout">
   <section class="card">
-    <div class="card-header"><div class="card-title">🧾 Budget cantiere (previsioni)</div></div>
+    <div class="card-header"><div class="card-title">🧾 {{ t('Budget cantiere (previsioni)', 'Budget chantier (prévisions)') }}</div></div>
     <div class="card-body economics-overview-grid">
       {% if can_view_site_margin %}
-        <div class="economics-overview-item"><span>Ricavo previsto totale</span><strong>€ {{ '%.2f'|format(snapshot.budget.ricavo_previsto) }}</strong></div>
+        <div class="economics-overview-item"><span>{{ t('Ricavo previsto totale', 'Recette totale prévue') }}</span><strong>€ {{ '%.2f'|format(snapshot.budget.ricavo_previsto) }}</strong></div>
       {% endif %}
-      <div class="economics-overview-item"><span>Materiali previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.materiali_previsti) }}</strong></div>
-      <div class="economics-overview-item"><span>Manodopera prevista</span><strong>€ {{ '%.2f'|format(snapshot.budget.manodopera_prevista) }}</strong></div>
-      <div class="economics-overview-item"><span>Trasporti previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.trasporti_previsti) }}</strong></div>
-      <div class="economics-overview-item"><span>Mezzi previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.mezzi_previsti) }}</strong></div>
-      <div class="economics-overview-item"><span>Attrezzature previste</span><strong>€ {{ '%.2f'|format(snapshot.budget.attrezzature_previste) }}</strong></div>
-      <div class="economics-overview-item"><span>Altri costi previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.altri_costi_previsti) }}</strong></div>
-      <div class="economics-overview-item"><span>Totale costi previsti</span><strong>€ {{ '%.2f'|format(snapshot.budget.totale_costi_previsti) }}</strong></div>
+      <div class="economics-overview-item"><span>{{ t('Materiali previsti', 'Matériaux prévus') }}</span><strong>€ {{ '%.2f'|format(snapshot.budget.materiali_previsti) }}</strong></div>
+      <div class="economics-overview-item"><span>{{ t('Manodopera prevista', "Main-d'œuvre prévue") }}</span><strong>€ {{ '%.2f'|format(snapshot.budget.manodopera_prevista) }}</strong></div>
+      <div class="economics-overview-item"><span>{{ t('Trasporti previsti', 'Transports prévus') }}</span><strong>€ {{ '%.2f'|format(snapshot.budget.trasporti_previsti) }}</strong></div>
+      <div class="economics-overview-item"><span>{{ t('Mezzi previsti', 'Véhicules prévus') }}</span><strong>€ {{ '%.2f'|format(snapshot.budget.mezzi_previsti) }}</strong></div>
+      <div class="economics-overview-item"><span>{{ t('Attrezzature previste', 'Équipements prévus') }}</span><strong>€ {{ '%.2f'|format(snapshot.budget.attrezzature_previste) }}</strong></div>
+      <div class="economics-overview-item"><span>{{ t('Altri costi previsti', 'Autres coûts prévus') }}</span><strong>€ {{ '%.2f'|format(snapshot.budget.altri_costi_previsti) }}</strong></div>
+      <div class="economics-overview-item"><span>{{ t('Totale costi previsti', 'Total coûts prévus') }}</span><strong>€ {{ '%.2f'|format(snapshot.budget.totale_costi_previsti) }}</strong></div>
       {% if can_view_site_margin %}
-        <div class="economics-overview-item"><span>Margine previsto</span><strong class="{% if snapshot.budget.margine_previsto < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.budget.margine_previsto) }}</strong></div>
+        <div class="economics-overview-item"><span>{{ t('Margine previsto', 'Marge prévue') }}</span><strong class="{% if snapshot.budget.margine_previsto < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.budget.margine_previsto) }}</strong></div>
       {% endif %}
     </div>
     <div class="card-body" style="padding-top:0;">
-      <small>Creato da {{ snapshot.budget.created_by_name }} il {{ snapshot.budget.created_at.strftime('%d/%m/%Y %H:%M') if snapshot.budget.created_at else '—' }} · Ultima modifica: {{ snapshot.budget.updated_by_name }} {{ snapshot.budget.updated_at.strftime('%d/%m/%Y %H:%M') if snapshot.budget.updated_at else '—' }}</small>
+      <small>{{ t('Creato da', 'Créé par') }} {{ snapshot.budget.created_by_name }} {{ t('il', 'le') }} {{ snapshot.budget.created_at.strftime('%d/%m/%Y %H:%M') if snapshot.budget.created_at else '—' }} · {{ t('Ultima modifica:', 'Dernière modification :') }} {{ snapshot.budget.updated_by_name }} {{ snapshot.budget.updated_at.strftime('%d/%m/%Y %H:%M') if snapshot.budget.updated_at else '—' }}</small>
     </div>
   </section>
   <section class="card">
-    <div class="card-header"><div class="card-title">📘 Consuntivo reale</div></div>
+    <div class="card-header"><div class="card-title">📘 {{ t('Consuntivo reale', 'Réalisé réel') }}</div></div>
     <div class="card-body economics-stacked-list">
       {% if can_view_site_margin %}
-        <div><span>Ricavi reali (fatturati + maturati)</span><strong>€ {{ '%.2f'|format(snapshot.real_summary.ricavi_reali) }}</strong></div>
+        <div><span>{{ t('Ricavi reali (fatturati + maturati)', 'Recettes réelles (facturées + acquises)') }}</span><strong>€ {{ '%.2f'|format(snapshot.real_summary.ricavi_reali) }}</strong></div>
       {% endif %}
-      <div><span>Costi reali</span><strong>€ {{ '%.2f'|format(snapshot.real_summary.costi_reali) }}</strong></div>
-      <div><span>Costi reali automatici</span><strong>€ {{ '%.2f'|format(snapshot.automatic_real_summary.costi_automatici) }}</strong></div>
-      <div><span>Costi reali manuali</span><strong>€ {{ '%.2f'|format(snapshot.manual_real_summary.costi_manuali) }}</strong></div>
+      <div><span>{{ t('Costi reali', 'Coûts réels') }}</span><strong>€ {{ '%.2f'|format(snapshot.real_summary.costi_reali) }}</strong></div>
+      <div><span>{{ t('Costi reali automatici', 'Coûts réels automatiques') }}</span><strong>€ {{ '%.2f'|format(snapshot.automatic_real_summary.costi_automatici) }}</strong></div>
+      <div><span>{{ t('Costi reali manuali', 'Coûts réels manuels') }}</span><strong>€ {{ '%.2f'|format(snapshot.manual_real_summary.costi_manuali) }}</strong></div>
       {% if can_view_site_margin %}
-        <div><span>Margine reale</span><strong class="{% if snapshot.real_summary.margine_reale < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.real_summary.margine_reale) }}</strong></div>
+        <div><span>{{ t('Margine reale', 'Marge réelle') }}</span><strong class="{% if snapshot.real_summary.margine_reale < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.real_summary.margine_reale) }}</strong></div>
       {% endif %}
-      <div><span>Manodopera reale</span><strong>€ {{ '%.2f'|format(snapshot.cost_breakdown.manodopera) }}</strong></div>
+      <div><span>{{ t('Manodopera reale', "Main-d'œuvre réelle") }}</span><strong>€ {{ '%.2f'|format(snapshot.cost_breakdown.manodopera) }}</strong></div>
     </div>
   </section>
 </div>
 
 <section class="card" style="margin-top: 1rem;">
-  <div class="card-header"><div class="card-title">⚖️ Scostamento budget vs reale</div></div>
+  <div class="card-header"><div class="card-title">⚖️ {{ t('Scostamento budget vs reale', 'Écart budget vs réel') }}</div></div>
   <div class="card-body">
     <div class="table-wrapper">
       <table class="table">
-        <thead><tr><th>Categoria</th><th>Previsto</th><th>Reale</th><th>Scostamento</th><th>Scostamento %</th></tr></thead>
+        <thead><tr><th>{{ t('Categoria', 'Catégorie') }}</th><th>{{ t('Previsto', 'Prévu') }}</th><th>{{ t('Reale', 'Réel') }}</th><th>{{ t('Scostamento', 'Écart') }}</th><th>{{ t('Scostamento %', 'Écart %') }}</th></tr></thead>
         <tbody>
           {% for row in snapshot.variances.by_category %}
             <tr>
@@ -126,7 +126,7 @@
           {% endfor %}
           {% if can_view_site_margin %}
             <tr>
-              <td><strong>Ricavi</strong></td>
+              <td><strong>{{ t('Ricavi', 'Recettes') }}</strong></td>
               <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.previsto) }}</td>
               <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.reale) }}</td>
               <td>€ {{ '%.2f'|format(snapshot.variances.overall.ricavi.scostamento) }}</td>
@@ -134,7 +134,7 @@
             </tr>
           {% endif %}
           <tr>
-            <td><strong>Costi</strong></td>
+            <td><strong>{{ t('Costi', 'Coûts') }}</strong></td>
             <td>€ {{ '%.2f'|format(snapshot.variances.overall.costi.previsto) }}</td>
             <td>€ {{ '%.2f'|format(snapshot.variances.overall.costi.reale) }}</td>
             <td class="{% if snapshot.variances.overall.costi.scostamento > 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.costi.scostamento) }}</td>
@@ -142,7 +142,7 @@
           </tr>
           {% if can_view_site_margin %}
             <tr>
-              <td><strong>Margine</strong></td>
+              <td><strong>{{ t('Margine', 'Marge') }}</strong></td>
               <td>€ {{ '%.2f'|format(snapshot.variances.overall.margine.previsto) }}</td>
               <td>€ {{ '%.2f'|format(snapshot.variances.overall.margine.reale) }}</td>
               <td class="{% if snapshot.variances.overall.margine.scostamento < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(snapshot.variances.overall.margine.scostamento) }}</td>
@@ -157,21 +157,21 @@
 
 <div class="economics-layout" style="margin-top: 1rem;">
   <section class="card">
-    <div class="card-header"><div class="card-title">📊 Trend giornaliero / settimanale / mensile</div></div>
+    <div class="card-header"><div class="card-title">📊 {{ t('Trend giornaliero / settimanale / mensile', 'Tendance journalière / hebdomadaire / mensuelle') }}</div></div>
     <div class="card-body">
-      <p class="text-muted" style="margin-bottom: .75rem;">La settimana aggregata va da lunedì a domenica. I costi automatici includono solo lunedì-venerdì; sabato e domenica entrano nei calcoli solo se attivati.</p>
+      <p class="text-muted" style="margin-bottom: .75rem;">{{ t('La settimana aggregata va da lunedì a domenica. I costi automatici includono solo lunedì-venerdì; sabato e domenica entrano nei calcoli solo se attivati.', 'La semaine agrégée va du lundi au dimanche. Les coûts automatiques incluent seulement lundi-vendredi ; samedi et dimanche entrent dans les calculs seulement si activés.') }}</p>
       <div class="table-wrapper">
         <table class="table">
           <thead>
             <tr>
-              <th>Periodo</th>
-              {% if can_view_site_margin %}<th>Ricavi</th>{% endif %}
-              <th>Manodopera</th>
-              <th>Materiali</th>
-              <th>Mezzi / trasporti</th>
-              <th>Attrezzature</th>
-              <th>Costi totali</th>
-              {% if can_view_site_margin %}<th>Utile / perdita</th>{% endif %}
+              <th>{{ t('Periodo', 'Période') }}</th>
+              {% if can_view_site_margin %}<th>{{ t('Ricavi', 'Recettes') }}</th>{% endif %}
+              <th>{{ t('Manodopera', "Main-d'œuvre") }}</th>
+              <th>{{ t('Materiali', 'Matériaux') }}</th>
+              <th>{{ t('Mezzi / trasporti', 'Véhicules / transports') }}</th>
+              <th>{{ t('Attrezzature', 'Équipements') }}</th>
+              <th>{{ t('Costi totali', 'Coûts totaux') }}</th>
+              {% if can_view_site_margin %}<th>{{ t('Utile / perdita', 'Bénéfice / perte') }}</th>{% endif %}
             </tr>
           </thead>
           <tbody>
@@ -187,7 +187,7 @@
                 {% if can_view_site_margin %}<td class="{% if row.profit < 0 %}text-danger{% endif %}">€ {{ '%.2f'|format(row.profit) }}</td>{% endif %}
               </tr>
             {% else %}
-              <tr><td colspan="{% if can_view_site_margin %}8{% else %}6{% endif %}" class="table-empty">Nessun trend disponibile per il periodo selezionato.</td></tr>
+              <tr><td colspan="{% if can_view_site_margin %}8{% else %}6{% endif %}" class="table-empty">{{ t('Nessun trend disponibile per il periodo selezionato.', 'Aucune tendance disponible pour la période sélectionnée.') }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -197,38 +197,38 @@
 
   <aside class="economics-sidebar">
     <section class="card">
-      <div class="card-header"><div class="card-title">🧮 Budget cantiere</div></div>
+      <div class="card-header"><div class="card-title">🧮 {{ t('Budget cantiere', 'Budget chantier') }}</div></div>
       <div class="card-body">
         <form method="post" action="{{ url_for('manager_site_economics_budget_upsert', site_id=site.id) }}">
           <input type="hidden" name="timeframe" value="{{ timeframe }}">
           <input type="hidden" name="start_date" value="{{ filters.start_date }}">
           <input type="hidden" name="end_date" value="{{ filters.end_date }}">
           {% if can_view_site_margin %}
-            <div class="form-group"><label class="form-label">Ricavo previsto</label><input class="form-control" type="number" step="0.01" min="0" name="ricavo_previsto" value="{{ '%.2f'|format(snapshot.budget.ricavo_previsto) }}" {% if not can_manage %}disabled{% endif %}></div>
+            <div class="form-group"><label class="form-label">{{ t('Ricavo previsto', 'Recette prévue') }}</label><input class="form-control" type="number" step="0.01" min="0" name="ricavo_previsto" value="{{ '%.2f'|format(snapshot.budget.ricavo_previsto) }}" {% if not can_manage %}disabled{% endif %}></div>
           {% endif %}
-          <div class="form-group"><label class="form-label">Materiali previsti</label><input class="form-control" type="number" step="0.01" min="0" name="materiali_previsti" value="{{ '%.2f'|format(snapshot.budget.materiali_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Manodopera prevista</label><input class="form-control" type="number" step="0.01" min="0" name="manodopera_prevista" value="{{ '%.2f'|format(snapshot.budget.manodopera_prevista) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Trasporti previsti</label><input class="form-control" type="number" step="0.01" min="0" name="trasporti_previsti" value="{{ '%.2f'|format(snapshot.budget.trasporti_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Mezzi previsti</label><input class="form-control" type="number" step="0.01" min="0" name="mezzi_previsti" value="{{ '%.2f'|format(snapshot.budget.mezzi_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Attrezzature previste</label><input class="form-control" type="number" step="0.01" min="0" name="attrezzature_previste" value="{{ '%.2f'|format(snapshot.budget.attrezzature_previste) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Altri costi previsti</label><input class="form-control" type="number" step="0.01" min="0" name="altri_costi_previsti" value="{{ '%.2f'|format(snapshot.budget.altri_costi_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Note budget</label><textarea class="form-control" name="note" rows="2" {% if not can_manage %}disabled{% endif %}>{{ snapshot.budget.note }}</textarea></div>
+          <div class="form-group"><label class="form-label">{{ t('Materiali previsti', 'Matériaux prévus') }}</label><input class="form-control" type="number" step="0.01" min="0" name="materiali_previsti" value="{{ '%.2f'|format(snapshot.budget.materiali_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Manodopera prevista', "Main-d'œuvre prévue") }}</label><input class="form-control" type="number" step="0.01" min="0" name="manodopera_prevista" value="{{ '%.2f'|format(snapshot.budget.manodopera_prevista) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Trasporti previsti', 'Transports prévus') }}</label><input class="form-control" type="number" step="0.01" min="0" name="trasporti_previsti" value="{{ '%.2f'|format(snapshot.budget.trasporti_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Mezzi previsti', 'Véhicules prévus') }}</label><input class="form-control" type="number" step="0.01" min="0" name="mezzi_previsti" value="{{ '%.2f'|format(snapshot.budget.mezzi_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Attrezzature previste', 'Équipements prévus') }}</label><input class="form-control" type="number" step="0.01" min="0" name="attrezzature_previste" value="{{ '%.2f'|format(snapshot.budget.attrezzature_previste) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Altri costi previsti', 'Autres coûts prévus') }}</label><input class="form-control" type="number" step="0.01" min="0" name="altri_costi_previsti" value="{{ '%.2f'|format(snapshot.budget.altri_costi_previsti) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Note budget', 'Notes budget') }}</label><textarea class="form-control" name="note" rows="2" {% if not can_manage %}disabled{% endif %}>{{ snapshot.budget.note }}</textarea></div>
           <div class="table-actions">
-            <button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>Salva budget</button>
+            <button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>{{ t('Salva budget', 'Enregistrer le budget') }}</button>
           </div>
         </form>
         {% if can_manage and snapshot.budget.exists %}
-          <form method="post" action="{{ url_for('manager_site_economics_budget_delete', site_id=site.id) }}" style="margin-top:.75rem;" onsubmit="return confirm('Confermi eliminazione budget?');">
+          <form method="post" action="{{ url_for('manager_site_economics_budget_delete', site_id=site.id) }}" style="margin-top:.75rem;" onsubmit="return confirm({{ t('Confermi eliminazione budget?', 'Confirmer la suppression du budget ?')|tojson }});">
             <input type="hidden" name="timeframe" value="{{ timeframe }}">
             <input type="hidden" name="start_date" value="{{ filters.start_date }}">
             <input type="hidden" name="end_date" value="{{ filters.end_date }}">
-            <button class="btn btn-danger btn-sm" type="submit">Elimina budget</button>
+            <button class="btn btn-danger btn-sm" type="submit">{{ t('Elimina budget', 'Supprimer le budget') }}</button>
           </form>
         {% endif %}
       </div>
     </section>
     <section class="card">
-      <div class="card-header"><div class="card-title">⚙️ Configurazione costi automatici</div></div>
+      <div class="card-header"><div class="card-title">⚙️ {{ t('Configurazione costi automatici', 'Configuration des coûts automatiques') }}</div></div>
       <div class="card-body">
         {% if snapshot.warnings %}
           <div class="alert alert-warning" style="margin-bottom:.75rem;">
@@ -241,63 +241,63 @@
           <input type="hidden" name="timeframe" value="{{ timeframe }}">
           <input type="hidden" name="start_date" value="{{ filters.start_date }}">
           <input type="hidden" name="end_date" value="{{ filters.end_date }}">
-          <div class="form-group"><label class="form-label">Costo manodopera per persona/giorno (€)</label><input class="form-control" type="number" step="0.01" min="0" name="costo_manodopera_persona_giorno" value="{{ '%.2f'|format(snapshot.auto_cost_config.costo_manodopera_persona_giorno) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Costo cemento €/m³</label><input class="form-control" type="number" step="0.01" min="0" name="costo_cemento_mc" value="{{ '%.2f'|format(snapshot.auto_cost_config.costo_cemento_mc) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Costo ferro €/ton</label><input class="form-control" type="number" step="0.01" min="0" name="costo_ferro_ton" value="{{ '%.2f'|format(snapshot.auto_cost_config.costo_ferro_ton) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Costo ferro €/kg</label><input class="form-control" type="number" step="0.01" min="0" name="costo_ferro_kg" value="{{ '%.2f'|format(snapshot.auto_cost_config.costo_ferro_kg) }}" {% if not can_manage %}disabled{% endif %}></div>
-          <div class="form-group"><label class="form-label">Altri prezzi unitari (JSON opzionale)</label><textarea class="form-control" name="altri_prezzi_json" rows="3" {% if not can_manage %}disabled{% endif %}>{{ snapshot.auto_cost_config.altri_prezzi|tojson }}</textarea></div>
-          <label class="checkbox-inline"><input type="checkbox" name="manual_material_entries_override_auto" value="1" {% if snapshot.auto_cost_config.manual_material_entries_override_auto %}checked{% endif %} {% if not can_manage %}disabled{% endif %}><span>Movimento manuale materiali sostituisce auto dello stesso giorno</span></label>
-          <div class="table-actions" style="margin-top:.75rem;"><button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>Salva configurazione</button></div>
+          <div class="form-group"><label class="form-label">{{ t('Costo manodopera per persona/giorno (€)', "Coût main-d'œuvre par personne/jour (€)") }}</label><input class="form-control" type="number" step="0.01" min="0" name="costo_manodopera_persona_giorno" value="{{ '%.2f'|format(snapshot.auto_cost_config.costo_manodopera_persona_giorno) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Costo cemento €/m³', 'Coût ciment €/m³') }}</label><input class="form-control" type="number" step="0.01" min="0" name="costo_cemento_mc" value="{{ '%.2f'|format(snapshot.auto_cost_config.costo_cemento_mc) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Costo ferro €/ton', 'Coût fer €/tonne') }}</label><input class="form-control" type="number" step="0.01" min="0" name="costo_ferro_ton" value="{{ '%.2f'|format(snapshot.auto_cost_config.costo_ferro_ton) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Costo ferro €/kg', 'Coût fer €/kg') }}</label><input class="form-control" type="number" step="0.01" min="0" name="costo_ferro_kg" value="{{ '%.2f'|format(snapshot.auto_cost_config.costo_ferro_kg) }}" {% if not can_manage %}disabled{% endif %}></div>
+          <div class="form-group"><label class="form-label">{{ t('Altri prezzi unitari (JSON opzionale)', 'Autres prix unitaires (JSON optionnel)') }}</label><textarea class="form-control" name="altri_prezzi_json" rows="3" {% if not can_manage %}disabled{% endif %}>{{ snapshot.auto_cost_config.altri_prezzi|tojson }}</textarea></div>
+          <label class="checkbox-inline"><input type="checkbox" name="manual_material_entries_override_auto" value="1" {% if snapshot.auto_cost_config.manual_material_entries_override_auto %}checked{% endif %} {% if not can_manage %}disabled{% endif %}><span>{{ t('Movimento manuale materiali sostituisce auto dello stesso giorno', 'Le mouvement manuel de matériaux remplace celui automatique du même jour') }}</span></label>
+          <div class="table-actions" style="margin-top:.75rem;"><button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>{{ t('Salva configurazione', 'Enregistrer la configuration') }}</button></div>
         </form>
-        <small>Creato da {{ snapshot.auto_cost_config.created_by_name }} il {{ snapshot.auto_cost_config.created_at.strftime('%d/%m/%Y %H:%M') if snapshot.auto_cost_config.created_at else '—' }} · Ultima modifica: {{ snapshot.auto_cost_config.updated_by_name }} {{ snapshot.auto_cost_config.updated_at.strftime('%d/%m/%Y %H:%M') if snapshot.auto_cost_config.updated_at else '—' }}</small>
+        <small>{{ t('Creato da', 'Créé par') }} {{ snapshot.auto_cost_config.created_by_name }} {{ t('il', 'le') }} {{ snapshot.auto_cost_config.created_at.strftime('%d/%m/%Y %H:%M') if snapshot.auto_cost_config.created_at else '—' }} · {{ t('Ultima modifica:', 'Dernière modification :') }} {{ snapshot.auto_cost_config.updated_by_name }} {{ snapshot.auto_cost_config.updated_at.strftime('%d/%m/%Y %H:%M') if snapshot.auto_cost_config.updated_at else '—' }}</small>
       </div>
     </section>
     <section class="card">
-      <div class="card-header"><div class="card-title">📦 Serie dati pronta per grafico JS</div></div>
+      <div class="card-header"><div class="card-title">📦 {{ t('Serie dati pronta per grafico JS', 'Série de données prête pour le graphique JS') }}</div></div>
       <div class="card-body">
-        <p class="text-muted">Endpoint backend: <code>{{ url_for('manager_site_economics_trend_data', site_id=site.id) }}</code></p>
+        <p class="text-muted">{{ t('Endpoint backend:', 'Endpoint backend :') }} <code>{{ url_for('manager_site_economics_trend_data', site_id=site.id) }}</code></p>
         <pre class="economics-json-preview" id="trend-json-preview"></pre>
       </div>
     </section>
     <section class="card">
-      <div class="card-header"><div class="card-title">➕ Nuova registrazione economica</div></div>
+      <div class="card-header"><div class="card-title">➕ {{ t('Nuova registrazione economica', 'Nouvel enregistrement économique') }}</div></div>
       <div class="card-body">
         {% if not can_manage %}
-          <p class="text-muted">Hai solo permessi in lettura: creazione/modifica/eliminazione non consentite.</p>
+          <p class="text-muted">{{ t('Hai solo permessi in lettura: creazione/modifica/eliminazione non consentite.', 'Vous avez seulement des droits en lecture : création/modification/suppression non autorisées.') }}</p>
         {% endif %}
         <form method="post" action="{{ url_for('manager_site_economics_entry_create', site_id=site.id) }}">
           <input type="hidden" name="timeframe" value="{{ timeframe }}">
           <input type="hidden" name="start_date" value="{{ filters.start_date }}">
           <input type="hidden" name="end_date" value="{{ filters.end_date }}">
-          <div class="form-group"><label class="form-label">Data</label><input class="form-control" type="date" name="entry_date" value="{{ filters.end_date }}" required></div>
-          <div class="form-group"><label class="form-label">Tipo</label>
+          <div class="form-group"><label class="form-label">{{ t('Data', 'Date') }}</label><input class="form-control" type="date" name="entry_date" value="{{ filters.end_date }}" required></div>
+          <div class="form-group"><label class="form-label">{{ t('Tipo', 'Type') }}</label>
             <select class="form-select" name="entry_type">
               {% if can_view_site_margin %}
-                <option value="revenue">Ricavo</option>
+                <option value="revenue">{{ t('Ricavo', 'Recette') }}</option>
               {% endif %}
-              <option value="cost">Costo</option>
+              <option value="cost">{{ t('Costo', 'Coût') }}</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">Categoria</label>
+          <div class="form-group"><label class="form-label">{{ t('Categoria', 'Catégorie') }}</label>
             <select class="form-select" name="category">
               {% if can_view_site_margin %}
-                <optgroup label="Ricavi">
+                <optgroup label="{{ t('Ricavi', 'Recettes') }}">
                   {% for item in revenue_category_options %}
                     <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
                   {% endfor %}
                 </optgroup>
               {% endif %}
-              <optgroup label="Costi">
+              <optgroup label="{{ t('Costi', 'Coûts') }}">
                 {% for item in cost_category_options %}
                   <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
                 {% endfor %}
               </optgroup>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">Importo</label><input class="form-control" type="number" step="0.01" min="0" name="amount" required></div>
-          <div class="form-group"><label class="form-label">Descrizione</label><input class="form-control" type="text" name="description"></div>
-          <div class="form-group"><label class="form-label">Note</label><textarea class="form-control" name="notes" rows="3"></textarea></div>
-          <button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>Salva movimento</button>
+          <div class="form-group"><label class="form-label">{{ t('Importo', 'Montant') }}</label><input class="form-control" type="number" step="0.01" min="0" name="amount" required></div>
+          <div class="form-group"><label class="form-label">{{ t('Descrizione', 'Description') }}</label><input class="form-control" type="text" name="description"></div>
+          <div class="form-group"><label class="form-label">{{ t('Note', 'Notes') }}</label><textarea class="form-control" name="notes" rows="3"></textarea></div>
+          <button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>{{ t('Salva movimento', 'Enregistrer le mouvement') }}</button>
         </form>
       </div>
     </section>
@@ -306,38 +306,38 @@
 
 <div class="economics-layout" style="margin-top: 1rem;">
   <section class="card" id="labor-costs">
-    <div class="card-header"><div class="card-title">👷 Giornata cantiere / costo manodopera</div></div>
+    <div class="card-header"><div class="card-title">👷 {{ t('Giornata cantiere / costo manodopera', "Journée chantier / coût main-d'œuvre") }}</div></div>
     <div class="card-body">
       <form method="post" action="{{ url_for('manager_site_economics_labor_create', site_id=site.id) }}" class="economics-filter-grid" style="margin-bottom: 1rem;">
         <input type="hidden" name="timeframe" value="{{ timeframe }}">
         <input type="hidden" name="start_date" value="{{ filters.start_date }}">
         <input type="hidden" name="end_date" value="{{ filters.end_date }}">
-        <div><label class="form-label">Data</label><input class="form-control" type="date" id="labor-work-date" name="work_date" value="{{ filters.end_date }}" required></div>
-        <div><label class="form-label">Numero persone</label><input class="form-control" type="number" name="worker_count" min="0" step="1" required></div>
-        <div><label class="form-label">Costo forfettario / persona</label><input class="form-control" type="number" name="unit_cost" min="0" step="0.01" required></div>
-        <div><label class="form-label">Note</label><input class="form-control" type="text" name="notes"></div>
+        <div><label class="form-label">{{ t('Data', 'Date') }}</label><input class="form-control" type="date" id="labor-work-date" name="work_date" value="{{ filters.end_date }}" required></div>
+        <div><label class="form-label">{{ t('Numero persone', 'Nombre de personnes') }}</label><input class="form-control" type="number" name="worker_count" min="0" step="1" required></div>
+        <div><label class="form-label">{{ t('Costo forfettario / persona', 'Coût forfaitaire / personne') }}</label><input class="form-control" type="number" name="unit_cost" min="0" step="0.01" required></div>
+        <div><label class="form-label">{{ t('Note', 'Notes') }}</label><input class="form-control" type="text" name="notes"></div>
         <div class="economics-weekend-panel" id="labor-weekend-panel">
-          <p class="economics-weekend-badge" id="labor-day-type">Giornata feriale: inclusa automaticamente nei costi e nelle statistiche.</p>
+          <p class="economics-weekend-badge" id="labor-day-type">{{ t('Giornata feriale: inclusa automaticamente nei costi e nelle statistiche.', 'Jour ouvré : inclus automatiquement dans les coûts et les statistiques.') }}</p>
           <label class="checkbox-inline" id="labor-active-toggle-wrapper" hidden>
             <input type="checkbox" id="labor-is-active" name="is_active" value="1">
-            <span>Considera giornata lavorativa</span>
+            <span>{{ t('Considera giornata lavorativa', 'Considérer comme jour travaillé') }}</span>
           </label>
-          <p class="text-muted" id="labor-weekend-help">Sabato e domenica restano esclusi finché non attivi manualmente la giornata lavorativa.</p>
+          <p class="text-muted" id="labor-weekend-help">{{ t('Sabato e domenica restano esclusi finché non attivi manualmente la giornata lavorativa.', "Samedi et dimanche restent exclus tant que vous n'activez pas manuellement le jour travaillé.") }}</p>
         </div>
-        <div class="economics-filter-actions"><button class="btn btn-primary" type="submit">Salva costo manodopera</button></div>
+        <div class="economics-filter-actions"><button class="btn btn-primary" type="submit">{{ t('Salva costo manodopera', "Enregistrer le coût main-d'œuvre") }}</button></div>
       </form>
-      <p class="text-muted" style="margin-bottom: 1rem;">Formula automatica: <strong>numero persone × costo forfettario per persona = costo totale</strong>. Se la data è sabato o domenica, il record nasce escluso dai calcoli finché non spunti il flag.</p>
+      <p class="text-muted" style="margin-bottom: 1rem;">{{ t('Formula automatica:', 'Formule automatique :') }} <strong>{{ t('numero persone × costo forfettario per persona = costo totale', 'nombre de personnes × coût forfaitaire par personne = coût total') }}</strong>. {{ t('Se la data è sabato o domenica, il record nasce escluso dai calcoli finché non spunti il flag.', "Si la date est un samedi ou un dimanche, l'enregistrement est exclu des calculs tant que vous ne cochez pas la case.") }}</p>
       <div class="table-wrapper">
         <table class="table">
           <thead>
             <tr>
-              <th>Data</th>
-              <th>Tipo giorno</th>
-              <th>Stato</th>
-              <th>Persone</th>
-              <th>Costo / persona</th>
-              <th>Costo giornata</th>
-              <th>Origine</th>
+              <th>{{ t('Data', 'Date') }}</th>
+              <th>{{ t('Tipo giorno', 'Type de jour') }}</th>
+              <th>{{ t('Stato', 'Statut') }}</th>
+              <th>{{ t('Persone', 'Personnes') }}</th>
+              <th>{{ t('Costo / persona', 'Coût / personne') }}</th>
+              <th>{{ t('Costo giornata', 'Coût journée') }}</th>
+              <th>{{ t('Origine', 'Origine') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -346,27 +346,27 @@
                 <td>{{ row.work_date.strftime('%d/%m/%Y') }}</td>
                 <td>
                   {% if row.day_type == 'sabato' %}
-                    <span class="badge badge-warning">Sabato</span>
+                    <span class="badge badge-warning">{{ t('Sabato', 'Samedi') }}</span>
                   {% elif row.day_type == 'domenica' %}
-                    <span class="badge badge-warning">Domenica</span>
+                    <span class="badge badge-warning">{{ t('Domenica', 'Dimanche') }}</span>
                   {% else %}
-                    <span class="badge badge-success">Feriale</span>
+                    <span class="badge badge-success">{{ t('Feriale', 'Ouvré') }}</span>
                   {% endif %}
                 </td>
                 <td>
                   {% if row.is_active %}
-                    <span class="badge badge-success">Inclusa</span>
+                    <span class="badge badge-success">{{ t('Inclusa', 'Incluse') }}</span>
                   {% else %}
-                    <span class="badge">Esclusa</span>
+                    <span class="badge">{{ t('Esclusa', 'Exclue') }}</span>
                   {% endif %}
                 </td>
                 <td>{{ row.worker_count }}</td>
                 <td>€ {{ '%.2f'|format(row.unit_cost) }}</td>
                 <td>€ {{ '%.2f'|format(row.total_cost) }}</td>
-                <td>{{ 'Presenze' if row.source == 'presenze' else 'Override manuale' }}</td>
+                <td>{{ t('Presenze', 'Présences') if row.source == 'presenze' else t('Override manuale', 'Override manuel') }}</td>
               </tr>
             {% else %}
-              <tr><td colspan="7" class="table-empty">Nessun costo manodopera registrato nel periodo.</td></tr>
+              <tr><td colspan="7" class="table-empty">{{ t('Nessun costo manodopera registrato nel periodo.', "Aucun coût de main-d'œuvre enregistré sur la période.") }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -375,12 +375,12 @@
   </section>
 
   <section class="card">
-    <div class="card-header"><div class="card-title">🧱 Costi materiali automatici da fiches</div></div>
+    <div class="card-header"><div class="card-title">🧱 {{ t('Costi materiali automatici da fiches', 'Coûts matériaux automatiques depuis fiches') }}</div></div>
     <div class="card-body">
-      <p class="text-muted" style="margin-bottom: .75rem;">Formula: quantità fiche × prezzo unitario configurato per materiale.</p>
+      <p class="text-muted" style="margin-bottom: .75rem;">{{ t('Formula: quantità fiche × prezzo unitario configurato per materiale.', 'Formule : quantité fiche × prix unitaire configuré par matériau.') }}</p>
       <div class="table-wrapper">
         <table class="table">
-          <thead><tr><th>Data</th><th>Materiale</th><th>Quantità</th><th>Prezzo unitario</th><th>Costo</th><th>Origine</th></tr></thead>
+          <thead><tr><th>{{ t('Data', 'Date') }}</th><th>{{ t('Materiale', 'Matériau') }}</th><th>{{ t('Quantità', 'Quantité') }}</th><th>{{ t('Prezzo unitario', 'Prix unitaire') }}</th><th>{{ t('Costo', 'Coût') }}</th><th>{{ t('Origine', 'Origine') }}</th></tr></thead>
           <tbody>
             {% for row in snapshot.material_auto_entries %}
               <tr>
@@ -392,7 +392,7 @@
                 <td>Fiche #{{ row.fiche_id }}</td>
               </tr>
             {% else %}
-              <tr><td colspan="6" class="table-empty">Nessun costo materiali automatico nel periodo.</td></tr>
+              <tr><td colspan="6" class="table-empty">{{ t('Nessun costo materiali automatico nel periodo.', 'Aucun coût matériaux automatique sur la période.') }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -401,35 +401,35 @@
   </section>
 
   <section class="card">
-    <div class="card-header"><div class="card-title">🗂️ Movimenti economici</div></div>
+    <div class="card-header"><div class="card-title">🗂️ {{ t('Movimenti economici', 'Mouvements économiques') }}</div></div>
     <div class="card-body">
       <div class="table-wrapper">
         <table class="table">
           <thead>
             <tr>
-              <th>Data</th>
-              <th>Tipo</th>
-              <th>Categoria</th>
-              <th>Importo</th>
-              <th>Descrizione</th>
-              <th>Note</th>
-              <th>Tracking</th>
-              <th>Azioni</th>
+              <th>{{ t('Data', 'Date') }}</th>
+              <th>{{ t('Tipo', 'Type') }}</th>
+              <th>{{ t('Categoria', 'Catégorie') }}</th>
+              <th>{{ t('Importo', 'Montant') }}</th>
+              <th>{{ t('Descrizione', 'Description') }}</th>
+              <th>{{ t('Note', 'Notes') }}</th>
+              <th>{{ t('Tracking', 'Suivi') }}</th>
+              <th>{{ t('Azioni', 'Actions') }}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in snapshot.economic_entries %}
               <tr>
                 <td>{{ row.entry_date.strftime('%d/%m/%Y') }}</td>
-                <td>{{ 'Ricavo' if row.entry_type == 'revenue' else 'Costo' }}</td>
+                <td>{{ t('Ricavo', 'Recette') if row.entry_type == 'revenue' else t('Costo', 'Coût') }}</td>
                 <td>{{ row.category_label }}</td>
                 <td>€ {{ '%.2f'|format(row.amount) }}</td>
                 <td>{{ row.description or '—' }}</td>
                 <td>{{ row.notes or '—' }}</td>
                 <td>
                   <small>
-                    Creato da: {{ row.created_by_name }} - {{ row.created_at.strftime('%d/%m/%Y %H:%M') if row.created_at else '—' }}<br>
-                    Modificato da: {{ row.updated_by_name or row.created_by_name }} - {{ row.updated_at.strftime('%d/%m/%Y %H:%M') if row.updated_at else '—' }}
+                    {{ t('Creato da:', 'Créé par :') }} {{ row.created_by_name }} - {{ row.created_at.strftime('%d/%m/%Y %H:%M') if row.created_at else '—' }}<br>
+                    {{ t('Modificato da:', 'Modifié par :') }} {{ row.updated_by_name or row.created_by_name }} - {{ row.updated_at.strftime('%d/%m/%Y %H:%M') if row.updated_at else '—' }}
                   </small>
                 </td>
                 <td>
@@ -445,56 +445,56 @@
                         data-amount="{{ '%.2f'|format(row.amount) }}"
                         data-description="{{ row.description }}"
                         data-notes="{{ row.notes }}"
-                      >Modifica</button>
-                      <button class="btn btn-danger btn-sm js-entry-delete-btn" type="button" data-entry-id="{{ row.id }}">Elimina</button>
+                      >{{ t('Modifica', 'Modifier') }}</button>
+                      <button class="btn btn-danger btn-sm js-entry-delete-btn" type="button" data-entry-id="{{ row.id }}">{{ t('Elimina', 'Supprimer') }}</button>
                     </div>
                   {% else %}
-                    <span class="text-muted">Solo lettura</span>
+                    <span class="text-muted">{{ t('Solo lettura', 'Lecture seule') }}</span>
                   {% endif %}
                 </td>
               </tr>
             {% else %}
-              <tr><td colspan="8" class="table-empty">Nessun movimento economico registrato.</td></tr>
+              <tr><td colspan="8" class="table-empty">{{ t('Nessun movimento economico registrato.', 'Aucun mouvement économique enregistré.') }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
 
       <div class="card-body" id="entry-edit-panel" hidden>
-        <h3 style="margin-top:0;">Modifica movimento economico</h3>
+        <h3 style="margin-top:0;">{{ t('Modifica movimento economico', 'Modifier le mouvement économique') }}</h3>
         <form id="entry-edit-form">
           <input type="hidden" name="entry_id" id="entry-edit-id">
           <div class="economics-filter-grid">
-            <div><label class="form-label">Data</label><input class="form-control" type="date" name="entry_date" id="entry-edit-date" required></div>
+            <div><label class="form-label">{{ t('Data', 'Date') }}</label><input class="form-control" type="date" name="entry_date" id="entry-edit-date" required></div>
             <div>
-              <label class="form-label">Tipo</label>
+              <label class="form-label">{{ t('Tipo', 'Type') }}</label>
               <select class="form-select" name="entry_type" id="entry-edit-type" required>
-                <option value="revenue">Ricavo</option>
-                <option value="cost">Costo</option>
+                <option value="revenue">{{ t('Ricavo', 'Recette') }}</option>
+                <option value="cost">{{ t('Costo', 'Coût') }}</option>
               </select>
             </div>
             <div>
-              <label class="form-label">Categoria</label>
+              <label class="form-label">{{ t('Categoria', 'Catégorie') }}</label>
               <select class="form-select" name="category" id="entry-edit-category" required>
-                <optgroup label="Ricavi">
+                <optgroup label="{{ t('Ricavi', 'Recettes') }}">
                   {% for item in revenue_category_options %}
                     <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
                   {% endfor %}
                 </optgroup>
-                <optgroup label="Costi">
+                <optgroup label="{{ t('Costi', 'Coûts') }}">
                   {% for item in cost_category_options %}
                     <option value="{{ item.value }}">{{ category_labels[item.value] }}</option>
                   {% endfor %}
                 </optgroup>
               </select>
             </div>
-            <div><label class="form-label">Importo</label><input class="form-control" type="number" step="0.01" min="0" name="amount" id="entry-edit-amount" required></div>
-            <div><label class="form-label">Descrizione</label><input class="form-control" type="text" name="description" id="entry-edit-description"></div>
-            <div><label class="form-label">Note</label><input class="form-control" type="text" name="notes" id="entry-edit-notes"></div>
+            <div><label class="form-label">{{ t('Importo', 'Montant') }}</label><input class="form-control" type="number" step="0.01" min="0" name="amount" id="entry-edit-amount" required></div>
+            <div><label class="form-label">{{ t('Descrizione', 'Description') }}</label><input class="form-control" type="text" name="description" id="entry-edit-description"></div>
+            <div><label class="form-label">{{ t('Note', 'Notes') }}</label><input class="form-control" type="text" name="notes" id="entry-edit-notes"></div>
           </div>
           <div class="table-actions" style="margin-top:.75rem;">
-            <button class="btn btn-primary" type="submit">Salva modifica</button>
-            <button class="btn btn-secondary" type="button" id="entry-edit-cancel">Annulla</button>
+            <button class="btn btn-primary" type="submit">{{ t('Salva modifica', 'Enregistrer la modification') }}</button>
+            <button class="btn btn-secondary" type="button" id="entry-edit-cancel">{{ t('Annulla', 'Annuler') }}</button>
           </div>
         </form>
       </div>
@@ -557,14 +557,14 @@
     }
 
     const labels = {
-      weekday: "Giornata feriale: inclusa automaticamente nei costi e nelle statistiche.",
-      saturday: "⚠️ Sabato rilevato: abilita la giornata solo se la squadra lavora davvero.",
-      sunday: "⚠️ Domenica rilevata: abilita la giornata solo se la squadra lavora davvero.",
+      weekday: {{ t('Giornata feriale: inclusa automaticamente nei costi e nelle statistiche.', 'Jour ouvré : inclus automatiquement dans les coûts et les statistiques.')|tojson }},
+      saturday: {{ t('⚠️ Sabato rilevato: abilita la giornata solo se la squadra lavora davvero.', "⚠️ Samedi détecté : activez le jour seulement si l'équipe travaille vraiment.")|tojson }},
+      sunday: {{ t('⚠️ Domenica rilevata: abilita la giornata solo se la squadra lavora davvero.', "⚠️ Dimanche détecté : activez le jour seulement si l'équipe travaille vraiment.")|tojson }},
     };
 
     const helpLabels = {
-      weekday: "Dal lunedì al venerdì la giornata viene conteggiata automaticamente.",
-      weekend: "Weekend escluso di default: attiva il flag solo se vuoi includere il costo nei report e nel margine.",
+      weekday: {{ t('Dal lunedì al venerdì la giornata viene conteggiata automaticamente.', 'Du lundi au vendredi, le jour est comptabilisé automatiquement.')|tojson }},
+      weekend: {{ t('Weekend escluso di default: attiva il flag solo se vuoi includere il costo nei report e nel margine.', 'Week-end exclu par défaut : activez la case seulement si vous voulez inclure le coût dans les rapports et la marge.')|tojson }},
     };
 
     function updateLaborDayState() {
@@ -639,11 +639,11 @@
           credentials: "same-origin",
         });
         if (!response.ok) {
-          throw new Error("Salvataggio non riuscito");
+          throw new Error({{ t('Salvataggio non riuscito', "Échec de l'enregistrement")|tojson }});
         }
         window.location.reload();
       } catch (error) {
-        alert("Impossibile salvare il movimento. Controlla i dati e riprova.");
+        alert({{ t('Impossibile salvare il movimento. Controlla i dati e riprova.', 'Impossible d\'enregistrer le mouvement. Vérifiez les données et réessayez.')|tojson }});
       }
     });
 
@@ -653,7 +653,7 @@
         if (!entryId) {
           return;
         }
-        const confirmed = window.confirm("Confermi l'eliminazione del movimento economico?");
+        const confirmed = window.confirm({{ t("Confermi l'eliminazione del movimento economico?", 'Confirmer la suppression du mouvement économique ?')|tojson }});
         if (!confirmed) {
           return;
         }
@@ -663,11 +663,11 @@
             credentials: "same-origin",
           });
           if (!response.ok) {
-            throw new Error("Eliminazione non riuscita");
+            throw new Error({{ t('Eliminazione non riuscita', 'Échec de la suppression')|tojson }});
           }
           window.location.reload();
         } catch (error) {
-          alert("Impossibile eliminare il movimento. Riprova.");
+          alert({{ t('Impossibile eliminare il movimento. Riprova.', 'Impossible de supprimer le mouvement. Réessayez.')|tojson }});
         }
       });
     });
