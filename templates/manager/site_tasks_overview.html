@@ -31,6 +31,31 @@
     </div>
 </div>
 
+{# ── Riepilogo intuitivo ── #}
+<div class="note-summary-grid mb-3">
+    <div class="note-summary-card{% if total_open|default(0) > 0 %} note-summary-card--attention{% endif %}">
+        <div class="note-summary-num">{{ total_open|default(0) }}</div>
+        <div class="note-summary-lbl">{% if lang == 'fr' %}Activités ouvertes{% else %}Attività aperte{% endif %}</div>
+    </div>
+    <div class="note-summary-card">
+        <div class="note-summary-num">{{ sites_with_open|default(0) }}</div>
+        <div class="note-summary-lbl">{% if lang == 'fr' %}Chantiers concernés{% else %}Cantieri coinvolti{% endif %}</div>
+    </div>
+    <div class="note-summary-card{% if high_priority_open|default(0) > 0 %} note-summary-card--urgent{% endif %}">
+        <div class="note-summary-num">{{ high_priority_open|default(0) }}</div>
+        <div class="note-summary-lbl">🔴 {% if lang == 'fr' %}Priorité haute{% else %}Priorità alta{% endif %}</div>
+    </div>
+</div>
+<style>
+.note-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;}
+.note-summary-card{background:rgba(148,163,184,.10);border:1px solid rgba(148,163,184,.25);border-radius:14px;padding:.9rem 1rem;text-align:center;}
+.note-summary-card--attention{border-color:#3b82f6;background:rgba(59,130,246,.12);}
+.note-summary-card--urgent{border-color:#ef4444;background:rgba(239,68,68,.12);}
+.note-summary-num{font-size:1.8rem;font-weight:800;line-height:1;}
+.note-summary-lbl{font-size:.8rem;color:#94a3b8;margin-top:.35rem;}
+@media(max-width:640px){.note-summary-grid{grid-template-columns:1fr;}}
+</style>
+
 <div
     id="new-note-feedback"
     class="alert alert-success mb-3"
@@ -91,7 +116,7 @@
 {% for site in active_sites %}
     {% set site_tasks = tasks_by_site.get(site.id, {'open': []}) %}
     {% set open_count = open_counts_by_site.get(site.id, 0) %}
-    <details class="card mb-3 site-accordion" id="site-{{ site.id }}" data-site-id="{{ site.id }}">
+    <details class="card mb-3 site-accordion" id="site-{{ site.id }}" data-site-id="{{ site.id }}"{% if open_count > 0 %} open{% endif %}>
         <summary class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap site-accordion__summary">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="site-accordion__chevron" aria-hidden="true">▸</span>

@@ -6063,6 +6063,7 @@ def manager_site_tasks_overview(
         tasks_by_site: dict[int, dict[str, list[SiteTask]]] = {site.id: {"open": []} for site in sites}
         open_counts_by_site: dict[int, int] = {site.id: 0 for site in sites}
         recent_completed_tasks: list[SiteTask] = []
+        high_priority_open = 0
 
         if site_ids:
             open_tasks = (
@@ -6098,6 +6099,11 @@ def manager_site_tasks_overview(
                 .all()
             )
             open_counts_by_site = {site_id: int(count or 0) for site_id, count in open_count_rows}
+            for site in sites:
+                open_counts_by_site.setdefault(site.id, 0)
+            high_priority_open = sum(
+                1 for t in open_tasks if t.priority == SiteTaskPriorityEnum.alta
+            )
             recent_completed_tasks = (
                 db.query(SiteTask)
                 .options(
@@ -6124,6 +6130,14 @@ def manager_site_tasks_overview(
             .order_by(User.full_name, User.email)
             .all()
         )
+
+        # Riepilogo + ordina i cantieri con attività aperte per primi (attenzione prima)
+        total_open = sum(open_counts_by_site.values())
+        sites_with_open = sum(1 for c in open_counts_by_site.values() if c > 0)
+        sites = sorted(
+            sites,
+            key=lambda s: (open_counts_by_site.get(s.id, 0) == 0, s.name or ""),
+        )
     finally:
         db.close()
 
@@ -6140,6 +6154,9 @@ def manager_site_tasks_overview(
             manager_users=manager_users,
             site_task_status_values=SITE_TASK_STATUSES,
             site_task_priority_values=SITE_TASK_PRIORITIES,
+            total_open=total_open,
+            sites_with_open=sites_with_open,
+            high_priority_open=high_priority_open,
         ),
     )
 
