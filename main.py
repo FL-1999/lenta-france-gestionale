@@ -2272,22 +2272,35 @@ def _build_production_dashboard(db) -> dict:
     for f in fiches:
         fiches_by_site.setdefault(f.site_id, []).append(f)
 
+    tipo_paratia = {"paratia", "paroi", "parois", "panneau"}
+
+    def _site_ml(site_fiches):
+        """Metri lineari = somma delle larghezze dei pannelli (paratie di produzione)."""
+        return round(sum(
+            (f.larghezza_pannello or 0.0)
+            for f in site_fiches
+            if f.fiche_type == FicheTypeEnum.produzione
+            and (f.tipologia_scavo or "").lower() in tipo_paratia
+        ), 2)
+
     per_site = []
     tot_paratie_done = tot_paratie_target = 0
     tot_pali_done = tot_pali_target = 0
     tot_ml = 0.0
     tot_cls = 0.0
     for s in active_sites:
-        prod = compute_site_production(s, fiches_by_site.get(s.id, []))
+        s_fiches = fiches_by_site.get(s.id, [])
+        prod = compute_site_production(s, s_fiches)
         par = prod["paratie"]
         pal = prod["pali"]
+        site_ml = _site_ml(s_fiches)
         tot_paratie_done += par["count"]
         tot_paratie_target += par["target"] or 0
         tot_pali_done += pal["count"]
         tot_pali_target += pal["target"] or 0
-        tot_ml += (par.get("profondita_totale") or 0) + (pal.get("profondita_totale") or 0)
+        tot_ml += site_ml
         tot_cls += prod["totale"]["volume_cls_reale"] or 0
-        per_site.append({"site": s, "prod": prod})
+        per_site.append({"site": s, "prod": prod, "ml": site_ml})
 
     def _pct(done, total):
         return min(100, round(done / total * 100)) if total else 0
@@ -2302,7 +2315,7 @@ def _build_production_dashboard(db) -> dict:
             db.query(
                 func.count(Fiche.id),
                 func.coalesce(func.sum(Fiche.metri_cubi_gettati), 0.0),
-                func.coalesce(func.sum(Fiche.profondita_totale), 0.0),
+                func.coalesce(func.sum(Fiche.larghezza_pannello), 0.0),
             )
             .filter(
                 Fiche.fiche_type == FicheTypeEnum.produzione,

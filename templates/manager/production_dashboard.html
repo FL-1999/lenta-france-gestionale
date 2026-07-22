@@ -89,7 +89,7 @@
                 <tbody>
                     {% for row in per_site %}
                         {% set p = row.prod %}
-                        {% set ml = (p.paratie.profondita_totale or 0) + (p.pali.profondita_totale or 0) %}
+                        {% set ml = row.ml %}
                         <tr>
                             <td><a href="{{ url_for('manager_site_detail', site_id=row.site.id) }}">{{ row.site.name }}</a></td>
                             <td>{{ p.paratie.count }}{% if p.paratie.target %} / {{ p.paratie.target }} ({{ p.paratie.avanzamento_pct }}%){% endif %}</td>
