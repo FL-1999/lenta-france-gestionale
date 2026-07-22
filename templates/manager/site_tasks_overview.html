@@ -205,8 +205,12 @@
             </div>
             <form id="new-note-form" method="post" action="{{ url_for('manager_site_task_create_from_overview') }}">
                 <div class="row g-2">
-                    <div class="col-12">
-                        <label class="form-label">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</label>
+                    <div class="col-md-7">
+                        <label class="form-label">{% if lang == 'fr' %}Titre{% else %}Titolo{% endif %} <span class="req-star">*</span></label>
+                        <input type="text" name="title" class="form-control" maxlength="255" required data-note-title placeholder="{% if lang == 'fr' %}Ex. Contrôler le tubage panneau 3{% else %}Es. Controllare tubaggio pannello 3{% endif %}">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %} <span class="req-star">*</span></label>
                         <select name="site_id" class="form-control" required>
                             <option value="">{% if lang == 'fr' %}Sélectionner un chantier{% else %}Seleziona un cantiere{% endif %}</option>
                             {% for site in active_sites %}
@@ -214,25 +218,14 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">{% if lang == 'fr' %}Titre{% else %}Titolo{% endif %}</label>
-                        <input type="text" name="title" class="form-control" maxlength="255" required>
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-12">
                         <label class="form-label">{% if lang == 'fr' %}Priorité{% else %}Priorità{% endif %}</label>
-                        <select name="priority_value" class="form-control">
-                            {% for value in site_task_priority_values %}
-                                <option value="{{ value.value }}" {% if value.value == 'media' %}selected{% endif %}>{{ value.value|replace('_', ' ')|title }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</label>
-                        <select name="status_value" class="form-control">
-                            {% for value in site_task_status_values %}
-                                <option value="{{ value.value }}" {% if value.value == 'da_fare' %}selected{% endif %}>{{ value.value|replace('_', ' ')|title }}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="hidden" name="priority_value" value="media" data-priority-input>
+                        <div class="priority-pills" data-priority-pills>
+                            <button type="button" class="priority-pill priority-pill--bassa" data-priority="bassa">🟢 {% if lang == 'fr' %}Basse{% else %}Bassa{% endif %}</button>
+                            <button type="button" class="priority-pill priority-pill--media is-active" data-priority="media">🟡 {% if lang == 'fr' %}Moyenne{% else %}Media{% endif %}</button>
+                            <button type="button" class="priority-pill priority-pill--alta" data-priority="alta">🔴 {% if lang == 'fr' %}Haute{% else %}Alta{% endif %}</button>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</label>
@@ -245,8 +238,14 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">{% if lang == 'fr' %}Échéance{% else %}Scadenza{% endif %}</label>
-                        <input type="date" name="due_date" class="form-control">
+                        <input type="date" name="due_date" class="form-control" data-due-input>
+                        <div class="quick-due mt-1">
+                            <button type="button" class="quick-due-btn" data-due-offset="0">{% if lang == 'fr' %}Aujourd'hui{% else %}Oggi{% endif %}</button>
+                            <button type="button" class="quick-due-btn" data-due-offset="7">+7 gg</button>
+                            <button type="button" class="quick-due-btn" data-due-offset="30">+30 gg</button>
+                        </div>
                     </div>
+                    <input type="hidden" name="status_value" value="da_fare">
                     <div class="col-12">
                         <label class="form-label">{% if lang == 'fr' %}Description / note{% else %}Descrizione / nota{% endif %}</label>
                         <textarea name="description" class="form-control" rows="3"></textarea>
@@ -265,6 +264,15 @@
 {% block scripts %}
 {{ super() }}
 <style>
+    .req-star { color:#ef4444; }
+    .priority-pills { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .priority-pill { border:1.5px solid rgba(148,163,184,.35); background:transparent; color:inherit; border-radius:999px; padding:.45rem 1rem; font-weight:600; cursor:pointer; }
+    .priority-pill.is-active.priority-pill--bassa { border-color:#22c55e; background:rgba(34,197,94,.18); }
+    .priority-pill.is-active.priority-pill--media { border-color:#eab308; background:rgba(234,179,8,.18); }
+    .priority-pill.is-active.priority-pill--alta  { border-color:#ef4444; background:rgba(239,68,68,.18); }
+    .quick-due { display:flex; gap:.4rem; }
+    .quick-due-btn { border:1px solid rgba(148,163,184,.35); background:transparent; color:#94a3b8; border-radius:8px; padding:.2rem .6rem; font-size:.78rem; cursor:pointer; }
+    .quick-due-btn:hover { color:inherit; border-color:#3b82f6; }
     .site-accordion__summary {
         cursor: pointer;
         list-style: none;
@@ -469,10 +477,29 @@
         modal.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
         document.body.classList.toggle('modal-open', isOpen);
         if (isOpen) {
-            const firstInput = form.querySelector('[name="site_id"]');
-            if (firstInput) firstInput.focus();
+            const titleInput = form.querySelector('[data-note-title]');
+            if (titleInput) setTimeout(() => titleInput.focus(), 50);
         }
     };
+
+    // Pillole priorità
+    const priorityInput = form.querySelector('[data-priority-input]');
+    form.querySelectorAll('[data-priority-pills] .priority-pill').forEach((pill) => {
+        pill.addEventListener('click', () => {
+            form.querySelectorAll('[data-priority-pills] .priority-pill').forEach((p) => p.classList.remove('is-active'));
+            pill.classList.add('is-active');
+            if (priorityInput) priorityInput.value = pill.getAttribute('data-priority');
+        });
+    });
+    // Scadenza rapida
+    const dueInput = form.querySelector('[data-due-input]');
+    form.querySelectorAll('.quick-due-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const d = new Date();
+            d.setDate(d.getDate() + parseInt(btn.getAttribute('data-due-offset'), 10));
+            if (dueInput) dueInput.value = d.toISOString().slice(0, 10);
+        });
+    });
 
     openBtn.addEventListener('click', () => setModalOpen(true));
     closeButtons.forEach((btn) => btn.addEventListener('click', () => setModalOpen(false)));
