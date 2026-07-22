@@ -1,12 +1,12 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
-{% block title %}Dashboard Produzione{% endblock %}
+{% block title %}{{ t('Dashboard Produzione', 'Tableau de production') }}{% endblock %}
 {% block content %}
 <div class="page-header">
     <div class="page-header-main">
-        <p class="page-eyebrow">Direzione</p>
-        <h1 class="page-title">📊 Dashboard Produzione</h1>
-        <p class="page-subtitle">Dati aggregati automaticamente dalle fiches</p>
+        <p class="page-eyebrow">{{ t('Direzione', 'Direction') }}</p>
+        <h1 class="page-title">📊 {{ t('Dashboard Produzione', 'Tableau de production') }}</h1>
+        <p class="page-subtitle">{{ t('Dati aggregati automaticamente dalle fiches', 'Données agrégées automatiquement depuis les fiches') }}</p>
     </div>
     <div class="page-actions">
         <a href="{{ url_for('manager_dashboard') }}" class="btn btn-secondary">← Dashboard</a>
@@ -15,43 +15,43 @@
 
 {# ── KPI principali ── #}
 <section class="card fiche-section">
-    <div class="card-header"><div class="card-title">📌 Indicatori generali</div></div>
+    <div class="card-header"><div class="card-title">📌 {{ t('Indicatori generali', 'Indicateurs généraux') }}</div></div>
     <div class="card-body">
         <div class="dashboard-kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-top">🏗️ Cantieri attivi</div>
+                <div class="kpi-top">🏗️ {{ t('Cantieri attivi', 'Chantiers actifs') }}</div>
                 <div class="kpi-value kpi-value--emphasis"><span class="kpi-number kpi-number--xl">{{ cantieri_attivi }}</span></div>
-                <div class="kpi-sub">su {{ cantieri_totali }} totali</div>
+                <div class="kpi-sub">{{ t('su', 'sur') }} {{ cantieri_totali }} {{ t('totali', 'au total') }}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-top">🧱 Paratie completate</div>
+                <div class="kpi-top">🧱 {{ t('Paratie completate', 'Parois terminées') }}</div>
                 <div class="kpi-value kpi-value--geometry"><span class="kpi-number">{{ paratie_done }}</span>{% if paratie_target %}<span class="unit-badge unit-badge--kpi">/ {{ paratie_target }}</span>{% endif %}</div>
-                <div class="kpi-sub">{% if paratie_target %}Avanzamento {{ paratie_pct }}%{% else %}Nessun totale previsto impostato{% endif %}</div>
+                <div class="kpi-sub">{% if paratie_target %}{{ t('Avanzamento', 'Avancement') }} {{ paratie_pct }}%{% else %}{{ t('Nessun totale previsto impostato', 'Aucun total prévu défini') }}{% endif %}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-top">⚙️ Pali completati</div>
+                <div class="kpi-top">⚙️ {{ t('Pali completati', 'Pieux terminés') }}</div>
                 <div class="kpi-value kpi-value--geometry"><span class="kpi-number">{{ pali_done }}</span>{% if pali_target %}<span class="unit-badge unit-badge--kpi">/ {{ pali_target }}</span>{% endif %}</div>
-                <div class="kpi-sub">{% if pali_target %}Avanzamento {{ pali_pct }}%{% else %}Nessun totale previsto impostato{% endif %}</div>
+                <div class="kpi-sub">{% if pali_target %}{{ t('Avanzamento', 'Avancement') }} {{ pali_pct }}%{% else %}{{ t('Nessun totale previsto impostato', 'Aucun total prévu défini') }}{% endif %}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-top">📏 Metri lineari eseguiti</div>
+                <div class="kpi-top">📏 {{ t('Metri lineari eseguiti', 'Mètres linéaires réalisés') }}</div>
                 <div class="kpi-value kpi-value--geometry"><span class="kpi-number">{{ "%.0f"|format(ml_totali) }}</span><span class="unit-badge unit-badge--kpi">m</span></div>
-                <div class="kpi-sub">Somma profondità fiches</div>
+                <div class="kpi-sub">{{ t('Somma larghezze pannelli', 'Somme des largeurs de panneaux') }}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-top">🪣 m³ calcestruzzo gettati</div>
+                <div class="kpi-top">🪣 {{ t('m³ calcestruzzo gettati', 'm³ de béton coulé') }}</div>
                 <div class="kpi-value kpi-value--geometry"><span class="kpi-number">{{ "%.1f"|format(cls_totali) }}</span><span class="unit-badge unit-badge--kpi">m³</span></div>
-                <div class="kpi-sub">Somma volumi reali</div>
+                <div class="kpi-sub">{{ t('Somma volumi reali', 'Somme des volumes réels') }}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-top">🚜 Mezzi impegnati</div>
+                <div class="kpi-top">🚜 {{ t('Mezzi impegnati', 'Engins engagés') }}</div>
                 <div class="kpi-value kpi-value--emphasis"><span class="kpi-number kpi-number--xl">{{ mezzi_impegnati }}</span></div>
-                <div class="kpi-sub">Assegnazioni attive</div>
+                <div class="kpi-sub">{{ t('Assegnazioni attive', 'Affectations actives') }}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-top">👷 Personale presente oggi</div>
+                <div class="kpi-top">👷 {{ t('Personale presente oggi', 'Personnel présent aujourd\'hui') }}</div>
                 <div class="kpi-value kpi-value--emphasis"><span class="kpi-number kpi-number--xl">{{ personale_oggi }}</span></div>
-                <div class="kpi-sub">Da rapportini odierni</div>
+                <div class="kpi-sub">{{ t('Da rapportini odierni', 'Selon les rapports du jour') }}</div>
             </div>
         </div>
     </div>
@@ -59,17 +59,17 @@
 
 {# ── Produzione nel tempo ── #}
 <section class="card fiche-section">
-    <div class="card-header"><div class="card-title">📈 Produzione</div></div>
+    <div class="card-header"><div class="card-title">📈 {{ t('Produzione', 'Production') }}</div></div>
     <div class="card-body">
         <div class="fiche-strat-table-wrap">
             <table class="data-table">
                 <thead>
-                    <tr><th>Periodo</th><th>Fiches produzione</th><th>Metri lineari</th><th>m³ gettati</th></tr>
+                    <tr><th>{{ t('Periodo', 'Période') }}</th><th>{{ t('Fiches produzione', 'Fiches production') }}</th><th>{{ t('Metri lineari', 'Mètres linéaires') }}</th><th>{{ t('m³ gettati', 'm³ coulé') }}</th></tr>
                 </thead>
                 <tbody>
-                    <tr><td><strong>Oggi</strong></td><td>{{ prod_oggi.fiches }}</td><td>{{ "%.0f"|format(prod_oggi.ml) }} m</td><td>{{ "%.1f"|format(prod_oggi.cls) }} m³</td></tr>
-                    <tr><td><strong>Questa settimana</strong></td><td>{{ prod_settimana.fiches }}</td><td>{{ "%.0f"|format(prod_settimana.ml) }} m</td><td>{{ "%.1f"|format(prod_settimana.cls) }} m³</td></tr>
-                    <tr><td><strong>Questo mese</strong></td><td>{{ prod_mese.fiches }}</td><td>{{ "%.0f"|format(prod_mese.ml) }} m</td><td>{{ "%.1f"|format(prod_mese.cls) }} m³</td></tr>
+                    <tr><td><strong>{{ t('Oggi', "Aujourd'hui") }}</strong></td><td>{{ prod_oggi.fiches }}</td><td>{{ "%.0f"|format(prod_oggi.ml) }} m</td><td>{{ "%.1f"|format(prod_oggi.cls) }} m³</td></tr>
+                    <tr><td><strong>{{ t('Questa settimana', 'Cette semaine') }}</strong></td><td>{{ prod_settimana.fiches }}</td><td>{{ "%.0f"|format(prod_settimana.ml) }} m</td><td>{{ "%.1f"|format(prod_settimana.cls) }} m³</td></tr>
+                    <tr><td><strong>{{ t('Questo mese', 'Ce mois-ci') }}</strong></td><td>{{ prod_mese.fiches }}</td><td>{{ "%.0f"|format(prod_mese.ml) }} m</td><td>{{ "%.1f"|format(prod_mese.cls) }} m³</td></tr>
                 </tbody>
             </table>
         </div>
@@ -78,13 +78,13 @@
 
 {# ── Dettaglio per cantiere ── #}
 <section class="card fiche-section">
-    <div class="card-header"><div class="card-title">🏗️ Avanzamento per cantiere</div></div>
+    <div class="card-header"><div class="card-title">🏗️ {{ t('Avanzamento per cantiere', 'Avancement par chantier') }}</div></div>
     <div class="card-body">
         {% if per_site %}
         <div class="fiche-strat-table-wrap">
             <table class="data-table">
                 <thead>
-                    <tr><th>Cantiere</th><th>Paratie</th><th>Pali</th><th>Metri lineari</th><th>m³ gettati</th></tr>
+                    <tr><th>{{ t('Cantiere', 'Chantier') }}</th><th>{{ t('Paratie', 'Parois') }}</th><th>{{ t('Pali', 'Pieux') }}</th><th>{{ t('Metri lineari', 'Mètres linéaires') }}</th><th>{{ t('m³ gettati', 'm³ coulé') }}</th></tr>
                 </thead>
                 <tbody>
                     {% for row in per_site %}
@@ -102,7 +102,7 @@
             </table>
         </div>
         {% else %}
-        <p class="text-muted">Nessun cantiere attivo con dati di produzione.</p>
+        <p class="text-muted">{{ t('Nessun cantiere attivo con dati di produzione.', 'Aucun chantier actif avec des données de production.') }}</p>
         {% endif %}
     </div>
 </section>

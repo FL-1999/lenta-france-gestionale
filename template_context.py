@@ -227,7 +227,10 @@ def build_template_context(
     template_context.setdefault("request", request)
     template_context.setdefault("user", user)
     template_context.setdefault("has_perm", has_perm)
-    template_context.setdefault("lang", get_lang_from_request(request))
+    _lang = get_lang_from_request(request)
+    template_context.setdefault("lang", _lang)
+    # Helper traduzione compatto: {{ t('italiano', 'français') }}
+    template_context.setdefault("t", lambda it, fr: fr if _lang == "fr" else it)
     template_context.setdefault("format_place_label", format_place_label)
     template_context.setdefault("google_maps_api_key", os.getenv("GOOGLE_MAPS_API_KEY"))
 
