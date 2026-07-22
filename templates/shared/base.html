@@ -264,6 +264,9 @@
                             {% if show_reports %}
                                 <a href="{{ report_path }}" class="nav-dropdown__item">📊 {% if lang == 'fr' %}{% if is_manager %}Rapports{% else %}Rapports journaliers{% endif %}{% else %}{% if is_manager %}Report{% else %}Rapportini{% endif %}{% endif %}</a>
                             {% endif %}
+                            {% if is_manager %}
+                                <a href="{{ url_for('manager_production_dashboard') }}" class="nav-dropdown__item">📈 {% if lang == 'fr' %}Production{% else %}Produzione{% endif %}</a>
+                            {% endif %}
                             {% if show_trasporti %}
                                 <a href="{{ trasporti_path }}" class="nav-dropdown__item">🚚 Trasporti</a>
                             {% endif %}
