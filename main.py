@@ -5102,6 +5102,14 @@ def manager_cantiere_nuovo_post(
     caposquadra_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
     numero_totale_pali: str | None = Form(None),
+    projet_client: str | None = Form(None),
+    projet_maitre_oeuvre: str | None = Form(None),
+    projet_entreprise: str | None = Form(None),
+    projet_affaire: str | None = Form(None),
+    projet_indice: str | None = Form(None),
+    projet_mission: str | None = Form(None),
+    projet_redaction: str | None = Form(None),
+    projet_controle: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "sites.create"):
@@ -5257,6 +5265,14 @@ def manager_cantiere_nuovo_post(
             numero_totale_pali=total_pali_value,
             paratie_total_panels=total_paratie_value,
             paratie_done_panels=0,
+            projet_client=(projet_client or "").strip() or None,
+            projet_maitre_oeuvre=(projet_maitre_oeuvre or "").strip() or None,
+            projet_entreprise=(projet_entreprise or "").strip() or None,
+            projet_affaire=(projet_affaire or "").strip() or None,
+            projet_indice=(projet_indice or "").strip() or None,
+            projet_mission=(projet_mission or "").strip() or None,
+            projet_redaction=(projet_redaction or "").strip() or None,
+            projet_controle=(projet_controle or "").strip() or None,
         )
         db.add(new_site)
         db.flush()
@@ -6435,6 +6451,14 @@ def manager_cantiere_modifica_post(
     caposquadra_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
     numero_totale_pali: str | None = Form(None),
+    projet_client: str | None = Form(None),
+    projet_maitre_oeuvre: str | None = Form(None),
+    projet_entreprise: str | None = Form(None),
+    projet_affaire: str | None = Form(None),
+    projet_indice: str | None = Form(None),
+    projet_mission: str | None = Form(None),
+    projet_redaction: str | None = Form(None),
+    projet_controle: str | None = Form(None),
     current_user: User = Depends(get_current_active_user_html),
 ):
     if current_user.role == RoleEnum.caposquadra:
@@ -6541,6 +6565,14 @@ def manager_cantiere_modifica_post(
         site.numero_totale_paratie = total_paratie_value
         site.numero_totale_pali = total_pali_value
         site.paratie_total_panels = total_paratie_value
+        site.projet_client = (projet_client or "").strip() or None
+        site.projet_maitre_oeuvre = (projet_maitre_oeuvre or "").strip() or None
+        site.projet_entreprise = (projet_entreprise or "").strip() or None
+        site.projet_affaire = (projet_affaire or "").strip() or None
+        site.projet_indice = (projet_indice or "").strip() or None
+        site.projet_mission = (projet_mission or "").strip() or None
+        site.projet_redaction = (projet_redaction or "").strip() or None
+        site.projet_controle = (projet_controle or "").strip() or None
         _sync_site_fiche_progress(db, site)
 
         new_status = site.status.value if site.status else None
@@ -8210,15 +8242,18 @@ def manager_site_fiches_pdf(
             current_user,
             site=site,
             is_palo=is_palo,
-            affaire=site.code,
-            indice=0,
-            mission="SUIVI DE MISSION G3",
+            affaire=site.projet_affaire or site.code,
+            indice=site.projet_indice or "0",
+            mission=site.projet_mission or "SUIVI DE MISSION G3",
+            client=site.projet_client or "",
+            maitre_oeuvre=site.projet_maitre_oeuvre or "",
+            entreprise=site.projet_entreprise or "",
             descriptif_terrains=descriptif,
             fiches_count=len(fiches),
             logo_src=_pdf_logo_file_src(),
             revision_date="",
-            redaction="",
-            controle="",
+            redaction=site.projet_redaction or "",
+            controle=site.projet_controle or "",
         )
         cover_inner = templates.get_template("manager/fiches/_pdf_cover.html").render(cover_ctx)
 

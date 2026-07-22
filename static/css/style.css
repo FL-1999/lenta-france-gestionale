@@ -8611,6 +8611,21 @@ label.form-label[for="profondita_totale"]{
   margin-top: 6mm;
 }
 
+.pdf-cover__parties {
+  font-size: 10pt;
+  margin: 6mm auto 0;
+  text-align: center;
+  width: 80%;
+}
+
+.pdf-cover__parties div {
+  margin: 1mm 0;
+}
+
+.pdf-cover__parties span {
+  color: #555;
+}
+
 .pdf-cover__title-block {
   margin-top: 14mm;
   text-align: center;

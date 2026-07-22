@@ -421,6 +421,16 @@ class Site(Base):
     auto_cost_labor_enabled = Column(Boolean, nullable=False, default=True)
     manual_material_entries_override_auto = Column(Boolean, nullable=False, default=True)
 
+    # Dati progetto (per copertina PDF)
+    projet_client = Column(String(255), nullable=True)
+    projet_maitre_oeuvre = Column(String(255), nullable=True)
+    projet_entreprise = Column(String(255), nullable=True)
+    projet_affaire = Column(String(100), nullable=True)
+    projet_indice = Column(String(50), nullable=True)
+    projet_mission = Column(String(255), nullable=True)
+    projet_redaction = Column(String(50), nullable=True)
+    projet_controle = Column(String(50), nullable=True)
+
     caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     caposquadra = relationship("User", back_populates="assigned_sites")
 

@@ -132,6 +132,56 @@
               <small class="form-text text-muted">Usato per generare la griglia separata dei pali dalle fiches salvate.</small>
             </div>
           </div>
+
+          <h3 class="h6 mt-4 mb-2">📄 Dati progetto (copertina PDF)</h3>
+          <p class="form-text text-muted mb-2">Compilati sulla copertina del PDF unico di consegna. Facoltativi.</p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="projet_client">Client / Maître d'ouvrage</label>
+              <input id="projet_client" name="projet_client" type="text" class="form-control" maxlength="255"
+                     value="{{ site.projet_client if site and site.projet_client else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projet_maitre_oeuvre">Maître d'œuvre (Direttore lavori)</label>
+              <input id="projet_maitre_oeuvre" name="projet_maitre_oeuvre" type="text" class="form-control" maxlength="255"
+                     value="{{ site.projet_maitre_oeuvre if site and site.projet_maitre_oeuvre else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projet_entreprise">Entreprise (Impresa)</label>
+              <input id="projet_entreprise" name="projet_entreprise" type="text" class="form-control" maxlength="255"
+                     value="{{ site.projet_entreprise if site and site.projet_entreprise else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projet_affaire">N° Affaire</label>
+              <input id="projet_affaire" name="projet_affaire" type="text" class="form-control" maxlength="100"
+                     placeholder="{{ site.code if site and site.code else 'es. 25-331' }}"
+                     value="{{ site.projet_affaire if site and site.projet_affaire else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projet_indice">Indice révision</label>
+              <input id="projet_indice" name="projet_indice" type="text" class="form-control" maxlength="50"
+                     placeholder="0"
+                     value="{{ site.projet_indice if site and site.projet_indice else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projet_mission">Mission (fase)</label>
+              <input id="projet_mission" name="projet_mission" type="text" class="form-control" maxlength="255"
+                     placeholder="SUIVI DE MISSION G3"
+                     value="{{ site.projet_mission if site and site.projet_mission else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projet_redaction">Rédaction (iniziali)</label>
+              <input id="projet_redaction" name="projet_redaction" type="text" class="form-control" maxlength="50"
+                     placeholder="es. RC"
+                     value="{{ site.projet_redaction if site and site.projet_redaction else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projet_controle">Contrôle (iniziali)</label>
+              <input id="projet_controle" name="projet_controle" type="text" class="form-control" maxlength="50"
+                     placeholder="es. CP"
+                     value="{{ site.projet_controle if site and site.projet_controle else '' }}">
+            </div>
+          </div>
         </div>
 
 

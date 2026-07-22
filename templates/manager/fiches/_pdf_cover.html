@@ -19,6 +19,14 @@
         <div class="pdf-cover__site-city">{{ (site.city|upper) if site and site.city else '' }}</div>
     </div>
 
+    {% if client or maitre_oeuvre or entreprise %}
+    <div class="pdf-cover__parties">
+        {% if client %}<div><span>Client :</span> <strong>{{ client }}</strong></div>{% endif %}
+        {% if maitre_oeuvre %}<div><span>Maître d'œuvre :</span> <strong>{{ maitre_oeuvre }}</strong></div>{% endif %}
+        {% if entreprise %}<div><span>Entreprise :</span> <strong>{{ entreprise }}</strong></div>{% endif %}
+    </div>
+    {% endif %}
+
     <div class="pdf-cover__title-block">
         <h1 class="pdf-cover__type">{{ 'PIEUX' if is_palo else 'PAROI MOULEE' }}</h1>
         <h2 class="pdf-cover__mission">{{ mission }}</h2>
