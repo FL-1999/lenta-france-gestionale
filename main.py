@@ -93,6 +93,7 @@ from template_context import (
     register_static_helpers,
     render_template,
 )
+from backend_i18n import translate_message
 from permissions import get_active_role, get_user_roles, has_perm, user_has_role
 from notifications import (
     notify_new_fiche,
@@ -489,7 +490,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     else:
         response = JSONResponse(
             status_code=status_code,
-            content={"detail": exc.detail},
+            content={"detail": translate_message(exc.detail, get_lang_from_request(request))},
             headers=exception_headers,
         )
 
@@ -3087,7 +3088,7 @@ async def manager_fiche_create(
             collections_loader=_load_manager_form_collections,
             status_code=exc.status_code or 400,
             form_data=form_data,
-            error_message=exc.detail,
+            error_message=translate_message(exc.detail, get_lang_from_request(request)),
             extra_context={
                 "is_edit": False,
                 "fiche_form_area_label": {
@@ -5443,7 +5444,7 @@ def manager_site_project_config_post(
                     format_coupe_assignments=_format_coupe_assignments,
                     is_coupe_configured=_site_coupe_configuration_complete,
                     equipment_rows=_build_site_special_equipment_rows(site) if site else [],
-                    error_message=exc.detail,
+                    error_message=translate_message(exc.detail, get_lang_from_request(request)),
                 ),
                 status_code=exc.status_code or 400,
             )
@@ -5846,7 +5847,10 @@ def manager_site_task_create_from_overview(
             status_code=exc.status_code,
             content={
                 "success": False,
-                "message": str(exc.detail) if exc.detail else "Errore durante la creazione della nota",
+                "message": translate_message(
+                    str(exc.detail) if exc.detail else "Errore durante la creazione della nota",
+                    get_lang_from_request(request),
+                ),
             },
         )
     except Exception:
@@ -7238,7 +7242,7 @@ async def capo_fiche_nuova_post(
             collections_loader=lambda: _load_capo_form_collections(current_user),
             status_code=exc.status_code or 400,
             form_data=form_data,
-            error_message=exc.detail,
+            error_message=translate_message(exc.detail, get_lang_from_request(request)),
             extra_context={"show_ngf_fields": False, "show_project_coupe_fields": True},
         )
 
@@ -7719,7 +7723,7 @@ async def manager_fiche_update(
             collections_loader=_load_manager_form_collections,
             status_code=exc.status_code or 400,
             form_data=form_data,
-            error_message=exc.detail,
+            error_message=translate_message(exc.detail, get_lang_from_request(request)),
             extra_context={
                 "is_edit": True,
                 "fiche_form_area_label": {
