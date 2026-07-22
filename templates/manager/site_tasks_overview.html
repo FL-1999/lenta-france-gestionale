@@ -213,8 +213,11 @@
                         <label class="form-label">{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %} <span class="req-star">*</span></label>
                         <select name="site_id" class="form-control" required>
                             <option value="">{% if lang == 'fr' %}Sélectionner un chantier{% else %}Seleziona un cantiere{% endif %}</option>
+                            <option value="generico">📌 {% if lang == 'fr' %}Générique / Personnel{% else %}Generico / Personale{% endif %}</option>
                             {% for site in active_sites %}
-                                <option value="{{ site.id }}">{{ site.name }}</option>
+                                {% if site.code != '__GENERICO__' %}
+                                    <option value="{{ site.id }}">{{ site.name }}</option>
+                                {% endif %}
                             {% endfor %}
                         </select>
                     </div>

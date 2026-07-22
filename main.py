@@ -2253,6 +2253,7 @@ def _build_production_dashboard(db) -> dict:
     sites = (
         db.query(Site)
         .filter(Site.is_active.is_(True))
+        .filter((Site.code != GENERICO_SITE_CODE) | (Site.code.is_(None)))
         .order_by(Site.name.asc())
         .all()
     )
@@ -5730,10 +5731,28 @@ def manager_site_task_create(
     )
 
 
+GENERICO_SITE_CODE = "__GENERICO__"
+
+
+def _get_or_create_generico_site(db):
+    """Cantiere speciale per appunti personali/generici (escluso dalle statistiche)."""
+    site = db.query(Site).filter(Site.code == GENERICO_SITE_CODE).first()
+    if site is None:
+        site = Site(
+            name="Generico / Personale",
+            code=GENERICO_SITE_CODE,
+            status=SiteStatusEnum.aperto,
+            is_active=True,
+        )
+        db.add(site)
+        db.flush()
+    return site
+
+
 @app.post("/manager/note-operative/tasks", response_class=JSONResponse, name="manager_site_task_create_from_overview")
 def manager_site_task_create_from_overview(
     request: Request,
-    site_id: int = Form(...),
+    site_id: str = Form(...),
     title: str = Form(...),
     description: str = Form(""),
     status_value: str = Form("da_fare"),
@@ -5750,9 +5769,15 @@ def manager_site_task_create_from_overview(
                 content={"success": False, "message": "Permessi insufficienti"},
             )
 
+        # "generico" → cantiere speciale per appunti personali/generici
+        if (site_id or "").strip().lower() == "generico":
+            resolved_site_id = _get_or_create_generico_site(db).id
+        else:
+            resolved_site_id = int(site_id)
+
         task = _create_site_task(
             db,
-            site_id=site_id,
+            site_id=resolved_site_id,
             title=title,
             description=description,
             status_value=status_value,
