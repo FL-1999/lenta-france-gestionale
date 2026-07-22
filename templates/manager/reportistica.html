@@ -1,43 +1,43 @@
 {% extends "shared/base.html" %}
-{% block title %}Reportistica – Manager{% endblock %}
+{% block title %}{{ t('Reportistica – Manager', 'Rapports – Manager') }}{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="page-header">
         <div>
-            <h1 class="page-title">📊 Reportistica avanzata</h1>
-            <p class="subtitle">Consulta i report riepilogativi e scarica i dati in CSV.</p>
+            <h1 class="page-title">📊 {{ t('Reportistica avanzata', 'Rapports avancés') }}</h1>
+            <p class="subtitle">{{ t('Consulta i report riepilogativi e scarica i dati in CSV.', 'Consultez les rapports récapitulatifs et téléchargez les données en CSV.') }}</p>
         </div>
         <div class="page-actions">
             <a
                 href="{{ url_for('manager_reports_export', report_type=filters.report_type, date_from=filters.date_from, date_to=filters.date_to, preset=filters.preset) }}"
                 class="btn btn-secondary"
             >
-                📤 Esporta CSV
+                📤 {{ t('Esporta CSV', 'Exporter CSV') }}
             </a>
         </div>
     </div>
 
     <form method="get" class="form-grid" style="margin-bottom: var(--space-5);">
         <div class="form-group">
-            <label for="preset">Periodo rapido</label>
+            <label for="preset">{{ t('Periodo rapido', 'Période rapide') }}</label>
             <select id="preset" name="preset" class="form-select">
-                <option value="" {% if not filters.preset %}selected{% endif %}>Personalizzato</option>
+                <option value="" {% if not filters.preset %}selected{% endif %}>{{ t('Personalizzato', 'Personnalisé') }}</option>
                 {% for key, label in preset_options.items() %}
                     <option value="{{ key }}" {% if filters.preset == key %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="form-group">
-            <label for="date_from">Da</label>
+            <label for="date_from">{{ t('Da', 'Du') }}</label>
             <input type="date" id="date_from" name="date_from" class="form-control" value="{{ filters.date_from }}">
         </div>
         <div class="form-group">
-            <label for="date_to">A</label>
+            <label for="date_to">{{ t('A', 'Au') }}</label>
             <input type="date" id="date_to" name="date_to" class="form-control" value="{{ filters.date_to }}">
         </div>
         <div class="form-group">
-            <label for="report_type">Tipo report</label>
+            <label for="report_type">{{ t('Tipo report', 'Type de rapport') }}</label>
             <select id="report_type" name="report_type" class="form-select">
                 {% for key, label in report_types.items() %}
                     <option value="{{ key }}" {% if report_type == key %}selected{% endif %}>{{ label }}</option>
@@ -45,22 +45,22 @@
             </select>
         </div>
         <div class="form-group form-grid--single">
-            <button type="submit" class="btn btn-primary">Aggiorna report</button>
+            <button type="submit" class="btn btn-primary">{{ t('Aggiorna report', 'Actualiser le rapport') }}</button>
         </div>
     </form>
 
     {% if report_type == "cantieri" %}
         <section class="card">
-            <h2 class="card-title">Report cantieri</h2>
+            <h2 class="card-title">{{ t('Report cantieri', 'Rapport chantiers') }}</h2>
             <div class="table-wrapper">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Cantiere</th>
-                            <th>Codice</th>
-                            <th>Stato</th>
-                            <th>Ore totali</th>
-                            <th>N. rapportini</th>
+                            <th>{{ t('Cantiere', 'Chantier') }}</th>
+                            <th>{{ t('Codice', 'Code') }}</th>
+                            <th>{{ t('Stato', 'Statut') }}</th>
+                            <th>{{ t('Ore totali', 'Heures totales') }}</th>
+                            <th>{{ t('N. rapportini', 'N. de rapports') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -74,7 +74,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="5" class="table-empty">Nessun dato disponibile per il periodo selezionato.</td>
+                                <td colspan="5" class="table-empty">{{ t('Nessun dato disponibile per il periodo selezionato.', 'Aucune donnée disponible pour la période sélectionnée.') }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -83,20 +83,20 @@
         </section>
 
         <section class="card" style="margin-top: var(--space-5);">
-            <h2 class="card-title">Ore per cantiere</h2>
+            <h2 class="card-title">{{ t('Ore per cantiere', 'Heures par chantier') }}</h2>
             <canvas id="reportCantieriChart"></canvas>
         </section>
     {% elif report_type == "caposquadra" %}
         <section class="card">
-            <h2 class="card-title">Report caposquadra</h2>
+            <h2 class="card-title">{{ t('Report caposquadra', "Rapport chefs d'équipe") }}</h2>
             <div class="table-wrapper">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Caposquadra</th>
-                            <th>Cantieri attivi</th>
-                            <th>Ore totali</th>
-                            <th>Rapportini inviati</th>
+                            <th>{{ t('Caposquadra', "Chef d'équipe") }}</th>
+                            <th>{{ t('Cantieri attivi', 'Chantiers actifs') }}</th>
+                            <th>{{ t('Ore totali', 'Heures totales') }}</th>
+                            <th>{{ t('Rapportini inviati', 'Rapports envoyés') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -109,7 +109,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="4" class="table-empty">Nessun caposquadra trovato.</td>
+                                <td colspan="4" class="table-empty">{{ t('Nessun caposquadra trovato.', "Aucun chef d'équipe trouvé.") }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -118,16 +118,16 @@
         </section>
     {% else %}
         <section class="card">
-            <h2 class="card-title">Report mezzi</h2>
+            <h2 class="card-title">{{ t('Report mezzi', 'Rapport véhicules') }}</h2>
             <div class="table-wrapper">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Mezzo</th>
-                            <th>Codice</th>
-                            <th>Stato</th>
-                            <th>Giorni di utilizzo</th>
-                            <th>Fermi/manutenzioni</th>
+                            <th>{{ t('Mezzo', 'Véhicule') }}</th>
+                            <th>{{ t('Codice', 'Code') }}</th>
+                            <th>{{ t('Stato', 'Statut') }}</th>
+                            <th>{{ t('Giorni di utilizzo', "Jours d'utilisation") }}</th>
+                            <th>{{ t('Fermi/manutenzioni', 'Arrêts/entretiens') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -141,7 +141,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="5" class="table-empty">Nessun mezzo trovato.</td>
+                                <td colspan="5" class="table-empty">{{ t('Nessun mezzo trovato.', 'Aucun véhicule trouvé.') }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -162,7 +162,7 @@
                 data: {
                     labels: chartData.map(item => item.label),
                     datasets: [{
-                        label: "Ore totali",
+                        label: "{{ t('Ore totali', 'Heures totales') }}",
                         data: chartData.map(item => item.value),
                         backgroundColor: "rgba(59, 130, 246, 0.6)",
                         borderColor: "rgba(59, 130, 246, 1)",

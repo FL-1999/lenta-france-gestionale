@@ -1,28 +1,28 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Rapportini – Manager{% endblock %}
+{% block title %}{{ t('Rapportini – Manager', 'Rapports – Manager') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>📄 Rapportini giornalieri</h1>
-  <p class="subtitle">Consulta tutti i rapportini e filtra per data o cantiere.</p>
+  <h1>📄 {{ t('Rapportini giornalieri', 'Rapports journaliers') }}</h1>
+  <p class="subtitle">{{ t('Consulta tutti i rapportini e filtra per data o cantiere.', 'Consultez tous les rapports et filtrez par date ou chantier.') }}</p>
 </div>
 
 <form method="get" class="filters">
   <label>
-    Da data:
+    {{ t('Da data:', 'Date de début :') }}
     <input type="date" name="from_date" value="{{ filter_from_date or '' }}">
   </label>
   <label>
-    A data:
+    {{ t('A data:', 'Date de fin :') }}
     <input type="date" name="to_date" value="{{ filter_to_date or '' }}">
   </label>
   <label>
-    Cantiere:
-    <input type="text" name="site" value="{{ filter_site or '' }}" placeholder="Nome o codice cantiere">
+    {{ t('Cantiere:', 'Chantier :') }}
+    <input type="text" name="site" value="{{ filter_site or '' }}" placeholder="{{ t('Nome o codice cantiere', 'Nom ou code chantier') }}">
   </label>
-  <button type="submit">Filtra</button>
-  <a href="/manager/rapportini">Reset</a>
+  <button type="submit">{{ t('Filtra', 'Filtrer') }}</button>
+  <a href="/manager/rapportini">{{ t('Reset', 'Réinitialiser') }}</a>
 </form>
 
 <div class="card table-card">
@@ -30,13 +30,13 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>Data</th>
-          <th>Cantiere</th>
-          <th>Ore totali</th>
-          <th>N. operai</th>
-          <th>Creato da</th>
-          <th>Note</th>
-          <th class="table-actions-col">Dettaglio</th>
+          <th>{{ t('Data', 'Date') }}</th>
+          <th>{{ t('Cantiere', 'Chantier') }}</th>
+          <th>{{ t('Ore totali', 'Heures totales') }}</th>
+          <th>{{ t('N. operai', "N. d'ouvriers") }}</th>
+          <th>{{ t('Creato da', 'Créé par') }}</th>
+          <th>{{ t('Note', 'Notes') }}</th>
+          <th class="table-actions-col">{{ t('Dettaglio', 'Détail') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -55,12 +55,12 @@
           </td>
           <td>{{ r.notes or r.activities or "-" }}</td>
           <td class="table-actions">
-            <a href="/manager/rapportini/{{ r.id }}" class="btn btn-secondary btn-sm">Apri</a>
+            <a href="/manager/rapportini/{{ r.id }}" class="btn btn-secondary btn-sm">{{ t('Apri', 'Ouvrir') }}</a>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="table-empty">Nessun rapportino trovato con questi filtri.</td>
+          <td colspan="7" class="table-empty">{{ t('Nessun rapportino trovato con questi filtri.', 'Aucun rapport trouvé avec ces filtres.') }}</td>
         </tr>
         {% endfor %}
       </tbody>

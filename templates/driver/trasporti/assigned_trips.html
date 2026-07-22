@@ -1,64 +1,64 @@
 {% extends "shared/base.html" %}
-{% block title %}I miei viaggi{% endblock %}
+{% block title %}{{ t('I miei viaggi', 'Mes trajets') }}{% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">🚚 I miei viaggi</h1>
-    <a class="btn btn-primary" href="{{ url_for('driver_trasporti_oggi') }}">Modalità oggi</a>
+    <h1 class="page-title">🚚 {{ t('I miei viaggi', 'Mes trajets') }}</h1>
+    <a class="btn btn-primary" href="{{ url_for('driver_trasporti_oggi') }}">{{ t('Modalità oggi', "Mode aujourd'hui") }}</a>
 </div>
 
 <div class="card table-card" style="margin-bottom:1rem;">
 <div class="card-body">
-<h3 style="margin-top:0;">Viaggi assegnati</h3>
+<h3 style="margin-top:0;">{{ t('Viaggi assegnati', 'Trajets assignés') }}</h3>
 {% for v in viaggi_assegnati %}
   <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:0.75rem;">
     <p><a href="{{ url_for('driver_trasporti_viaggi_detail', viaggio_id=v.id) }}"><strong>{{ v.codice_viaggio }}</strong></a> · {{ v.departure_display }} · {{ v.stato.value }}</p>
-    <p><strong>Arrivo stimato:</strong> {{ v.arrival_estimate_display }}</p>
-    <p><strong>Tratta:</strong> {{ v.route_summary }}</p>
+    <p><strong>{{ t('Arrivo stimato:', 'Arrivée estimée :') }}</strong> {{ v.arrival_estimate_display }}</p>
+    <p><strong>{{ t('Tratta:', 'Itinéraire :') }}</strong> {{ v.route_summary }}</p>
     {% for tappa in v.tappe %}
       <div style="margin-left:1rem;">
-        <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
+        <strong>→ {{ t('TAPPA', 'ÉTAPE') }} {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
         <ul>
           {% for req in v.richieste_attrezzature if req.tappa_id == tappa.id %}
             <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>
           {% else %}
-            <li>Nessun materiale richiesto</li>
+            <li>{{ t('Nessun materiale richiesto', 'Aucun matériel demandé') }}</li>
           {% endfor %}
         </ul>
       </div>
     {% endfor %}
   </div>
 {% else %}
-<p>Nessun viaggio assegnato</p>
+<p>{{ t('Nessun viaggio assegnato', 'Aucun trajet assigné') }}</p>
 {% endfor %}
 </div>
 </div>
 
 <div class="card table-card">
 <div class="card-body">
-<h3 style="margin-top:0;">Viaggi disponibili</h3>
+<h3 style="margin-top:0;">{{ t('Viaggi disponibili', 'Trajets disponibles') }}</h3>
 {% for v in viaggi_disponibili %}
   <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:0.75rem;">
     <p><strong>{{ v.codice_viaggio }}</strong> · {{ v.departure_display }}</p>
-    <p><strong>Arrivo stimato:</strong> {{ v.arrival_estimate_display }}</p>
-    <p><strong>Tratta:</strong> {{ v.route_summary }}</p>
+    <p><strong>{{ t('Arrivo stimato:', 'Arrivée estimée :') }}</strong> {{ v.arrival_estimate_display }}</p>
+    <p><strong>{{ t('Tratta:', 'Itinéraire :') }}</strong> {{ v.route_summary }}</p>
     {% for tappa in v.tappe %}
       <div style="margin-left:1rem;">
-        <strong>→ TAPPA {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
+        <strong>→ {{ t('TAPPA', 'ÉTAPE') }} {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
         <ul>
           {% for req in v.richieste_attrezzature if req.tappa_id == tappa.id %}
             <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>
           {% else %}
-            <li>Nessun materiale richiesto</li>
+            <li>{{ t('Nessun materiale richiesto', 'Aucun matériel demandé') }}</li>
           {% endfor %}
         </ul>
       </div>
     {% endfor %}
     <form method="post" action="{{ url_for('driver_trasporti_viaggi_prendi', viaggio_id=v.id) }}">
-      <button type="submit" class="btn btn-primary">Prendi viaggio</button>
+      <button type="submit" class="btn btn-primary">{{ t('Prendi viaggio', 'Prendre le trajet') }}</button>
     </form>
   </div>
 {% else %}
-<p>Nessun viaggio disponibile</p>
+<p>{{ t('Nessun viaggio disponibile', 'Aucun trajet disponible') }}</p>
 {% endfor %}
 </div>
 </div>
