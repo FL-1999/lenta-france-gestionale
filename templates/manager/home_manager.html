@@ -34,8 +34,11 @@
             </p>
         </div>
         <div class="header-actions dashboard-actions">
-            <a href="{{ url_for('manager_site_tasks_overview') }}" class="btn btn-lg btn-danger">
+            <a href="{{ url_for('manager_site_tasks_overview') }}" class="btn btn-lg btn-secondary">
                 🧭 {% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}
+            </a>
+            <a href="{{ url_for('manager_production_dashboard') }}" class="btn btn-lg btn-primary">
+                📈 {% if lang == 'fr' %}Production{% else %}Produzione{% endif %}
             </a>
             <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-primary">
                 ➕ {% if lang == 'fr' %}Nouveau rapport{% else %}Nuovo rapportino{% endif %}
