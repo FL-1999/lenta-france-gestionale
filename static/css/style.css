@@ -8857,6 +8857,22 @@ label.form-label[for="profondita_totale"]{
     padding-bottom: 0.6rem;
   }
 
+  /* iOS: date/time/number hanno una larghezza intrinseca e possono
+     sforare il contenitore. Li forziamo a stare dentro. */
+  input[type="date"],
+  input[type="time"],
+  input[type="number"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
   textarea,
   .form-textarea {
     min-height: 90px;
@@ -8983,5 +8999,20 @@ body {
   /* Le griglie di KPI/statistiche non scendono mai sotto una colonna piena */
   .dashboard-kpi-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  /* Header della fiche: il titolo va a capo e i bottoni "Télécharger PDF"
+     / "Imprimer" prendono una riga propria a mezza larghezza, così il
+     testo non viene tagliato dentro il bottone. */
+  .technical-coupe-card__header {
+    flex-wrap: wrap;
+  }
+  .technical-coupe-card__header .card-title {
+    flex: 1 1 100%;
+  }
+  .technical-coupe-card__header .btn {
+    flex: 1 1 auto;
+    min-height: 40px;
+    overflow: visible;
   }
 }
