@@ -60,38 +60,38 @@
 
     <div class="dashboard-shortcuts">
         <div class="section-header">
-            <h2>Scorciatoie</h2>
-            <p>Accesso rapido a ordini e magazzino.</p>
+            <h2>{{ t('Scorciatoie', 'Raccourcis') }}</h2>
+            <p>{{ t('Accesso rapido a ordini e magazzino.', 'Accès rapide aux commandes et à l\'entrepôt.') }}</p>
         </div>
 
         <div class="card shortcut-card orders-container">
             <div class="orders-container-header">
-                <h3>📦 Ordini & Magazzino</h3>
-                <p>Gestione ordini di acquisto e stock</p>
+                <h3>📦 {{ t('Ordini & Magazzino', 'Commandes & Entrepôt') }}</h3>
+                <p>{{ t('Gestione ordini di acquisto e stock', 'Gestion des commandes d\'achat et du stock') }}</p>
             </div>
 
             <div class="orders-container-grid">
                 <div class="card shortcut-card compact">
                     <a class="shortcut-card-link" href="/manager/ordini"></a>
-                    <div class="shortcut-title">🧾 Ordini generali</div>
+                    <div class="shortcut-title">🧾 {{ t('Ordini generali', 'Commandes générales') }}</div>
                     <div class="shortcut-subtitle">
-                        Lista completa ordini di acquisto
+                        {{ t('Lista completa ordini di acquisto', 'Liste complète des commandes d\'achat') }}
                     </div>
                 </div>
 
                 <div class="card shortcut-card compact">
                     <a class="shortcut-card-link" href="/manager/magazzino"></a>
-                    <div class="shortcut-title">📦 Magazzino</div>
+                    <div class="shortcut-title">📦 {{ t('Magazzino', 'Entrepôt') }}</div>
                     <div class="shortcut-subtitle">
-                        Articoli, richieste e movimenti
+                        {{ t('Articoli, richieste e movimenti', 'Articles, demandes et mouvements') }}
                     </div>
                 </div>
 
                 <div class="card shortcut-card compact">
                     <a class="shortcut-card-link" href="/manager/ordini?status=chiuso"></a>
-                    <div class="shortcut-title">✅ Ordini chiusi</div>
+                    <div class="shortcut-title">✅ {{ t('Ordini chiusi', 'Commandes clôturées') }}</div>
                     <div class="shortcut-subtitle">
-                        Ordini completati e archiviati
+                        {{ t('Ordini completati e archiviati', 'Commandes terminées et archivées') }}
                     </div>
                 </div>
             </div>
@@ -331,16 +331,16 @@
                             <circle cx="17" cy="17" r="1.7" />
                         </svg>
                     </div>
-                    <span>LOGISTICA</span>
+                    <span>{{ t('LOGISTICA', 'LOGISTIQUE') }}</span>
                 </div>
             </div>
             <div class="card-body">
-                <p>Camion in viaggio: <strong>{{ (logistics_overview|default({})).get('trucks_in_travel', 0) }}</strong></p>
-                <p>Attrezzature in movimento: <strong>{{ (logistics_overview|default({})).get('equipment_moving', 0) }}</strong></p>
-                <p>Viaggi attivi: <strong>{{ (logistics_overview|default({})).get('active_trips', 0) }}</strong></p>
-                <p>Alert: <strong>{{ (logistics_overview|default({})).get('alerts', 0) }}</strong></p>
+                <p>{{ t('Camion in viaggio', 'Camions en route') }}: <strong>{{ (logistics_overview|default({})).get('trucks_in_travel', 0) }}</strong></p>
+                <p>{{ t('Attrezzature in movimento', 'Équipements en mouvement') }}: <strong>{{ (logistics_overview|default({})).get('equipment_moving', 0) }}</strong></p>
+                <p>{{ t('Viaggi attivi', 'Trajets actifs') }}: <strong>{{ (logistics_overview|default({})).get('active_trips', 0) }}</strong></p>
+                <p>{{ t('Alert', 'Alertes') }}: <strong>{{ (logistics_overview|default({})).get('alerts', 0) }}</strong></p>
                 <div class="page-actions-row">
-                    <a href="/manager/trasporti" class="btn btn-secondary">Apri trasporti</a>
+                    <a href="/manager/trasporti" class="btn btn-secondary">{{ t('Apri trasporti', 'Ouvrir transports') }}</a>
                     <a href="/manager/trasporti/planner" class="btn btn-primary">Planner</a>
                 </div>
             </div>
