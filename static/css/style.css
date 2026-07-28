@@ -3246,8 +3246,10 @@ body {
 }
 
 @media (max-width: 640px) {
+    /* Solo margine verticale: quello orizzontale faceva sforare e
+       disallineare i tasti a tutta larghezza (Salva/Annulla, ecc.). */
     .btn {
-        margin: 6px;
+        margin: 6px 0;
     }
 
     .card,
@@ -6099,11 +6101,22 @@ label.form-label[for="profondita_totale"]{
   text-align: right;
 }
 
+/* Sezione "Controlli speciali": header sopra, card sotto (non affiancati),
+   così non sforano su mobile. */
+.special-equipment-confirmation {
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .special-equipment-card {
-  background: rgba(248, 250, 252, .9);
-  border: 1px solid rgba(148, 163, 184, .4);
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, .3);
   border-radius: 12px;
   padding: .85rem;
+}
+
+.special-equipment-card .form-label {
+  color: var(--color-text-main);
 }
 
 .technical-depth-arrow {

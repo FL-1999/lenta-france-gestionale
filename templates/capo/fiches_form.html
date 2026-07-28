@@ -278,7 +278,7 @@
                 <section class="form-section-wrapper special-equipment-confirmation" data-special-equipment-section hidden>
                     <div class="form-section-header">
                         <h3 class="form-section-title">Controlli speciali / Attrezzature</h3>
-                        <p class="text-muted">La configuration prévue est chargée automatiquement depuis le chantier. Le chef d'équipe confirme seulement la réalisation.</p>
+                        <p class="text-muted">{% if lang == 'fr' %}La configuration prévue est chargée automatiquement depuis le chantier. Le chef d'équipe confirme seulement la réalisation.{% else %}La configurazione prevista è caricata automaticamente dal cantiere. Il caposquadra conferma solo la realizzazione.{% endif %}</p>
                     </div>
                     <div class="form-grid form-grid--two">
                         <div class="form-group special-equipment-card" data-sonic-realise-group hidden>
