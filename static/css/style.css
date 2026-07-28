@@ -8886,3 +8886,59 @@ label.form-label[for="profondita_totale"]{
     width: 100%;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   P2b — Fix overflow orizzontale su mobile (spazio vuoto a destra,
+   pagina tagliata, testo schiacciato in verticale)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Guard globale: la pagina non deve MAI scorrere lateralmente.
+   Le tabelle/disegni larghi scorrono dentro il proprio contenitore. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 1180px) {
+  /* Le colonne della scheda tecnica possono restringersi sotto il
+     contenuto (di default le grid non lo fanno) → niente overflow. */
+  .technical-sheet-grid,
+  .technical-split-view {
+    max-width: 100%;
+  }
+
+  .technical-sheet-grid > *,
+  .technical-data-column,
+  .technical-drawing-column,
+  .technical-ground-column {
+    min-width: 0;
+  }
+
+  /* Il disegno tecnico e la stratigrafia scorrono DENTRO il loro
+     riquadro invece di sfondare la pagina. */
+  .technical-drawing-column,
+  .technical-ground-column,
+  .technical-drawing-layout {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Sicurezza: nei contenitori flex i figli devono poter rimpicciolire,
+   così il testo non viene schiacciato in colonna (una lettera per riga). */
+@media (max-width: 820px) {
+  .page-header,
+  .card-header,
+  .kpi-card,
+  .stat-card,
+  .dashboard-kpi-grid > *,
+  .fiche-section .card-body > * {
+    min-width: 0;
+  }
+
+  /* Le griglie di KPI/statistiche non scendono mai sotto una colonna piena */
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
