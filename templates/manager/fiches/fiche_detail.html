@@ -975,4 +975,39 @@
 @media (max-width: 720px) { .courbe-points-grid { grid-template-columns: 1fr; } }
 </style>
 
+{# ── Adatta il disegno tecnico alla larghezza dello schermo (mobile/tablet) ── #}
+<script>
+(function () {
+    var DESIGN = 600; // larghezza "di progetto" del disegno in px
+    function fit() {
+        var mobile = window.innerWidth <= 900;
+        document.querySelectorAll(".technical-drawing-column .technical-section-canvas").forEach(function (c) {
+            var col = c.closest(".technical-drawing-column");
+            // reset
+            c.style.transform = "";
+            c.style.width = "";
+            c.style.marginBottom = "";
+            c.style.transformOrigin = "";
+            if (col) col.style.overflow = "";
+            if (!mobile) return;
+            var avail = c.parentElement.clientWidth;
+            if (!avail) return;
+            var scale = Math.min(1, avail / DESIGN);
+            if (scale >= 1) return;
+            c.style.width = DESIGN + "px";
+            var h = c.offsetHeight;
+            c.style.transformOrigin = "top left";
+            c.style.transform = "scale(" + scale + ")";
+            // rimuove lo spazio vuoto verticale lasciato dalla trasformazione
+            c.style.marginBottom = -(h * (1 - scale)) + "px";
+            if (col) col.style.overflow = "hidden";
+        });
+    }
+    var t;
+    window.addEventListener("resize", function () { clearTimeout(t); t = setTimeout(fit, 150); });
+    if (document.readyState !== "loading") fit();
+    else document.addEventListener("DOMContentLoaded", fit);
+})();
+</script>
+
 {% endblock %}

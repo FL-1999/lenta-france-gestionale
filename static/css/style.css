@@ -8112,6 +8112,17 @@ label.form-label[for="profondita_totale"]{
    A4 portrait: 210×297mm — usable with 8mm margins: 194×281mm
    ══════════════════════════════════════════════════════════════════ */
 @media print {
+  /* Annulla l'eventuale scalatura mobile del disegno applicata via JS
+     (inline) così la stampa/PDF A4 resta a dimensione piena. */
+  .technical-section-canvas {
+    transform: none !important;
+    width: auto !important;
+    margin-bottom: 0 !important;
+  }
+  .technical-drawing-column {
+    overflow: visible !important;
+  }
+
   @page {
     margin: 6mm;
     size: A4 portrait;
@@ -8901,17 +8912,28 @@ body {
 }
 
 @media (max-width: 1180px) {
-  /* Le colonne della scheda tecnica possono restringersi sotto il
-     contenuto (di default le grid non lo fanno) → niente overflow. */
-  .technical-sheet-grid,
-  .technical-split-view {
+  /* La scheda tecnica è impaginata come un foglio A4 largo (~980px):
+     su mobile impiliamo le colonne così il disegno sta nello schermo.
+     !important perché una regola successiva senza media query impone
+     larghezze fisse (200px + 735px) a qualsiasi dimensione. */
+  .technical-sheet-grid {
+    grid-template-columns: 1fr !important;
     max-width: 100%;
   }
 
+  .technical-split-view {
+    grid-template-columns: 1fr !important;
+    max-width: 100%;
+  }
+
+  .technical-split-view > *,
+  .technical-sheet,
   .technical-sheet-grid > *,
   .technical-data-column,
   .technical-drawing-column,
-  .technical-ground-column {
+  .technical-ground-column,
+  .technical-drawing-layout,
+  .technical-section-canvas {
     min-width: 0;
   }
 
