@@ -1706,8 +1706,12 @@ body {
 }
 
 @media (max-width: 768px) {
+    /* Su mobile si mostrano le schede (.list-cards) e si nasconde la
+       tabella. Specificità alta + !important perché `.card-body` (stesso
+       elemento) imposta display:flex più avanti nel file. */
+    .card-body.list-table,
     .list-table {
-        display: none;
+        display: none !important;
     }
 
     .list-cards {
@@ -1727,12 +1731,21 @@ body {
         padding: var(--space-3);
     }
 
+    /* Le tabelle scorrono orizzontalmente invece di schiacciare il testo
+       in verticale (una lettera per riga) quando ci sono molte colonne. */
+    .table-card .card-body,
+    .card-body.list-table,
+    .data-table-wrap,
+    .fiche-strat-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .data-table th,
     .data-table td,
     .table th,
     .table td {
-        white-space: normal;
-        word-break: break-word;
+        white-space: nowrap;
     }
 
     .table-actions {
