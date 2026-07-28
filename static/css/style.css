@@ -1010,6 +1010,7 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
     padding: 0.55rem 1.2rem;
     border-radius: var(--radius-pill);
     font-weight: 500;
@@ -3988,7 +3989,9 @@ label.form-label[for="profondita_totale"]{
 
   opacity: 0;
   pointer-events: none;
-  display: block;          /* IMPORTANT: usiamo opacity/pointer-events, non display */
+  /* display:none da chiuso: altrimenti il menu (largo 220-280px) resta nel
+     layout e allarga la pagina su mobile creando scroll orizzontale. */
+  display: none;
   z-index: 99999;
 
   transition: opacity 160ms ease, transform 160ms ease;
@@ -3996,6 +3999,7 @@ label.form-label[for="profondita_totale"]{
 
 /* Stato aperto */
 .nav-dropdown.is-open .nav-dropdown__menu{
+  display: block;
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
