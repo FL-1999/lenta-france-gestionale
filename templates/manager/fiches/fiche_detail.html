@@ -975,38 +975,38 @@
 @media (max-width: 720px) { .courbe-points-grid { grid-template-columns: 1fr; } }
 </style>
 
-{# ── Adatta il disegno tecnico alla larghezza dello schermo (mobile/tablet) ── #}
+{# ── Mobile: mostra la fiche INTERA rimpicciolita e zoomabile (come la stampa) ── #}
 <script>
 (function () {
-    var DESIGN = 600; // larghezza "di progetto" del disegno in px
-    function fit() {
-        var mobile = window.innerWidth <= 900;
-        document.querySelectorAll(".technical-drawing-column .technical-section-canvas").forEach(function (c) {
-            var col = c.closest(".technical-drawing-column");
+    // Larghezza "di progetto" del foglio A4 (layout desktop a 3 colonne).
+    var SHEET_W = 980;
+    function fitSheet() {
+        var mobile = window.matchMedia("screen and (max-width: 900px)").matches;
+        document.querySelectorAll("#technical-sheet-export").forEach(function (sheet) {
+            var wrap = sheet.parentElement; // .technical-split-view
             // reset
-            c.style.transform = "";
-            c.style.width = "";
-            c.style.marginBottom = "";
-            c.style.transformOrigin = "";
-            if (col) col.style.overflow = "";
+            sheet.classList.remove("is-mobile-scaled");
+            sheet.style.transform = "";
+            sheet.style.width = "";
+            if (wrap) { wrap.style.height = ""; }
             if (!mobile) return;
-            var avail = c.parentElement.clientWidth;
+            var avail = wrap ? wrap.clientWidth : sheet.clientWidth;
             if (!avail) return;
-            var scale = Math.min(1, avail / DESIGN);
-            if (scale >= 1) return;
-            c.style.width = DESIGN + "px";
-            var h = c.offsetHeight;
-            c.style.transformOrigin = "top left";
-            c.style.transform = "scale(" + scale + ")";
-            // rimuove lo spazio vuoto verticale lasciato dalla trasformazione
-            c.style.marginBottom = -(h * (1 - scale)) + "px";
-            if (col) col.style.overflow = "hidden";
+            // forza la larghezza "di progetto" così il layout resta identico
+            // alla stampa, poi scala tutto il foglio per farlo stare a schermo.
+            sheet.style.width = SHEET_W + "px";
+            var scale = avail / SHEET_W;
+            sheet.classList.add("is-mobile-scaled");
+            sheet.style.transform = "scale(" + scale + ")";
+            // il contenitore prende l'altezza del foglio scalato (niente vuoti)
+            var natH = sheet.offsetHeight;
+            if (wrap) { wrap.style.height = (natH * scale) + "px"; }
         });
     }
     var t;
-    window.addEventListener("resize", function () { clearTimeout(t); t = setTimeout(fit, 150); });
-    if (document.readyState !== "loading") fit();
-    else document.addEventListener("DOMContentLoaded", fit);
+    window.addEventListener("resize", function () { clearTimeout(t); t = setTimeout(fitSheet, 150); });
+    if (document.readyState !== "loading") fitSheet();
+    else document.addEventListener("DOMContentLoaded", fitSheet);
 })();
 </script>
 

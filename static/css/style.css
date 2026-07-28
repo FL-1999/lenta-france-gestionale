@@ -8125,11 +8125,18 @@ label.form-label[for="profondita_totale"]{
    A4 portrait: 210×297mm — usable with 8mm margins: 194×281mm
    ══════════════════════════════════════════════════════════════════ */
 @media print {
-  /* Annulla l'eventuale scalatura mobile del disegno applicata via JS
-     (inline) così la stampa/PDF A4 resta a dimensione piena. */
-  .technical-section-canvas {
+  /* Annulla l'eventuale scalatura mobile applicata via JS (inline) così la
+     stampa/PDF A4 resta a dimensione piena e su una sola pagina. */
+  #technical-sheet-export {
     transform: none !important;
     width: auto !important;
+  }
+  .technical-split-view {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .technical-section-canvas {
     margin-bottom: 0 !important;
   }
   .technical-drawing-column {
@@ -8924,39 +8931,21 @@ body {
   overflow-x: hidden;
 }
 
-@media (max-width: 1180px) {
-  /* La scheda tecnica è impaginata come un foglio A4 largo (~980px):
-     su mobile impiliamo le colonne così il disegno sta nello schermo.
-     !important perché una regola successiva senza media query impone
-     larghezze fisse (200px + 735px) a qualsiasi dimensione. */
-  .technical-sheet-grid {
-    grid-template-columns: 1fr !important;
-    max-width: 100%;
-  }
-
+/* La scheda tecnica della fiche è impaginata come un foglio A4 (~980px).
+   Su mobile la mostriamo INTERA e rimpicciolita (identica alla stampa),
+   scalata via JS e zoomabile con le dita — NON impilata in colonna.
+   IMPORTANTISSIMO: `screen` così la STAMPA/PDF non viene mai toccata
+   (l'A4 in stampa è ~794px e altrimenti ricadrebbe in questa media). */
+@media screen and (max-width: 900px) {
   .technical-split-view {
-    grid-template-columns: 1fr !important;
+    display: block;      /* niente grid che imponga larghezze fisse */
+    overflow: hidden;    /* ritaglia il box del foglio scalato */
     max-width: 100%;
   }
 
-  .technical-split-view > *,
-  .technical-sheet,
-  .technical-sheet-grid > *,
-  .technical-data-column,
-  .technical-drawing-column,
-  .technical-ground-column,
-  .technical-drawing-layout,
-  .technical-section-canvas {
-    min-width: 0;
-  }
-
-  /* Il disegno tecnico e la stratigrafia scorrono DENTRO il loro
-     riquadro invece di sfondare la pagina. */
-  .technical-drawing-column,
-  .technical-ground-column,
-  .technical-drawing-layout {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  /* Il foglio viene dimensionato e scalato via JS (fit-to-width). */
+  .technical-sheet.is-mobile-scaled {
+    transform-origin: top left;
   }
 }
 
