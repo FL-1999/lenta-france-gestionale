@@ -29,6 +29,9 @@
         </p>
     </div>
     <div class="page-actions">
+        <a href="{{ url_for('manager_site_documents', site_id=site.id) }}" class="btn btn-secondary">
+            📁 {% if lang == 'fr' %}Documents{% else %}Documenti{% endif %}
+        </a>
         {% if has_perm(user, "economics.read") %}
             <a href="{{ url_for('manager_site_economics_detail', site_id=site.id) }}" class="btn btn-secondary">
                 💶 {% if lang == 'fr' %}Économie{% else %}Economica{% endif %}

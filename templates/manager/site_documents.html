@@ -1,0 +1,147 @@
+{% extends "shared/base.html" %}
+
+{% block title %}{{ t('Documenti', 'Documents') }} — {{ site.name or site.code }}{% endblock %}
+
+{% set cat_labels = {
+  'foto': t('Foto', 'Photos'),
+  'documento': t('Documento', 'Document'),
+  'certificato': t('Certificato', 'Certificat'),
+  'rapporto_geo': t('Rapporto geotecnico', 'Rapport géotechnique'),
+  'piano': t('Piano / Disegno', 'Plan / Dessin'),
+  'altro': t('Altro', 'Autre'),
+} %}
+{% set cat_icons = {
+  'foto': '🖼️', 'documento': '📄', 'certificato': '📜',
+  'rapporto_geo': '🧪', 'piano': '📐', 'altro': '📎',
+} %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{{ site.code or '' }}{% if site.city %} · {{ site.city }}{% endif %}</p>
+        <h1 class="page-title">📁 {{ t('Archivio documentale', 'Archives documentaires') }}</h1>
+        <p class="page-subtitle">{{ site.name or '—' }} · {{ documents_count }} {{ t('documenti', 'documents') }}</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_site_detail', site_id=site.id) }}" class="btn btn-secondary">← {{ t('Cantiere', 'Chantier') }}</a>
+    </div>
+</div>
+
+{% if saved %}
+<div class="alert alert-success">
+    {% if saved == 'deleted' %}{{ t('Documento eliminato.', 'Document supprimé.') }}{% else %}{{ t('Documento caricato con successo.', 'Document téléversé avec succès.') }}{% endif %}
+</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-danger">
+    {% if error == 'troppo_grande' %}{{ t('File troppo grande. Massimo', 'Fichier trop volumineux. Maximum') }} {{ max_size_mb }} MB.
+    {% elif error == 'vuoto' %}{{ t('Il file è vuoto.', 'Le fichier est vide.') }}
+    {% else %}{{ t('Errore durante il caricamento.', 'Erreur lors du téléversement.') }}{% endif %}
+</div>
+{% endif %}
+
+{# ── Upload ── #}
+<section class="card fiche-section">
+    <div class="card-header"><div class="card-title">⬆️ {{ t('Carica un documento', 'Téléverser un document') }}</div></div>
+    <div class="card-body">
+        <form method="post" action="{{ url_for('manager_site_documents_upload', site_id=site.id) }}" enctype="multipart/form-data">
+            <div class="form-grid">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">{{ t('File', 'Fichier') }} *</label>
+                    <input type="file" name="file" class="form-control" required>
+                    <small class="form-text text-muted">{{ t('Dimensione massima', 'Taille maximale') }}: {{ max_size_mb }} MB</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ t('Categoria', 'Catégorie') }}</label>
+                    <select name="category" class="form-select">
+                        {% for c in categories %}
+                        <option value="{{ c.value }}" {% if c.value == 'documento' %}selected{% endif %}>{{ cat_icons.get(c.value, '📎') }} {{ cat_labels.get(c.value, c.value) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ t('Descrizione', 'Description') }}</label>
+                    <input type="text" name="description" class="form-control" placeholder="{{ t('Es. Rapport de sondage SC1', 'Ex. Rapport de sondage SC1') }}">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">⬆️ {{ t('Carica', 'Téléverser') }}</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+{# ── Lista documenti ── #}
+<section class="card fiche-section">
+    <div class="card-header"><div class="card-title">📚 {{ t('Documenti archiviati', 'Documents archivés') }}</div></div>
+    <div class="card-body list-table">
+        {% if documents %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ t('Nome', 'Nom') }}</th>
+                    <th>{{ t('Categoria', 'Catégorie') }}</th>
+                    <th>{{ t('Dimensione', 'Taille') }}</th>
+                    <th>{{ t('Caricato da', 'Téléversé par') }}</th>
+                    <th>{{ t('Data', 'Date') }}</th>
+                    <th class="text-center">{{ t('Azioni', 'Actions') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('manager_document_download', doc_id=doc.id) }}?inline=1" target="_blank" rel="noopener">
+                            <strong>{{ cat_icons.get(doc.category.value, '📎') }} {{ doc.filename }}</strong>
+                        </a>
+                        {% if doc.description %}<div class="text-muted" style="font-size:.82rem;">{{ doc.description }}</div>{% endif %}
+                    </td>
+                    <td>{{ cat_labels.get(doc.category.value, doc.category.value) }}</td>
+                    <td>{% if doc.size_bytes >= 1048576 %}{{ (doc.size_bytes / 1048576)|round(1) }} MB{% else %}{{ (doc.size_bytes / 1024)|round(0)|int }} KB{% endif %}</td>
+                    <td>{{ doc.uploaded_by.full_name if doc.uploaded_by and doc.uploaded_by.full_name else (doc.uploaded_by.email if doc.uploaded_by else '—') }}</td>
+                    <td>{{ doc.created_at.strftime('%d/%m/%Y') if doc.created_at else '—' }}</td>
+                    <td class="text-center">
+                        <div class="actions--vertical">
+                            <a href="{{ url_for('manager_document_download', doc_id=doc.id) }}" class="btn btn-secondary btn-sm">⬇️ {{ t('Scarica', 'Télécharger') }}</a>
+                            <form method="post" action="{{ url_for('manager_document_delete', doc_id=doc.id) }}" onsubmit="return confirm('{{ t('Eliminare questo documento?', 'Supprimer ce document ?') }}');" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ {{ t('Elimina', 'Supprimer') }}</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">{{ t('Nessun documento archiviato per questo cantiere.', 'Aucun document archivé pour ce chantier.') }}</p>
+        {% endif %}
+    </div>
+</section>
+
+{# ── Vista schede (mobile) ── #}
+{% if documents %}
+<div class="list-cards">
+    {% for doc in documents %}
+    <article class="card list-card">
+        <div class="card-body">
+            <div class="list-card-header">
+                <strong>{{ cat_icons.get(doc.category.value, '📎') }} {{ doc.filename }}</strong>
+            </div>
+            <div class="list-card-meta">
+                <div><span class="label">{{ t('Categoria', 'Catégorie') }}</span><span class="value">{{ cat_labels.get(doc.category.value, doc.category.value) }}</span></div>
+                <div><span class="label">{{ t('Dimensione', 'Taille') }}</span><span class="value">{% if doc.size_bytes >= 1048576 %}{{ (doc.size_bytes / 1048576)|round(1) }} MB{% else %}{{ (doc.size_bytes / 1024)|round(0)|int }} KB{% endif %}</span></div>
+                {% if doc.description %}<div><span class="label">{{ t('Descrizione', 'Description') }}</span><span class="value">{{ doc.description }}</span></div>{% endif %}
+                <div><span class="label">{{ t('Data', 'Date') }}</span><span class="value">{{ doc.created_at.strftime('%d/%m/%Y') if doc.created_at else '—' }}</span></div>
+            </div>
+            <div class="list-card-actions">
+                <a href="{{ url_for('manager_document_download', doc_id=doc.id) }}" class="btn btn-secondary btn-sm">⬇️ {{ t('Scarica', 'Télécharger') }}</a>
+                <form method="post" action="{{ url_for('manager_document_delete', doc_id=doc.id) }}" onsubmit="return confirm('{{ t('Eliminare questo documento?', 'Supprimer ce document ?') }}');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ {{ t('Elimina', 'Supprimer') }}</button>
+                </form>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

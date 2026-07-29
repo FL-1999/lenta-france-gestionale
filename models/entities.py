@@ -18,6 +18,7 @@ from sqlalchemy import (
     CheckConstraint,
     JSON,
     UniqueConstraint,
+    LargeBinary,
     event,
 )
 from sqlalchemy.orm import relationship
@@ -494,6 +495,44 @@ class Site(Base):
 
     def __repr__(self) -> str:
         return f"<Site id={self.id} code={self.code} name={self.name}>"
+
+
+class SiteDocumentCategoryEnum(PyEnum):
+    foto = "foto"
+    documento = "documento"
+    certificato = "certificato"
+    rapporto_geo = "rapporto_geo"
+    piano = "piano"
+    altro = "altro"
+
+
+class SiteDocument(Base, TimestampMixin):
+    """Documento archiviato per cantiere (foto, PDF, certificati, rapporti…).
+
+    Il contenuto è salvato come BLOB nella stessa DB così persiste
+    esattamente come il resto dei dati, senza servizi esterni.
+    """
+    __tablename__ = "site_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    filename = Column(String(300), nullable=False)
+    content_type = Column(String(150), nullable=True)
+    size_bytes = Column(Integer, nullable=False, default=0)
+    category = Column(
+        Enum(SiteDocumentCategoryEnum),
+        nullable=False,
+        default=SiteDocumentCategoryEnum.documento,
+    )
+    description = Column(Text, nullable=True)
+    data = Column(LargeBinary, nullable=False)
+    uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+
+    site = relationship("Site")
+    uploaded_by = relationship("User", foreign_keys=[uploaded_by_id])
+
+    def __repr__(self) -> str:
+        return f"<SiteDocument id={self.id} site_id={self.site_id} filename={self.filename!r}>"
 
 
 class SiteTask(Base, TimestampMixin):

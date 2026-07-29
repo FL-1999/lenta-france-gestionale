@@ -11,9 +11,9 @@ from datetime import date, datetime, timedelta
 from math import ceil, pi
 from typing import List
 
-from fastapi import FastAPI, Request, Depends, Form, HTTPException, status
+from fastapi import FastAPI, Request, Depends, Form, HTTPException, status, UploadFile, File
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -57,6 +57,8 @@ from models import (
     SiteTask,
     SiteTaskPriorityEnum,
     SiteTaskStatusEnum,
+    SiteDocument,
+    SiteDocumentCategoryEnum,
     SiteStrutLevel,
     SiteStatusEnum,
     Machine,
@@ -5455,6 +5457,188 @@ def manager_site_project_config_post(
         url=f"/manager/cantieri/{site_id}/configurazione-progetto?saved=1",
         status_code=303,
     )
+
+
+# ══════════════════════════════════════════════════════════════
+# P5 — ARCHIVIO DOCUMENTALE (documenti per cantiere)
+# ══════════════════════════════════════════════════════════════
+
+MAX_DOCUMENT_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB per file
+
+
+def _document_categories() -> list[SiteDocumentCategoryEnum]:
+    return list(SiteDocumentCategoryEnum)
+
+
+@app.get(
+    "/manager/cantieri/{site_id}/documenti",
+    response_class=HTMLResponse,
+    name="manager_site_documents",
+)
+def manager_site_documents(
+    request: Request,
+    site_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        documents = (
+            db.query(SiteDocument)
+            .options(joinedload(SiteDocument.uploaded_by))
+            .filter(SiteDocument.site_id == site_id)
+            .order_by(SiteDocument.created_at.desc())
+            .all()
+        )
+        total_size = sum(int(doc.size_bytes or 0) for doc in documents)
+
+        return render_template(
+            templates,
+            request,
+            "manager/site_documents.html",
+            {
+                "site": site,
+                "documents": documents,
+                "categories": _document_categories(),
+                "total_size": total_size,
+                "documents_count": len(documents),
+                "max_size_mb": MAX_DOCUMENT_SIZE_BYTES // (1024 * 1024),
+                "saved": request.query_params.get("saved"),
+                "error": request.query_params.get("error"),
+            },
+            db=db,
+            user=current_user,
+        )
+    finally:
+        db.close()
+
+
+@app.post(
+    "/manager/cantieri/{site_id}/documenti",
+    name="manager_site_documents_upload",
+)
+async def manager_site_documents_upload(
+    request: Request,
+    site_id: int,
+    file: UploadFile = File(...),
+    category: str = Form("documento"),
+    description: str = Form(""),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    detail_url = f"/manager/cantieri/{site_id}/documenti"
+    db = SessionLocal()
+    try:
+        site = db.query(Site).filter(Site.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Cantiere non trovato")
+
+        content = await file.read()
+        if not content:
+            return RedirectResponse(url=f"{detail_url}?error=vuoto", status_code=303)
+        if len(content) > MAX_DOCUMENT_SIZE_BYTES:
+            return RedirectResponse(url=f"{detail_url}?error=troppo_grande", status_code=303)
+
+        try:
+            category_enum = SiteDocumentCategoryEnum(category)
+        except ValueError:
+            category_enum = SiteDocumentCategoryEnum.documento
+
+        document = SiteDocument(
+            site_id=site_id,
+            filename=(file.filename or "documento")[:300],
+            content_type=file.content_type,
+            size_bytes=len(content),
+            category=category_enum,
+            description=(description or "").strip() or None,
+            data=content,
+            uploaded_by_id=current_user.id,
+        )
+        db.add(document)
+        db.flush()
+        log_audit_event(
+            db, current_user, "DOCUMENT_UPLOADED", "site_document", document.id,
+            {"site_id": site_id, "filename": document.filename, "size": document.size_bytes},
+        )
+        db.commit()
+        return RedirectResponse(url=f"{detail_url}?saved=1", status_code=303)
+    finally:
+        db.close()
+
+
+@app.get(
+    "/manager/documenti/{doc_id}/download",
+    name="manager_document_download",
+)
+def manager_document_download(
+    request: Request,
+    doc_id: int,
+    inline: int = 0,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        document = db.query(SiteDocument).filter(SiteDocument.id == doc_id).first()
+        if not document:
+            raise HTTPException(status_code=404, detail="Documento non trovato")
+        disposition = "inline" if inline else "attachment"
+        safe_name = (document.filename or "documento").replace('"', "")
+        return Response(
+            content=document.data,
+            media_type=document.content_type or "application/octet-stream",
+            headers={
+                "Content-Disposition": f'{disposition}; filename="{safe_name}"',
+            },
+        )
+    finally:
+        db.close()
+
+
+@app.post(
+    "/manager/documenti/{doc_id}/elimina",
+    name="manager_document_delete",
+)
+def manager_document_delete(
+    request: Request,
+    doc_id: int,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+
+    db = SessionLocal()
+    try:
+        document = db.query(SiteDocument).filter(SiteDocument.id == doc_id).first()
+        if not document:
+            raise HTTPException(status_code=404, detail="Documento non trovato")
+
+        # Può eliminare: un amministratore oppure chi ha caricato il file.
+        is_admin = has_perm(current_user, "sites.delete")
+        is_owner = document.uploaded_by_id == current_user.id
+        if not (is_admin or is_owner):
+            raise HTTPException(status_code=403, detail="Non autorizzato")
+
+        site_id = document.site_id
+        log_audit_event(
+            db, current_user, "DOCUMENT_DELETED", "site_document", document.id,
+            {"site_id": site_id, "filename": document.filename},
+        )
+        db.delete(document)
+        db.commit()
+        return RedirectResponse(url=f"/manager/cantieri/{site_id}/documenti?saved=deleted", status_code=303)
+    finally:
+        db.close()
 
 
 @app.get("/manager/cantieri/{site_id}", response_class=HTMLResponse, name="manager_site_detail")
