@@ -59,7 +59,7 @@
 
 {% include "shared/_production_block.html" %}
 
-{% macro progress_map_section(title, complete_word, total, fiches_map, summary, aria_label, can_open_fiches=True) %}
+{% macro progress_map_section(title, complete_word, total, fiches_map, summary, aria_label, can_open_fiches=True, ready_set=None) %}
     {% if total > 0 %}
         <section class="progress-map-section" aria-label="{{ aria_label }}">
             <div class="progress-map-section__header">
@@ -96,6 +96,15 @@
                                 {{ i }}
                             </span>
                         {% endif %}
+                    {% elif ready_set and i in ready_set %}
+                        <div
+                            class="progress-cell ready"
+                            role="listitem"
+                            aria-label="{{ title }} {{ i }}: {% if lang == 'fr' %}cage prête{% else %}gabbia pronta{% endif %}"
+                            title="{% if lang == 'fr' %}Cage prête — fiche pas encore créée{% else %}Gabbia pronta - fiche non ancora creata{% endif %}"
+                        >
+                            {{ i }}
+                        </div>
                     {% else %}
                         <div
                             class="progress-cell missing"
@@ -132,8 +141,8 @@
                     Verde = fiche creata, grigio = fiche mancante.{% if can_open_fiche_details|default(false) %} Clicca una casella verde per aprire il dettaglio fiche.{% endif %} Paratie e pali restano separati.
                 {% endif %}
             </p>
-            {{ progress_map_section('Paratie' if lang == 'it' else 'Parois', 'completate' if lang == 'it' else 'complétées', numero_totale_paratie, paratie_fiches_map, paratie_progress_map, 'Schema avanzamento paratie', can_open_fiche_details|default(false)) }}
-            {{ progress_map_section('Pali' if lang == 'it' else 'Pieux', 'completati' if lang == 'it' else 'complétés', numero_totale_pali, pali_fiches_map, pali_progress_map, 'Schema avanzamento pali', can_open_fiche_details|default(false)) }}
+            {{ progress_map_section('Paratie' if lang == 'it' else 'Parois', 'completate' if lang == 'it' else 'complétées', numero_totale_paratie, paratie_fiches_map, paratie_progress_map, 'Schema avanzamento paratie', can_open_fiche_details|default(false), paratie_gabbie_ready|default(none)) }}
+            {{ progress_map_section('Pali' if lang == 'it' else 'Pieux', 'completati' if lang == 'it' else 'complétés', numero_totale_pali, pali_fiches_map, pali_progress_map, 'Schema avanzamento pali', can_open_fiche_details|default(false), pali_gabbie_ready|default(none)) }}
             {% if request.query_params.get('debug_grid') == '1' %}
                 <pre class="text-muted mt-3">totale_paratie={{ numero_totale_paratie }}
 paratie_esistenti={{ paratie_fiches_map.keys()|list }}

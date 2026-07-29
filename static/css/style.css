@@ -4799,6 +4799,13 @@ label.form-label[for="profondita_totale"]{
   border: 1px dashed rgba(148,163,184,.25);
 }
 
+/* Gabbia pronta (dal capo ferraioli), pannello non ancora gettato */
+.progress-cell.ready {
+  background: linear-gradient(135deg, #fde047, #eab308);
+  color: #422006;
+  box-shadow: 0 0 14px rgba(234,179,8,.35);
+}
+
 .progress-cell.done:hover,
 .progress-cell.done:focus-visible {
   transform: translateY(-2px);
@@ -4938,6 +4945,13 @@ label.form-label[for="profondita_totale"]{
   background: #263244;
   border: 1px dashed rgba(148, 163, 184, 0.42);
   color: #cbd5e1;
+}
+
+/* Gabbia pronta (dal capo ferraioli) — pannello non ancora gettato */
+.advanced-progress-cell--ready {
+  background: linear-gradient(135deg, #fde047, #eab308);
+  box-shadow: 0 10px 24px rgba(234, 179, 8, 0.3);
+  color: #422006;
 }
 
 .advanced-progress-cell:hover,

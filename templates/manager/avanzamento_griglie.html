@@ -33,7 +33,7 @@
           {% set fiche_url = url_for('manager_fiches_detail', fiche_id=item.fiche_id) if item.is_completed else '' %}
           <button
             type="button"
-            class="advanced-progress-cell {{ 'advanced-progress-cell--done' if item.is_completed else 'advanced-progress-cell--missing' }}"
+            class="advanced-progress-cell {{ 'advanced-progress-cell--done' if item.is_completed else ('advanced-progress-cell--ready' if item.cage_pronta else 'advanced-progress-cell--missing') }}"
             role="listitem"
             data-progress-cell
             data-preview='{{ item.preview|tojson }}'

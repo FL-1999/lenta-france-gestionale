@@ -4013,7 +4013,9 @@ def _progress_status(percent: int, lang: str) -> str:
     return "In corso" if lang == "it" else "En cours"
 
 
-def _format_progress_value(value: float | int) -> str:
+def _format_progress_value(value: float | int | None) -> str:
+    if value is None:
+        return "—"
     if isinstance(value, float) and not value.is_integer():
         return f"{value:.2f}".rstrip("0").rstrip(".")
     return str(int(value))
@@ -4308,9 +4310,15 @@ def _build_avanzamento_grid_items(
     total_elements: int,
     label: str,
     custom_labels: dict[int, str] | None = None,
+    cage_ready_numbers: set[int] | None = None,
 ) -> list[dict[str, object]]:
-    """Build the dedicated progress-grid view model with fiche preview data."""
+    """Build the dedicated progress-grid view model with fiche preview data.
 
+    `cage_ready_numbers` marca i pannelli con gabbia pronta (giallo) tra quelli
+    non ancora gettati.
+    """
+
+    cage_ready_numbers = cage_ready_numbers or set()
     items: list[dict[str, object]] = []
     if total_elements <= 0:
         return items
@@ -4320,6 +4328,7 @@ def _build_avanzamento_grid_items(
         display_name = _progress_grid_display_name(element_number, label, custom_labels)
         full_name = _progress_grid_full_name(element_number, label)
         if not fiche:
+            cage_ready = element_number in cage_ready_numbers
             items.append(
                 {
                     "number": element_number,
@@ -4328,12 +4337,13 @@ def _build_avanzamento_grid_items(
                     "full_name": full_name,
                     "custom_label": (custom_labels or {}).get(element_number, ""),
                     "is_completed": False,
-                    "status_label": "mancante",
-                    "tooltip": f"{full_name}\nstato: mancante",
+                    "cage_pronta": cage_ready,
+                    "status_label": "gabbia pronta" if cage_ready else "mancante",
+                    "tooltip": f"{full_name}\nstato: {'gabbia pronta' if cage_ready else 'mancante'}",
                     "preview": {
                         "title": full_name,
                         "missing": True,
-                        "message": "Fiche non ancora creata",
+                        "message": "Gabbia pronta — fiche non ancora creata" if cage_ready else "Fiche non ancora creata",
                     },
                 }
             )
@@ -6061,6 +6071,9 @@ def manager_site_detail(
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
+        _gab_celle = _load_celle_map(db, site.id)
+        paratie_gabbie_ready = {n for (cat, n), c in _gab_celle.items() if cat == "paratia" and c.pronta}
+        pali_gabbie_ready = {n for (cat, n), c in _gab_celle.items() if cat == "palo" and c.pronta}
         production_stats = compute_site_production(site, site_fiches)
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
         manager_users = (
@@ -6089,6 +6102,8 @@ def manager_site_detail(
             numero_totale_pali=numero_totale_pali,
             paratie_fiches_map=paratie_fiches_map,
             pali_fiches_map=pali_fiches_map,
+            paratie_gabbie_ready=paratie_gabbie_ready,
+            pali_gabbie_ready=pali_gabbie_ready,
             paratie_grid_labels=paratie_grid_labels,
             pali_grid_labels=pali_grid_labels,
             paratie_progress_map=paratie_progress_map,
@@ -6167,11 +6182,14 @@ def manager_site_progress_grids(
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
+        _gab_celle = _load_celle_map(db, site.id)
+        _paratie_ready = {n for (cat, n), c in _gab_celle.items() if cat == "paratia" and c.pronta}
+        _pali_ready = {n for (cat, n), c in _gab_celle.items() if cat == "palo" and c.pronta}
         paratie_grid = _build_avanzamento_grid_items(
-            paratie_fiches_map, numero_totale_paratie, "Paratia", paratie_grid_labels
+            paratie_fiches_map, numero_totale_paratie, "Paratia", paratie_grid_labels, _paratie_ready
         )
         pali_grid = _build_avanzamento_grid_items(
-            pali_fiches_map, numero_totale_pali, "Palo", pali_grid_labels
+            pali_fiches_map, numero_totale_pali, "Palo", pali_grid_labels, _pali_ready
         )
     finally:
         db.close()
@@ -7320,6 +7338,9 @@ def capo_site_detail(
         _update_progress_summary_for_fiche_grids(
             progress_summary, site, site_fiches, lang
         )
+        _gab_celle = _load_celle_map(db, site.id)
+        paratie_gabbie_ready = {n for (cat, n), c in _gab_celle.items() if cat == "paratia" and c.pronta}
+        pali_gabbie_ready = {n for (cat, n), c in _gab_celle.items() if cat == "palo" and c.pronta}
         production_stats = compute_site_production(site, site_fiches)
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
     finally:
@@ -7339,6 +7360,8 @@ def capo_site_detail(
             numero_totale_pali=numero_totale_pali,
             paratie_fiches_map=paratie_fiches_map,
             pali_fiches_map=pali_fiches_map,
+            paratie_gabbie_ready=paratie_gabbie_ready,
+            pali_gabbie_ready=pali_gabbie_ready,
             paratie_progress_map=paratie_progress_map,
             pali_progress_map=pali_progress_map,
             pali_fatti=pali_fatti,
