@@ -716,9 +716,22 @@ body {
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
     padding: 8px 12px calc(8px + var(--safe-area-bottom));
     display: none;
-    justify-content: space-around;
+    /* Centrata quando le voci ci stanno, scorrevole quando sono troppe
+       (così le ultime non vengono tagliate). */
+    justify-content: safe center;
     gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     z-index: 100;
+}
+
+.bottom-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.bottom-nav__link {
+    flex: 0 0 auto;
 }
 
 .bottom-nav__link {
