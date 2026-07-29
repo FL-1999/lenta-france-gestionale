@@ -85,6 +85,7 @@ SITES_COLUMNS: tuple[str, ...] = (
     "projet_mission TEXT",
     "projet_redaction TEXT",
     "projet_controle TEXT",
+    "ferraiolo_id INTEGER",
 )
 
 NOTIFICATIONS_COLUMNS: tuple[str, ...] = ("is_read BOOLEAN NOT NULL DEFAULT 0",)

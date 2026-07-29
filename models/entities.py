@@ -228,7 +228,7 @@ class User(Base, TimestampMixin):
     reports = relationship("Report", back_populates="created_by", cascade="all, delete-orphan")
     fiches = relationship("Fiche", back_populates="created_by", cascade="all, delete-orphan", foreign_keys="Fiche.created_by_id")
     official_fiches = relationship("Fiche", back_populates="capocantiere", foreign_keys="Fiche.capocantiere_id")
-    assigned_sites = relationship("Site", back_populates="caposquadra")
+    assigned_sites = relationship("Site", back_populates="caposquadra", foreign_keys="Site.caposquadra_id")
     magazzino_movimenti_creati = relationship(
         "MagazzinoMovimento",
         foreign_keys="MagazzinoMovimento.creato_da_user_id",
@@ -434,7 +434,10 @@ class Site(Base):
     projet_controle = Column(String(50), nullable=True)
 
     caposquadra_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    caposquadra = relationship("User", back_populates="assigned_sites")
+    caposquadra = relationship("User", back_populates="assigned_sites", foreign_keys=[caposquadra_id])
+
+    ferraiolo_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    ferraiolo = relationship("User", foreign_keys=[ferraiolo_id])
 
     # Relazioni
     reports = relationship("Report", back_populates="site", cascade="all, delete-orphan")
@@ -642,6 +645,30 @@ class GabbiaPannello(Base):
     numero_pannello = Column(String(40), nullable=False)
 
     tipo = relationship("GabbiaTipo", back_populates="pannelli")
+
+
+class GabbiaCella(Base, TimestampMixin):
+    """Stato della gabbia per un singolo pannello/palo di un cantiere.
+
+    Il capo ferraioli aggiorna se la gabbia è pronta, il peso messo e le note.
+    Il "gettato" (verde) è derivato dall'esistenza della fiche, non salvato qui.
+    """
+    __tablename__ = "gabbia_celle"
+    __table_args__ = (
+        UniqueConstraint("site_id", "categoria", "numero", name="uq_gabbia_cella"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    categoria = Column(Enum(GabbiaCategoriaEnum), nullable=False, default=GabbiaCategoriaEnum.paratia)
+    numero = Column(Integer, nullable=False)
+    pronta = Column(Boolean, nullable=False, default=False)
+    peso_kg = Column(Float, nullable=True)
+    note = Column(Text, nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+
+    site = relationship("Site")
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
 
 
 class SiteTask(Base, TimestampMixin):

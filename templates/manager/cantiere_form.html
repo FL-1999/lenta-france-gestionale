@@ -345,6 +345,20 @@
               </select>
             </div>
 
+            <div class="form-group">
+              <label class="form-label" for="ferraiolo_id">{% if lang == 'fr' %}Ferrailleur responsable{% else %}Ferraiolo responsabile{% endif %}</label>
+              <select id="ferraiolo_id" name="ferraiolo_id" class="form-select">
+                {% set form_ferr = form_data.get('ferraiolo_id') if form_data else none %}
+                {% set selected_ferr = form_ferr if form_ferr is not none else (site.ferraiolo_id if site else '') %}
+                <option value="" {% if not selected_ferr %}selected{% endif %}>-</option>
+                {% for f in (ferraioli or []) %}
+                  <option value="{{ f.id }}" {% if selected_ferr == f.id %}selected{% endif %}>
+                    {{ f.full_name or f.email }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
             <div class="form-group form-group-inline">
               <input type="checkbox" id="is_active" name="is_active" class="form-control" {% if (form_submitted and form_active is not none) or (not form_submitted and (not site or site.is_active)) %}checked{% endif %}>
               <label class="form-label" for="is_active">Cantiere attivo</label>

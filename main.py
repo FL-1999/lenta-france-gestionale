@@ -62,6 +62,7 @@ from models import (
     GabbiaTipo,
     GabbiaElemento,
     GabbiaPannello,
+    GabbiaCella,
     GabbiaCategoriaEnum,
     GabbiaStatoEnum,
     GabbiaElementoTipoEnum,
@@ -5239,6 +5240,13 @@ def manager_cantiere_nuovo_get(
             .order_by(User.full_name, User.email)
             .all()
         )
+        ferraioli = (
+            db.query(User)
+            .filter(User.role == RoleEnum.ferraiolo)
+            .filter(User.is_active.is_(True))
+            .order_by(User.full_name, User.email)
+            .all()
+        )
         depositi_disponibili = _load_real_depots_for_forms(db)
     finally:
         db.close()
@@ -5253,6 +5261,7 @@ def manager_cantiere_nuovo_get(
             site=None,
             site_status_values=site_status_values,
             capisquadra=capisquadra,
+            ferraioli=ferraioli,
             google_maps_api_key=google_maps_api_key,
             depositi_disponibili=depositi_disponibili,
         ),
@@ -5276,6 +5285,7 @@ def manager_cantiere_nuovo_post(
     status: str = Form(...),
     is_active: str | None = Form(None),
     caposquadra_id: str | None = Form(None),
+    ferraiolo_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
     numero_totale_pali: str | None = Form(None),
     projet_client: str | None = Form(None),
@@ -5385,6 +5395,13 @@ def manager_cantiere_nuovo_post(
                 .order_by(User.full_name, User.email)
                 .all()
             )
+            ferraioli = (
+                db.query(User)
+                .filter(User.role == RoleEnum.ferraiolo)
+                .filter(User.is_active.is_(True))
+                .order_by(User.full_name, User.email)
+                .all()
+            )
             depositi_disponibili = _load_real_depots_for_forms(db)
             return templates.TemplateResponse(
                 request,
@@ -5396,6 +5413,7 @@ def manager_cantiere_nuovo_post(
                     site=None,
                     site_status_values=site_status_values,
                     capisquadra=capisquadra,
+                    ferraioli=ferraioli,
                     google_maps_api_key=google_maps_api_key,
                     depositi_disponibili=depositi_disponibili,
                     error_message=errors[0],
@@ -5436,6 +5454,7 @@ def manager_cantiere_nuovo_post(
             status=status_value,
             is_active=is_active is not None,
             caposquadra_id=parsed_capo_id,
+            ferraiolo_id=parse_caposquadra(ferraiolo_id),
             totale_paratie_da_scavare=total_paratie_value,
             numero_totale_paratie=total_paratie_value,
             numero_totale_pali=total_pali_value,
@@ -5815,124 +5834,78 @@ def manager_document_delete(
 
 
 # ══════════════════════════════════════════════════════════════
-# P8 — GABBIE ARMATURA (tipologie, composizione, avanzamento ferraioli)
+# P8 — GABBIE ARMATURA (griglia pannelli: da fare / pronta / gettato)
 # ══════════════════════════════════════════════════════════════
 
-def _rebar_kg_per_m(diametro_mm: float) -> float:
-    """Peso lineare di una barra d'acciaio: 0.006165 · d² (kg/m)."""
-    return 0.006165 * diametro_mm * diametro_mm
-
-
-def _gabbia_peso_calcolato(tipo: GabbiaTipo) -> float:
-    """Peso stimato di UNA gabbia (kg) dalla composizione."""
-    L = tipo.lunghezza_m or 0.0
-    if tipo.categoria == GabbiaCategoriaEnum.palo:
-        perimetro = pi * ((tipo.diametro_cm or 0.0) / 100.0)
-    else:
-        perimetro = 2.0 * (((tipo.larghezza_cm or 0.0) + (tipo.spessore_cm or 0.0)) / 100.0)
-    total = 0.0
-    for e in tipo.elementi:
-        d = e.diametro_mm or 0.0
-        if d <= 0:
-            continue
-        kgm = _rebar_kg_per_m(d)
-        if e.elemento in (GabbiaElementoTipoEnum.filante, GabbiaElementoTipoEnum.barra):
-            lunghezza_totale = (e.quantita or 0) * (e.lunghezza_m or L)
-            total += lunghezza_totale * kgm
-        else:  # quadro / staffa / spirale: numero da passo, lunghezza per pezzo = perimetro
-            if e.passo_cm and e.passo_cm > 0 and L > 0:
-                n = int(L * 100.0 / e.passo_cm) + 1
-            else:
-                n = e.quantita or 0
-            lunghezza_pezzo = e.lunghezza_m or perimetro
-            total += n * lunghezza_pezzo * kgm
-    return round(total, 1)
-
-
-def _gabbia_view(tipo: GabbiaTipo) -> dict:
-    """Dati derivati per la visualizzazione di una tipologia."""
-    peso_una = tipo.peso_override_kg if tipo.peso_override_kg is not None else _gabbia_peso_calcolato(tipo)
-    n_prev = tipo.n_gabbie_previste or 0
-    avanzo = max(0, (tipo.gabbie_prodotte or 0) - (tipo.gabbie_posate or 0))
-    mancanti = max(0, n_prev - (tipo.gabbie_prodotte or 0))
-    return {
-        "tipo": tipo,
-        "peso_una_kg": peso_una,
-        "peso_calcolato_kg": _gabbia_peso_calcolato(tipo),
-        "peso_totale_kg": round((peso_una or 0) * n_prev, 1),
-        "avanzo": avanzo,
-        "mancanti": mancanti,
-        "pannelli": [p.numero_pannello for p in tipo.pannelli],
-    }
-
-
-def _load_gabbia_full(db, tipo_id: int) -> GabbiaTipo | None:
+def _get_ferraiolo_assigned_sites(db, user: User) -> list[Site]:
     return (
-        db.query(GabbiaTipo)
-        .options(
-            joinedload(GabbiaTipo.elementi),
-            joinedload(GabbiaTipo.pannelli),
-            joinedload(GabbiaTipo.site),
-        )
-        .filter(GabbiaTipo.id == tipo_id)
-        .first()
+        db.query(Site)
+        .filter(Site.ferraiolo_id == user.id)
+        .filter(Site.is_active.is_(True))
+        .order_by(Site.name.asc())
+        .all()
     )
 
 
-def _save_gabbia_composition(db, tipo: GabbiaTipo, form) -> None:
-    """Ricostruisce elementi e pannelli dalla form (liste parallele)."""
-    elementi = form.getlist("elemento")
-    lati = form.getlist("lato")
-    diametri = form.getlist("diametro_mm")
-    quantita = form.getlist("quantita")
-    lunghezze = form.getlist("lunghezza_el")
-    passi = form.getlist("passo_cm")
+def _gabbie_visible_sites(db, user: User) -> list[Site]:
+    """Cantieri visibili nella sezione gabbie: assegnati per il ferraiolo,
+    tutti gli attivi per manager/admin."""
+    if has_perm(user, "manager.access"):
+        return (
+            db.query(Site)
+            .filter(Site.is_active.is_(True))
+            .filter((Site.code != GENERICO_SITE_CODE) | (Site.code.is_(None)))
+            .order_by(Site.name.asc())
+            .all()
+        )
+    return _get_ferraiolo_assigned_sites(db, user)
 
-    tipo.elementi.clear()
-    db.flush()
-    for i, el in enumerate(elementi):
-        el = (el or "").strip()
-        if not el:
-            continue
-        try:
-            el_enum = GabbiaElementoTipoEnum(el)
-        except ValueError:
-            continue
-        try:
-            lato_enum = GabbiaLatoEnum((lati[i] if i < len(lati) else "entrambi") or "entrambi")
-        except ValueError:
-            lato_enum = GabbiaLatoEnum.entrambi
 
-        def _f(lst, idx):
-            try:
-                v = lst[idx]
-                return float(v) if v not in (None, "") else None
-            except (ValueError, IndexError):
-                return None
+def _load_celle_map(db, site_id: int) -> dict[tuple[str, int], GabbiaCella]:
+    celle = db.query(GabbiaCella).filter(GabbiaCella.site_id == site_id).all()
+    return {(c.categoria.value, c.numero): c for c in celle}
 
-        def _i(lst, idx):
-            try:
-                v = lst[idx]
-                return int(float(v)) if v not in (None, "") else None
-            except (ValueError, IndexError):
-                return None
 
-        tipo.elementi.append(GabbiaElemento(
-            elemento=el_enum, lato=lato_enum,
-            diametro_mm=_f(diametri, i), quantita=_i(quantita, i),
-            lunghezza_m=_f(lunghezze, i), passo_cm=_f(passi, i), ordine=i,
-        ))
+def _build_gabbie_cells(db, site: Site, categoria: str, total: int, celle_map: dict) -> list[dict]:
+    """Costruisce le celle della griglia gabbie con colore/stato per pannello.
 
-    # Pannelli: campo testo separato da virgole/spazi
-    tipo.pannelli.clear()
-    db.flush()
-    raw = form.get("pannelli", "") or ""
-    seen = set()
-    for token in re.split(r"[,;\s]+", raw):
-        token = token.strip()
-        if token and token not in seen:
-            seen.add(token)
-            tipo.pannelli.append(GabbiaPannello(numero_pannello=token[:40]))
+    verde = pannello gettato (fiche presente) · giallo = gabbia pronta ·
+    grigio = ancora da fare.
+    """
+    cells: list[dict] = []
+    if total <= 0:
+        return cells
+    fiches_map = _build_site_fiches_map(db, site.id, categoria, total)
+    for n in range(1, total + 1):
+        gettato = n in fiches_map
+        cella = celle_map.get((categoria, n))
+        pronta = bool(cella.pronta) if cella else False
+        if gettato:
+            color = "verde"
+        elif pronta:
+            color = "giallo"
+        else:
+            color = "grigio"
+        cells.append({
+            "numero": n,
+            "categoria": categoria,
+            "gettato": gettato,
+            "pronta": pronta,
+            "color": color,
+            "peso_kg": (cella.peso_kg if cella else None),
+            "note": (cella.note if cella else None),
+        })
+    return cells
+
+
+def _gabbie_site_summary(paratie_cells: list[dict], pali_cells: list[dict]) -> dict:
+    allc = paratie_cells + pali_cells
+    return {
+        "totale": len(allc),
+        "gettati": sum(1 for c in allc if c["gettato"]),
+        "pronte": sum(1 for c in allc if c["pronta"] and not c["gettato"]),
+        "da_fare": sum(1 for c in allc if not c["pronta"] and not c["gettato"]),
+    }
 
 
 @app.get("/gabbie", response_class=HTMLResponse, name="gabbie_home")
@@ -5941,33 +5914,20 @@ def gabbie_home(request: Request, current_user: User = Depends(get_current_activ
         raise HTTPException(status_code=403, detail="Non autorizzato")
     db = SessionLocal()
     try:
-        sites = (
-            db.query(Site)
-            .filter((Site.code != GENERICO_SITE_CODE) | (Site.code.is_(None)))
-            .order_by(Site.name.asc())
-            .all()
-        )
-        tipi = db.query(GabbiaTipo).options(joinedload(GabbiaTipo.elementi), joinedload(GabbiaTipo.pannelli)).all()
-        by_site: dict[int, list] = {}
-        for t in tipi:
-            by_site.setdefault(t.site_id, []).append(t)
+        sites = _gabbie_visible_sites(db, current_user)
         rows = []
         for s in sites:
-            st = by_site.get(s.id, [])
-            if not st:
-                continue
-            n_prev = sum(t.n_gabbie_previste or 0 for t in st)
-            n_prod = sum(t.gabbie_prodotte or 0 for t in st)
-            n_pos = sum(t.gabbie_posate or 0 for t in st)
-            rows.append({
-                "site": s, "n_tipi": len(st),
-                "previste": n_prev, "prodotte": n_prod, "posate": n_pos,
-                "avanzo": max(0, n_prod - n_pos),
-            })
+            n_par = _site_paratie_total(s)
+            n_pal = _site_pali_total(s)
+            celle_map = _load_celle_map(db, s.id)
+            par = _build_gabbie_cells(db, s, "paratia", n_par, celle_map)
+            pal = _build_gabbie_cells(db, s, "palo", n_pal, celle_map)
+            summ = _gabbie_site_summary(par, pal)
+            rows.append({"site": s, "summary": summ})
         ctx = build_template_context(
             request, current_user,
-            rows=rows, all_sites=sites,
-            can_manage=has_perm(current_user, "gabbie.manage"),
+            rows=rows,
+            is_manager=has_perm(current_user, "manager.access"),
         )
     finally:
         db.close()
@@ -5983,18 +5943,19 @@ def gabbie_site(request: Request, site_id: int, current_user: User = Depends(get
         site = db.query(Site).filter(Site.id == site_id).first()
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
-        tipi = (
-            db.query(GabbiaTipo)
-            .options(joinedload(GabbiaTipo.elementi), joinedload(GabbiaTipo.pannelli))
-            .filter(GabbiaTipo.site_id == site_id)
-            .order_by(GabbiaTipo.codice.asc())
-            .all()
-        )
-        views = [_gabbia_view(t) for t in tipi]
+        # Il ferraiolo può vedere solo i cantieri assegnati
+        if not has_perm(current_user, "manager.access") and site.ferraiolo_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Non autorizzato")
+        n_par = _site_paratie_total(site)
+        n_pal = _site_pali_total(site)
+        celle_map = _load_celle_map(db, site.id)
+        paratie_cells = _build_gabbie_cells(db, site, "paratia", n_par, celle_map)
+        pali_cells = _build_gabbie_cells(db, site, "palo", n_pal, celle_map)
+        summary = _gabbie_site_summary(paratie_cells, pali_cells)
         ctx = build_template_context(
             request, current_user,
-            site=site, views=views,
-            can_manage=has_perm(current_user, "gabbie.manage"),
+            site=site, paratie_cells=paratie_cells, pali_cells=pali_cells,
+            summary=summary, can_manage=has_perm(current_user, "gabbie.manage"),
             saved=request.query_params.get("saved"),
         )
     finally:
@@ -6002,37 +5963,8 @@ def gabbie_site(request: Request, site_id: int, current_user: User = Depends(get
     return templates.TemplateResponse(request, "gabbie/site.html", ctx)
 
 
-def _gabbie_form_context(request, current_user, db, tipo, site):
-    return build_template_context(
-        request, current_user,
-        tipo=tipo, site=site,
-        view=_gabbia_view(tipo) if tipo and tipo.id else None,
-        categorie=list(GabbiaCategoriaEnum),
-        elementi_tipi=list(GabbiaElementoTipoEnum),
-        lati=list(GabbiaLatoEnum),
-        stati=list(GabbiaStatoEnum),
-        can_manage=has_perm(current_user, "gabbie.manage"),
-    )
-
-
-@app.get("/gabbie/nuova", response_class=HTMLResponse, name="gabbie_new")
-def gabbie_new(request: Request, site_id: int, current_user: User = Depends(get_current_active_user_html)):
-    if not has_perm(current_user, "gabbie.manage"):
-        raise HTTPException(status_code=403, detail="Non autorizzato")
-    db = SessionLocal()
-    try:
-        site = db.query(Site).filter(Site.id == site_id).first()
-        if not site:
-            raise HTTPException(status_code=404, detail="Cantiere non trovato")
-        tipo = GabbiaTipo(site_id=site_id, codice="", categoria=GabbiaCategoriaEnum.paratia, n_gabbie_previste=1)
-        ctx = _gabbie_form_context(request, current_user, db, tipo, site)
-    finally:
-        db.close()
-    return templates.TemplateResponse(request, "gabbie/form.html", ctx)
-
-
-@app.post("/gabbie/nuova", name="gabbie_new_post")
-async def gabbie_new_post(request: Request, site_id: int = Form(...), current_user: User = Depends(get_current_active_user_html)):
+@app.post("/gabbie/cantiere/{site_id}/pannello", name="gabbie_cella_update")
+async def gabbie_cella_update(request: Request, site_id: int, current_user: User = Depends(get_current_active_user_html)):
     if not has_perm(current_user, "gabbie.manage"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
     form = await request.form()
@@ -6041,140 +5973,39 @@ async def gabbie_new_post(request: Request, site_id: int = Form(...), current_us
         site = db.query(Site).filter(Site.id == site_id).first()
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
-        tipo = GabbiaTipo(site_id=site_id, created_by_id=current_user.id)
-        _apply_gabbia_fields(tipo, form)
-        db.add(tipo)
-        db.flush()
-        _save_gabbia_composition(db, tipo, form)
-        log_audit_event(db, current_user, "GABBIA_CREATED", "gabbia_tipo", tipo.id, {"site_id": site_id, "codice": tipo.codice})
+        if not has_perm(current_user, "manager.access") and site.ferraiolo_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Non autorizzato")
+        try:
+            categoria = GabbiaCategoriaEnum(form.get("categoria") or "paratia")
+        except ValueError:
+            categoria = GabbiaCategoriaEnum.paratia
+        try:
+            numero = int(form.get("numero"))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Numero pannello non valido")
+
+        cella = (
+            db.query(GabbiaCella)
+            .filter(GabbiaCella.site_id == site_id, GabbiaCella.categoria == categoria, GabbiaCella.numero == numero)
+            .first()
+        )
+        if not cella:
+            cella = GabbiaCella(site_id=site_id, categoria=categoria, numero=numero)
+            db.add(cella)
+
+        cella.pronta = form.get("pronta") in ("1", "on", "true", "True")
+        peso = form.get("peso_kg")
+        try:
+            cella.peso_kg = float(peso) if peso not in (None, "") else None
+        except ValueError:
+            cella.peso_kg = None
+        cella.note = (form.get("note") or "").strip() or None
+        cella.updated_by_id = current_user.id
         db.commit()
         return RedirectResponse(url=f"/gabbie/cantiere/{site_id}?saved=1", status_code=303)
     finally:
         db.close()
 
-
-def _apply_gabbia_fields(tipo: GabbiaTipo, form) -> None:
-    def _f(name):
-        v = form.get(name)
-        try:
-            return float(v) if v not in (None, "") else None
-        except ValueError:
-            return None
-
-    def _i(name, default=0):
-        v = form.get(name)
-        try:
-            return int(float(v)) if v not in (None, "") else default
-        except ValueError:
-            return default
-
-    tipo.codice = (form.get("codice") or "").strip()[:80] or "—"
-    try:
-        tipo.categoria = GabbiaCategoriaEnum(form.get("categoria") or "paratia")
-    except ValueError:
-        tipo.categoria = GabbiaCategoriaEnum.paratia
-    tipo.lunghezza_m = _f("lunghezza_m")
-    tipo.larghezza_cm = _f("larghezza_cm")
-    tipo.spessore_cm = _f("spessore_cm")
-    tipo.diametro_cm = _f("diametro_cm")
-    tipo.n_gabbie_previste = _i("n_gabbie_previste", 1)
-    tipo.peso_override_kg = _f("peso_override_kg")
-    tipo.note = (form.get("note") or "").strip() or None
-
-
-@app.get("/gabbie/{tipo_id}/modifica", response_class=HTMLResponse, name="gabbie_edit")
-def gabbie_edit(request: Request, tipo_id: int, current_user: User = Depends(get_current_active_user_html)):
-    if not has_perm(current_user, "gabbie.manage"):
-        raise HTTPException(status_code=403, detail="Non autorizzato")
-    db = SessionLocal()
-    try:
-        tipo = _load_gabbia_full(db, tipo_id)
-        if not tipo:
-            raise HTTPException(status_code=404, detail="Gabbia non trovata")
-        ctx = _gabbie_form_context(request, current_user, db, tipo, tipo.site)
-    finally:
-        db.close()
-    return templates.TemplateResponse(request, "gabbie/form.html", ctx)
-
-
-@app.post("/gabbie/{tipo_id}/modifica", name="gabbie_edit_post")
-async def gabbie_edit_post(request: Request, tipo_id: int, current_user: User = Depends(get_current_active_user_html)):
-    if not has_perm(current_user, "gabbie.manage"):
-        raise HTTPException(status_code=403, detail="Non autorizzato")
-    form = await request.form()
-    db = SessionLocal()
-    try:
-        tipo = _load_gabbia_full(db, tipo_id)
-        if not tipo:
-            raise HTTPException(status_code=404, detail="Gabbia non trovata")
-        _apply_gabbia_fields(tipo, form)
-        tipo.updated_by_id = current_user.id
-        _save_gabbia_composition(db, tipo, form)
-        db.commit()
-        site_id = tipo.site_id
-        return RedirectResponse(url=f"/gabbie/cantiere/{site_id}?saved=1", status_code=303)
-    finally:
-        db.close()
-
-
-@app.post("/gabbie/{tipo_id}/avanzamento", name="gabbie_progress")
-async def gabbie_progress(request: Request, tipo_id: int, current_user: User = Depends(get_current_active_user_html)):
-    if not has_perm(current_user, "gabbie.manage"):
-        raise HTTPException(status_code=403, detail="Non autorizzato")
-    form = await request.form()
-    db = SessionLocal()
-    try:
-        tipo = db.query(GabbiaTipo).filter(GabbiaTipo.id == tipo_id).first()
-        if not tipo:
-            raise HTTPException(status_code=404, detail="Gabbia non trovata")
-
-        def _i(name, default=0):
-            v = form.get(name)
-            try:
-                return int(float(v)) if v not in (None, "") else default
-            except ValueError:
-                return default
-
-        def _f(name):
-            v = form.get(name)
-            try:
-                return float(v) if v not in (None, "") else None
-            except ValueError:
-                return None
-
-        tipo.gabbie_prodotte = max(0, _i("gabbie_prodotte", tipo.gabbie_prodotte or 0))
-        tipo.gabbie_posate = max(0, _i("gabbie_posate", tipo.gabbie_posate or 0))
-        tipo.peso_prodotto_kg = _f("peso_prodotto_kg")
-        try:
-            tipo.stato = GabbiaStatoEnum(form.get("stato") or tipo.stato.value)
-        except ValueError:
-            pass
-        tipo.avanzamento_note = (form.get("avanzamento_note") or "").strip() or None
-        tipo.updated_by_id = current_user.id
-        log_audit_event(db, current_user, "GABBIA_PROGRESS", "gabbia_tipo", tipo.id,
-                        {"prodotte": tipo.gabbie_prodotte, "posate": tipo.gabbie_posate})
-        db.commit()
-        return RedirectResponse(url=f"/gabbie/cantiere/{tipo.site_id}?saved=avanzamento", status_code=303)
-    finally:
-        db.close()
-
-
-@app.post("/gabbie/{tipo_id}/elimina", name="gabbie_delete")
-def gabbie_delete(request: Request, tipo_id: int, current_user: User = Depends(get_current_active_user_html)):
-    if not has_perm(current_user, "gabbie.manage"):
-        raise HTTPException(status_code=403, detail="Non autorizzato")
-    db = SessionLocal()
-    try:
-        tipo = db.query(GabbiaTipo).filter(GabbiaTipo.id == tipo_id).first()
-        if not tipo:
-            raise HTTPException(status_code=404, detail="Gabbia non trovata")
-        site_id = tipo.site_id
-        log_audit_event(db, current_user, "GABBIA_DELETED", "gabbia_tipo", tipo.id, {"codice": tipo.codice})
-        db.delete(tipo)
-        db.commit()
-        return RedirectResponse(url=f"/gabbie/cantiere/{site_id}?saved=deleted", status_code=303)
-    finally:
-        db.close()
 
 
 @app.get("/manager/cantieri/{site_id}", response_class=HTMLResponse, name="manager_site_detail")
@@ -7079,6 +6910,13 @@ def manager_cantiere_modifica_get(
             .order_by(User.full_name, User.email)
             .all()
         )
+        ferraioli = (
+            db.query(User)
+            .filter(User.role == RoleEnum.ferraiolo)
+            .filter(User.is_active.is_(True))
+            .order_by(User.full_name, User.email)
+            .all()
+        )
         scarichi_recenti = (
             db.query(MagazzinoMovimento)
             .options(
@@ -7137,6 +6975,7 @@ def manager_cantiere_modifica_get(
             site_status_values=site_status_values,
             scarichi_recenti=scarichi_recenti,
             capisquadra=capisquadra,
+            ferraioli=ferraioli,
             google_maps_api_key=google_maps_api_key,
             progress_summary=progress_summary,
             strut_levels=strut_levels_view,
@@ -7173,6 +7012,7 @@ def manager_cantiere_modifica_post(
     status: str = Form(...),
     is_active: str | None = Form(None),
     caposquadra_id: str | None = Form(None),
+    ferraiolo_id: str | None = Form(None),
     totale_paratie_da_scavare: str | None = Form(None),
     numero_totale_pali: str | None = Form(None),
     projet_client: str | None = Form(None),
@@ -7285,6 +7125,7 @@ def manager_cantiere_modifica_post(
         site.status = status_value
         site.is_active = is_active is not None
         site.caposquadra_id = parsed_capo_id
+        site.ferraiolo_id = parse_caposquadra(ferraiolo_id)
         site.totale_paratie_da_scavare = total_paratie_value
         site.numero_totale_paratie = total_paratie_value
         site.numero_totale_pali = total_pali_value

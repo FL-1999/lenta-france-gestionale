@@ -1,12 +1,25 @@
 {% extends "shared/base.html" %}
 {% block title %}{{ t('Gabbie', 'Cages') }} — {{ site.name }}{% endblock %}
-
-{% set el_labels = {'filante': t('Filante','Filant'), 'quadro': t('Quadro','Cadre'), 'staffa': t('Staffa','Étrier'), 'spirale': t('Spirale','Spirale'), 'barra': t('Barra','Barre')} %}
-{% set lato_labels = {'terra': '🌍 ' ~ t('Lato terra','Côté terre'), 'scavo': '⛏️ ' ~ t('Lato scavo','Côté fouille'), 'entrambi': '↔️ ' ~ t('Entrambi','Les deux')} %}
-{% set stato_labels = {'da_produrre': t('Da produrre','À produire'), 'in_produzione': t('In produzione','En production'), 'pronta': t('Pronta','Prête'), 'posata': t('Posata','Posée')} %}
-{% set stato_colors = {'da_produrre': '#64748b', 'in_produzione': '#d97706', 'pronta': '#16a34a', 'posata': '#2563eb'} %}
-
 {% block content %}
+
+<style>
+.gab-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: .5rem; }
+.gab-cell { min-width: 46px; min-height: 46px; border-radius: 10px; border: 1px solid rgba(148,163,184,.35);
+    font-weight: 800; font-size: .95rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    position: relative; color: #0f172a; transition: transform .08s ease; }
+.gab-cell:active { transform: scale(.94); }
+.gab-cell--grigio { background: #cbd5e1; }
+.gab-cell--giallo { background: #facc15; }
+.gab-cell--verde  { background: #22c55e; color: #052e16; }
+.gab-cell .gab-dot { position: absolute; top: 3px; right: 4px; font-size: .6rem; }
+.gab-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin: .3rem 0 .8rem; font-size: .85rem; color: var(--color-text-muted); }
+.gab-legend span::before { content: ''; display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 6px; vertical-align: -2px; }
+.gab-legend .l-grigio::before { background:#cbd5e1; } .gab-legend .l-giallo::before { background:#facc15; } .gab-legend .l-verde::before { background:#22c55e; }
+.gab-modal { position: fixed; inset: 0; background: rgba(2,6,23,.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+.gab-modal.open { display: flex; }
+.gab-modal__box { background: var(--color-bg-card); border: 1px solid var(--color-border-soft); border-radius: 16px; padding: 1.2rem; width: 100%; max-width: 420px; }
+</style>
+
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">{{ site.code or '' }}{% if site.city %} · {{ site.city }}{% endif %}</p>
@@ -14,102 +27,94 @@
     </div>
     <div class="page-actions">
         <a href="{{ url_for('gabbie_home') }}" class="btn btn-secondary">← {{ t('Cantieri', 'Chantiers') }}</a>
-        {% if can_manage %}<a href="{{ url_for('gabbie_new') }}?site_id={{ site.id }}" class="btn btn-primary">➕ {{ t('Nuova gabbia', 'Nouvelle cage') }}</a>{% endif %}
     </div>
 </div>
 
-{% if saved %}<div class="alert alert-success">{% if saved == 'deleted' %}{{ t('Gabbia eliminata.', 'Cage supprimée.') }}{% elif saved == 'avanzamento' %}{{ t('Avanzamento aggiornato.', 'Avancement mis à jour.') }}{% else %}{{ t('Gabbia salvata.', 'Cage enregistrée.') }}{% endif %}</div>{% endif %}
+{% if saved %}<div class="alert alert-success">{{ t('Aggiornato.', 'Mis à jour.') }}</div>{% endif %}
 
-{% if not views %}
-<section class="card"><div class="card-body"><p class="text-muted">{{ t('Nessuna gabbia per questo cantiere.', 'Aucune cage pour ce chantier.') }}</p></div></section>
-{% endif %}
-
-{% for v in views %}
-{% set tipo = v.tipo %}
 <section class="card fiche-section">
-    <div class="card-header" style="flex-wrap:wrap;gap:.5rem;">
-        <div class="card-title">🧱 {{ tipo.codice }}
-            <span class="unit-badge" style="background:{{ stato_colors.get(tipo.stato.value,'#64748b') }};color:#fff;padding:2px 8px;border-radius:8px;font-size:.72rem;">{{ stato_labels.get(tipo.stato.value, tipo.stato.value) }}</span>
-        </div>
-        {% if can_manage %}
-        <div style="display:flex;gap:.4rem;">
-            <a href="{{ url_for('gabbie_edit', tipo_id=tipo.id) }}" class="btn btn-secondary btn-sm">✏️ {{ t('Modifica','Modifier') }}</a>
-            <form method="post" action="{{ url_for('gabbie_delete', tipo_id=tipo.id) }}" onsubmit="return confirm('{{ t('Eliminare questa gabbia?','Supprimer cette cage ?') }}');" style="display:inline;">
-                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
-            </form>
-        </div>
-        {% endif %}
-    </div>
+    <div class="card-header"><div class="card-title">📊 {{ t('Riepilogo', 'Récapitulatif') }}</div></div>
     <div class="card-body">
-        <div class="list-card-meta" style="margin-bottom:1rem;">
-            <div><span class="label">{{ t('Tipo','Type') }}</span><span class="value">{{ t('Paratia','Paroi') if tipo.categoria.value == 'paratia' else t('Palo','Pieu') }}</span></div>
-            <div><span class="label">{{ t('Geometria','Géométrie') }}</span><span class="value">
-                {% if tipo.categoria.value == 'palo' %}Ø {{ tipo.diametro_cm or '—' }} cm · L {{ tipo.lunghezza_m or '—' }} m
-                {% else %}{{ tipo.larghezza_cm or '—' }}×{{ tipo.spessore_cm or '—' }} cm · L {{ tipo.lunghezza_m or '—' }} m{% endif %}</span></div>
-            <div><span class="label">{{ t('Pannelli','Panneaux') }}</span><span class="value">{% if v.pannelli %}{{ v.pannelli|join(', ') }}{% else %}—{% endif %}</span></div>
-            <div><span class="label">{{ t('Peso / gabbia','Poids / cage') }}</span><span class="value">{{ "%.1f"|format(v.peso_una_kg or 0) }} kg</span></div>
-            <div><span class="label">{{ t('Peso totale','Poids total') }}</span><span class="value">{{ "%.0f"|format(v.peso_totale_kg or 0) }} kg</span></div>
+        <div class="gab-legend">
+            <span class="l-grigio">{{ t('Da fare', 'À faire') }} ({{ summary.da_fare }})</span>
+            <span class="l-giallo">{{ t('Gabbia pronta', 'Cage prête') }} ({{ summary.pronte }})</span>
+            <span class="l-verde">{{ t('Pannello gettato', 'Panneau coulé') }} ({{ summary.gettati }})</span>
         </div>
-
-        {# Composizione #}
-        {% if tipo.elementi %}
-        <div class="fiche-strat-table-wrap">
-            <table class="data-table">
-                <thead><tr><th>{{ t('Elemento','Élément') }}</th><th>{{ t('Lato','Côté') }}</th><th>Ø</th><th>{{ t('Q.tà','Qté') }}</th><th>{{ t('Lungh./Passo','Long./Pas') }}</th></tr></thead>
-                <tbody>
-                    {% for e in tipo.elementi %}
-                    <tr>
-                        <td>{{ el_labels.get(e.elemento.value, e.elemento.value) }}</td>
-                        <td>{{ lato_labels.get(e.lato.value, e.lato.value) }}</td>
-                        <td>{% if e.diametro_mm %}HA{{ e.diametro_mm|int }}{% else %}—{% endif %}</td>
-                        <td>{{ e.quantita if e.quantita is not none else '—' }}</td>
-                        <td>{% if e.lunghezza_m %}{{ e.lunghezza_m }} m{% elif e.passo_cm %}@ {{ e.passo_cm }} cm{% else %}—{% endif %}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% endif %}
-
-        {# Avanzamento (capo ferraioli) #}
-        {% if can_manage %}
-        <form method="post" action="{{ url_for('gabbie_progress', tipo_id=tipo.id) }}" style="margin-top:1rem;border-top:1px solid var(--color-border-soft);padding-top:1rem;">
-            <div class="card-title" style="font-size:.95rem;margin-bottom:.6rem;">🔧 {{ t('Avanzamento produzione','Avancement production') }}</div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">{{ t('Prodotte','Produites') }} / {{ tipo.n_gabbie_previste or 0 }}</label>
-                    <input type="number" min="0" name="gabbie_prodotte" value="{{ tipo.gabbie_prodotte or 0 }}" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">{{ t('Posate','Posées') }}</label>
-                    <input type="number" min="0" name="gabbie_posate" value="{{ tipo.gabbie_posate or 0 }}" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">{{ t('Peso prodotto (kg)','Poids produit (kg)') }}</label>
-                    <input type="number" step="0.1" min="0" name="peso_prodotto_kg" value="{{ tipo.peso_prodotto_kg if tipo.peso_prodotto_kg is not none else '' }}" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">{{ t('Stato','Statut') }}</label>
-                    <select name="stato" class="form-select">
-                        {% for s in ['da_produrre','in_produzione','pronta','posata'] %}
-                        <option value="{{ s }}" {% if tipo.stato.value == s %}selected{% endif %}>{{ stato_labels.get(s, s) }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group" style="grid-column:1/-1;">
-                    <label class="form-label">{{ t('Note avanzamento','Notes avancement') }}</label>
-                    <input type="text" name="avanzamento_note" value="{{ tipo.avanzamento_note or '' }}" class="form-control">
-                </div>
-            </div>
-            <div class="form-actions" style="align-items:center;justify-content:space-between;">
-                <span class="text-muted">{{ t('Avanzo (pronte da posare)','Reste (prêtes à poser)') }}: <strong>{{ v.avanzo }}</strong> · {{ t('Mancanti da produrre','Restant à produire') }}: <strong>{{ v.mancanti }}</strong></span>
-                <button type="submit" class="btn btn-primary">💾 {{ t('Aggiorna','Mettre à jour') }}</button>
-            </div>
-        </form>
-        {% else %}
-        <p class="text-muted" style="margin-top:.6rem;">{{ t('Avanzo pronte','Reste prêtes') }}: <strong>{{ v.avanzo }}</strong> · {{ t('Prodotte','Produites') }} {{ tipo.gabbie_prodotte or 0 }}/{{ tipo.n_gabbie_previste or 0 }}</p>
-        {% endif %}
+        <p class="text-muted" style="margin:0;">{{ t('Clicca una casella per aggiornare peso, note e segnare la gabbia pronta.', "Cliquez une case pour mettre à jour le poids, les notes et marquer la cage prête.") }}</p>
     </div>
 </section>
-{% endfor %}
+
+{% macro grid(cells, titolo) %}
+{% if cells %}
+<section class="card fiche-section">
+    <div class="card-header"><div class="card-title">{{ titolo }}</div></div>
+    <div class="card-body">
+        <div class="gab-grid">
+            {% for c in cells %}
+            <button type="button" class="gab-cell gab-cell--{{ c.color }}"
+                data-numero="{{ c.numero }}" data-categoria="{{ c.categoria }}"
+                data-pronta="{{ '1' if c.pronta else '0' }}" data-gettato="{{ '1' if c.gettato else '0' }}"
+                data-peso="{{ c.peso_kg if c.peso_kg is not none else '' }}"
+                data-note="{{ c.note or '' }}"
+                {% if can_manage %}onclick="openGabModal(this)"{% else %}disabled{% endif %}>
+                {{ c.numero }}{% if c.peso_kg %}<span class="gab-dot">⚖️</span>{% endif %}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{{ grid(paratie_cells, t('Paratie', 'Parois')) }}
+{{ grid(pali_cells, t('Pali', 'Pieux')) }}
+
+{% if not paratie_cells and not pali_cells %}
+<section class="card"><div class="card-body"><p class="text-muted">{{ t('Nessun pannello/palo previsto per questo cantiere. Imposta i totali nella scheda del cantiere.', 'Aucun panneau/pieu prévu pour ce chantier. Définissez les totaux dans la fiche du chantier.') }}</p></div></section>
+{% endif %}
+
+{% if can_manage %}
+<div class="gab-modal" id="gabModal">
+    <div class="gab-modal__box">
+        <form method="post" action="{{ url_for('gabbie_cella_update', site_id=site.id) }}">
+            <input type="hidden" name="numero" id="gm-numero">
+            <input type="hidden" name="categoria" id="gm-categoria">
+            <h3 style="margin-top:0;" id="gm-title">{{ t('Pannello', 'Panneau') }}</h3>
+            <p class="text-muted" id="gm-gettato-note" style="display:none;">🟩 {{ t('Pannello già gettato.', 'Panneau déjà coulé.') }}</p>
+            <div class="form-group">
+                <label class="form-label">{{ t('Peso messo nella gabbia (kg)', 'Poids mis dans la cage (kg)') }}</label>
+                <input type="number" step="0.1" min="0" name="peso_kg" id="gm-peso" class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-check" style="display:flex;align-items:center;gap:.5rem;">
+                    <input type="checkbox" name="pronta" value="1" id="gm-pronta"> {{ t('Gabbia pronta', 'Cage prête') }}
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="form-label">{{ t('Note / modifiche', 'Notes / modifications') }}</label>
+                <textarea name="note" id="gm-note" rows="3" class="form-control"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeGabModal()">{{ t('Annulla', 'Annuler') }}</button>
+                <button type="submit" class="btn btn-primary">💾 {{ t('Salva', 'Enregistrer') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function openGabModal(el) {
+    document.getElementById('gm-numero').value = el.dataset.numero;
+    document.getElementById('gm-categoria').value = el.dataset.categoria;
+    document.getElementById('gm-peso').value = el.dataset.peso || '';
+    document.getElementById('gm-note').value = el.dataset.note || '';
+    document.getElementById('gm-pronta').checked = el.dataset.pronta === '1';
+    var isPar = el.dataset.categoria === 'paratia';
+    document.getElementById('gm-title').textContent = (isPar ? {{ t('Paratia','Paroi')|tojson }} : {{ t('Palo','Pieu')|tojson }}) + ' ' + el.dataset.numero;
+    document.getElementById('gm-gettato-note').style.display = el.dataset.gettato === '1' ? 'block' : 'none';
+    document.getElementById('gabModal').classList.add('open');
+}
+function closeGabModal() { document.getElementById('gabModal').classList.remove('open'); }
+document.getElementById('gabModal').addEventListener('click', function(e){ if(e.target===this) closeGabModal(); });
+</script>
+{% endif %}
 {% endblock %}
