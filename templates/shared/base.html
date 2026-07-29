@@ -45,7 +45,8 @@
         'manager': 'Manager',
         'driver': 'Driver',
         'caposquadra': 'Caposquadra',
-        'magazzino': 'Magazzino'
+        'magazzino': 'Magazzino',
+        'ferraiolo': 'Ferraiolo'
     } %}
     {% set active_role_label = role_labels.get(active_role_value, active_role_value|replace('_', ' ')|title) %}
     {% set user_display_name = user.full_name if user and user.full_name else (user.email if user else '') %}
@@ -159,6 +160,9 @@
                             {% if is_manager %}
                                 <a href="{{ url_for('manager_production_dashboard') }}" class="nav-dropdown__item">📈 {% if lang == 'fr' %}Production{% else %}Produzione{% endif %}</a>
                             {% endif %}
+                            {% if user and has_perm(user, 'gabbie.read') %}
+                                <a href="{{ url_for('gabbie_home') }}" class="nav-dropdown__item">🧱 {% if lang == 'fr' %}Cages d'armature{% else %}Gabbie armatura{% endif %}</a>
+                            {% endif %}
                             <a href="{{ url_for('manager_personale_list') }}" class="nav-dropdown__item">👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</a>
                             {% if show_backup %}
                                 <a href="{{ url_for('admin_backup_export') }}" class="nav-dropdown__item">🛡️ Backup & Export</a>
@@ -266,6 +270,9 @@
                             {% endif %}
                             {% if is_manager %}
                                 <a href="{{ url_for('manager_production_dashboard') }}" class="nav-dropdown__item">📈 {% if lang == 'fr' %}Production{% else %}Produzione{% endif %}</a>
+                            {% endif %}
+                            {% if user and has_perm(user, 'gabbie.read') %}
+                                <a href="{{ url_for('gabbie_home') }}" class="nav-dropdown__item">🧱 {% if lang == 'fr' %}Cages d'armature{% else %}Gabbie armatura{% endif %}</a>
                             {% endif %}
                             {% if show_trasporti %}
                                 <a href="{{ trasporti_path }}" class="nav-dropdown__item">🚚 Trasporti</a>

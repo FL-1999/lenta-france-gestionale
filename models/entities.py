@@ -38,6 +38,7 @@ class RoleEnum(PyEnum):
     caposquadra = "caposquadra"
     magazzino = "magazzino"
     driver = "driver"
+    ferraiolo = "ferraiolo"
 
 
 class TrasportoStatoEnum(PyEnum):
@@ -533,6 +534,114 @@ class SiteDocument(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<SiteDocument id={self.id} site_id={self.site_id} filename={self.filename!r}>"
+
+
+# ------------------------------------------------------------
+# GABBIE ARMATURA (P8)
+# ------------------------------------------------------------
+
+class GabbiaCategoriaEnum(PyEnum):
+    paratia = "paratia"
+    palo = "palo"
+
+
+class GabbiaStatoEnum(PyEnum):
+    da_produrre = "da_produrre"
+    in_produzione = "in_produzione"
+    pronta = "pronta"
+    posata = "posata"
+
+
+class GabbiaElementoTipoEnum(PyEnum):
+    filante = "filante"
+    quadro = "quadro"
+    staffa = "staffa"
+    spirale = "spirale"
+    barra = "barra"
+
+
+class GabbiaLatoEnum(PyEnum):
+    terra = "terra"      # lato verso l'esterno del cantiere
+    scavo = "scavo"      # lato verso l'interno del cantiere
+    entrambi = "entrambi"  # perimetrale / tutta la gabbia
+
+
+class GabbiaTipo(Base, TimestampMixin):
+    """Tipologia di gabbia d'armatura definita per un cantiere.
+
+    Una tipologia può valere per uno o più pannelli. Contiene la
+    composizione (filanti, quadri, staffe…) e l'avanzamento di produzione
+    aggiornato dal capo ferraioli.
+    """
+    __tablename__ = "gabbia_tipi"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
+    codice = Column(String(80), nullable=False)
+    categoria = Column(Enum(GabbiaCategoriaEnum), nullable=False, default=GabbiaCategoriaEnum.paratia)
+
+    # Geometria (per il disegno a box e il calcolo peso)
+    lunghezza_m = Column(Float, nullable=True)
+    larghezza_cm = Column(Float, nullable=True)     # paratia
+    spessore_cm = Column(Float, nullable=True)      # paratia (altezza sezione)
+    diametro_cm = Column(Float, nullable=True)      # palo
+
+    n_gabbie_previste = Column(Integer, nullable=False, default=1)
+    peso_override_kg = Column(Float, nullable=True)  # se impostato, sostituisce il peso calcolato
+    note = Column(Text, nullable=True)
+
+    # Avanzamento (capo ferraioli)
+    stato = Column(Enum(GabbiaStatoEnum), nullable=False, default=GabbiaStatoEnum.da_produrre)
+    gabbie_prodotte = Column(Integer, nullable=False, default=0)
+    gabbie_posate = Column(Integer, nullable=False, default=0)
+    peso_prodotto_kg = Column(Float, nullable=True)
+    avanzamento_note = Column(Text, nullable=True)
+
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+
+    site = relationship("Site")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
+    elementi = relationship(
+        "GabbiaElemento", back_populates="tipo",
+        cascade="all, delete-orphan", order_by="GabbiaElemento.ordine",
+    )
+    pannelli = relationship(
+        "GabbiaPannello", back_populates="tipo",
+        cascade="all, delete-orphan", order_by="GabbiaPannello.numero_pannello",
+    )
+
+    def __repr__(self) -> str:
+        return f"<GabbiaTipo id={self.id} site_id={self.site_id} codice={self.codice!r}>"
+
+
+class GabbiaElemento(Base):
+    """Riga di composizione di una tipologia di gabbia."""
+    __tablename__ = "gabbia_elementi"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tipo_id = Column(Integer, ForeignKey("gabbia_tipi.id", ondelete="CASCADE"), nullable=False, index=True)
+    elemento = Column(Enum(GabbiaElementoTipoEnum), nullable=False, default=GabbiaElementoTipoEnum.filante)
+    lato = Column(Enum(GabbiaLatoEnum), nullable=False, default=GabbiaLatoEnum.entrambi)
+    diametro_mm = Column(Float, nullable=True)
+    quantita = Column(Integer, nullable=True)
+    lunghezza_m = Column(Float, nullable=True)   # per filanti/barre
+    passo_cm = Column(Float, nullable=True)      # per staffe/spirale
+    ordine = Column(Integer, nullable=False, default=0)
+
+    tipo = relationship("GabbiaTipo", back_populates="elementi")
+
+
+class GabbiaPannello(Base):
+    """Pannello/palo a cui appartiene una tipologia di gabbia."""
+    __tablename__ = "gabbia_pannelli"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tipo_id = Column(Integer, ForeignKey("gabbia_tipi.id", ondelete="CASCADE"), nullable=False, index=True)
+    numero_pannello = Column(String(40), nullable=False)
+
+    tipo = relationship("GabbiaTipo", back_populates="pannelli")
 
 
 class SiteTask(Base, TimestampMixin):

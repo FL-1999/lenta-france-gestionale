@@ -22,6 +22,15 @@ MANAGER_BASE_PERMISSIONS: FrozenSet[str] = frozenset(
         "assegnazioni.manage",
         "economics.read",
         "economics.manage",
+        "gabbie.read",
+        "gabbie.manage",
+    }
+)
+
+FERRAIOLO_PERMISSIONS: FrozenSet[str] = frozenset(
+    {
+        "gabbie.read",
+        "gabbie.manage",
     }
 )
 
@@ -82,6 +91,7 @@ ROLE_PERMISSIONS: dict[RoleEnum, FrozenSet[str]] = {
     RoleEnum.admin: MANAGER_BASE_PERMISSIONS | ADMIN_EXTRA_PERMISSIONS,
     RoleEnum.magazzino: MAGAZZINO_PERMISSIONS,
     RoleEnum.driver: DRIVER_PERMISSIONS,
+    RoleEnum.ferraiolo: FERRAIOLO_PERMISSIONS,
 }
 
 

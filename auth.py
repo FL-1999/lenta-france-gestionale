@@ -114,6 +114,8 @@ def get_redirect_for_role(role: RoleEnum | str | None) -> str:
         return "/manager/magazzino/dashboard"
     if normalized_role == RoleEnum.caposquadra:
         return "/capo/dashboard"
+    if normalized_role == RoleEnum.ferraiolo:
+        return "/gabbie"
     return "/"
 
 

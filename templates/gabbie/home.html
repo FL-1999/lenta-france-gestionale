@@ -1,0 +1,88 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ t('Gabbie armatura', "Cages d'armature") }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{{ t('Armatura', 'Armature') }}</p>
+        <h1 class="page-title">🧱 {{ t('Gabbie armatura', "Cages d'armature") }}</h1>
+        <p class="page-subtitle">{{ t('Tipologie di gabbie, composizione e avanzamento produzione per cantiere.', "Types de cages, composition et avancement de production par chantier.") }}</p>
+    </div>
+</div>
+
+{% if can_manage %}
+<section class="card fiche-section">
+    <div class="card-header"><div class="card-title">➕ {{ t('Nuova gabbia', 'Nouvelle cage') }}</div></div>
+    <div class="card-body">
+        <form method="get" action="{{ url_for('gabbie_new') }}">
+            <div class="form-grid">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">{{ t('Cantiere', 'Chantier') }}</label>
+                    <select name="site_id" class="form-select" required>
+                        <option value="">{{ t('Seleziona un cantiere', 'Sélectionnez un chantier') }}</option>
+                        {% for s in all_sites %}
+                        <option value="{{ s.id }}">{{ s.name }}{% if s.code %} ({{ s.code }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">➕ {{ t('Crea gabbia per il cantiere', 'Créer une cage pour le chantier') }}</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endif %}
+
+<section class="card fiche-section">
+    <div class="card-header"><div class="card-title">🏗️ {{ t('Cantieri con gabbie', 'Chantiers avec cages') }}</div></div>
+    <div class="card-body list-table">
+        {% if rows %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ t('Cantiere', 'Chantier') }}</th>
+                    <th>{{ t('Tipologie', 'Types') }}</th>
+                    <th>{{ t('Previste', 'Prévues') }}</th>
+                    <th>{{ t('Prodotte', 'Produites') }}</th>
+                    <th>{{ t('Posate', 'Posées') }}</th>
+                    <th>{{ t('Avanzo (pronte)', 'Reste (prêtes)') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td><a href="{{ url_for('gabbie_site', site_id=r.site.id) }}"><strong>{{ r.site.name }}</strong>{% if r.site.code %} ({{ r.site.code }}){% endif %}</a></td>
+                    <td>{{ r.n_tipi }}</td>
+                    <td>{{ r.previste }}</td>
+                    <td>{{ r.prodotte }}</td>
+                    <td>{{ r.posate }}</td>
+                    <td><strong>{{ r.avanzo }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">{{ t('Nessuna gabbia registrata. Creane una selezionando un cantiere.', "Aucune cage enregistrée. Créez-en une en sélectionnant un chantier.") }}</p>
+        {% endif %}
+    </div>
+</section>
+
+{% if rows %}
+<div class="list-cards">
+    {% for r in rows %}
+    <article class="card list-card">
+        <div class="card-body">
+            <div class="list-card-header"><a href="{{ url_for('gabbie_site', site_id=r.site.id) }}"><strong>{{ r.site.name }}</strong></a></div>
+            <div class="list-card-meta">
+                <div><span class="label">{{ t('Tipologie', 'Types') }}</span><span class="value">{{ r.n_tipi }}</span></div>
+                <div><span class="label">{{ t('Previste', 'Prévues') }}</span><span class="value">{{ r.previste }}</span></div>
+                <div><span class="label">{{ t('Prodotte', 'Produites') }}</span><span class="value">{{ r.prodotte }}</span></div>
+                <div><span class="label">{{ t('Posate', 'Posées') }}</span><span class="value">{{ r.posate }}</span></div>
+                <div><span class="label">{{ t('Avanzo', 'Reste') }}</span><span class="value">{{ r.avanzo }}</span></div>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
