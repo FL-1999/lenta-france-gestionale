@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="Lenta France" />
 <link rel="apple-touch-icon" href="/static/img/logo.png" />
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260216e" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260729a" />
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -367,7 +367,7 @@
 
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212c"></script>
     <script src="/static/js/notifications.js?v=20260506a"></script>
-    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260212c"></script>
+    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260729a"></script>
     <script>
         (() => {
             const dropdowns = Array.from(document.querySelectorAll('[data-nav-dropdown]'));

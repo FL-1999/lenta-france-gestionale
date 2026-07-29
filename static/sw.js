@@ -1,17 +1,17 @@
-const CACHE_NAME = 'app-cache-v20260212a';
+const CACHE_NAME = 'app-cache-v20260729a';
 const PRECACHE_NAME = `${CACHE_NAME}-precache`;
 const RUNTIME_NAME = `${CACHE_NAME}-runtime`;
 const OFFLINE_URL = '/offline';
 
+// URL senza query string: il server ignora ?v e serve comunque il file.
 const PRECACHE_URLS = [
   OFFLINE_URL,
   '/static/manifest.webmanifest',
-  '/static/css/style.css?v=20260212c',
-  '/static/js/theme_switcher.js?v=20260212c',
-  '/static/js/sw_register.js?v=20260212c',
+  '/static/css/style.css',
   '/static/img/logo.png',
   '/static/img/icon-192.png',
-  '/static/img/icon-512.png'
+  '/static/img/icon-512.png',
+  '/static/img/icon-512-maskable.png'
 ];
 
 self.addEventListener('install', (event) => {

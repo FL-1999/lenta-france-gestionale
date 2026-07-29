@@ -1,12 +1,12 @@
+// Registra il service worker per abilitare PWA (installabile + offline base).
+// La navigazione usa strategia network-first (vedi sw.js): l'HTML è sempre
+// fresco quando c'è rete, la pagina /offline è il fallback senza rete.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker
-    .getRegistrations()
-    .then((registrations) =>
-      Promise.all(registrations.map((registration) => registration.unregister()))
-    )
-    .then(() => caches.keys())
-    .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
-    .catch((error) => {
-      console.warn('Service worker unregister failed:', error);
-    });
+  window.addEventListener('load', function () {
+    navigator.serviceWorker
+      .register('/static/sw.js?v=20260729')
+      .catch(function (error) {
+        console.warn('Service worker registration failed:', error);
+      });
+  });
 }
