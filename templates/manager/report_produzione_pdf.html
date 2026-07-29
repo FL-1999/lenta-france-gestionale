@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="{{ 'fr' if lang == 'fr' else 'it' }}">
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: A4 portrait; margin: 14mm 12mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; font-size: 11px; margin: 0; }
+    .rp-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111827; padding-bottom: 8px; margin-bottom: 14px; }
+    .rp-header img { height: 42px; }
+    .rp-header .rp-meta { text-align: right; font-size: 10px; color: #374151; }
+    .rp-title { font-size: 18px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+    .rp-sub { font-size: 12px; color: #374151; margin-top: 2px; }
+    .rp-period { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 12px; }
+    .rp-period strong { font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; }
+    th { background: #e5e7eb; text-transform: uppercase; font-size: 9.5px; letter-spacing: .04em; }
+    td.num, th.num { text-align: right; }
+    tfoot td { font-weight: 800; background: #f3f4f6; border-top: 2px solid #111827; }
+    .rp-kpis { display: flex; gap: 10px; margin: 14px 0; }
+    .rp-kpi { flex: 1; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; text-align: center; }
+    .rp-kpi .v { font-size: 20px; font-weight: 800; }
+    .rp-kpi .l { font-size: 9.5px; text-transform: uppercase; color: #374151; letter-spacing: .04em; }
+    .rp-footer { margin-top: 18px; border-top: 1px solid #cbd5e1; padding-top: 8px; font-size: 9px; color: #6b7280; text-align: center; }
+    .rp-empty { padding: 20px; text-align: center; color: #6b7280; }
+</style>
+</head>
+<body>
+    {% set day_month = '%d/%m/%Y' %}
+    <div class="rp-header">
+        <img src="{{ logo_src }}" alt="Lenta France">
+        <div class="rp-meta">
+            {% if lang == 'fr' %}Généré le{% else %}Generato il{% endif %} {{ generated_on.strftime(day_month) }}<br>
+            Lenta France Fondations Spéciales
+        </div>
+    </div>
+
+    <div class="rp-title">{% if lang == 'fr' %}Rapport de production{% else %}Report di produzione{% endif %}</div>
+    <div class="rp-sub">{% if lang == 'fr' %}Synthèse de la production par chantier{% else %}Sintesi della produzione per cantiere{% endif %}</div>
+
+    <div class="rp-period">
+        {% if lang == 'fr' %}Période{% else %}Periodo{% endif %}:
+        <strong>{{ start.strftime(day_month) }} → {{ end.strftime(day_month) }}</strong>
+    </div>
+
+    <div class="rp-kpis">
+        <div class="rp-kpi"><div class="v">{{ report.totals.paratie }}</div><div class="l">{% if lang == 'fr' %}Parois{% else %}Paratie{% endif %}</div></div>
+        <div class="rp-kpi"><div class="v">{{ report.totals.pali }}</div><div class="l">{% if lang == 'fr' %}Pieux{% else %}Pali{% endif %}</div></div>
+        <div class="rp-kpi"><div class="v">{{ "%.0f"|format(report.totals.ml) }} m</div><div class="l">{% if lang == 'fr' %}Mètres linéaires{% else %}Metri lineari{% endif %}</div></div>
+        <div class="rp-kpi"><div class="v">{{ "%.1f"|format(report.totals.cls) }} m³</div><div class="l">{% if lang == 'fr' %}Béton coulé{% else %}Calcestruzzo{% endif %}</div></div>
+    </div>
+
+    {% if report.rows %}
+    <table>
+        <thead>
+            <tr>
+                <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+                <th class="num">{% if lang == 'fr' %}Parois{% else %}Paratie{% endif %}</th>
+                <th class="num">{% if lang == 'fr' %}Pieux{% else %}Pali{% endif %}</th>
+                <th class="num">{% if lang == 'fr' %}Mètres lin.{% else %}Metri lin.{% endif %}</th>
+                <th class="num">m³</th>
+                <th class="num">Fiches</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in report.rows %}
+            <tr>
+                <td>{{ r.site_name }}{% if r.site_code %} ({{ r.site_code }}){% endif %}</td>
+                <td class="num">{{ r.paratie }}</td>
+                <td class="num">{{ r.pali }}</td>
+                <td class="num">{{ "%.0f"|format(r.ml) }}</td>
+                <td class="num">{{ "%.1f"|format(r.cls) }}</td>
+                <td class="num">{{ r.fiches }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>{% if lang == 'fr' %}TOTAL{% else %}TOTALE{% endif %}</td>
+                <td class="num">{{ report.totals.paratie }}</td>
+                <td class="num">{{ report.totals.pali }}</td>
+                <td class="num">{{ "%.0f"|format(report.totals.ml) }}</td>
+                <td class="num">{{ "%.1f"|format(report.totals.cls) }}</td>
+                <td class="num">{{ report.totals.fiches }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <div class="rp-empty">{% if lang == 'fr' %}Aucune production enregistrée dans cette période.{% else %}Nessuna produzione registrata in questo periodo.{% endif %}</div>
+    {% endif %}
+
+    <div class="rp-footer">
+        ZAC ST ESTEVE – AVENUE ST ESTEVE – 06640 ST JEANNET · Tél : 04 93 29 82 40 · lentafrance@lentafrance.com
+    </div>
+</body>
+</html>

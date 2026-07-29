@@ -9,6 +9,7 @@
         <p class="page-subtitle">{{ t('Dati aggregati automaticamente dalle fiches', 'Données agrégées automatiquement depuis les fiches') }}</p>
     </div>
     <div class="page-actions">
+        <a href="{{ url_for('manager_production_report') }}" class="btn btn-primary">📄 {{ t('Report PDF', 'Rapport PDF') }}</a>
         <a href="{{ url_for('manager_dashboard') }}" class="btn btn-secondary">← Dashboard</a>
     </div>
 </div>

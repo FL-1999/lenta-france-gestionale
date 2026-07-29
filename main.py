@@ -2388,6 +2388,154 @@ def manager_production_dashboard(
     return templates.TemplateResponse(request, "manager/production_dashboard.html", ctx)
 
 
+# ══════════════════════════════════════════════════════════════
+# P7 — REPORT AUTOMATICI (produzione per periodo, PDF pronto da inviare)
+# ══════════════════════════════════════════════════════════════
+
+_TIPO_PARATIA = {"paratia", "paroi", "parois", "panneau"}
+_TIPO_PALO = {"palo", "pieu", "pieux", "pile"}
+
+
+def _parse_report_period(periodo: str | None, da: str | None, a: str | None):
+    """Restituisce (start, end, chiave_periodo) per il report."""
+    today = date.today()
+    if periodo == "mese":
+        return today.replace(day=1), today, "mese"
+    if periodo == "custom" and da and a:
+        try:
+            start = date.fromisoformat(da)
+            end = date.fromisoformat(a)
+            if end < start:
+                start, end = end, start
+            return start, end, "custom"
+        except ValueError:
+            pass
+    # default: settimana corrente (lunedì → oggi)
+    return today - timedelta(days=today.weekday()), today, "settimana"
+
+
+def _build_production_report(db, start: date, end: date) -> dict:
+    """Aggrega la produzione (fiches di produzione) nell'intervallo [start, end]."""
+    fiches = (
+        db.query(Fiche)
+        .filter(
+            Fiche.fiche_type == FicheTypeEnum.produzione,
+            Fiche.date >= start,
+            Fiche.date <= end,
+        )
+        .all()
+    )
+    by_site: dict[int, list] = {}
+    for f in fiches:
+        by_site.setdefault(f.site_id, []).append(f)
+
+    site_map = {}
+    if by_site:
+        site_map = {
+            s.id: s
+            for s in db.query(Site).filter(Site.id.in_(list(by_site.keys()))).all()
+        }
+
+    rows = []
+    tot = {"paratie": 0, "pali": 0, "ml": 0.0, "cls": 0.0, "fiches": 0}
+    for sid, sf in by_site.items():
+        site = site_map.get(sid)
+        paratie = sum(1 for f in sf if (f.tipologia_scavo or "").lower() in _TIPO_PARATIA)
+        pali = sum(1 for f in sf if (f.tipologia_scavo or "").lower() in _TIPO_PALO)
+        ml = round(sum(
+            (f.larghezza_pannello or 0.0) for f in sf
+            if (f.tipologia_scavo or "").lower() in _TIPO_PARATIA
+        ), 2)
+        cls = round(sum((f.metri_cubi_gettati or 0.0) for f in sf), 2)
+        rows.append({
+            "site": site, "site_name": site.name if site else "—",
+            "site_code": site.code if site else "",
+            "paratie": paratie, "pali": pali, "ml": ml, "cls": cls, "fiches": len(sf),
+        })
+        tot["paratie"] += paratie
+        tot["pali"] += pali
+        tot["ml"] += ml
+        tot["cls"] += cls
+        tot["fiches"] += len(sf)
+
+    rows.sort(key=lambda r: r["site_name"] or "")
+    tot["ml"] = round(tot["ml"], 2)
+    tot["cls"] = round(tot["cls"], 2)
+    return {"rows": rows, "totals": tot, "start": start, "end": end}
+
+
+@app.get(
+    "/manager/report/produzione",
+    response_class=HTMLResponse,
+    name="manager_production_report",
+)
+def manager_production_report(
+    request: Request,
+    periodo: str = "settimana",
+    da: str | None = None,
+    a: str | None = None,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    start, end, period_key = _parse_report_period(periodo, da, a)
+    db = SessionLocal()
+    try:
+        report = _build_production_report(db, start, end)
+        ctx = build_template_context(
+            request, current_user,
+            report=report, period_key=period_key,
+            start=start, end=end,
+            da=da or start.isoformat(), a=a or end.isoformat(),
+        )
+    finally:
+        db.close()
+    return templates.TemplateResponse(request, "manager/report_produzione.html", ctx)
+
+
+@app.get(
+    "/manager/report/produzione/pdf",
+    name="manager_production_report_pdf",
+)
+def manager_production_report_pdf(
+    request: Request,
+    periodo: str = "settimana",
+    da: str | None = None,
+    a: str | None = None,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if not has_perm(current_user, "manager.access"):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+    start, end, period_key = _parse_report_period(periodo, da, a)
+    db = SessionLocal()
+    try:
+        report = _build_production_report(db, start, end)
+        lang = get_lang_from_request(request)
+        html = templates.get_template("manager/report_produzione_pdf.html").render(
+            build_template_context(
+                request, current_user,
+                report=report, period_key=period_key, start=start, end=end,
+                logo_src=_pdf_logo_file_src(),
+                generated_on=date.today(),
+                lang=lang,
+            )
+        )
+    finally:
+        db.close()
+
+    pdf_bytes = _html_to_pdf(html)
+    filename = f"report_produzione_{start.isoformat()}_{end.isoformat()}.pdf"
+    from starlette.responses import Response as RawResponse
+    return RawResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store, max-age=0",
+        },
+    )
+
+
 @app.get("/manager/dashboard", response_class=HTMLResponse, name="manager_dashboard")
 def manager_dashboard(
     request: Request,

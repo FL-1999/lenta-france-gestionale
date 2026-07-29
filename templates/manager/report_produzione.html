@@ -1,0 +1,116 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ t('Report produzione', 'Rapport de production') }}{% endblock %}
+{% block content %}
+
+{% set day_month = '%d/%m/%Y' %}
+<div class="page-header">
+    <div class="page-header-main">
+        <p class="page-eyebrow">{{ t('Direzione', 'Direction') }}</p>
+        <h1 class="page-title">📄 {{ t('Report produzione', 'Rapport de production') }}</h1>
+        <p class="page-subtitle">{{ t('Genera un report PDF pronto da inviare, per il periodo scelto.', 'Générez un rapport PDF prêt à envoyer, pour la période choisie.') }}</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manager_production_dashboard') }}" class="btn btn-secondary">← {{ t('Dashboard', 'Tableau de bord') }}</a>
+    </div>
+</div>
+
+{# ── Selettore periodo ── #}
+<section class="card fiche-section">
+    <div class="card-header"><div class="card-title">🗓️ {{ t('Periodo', 'Période') }}</div></div>
+    <div class="card-body">
+        <div class="page-actions-row" style="margin-bottom:1rem;">
+            <a href="{{ url_for('manager_production_report') }}?periodo=settimana" class="btn {{ 'btn-primary' if period_key == 'settimana' else 'btn-secondary' }}">{{ t('Questa settimana', 'Cette semaine') }}</a>
+            <a href="{{ url_for('manager_production_report') }}?periodo=mese" class="btn {{ 'btn-primary' if period_key == 'mese' else 'btn-secondary' }}">{{ t('Questo mese', 'Ce mois-ci') }}</a>
+        </div>
+        <form method="get" action="{{ url_for('manager_production_report') }}">
+            <input type="hidden" name="periodo" value="custom">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">{{ t('Dal', 'Du') }}</label>
+                    <input type="date" name="da" value="{{ da }}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ t('Al', 'Au') }}</label>
+                    <input type="date" name="a" value="{{ a }}" class="form-control">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-secondary">🔎 {{ t('Applica periodo', 'Appliquer la période') }}</button>
+            </div>
+        </form>
+        <p class="text-muted" style="margin-top:.5rem;">
+            {{ t('Periodo selezionato', 'Période sélectionnée') }}:
+            <strong>{{ start.strftime(day_month) }} → {{ end.strftime(day_month) }}</strong>
+        </p>
+    </div>
+</section>
+
+{# ── Anteprima ── #}
+<section class="card fiche-section">
+    <div class="card-header">
+        <div class="card-title">📊 {{ t('Anteprima', 'Aperçu') }}</div>
+        <a href="{{ url_for('manager_production_report_pdf') }}?periodo={{ period_key }}&da={{ da }}&a={{ a }}" class="btn btn-primary" target="_blank" rel="noopener">
+            📄 {{ t('Scarica PDF', 'Télécharger le PDF') }}
+        </a>
+    </div>
+    <div class="card-body list-table">
+        {% if report.rows %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ t('Cantiere', 'Chantier') }}</th>
+                    <th>{{ t('Paratie', 'Parois') }}</th>
+                    <th>{{ t('Pali', 'Pieux') }}</th>
+                    <th>{{ t('Metri lineari', 'Mètres linéaires') }}</th>
+                    <th>{{ t('m³ gettati', 'm³ coulé') }}</th>
+                    <th>{{ t('Fiches', 'Fiches') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in report.rows %}
+                <tr>
+                    <td><strong>{{ r.site_name }}</strong>{% if r.site_code %} <span class="text-muted">({{ r.site_code }})</span>{% endif %}</td>
+                    <td>{{ r.paratie }}</td>
+                    <td>{{ r.pali }}</td>
+                    <td>{{ "%.0f"|format(r.ml) }} m</td>
+                    <td>{{ "%.1f"|format(r.cls) }} m³</td>
+                    <td>{{ r.fiches }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight:700;border-top:2px solid var(--color-border-soft);">
+                    <td>{{ t('TOTALE', 'TOTAL') }}</td>
+                    <td>{{ report.totals.paratie }}</td>
+                    <td>{{ report.totals.pali }}</td>
+                    <td>{{ "%.0f"|format(report.totals.ml) }} m</td>
+                    <td>{{ "%.1f"|format(report.totals.cls) }} m³</td>
+                    <td>{{ report.totals.fiches }}</td>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <p class="text-muted">{{ t('Nessuna produzione registrata nel periodo selezionato.', 'Aucune production enregistrée dans la période sélectionnée.') }}</p>
+        {% endif %}
+    </div>
+</section>
+
+{# ── Vista schede (mobile) ── #}
+{% if report.rows %}
+<div class="list-cards">
+    {% for r in report.rows %}
+    <article class="card list-card">
+        <div class="card-body">
+            <div class="list-card-header"><strong>{{ r.site_name }}</strong>{% if r.site_code %} <span class="text-muted">({{ r.site_code }})</span>{% endif %}</div>
+            <div class="list-card-meta">
+                <div><span class="label">{{ t('Paratie', 'Parois') }}</span><span class="value">{{ r.paratie }}</span></div>
+                <div><span class="label">{{ t('Pali', 'Pieux') }}</span><span class="value">{{ r.pali }}</span></div>
+                <div><span class="label">{{ t('Metri lineari', 'Mètres linéaires') }}</span><span class="value">{{ "%.0f"|format(r.ml) }} m</span></div>
+                <div><span class="label">{{ t('m³ gettati', 'm³ coulé') }}</span><span class="value">{{ "%.1f"|format(r.cls) }} m³</span></div>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
