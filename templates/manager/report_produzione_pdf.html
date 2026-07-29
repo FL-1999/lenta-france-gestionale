@@ -37,7 +37,10 @@
     </div>
 
     <div class="rp-title">{% if lang == 'fr' %}Rapport de production{% else %}Report di produzione{% endif %}</div>
-    <div class="rp-sub">{% if lang == 'fr' %}Synthèse de la production par chantier{% else %}Sintesi della produzione per cantiere{% endif %}</div>
+    <div class="rp-sub">
+        {% if selected_site %}{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}: {{ selected_site.name }}{% if selected_site.code %} ({{ selected_site.code }}){% endif %}
+        {% else %}{% if lang == 'fr' %}Synthèse de tous les chantiers{% else %}Sintesi di tutti i cantieri{% endif %}{% endif %}
+    </div>
 
     <div class="rp-period">
         {% if lang == 'fr' %}Période{% else %}Periodo{% endif %}:

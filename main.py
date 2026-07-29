@@ -2414,17 +2414,20 @@ def _parse_report_period(periodo: str | None, da: str | None, a: str | None):
     return today - timedelta(days=today.weekday()), today, "settimana"
 
 
-def _build_production_report(db, start: date, end: date) -> dict:
-    """Aggrega la produzione (fiches di produzione) nell'intervallo [start, end]."""
-    fiches = (
-        db.query(Fiche)
-        .filter(
-            Fiche.fiche_type == FicheTypeEnum.produzione,
-            Fiche.date >= start,
-            Fiche.date <= end,
-        )
-        .all()
+def _build_production_report(db, start: date, end: date, site_id: int | None = None) -> dict:
+    """Aggrega la produzione (fiches di produzione) nell'intervallo [start, end].
+
+    Se `site_id` è impostato, il report è ristretto a quel cantiere; altrimenti
+    è generale (tutti i cantieri).
+    """
+    query = db.query(Fiche).filter(
+        Fiche.fiche_type == FicheTypeEnum.produzione,
+        Fiche.date >= start,
+        Fiche.date <= end,
     )
+    if site_id:
+        query = query.filter(Fiche.site_id == site_id)
+    fiches = query.all()
     by_site: dict[int, list] = {}
     for f in fiches:
         by_site.setdefault(f.site_id, []).append(f)
@@ -2474,6 +2477,7 @@ def manager_production_report(
     periodo: str = "settimana",
     da: str | None = None,
     a: str | None = None,
+    site_id: int | None = None,
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "manager.access"):
@@ -2481,12 +2485,20 @@ def manager_production_report(
     start, end, period_key = _parse_report_period(periodo, da, a)
     db = SessionLocal()
     try:
-        report = _build_production_report(db, start, end)
+        report = _build_production_report(db, start, end, site_id=site_id)
+        sites = (
+            db.query(Site)
+            .filter((Site.code != GENERICO_SITE_CODE) | (Site.code.is_(None)))
+            .order_by(Site.name.asc())
+            .all()
+        )
+        selected_site = next((s for s in sites if s.id == site_id), None) if site_id else None
         ctx = build_template_context(
             request, current_user,
             report=report, period_key=period_key,
             start=start, end=end,
             da=da or start.isoformat(), a=a or end.isoformat(),
+            sites=sites, site_id=site_id, selected_site=selected_site,
         )
     finally:
         db.close()
@@ -2502,6 +2514,7 @@ def manager_production_report_pdf(
     periodo: str = "settimana",
     da: str | None = None,
     a: str | None = None,
+    site_id: int | None = None,
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "manager.access"):
@@ -2509,12 +2522,16 @@ def manager_production_report_pdf(
     start, end, period_key = _parse_report_period(periodo, da, a)
     db = SessionLocal()
     try:
-        report = _build_production_report(db, start, end)
+        report = _build_production_report(db, start, end, site_id=site_id)
+        selected_site = (
+            db.query(Site).filter(Site.id == site_id).first() if site_id else None
+        )
         lang = get_lang_from_request(request)
         html = templates.get_template("manager/report_produzione_pdf.html").render(
             build_template_context(
                 request, current_user,
                 report=report, period_key=period_key, start=start, end=end,
+                selected_site=selected_site,
                 logo_src=_pdf_logo_file_src(),
                 generated_on=date.today(),
                 lang=lang,
@@ -2524,7 +2541,8 @@ def manager_production_report_pdf(
         db.close()
 
     pdf_bytes = _html_to_pdf(html)
-    filename = f"report_produzione_{start.isoformat()}_{end.isoformat()}.pdf"
+    scope = (selected_site.code or str(site_id)) if selected_site else "generale"
+    filename = f"report_produzione_{scope}_{start.isoformat()}_{end.isoformat()}.pdf"
     from starlette.responses import Response as RawResponse
     return RawResponse(
         content=pdf_bytes,

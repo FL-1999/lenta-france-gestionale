@@ -14,33 +14,43 @@
     </div>
 </div>
 
-{# ── Selettore periodo ── #}
+{# ── Filtri: periodo + cantiere ── #}
 <section class="card fiche-section">
-    <div class="card-header"><div class="card-title">🗓️ {{ t('Periodo', 'Période') }}</div></div>
+    <div class="card-header"><div class="card-title">🗓️ {{ t('Filtri', 'Filtres') }}</div></div>
     <div class="card-body">
+        {# Periodi rapidi (mantengono il cantiere selezionato) #}
         <div class="page-actions-row" style="margin-bottom:1rem;">
-            <a href="{{ url_for('manager_production_report') }}?periodo=settimana" class="btn {{ 'btn-primary' if period_key == 'settimana' else 'btn-secondary' }}">{{ t('Questa settimana', 'Cette semaine') }}</a>
-            <a href="{{ url_for('manager_production_report') }}?periodo=mese" class="btn {{ 'btn-primary' if period_key == 'mese' else 'btn-secondary' }}">{{ t('Questo mese', 'Ce mois-ci') }}</a>
+            <a href="{{ url_for('manager_production_report') }}?periodo=settimana{% if site_id %}&site_id={{ site_id }}{% endif %}" class="btn {{ 'btn-primary' if period_key == 'settimana' else 'btn-secondary' }}">{{ t('Questa settimana', 'Cette semaine') }}</a>
+            <a href="{{ url_for('manager_production_report') }}?periodo=mese{% if site_id %}&site_id={{ site_id }}{% endif %}" class="btn {{ 'btn-primary' if period_key == 'mese' else 'btn-secondary' }}">{{ t('Questo mese', 'Ce mois-ci') }}</a>
         </div>
         <form method="get" action="{{ url_for('manager_production_report') }}">
-            <input type="hidden" name="periodo" value="custom">
+            <input type="hidden" name="periodo" value="{{ 'custom' if period_key == 'custom' else period_key }}">
             <div class="form-grid">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">{{ t('Cantiere', 'Chantier') }}</label>
+                    <select name="site_id" class="form-select">
+                        <option value="">🏢 {{ t('Tutti i cantieri (generale)', 'Tous les chantiers (général)') }}</option>
+                        {% for s in sites %}
+                        <option value="{{ s.id }}" {% if site_id == s.id %}selected{% endif %}>{{ s.name }}{% if s.code %} ({{ s.code }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="form-group">
                     <label class="form-label">{{ t('Dal', 'Du') }}</label>
-                    <input type="date" name="da" value="{{ da }}" class="form-control">
+                    <input type="date" name="da" value="{{ da }}" class="form-control" onchange="this.form.periodo.value='custom'">
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ t('Al', 'Au') }}</label>
-                    <input type="date" name="a" value="{{ a }}" class="form-control">
+                    <input type="date" name="a" value="{{ a }}" class="form-control" onchange="this.form.periodo.value='custom'">
                 </div>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-secondary">🔎 {{ t('Applica periodo', 'Appliquer la période') }}</button>
+                <button type="submit" class="btn btn-secondary">🔎 {{ t('Applica filtri', 'Appliquer les filtres') }}</button>
             </div>
         </form>
         <p class="text-muted" style="margin-top:.5rem;">
-            {{ t('Periodo selezionato', 'Période sélectionnée') }}:
-            <strong>{{ start.strftime(day_month) }} → {{ end.strftime(day_month) }}</strong>
+            {{ t('Periodo', 'Période') }}: <strong>{{ start.strftime(day_month) }} → {{ end.strftime(day_month) }}</strong>
+            · {{ t('Ambito', 'Portée') }}: <strong>{% if selected_site %}{{ selected_site.name }}{% else %}{{ t('Tutti i cantieri', 'Tous les chantiers') }}{% endif %}</strong>
         </p>
     </div>
 </section>
@@ -49,7 +59,7 @@
 <section class="card fiche-section">
     <div class="card-header">
         <div class="card-title">📊 {{ t('Anteprima', 'Aperçu') }}</div>
-        <a href="{{ url_for('manager_production_report_pdf') }}?periodo={{ period_key }}&da={{ da }}&a={{ a }}" class="btn btn-primary" target="_blank" rel="noopener">
+        <a href="{{ url_for('manager_production_report_pdf') }}?periodo={{ period_key }}&da={{ da }}&a={{ a }}{% if site_id %}&site_id={{ site_id }}{% endif %}" class="btn btn-primary" target="_blank" rel="noopener">
             📄 {{ t('Scarica PDF', 'Télécharger le PDF') }}
         </a>
     </div>
