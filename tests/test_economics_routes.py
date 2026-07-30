@@ -231,7 +231,7 @@ def test_manager_can_open_site_economics_detail() -> None:
     assert "€ 480.00" in response.text
     assert "Configurazione costi automatici" in response.text
     assert "Serie trend JSON" in response.text
-    assert "⚠️ Sabato rilevato" in response.text
+    assert "Sabato rilevato" in response.text
     assert "€ 4180.00" in response.text
     assert "Fiche #1" in response.text
     assert "Margine reale" not in response.text

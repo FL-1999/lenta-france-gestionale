@@ -537,6 +537,10 @@ register_static_helpers(templates)
 register_permission_helpers(templates)
 templates.env.globals["report_total_hours"] = report_total_hours
 templates.env.globals["report_man_hours"] = report_man_hours
+# Fallback globale per l'helper di traduzione: se un template viene reso senza
+# passare da build_template_context (es. test), t() resta definito (default IT).
+# In produzione build_template_context lo sovrascrive con la versione per-lingua.
+templates.env.globals.setdefault("t", lambda it, fr: it)
 
 
 # -------------------------------------------------

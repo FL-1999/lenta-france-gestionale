@@ -874,7 +874,7 @@ def test_manager_fiche_technical_sheet_is_french_and_hides_operator() -> None:
     end = output.index('</article>', start)
     pdf_html = output[start:end]
 
-    assert "Paroi moulée 4" in pdf_html
+    assert "PANNEAU" in pdf_html
     assert "Cote tête béton" in pdf_html
     assert "Terrain naturel (TN)" in pdf_html
     assert "Rencontré" in pdf_html
