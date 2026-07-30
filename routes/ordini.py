@@ -32,6 +32,7 @@ from models import (
     User,
 )
 from permissions import has_perm
+from audit_utils import log_audit_event
 from template_context import register_manager_badges, render_template
 from utils.places import DEFAULT_DEPOT_NAMES
 
@@ -1036,6 +1037,74 @@ def manager_fornitori_toggle(
     supplier.is_active = not bool(supplier.is_active)
     db.commit()
     return RedirectResponse(url=request.url_for("manager_fornitori_list"), status_code=303)
+
+
+@router.post(
+    "/manager/fornitori/{supplier_id}/elimina",
+    name="manager_fornitori_delete",
+)
+def manager_fornitori_delete(
+    request: Request,
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Elimina definitivamente un fornitore (e il suo catalogo codici).
+    Bloccato se ci sono ordini collegati (prima vanno eliminati gli ordini)."""
+    _ensure_manager(current_user)
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
+    if not supplier:
+        raise HTTPException(status_code=404, detail="Fornitore non trovato")
+    n_ordini = db.query(func.count(PurchaseOrder.id)).filter(PurchaseOrder.supplier_id == supplier_id).scalar() or 0
+    if n_ordini > 0:
+        query_string = urlencode({"err": f"Impossibile eliminare: ci sono {n_ordini} ordini collegati. Eliminali prima."})
+        return RedirectResponse(url=f"{request.url_for('manager_fornitori_list')}?{query_string}", status_code=303)
+    log_audit_event(db, current_user, "SUPPLIER_DELETED", "supplier", supplier.id, {"name": supplier.name})
+    db.delete(supplier)  # gli articoli del catalogo vengono eliminati in cascade
+    db.commit()
+    return RedirectResponse(url=request.url_for("manager_fornitori_list"), status_code=303)
+
+
+@router.post(
+    "/manager/fornitori/articoli/{article_id}/elimina",
+    name="manager_fornitori_article_delete",
+)
+def manager_fornitori_article_delete(
+    request: Request,
+    article_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Elimina un singolo codice dal catalogo del fornitore."""
+    _ensure_manager(current_user)
+    art = db.query(SupplierArticle).filter(SupplierArticle.id == article_id).first()
+    if not art:
+        raise HTTPException(status_code=404, detail="Articolo non trovato")
+    supplier_id = art.supplier_id
+    db.delete(art)
+    db.commit()
+    return RedirectResponse(url=request.url_for("manager_fornitori_edit", supplier_id=supplier_id), status_code=303)
+
+
+@router.post(
+    "/manager/ordini/{order_id}/elimina",
+    name="manager_ordini_delete",
+)
+def manager_ordini_delete(
+    request: Request,
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Elimina definitivamente un ordine (righe e consegne in cascade)."""
+    _ensure_manager(current_user)
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+    log_audit_event(db, current_user, "ORDER_DELETED", "purchase_order", order.id, {"order_number": order.order_number})
+    db.delete(order)
+    db.commit()
+    return RedirectResponse(url=request.url_for("manager_ordini_list"), status_code=303)
 
 
 @router.get(

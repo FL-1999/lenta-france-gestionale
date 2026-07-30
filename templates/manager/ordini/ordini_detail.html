@@ -50,6 +50,9 @@
             ➕ {% if lang == 'fr' %}Ajouter facture{% else %}Aggiungi fattura{% endif %}
         </a>
         {% endif %}
+        <form method="post" action="{{ url_for('manager_ordini_delete', order_id=order.id) }}" style="display:inline-block;" onsubmit="return confirm('{% if lang == 'fr' %}Supprimer définitivement cette commande ?{% else %}Eliminare definitivamente questo ordine?{% endif %}');">
+            <button type="submit" class="btn btn-outline-danger">🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
+        </form>
         {% if can_discharge %}
         <form method="post" action="{{ url_for('manager_ordini_scarico', order_id=order.id) }}" style="display:inline-block;">
             <button type="submit" class="btn btn-secondary" {% if not has_pending_discharge %}disabled title="Nessuna bolla confermata da scaricare"{% endif %}>

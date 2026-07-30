@@ -54,6 +54,7 @@
                     <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
                     <th>{% if lang == 'fr' %}Utilisations{% else %}Utilizzi{% endif %}</th>
                     <th>{% if lang == 'fr' %}Dernier usage{% else %}Ultimo uso{% endif %}</th>
+                    <th></th>
                 </tr></thead>
                 <tbody>
                     {% for a in supplier.articoli %}
@@ -62,6 +63,11 @@
                         <td>{{ a.descrizione or '—' }}</td>
                         <td>{{ a.usi or 0 }}</td>
                         <td>{{ a.last_used_at.strftime('%d/%m/%Y') if a.last_used_at else '—' }}</td>
+                        <td>
+                            <form method="post" action="{{ url_for('manager_fornitori_article_delete', article_id=a.id) }}" onsubmit="return confirm('{% if lang == 'fr' %}Supprimer ce code ?{% else %}Eliminare questo codice?{% endif %}');" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                            </form>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

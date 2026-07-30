@@ -15,6 +15,10 @@
     </div>
 </div>
 
+{% if request.query_params.get('err') %}
+<div class="alert alert-danger">⚠️ {{ request.query_params.get('err') }}</div>
+{% endif %}
+
 <div class="card" style="margin-bottom: 1rem;">
     <div class="card-body">
         <form method="get" class="form-grid-2">
@@ -54,6 +58,9 @@
                         <a class="btn btn-sm btn-secondary" href="{{ url_for('manager_fornitori_edit', supplier_id=supplier.id) }}">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a>
                         <form method="post" action="{{ url_for('manager_fornitori_toggle', supplier_id=supplier.id) }}" style="display:inline-block;">
                             <button class="btn btn-sm btn-secondary" type="submit">{% if supplier.is_active %}{% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}{% else %}{% if lang == 'fr' %}Activer{% else %}Attiva{% endif %}{% endif %}</button>
+                        </form>
+                        <form method="post" action="{{ url_for('manager_fornitori_delete', supplier_id=supplier.id) }}" style="display:inline-block;" onsubmit="return confirm('{% if lang == 'fr' %}Supprimer définitivement ce fournisseur ?{% else %}Eliminare definitivamente questo fornitore?{% endif %}');">
+                            <button class="btn btn-sm btn-outline-danger" type="submit">🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
                         </form>
                     </td>
                 </tr>
