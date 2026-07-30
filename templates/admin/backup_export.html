@@ -20,12 +20,36 @@
 </div>
 
 <section class="card" style="margin-bottom: var(--space-4);">
+    <h2 style="margin-top:0;">📤 {% if lang == 'fr' %}Exporter les données (JSON){% else %}Esporta dati (JSON){% endif %}</h2>
+    <p class="text-muted">
+        {% if lang == 'fr' %}
+            Télécharge une copie complète de toutes les données (chantiers, fiches, cages, documents, etc.) dans un fichier de sauvegarde. Fonctionne avec la base de données en ligne.
+        {% else %}
+            Scarica una copia completa di tutti i dati (cantieri, fiches, gabbie, documenti, ecc.) in un file di backup. Funziona con il database online.
+        {% endif %}
+    </p>
+    <a class="btn btn-primary" href="{{ url_for('admin_backup_export_json') }}">
+        ⬇️ {% if lang == 'fr' %}Télécharger l'export complet{% else %}Scarica export completo{% endif %}
+    </a>
+</section>
+
+{% if is_sqlite %}
+<section class="card" style="margin-bottom: var(--space-4);">
+    <h2 style="margin-top:0;">💾 {% if lang == 'fr' %}Backup fichier (local){% else %}Backup file (locale){% endif %}</h2>
+    <p class="text-muted">{% if lang == 'fr' %}Copie du fichier SQLite (uniquement en local).{% else %}Copia del file SQLite (solo in locale).{% endif %}</p>
     <form method="post" action="{{ url_for('admin_backup_export_run') }}">
-        <button class="btn btn-primary" type="submit">
-            💾 {% if lang == 'fr' %}Créer un backup{% else %}Crea backup{% endif %}
+        <button class="btn btn-secondary" type="submit">
+            💾 {% if lang == 'fr' %}Créer un backup fichier{% else %}Crea backup file{% endif %}
         </button>
     </form>
 </section>
+{% else %}
+<section class="card" style="margin-bottom: var(--space-4);">
+    <p class="text-muted" style="margin:0;">
+        ℹ️ {% if lang == 'fr' %}La base de données en ligne (PostgreSQL) est sauvegardée automatiquement par l'hébergeur (Neon). Utilisez l'export JSON ci-dessus pour une copie manuelle.{% else %}Il database online (PostgreSQL) è salvato automaticamente dal provider (Neon). Usa l'export JSON qui sopra per una copia manuale.{% endif %}
+    </p>
+</section>
+{% endif %}
 
 <section class="card">
     <h2 style="margin-top: 0;">
