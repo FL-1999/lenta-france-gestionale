@@ -225,6 +225,45 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
+# ── Refresh token (P6): mantiene la sessione a lungo senza rifare login ──
+REFRESH_TOKEN_EXPIRE_DAYS = 30
+
+
+def create_refresh_token(email: str) -> str:
+    """Token a lunga durata (solo per rinnovare l'access token)."""
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    return jwt.encode(
+        {"sub": email, "type": "refresh", "exp": expire},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+
+def decode_refresh_token(token: str | None) -> Optional[str]:
+    """Restituisce l'email se il refresh token è valido e non scaduto, altrimenti None."""
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None
+    if payload.get("type") != "refresh":
+        return None
+    return payload.get("sub")
+
+
+def access_token_is_valid(cookie_value: str | None) -> bool:
+    """True se l'access token (valore del cookie, con o senza 'Bearer ') è valido."""
+    if not cookie_value:
+        return False
+    token = cookie_value[len("Bearer ") :] if cookie_value.startswith("Bearer ") else cookie_value
+    try:
+        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return True
+    except JWTError:
+        return False
+
+
 def resolve_user_active_role(
     user: User,
     requested_role: RoleEnum | str | None = None,

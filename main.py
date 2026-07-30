@@ -41,6 +41,11 @@ from auth import (
     _generate_token_for_user,
     get_redirect_for_role,
     can_switch_user_role,
+    create_refresh_token,
+    decode_refresh_token,
+    access_token_is_valid,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS,
     CURRENT_ROLE_COOKIE_NAME,
     SECRET_KEY,
     ALGORITHM,
@@ -201,20 +206,62 @@ def _resolve_post_login_role(
     return resolve_user_active_role(user, requested_role)
 
 
-def _apply_access_token_cookie(
-    response: RedirectResponse,
-    access_token: str,
-    active_role: RoleEnum | str | None = None,
-) -> None:
+def _set_access_cookie(response, access_token: str) -> None:
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        max_age=60 * 60,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
         samesite="lax",
     )
+
+
+def _set_refresh_cookie(response, refresh_token: str) -> None:
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/",
+        samesite="lax",
+    )
+
+
+def _apply_access_token_cookie(
+    response: RedirectResponse,
+    access_token: str,
+    active_role: RoleEnum | str | None = None,
+    refresh_email: str | None = None,
+) -> None:
+    _set_access_cookie(response, access_token)
+    # P6: emette anche un refresh token a lunga durata così la sessione dura
+    # settimane senza dover rifare login.
+    if refresh_email:
+        _set_refresh_cookie(response, create_refresh_token(refresh_email))
     set_current_role_cookie(response, active_role)
+
+
+def _mint_access_token_for_email(email: str) -> str | None:
+    """Genera un nuovo access token per l'utente (usato dal rinnovo automatico).
+    Restituisce None se l'utente non esiste o è disattivato (revoca implicita)."""
+    db = SessionLocal()
+    try:
+        user = get_user_by_email(db, email=email)
+        if user is None or (hasattr(user, "is_active") and user.is_active is False):
+            return None
+        active_role = resolve_user_active_role(user, None)
+        available_roles = [role.value for role in get_user_roles(user)]
+        return create_access_token(
+            data={
+                "sub": user.email,
+                "role": active_role.value,
+                "roles": available_roles,
+                "can_switch_roles": can_switch_user_role(user),
+            },
+        )
+    finally:
+        db.close()
 
 
 # -------------------------------------------------
@@ -423,6 +470,45 @@ cors_settings = build_cors_settings()
 app.add_middleware(CORSMiddleware, **cors_settings)
 
 _HASHED_ASSET_RE = re.compile(r"\\.[0-9a-f]{8,}\\.")
+
+
+def _parse_cookie_header(raw: str) -> dict[str, str]:
+    jar: dict[str, str] = {}
+    for part in (raw or "").split(";"):
+        if "=" in part:
+            k, _, v = part.strip().partition("=")
+            jar[k] = v
+    return jar
+
+
+@app.middleware("http")
+async def refresh_token_middleware(request: Request, call_next):
+    """P6: se l'access token è scaduto/mancante ma il refresh token è valido,
+    rinnova automaticamente l'access token — l'utente resta collegato senza
+    rifare login. Non tocca /static né i percorsi di autenticazione."""
+    path = request.url.path
+    minted_access: str | None = None
+    if not path.startswith("/static/") and path not in ("/login", "/logout"):
+        # Legge i cookie dall'header grezzo per non "congelare" request.cookies.
+        jar = _parse_cookie_header(request.headers.get("cookie", ""))
+        access = jar.get("access_token")
+        if not access_token_is_valid(access):
+            email = decode_refresh_token(jar.get("refresh_token"))
+            if email:
+                minted_access = _mint_access_token_for_email(email)
+                if minted_access:
+                    # Inietta il nuovo access token nell'header cookie della
+                    # richiesta così le dipendenze di auth lo vedono subito.
+                    jar["access_token"] = f"Bearer {minted_access}"
+                    new_cookie = "; ".join(f"{k}={v}" for k, v in jar.items())
+                    request.scope["headers"] = [
+                        (k, v) for (k, v) in request.scope["headers"] if k != b"cookie"
+                    ] + [(b"cookie", new_cookie.encode("latin-1"))]
+
+    response = await call_next(request)
+    if minted_access is not None:
+        _set_access_cookie(response, minted_access)
+    return response
 
 
 @app.middleware("http")
@@ -2232,13 +2318,14 @@ def login_api(
         url=token_data.redirect_url or "/",
         status_code=303,
     )
-    _apply_access_token_cookie(response, token_data.access_token, active_role)
+    _apply_access_token_cookie(response, token_data.access_token, active_role, refresh_email=user.email)
     return response
 
 @app.get("/logout")
 def logout() -> RedirectResponse:
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
     response.delete_cookie(key=CURRENT_ROLE_COOKIE_NAME, path="/")
     return response
 
@@ -2274,7 +2361,7 @@ def switch_role(
         requested_role=requested_role,
     )
     response = RedirectResponse(url=token_data.redirect_url or "/", status_code=303)
-    _apply_access_token_cookie(response, token_data.access_token, requested_role)
+    _apply_access_token_cookie(response, token_data.access_token, requested_role, refresh_email=user_record.email)
     return response
 
 
