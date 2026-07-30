@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_active_user_html
 from database import get_db
 from models import (
+    SupplierArticle,
     MagazzinoCategoria,
     MagazzinoItem,
     MagazzinoMacro,
@@ -1051,6 +1052,63 @@ def manager_ordini_new(
     return _render_order_form(request, db, current_user)
 
 
+@router.get(
+    "/manager/ordini/api/fornitore/{supplier_id}/articoli",
+    name="manager_ordini_supplier_articles",
+)
+def manager_ordini_supplier_articles(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Codici articolo salvati per un fornitore (per l'autocompletamento)."""
+    _ensure_manager(current_user)
+    articoli = (
+        db.query(SupplierArticle)
+        .filter(SupplierArticle.supplier_id == supplier_id)
+        .order_by(SupplierArticle.codice.asc())
+        .all()
+    )
+    from fastapi.responses import JSONResponse
+    return JSONResponse({
+        "articoli": [
+            {"codice": a.codice, "descrizione": a.descrizione or "", "unita": a.unita or "",
+             "ultimo_prezzo": a.ultimo_prezzo}
+            for a in articoli
+        ]
+    })
+
+
+def _apply_line_codes_and_catalog(db, order, line_codes, supplier) -> None:
+    """Imposta il codice su ogni riga d'ordine e aggiorna il catalogo del
+    fornitore (crea i codici nuovi, aggiorna quelli esistenti)."""
+    order_lines = list(order.lines)
+    for line, code in zip(order_lines, line_codes):
+        if code:
+            line.codice = code
+    if supplier is None:
+        return
+    now = datetime.utcnow()
+    for line, code in zip(order_lines, line_codes):
+        if not code:
+            continue
+        art = (
+            db.query(SupplierArticle)
+            .filter(SupplierArticle.supplier_id == supplier.id, SupplierArticle.codice == code)
+            .first()
+        )
+        if art:
+            if not art.descrizione and line.description:
+                art.descrizione = line.description
+            art.last_used_at = now
+            art.usi = (art.usi or 0) + 1
+        else:
+            db.add(SupplierArticle(
+                supplier_id=supplier.id, codice=code,
+                descrizione=line.description, last_used_at=now, usi=1,
+            ))
+
+
 @router.post(
     "/manager/ordini/nuovo",
     response_class=HTMLResponse,
@@ -1080,6 +1138,7 @@ def manager_ordini_create(
     description: list[str] = Form(...),
     qty_ordered: list[str] = Form(...),
     magazzino_item_id: list[str] = Form(...),
+    codice: list[str] = Form([]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -1249,8 +1308,11 @@ def manager_ordini_create(
             db.rollback()
             return _render_order_form(request, db, current_user, error_message="Uno o più articoli magazzino non sono validi.", form_data=form_data)
 
+    # Codici articolo per riga (allineati a description/qty), padding se mancanti.
+    codici_padded = list(codice) + [""] * max(0, len(description) - len(codice))
     lines: list[tuple[str, float, int | None]] = []
-    for raw_description, raw_qty, raw_item_id in zip(description, qty_ordered, magazzino_item_id):
+    line_codes: list[str | None] = []
+    for raw_description, raw_qty, raw_item_id, raw_codice in zip(description, qty_ordered, magazzino_item_id, codici_padded):
         if not raw_description and not raw_qty:
             continue
         parsed_qty = _parse_float(raw_qty)
@@ -1263,6 +1325,7 @@ def manager_ordini_create(
             return _render_order_form(request, db, current_user, error_message="Descrizione riga mancante.", form_data=form_data)
         item_id = int(raw_item_id) if raw_item_id else None
         lines.append((description_clean, parsed_qty, item_id))
+        line_codes.append((raw_codice or "").strip() or None)
 
     if not lines:
         db.rollback()
@@ -1322,6 +1385,8 @@ def manager_ordini_create(
             order.delivery_type = DeliveryTypeEnum.PICKUP.value
             order.delivery_site_id = None
             order.delivery_depot_id = None
+        db.flush()
+        _apply_line_codes_and_catalog(db, order, line_codes, selected_supplier)
         db.commit()
     except IntegrityError:
         db.rollback()

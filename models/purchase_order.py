@@ -60,6 +60,7 @@ class PurchaseOrderLine(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=False)
     magazzino_item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=True, index=True)
+    codice = Column(String(100), nullable=True)  # codice articolo del fornitore
     description = Column(Text, nullable=True)
     qty_ordered = Column(Float, nullable=False)
 

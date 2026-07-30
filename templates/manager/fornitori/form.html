@@ -40,4 +40,37 @@
         <button class="btn btn-primary" type="submit">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
     </div>
 </form>
+
+{% if not is_new %}
+<section class="card" style="margin-top: var(--space-4);">
+    <div class="card-header"><div class="card-title">📇 {% if lang == 'fr' %}Catalogue codes articles{% else %}Catalogo codici articolo{% endif %}</div></div>
+    <div class="card-body">
+        <p class="text-muted">{% if lang == 'fr' %}Ces codes se remplissent automatiquement au fur et à mesure des commandes à ce fournisseur.{% else %}Questi codici si salvano automaticamente man mano che fai gli ordini a questo fornitore.{% endif %}</p>
+        {% if supplier.articoli %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr>
+                    <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Utilisations{% else %}Utilizzi{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Dernier usage{% else %}Ultimo uso{% endif %}</th>
+                </tr></thead>
+                <tbody>
+                    {% for a in supplier.articoli %}
+                    <tr>
+                        <td><strong>{{ a.codice }}</strong></td>
+                        <td>{{ a.descrizione or '—' }}</td>
+                        <td>{{ a.usi or 0 }}</td>
+                        <td>{{ a.last_used_at.strftime('%d/%m/%Y') if a.last_used_at else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">{% if lang == 'fr' %}Aucun code enregistré pour le moment.{% else %}Nessun codice salvato per ora.{% endif %}</p>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
 {% endblock %}

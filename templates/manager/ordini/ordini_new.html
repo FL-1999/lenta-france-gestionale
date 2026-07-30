@@ -95,10 +95,12 @@
 
   <div class="card"><div class="card-body">
     <h3>{{ t('Righe ordine', 'Lignes de commande') }}</h3>
-    <table class="table" id="righe-table"><thead><tr><th>{{ t('Descrizione', 'Description') }}</th><th>{{ t('Q.tà', 'Qté') }}</th><th>{{ t('Articolo magazzino', 'Article de stock') }}</th><th></th></tr></thead><tbody>
+    <datalist id="supplier-codes-list"></datalist>
+    <table class="table" id="righe-table"><thead><tr><th>{{ t('Codice', 'Code') }}</th><th>{{ t('Descrizione', 'Description') }}</th><th>{{ t('Q.tà', 'Qté') }}</th><th>{{ t('Articolo magazzino', 'Article de stock') }}</th><th></th></tr></thead><tbody>
       {% for line in form_data.lines %}
       <tr>
-        <td><input type="text" name="description" value="{{ line.description }}" required></td>
+        <td><input type="text" name="codice" list="supplier-codes-list" value="{{ line.codice or '' }}" placeholder="cod." data-codice></td>
+        <td><input type="text" name="description" value="{{ line.description }}" required data-desc></td>
         <td><input type="number" name="qty_ordered" min="0" step="0.01" value="{{ line.qty_ordered }}" required></td>
         <td><select name="magazzino_item_id"><option value="">{{ t('Seleziona', 'Sélectionner') }}</option>{% for item in magazzino_items %}<option value="{{ item.id }}" {% if line.magazzino_item_id == item.id|string %}selected{% endif %}>{{ item.nome }}</option>{% endfor %}</select></td>
         <td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td>
@@ -293,8 +295,43 @@ document.getElementById('save-new-macro')?.addEventListener('click', createMacro
 document.getElementById('save-new-tipologia')?.addEventListener('click', createTipologia);
 
 document.getElementById('add-row').addEventListener('click', ()=>{
-  document.querySelector('#righe-table tbody').insertAdjacentHTML('beforeend', `<tr><td><input type="text" name="description" required></td><td><input type="number" name="qty_ordered" step="0.01" min="0" required></td><td><select name="magazzino_item_id"><option value="">{{ t('Seleziona', 'Sélectionner') }}</option>{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.nome }}</option>{% endfor %}</select></td><td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td></tr>`);
+  document.querySelector('#righe-table tbody').insertAdjacentHTML('beforeend', `<tr><td><input type="text" name="codice" list="supplier-codes-list" placeholder="cod." data-codice></td><td><input type="text" name="description" required data-desc></td><td><input type="number" name="qty_ordered" step="0.01" min="0" required></td><td><select name="magazzino_item_id"><option value="">{{ t('Seleziona', 'Sélectionner') }}</option>{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.nome }}</option>{% endfor %}</select></td><td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td></tr>`);
 });
 document.querySelector('#righe-table tbody').addEventListener('click',(e)=>{ if(e.target.classList.contains('remove-row')) e.target.closest('tr').remove(); });
+
+/* Catalogo codici del fornitore: suggerimenti + autocompletamento descrizione */
+(function(){
+  var sel = document.getElementById('supplier-id-select');
+  var dl = document.getElementById('supplier-codes-list');
+  var codeMap = {};
+  function loadArticles(){
+    var sid = sel && sel.value;
+    if(!sid){ if(dl) dl.innerHTML=''; codeMap={}; return; }
+    fetch('/manager/ordini/api/fornitore/'+encodeURIComponent(sid)+'/articoli')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        codeMap={}; if(dl) dl.innerHTML='';
+        (data.articoli||[]).forEach(function(a){
+          if(dl){ var o=document.createElement('option'); o.value=a.codice; o.label=a.descrizione||''; dl.appendChild(o); }
+          codeMap[a.codice]=a.descrizione||'';
+        });
+      }).catch(function(){});
+  }
+  if(sel){ sel.addEventListener('change', loadArticles); loadArticles(); }
+  var table = document.getElementById('righe-table');
+  if(table){
+    table.addEventListener('input', function(e){
+      var t=e.target;
+      if(t && t.getAttribute && t.getAttribute('data-codice')!==null && t.name==='codice'){
+        var code=(t.value||'').trim();
+        if(codeMap[code]){
+          var row=t.closest('tr');
+          var desc=row ? row.querySelector('[data-desc]') : null;
+          if(desc && !(''+desc.value).trim()) desc.value=codeMap[code];
+        }
+      }
+    });
+  }
+})();
 </script>
 {% endblock %}
