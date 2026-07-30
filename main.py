@@ -64,14 +64,8 @@ from models import (
     SiteTaskStatusEnum,
     SiteDocument,
     SiteDocumentCategoryEnum,
-    GabbiaTipo,
-    GabbiaElemento,
-    GabbiaPannello,
     GabbiaCella,
     GabbiaCategoriaEnum,
-    GabbiaStatoEnum,
-    GabbiaElementoTipoEnum,
-    GabbiaLatoEnum,
     SiteStrutLevel,
     SiteStatusEnum,
     Machine,
@@ -356,11 +350,17 @@ def run_post_startup_tasks() -> None:
     # Le migrazioni incrementali sono scritte per SQLite (PRAGMA, sqlite_master,
     # ricostruzione tabelle). Su Postgres lo schema completo è già creato da
     # create_all(), quindi le saltiamo del tutto.
-    from database import is_sqlite as _is_sqlite
+    from database import is_sqlite as _is_sqlite, ensure_model_columns
     if _is_sqlite():
         upgrade_db(engine)
     else:
-        logger.info("Database non-SQLite: migrazioni incrementali saltate (schema da create_all).")
+        logger.info("Database non-SQLite: migrazioni SQLite saltate (schema da create_all).")
+    # Migrazione portabile (SQLite + Postgres): aggiunge le colonne mancanti dei
+    # modelli alle tabelle esistenti, così i futuri campi nuovi non rompono il deploy.
+    try:
+        ensure_model_columns(engine, (Base.metadata, SQLModel.metadata))
+    except Exception:
+        logger.exception("ensure_model_columns fallita (non bloccante).")
 
     if DEBUG_DB_SCHEMA_CHECK:
         check_db_schema(engine)

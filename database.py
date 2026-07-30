@@ -72,6 +72,50 @@ def upgrade_db_schema() -> None:
             connection.execute(statement)
 
 
+def ensure_model_columns(db_engine, metadatas) -> None:
+    """Migrazione leggera e portabile (SQLite + PostgreSQL).
+
+    Per ogni tabella già esistente, confronta le colonne dei modelli con quelle
+    reali del database e aggiunge quelle mancanti con ALTER TABLE ADD COLUMN.
+    Le colonne nuove vengono sempre aggiunte come NULLABLE (per non fallire su
+    tabelle già popolate); l'eventuale server_default viene mantenuto.
+    Le tabelle nuove sono gestite da create_all e qui vengono ignorate.
+    """
+    from sqlalchemy.schema import CreateColumn
+    import copy as _copy
+
+    dialect = db_engine.dialect
+    inspector = inspect(db_engine)
+    try:
+        existing_tables = set(inspector.get_table_names())
+    except Exception:
+        return
+
+    seen_tables: set[str] = set()
+    for metadata in metadatas:
+        for table in metadata.sorted_tables:
+            if table.name not in existing_tables or table.name in seen_tables:
+                continue
+            seen_tables.add(table.name)
+            try:
+                existing_cols = {c["name"] for c in inspector.get_columns(table.name)}
+            except Exception:
+                continue
+            for column in table.columns:
+                if column.name in existing_cols:
+                    continue
+                # Copia la colonna resa nullable, per un ADD COLUMN sicuro.
+                col_copy = column._copy()
+                col_copy.nullable = True
+                try:
+                    col_ddl = str(CreateColumn(col_copy).compile(dialect=dialect))
+                    with db_engine.begin() as conn:
+                        conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN {col_ddl}'))
+                    print(f"[migrazione] aggiunta colonna {table.name}.{column.name}")
+                except Exception as exc:  # noqa: BLE001
+                    print(f"[migrazione] impossibile aggiungere {table.name}.{column.name}: {exc}")
+
+
 def get_db():
     db = SessionLocal()
     try:
