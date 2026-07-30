@@ -3,6 +3,10 @@
     const configEl = document.getElementById("cantieri-map-config");
     if (!configEl) return;
 
+    // Lingua dal cookie (it default, fr) per tradurre etichette e popup della mappa.
+    const _lang = (document.cookie.match(/(?:^|;\s*)lang=(it|fr)/) || [])[1] || "it";
+    const _t = (it, fr) => (_lang === "fr" ? fr : it);
+
     let parsed;
     try {
       parsed = JSON.parse(configEl.textContent || "{}");
@@ -35,15 +39,15 @@
     };
 
     const legendItems = [
-      ["Cantieri attivi", icons.siteActive],
-      ["Cantieri chiusi", icons.siteClosed],
-      ["Depositi", icons.depot],
-      ["Trasporto · origine", icons.transportOrigin],
-      ["Trasporto · tappa", icons.transportStop],
-      ["Trasporto · destinazione", icons.transportDestination],
-      ["Avanzamento nei tempi", "https://maps.google.com/mapfiles/ms/icons/green-dot.png"],
-      ["Avanzamento quasi arrivo", "https://maps.google.com/mapfiles/ms/icons/orange-dot.png"],
-      ["Avanzamento in ritardo", "https://maps.google.com/mapfiles/ms/icons/red-dot.png"],
+      [_t("Cantieri attivi", "Chantiers actifs"), icons.siteActive],
+      [_t("Cantieri chiusi", "Chantiers fermés"), icons.siteClosed],
+      [_t("Depositi", "Dépôts"), icons.depot],
+      [_t("Trasporto · origine", "Transport · départ"), icons.transportOrigin],
+      [_t("Trasporto · tappa", "Transport · étape"), icons.transportStop],
+      [_t("Trasporto · destinazione", "Transport · destination"), icons.transportDestination],
+      [_t("Avanzamento nei tempi", "Dans les temps"), "https://maps.google.com/mapfiles/ms/icons/green-dot.png"],
+      [_t("Avanzamento quasi arrivo", "Presque arrivé"), "https://maps.google.com/mapfiles/ms/icons/orange-dot.png"],
+      [_t("Avanzamento in ritardo", "En retard"), "https://maps.google.com/mapfiles/ms/icons/red-dot.png"],
     ];
 
     const legend = document.getElementById("operations-map-legend");
@@ -144,9 +148,9 @@
     }
 
     function transportRoleLabel(role) {
-      if (role === "origin") return "Origine";
-      if (role === "destination") return "Destinazione";
-      return "Tappa";
+      if (role === "origin") return _t("Origine", "Départ");
+      if (role === "destination") return _t("Destinazione", "Destination");
+      return _t("Tappa", "Étape");
     }
 
     function transportProgressIcon(progressColor) {
@@ -168,7 +172,7 @@
           <div class="map-infowindow-title">${title || "—"}</div>
           <div class="map-infowindow-address">${type || ""}${status ? ` · ${status}` : ""}</div>
           ${items ? `<ul class="map-infowindow-list">${items}</ul>` : ""}
-          ${link ? `<div class="map-infowindow-actions"><a class="btn btn-primary btn-sm" href="${link}">Apri dettaglio</a></div>` : ""}
+          ${link ? `<div class="map-infowindow-actions"><a class="btn btn-primary btn-sm" href="${link}">${_t("Apri dettaglio", "Ouvrir le détail")}</a></div>` : ""}
         </div>
       `;
     }
@@ -199,9 +203,9 @@
             icon: isClosed ? icons.siteClosed : icons.siteActive,
             html: infoHtml({
               title: site.name,
-              type: "Cantiere",
-              status: site.status || (isClosed ? "chiuso" : "attivo"),
-              details: [site.address, site.caposquadra_name ? `Caposquadra: ${site.caposquadra_name}` : null],
+              type: _t("Cantiere", "Chantier"),
+              status: site.status || (isClosed ? _t("chiuso", "fermé") : _t("attivo", "actif")),
+              details: [site.address, site.caposquadra_name ? `${_t("Caposquadra", "Chef d'équipe")}: ${site.caposquadra_name}` : null],
               link: site.detail_url || parsed.detailUrlTemplate?.replace("__SITE_ID__", String(site.id || "")),
             }),
           });
@@ -216,8 +220,8 @@
             icon: icons.depot,
             html: infoHtml({
               title: depot.name,
-              type: "Deposito",
-              status: depot.is_active ? "attivo" : "non attivo",
+              type: _t("Deposito", "Dépôt"),
+              status: depot.is_active ? _t("attivo", "actif") : _t("non attivo", "inactif"),
               details: [depot.address],
               link: depot.detail_url || "/manager/depositi",
             }),
@@ -243,26 +247,27 @@
             addPolyline(routePoints.map((point) => ({ lat: point.lat, lng: point.lng })));
 
             routePoints.forEach((point) => {
-              const pointType = point.type === "depot" ? "Deposito" : point.type === "site" ? "Cantiere" : "Punto";
+              const pointType = point.type === "depot" ? _t("Deposito", "Dépôt") : point.type === "site" ? _t("Cantiere", "Chantier") : _t("Punto", "Point");
               const progress = trip.progress || {};
+              const _stima = _t("Stima non disponibile", "Estimation indisponible");
               const progressLabel =
-                typeof progress.percent === "number" ? `${progress.percent}%` : "Stima non disponibile";
+                typeof progress.percent === "number" ? `${progress.percent}%` : _stima;
               addMarker({
                 lat: point.lat,
                 lng: point.lng,
                 icon: transportProgressIcon(progress.color),
                 html: infoHtml({
                   title: `${trip.code} · ${point.name || "—"}`,
-                  type: `Trasporto (${transportRoleLabel(point.role)})`,
+                  type: `${_t("Trasporto", "Transport")} (${transportRoleLabel(point.role)})`,
                   status: trip.status,
                   details: [
                     pointType,
-                    `Avanzamento: ${progressLabel}`,
-                    progress.status_label || "Stima non disponibile",
-                    progress.timing_text || "Stima non disponibile",
-                    trip.driver_name ? `Autista: ${trip.driver_name}` : null,
-                    trip.vehicle_name ? `Mezzo: ${trip.vehicle_name}` : null,
-                    trip.date ? `Data: ${trip.date}` : null,
+                    `${_t("Avanzamento", "Avancement")}: ${progressLabel}`,
+                    progress.status_label || _stima,
+                    progress.timing_text || _stima,
+                    trip.driver_name ? `${_t("Autista", "Chauffeur")}: ${trip.driver_name}` : null,
+                    trip.vehicle_name ? `${_t("Mezzo", "Véhicule")}: ${trip.vehicle_name}` : null,
+                    trip.date ? `${_t("Data", "Date")}: ${trip.date}` : null,
                   ],
                   link: trip.detail_url,
                 }),
