@@ -245,15 +245,20 @@ def create_initial_admin():
 
     db = SessionLocal()
     hashed_password = hash_password(admin_password)
+    # Con un database persistente non dobbiamo reimpostare la password ad ogni
+    # avvio: se l'admin esiste già, NON tocchiamo la sua password (così i cambi
+    # password restano). La reimpostiamo solo se richiesto esplicitamente.
+    force_reset = os.getenv("ADMIN_FORCE_RESET", "false").lower() == "true"
     try:
         admin = db.query(User).filter(User.email == admin_email).first()
         if admin:
             admin.full_name = admin.full_name or admin_email
             admin.role = RoleEnum.admin
-            admin.language = admin_language
+            admin.language = admin.language or admin_language
             admin.is_active = True
-            admin.hashed_password = hashed_password
-            message = "Admin iniziale aggiornato."
+            if force_reset:
+                admin.hashed_password = hashed_password
+            message = "Admin iniziale verificato."
         else:
             admin = User(
                 email=admin_email,
@@ -279,16 +284,36 @@ def create_initial_admin():
 
 
 def initialize_application() -> None:
-    """Initialize database schema and bootstrap required data at startup."""
-    Base.metadata.create_all(bind=engine)
-    SQLModel.metadata.create_all(bind=engine)
+    """Initialize database schema and bootstrap required data at startup.
+
+    I modelli sono divisi tra due metadata (Base e SQLModel) ma alcune tabelle
+    hanno foreign key verso tabelle dell'altro metadata. Su SQLite (FK non
+    imposte) i due create_all separati bastano; su Postgres l'ordine di
+    creazione conta, quindi uniamo tutte le tabelle in un unico metadata così
+    SQLAlchemy le ordina correttamente per dipendenza.
+    """
+    from sqlalchemy import MetaData
+
+    combined = MetaData()
+    for md in (Base.metadata, SQLModel.metadata):
+        for table in md.tables.values():
+            if table.name not in combined.tables:
+                table.to_metadata(combined)
+    combined.create_all(bind=engine)
     logger.info("Schema di base inizializzato.")
 
 
 def run_post_startup_tasks() -> None:
     """Run idempotent maintenance tasks that are not required for port readiness."""
     logger.info("Avvio post-startup tasks (non bloccanti).")
-    upgrade_db(engine)
+    # Le migrazioni incrementali sono scritte per SQLite (PRAGMA, sqlite_master,
+    # ricostruzione tabelle). Su Postgres lo schema completo è già creato da
+    # create_all(), quindi le saltiamo del tutto.
+    from database import is_sqlite as _is_sqlite
+    if _is_sqlite():
+        upgrade_db(engine)
+    else:
+        logger.info("Database non-SQLite: migrazioni incrementali saltate (schema da create_all).")
 
     if DEBUG_DB_SCHEMA_CHECK:
         check_db_schema(engine)
