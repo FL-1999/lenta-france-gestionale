@@ -51,10 +51,10 @@
         <tr>
           <td><strong>{{ v.targa }}</strong></td>
           <td>{{ (v.marca or '-') ~ ' ' ~ (v.modello or '') }}</td>
-          <td>{{ v.tipo or '-' }}</td>
-          <td>{{ v.km_attuali if v.km_attuali is not none else '-' }}</td>
-          <td>{{ v.scadenza_revisione.strftime('%Y-%m-%d') if v.scadenza_revisione else '-' }}</td>
-          <td>{{ v.scadenza_assicurazione.strftime('%Y-%m-%d') if v.scadenza_assicurazione else '-' }}</td>
+          <td>{{ v.categoria or '-' }}</td>
+          <td>{{ v.km if v.km is not none else '-' }}</td>
+          <td>{{ v.revisione_scadenza.strftime('%Y-%m-%d') if v.revisione_scadenza else '-' }}</td>
+          <td>{{ v.assicurazione_scadenza.strftime('%Y-%m-%d') if v.assicurazione_scadenza else '-' }}</td>
           <td>
             {% if v.personale %}
               {{ v.personale.cognome }} {{ v.personale.nome }}
