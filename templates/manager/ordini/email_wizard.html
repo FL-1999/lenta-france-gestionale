@@ -100,7 +100,6 @@
 {% block scripts %}
 {{ super() }}
 <script>
-console.log("EMAIL SCRIPT CARICATO");
 
 const orderId = {{ order.id }};
 
@@ -144,7 +143,6 @@ async function refreshPreview() {
   };
 
   try {
-    console.log('🔄 preview call');
 
     const response = await fetch(`/manager/ordini/${orderId}/email/preview`, {
       method: 'POST',
@@ -160,7 +158,6 @@ async function refreshPreview() {
       }),
     });
 
-    console.log('STATUS:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -168,7 +165,6 @@ async function refreshPreview() {
     }
 
     const data = await response.json();
-    console.log('DATA:', data);
 
     if (!data) {
       disableMailLink();
@@ -203,16 +199,23 @@ document.getElementById('delivery_type').addEventListener('change', () => {
 document.getElementById('delivery_site_id').addEventListener('change', () => refreshPreview());
 document.getElementById('delivery_depot_id').addEventListener('change', () => { updateDepotAddressCard(); refreshPreview(); });
 document.getElementById('lang').addEventListener('change', () => refreshPreview());
-document.getElementById('recipient_email').addEventListener('input', () => refreshPreview());
+// NB: il destinatario NON rigenera l'anteprima, così non cancella le tue
+// modifiche al testo (cambia solo l'indirizzo della mail).
 document.getElementById('refresh_preview').addEventListener('click', () => refreshPreview());
 
+// Apre la mail costruendola dal testo ATTUALE (comprese le tue modifiche),
+// non da quello originale del server.
 document.getElementById('mailto_link').addEventListener('click', (e) => {
-  const url = e.currentTarget.getAttribute('href') || '#';
-  if (!url.startsWith('mailto:')) {
-    e.preventDefault();
-    alert('Email non pronta: controlla anteprima/errore.');
+  e.preventDefault();
+  const to = (document.getElementById('recipient_email').value || '').trim();
+  const subject = document.getElementById('subject').value || '';
+  const body = document.getElementById('body').value || '';
+  if (!to) {
+    alert('Inserisci l\'indirizzo email del destinatario.');
     return;
   }
+  const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
 });
 
 document.getElementById('copy_text').addEventListener('click', async () => {
