@@ -737,6 +737,70 @@ def _get_or_create_category_for_name(
     return categoria
 
 
+# Modalità di scelta categoria che comportano la CREAZIONE di una nuova
+# categoria (e quindi l'auto-creazione degli articoli magazzino dalle righe).
+_NEW_CATEGORY_MODES = {"new", "new_in_macro", "new_macro"}
+
+
+def _resolve_warehouse_category(
+    db: Session,
+    *,
+    category_mode: str,
+    warehouse_category_id: str,
+    macro_value: str,
+    new_macro_name: str,
+    new_category_name: str,
+) -> MagazzinoCategoria:
+    """Risolve la categoria magazzino a partire dalla modalità scelta.
+
+    Tre modalità supportate:
+      - "existing"      → categoria già esistente (warehouse_category_id)
+      - "new_in_macro"  → nuova categoria dentro una macro esistente
+      - "new_macro"     → nuova macro + nuova categoria al suo interno
+    (la vecchia modalità "new" resta accettata per compatibilità)
+    """
+    mode = (category_mode or "existing").strip()
+    new_cat = (new_category_name or "").strip()
+    new_macro = (new_macro_name or "").strip()
+
+    # Retrocompatibilità con la vecchia modalità unica "new".
+    if mode == "new":
+        mode = "new_macro" if new_macro else "new_in_macro"
+
+    if mode == "new_macro":
+        if not new_macro:
+            raise HTTPException(status_code=400, detail="Inserisci il nome della nuova macro.")
+        if not new_cat:
+            raise HTTPException(status_code=400, detail="Inserisci il nome della nuova categoria.")
+        macro = _get_or_create_macro(db, macro_value="__new__", new_macro_name=new_macro)
+        return _get_or_create_category_for_name(db, category_name=new_cat, selected_macro=macro)
+
+    if mode == "new_in_macro":
+        mv = (macro_value or "").strip()
+        if not mv:
+            raise HTTPException(status_code=400, detail="Seleziona la macro a cui aggiungere la nuova categoria.")
+        if not new_cat:
+            raise HTTPException(status_code=400, detail="Inserisci il nome della nuova categoria.")
+        macro = _get_or_create_macro(db, macro_value=mv, new_macro_name="")
+        return _get_or_create_category_for_name(db, category_name=new_cat, selected_macro=macro)
+
+    # existing
+    try:
+        cid = int(warehouse_category_id)
+    except (TypeError, ValueError):
+        cid = None
+    categoria = (
+        db.query(MagazzinoCategoria)
+        .filter(MagazzinoCategoria.id == cid, MagazzinoCategoria.attiva.is_(True))
+        .first()
+        if cid
+        else None
+    )
+    if not categoria:
+        raise HTTPException(status_code=400, detail="Seleziona una categoria valida.")
+    return categoria
+
+
 @router.post(
     "/api/ordini/ensure-warehouse-item",
     name="api_ordini_ensure_warehouse_item",
@@ -1313,44 +1377,20 @@ def manager_ordini_create(
             return _render_order_form(request, db, current_user, error_message="Per ordine chiuso devi selezionare un cantiere valido.", form_data=form_data)
         form_data["warehouse_category_id"] = ""
     else:
-        if category_mode == "new" or warehouse_category_id == "__new__":
-            macro_value = (macro_id or macro or new_category_macro_id or "").strip()
-            if not macro_value:
-                return _render_order_form(request, db, current_user, error_message="Seleziona una macro valida per il nuovo articolo.", form_data=form_data)
-
-            try:
-                selected_macro = _get_or_create_macro(
-                    db,
-                    macro_value=macro_value,
-                    new_macro_name=(new_macro_name or "").strip(),
-                )
-            except HTTPException as exc:
-                return _render_order_form(request, db, current_user, error_message=str(exc.detail), form_data=form_data)
-
-            categoria = _get_or_create_category_for_macro(
+        try:
+            categoria = _resolve_warehouse_category(
                 db,
-                selected_macro=selected_macro,
+                category_mode=category_mode,
+                warehouse_category_id=warehouse_category_id,
+                macro_value=(macro_id or macro or new_category_macro_id or "").strip(),
+                new_macro_name=new_macro_name,
+                new_category_name=new_category_name,
             )
-            selected_category_id = categoria.id
-            form_data["warehouse_category_id"] = str(selected_category_id)
-        else:
-            try:
-                selected_category_id = int(warehouse_category_id)
-            except (TypeError, ValueError):
-                selected_category_id = None
-        categoria = db.query(MagazzinoCategoria).filter(MagazzinoCategoria.id == selected_category_id, MagazzinoCategoria.attiva.is_(True)).first() if selected_category_id else None
-        if not categoria:
+        except HTTPException as exc:
             db.rollback()
-            return _render_order_form(request, db, current_user, error_message="Per ordine magazzino devi selezionare una categoria valida.", form_data=form_data)
-        if macro_id and not (category_mode == "new" or warehouse_category_id == "__new__"):
-            try:
-                selected_macro_id = int(macro_id)
-            except (TypeError, ValueError):
-                db.rollback()
-                return _render_order_form(request, db, current_user, error_message="Macro non valida.", form_data=form_data)
-            if categoria.macro_id and categoria.macro_id != selected_macro_id:
-                db.rollback()
-                return _render_order_form(request, db, current_user, error_message="La tipologia selezionata non appartiene alla macro scelta.", form_data=form_data)
+            return _render_order_form(request, db, current_user, error_message=str(exc.detail), form_data=form_data)
+        selected_category_id = categoria.id
+        form_data["warehouse_category_id"] = str(selected_category_id)
         form_data["site_id"] = ""
 
     if len(description) != len(qty_ordered) or len(description) != len(magazzino_item_id):
@@ -1401,7 +1441,8 @@ def manager_ordini_create(
         return _render_order_form(request, db, current_user, error_message="Inserisci almeno una riga ordine valida.", form_data=form_data)
 
     is_new_warehouse_category = normalized_kind == "warehouse" and (
-        category_mode == "new" or warehouse_category_id == "__new__"
+        (category_mode or "").strip() in _NEW_CATEGORY_MODES
+        or warehouse_category_id == "__new__"
     )
     if is_new_warehouse_category and selected_category_id is not None:
         cached_items_by_name: dict[str, MagazzinoItem] = {}

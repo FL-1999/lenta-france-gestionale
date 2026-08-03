@@ -145,8 +145,8 @@ class OrdiniRoutesTests(unittest.TestCase):
                 "order_kind": "warehouse",
                 "site_id": "",
                 "warehouse_category_id": "",
-                "new_category_name": "Categoria auto creata test",
-                "category_mode": "new",
+                "new_category_name": f"Categoria auto creata {unique_token}",
+                "category_mode": "new_in_macro",
                 "macro_id": str(macro.id),
                 "macro": "",
                 "new_category_macro_id": "",
@@ -233,6 +233,70 @@ class OrdiniRoutesTests(unittest.TestCase):
         finally:
             session.close()
 
+
+    def test_create_warehouse_order_new_macro_creates_macro_and_category(self) -> None:
+        # Modalità "new_macro": crea contemporaneamente una nuova macro e una
+        # nuova categoria al suo interno, quindi l'ordine e gli articoli.
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            requester = User(
+                email=f"ordini-newmacro-{unique_token}@example.com",
+                full_name="Ordini NewMacro",
+                hashed_password="x",
+                role=RoleEnum.manager,
+                is_active=True,
+            )
+            session.add(requester)
+            session.commit()
+            session.refresh(requester)
+            requester_id = requester.id
+            requester_name = requester.full_name
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(
+                id=requester_id,
+                role=RoleEnum.manager,
+                full_name=requester_name,
+                is_magazzino_manager=False,
+            )
+        )
+
+        macro_name = f"Macro nuova {unique_token}"
+        cat_name = f"Categoria nuova {unique_token}"
+        response = self.client.post(
+            "/manager/ordini/nuovo",
+            data={
+                "supplier_name": f"Fornitore NM {unique_token}",
+                "order_date": "2026-02-01",
+                "requester_user_id": str(requester_id),
+                "order_kind": "warehouse",
+                "category_mode": "new_macro",
+                "new_macro_name": macro_name,
+                "new_category_name": cat_name,
+                "description": ["bullone m12"],
+                "qty_ordered": ["5"],
+                "magazzino_item_id": [""],
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        session = SessionLocal()
+        try:
+            macro = session.query(MagazzinoMacro).filter(MagazzinoMacro.name == macro_name).first()
+            self.assertIsNotNone(macro)
+            categoria = (
+                session.query(MagazzinoCategoria)
+                .filter(MagazzinoCategoria.nome == cat_name)
+                .first()
+            )
+            self.assertIsNotNone(categoria)
+            self.assertEqual(categoria.macro_id, macro.id)
+        finally:
+            session.close()
 
     def test_api_magazzino_ensure_item_is_idempotent_and_autocreates_technical_category(self) -> None:
         unique_token = uuid4().hex
@@ -1149,7 +1213,11 @@ class OrdiniRoutesTests(unittest.TestCase):
         self.assertIsNotNone(tipologia_payload.get("id"))
         self.assertEqual(tipologia_payload.get("macro_id"), macro_payload["id"])
 
-    def test_create_order_rejects_tipologia_not_matching_macro(self) -> None:
+    def test_create_order_existing_category_ignores_macro(self) -> None:
+        # Nel nuovo flusso, in modalità "categoria esistente" la macro non è
+        # più un campo a parte: si sceglie direttamente la categoria dalla
+        # select raggruppata per macro. Un eventuale macro_id residuo viene
+        # ignorato e l'ordine deve essere creato correttamente.
         unique_token = uuid4().hex
         session = SessionLocal()
         try:
@@ -1214,8 +1282,7 @@ class OrdiniRoutesTests(unittest.TestCase):
             follow_redirects=False,
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("La tipologia selezionata non appartiene alla macro scelta.", response.text)
+        self.assertEqual(response.status_code, 303)
 
 
 if __name__ == "__main__":
