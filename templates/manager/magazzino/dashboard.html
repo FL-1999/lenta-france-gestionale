@@ -23,6 +23,19 @@
     <div class="card" style="flex: 1 1 220px;">
         <div class="card-body">
             <p class="muted" style="margin: 0 0 0.35rem 0;">
+                💶 {% if lang == 'fr' %}Valeur du stock{% else %}Valore magazzino{% endif %}
+            </p>
+            <div style="font-size: 2rem; font-weight: 700;">
+                € {{ "%.2f"|format(valore_magazzino|default(0)) }}
+            </div>
+            <p class="muted" style="margin: 0.35rem 0 0 0; font-size: .8rem;">
+                {% if lang == 'fr' %}{{ articoli_con_prezzo|default(0) }} article(s) valorisé(s) sur {{ articoli_totali|default(0) }}{% else %}{{ articoli_con_prezzo|default(0) }} articoli valorizzati su {{ articoli_totali|default(0) }}{% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="card" style="flex: 1 1 220px;">
+        <div class="card-body">
+            <p class="muted" style="margin: 0 0 0.35rem 0;">
                 {% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}
             </p>
             <div style="font-size: 2rem; font-weight: 700;">

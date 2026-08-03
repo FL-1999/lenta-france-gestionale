@@ -1019,6 +1019,7 @@ class MagazzinoItem(Base, TimestampMixin):
     categoria_id = Column(Integer, ForeignKey("magazzino_categorie.id"), nullable=True)
     quantita_disponibile = Column(Float, nullable=False, default=0.0)
     soglia_minima = Column(Float, nullable=True)
+    costo_unitario = Column(Float, nullable=True)  # prezzo/costo unitario (€), per la valorizzazione
     attivo = Column(Boolean, default=True, nullable=False)
     preferito = Column(Boolean, default=False, nullable=False)
 

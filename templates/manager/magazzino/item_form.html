@@ -76,6 +76,10 @@
                     <label>{% if lang == 'fr' %}Seuil minimum{% else %}Soglia minima{% endif %}</label>
                     <input type="number" name="soglia_minima" step="0.01" min="0" value="{{ item.soglia_minima if item and item.soglia_minima is not none else '' }}">
                 </div>
+                <div class="form-field">
+                    <label>{% if lang == 'fr' %}Coût unitaire (€){% else %}Costo unitario (€){% endif %}</label>
+                    <input type="number" name="costo_unitario" step="0.01" min="0" value="{{ item.costo_unitario if item and item.costo_unitario is not none else '' }}" placeholder="0.00">
+                </div>
             </div>
 
             <div class="form-field">

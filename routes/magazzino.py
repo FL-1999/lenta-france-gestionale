@@ -40,7 +40,13 @@ from template_context import (
     render_template,
 )
 from permissions import can_access_manager_area, can_access_warehouse_area, can_manage_warehouse_requests, has_perm
-from notifications import notify_magazzino_richiesta
+from notifications import notify_magazzino_richiesta, notify_low_stock
+
+
+def _check_low_stock(db, item) -> None:
+    """Se l'articolo è sotto la soglia minima, avvisa i responsabili magazzino."""
+    if item is not None and item.soglia_minima is not None and (item.quantita_disponibile or 0) <= item.soglia_minima:
+        notify_low_stock(db, item)
 from utils.places import format_place_label, get_place_by_value, get_selectable_places
 import magazzino_repository
 import warehouse_requests_repository
@@ -920,12 +926,32 @@ def manager_magazzino_dashboard(
         SimpleNamespace(codice=codice, nome=nome, totale=totale)
         for codice, nome, totale in top_consumi_rows
     ]
+    # Valorizzazione economica del magazzino
+    valore_magazzino = (
+        db.query(func.coalesce(func.sum(MagazzinoItem.quantita_disponibile * MagazzinoItem.costo_unitario), 0.0))
+        .filter(MagazzinoItem.attivo.is_(True), MagazzinoItem.costo_unitario.isnot(None))
+        .scalar()
+        or 0.0
+    )
+    articoli_con_prezzo = (
+        db.query(func.count(MagazzinoItem.id))
+        .filter(MagazzinoItem.attivo.is_(True), MagazzinoItem.costo_unitario.isnot(None))
+        .scalar()
+        or 0
+    )
+    articoli_totali = (
+        db.query(func.count(MagazzinoItem.id)).filter(MagazzinoItem.attivo.is_(True)).scalar() or 0
+    )
+
     badges = build_magazzino_badges(db, current_user)
     return render_template(
         templates,
         request,
         "manager/magazzino/dashboard.html",
         {
+            "valore_magazzino": round(valore_magazzino, 2),
+            "articoli_con_prezzo": articoli_con_prezzo,
+            "articoli_totali": articoli_totali,
             "sotto_soglia_count": sotto_soglia_count,
             "esauriti_count": esauriti_count,
             "richieste_nuove_count": richieste_nuove_count,
@@ -2784,6 +2810,7 @@ def manager_magazzino_create(
     categoria_id: str | None = Form(None),
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
+    costo_unitario: str | None = Form(""),
     attivo: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -2798,6 +2825,7 @@ def manager_magazzino_create(
         categoria_id=_parse_categoria_id(categoria_id),
         quantita_disponibile=_parse_float(quantita_disponibile) or 0.0,
         soglia_minima=_parse_float(soglia_minima),
+        costo_unitario=_parse_float(costo_unitario),
         attivo=attivo,
     )
     db.add(item)
@@ -2905,6 +2933,7 @@ def manager_magazzino_update(
     categoria_id: str | None = Form(None),
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
+    costo_unitario: str | None = Form(""),
     attivo: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
@@ -2931,6 +2960,7 @@ def manager_magazzino_update(
         item.categoria_id = _parse_categoria_id(categoria_id)
         item.quantita_disponibile = nuova_quantita
         item.soglia_minima = _parse_float(soglia_minima)
+        item.costo_unitario = _parse_float(costo_unitario)
         item.attivo = attivo
 
         db.add(item)
@@ -3400,6 +3430,7 @@ def manager_magazzino_scarico(
         item.quantita_disponibile = quantita_attuale - quantita_valore
 
         db.add(item)
+        _check_low_stock(db, item)
         movimento = MagazzinoMovimento(
             item_id=item.id,
             tipo=MagazzinoMovimentoTipoEnum.scarico,
@@ -3563,6 +3594,7 @@ def manager_magazzino_scarico_rapido(
         deposito_id = selected_place.id if selected_place and selected_place.kind == "depot" else None
         item.quantita_disponibile = quantita_attuale - quantita_valore
         db.add(item)
+        _check_low_stock(db, item)
         movimento = MagazzinoMovimento(
             item_id=item.id,
             tipo=MagazzinoMovimentoTipoEnum.scarico,

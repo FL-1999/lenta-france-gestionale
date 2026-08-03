@@ -282,6 +282,22 @@ def notify_magazzino_richiesta(
     )
 
 
+def notify_low_stock(db: Session, item) -> None:
+    """Avvisa i responsabili magazzino quando un articolo scende sotto soglia.
+    Messaggio stabile (senza la quantità puntuale) così i responsabili che
+    hanno già la notifica non ne ricevono una duplicata."""
+    nome = getattr(item, "nome", None) or getattr(item, "codice", "") or "articolo"
+    soglia = getattr(item, "soglia_minima", None)
+    message = f"⚠️ Scorta bassa: «{nome}» sotto la soglia minima ({soglia})."
+    create_notifications_for_users_deduplicated(
+        db,
+        _get_magazzino_manager_users(db),
+        "magazzino_sotto_soglia",
+        message,
+        target_url="/manager/magazzino?sotto_soglia=1",
+    )
+
+
 def notify_new_site_task(db: Session, task: SiteTask, author: User) -> None:
     site = db.query(Site).filter(Site.id == task.site_id).first()
     site_name = site.name if site and site.name else f"Cantiere #{task.site_id}"
