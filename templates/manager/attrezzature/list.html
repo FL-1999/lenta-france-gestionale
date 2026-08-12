@@ -1,0 +1,115 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}
+  {% if lang == 'fr' %}Équipements – Manager – Lenta France{% else %}Attrezzature – Manager – Lenta France{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">
+      {% if lang == 'fr' %}Gestion des équipements{% else %}Gestione attrezzature{% endif %}
+    </p>
+    <h1 class="page-title">🧰 {% if lang == 'fr' %}Équipements{% else %}Attrezzature{% endif %}</h1>
+    <p class="page-subtitle">
+      {% if lang == 'fr' %}
+        Créez et gérez les équipements. Le code et le QR sont générés automatiquement par catégorie.
+      {% else %}
+        Crea e gestisci le attrezzature. Codice e QR vengono generati automaticamente per categoria.
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="header-actions">
+    <a href="{{ url_for('manager_attrezzature_new') }}" class="btn btn-primary">
+      ➕ {% if lang == 'fr' %}Nouvel équipement{% else %}Nuova attrezzatura{% endif %}
+    </a>
+  </div>
+</div>
+
+<form method="get" class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+    <div class="form-field" style="flex:1; min-width:180px;">
+      <label>{% if lang == 'fr' %}Recherche{% else %}Cerca{% endif %}</label>
+      <input type="text" name="q" value="{{ filtro_q }}" placeholder="{% if lang == 'fr' %}nom ou code…{% else %}nome o codice…{% endif %}">
+    </div>
+    <div class="form-field" style="min-width:180px;">
+      <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</label>
+      <select name="categoria">
+        <option value="">{% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}</option>
+        {% for c in categorie %}
+          <option value="{{ c }}" {% if filtro_categoria|lower == c|lower %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-secondary">{% if lang == 'fr' %}Filtrer{% else %}Filtra{% endif %}</button>
+  </div>
+</form>
+
+<div class="card table-card">
+  <div class="card-body">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>{% if lang == 'fr' %}Code / QR{% else %}Codice / QR{% endif %}</th>
+          <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
+          <th>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}</th>
+          <th>{% if lang == 'fr' %}État{% else %}Stato{% endif %}</th>
+          <th>{% if lang == 'fr' %}Position{% else %}Posizione{% endif %}</th>
+          <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in attrezzature %}
+        <tr>
+          <td><strong>{{ a.codice }}</strong></td>
+          <td>{{ a.nome }}</td>
+          <td>{{ a.tipo or '-' }}</td>
+          <td>
+            {% set stato = a.stato.value if a.stato else '' %}
+            {% if stato == 'disponibile' %}
+              <span style="color:#16a34a; font-weight:600;">● {% if lang == 'fr' %}Disponible{% else %}Disponibile{% endif %}</span>
+            {% elif stato == 'manutenzione' %}
+              <span style="color:#dc2626; font-weight:600;">● {% if lang == 'fr' %}Maintenance{% else %}Manutenzione{% endif %}</span>
+            {% elif stato == 'in_trasporto' %}
+              <span style="color:#2563eb; font-weight:600;">● {% if lang == 'fr' %}En transport{% else %}In trasporto{% endif %}</span>
+            {% elif stato == 'in_uso' %}
+              <span style="color:#d97706; font-weight:600;">● {% if lang == 'fr' %}En cours{% else %}In uso{% endif %}</span>
+            {% else %}{{ stato }}{% endif %}
+          </td>
+          <td>{{ a.posizione_attuale or '-' }}</td>
+          <td class="table-actions">
+            <a href="{{ url_for('manager_attrezzature_edit', attrezzatura_id=a.id) }}" class="btn btn-secondary btn-sm">
+              ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr class="table-empty">
+          <td colspan="6">
+            {% if lang == 'fr' %}Aucun équipement.{% else %}Nessuna attrezzatura.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total_pages and total_pages > 1 %}
+  <div class="pagination-row" style="margin-top: 1.5rem;">
+    <div class="pagination-meta">
+      {% if lang == 'fr' %}Page {{ page }} sur {{ total_pages }}{% else %}Pagina {{ page }} di {{ total_pages }}{% endif %}
+      · {{ total_count }} {% if lang == 'fr' %}éléments{% else %}elementi{% endif %}
+    </div>
+    <div class="pagination-actions">
+      {% if page > 1 %}
+        <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page-1, per_page=per_page) }}">&laquo; {% if lang == 'fr' %}Précédent{% else %}Precedente{% endif %}</a>
+      {% endif %}
+      {% if page < total_pages %}
+        <a class="btn btn-secondary btn-sm" href="{{ request.url.include_query_params(page=page+1, per_page=per_page) }}">{% if lang == 'fr' %}Suivant{% else %}Successiva{% endif %} &raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

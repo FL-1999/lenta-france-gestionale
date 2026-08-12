@@ -1,0 +1,64 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}
+  {% if lang == 'fr' %}Nouvel équipement{% else %}Nuova attrezzatura{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">{% if lang == 'fr' %}Gestion des équipements{% else %}Gestione attrezzature{% endif %}</p>
+    <h1 class="page-title">🧰 {% if lang == 'fr' %}Nouvel équipement{% else %}Nuova attrezzatura{% endif %}</h1>
+    <p class="page-subtitle">
+      {% if lang == 'fr' %}
+        Le code et le QR seront générés automatiquement à partir de la catégorie (ex. POMPA-001).
+      {% else %}
+        Codice e QR verranno generati automaticamente dalla categoria (es. POMPA-001).
+      {% endif %}
+    </p>
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('manager_attrezzature_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+  </div>
+</div>
+
+<form method="post" id="attrezzatura-form">
+  <div class="card large-form-card">
+    <div class="card-body">
+      <div class="form-grid-2">
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
+          <input type="text" name="nome" required placeholder="{% if lang == 'fr' %}Ex. Pompe à bentonite{% else %}Es. Pompa bentonite{% endif %}">
+        </div>
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}*</label>
+          <input type="text" name="categoria" list="categorie-list" required placeholder="{% if lang == 'fr' %}Ex. Pompe{% else %}Es. Pompa{% endif %}">
+          <datalist id="categorie-list">
+            {% for c in categorie %}<option value="{{ c }}">{% endfor %}
+          </datalist>
+          <small>
+            {% if lang == 'fr' %}Choisissez une catégorie existante ou saisissez-en une nouvelle.{% else %}Scegli una categoria esistente o scrivine una nuova.{% endif %}
+          </small>
+        </div>
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}État{% else %}Stato{% endif %}</label>
+          <select name="stato">
+            {% for s in stati %}
+              <option value="{{ s }}" {% if s == 'disponibile' %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Position actuelle{% else %}Posizione attuale{% endif %}</label>
+          <input type="text" name="posizione_attuale" placeholder="{% if lang == 'fr' %}Ex. Dépôt{% else %}Es. Deposito{% endif %}">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a href="{{ url_for('manager_attrezzature_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
+        <button type="submit" class="btn btn-primary">{% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

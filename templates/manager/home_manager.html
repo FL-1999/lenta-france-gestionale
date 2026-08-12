@@ -318,6 +318,37 @@
             </div>
         </div>
 
+        <!-- Attrezzature -->
+        <div class="card module-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon card-icon--machines" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 6a3 3 0 0 0-4 4L4 16l2 2 6-6a3 3 0 0 0 4-4l-2 2-2-2 2-2z" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <span>{% if lang == 'fr' %}Équipements{% else %}Attrezzature{% endif %}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>
+                    {% if lang == 'fr' %}
+                        Créez et gérez les équipements avec nom et catégorie. Code et QR générés automatiquement.
+                    {% else %}
+                        Crea e gestisci le attrezzature con nome e categoria. Codice e QR generati in automatico.
+                    {% endif %}
+                </p>
+                <div class="page-actions-row">
+                    <a href="{{ url_for('manager_attrezzature_list') }}" class="btn btn-secondary">
+                        🧰 {% if lang == 'fr' %}Liste des équipements{% else %}Lista attrezzature{% endif %}
+                    </a>
+                    <a href="{{ url_for('manager_attrezzature_new') }}" class="btn btn-primary">
+                        ➕ {% if lang == 'fr' %}Nouvel équipement{% else %}Nuova attrezzatura{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+
 
         <!-- Logistica -->
         <div class="card module-card">

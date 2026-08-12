@@ -1,0 +1,66 @@
+{% extends "shared/base.html" %}
+{% set lang = request.cookies.get('lang', 'it') %}
+{% block title %}
+  {% if lang == 'fr' %}Modifier l'équipement{% else %}Modifica attrezzatura{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-main">
+    <p class="page-eyebrow">{% if lang == 'fr' %}Gestion des équipements{% else %}Gestione attrezzature{% endif %}</p>
+    <h1 class="page-title">🧰 {{ attrezzatura.codice }}</h1>
+    <p class="page-subtitle">{{ attrezzatura.nome }}</p>
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('manager_attrezzature_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('manager_attrezzature_update', attrezzatura_id=attrezzatura.id) }}" id="attrezzatura-form">
+  <div class="card large-form-card">
+    <div class="card-body">
+      <div class="form-grid-2">
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Code / QR{% else %}Codice / QR{% endif %}</label>
+          <input type="text" value="{{ attrezzatura.codice }}" readonly disabled>
+          <small>{% if lang == 'fr' %}Le code et le QR ne changent pas.{% else %}Codice e QR non cambiano.{% endif %}</small>
+        </div>
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
+          <input type="text" name="nome" required value="{{ attrezzatura.nome }}">
+        </div>
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Catégorie{% else %}Categoria{% endif %}*</label>
+          <input type="text" name="categoria" list="categorie-list" required value="{{ attrezzatura.tipo }}">
+          <datalist id="categorie-list">
+            {% for c in categorie %}<option value="{{ c }}">{% endfor %}
+          </datalist>
+        </div>
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}État{% else %}Stato{% endif %}</label>
+          <select name="stato">
+            {% for s in stati %}
+              <option value="{{ s }}" {% if attrezzatura.stato and attrezzatura.stato.value == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label>{% if lang == 'fr' %}Position actuelle{% else %}Posizione attuale{% endif %}</label>
+          <input type="text" name="posizione_attuale" value="{{ attrezzatura.posizione_attuale or '' }}">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a href="{{ url_for('manager_attrezzature_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
+        <button type="submit" class="btn btn-primary">{% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('manager_attrezzature_delete', attrezzatura_id=attrezzatura.id) }}"
+      onsubmit="return confirm('{% if lang == 'fr' %}Supprimer définitivement cet équipement ?{% else %}Eliminare definitivamente questa attrezzatura?{% endif %}')"
+      style="margin-top:1rem;">
+  <button type="submit" class="btn btn-danger">🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
+</form>
+{% endblock %}
