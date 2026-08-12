@@ -1110,19 +1110,24 @@ def manager_fornitori_toggle(
 def manager_fornitori_delete(
     request: Request,
     supplier_id: int,
+    force: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     """Elimina definitivamente un fornitore (e il suo catalogo codici).
-    Bloccato se ci sono ordini collegati (prima vanno eliminati gli ordini)."""
+    Se ci sono ordini collegati l'eliminazione è bloccata, a meno che non venga
+    passato force=1 (in tal caso vengono eliminati anche gli ordini collegati)."""
     _ensure_manager(current_user)
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Fornitore non trovato")
-    n_ordini = db.query(func.count(PurchaseOrder.id)).filter(PurchaseOrder.supplier_id == supplier_id).scalar() or 0
-    if n_ordini > 0:
-        query_string = urlencode({"err": f"Impossibile eliminare: ci sono {n_ordini} ordini collegati. Eliminali prima."})
+    orders = db.query(PurchaseOrder).filter(PurchaseOrder.supplier_id == supplier_id).all()
+    if orders and not (force or "").strip():
+        query_string = urlencode({"err": f"Impossibile eliminare: ci sono {len(orders)} ordini collegati. Usa «Elimina con ordini» oppure eliminali prima."})
         return RedirectResponse(url=f"{request.url_for('manager_fornitori_list')}?{query_string}", status_code=303)
+    for order in orders:
+        log_audit_event(db, current_user, "ORDER_DELETED", "purchase_order", order.id, {"order_number": order.order_number})
+        db.delete(order)  # righe e consegne in cascade
     log_audit_event(db, current_user, "SUPPLIER_DELETED", "supplier", supplier.id, {"name": supplier.name})
     db.delete(supplier)  # gli articoli del catalogo vengono eliminati in cascade
     db.commit()

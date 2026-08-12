@@ -1284,6 +1284,57 @@ class OrdiniRoutesTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 303)
 
+    def test_delete_supplier_with_orders_requires_force_then_cascades(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            supplier = Supplier(name=f"Fornitore del {unique_token}", is_active=True)
+            session.add(supplier)
+            session.flush()
+            order = PurchaseOrder(
+                order_number=f"ORD-{unique_token}",
+                supplier_id=supplier.id,
+                supplier_name=supplier.name,
+                order_kind="warehouse",
+                status="APERTO",
+            )
+            session.add(order)
+            session.commit()
+            supplier_id = supplier.id
+            order_id = order.id
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(id=1, role=RoleEnum.admin, full_name="Admin", is_magazzino_manager=True)
+        )
+
+        # Senza force: bloccato, fornitore e ordine restano.
+        blocked = self.client.post(
+            f"/manager/fornitori/{supplier_id}/elimina",
+            follow_redirects=False,
+        )
+        self.assertEqual(blocked.status_code, 303)
+        session = SessionLocal()
+        try:
+            self.assertIsNotNone(session.query(Supplier).filter(Supplier.id == supplier_id).first())
+        finally:
+            session.close()
+
+        # Con force: elimina fornitore e ordini collegati.
+        forced = self.client.post(
+            f"/manager/fornitori/{supplier_id}/elimina",
+            data={"force": "1"},
+            follow_redirects=False,
+        )
+        self.assertEqual(forced.status_code, 303)
+        session = SessionLocal()
+        try:
+            self.assertIsNone(session.query(Supplier).filter(Supplier.id == supplier_id).first())
+            self.assertIsNone(session.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first())
+        finally:
+            session.close()
+
 
 if __name__ == "__main__":
     unittest.main()

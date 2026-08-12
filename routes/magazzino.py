@@ -2687,6 +2687,19 @@ def manager_magazzino_categorie_delete(
     )
     if categoria:
         try:
+            # Stacca gli articoli dalla categoria (diventano "senza categoria")
+            # così l'eliminazione non fallisce per vincoli di integrità e nessun
+            # articolo viene perso.
+            db.query(MagazzinoItem).filter(
+                MagazzinoItem.categoria_id == categoria.id
+            ).update({MagazzinoItem.categoria_id: None}, synchronize_session=False)
+            # Sgancia anche eventuali ordini che puntavano a questa categoria.
+            db.query(PurchaseOrder).filter(
+                PurchaseOrder.warehouse_category_id == categoria.id
+            ).update(
+                {PurchaseOrder.warehouse_category_id: None},
+                synchronize_session=False,
+            )
             db.delete(categoria)
             _log_audit(
                 db,
