@@ -1814,11 +1814,15 @@ def manager_ordini_list(
     supplier: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    kind: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
     normalized_status = (status or "").strip().lower() or None
+    normalized_kind = (kind or "").strip().lower() or None
+    if normalized_kind not in {"closed", "warehouse", None}:
+        normalized_kind = None
     supplier_filter = (supplier or "").strip() or None
     parsed_date_from = _parse_date(date_from)
     parsed_date_to = _parse_date(date_to)
@@ -1836,9 +1840,13 @@ def manager_ordini_list(
         or 0
     )
     query = db.query(PurchaseOrder)
+    if normalized_kind:
+        query = query.filter(func.lower(PurchaseOrder.order_kind) == normalized_kind)
     if normalized_status:
         query = query.filter(func.lower(PurchaseOrder.status) == normalized_status)
-    else:
+    elif not normalized_kind:
+        # Vista di default: nascondi gli ordini con stato "chiuso" (completati).
+        # Se invece stiamo filtrando per tipo (kind), mostriamo tutto.
         query = query.filter(
             or_(
                 PurchaseOrder.status.is_(None),
@@ -1901,7 +1909,14 @@ def manager_ordini_list(
         for order in orders
     }
     destination_map = {order.id: _order_destination_label(order) for order in orders}
-    page_title = "Ordini chiusi" if normalized_status == "chiuso" else "Ordini aperti"
+    if normalized_kind == "closed":
+        page_title = "Ordini cantiere"
+    elif normalized_kind == "warehouse":
+        page_title = "Ordini magazzino"
+    elif normalized_status == "chiuso":
+        page_title = "Ordini chiusi"
+    else:
+        page_title = "Ordini aperti"
     return render_template(
         templates,
         request,
@@ -1909,6 +1924,7 @@ def manager_ordini_list(
         {
             "orders": orders,
             "status_filter": normalized_status,
+            "kind_filter": normalized_kind,
             "supplier_filter": supplier_filter,
             "date_from": parsed_date_from,
             "date_to": parsed_date_to,

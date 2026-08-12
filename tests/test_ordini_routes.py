@@ -18,6 +18,7 @@ from models import (
     PurchaseOrder,
     PurchaseOrderLine,
     RoleEnum,
+    Site,
     Supplier,
     User,
 )
@@ -1283,6 +1284,43 @@ class OrdiniRoutesTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 303)
+
+    def test_orders_list_kind_filter_shows_only_closed(self) -> None:
+        unique_token = uuid4().hex
+        session = SessionLocal()
+        try:
+            supplier = Supplier(name=f"Forn kind {unique_token}", is_active=True)
+            site = Site(name=f"Cantiere kind {unique_token}", code=f"CK{unique_token[:6]}", is_active=True)
+            session.add_all([supplier, site])
+            session.flush()
+            closed = PurchaseOrder(
+                order_number=f"CLOSED-{unique_token}",
+                supplier_id=supplier.id,
+                order_kind="closed",
+                site_id=site.id,
+                delivery_type="SITE",
+                delivery_site_id=site.id,
+                status="APERTO",
+            )
+            warehouse = PurchaseOrder(
+                order_number=f"WH-{unique_token}",
+                supplier_id=supplier.id,
+                order_kind="warehouse",
+                delivery_type="PICKUP",
+                status="APERTO",
+            )
+            session.add_all([closed, warehouse])
+            session.commit()
+        finally:
+            session.close()
+
+        app.dependency_overrides[get_current_active_user_html] = (
+            lambda: SimpleNamespace(id=1, role=RoleEnum.admin, full_name="Admin", is_magazzino_manager=True)
+        )
+        resp = self.client.get("/manager/ordini?kind=closed", follow_redirects=False)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(f"CLOSED-{unique_token}", resp.text)
+        self.assertNotIn(f"WH-{unique_token}", resp.text)
 
     def test_delete_supplier_with_orders_requires_force_then_cascades(self) -> None:
         unique_token = uuid4().hex
