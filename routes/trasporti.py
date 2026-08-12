@@ -1700,7 +1700,26 @@ def driver_trasporti_viaggi_scan(
         TrasportoAttrezzaturaViaggio.attrezzatura_id == attrezzatura.id,
     ).first()
 
-    action = "none"
+    def _resp(action: str, reason: str | None = None):
+        return {
+            "action": action,
+            "reason": reason,
+            "attrezzatura_id": attrezzatura.id,
+            "codice": attrezzatura.codice,
+            "nome": getattr(attrezzatura, "nome", None) or attrezzatura.codice,
+            "stato": attrezzatura.stato.value if attrezzatura.stato else None,
+        }
+
+    # Scarico: già a bordo di QUESTO viaggio → si può sempre scaricare.
+    if assignment and attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto:
+        assignment.scaricato = True
+        attrezzatura.stato = AttrezzaturaStatoEnum.disponibile
+        dest = assignment.tappa_destinazione.destinazione if assignment.tappa_destinazione else viaggio.destinazione
+        attrezzatura.posizione_attuale = dest
+        db.commit()
+        return _resp("scaricato")
+
+    # Carico: consentito SOLO se l'attrezzatura è disponibile.
     if attrezzatura.stato == AttrezzaturaStatoEnum.disponibile:
         if assignment is None:
             first_tappa = db.query(TrasportoTappa).filter(TrasportoTappa.viaggio_id == viaggio.id).order_by(TrasportoTappa.ordine.asc()).first()
@@ -1713,16 +1732,20 @@ def driver_trasporti_viaggi_scan(
         assignment.caricato = True
         assignment.scaricato = False
         attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
-        action = "caricato"
-    elif assignment and attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto:
-        assignment.scaricato = True
-        attrezzatura.stato = AttrezzaturaStatoEnum.disponibile
-        dest = assignment.tappa_destinazione.destinazione if assignment.tappa_destinazione else viaggio.destinazione
-        attrezzatura.posizione_attuale = dest
-        action = "scaricato"
+        db.commit()
+        return _resp("caricato")
 
-    db.commit()
-    return {"action": action, "attrezzatura_id": attrezzatura.id, "stato": attrezzatura.stato.value}
+    # Bloccata: stato non compatibile con il carico. Nessuna modifica.
+    if attrezzatura.stato == AttrezzaturaStatoEnum.manutenzione:
+        reason = "manutenzione"
+    elif attrezzatura.stato == AttrezzaturaStatoEnum.in_uso:
+        reason = "in_uso"
+    elif attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto:
+        # in trasporto ma NON assegnata a questo viaggio → è su un altro mezzo/viaggio
+        reason = "altro_viaggio"
+    else:
+        reason = "non_disponibile"
+    return _resp("bloccato", reason)
 
 
 @router.post("/driver/trasporti/viaggi/{viaggio_id}/stato", response_class=HTMLResponse, name="driver_trasporti_viaggi_stato")

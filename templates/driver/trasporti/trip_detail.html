@@ -141,17 +141,70 @@
 <script>
 window.addEventListener('DOMContentLoaded', () => {
   const result = document.getElementById('scan-result');
+  const lang = (document.cookie.match(/(?:^|;\s*)lang=(it|fr)/) || [])[1] || 'it';
+  const tr = (it, fr) => (lang === 'fr' ? fr : it);
+
+  // Motivi di blocco (tradotti lato client).
+  const REASONS = {
+    manutenzione: tr('in manutenzione / riparazione', 'en maintenance / réparation'),
+    in_uso: tr('in uso', 'en cours d\'utilisation'),
+    altro_viaggio: tr('già su un altro mezzo', 'déjà sur un autre véhicule'),
+    non_disponibile: tr('non disponibile', 'non disponible'),
+  };
+
+  let lastCode = null, lastAt = 0;
+  function show(html, color) {
+    result.innerHTML = html;
+    result.style.background = color;
+    result.style.color = '#fff';
+    result.style.padding = '10px 12px';
+    result.style.borderRadius = '8px';
+    result.style.fontWeight = '600';
+  }
+  function feedback(ok) {
+    // Vibrazione: pattern lungo se bloccato, breve se ok (dove supportato).
+    if (navigator.vibrate) navigator.vibrate(ok ? 80 : [120, 60, 120]);
+  }
+
   function handleCode(code) {
-    fetch(`/qr/${encodeURIComponent(code)}`)
-      .then(r => r.json())
-      .then(() => fetch(`{{ url_for('driver_trasporti_viaggi_scan', viaggio_id=viaggio.id) }}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `qr_code=${encodeURIComponent(code)}`
-      }))
-      .then(r => r.json())
-      .then(data => { result.textContent = `QR ${code}: ${data.action}`; })
-      .catch(() => { result.textContent = `QR ${code}: errore`; });
+    // Anti-rimbalzo: ignora lo stesso codice riletto entro 2.5s.
+    const now = Date.now();
+    if (code === lastCode && (now - lastAt) < 2500) return;
+    lastCode = code; lastAt = now;
+
+    fetch(`{{ url_for('driver_trasporti_viaggi_scan', viaggio_id=viaggio.id) }}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: `qr_code=${encodeURIComponent(code)}`
+    })
+      .then(async r => {
+        if (r.status === 404) { throw new Error('notfound'); }
+        return r.json();
+      })
+      .then(data => {
+        const nome = data.nome || data.codice || code;
+        if (data.action === 'caricato') {
+          show(`✅ ${tr('CARICATO', 'CHARGÉ')}: ${nome}`, '#16a34a');
+          feedback(true);
+        } else if (data.action === 'scaricato') {
+          show(`📤 ${tr('SCARICATO', 'DÉCHARGÉ')}: ${nome}`, '#2563eb');
+          feedback(true);
+        } else if (data.action === 'bloccato') {
+          const why = REASONS[data.reason] || tr('non caricabile', 'non chargeable');
+          show(`⛔ ${tr('NON CARICABILE', 'NON CHARGEABLE')}: ${nome} — ${why}. ${tr('Caricane un\'altra.', 'Chargez-en une autre.')}`, '#dc2626');
+          feedback(false);
+        } else {
+          show(`QR ${code}: ${data.action}`, '#6b7280');
+        }
+      })
+      .catch((e) => {
+        if (e && e.message === 'notfound') {
+          show(`⚠️ ${tr('QR sconosciuto', 'QR inconnu')}: ${code}`, '#d97706');
+        } else {
+          show(`${tr('Errore di scansione', 'Erreur de scan')}: ${code}`, '#6b7280');
+        }
+        feedback(false);
+      });
   }
   if (window.Html5Qrcode) {
     const qr = new Html5Qrcode('reader');
