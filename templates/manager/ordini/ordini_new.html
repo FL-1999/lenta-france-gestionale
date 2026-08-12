@@ -19,10 +19,18 @@
       <label for="supplier-id-select">{{ t('Fornitore', 'Fournisseur') }}</label>
       <select id="supplier-id-select" name="supplier_id" required>
         <option value="">{{ t('Seleziona', 'Sélectionner') }}</option>
+        <option value="__new__" {% if form_data.supplier_id == '__new__' %}selected{% endif %}>➕ {{ t('Nuovo fornitore', 'Nouveau fournisseur') }}</option>
         {% for supplier in suppliers %}
           <option value="{{ supplier.id }}" {% if form_data.supplier_id == supplier.id|string %}selected{% endif %}>{{ supplier.name or ('Fornitore #' ~ supplier.id) }}</option>
         {% endfor %}
       </select>
+    </div>
+
+    {# Pannello per creare al volo un nuovo fornitore direttamente dall'ordine #}
+    <div id="new-supplier-panel" class="form-grid-2" style="display:none; margin-top:12px;">
+      <div class="form-field"><label for="new_supplier_name">{{ t('Nome fornitore', 'Nom du fournisseur') }} *</label><input type="text" id="new_supplier_name" name="new_supplier_name" value="{{ form_data.new_supplier_name }}" placeholder="{{ t('Es. Ferramenta Rossi', 'Ex. Quincaillerie Rossi') }}"></div>
+      <div class="form-field"><label for="new_supplier_email">Email</label><input type="email" id="new_supplier_email" name="new_supplier_email" value="{{ form_data.new_supplier_email }}" placeholder="{{ t('Es. ordini@fornitore.com', 'Ex. commandes@fournisseur.com') }}"></div>
+      <div class="form-field"><label for="new_supplier_phone">{{ t('Telefono', 'Téléphone') }}</label><input type="text" id="new_supplier_phone" name="new_supplier_phone" value="{{ form_data.new_supplier_phone }}" placeholder="+33 ..."></div>
     </div>
 
     <div id="supplier-empty" class="empty-state">{{ t('Seleziona un fornitore per vedere i dati anagrafici.', 'Sélectionnez un fournisseur pour voir ses données.') }}</div>
@@ -195,7 +203,19 @@ function setKindVisibility() {
 
 async function loadSupplier() {
   const supplierId = supplierSelect.value;
+  const newPanel = document.getElementById('new-supplier-panel');
   supplierError.style.display = 'none';
+
+  // Nuovo fornitore: mostra i campi per crearlo al volo, niente fetch.
+  if (supplierId === '__new__') {
+    if (newPanel) newPanel.style.display = 'grid';
+    supplierCard.style.display = 'none';
+    supplierLoading.style.display = 'none';
+    supplierEmpty.style.display = 'none';
+    return;
+  }
+  if (newPanel) newPanel.style.display = 'none';
+
   if (!supplierId) {
     supplierCard.style.display = 'none';
     supplierLoading.style.display = 'none';
