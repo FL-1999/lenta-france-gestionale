@@ -8,7 +8,8 @@
   <style>
     @page { size: A4; margin: 12mm; }
     * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 12mm; background: #f4f4f5; color: #111; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 12mm; background: #f4f4f5; color: #111;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
     .toolbar {
       position: sticky; top: 0; display: flex; gap: .75rem; align-items: center;
@@ -29,6 +30,8 @@
       margin: 0 auto 10mm; max-width: 120mm;
       page-break-inside: avoid; break-inside: avoid;
     }
+    .label-logo { height: 14mm; width: auto; margin-bottom: 5mm; }
+    .label-divider { width: 100%; border: 0; border-top: 1px solid #ddd; margin: 0 0 6mm; }
     .qr { width: 85mm; height: 85mm; }
     .qr svg { width: 100%; height: 100%; display: block; }
     .code { font-size: 34px; font-weight: 900; letter-spacing: 1px; margin-top: 5mm; }
@@ -64,6 +67,8 @@
 
   {% for item in items %}
     <div class="label">
+      <img class="label-logo" src="{{ url_for('static', path='/img/logo.png') }}" alt="Lenta France">
+      <hr class="label-divider">
       <div class="qr">{{ item.qr | safe }}</div>
       <div class="code">{{ item.codice }}</div>
       <div class="name">{{ item.nome }}</div>
