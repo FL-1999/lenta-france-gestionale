@@ -12,6 +12,9 @@
     <p class="page-subtitle">{{ attrezzatura.nome }}</p>
   </div>
   <div class="header-actions">
+    <a href="{{ url_for('manager_attrezzature_label', attrezzatura_id=attrezzatura.id) }}" target="_blank" class="btn btn-primary">
+      🖨️ {% if lang == 'fr' %}Imprimer l'étiquette{% else %}Stampa etichetta{% endif %}
+    </a>
     <a href="{{ url_for('manager_attrezzature_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
   </div>
 </div>

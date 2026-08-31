@@ -6,7 +6,9 @@ from database import Base, SessionLocal, engine
 from models import Attrezzatura, AttrezzaturaStatoEnum, RoleEnum, User
 from routes.manager_attrezzature import (
     _category_prefix,
+    _label_items,
     _next_codice,
+    _qr_svg,
     manager_attrezzature_create,
     manager_attrezzature_delete,
     manager_attrezzature_update,
@@ -92,6 +94,33 @@ class ManagerAttrezzatureTests(unittest.TestCase):
             self.assertEqual(refreshed.stato, AttrezzaturaStatoEnum.manutenzione)
         finally:
             db.close()
+
+    def test_qr_svg_is_valid_svg(self) -> None:
+        svg = _qr_svg("POMPA-001")
+        self.assertIn("<svg", svg)
+        self.assertIn("<path", svg.lower())
+        self.assertNotIn("<?xml", svg)  # niente intestazione XML (embed inline)
+
+    def test_label_items_shape(self) -> None:
+        att = Attrezzatura(
+            codice="LBL-001", qr_code="LBL-001", nome="Etichetta test",
+            tipo="Lbl", stato=AttrezzaturaStatoEnum.disponibile,
+        )
+        items = _label_items([att])
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["codice"], "LBL-001")
+        self.assertEqual(items[0]["nome"], "Etichetta test")
+        self.assertIn("<svg", items[0]["qr"])
+
+    def test_label_items_uses_qr_code_field(self) -> None:
+        # Il QR deve codificare qr_code (che per i nuovi record coincide col codice).
+        att = Attrezzatura(
+            codice="AAA-001", qr_code="ATT-9999", nome="Legacy",
+            tipo="Aaa", stato=AttrezzaturaStatoEnum.disponibile,
+        )
+        expected = _qr_svg("ATT-9999")
+        items = _label_items([att])
+        self.assertEqual(items[0]["qr"], expected)
 
     def test_delete_requires_records_delete_permission(self) -> None:
         db = SessionLocal()

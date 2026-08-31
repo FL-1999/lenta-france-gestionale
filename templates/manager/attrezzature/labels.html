@@ -1,0 +1,77 @@
+{% set lang = request.cookies.get('lang', 'it') %}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if lang == 'fr' %}Étiquettes QR{% else %}Etichette QR{% endif %}</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 12mm; background: #f4f4f5; color: #111; }
+
+    .toolbar {
+      position: sticky; top: 0; display: flex; gap: .75rem; align-items: center;
+      background: #fff; border: 1px solid #e4e4e7; border-radius: 8px;
+      padding: .75rem 1rem; margin-bottom: 12mm;
+    }
+    .toolbar .spacer { flex: 1; }
+    .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1rem;
+      border-radius: 8px; font-size: .95rem; font-weight: 600; text-decoration: none;
+      border: 1px solid transparent; cursor: pointer; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-secondary { background: #fff; color: #111; border-color: #d4d4d8; }
+    .count { color: #666; font-size: .9rem; }
+
+    .label {
+      background: #fff; border: 2px solid #111; border-radius: 8px; padding: 8mm;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      margin: 0 auto 10mm; max-width: 120mm;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .qr { width: 85mm; height: 85mm; }
+    .qr svg { width: 100%; height: 100%; display: block; }
+    .code { font-size: 34px; font-weight: 900; letter-spacing: 1px; margin-top: 5mm; }
+    .name { font-size: 18px; color: #333; margin-top: 2mm; }
+
+    .empty { text-align: center; color: #666; padding: 4rem 1rem; }
+
+    @media print {
+      body { padding: 0; background: #fff; }
+      .toolbar { display: none !important; }
+      .label { margin-left: 0; margin-right: 0; max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <a href="{{ url_for('manager_attrezzature_list') }}" class="btn btn-secondary">
+      ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
+    </a>
+    <span class="count">
+      {{ items|length }}
+      {% if single %}
+        {% if lang == 'fr' %}étiquette{% else %}etichetta{% endif %}
+      {% else %}
+        {% if lang == 'fr' %}étiquettes{% else %}etichette{% endif %}
+      {% endif %}
+    </span>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+      🖨️ {% if lang == 'fr' %}Imprimer{% else %}Stampa{% endif %}
+    </button>
+  </div>
+
+  {% for item in items %}
+    <div class="label">
+      <div class="qr">{{ item.qr | safe }}</div>
+      <div class="code">{{ item.codice }}</div>
+      <div class="name">{{ item.nome }}</div>
+    </div>
+  {% else %}
+    <div class="empty">
+      {% if lang == 'fr' %}Aucun équipement à imprimer.{% else %}Nessuna attrezzatura da stampare.{% endif %}
+    </div>
+  {% endfor %}
+</body>
+</html>

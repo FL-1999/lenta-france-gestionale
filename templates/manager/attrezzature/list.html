@@ -21,6 +21,10 @@
   </div>
 
   <div class="header-actions">
+    <a href="{{ url_for('manager_attrezzature_labels') }}?categoria={{ filtro_categoria|urlencode }}&q={{ filtro_q|urlencode }}"
+       target="_blank" class="btn btn-secondary">
+      🖨️ {% if lang == 'fr' %}Imprimer les étiquettes{% else %}Stampa etichette{% endif %}
+    </a>
     <a href="{{ url_for('manager_attrezzature_new') }}" class="btn btn-primary">
       ➕ {% if lang == 'fr' %}Nouvel équipement{% else %}Nuova attrezzatura{% endif %}
     </a>
@@ -79,6 +83,9 @@
           </td>
           <td>{{ a.posizione_attuale or '-' }}</td>
           <td class="table-actions">
+            <a href="{{ url_for('manager_attrezzature_label', attrezzatura_id=a.id) }}" target="_blank" class="btn btn-secondary btn-sm">
+              🖨️ {% if lang == 'fr' %}Étiquette{% else %}Etichetta{% endif %}
+            </a>
             <a href="{{ url_for('manager_attrezzature_edit', attrezzatura_id=a.id) }}" class="btn btn-secondary btn-sm">
               ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
             </a>

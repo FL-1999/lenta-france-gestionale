@@ -5,10 +5,12 @@ nome libero e categoria (nomenclatura). Il codice e il QR vengono generati
 automaticamente in base alla categoria (es. POMPA-001, PERFOR-002).
 """
 
+import io
 import logging
 import re
 import time
 
+import segno
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -69,6 +71,22 @@ def _next_codice(db: Session, prefix: str) -> str:
         if not exists:
             return candidate
         n += 1
+
+
+def _qr_svg(data: str) -> str:
+    """SVG del QR (senza intestazione XML, dimensionato via CSS)."""
+    qr = segno.make(data, error="m")
+    buf = io.BytesIO()
+    qr.save(buf, kind="svg", border=2, svgclass=None, xmldecl=False, omitsize=True)
+    return buf.getvalue().decode("utf-8")
+
+
+def _label_items(attrezzature: list[Attrezzatura]) -> list[dict]:
+    """Prepara i dati (con QR SVG) per il template etichette."""
+    return [
+        {"codice": a.codice, "nome": a.nome, "tipo": a.tipo, "qr": _qr_svg(a.qr_code or a.codice)}
+        for a in attrezzature
+    ]
 
 
 def _distinct_categorie(db: Session) -> list[str]:
@@ -258,6 +276,59 @@ def manager_attrezzature_update(
     db.commit()
 
     return RedirectResponse(url=request.url_for("manager_attrezzature_list"), status_code=303)
+
+
+@router.get("/manager/attrezzature/etichette", response_class=HTMLResponse, name="manager_attrezzature_labels")
+def manager_attrezzature_labels(
+    request: Request,
+    categoria: str | None = None,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Pagina stampabile con le etichette QR di tutte le attrezzature (rispetta i filtri)."""
+    _ensure_manager(current_user)
+    query = db.query(Attrezzatura)
+    if categoria and categoria.strip():
+        query = query.filter(func.lower(Attrezzatura.tipo) == categoria.strip().lower())
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        query = query.filter(
+            (Attrezzatura.nome.ilike(like))
+            | (Attrezzatura.codice.ilike(like))
+            | (Attrezzatura.qr_code.ilike(like))
+        )
+    attrezzature = query.order_by(Attrezzatura.tipo.asc(), Attrezzatura.codice.asc()).all()
+    return render_template(
+        templates,
+        request,
+        "manager/attrezzature/labels.html",
+        {"items": _label_items(attrezzature), "single": False},
+        db,
+        current_user,
+    )
+
+
+@router.get("/manager/attrezzature/{attrezzatura_id}/etichetta", response_class=HTMLResponse, name="manager_attrezzature_label")
+def manager_attrezzature_label(
+    attrezzatura_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_html),
+):
+    """Pagina stampabile con l'etichetta QR di una singola attrezzatura."""
+    _ensure_manager(current_user)
+    attrezzatura = db.query(Attrezzatura).filter(Attrezzatura.id == attrezzatura_id).first()
+    if not attrezzatura:
+        return RedirectResponse(url=request.url_for("manager_attrezzature_list"), status_code=303)
+    return render_template(
+        templates,
+        request,
+        "manager/attrezzature/labels.html",
+        {"items": _label_items([attrezzatura]), "single": True},
+        db,
+        current_user,
+    )
 
 
 @router.post("/manager/attrezzature/{attrezzatura_id}/elimina", response_class=HTMLResponse, name="manager_attrezzature_delete")
