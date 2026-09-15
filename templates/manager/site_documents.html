@@ -102,6 +102,7 @@
                     <td>{{ doc.created_at.strftime('%d/%m/%Y') if doc.created_at else '—' }}</td>
                     <td class="text-center">
                         <div class="actions--vertical">
+                            <a href="/operazioni/documenti/{{ doc.id }}" class="btn btn-secondary btn-sm">{{ t("Revisioni", "Révisions") }}</a>
                             <a href="{{ url_for('manager_document_download', doc_id=doc.id) }}" class="btn btn-secondary btn-sm">⬇️ {{ t('Scarica', 'Télécharger') }}</a>
                             <form method="post" action="{{ url_for('manager_document_delete', doc_id=doc.id) }}" onsubmit="return confirm('{{ t('Eliminare questo documento?', 'Supprimer ce document ?') }}');" style="display:inline;">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ {{ t('Elimina', 'Supprimer') }}</button>
@@ -134,7 +135,8 @@
                 <div><span class="label">{{ t('Data', 'Date') }}</span><span class="value">{{ doc.created_at.strftime('%d/%m/%Y') if doc.created_at else '—' }}</span></div>
             </div>
             <div class="list-card-actions">
-                <a href="{{ url_for('manager_document_download', doc_id=doc.id) }}" class="btn btn-secondary btn-sm">⬇️ {{ t('Scarica', 'Télécharger') }}</a>
+                <a href="/operazioni/documenti/{{ doc.id }}" class="btn btn-secondary btn-sm">{{ t("Revisioni", "Révisions") }}</a>
+                            <a href="{{ url_for('manager_document_download', doc_id=doc.id) }}" class="btn btn-secondary btn-sm">⬇️ {{ t('Scarica', 'Télécharger') }}</a>
                 <form method="post" action="{{ url_for('manager_document_delete', doc_id=doc.id) }}" onsubmit="return confirm('{{ t('Eliminare questo documento?', 'Supprimer ce document ?') }}');">
                     <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ {{ t('Elimina', 'Supprimer') }}</button>
                 </form>

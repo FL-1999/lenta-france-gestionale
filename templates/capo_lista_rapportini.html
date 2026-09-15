@@ -49,7 +49,7 @@
                     <td>{{ "%.1f"|format(report.total_hours or 0) }}</td>
                     <td>{{ report.workers_count or 0 }}</td>
                     <td>
-                        {% set preview = report.activities or report.notes or "-" %}
+                        <a href="/operazioni/rapportini/{{ report.id }}">{{ t("Verifica e correzioni", "Vérification et corrections") }}</a><br>{% set preview = report.activities or report.notes or "-" %}
                         {% if preview|length > 80 %}
                             {{ preview[:80] }}…
                         {% else %}

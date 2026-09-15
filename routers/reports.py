@@ -25,6 +25,8 @@ from permissions import has_perm
 from template_context import build_template_context, register_manager_badges
 from utils.reports import report_man_hours, report_total_hours
 from services.personale_profiles import ensure_user_personale_profile
+from models import ReportDraft, ReportReview, ReportReviewEvent
+from routes.operations import guard_report_edit, track_report_edit
 
 def require_site_operator(current_user: User = Depends(get_current_active_user_api)) -> User:
     if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
@@ -72,6 +74,8 @@ class ReportCreate(ReportBase):
     """Schema usato in input (creazione rapportino)."""
     site_id: Optional[int] = None
     workers: List["ReportWorkerIn"] = Field(default_factory=list)
+    draft_revision: int | None = Field(default=None, ge=1)
+    review_version: int | None = Field(default=None, ge=0)
 
 class ReportWorkerIn(BaseModel):
     personale_id: int
@@ -338,6 +342,15 @@ def create_report(
             detail="Non hai i permessi per creare un rapportino.",
         )
 
+    draft = None
+    if report_in.draft_revision is not None:
+        db.query(User).filter(User.id == current_user.id).with_for_update().first()
+        draft = db.get(ReportDraft, current_user.id)
+        if draft and draft.submitted_revision == report_in.draft_revision and draft.submitted_report_id:
+            return _report_to_out(db.get(Report, draft.submitted_report_id))
+        if not draft or draft.revision != report_in.draft_revision or draft.payload == "null":
+            raise HTTPException(409, "Bozza modificata: ricarica prima di inviare")
+
     workers_in, workers_count = _with_auto_capo_worker(db, current_user, report_in)
     _ensure_requested_workers_count(report_in, workers_count)
 
@@ -364,6 +377,13 @@ def create_report(
 
     db.add(db_report)
     db.flush()
+    if draft:
+        changed = db.query(ReportDraft).filter_by(user_id=current_user.id, revision=report_in.draft_revision).update(
+            {"submitted_revision": report_in.draft_revision, "submitted_report_id": db_report.id,
+             "payload": "null", "revision": report_in.draft_revision + 1}, synchronize_session=False)
+        if changed != 1:
+            db.rollback()
+            raise HTTPException(409, "Bozza modificata: ricarica prima di inviare")
     _sync_attendance_from_report(db, db_report)
     notify_new_report(db, db_report, current_user)
     db.commit()
@@ -384,7 +404,7 @@ def update_report(
         db.query(Report)
         .options(joinedload(Report.workers), joinedload(Report.created_by))
         .filter(Report.id == report_id)
-        .first()
+        .with_for_update(of=Report).first()
     )
     if not report:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rapportino non trovato.")
@@ -392,6 +412,11 @@ def update_report(
     is_owner = report.created_by_id == current_user.id
     if not is_owner and current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato.")
+
+    guard_report_edit(db, report, current_user)
+    review = db.get(ReportReview, report.id)
+    if report_in.review_version is not None and report_in.review_version != (review.version if review else 0):
+        raise HTTPException(409, "Rapportino modificato: ricarica prima di salvare")
 
     workers_in, workers_count = _with_auto_capo_worker(db, current_user, report_in)
     _ensure_requested_workers_count(report_in, workers_count)
@@ -404,7 +429,7 @@ def update_report(
     report.machines_used = report_in.machines_used
     report.activities = report_in.activities
     report.notes = report_in.notes
-    report.workers = _validate_and_build_report_workers(
+    validated_workers = _validate_and_build_report_workers(
         db=db,
         report_date=report_in.date,
         site_id=report_in.site_id,
@@ -413,7 +438,19 @@ def update_report(
         workers_in=workers_in,
         report_id=report.id,
     )
+    existing_workers = {worker.personale_id: worker for worker in report.workers}
+    reconciled_workers = []
+    for incoming in validated_workers:
+        existing = existing_workers.get(incoming.personale_id)
+        if existing is not None:
+            for field in ("site_id", "attendance_date", "role_label", "note", "hours_worked", "day_type"):
+                setattr(existing, field, getattr(incoming, field))
+            reconciled_workers.append(existing)
+        else:
+            reconciled_workers.append(incoming)
+    report.workers = reconciled_workers
     db.add(report)
+    track_report_edit(db, report, current_user)
     db.flush()
     _sync_attendance_from_report(db, report)
     db.commit()
@@ -428,13 +465,18 @@ def delete_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_site_operator),
 ):
-    report = db.query(Report).filter(Report.id == report_id).first()
+    report = db.query(Report).filter(Report.id == report_id).with_for_update().first()
     if not report:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rapportino non trovato.")
 
     is_owner = report.created_by_id == current_user.id
     if not is_owner and current_user.role not in (RoleEnum.admin, RoleEnum.manager):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Non autorizzato.")
+
+    guard_report_edit(db, report, current_user)
+    db.query(ReportReviewEvent).filter_by(report_id=report.id).delete()
+    db.query(ReportReview).filter_by(report_id=report.id).delete()
+    db.query(ReportDraft).filter_by(submitted_report_id=report.id).update({"submitted_report_id": None})
 
     linked_presenze = (
         db.query(PersonalePresenza)

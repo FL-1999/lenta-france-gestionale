@@ -11,6 +11,7 @@
 {% endblock %}
 
 {% block content %}
+<div class="form-actions"><a class="btn btn-primary" href="/operazioni">{{ t("Oggi: attività e verifiche", "Aujourd’hui : tâches et vérifications") }}</a><a class="btn btn-secondary" href="/operazioni/pianificazione">{{ t("Pianificazione", "Planning") }}</a></div>
 {% if request.query_params.get("rapportino_created") == "1" %}
 <div class="card" style="padding:0.85rem 1rem;margin-bottom:1rem;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.12);color:#166534;">
     ✅ Rapportino creato correttamente

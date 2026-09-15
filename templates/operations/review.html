@@ -1,0 +1,28 @@
+{% extends "shared/base.html" %}
+{% set labels = {'submitted': t('Inviato', 'Envoyé'), 'approved': t('Validato', 'Validé'), 'changes_requested': t('Da correggere', 'À corriger'), 'edited': t('Modificato', 'Modifié')} %}
+{% block title %}{{ t('Verifica rapportino', 'Vérification du rapport') }} #{{ report.id }}{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>{{ report.site_name_or_code }} · {{ report.date.strftime('%d/%m/%Y') }}</h1><p>{{ labels.get(review.status if review else 'submitted') }}</p></div><a class="btn btn-secondary" href="/operazioni">{{ t('Torna a Oggi', "Retour à Aujourd'hui") }}</a></div>
+<div class="card"><div class="card-body"><p>{{ t('Attività', 'Activités') }}: {{ report.activities or '—' }}</p><p>{{ t('Macchinari', 'Machines') }}: {{ report.machines_used or '—' }}</p><p>{{ t('Note', 'Notes') }}: {{ report.notes or '—' }}</p><p>{{ t('Ore giornata', 'Heures de la journée') }}: {{ report.total_hours }} · {{ t('Persone', 'Personnes') }}: {{ report.workers_count }}</p>
+{% for worker in report.workers %}<p>{{ worker.worker.cognome if worker.worker else worker.personale_id }} {{ worker.worker.nome if worker.worker else '' }} · {{ worker.hours_worked }} h</p>{% endfor %}
+{% if review and review.note %}<div class="alert alert-warning">{{ review.note }}</div>{% endif %}
+<form method="post" action="/operazioni/rapportini/{{ report.id }}/stato" data-ops-form>
+<input type="hidden" name="version" value="{{ review.version if review else 0 }}">
+<label for="review-note">{{ t('Nota di verifica', 'Note de vérification') }}</label><textarea id="review-note" name="note" class="form-control" maxlength="3000"></textarea>
+<div class="form-actions">
+{% if not review or review.status == 'submitted' %}{% if user.role.value != 'caposquadra' %}<button class="btn btn-primary" name="action" value="approved">{{ t('Valida', 'Valider') }}</button><button class="btn btn-secondary" name="action" value="changes_requested">{{ t('Richiedi correzione', 'Demander une correction') }}</button>{% endif %}
+{% elif review.status == 'approved' %}{% if user.role.value != 'caposquadra' %}<button class="btn btn-secondary" name="action" value="changes_requested">{{ t('Riapri per correzione', 'Rouvrir pour correction') }}</button>{% endif %}
+{% else %}<button class="btn btn-primary" name="action" value="submitted">{{ t('Rinvia alla verifica', 'Soumettre à nouveau') }}</button>{% endif %}</div><p data-ops-error role="alert"></p></form>
+</div></div>
+{% if not review or review.status != 'approved' %}
+<details class="card"><summary>{{ t('Correggi attività, note e ore', 'Corriger activités, notes et heures') }}</summary><div class="card-body">
+<form data-report-edit="{{ report.id }}" data-report-payload='{{ edit_payload|tojson }}'>
+<label>{{ t('Attività', 'Activités') }}<textarea class="form-control" name="activities">{{ report.activities or '' }}</textarea></label>
+<label>{{ t('Macchinari', 'Machines') }}<textarea class="form-control" name="machines_used">{{ report.machines_used or '' }}</textarea></label>
+<label>{{ t('Note', 'Notes') }}<textarea class="form-control" name="notes">{{ report.notes or '' }}</textarea></label>
+<label>{{ t('Ore giornata', 'Heures de la journée') }}<input class="form-control" type="number" min="0" step="0.5" name="total_hours" required value="{{ report.total_hours }}"></label>
+{% for worker in report.workers %}<label>{{ worker.worker.cognome if worker.worker else worker.personale_id }} {{ worker.worker.nome if worker.worker else '' }}<input class="form-control" type="number" min="0" step="0.5" data-worker-id="{{ worker.personale_id }}" required value="{{ worker.hours_worked }}"></label>{% endfor %}
+<button class="btn btn-primary">{{ t('Salva correzioni', 'Enregistrer les corrections') }}</button><p data-ops-error role="alert"></p></form></div></details>{% endif %}
+<section class="card"><div class="card-body"><h2>{{ t('Storico delle verifiche', 'Historique des vérifications') }}</h2>{% for event, actor in events %}<p>{{ event.created_at.strftime('%d/%m/%Y %H:%M') }} UTC · {{ actor.full_name or actor.email }} · {{ labels.get(event.status, event.status) }}{% if event.note %}<br>{{ event.note }}{% endif %}</p>{% else %}<p>{{ t('Nessuna verifica registrata.', 'Aucune vérification enregistrée.') }}</p>{% endfor %}</div></section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/operations.js?v=1" defer></script>{% endblock %}

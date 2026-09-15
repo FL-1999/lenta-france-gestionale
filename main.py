@@ -2846,29 +2846,14 @@ def manager_dashboard(
         )
 
         query_started = time.monotonic()
+        from models import ReportReview
         reports_by_status_rows = (
-            db.query(
-                case(
-                    (func.coalesce(Report.total_hours, 0) > 0, "Chiusi"),
-                    else_="Aperti",
-                ).label("status"),
-                func.count(Report.id).label("count"),
-            )
-            .group_by("status")
-            .all()
+            db.query(func.coalesce(ReportReview.status, "submitted").label("status"), func.count(Report.id).label("count"))
+            .outerjoin(ReportReview, ReportReview.report_id == Report.id)
+            .group_by(func.coalesce(ReportReview.status, "submitted")).all()
         )
-        perf_logger.debug(
-            "manager_dashboard reports_by_status rows=%s duration_ms=%.2f",
-            len(reports_by_status_rows),
-            (time.monotonic() - query_started) * 1000,
-        )
-        reports_by_status_counts = {"Aperti": 0, "Chiusi": 0}
-        for row in reports_by_status_rows:
-            reports_by_status_counts[row.status] = int(row.count or 0)
-        reports_by_status = [
-            {"status": key, "count": value}
-            for key, value in reports_by_status_counts.items()
-        ]
+        status_labels = {"submitted": "Da verificare", "approved": "Validati", "changes_requested": "Da correggere"}
+        reports_by_status = [{"status": status_labels.get(row.status, row.status), "count": row.count} for row in reports_by_status_rows]
 
         query_started = time.monotonic()
         reports_count = db.query(func.count(Report.id)).scalar() or 0
@@ -5931,6 +5916,12 @@ def manager_document_delete(
         if not (is_admin or is_owner):
             raise HTTPException(status_code=403, detail="Non autorizzato")
 
+        from models import DocumentVersion
+        if db.query(DocumentVersion).filter(
+            (DocumentVersion.document_id == doc_id) | (DocumentVersion.root_id == doc_id)
+        ).first():
+            raise HTTPException(409, "Documento con revisioni: lo storico deve essere conservato")
+
         site_id = document.site_id
         log_audit_event(
             db, current_user, "DOCUMENT_DELETED", "site_document", document.id,
@@ -8985,6 +8976,9 @@ def manager_site_fiches_pdf(
 # -------------------------------------------------
 # INCLUDE DEI ROUTER API
 # -------------------------------------------------
+
+from routes import operations
+app.include_router(operations.router)
 
 app.include_router(auth_router)       # /auth/token, /auth/me
 app.include_router(users.router)      # /users

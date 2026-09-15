@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="Lenta France" />
 <link rel="apple-touch-icon" href="/static/img/icon-192.png" />
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260914a" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260916a" />
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -191,6 +191,7 @@
                         <span aria-hidden="true">▾</span>
                     </button>
                     <div class="nav-dropdown__menu nav-dropdown__menu--profile" data-nav-dropdown-menu>
+                        {% if is_manager or is_capo %}<a class="nav-dropdown__item" href="/operazioni">{{ 'Aujourd’hui' if lang == 'fr' else 'Oggi' }}</a><a class="nav-dropdown__item" href="/operazioni/pianificazione">{{ 'Planning' if lang == 'fr' else 'Pianificazione' }}</a>{% endif %}
                         <div class="nav-dropdown__section nav-dropdown__section--compact">
                             <span class="nav-dropdown__label">{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</span>
                             <span class="nav-dropdown__value">{{ user_display_name }}</span>
@@ -364,7 +365,7 @@
 
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212c"></script>
     <script src="/static/js/notifications.js?v=20260506a"></script>
-    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260914a"></script>
+    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260916a"></script>
     <script>
         (() => {
             const dropdowns = Array.from(document.querySelectorAll('[data-nav-dropdown]'));
