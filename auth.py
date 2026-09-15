@@ -20,6 +20,7 @@ logger = logging.getLogger("lenta_france_gestionale.auth")
 APP_ENV = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("FASTAPI_ENV") or "development").strip().lower()
 ALLOW_DEV_INSECURE_SECRET = os.getenv("ALLOW_DEV_INSECURE_SECRET", "false").strip().lower() in {"1", "true", "yes", "on"}
 IS_PRODUCTION = APP_ENV in {"prod", "production"}
+COOKIE_SECURE = IS_PRODUCTION or os.getenv("RENDER", "").lower() == "true"
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -173,6 +174,7 @@ def set_current_role_cookie(response: Response, role: RoleEnum | str | None) -> 
         max_age=60 * 60,
         path="/",
         samesite="lax",
+        secure=COOKIE_SECURE,
     )
 
 
@@ -221,7 +223,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access"})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -252,13 +254,22 @@ def decode_refresh_token(token: str | None) -> Optional[str]:
     return payload.get("sub")
 
 
+def decode_access_token(token: str) -> dict:
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    # Accept existing untyped access tokens until they expire after deployment.
+    # Refresh tokens must only be used by the refresh middleware.
+    if payload.get("type", "access") != "access" or not payload.get("sub"):
+        raise JWTError("Invalid access token")
+    return payload
+
+
 def access_token_is_valid(cookie_value: str | None) -> bool:
     """True se l'access token (valore del cookie, con o senza 'Bearer ') è valido."""
     if not cookie_value:
         return False
     token = cookie_value[len("Bearer ") :] if cookie_value.startswith("Bearer ") else cookie_value
     try:
-        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        decode_access_token(token)
         return True
     except JWTError:
         return False
@@ -285,7 +296,7 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(token)
         email: Optional[str] = payload.get("sub")
         token_role = payload.get("role")
         if email is None:
@@ -294,7 +305,7 @@ async def get_current_user(
         raise credentials_exception
 
     user = get_user_by_email(db, email=email)
-    if user is None:
+    if user is None or not user.is_active:
         raise credentials_exception
 
     requested_role = get_current_role_from_request(request) or normalize_role(token_role)
@@ -334,7 +345,7 @@ async def get_current_user_html(
         token = token[len("Bearer ") :]
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(token)
         email: Optional[str] = payload.get("sub")
         token_role = payload.get("role")
         if email is None:
@@ -343,7 +354,7 @@ async def get_current_user_html(
         raise redirect_exception
 
     user = get_user_by_email(db, email=email)
-    if user is None:
+    if user is None or not user.is_active:
         raise redirect_exception
     if token_role and not user_has_role(user, token_role):
         raise redirect_exception
@@ -394,7 +405,7 @@ async def get_current_user_api(
         raise unauthorized_exception
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(token)
         email: Optional[str] = payload.get("sub")
         token_role = payload.get("role")
         if email is None:
@@ -403,7 +414,7 @@ async def get_current_user_api(
         raise unauthorized_exception
 
     user = get_user_by_email(db, email=email)
-    if user is None:
+    if user is None or not user.is_active:
         raise unauthorized_exception
     if token_role and not user_has_role(user, token_role):
         raise unauthorized_exception

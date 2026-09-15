@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from types import SimpleNamespace
+import pytest
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -23,6 +24,7 @@ from models import (
     SiteEconomicCategoryEnum,
     SiteEconomicEntry,
     SiteEconomicEntryTypeEnum,
+    SiteEconomicBudget,
     SiteEconomicAutoParams,
     SiteLaborCostEntry,
     SiteStatusEnum,
@@ -236,6 +238,9 @@ def test_manager_can_open_site_economics_detail() -> None:
     assert "Fiche #1" in response.text
     assert "Margine reale" not in response.text
     assert "Ricavi reali periodo" not in response.text
+    assert "SAL fatturato" not in response.text
+    assert "Ricavo maturato" not in response.text
+    assert "Budget commessa" not in response.text
 
 
 def test_admin_can_see_margin_data_in_site_economics_detail() -> None:
@@ -420,7 +425,7 @@ def test_manager_can_delete_economic_entry() -> None:
     app.dependency_overrides[get_current_active_user_html] = build_manager_user
     db = TestingSessionLocal()
     try:
-        entry = db.query(SiteEconomicEntry).filter(SiteEconomicEntry.site_id == site_id).first()
+        entry = db.query(SiteEconomicEntry).filter(SiteEconomicEntry.site_id == site_id, SiteEconomicEntry.entry_type == SiteEconomicEntryTypeEnum.cost).first()
         assert entry is not None
         entry_id = entry.id
     finally:
@@ -466,3 +471,49 @@ def test_auto_cost_config_update_endpoint() -> None:
         assert "acciaio" in (site.material_unit_prices or "")
     finally:
         db.close()
+
+
+@pytest.mark.parametrize("method", ["PATCH", "DELETE"])
+def test_manager_cannot_reclassify_or_delete_revenue(method):
+    site_id = seed_site_with_economics()
+    app.dependency_overrides[get_current_active_user_html] = build_manager_user
+    with TestingSessionLocal() as db:
+        entry = db.query(SiteEconomicEntry).filter(SiteEconomicEntry.entry_type == SiteEconomicEntryTypeEnum.revenue).first()
+        entry_id, original_amount = entry.id, entry.amount
+    payload = {"entry_date": "2026-03-01", "entry_type": "cost", "category": "materiali", "amount": "1"}
+    response = client.request(method, f"/manager/cantieri/{site_id}/economics/entries/{entry_id}", data=payload)
+    assert response.status_code == 403
+    with TestingSessionLocal() as db:
+        entry = db.get(SiteEconomicEntry, entry_id)
+        assert entry.entry_type == SiteEconomicEntryTypeEnum.revenue
+        assert entry.amount == original_amount
+
+
+def test_manager_cost_budget_save_preserves_reserved_revenue():
+    site_id = seed_site_with_economics()
+    with TestingSessionLocal() as db:
+        db.add(SiteEconomicBudget(site_id=site_id, ricavo_previsto=123456, materiali_previsti=80))
+        db.commit()
+    app.dependency_overrides[get_current_active_user_html] = build_manager_user
+    url = f"/manager/cantieri/{site_id}/economics/budget"
+    assert client.post(url, data={"materiali_previsti": "200"}, follow_redirects=False).status_code == 303
+    with TestingSessionLocal() as db:
+        budget = db.query(SiteEconomicBudget).filter_by(site_id=site_id).one()
+        assert budget.ricavo_previsto == 123456
+        assert budget.materiali_previsti == 200
+    assert client.post(url, data={"ricavo_previsto": "1"}, follow_redirects=False).status_code == 403
+    assert client.post(url + "/delete", follow_redirects=False).status_code == 403
+    with TestingSessionLocal() as db:
+        assert db.query(SiteEconomicBudget).filter_by(site_id=site_id).one().ricavo_previsto == 123456
+
+
+def test_operational_snapshot_removes_all_revenue_entries_and_period_totals():
+    from routes.economics import _filter_snapshot_for_role
+
+    original = {"economic_entries": [{"entry_type": "revenue", "amount": 98765}, {"entry_type": "cost", "amount": 20}],
+                "period_summaries": {"oggi": {"ricavi": 98765, "margine": 98745, "utile_perdita": 98745, "costi": 20}}}
+    filtered = _filter_snapshot_for_role(original, include_margin=False)
+    assert filtered["economic_entries"] == [{"entry_type": "cost", "amount": 20}]
+    assert filtered["period_summaries"] == {"oggi": {"costi": 20}}
+    assert len(original["economic_entries"]) == 2
+    assert _filter_snapshot_for_role(original, include_margin=True) == original

@@ -200,6 +200,9 @@ def _resolve_post_login_role(
     return resolve_user_active_role(user, requested_role)
 
 
+from auth import COOKIE_SECURE, decode_access_token
+
+
 def _set_access_cookie(response, access_token: str) -> None:
     response.set_cookie(
         key="access_token",
@@ -208,6 +211,7 @@ def _set_access_cookie(response, access_token: str) -> None:
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
         samesite="lax",
+        secure=COOKIE_SECURE,
     )
 
 
@@ -219,6 +223,7 @@ def _set_refresh_cookie(response, refresh_token: str) -> None:
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path="/",
         samesite="lax",
+        secure=COOKIE_SECURE,
     )
 
 
@@ -272,54 +277,33 @@ ADMIN_LANGUAGE = os.getenv("ADMIN_LANGUAGE", "it")
 
 
 def create_initial_admin():
-    """
-    Crea o aggiorna l'utente admin iniziale usando credenziali
-    deterministiche.
-
-    Per motivi di sicurezza le credenziali vengono lette da variabili
-    d'ambiente (ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_LANGUAGE). Se non
-    sono presenti, viene usato il fallback sicuro fornito.
-    """
-    admin_email = ADMIN_EMAIL or "lenta.federico@gmail.com"
-    admin_password = ADMIN_PASSWORD or "Fulvio72"
-    admin_language = ADMIN_LANGUAGE or "it"
-
+    """Bootstrap an explicitly configured admin; never rewrite existing users."""
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        logging.getLogger(__name__).info(
+            "Bootstrap admin skipped: ADMIN_EMAIL and ADMIN_PASSWORD are required for creation."
+        )
+        return
     db = SessionLocal()
-    hashed_password = hash_password(admin_password)
-    # Con un database persistente non dobbiamo reimpostare la password ad ogni
-    # avvio: se l'admin esiste già, NON tocchiamo la sua password (così i cambi
-    # password restano). La reimpostiamo solo se richiesto esplicitamente.
-    force_reset = os.getenv("ADMIN_FORCE_RESET", "false").lower() == "true"
     try:
-        admin = db.query(User).filter(User.email == admin_email).first()
-        if admin:
-            admin.full_name = admin.full_name or admin_email
-            admin.role = RoleEnum.admin
-            admin.language = admin.language or admin_language
-            admin.is_active = True
-            if force_reset:
-                admin.hashed_password = hashed_password
-            message = "Admin iniziale verificato."
-        else:
-            admin = User(
-                email=admin_email,
-                full_name=admin_email,
-                role=RoleEnum.admin,
-                language=admin_language,
-                hashed_password=hashed_password,
-                is_active=True,
-                can_switch_roles=False,
-            )
-            db.add(admin)
-            db.flush()
-            message = "Admin iniziale creato."
-
+        if db.query(User.id).filter(User.email == ADMIN_EMAIL).first():
+            return
+        admin = User(
+            email=ADMIN_EMAIL,
+            full_name=ADMIN_EMAIL,
+            role=RoleEnum.admin,
+            language=ADMIN_LANGUAGE or "it",
+            hashed_password=hash_password(ADMIN_PASSWORD),
+            is_active=True,
+            can_switch_roles=False,
+        )
+        db.add(admin)
+        db.flush()
         _sync_user_roles(db, admin, [RoleEnum.admin])
         db.commit()
-        print(message)
-    except Exception as exc:
+        logging.getLogger(__name__).info("Configured bootstrap admin created.")
+    except Exception:
         db.rollback()
-        print(f"Errore nella creazione/aggiornamento dell'admin iniziale: {exc}")
+        logging.getLogger(__name__).exception("Admin bootstrap failed")
     finally:
         db.close()
 
@@ -657,7 +641,7 @@ def _get_user_from_cookie(request: Request) -> User | None:
         token = token[len("Bearer ") :]
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(token)
     except JWTError:
         return None
 

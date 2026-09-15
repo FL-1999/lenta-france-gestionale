@@ -751,6 +751,15 @@ def _filter_snapshot_for_role(snapshot: dict[str, Any], *, include_margin: bool)
         return snapshot
 
     filtered_snapshot = dict(snapshot)
+    filtered_snapshot["economic_entries"] = [
+        entry for entry in snapshot.get("economic_entries", [])
+        if entry.get("entry_type") != SiteEconomicEntryTypeEnum.revenue.value
+    ]
+    filtered_snapshot["period_summaries"] = {
+        period: {key: value for key, value in totals.items()
+                 if key not in {"ricavi", "margine", "utile_perdita"}}
+        for period, totals in snapshot.get("period_summaries", {}).items()
+    }
 
     budget = dict(filtered_snapshot.get("budget", {}))
     budget["ricavo_previsto"] = 0.0
@@ -1051,7 +1060,7 @@ def manager_site_economics_trend_data(
 @router.post("/manager/cantieri/{site_id}/economics/budget", name="manager_site_economics_budget_upsert")
 def manager_site_economics_budget_upsert(
     site_id: int,
-    ricavo_previsto: str = Form("0"),
+    ricavo_previsto: str | None = Form(None),
     materiali_previsti: str = Form("0"),
     manodopera_prevista: str = Form("0"),
     trasporti_previsti: str = Form("0"),
@@ -1070,9 +1079,10 @@ def manager_site_economics_budget_upsert(
     if not site:
         raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
+    if ricavo_previsto is not None and not can_view_site_margin(current_user):
+        raise HTTPException(status_code=403, detail="Solo admin possono modificare i ricavi")
     try:
         values = {
-            "ricavo_previsto": _normalize_entry_amount(ricavo_previsto),
             "materiali_previsti": _normalize_entry_amount(materiali_previsti),
             "manodopera_prevista": _normalize_entry_amount(manodopera_prevista),
             "trasporti_previsti": _normalize_entry_amount(trasporti_previsti),
@@ -1080,6 +1090,8 @@ def manager_site_economics_budget_upsert(
             "attrezzature_previste": _normalize_entry_amount(attrezzature_previste),
             "altri_costi_previsti": _normalize_entry_amount(altri_costi_previsti),
         }
+        if ricavo_previsto is not None:
+            values["ricavo_previsto"] = _normalize_entry_amount(ricavo_previsto)
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Dati budget non validi")
 
@@ -1113,6 +1125,8 @@ def manager_site_economics_budget_delete(
     db: Session = Depends(get_db),
 ):
     _ensure_economics_manage(current_user)
+    if not can_view_site_margin(current_user):
+        raise HTTPException(status_code=403, detail="Solo admin possono eliminare il budget completo")
     budget = db.query(SiteEconomicBudget).filter(SiteEconomicBudget.site_id == site_id).first()
     if not budget:
         raise HTTPException(status_code=404, detail="Budget non trovato")
@@ -1201,6 +1215,9 @@ def manager_site_economics_entry_update(
     if not entry:
         raise HTTPException(status_code=404, detail="Movimento economico non trovato")
 
+    if entry.entry_type == SiteEconomicEntryTypeEnum.revenue and not can_view_site_margin(current_user):
+        raise HTTPException(status_code=403, detail="Solo admin possono modificare i ricavi")
+
     try:
         parsed_date = datetime.strptime(entry_date, "%Y-%m-%d").date()
         parsed_type = SiteEconomicEntryTypeEnum(entry_type)
@@ -1242,6 +1259,9 @@ def manager_site_economics_entry_delete(
     )
     if not entry:
         raise HTTPException(status_code=404, detail="Movimento economico non trovato")
+
+    if entry.entry_type == SiteEconomicEntryTypeEnum.revenue and not can_view_site_margin(current_user):
+        raise HTTPException(status_code=403, detail="Solo admin possono eliminare i ricavi")
 
     db.delete(entry)
     db.commit()

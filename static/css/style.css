@@ -9056,3 +9056,23 @@ body {
     overflow: visible;
   }
 }
+/* Keep account actions usable when the desktop links are hidden. */
+@media (max-width: 767px) {
+    .navbar .nav-right .nav-profile-toggle,
+    .navbar .nav-right .notification-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+    }
+    .navbar .nav-profile-toggle__label { display: none; }
+    .navbar .nav-dropdown__menu--profile {
+        position: fixed;
+        top: 56px;
+        right: 8px;
+        max-width: calc(100vw - 16px);
+        max-height: calc(100dvh - 130px);
+        overflow-y: auto;
+    }
+}

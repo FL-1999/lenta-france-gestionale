@@ -72,7 +72,7 @@
 
 
   {% if can_prepare_trip_load %}
-  <h3>{{ t('Preparazione carico', 'Préparation du chargement') }}</h3>
+  <h3>{{ t('Preparazione carico', 'Préparation du chargement') }}</h3><p>{{ t('Le selezioni aggiungono attrezzature. Il carico già salvato resta invariato; per scaricare usa lo scanner con operazione Scarica.', 'Les sélections ajoutent des équipements. Le chargement enregistré est conservé ; pour décharger, utilisez le scanner en mode Décharger.') }}</p>
   <form method="post" action="{{ url_for('manager_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     <table class="data-table">
       <thead><tr><th>{{ t('Tipo', 'Type') }}</th><th>{{ t('Attrezzatura disponibile', 'Équipement disponible') }}</th></tr></thead>

@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8" />
     <!-- BASE_HTML_MARKER -->
-    <title>
+    <title>{% block title %}
         {% if lang == 'fr' %}
             {{ title if title else "Lenta France Logiciel" }}
         {% else %}
             {{ title if title else "Lenta France Gestionale" }}
         {% endif %}
-    </title>
+    {% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b1120" />
 <!-- PWA / Mobile -->
@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="Lenta France" />
 <link rel="apple-touch-icon" href="/static/img/logo.png" />
     <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260729a" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260914a" />
 </head>
 <body>
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -115,8 +115,8 @@
                 </a>
             {% else %}
                 <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/recent" data-mark-read-endpoint="/api/notifications/mark-read" data-poll-interval="30000">
-                    <button type="button" class="nav-link nav-link--icon notification-button" id="notificationsToggle" data-notifications-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notificationsPanel">
-                        <i class="bi bi-bell-fill notification-icon" aria-hidden="true"></i>
+                    <button type="button" class="nav-link nav-link--icon notification-button" aria-label="{{ 'Notifications' if lang == 'fr' else 'Notifiche' }}" id="notificationsToggle" data-notifications-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notificationsPanel">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
                         <span id="notificationCount" class="notification-count">0</span>
                     </button>
                     <div class="notifications-panel hidden" id="notificationsPanel" data-notifications-panel>
@@ -170,7 +170,7 @@
 
 
                 <div class="nav-dropdown nav-dropdown--align-right nav-right__item" data-nav-dropdown>
-                    <button type="button" class="nav-link nav-dropdown__toggle nav-profile-toggle" data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                    <button type="button" class="nav-link nav-dropdown__toggle nav-profile-toggle" aria-label="{{ 'Menu du compte' if lang == 'fr' else 'Menu account' }}" data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
                         <span class="nav-profile-toggle__avatar" aria-hidden="true">{{ user_initials }}</span>
                         <span class="nav-profile-toggle__label">{{ user_display_name }}</span>
                         <span aria-hidden="true">▾</span>
@@ -367,7 +367,7 @@
 
     <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212c"></script>
     <script src="/static/js/notifications.js?v=20260506a"></script>
-    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260729a"></script>
+    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260914a"></script>
     <script>
         (() => {
             const dropdowns = Array.from(document.querySelectorAll('[data-nav-dropdown]'));
@@ -406,7 +406,12 @@
 
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
-                    dropdowns.forEach((dropdown) => closeDropdown(dropdown));
+                    dropdowns.forEach((dropdown) => {
+                        if (dropdown.classList.contains('is-open')) {
+                            closeDropdown(dropdown);
+                            dropdown.querySelector('[data-nav-dropdown-toggle]').focus();
+                        }
+                    });
                 }
             });
         })();

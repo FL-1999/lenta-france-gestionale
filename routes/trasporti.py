@@ -1589,6 +1589,58 @@ def driver_trasporti_viaggi_detail(
     )
 
 
+def _add_trip_load(db: Session, viaggio: TrasportoViaggio, form) -> None:
+    """Validate the complete selection before adding; preserve existing/scanned loads."""
+    if viaggio.stato not in (TrasportoStatoEnum.programmato, TrasportoStatoEnum.in_carico):
+        raise HTTPException(status_code=409, detail="Il carico è modificabile solo prima della partenza")
+    requests = db.query(TrasportoRichiestaAttrezzatura).filter(
+        TrasportoRichiestaAttrezzatura.viaggio_id == viaggio.id
+    ).all()
+    selected = {}
+    for req in requests:
+        for idx in range(req.quantita):
+            raw_id = form.get(f"req_{req.id}_{idx}")
+            if not raw_id:
+                continue
+            try:
+                equipment_id = int(raw_id)
+            except (ValueError, TypeError):
+                raise HTTPException(status_code=400, detail="Attrezzatura non valida")
+            if equipment_id in selected:
+                raise HTTPException(status_code=400, detail="Attrezzatura selezionata più volte")
+            selected[equipment_id] = req
+    # Lock in a stable order; PostgreSQL serializes competing loads/scans.
+    equipment = db.query(Attrezzatura).filter(Attrezzatura.id.in_(selected)).order_by(
+        Attrezzatura.id
+    ).with_for_update().all() if selected else []
+    if len(equipment) != len(selected):
+        raise HTTPException(status_code=400, detail="Attrezzatura non trovata")
+    assignments = {a.attrezzatura_id: a for a in db.query(TrasportoAttrezzaturaViaggio).filter(
+        TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id
+    ).all()}
+    for att in equipment:
+        req = selected[att.id]
+        existing = assignments.get(att.id)
+        already_loaded = existing and existing.caricato and not existing.scaricato
+        if att.tipo != req.tipo_attrezzatura:
+            raise HTTPException(status_code=400, detail="Tipo attrezzatura non compatibile")
+        if not (already_loaded and att.stato == AttrezzaturaStatoEnum.in_trasporto) and att.stato != AttrezzaturaStatoEnum.disponibile:
+            raise HTTPException(status_code=409, detail="Attrezzatura non disponibile: aggiorna il carico")
+        if existing and existing.scaricato:
+            raise HTTPException(status_code=409, detail="Attrezzatura già consegnata in questo viaggio")
+    for att in equipment:
+        existing = assignments.get(att.id)
+        if existing:
+            existing.caricato = True
+        else:
+            db.add(TrasportoAttrezzaturaViaggio(
+                viaggio_id=viaggio.id, attrezzatura_id=att.id,
+                tappa_destinazione_id=selected[att.id].tappa_id, caricato=True,
+            ))
+        att.stato = AttrezzaturaStatoEnum.in_trasporto
+    viaggio.stato = TrasportoStatoEnum.in_carico
+
+
 @router.post("/manager/trasporti/viaggi/{viaggio_id}/carico", response_class=HTMLResponse, name="manager_trasporti_viaggi_carico")
 async def manager_trasporti_viaggi_carico(
     viaggio_id: int,
@@ -1597,39 +1649,12 @@ async def manager_trasporti_viaggi_carico(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_trip_load_operator(current_user)
-    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).first()
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id).with_for_update(of=TrasportoViaggio).first()
     if not viaggio:
         return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
 
-    db.query(TrasportoAttrezzaturaViaggio).filter(TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id).delete()
-
     form = await request.form()
-    richieste = db.query(TrasportoRichiestaAttrezzatura).filter(TrasportoRichiestaAttrezzatura.viaggio_id == viaggio.id).all()
-    for req in richieste:
-        for idx in range(req.quantita):
-            field_name = f"req_{req.id}_{idx}"
-            raw_attrezzatura_id = form.get(field_name)
-            if not raw_attrezzatura_id:
-                continue
-            attrezzatura = (
-                db.query(Attrezzatura)
-                .filter(
-                    Attrezzatura.id == int(raw_attrezzatura_id),
-                    Attrezzatura.tipo == req.tipo_attrezzatura,
-                    Attrezzatura.stato == AttrezzaturaStatoEnum.disponibile,
-                )
-                .first()
-            )
-            if attrezzatura:
-                attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
-                db.add(TrasportoAttrezzaturaViaggio(
-                    viaggio_id=viaggio.id,
-                    attrezzatura_id=attrezzatura.id,
-                    tappa_destinazione_id=req.tappa_id,
-                    caricato=True,
-                ))
-
-    viaggio.stato = TrasportoStatoEnum.in_carico
+    _add_trip_load(db, viaggio, form)
     db.commit()
     return RedirectResponse(url=request.url_for("manager_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
 
@@ -1642,39 +1667,12 @@ async def driver_trasporti_viaggi_carico(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_driver(current_user)
-    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id).first()
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id).with_for_update(of=TrasportoViaggio).first()
     if not viaggio:
         return RedirectResponse(url=request.url_for("driver_trasporti_viaggi"), status_code=303)
 
-    db.query(TrasportoAttrezzaturaViaggio).filter(TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id).delete()
-
     form = await request.form()
-    richieste = db.query(TrasportoRichiestaAttrezzatura).filter(TrasportoRichiestaAttrezzatura.viaggio_id == viaggio.id).all()
-    for req in richieste:
-        for idx in range(req.quantita):
-            field_name = f"req_{req.id}_{idx}"
-            raw_attrezzatura_id = form.get(field_name)
-            if not raw_attrezzatura_id:
-                continue
-            attrezzatura = (
-                db.query(Attrezzatura)
-                .filter(
-                    Attrezzatura.id == int(raw_attrezzatura_id),
-                    Attrezzatura.tipo == req.tipo_attrezzatura,
-                    Attrezzatura.stato == AttrezzaturaStatoEnum.disponibile,
-                )
-                .first()
-            )
-            if attrezzatura:
-                attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
-                db.add(TrasportoAttrezzaturaViaggio(
-                    viaggio_id=viaggio.id,
-                    attrezzatura_id=attrezzatura.id,
-                    tappa_destinazione_id=req.tappa_id,
-                    caricato=True,
-                ))
-
-    viaggio.stato = TrasportoStatoEnum.in_carico
+    _add_trip_load(db, viaggio, form)
     db.commit()
     return RedirectResponse(url=request.url_for("driver_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
 
@@ -1683,15 +1681,22 @@ async def driver_trasporti_viaggi_carico(
 def driver_trasporti_viaggi_scan(
     viaggio_id: int,
     qr_code: str = Form(...),
+    action: str = "carico",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_driver(current_user)
-    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id).first()
+    viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id).with_for_update(of=TrasportoViaggio).first()
     if not viaggio:
         raise HTTPException(status_code=404, detail="Viaggio non trovato")
 
-    attrezzatura = db.query(Attrezzatura).filter(Attrezzatura.qr_code == qr_code.strip().upper()).first()
+    if action not in {"carico", "scarico"}:
+        raise HTTPException(status_code=400, detail="Azione di scansione non valida")
+    if viaggio.stato == TrasportoStatoEnum.completato and action == "carico":
+        raise HTTPException(status_code=409, detail="Viaggio già completato")
+    attrezzatura = db.query(Attrezzatura).filter(
+        Attrezzatura.qr_code == qr_code.strip().upper()
+    ).with_for_update().first()
     if not attrezzatura:
         raise HTTPException(status_code=404, detail="Attrezzatura non trovata")
 
@@ -1710,14 +1715,25 @@ def driver_trasporti_viaggi_scan(
             "stato": attrezzatura.stato.value if attrezzatura.stato else None,
         }
 
-    # Scarico: già a bordo di QUESTO viaggio → si può sempre scaricare.
-    if assignment and attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto:
+    if action == "scarico":
+        if not assignment or not assignment.caricato:
+            return _resp("bloccato", "non_a_bordo")
+        if assignment.scaricato:
+            return _resp("scaricato")
+        if attrezzatura.stato != AttrezzaturaStatoEnum.in_trasporto:
+            return _resp("bloccato", "non_disponibile")
         assignment.scaricato = True
         attrezzatura.stato = AttrezzaturaStatoEnum.disponibile
         dest = assignment.tappa_destinazione.destinazione if assignment.tappa_destinazione else viaggio.destinazione
         attrezzatura.posizione_attuale = dest
         db.commit()
         return _resp("scaricato")
+
+    if assignment and assignment.caricato:
+        if assignment.scaricato:
+            return _resp("bloccato", "gia_consegnata")
+        if attrezzatura.stato == AttrezzaturaStatoEnum.in_trasporto:
+            return _resp("caricato")
 
     # Carico: consentito SOLO se l'attrezzatura è disponibile.
     if attrezzatura.stato == AttrezzaturaStatoEnum.disponibile:
@@ -1764,23 +1780,33 @@ async def driver_trasporti_viaggi_stato(
             joinedload(TrasportoViaggio.assegnazioni_attrezzature).joinedload(TrasportoAttrezzaturaViaggio.tappa_destinazione),
         )
         .filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id)
-        .first()
+        .with_for_update(of=TrasportoViaggio).first()
     )
     if not viaggio:
         return RedirectResponse(url=request.url_for("driver_trasporti_viaggi"), status_code=303)
 
-    stato = TrasportoStatoEnum(nuovo_stato)
+    try:
+        stato = TrasportoStatoEnum(nuovo_stato)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Stato viaggio non valido")
+    if viaggio.stato == stato:
+        return RedirectResponse(url=request.url_for("driver_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
+    if viaggio.stato == TrasportoStatoEnum.completato:
+        raise HTTPException(status_code=409, detail="Viaggio già completato")
     viaggio.stato = stato
 
     if stato == TrasportoStatoEnum.in_viaggio:
         for ass in viaggio.assegnazioni_attrezzature:
-            ass.attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
+            if ass.caricato and not ass.scaricato:
+                ass.attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
 
     if stato == TrasportoStatoEnum.completato:
         form = await request.form()
         remaining_ids = {int(v) for v in form.getlist("resta_sul_camion") if str(v).isdigit()}
         now = datetime.utcnow()
         for ass in viaggio.assegnazioni_attrezzature:
+            if ass.scaricato:
+                continue
             att = ass.attrezzatura
             tappa_dest = ass.tappa_destinazione.destinazione if ass.tappa_destinazione else viaggio.destinazione
             destinazione_site_id = ass.tappa_destinazione.site_id if ass.tappa_destinazione else viaggio.destinazione_site_id
@@ -1795,7 +1821,8 @@ async def driver_trasporti_viaggi_stato(
                 att.posizione_attuale = tappa_dest
                 ass.scaricato = True
                 movement_dest = tappa_dest
-            att.stato = AttrezzaturaStatoEnum.disponibile
+            att.stato = (AttrezzaturaStatoEnum.in_trasporto if att.id in remaining_ids
+                         else AttrezzaturaStatoEnum.disponibile)
             db.add(
                 MovimentoAttrezzatura(
                     attrezzatura_id=att.id,

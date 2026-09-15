@@ -71,7 +71,7 @@
 </div>
 
 <div class="card card-body" style="margin-top: 1rem;">
-  <h3>{{ t('Materiale da caricare (reale o generico)', 'Matériel à charger (réel ou générique)') }}</h3>
+  <h3>{{ t('Materiale da caricare (reale o generico)', 'Matériel à charger (réel ou générique)') }}</h3><p>{{ t('Il materiale già caricato resta salvato. Per scaricarlo seleziona Scarica nello scanner.', 'Le matériel déjà chargé reste enregistré. Pour le décharger, sélectionnez Décharger dans le scanner.') }}</p>
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     {% for req, disponibili in richieste_disponibili %}
       {% for idx in range(req.quantita) %}
@@ -105,7 +105,10 @@
 
   <h3>{{ t('Scanner QR', 'Scanner QR') }}</h3>
   <div id="reader" style="width:320px;max-width:100%;"></div>
-  <div id="scan-result" style="margin-top:0.5rem;"></div>
+  <label for="scan-action">{{ t('Operazione', 'Opération') }}</label>
+  <select id="scan-action"><option value="carico">{{ t('Carica', 'Charger') }}</option><option value="scarico">{{ t('Scarica', 'Décharger') }}</option></select>
+  <div id="scan-result" role="status" aria-live="polite" style="margin-top:0.5rem;"></div>
+  <button type="button" class="btn btn-secondary" id="scan-next" hidden>{{ t('Scansiona il prossimo QR', 'Scanner le QR suivant') }}</button>
 
   <h3>{{ t('Assegnato', 'Assigné') }}</h3>
   <ul>
@@ -137,7 +140,7 @@
 </div>
 <script src="{{ url_for('static', path='/js/google-maps-loader.js') }}"></script>
 <script src="{{ url_for('static', path='/js/trip-map.js') }}"></script>
-<script src="https://unpkg.com/html5-qrcode" defer></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 <script>
 window.addEventListener('DOMContentLoaded', () => {
   const result = document.getElementById('scan-result');
@@ -150,11 +153,21 @@ window.addEventListener('DOMContentLoaded', () => {
     in_uso: tr('in uso', 'en cours d\'utilisation'),
     altro_viaggio: tr('già su un altro mezzo', 'déjà sur un autre véhicule'),
     non_disponibile: tr('non disponibile', 'non disponible'),
+    non_a_bordo: tr('non caricata su questo viaggio', 'non chargée sur ce trajet'),
+    gia_consegnata: tr('già consegnata', 'déjà livrée'),
   };
 
-  let lastCode = null, lastAt = 0;
-  function show(html, color) {
-    result.innerHTML = html;
+  let busy = false;
+  const next = document.getElementById('scan-next');
+  const actionSelect = document.getElementById('scan-action');
+  next.addEventListener('click', () => {
+    busy = false;
+    next.hidden = true;
+    actionSelect.disabled = false;
+    result.textContent = tr('Inquadra un QR.', 'Visez un QR.');
+  });
+  function show(message, color) {
+    result.textContent = message;
     result.style.background = color;
     result.style.color = '#fff';
     result.style.padding = '10px 12px';
@@ -167,18 +180,18 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleCode(code) {
-    // Anti-rimbalzo: ignora lo stesso codice riletto entro 2.5s.
-    const now = Date.now();
-    if (code === lastCode && (now - lastAt) < 2500) return;
-    lastCode = code; lastAt = now;
+    if (busy) return;
+    busy = true;
+    actionSelect.disabled = true;
 
-    fetch(`{{ url_for('driver_trasporti_viaggi_scan', viaggio_id=viaggio.id) }}`, {
+    fetch(`{{ url_for('driver_trasporti_viaggi_scan', viaggio_id=viaggio.id) }}?action=${encodeURIComponent(actionSelect.value)}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: `qr_code=${encodeURIComponent(code)}`
     })
       .then(async r => {
         if (r.status === 404) { throw new Error('notfound'); }
+        if (!r.ok || r.redirected) { throw new Error('requestfailed'); }
         return r.json();
       })
       .then(data => {
@@ -191,7 +204,7 @@ window.addEventListener('DOMContentLoaded', () => {
           feedback(true);
         } else if (data.action === 'bloccato') {
           const why = REASONS[data.reason] || tr('non caricabile', 'non chargeable');
-          show(`⛔ ${tr('NON CARICABILE', 'NON CHARGEABLE')}: ${nome} — ${why}. ${tr('Caricane un\'altra.', 'Chargez-en une autre.')}`, '#dc2626');
+          show(`⛔ ${tr('OPERAZIONE BLOCCATA', 'OPÉRATION BLOQUÉE')}: ${nome} — ${why}.`, '#dc2626');
           feedback(false);
         } else {
           show(`QR ${code}: ${data.action}`, '#6b7280');
@@ -204,11 +217,14 @@ window.addEventListener('DOMContentLoaded', () => {
           show(`${tr('Errore di scansione', 'Erreur de scan')}: ${code}`, '#6b7280');
         }
         feedback(false);
-      });
+      }).finally(() => { next.hidden = false; });
   }
   if (window.Html5Qrcode) {
     const qr = new Html5Qrcode('reader');
-    qr.start({facingMode:'environment'}, {fps:10, qrbox:220}, (decodedText) => handleCode(decodedText));
+    qr.start({facingMode:'environment'}, {fps:10, qrbox:220}, (decodedText) => handleCode(decodedText))
+      .catch(() => show(tr('Fotocamera non disponibile: verifica i permessi del browser.', 'Caméra indisponible : vérifiez les autorisations du navigateur.'), '#6b7280'));
+  } else {
+    show(tr('Scanner non disponibile. Ricarica la pagina.', 'Scanner indisponible. Rechargez la page.'), '#6b7280');
   }
 });
 </script>
