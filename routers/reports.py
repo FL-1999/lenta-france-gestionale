@@ -26,6 +26,12 @@ from template_context import build_template_context, register_manager_badges
 from utils.reports import report_man_hours, report_total_hours
 from services.personale_profiles import ensure_user_personale_profile
 
+def require_site_operator(current_user: User = Depends(get_current_active_user_api)) -> User:
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
+        raise HTTPException(status_code=403, detail="Ruolo non autorizzato")
+    return current_user
+
+
 router = APIRouter(
     prefix="",
     tags=["reports"],
@@ -315,7 +321,7 @@ def _report_to_out(report: Report) -> ReportOut:
 def create_report(
     report_in: ReportCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_api),
+    current_user: User = Depends(require_site_operator),
 ):
     """
     Crea un nuovo rapportino e lo salva nel database.
@@ -372,7 +378,7 @@ def update_report(
     report_id: int,
     report_in: ReportCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_api),
+    current_user: User = Depends(require_site_operator),
 ):
     report = (
         db.query(Report)
@@ -420,7 +426,7 @@ def update_report(
 def delete_report(
     report_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_api),
+    current_user: User = Depends(require_site_operator),
 ):
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
@@ -445,7 +451,7 @@ def delete_report(
 @router.get("/reports", response_model=List[ReportOut])
 def list_reports_for_manager(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_api),
+    current_user: User = Depends(require_site_operator),
 ):
     """
     Lista rapportini.

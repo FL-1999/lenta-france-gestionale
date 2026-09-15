@@ -14,6 +14,12 @@ from models import Fiche, FicheTypeEnum, RoleEnum, Site, Machine, User
 from schemas import FicheCreate, FicheRead, FicheListItem
 from notifications import notify_new_fiche
 
+def require_site_operator(current_user: User = Depends(get_current_active_user)) -> User:
+    if current_user.role not in (RoleEnum.admin, RoleEnum.manager, RoleEnum.caposquadra):
+        raise HTTPException(status_code=403, detail="Ruolo non autorizzato")
+    return current_user
+
+
 router = APIRouter(prefix="/fiches", tags=["fiches"])
 logger = logging.getLogger("lenta_france_gestionale.errors")
 
@@ -108,7 +114,7 @@ def list_fiches(
     site_id: Optional[int] = None,
     fiche_type: Optional[FicheTypeEnum] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_site_operator),
 ):
     query = db.query(Fiche).join(Site).outerjoin(Machine).join(User)
 
@@ -156,7 +162,7 @@ def list_fiches(
 def get_fiche_detail(
     fiche_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_site_operator),
 ):
     fiche = (
         db.query(Fiche)
@@ -217,7 +223,7 @@ def get_fiche_detail(
 def create_fiche(
     fiche_in: FicheCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_site_operator),
 ):
     site = get_site_for_user(db, fiche_in.site_id, current_user)
     normalized_tipologia = _normalize_fiche_tipologia(fiche_in.tipologia_scavo)

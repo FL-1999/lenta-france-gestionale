@@ -217,7 +217,7 @@
             <button class="btn btn-primary" type="submit" {% if not can_manage %}disabled{% endif %}>{{ t('Salva budget', 'Enregistrer le budget') }}</button>
           </div>
         </form>
-        {% if can_manage and snapshot.budget.exists %}
+        {% if can_manage and can_view_site_margin and snapshot.budget.exists %}
           <form method="post" action="{{ url_for('manager_site_economics_budget_delete', site_id=site.id) }}" style="margin-top:.75rem;" onsubmit="return confirm({{ t('Confermi eliminazione budget?', 'Confirmer la suppression du budget ?')|tojson }});">
             <input type="hidden" name="timeframe" value="{{ timeframe }}">
             <input type="hidden" name="start_date" value="{{ filters.start_date }}">
