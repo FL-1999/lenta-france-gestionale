@@ -154,7 +154,7 @@
         </div>
     </div>
 
-    {% set trend_counts = rapportini_trend|default(reports_trend|default([5, 7, 4, 6, 5, 8, 6])) %}
+    {% set trend_counts = (chart_reports_last_30_days|default([]))[-7:]|map(attribute='count')|list %}
     {% set max_trend = trend_counts|max if trend_counts else 1 %}
 
     <div class="dashboard-modules-grid">
@@ -541,6 +541,7 @@
                     {% endif %}
                 </p>
                 <div class="mini-chart" role="img" aria-label="{% if lang == 'fr' %}Tendance des rapports{% else %}Trend rapportini{% endif %}">
+                    {% if trend_counts %}
                     <svg width="100%" height="50" viewBox="0 0 {{ 20 * (trend_counts|length) }} 50" preserveAspectRatio="none">
                         {% for value in trend_counts %}
                             {% set bar_height = (value / (max_trend or 1)) * 40 %}
@@ -552,6 +553,9 @@
                             </text>
                         {% endif %}
                     </svg>
+                    {% else %}
+                    <p class="text-muted">{{ t('Nessun dato per questo periodo.', 'Aucune donnée pour cette période.') }}</p>
+                    {% endif %}
                 </div>
                 <div class="card-actions">
                     <a href="/manager/rapportini" class="btn btn-secondary btn-sm">
@@ -784,7 +788,7 @@
 <script src="{{ url_for('static', path='/js/cantieri-map-modal.js') }}"></script>
 
 {% endif %}
-<script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}"></script>
+<script src="{{ url_for('static', path='/js/manager_dashboard_charts.js') }}?v=20260916w2"></script>
 <style>
   /* DEBUG: forza layout 3 colonne dentro Ordini & Magazzino */
   .shortcut-container-grid.orders-warehouse-grid{
