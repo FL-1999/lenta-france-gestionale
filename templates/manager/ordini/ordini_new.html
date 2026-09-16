@@ -43,6 +43,7 @@
       <div><strong>📞 {{ t('Telefono', 'Téléphone') }}</strong><p id="s-phone">-</p></div>
     </div>
 
+    <div class="form-field"><label for="supplier-contact-select">{{ t('Referente salvato','Contact enregistré') }}</label><select id="supplier-contact-select" name="supplier_contact_id"><option value="">{{ t('Nessuno / inserimento manuale','Aucun / saisie manuelle') }}</option></select></div>
     <div class="form-grid-2" style="margin-top:12px;">
       <div class="form-field"><label for="contact_name_override">{{ t('Referente per questo ordine (opzionale)', 'Contact pour cette commande (optionnel)') }}</label><input type="text" id="contact_name_override" name="contact_name_override" value="{{ form_data.contact_name_override }}" placeholder="{{ t('Es. Marie Dupont', 'Ex. Marie Dupont') }}"></div>
       <div class="form-field"><label for="contact_email_override">{{ t('Email referente (opzionale)', 'Email du contact (optionnel)') }}</label><input type="email" id="contact_email_override" name="contact_email_override" value="{{ form_data.contact_email_override }}" placeholder="{{ t('Es. referente@fornitore.com', 'Ex. contact@fournisseur.com') }}"></div>
@@ -132,17 +133,18 @@
   <div class="card"><div class="card-body">
     <h3>{{ t('Righe ordine', 'Lignes de commande') }}</h3>
     <datalist id="supplier-codes-list"></datalist>
-    <table class="table" id="righe-table"><thead><tr><th>{{ t('Codice', 'Code') }}</th><th>{{ t('Descrizione', 'Description') }}</th><th>{{ t('Q.tà', 'Qté') }}</th><th>{{ t('Articolo magazzino', 'Article de stock') }}</th><th></th></tr></thead><tbody>
+    <p class="text-muted">{{ t('Collega ogni riga all’articolo interno: i codici del fornitore già conosciuti lo selezionano automaticamente. Quantità nella stessa unità della scheda; nessuna conversione automatica di confezioni.', 'Associez chaque ligne à l’article interne : les codes fournisseur connus le sélectionnent automatiquement. Quantités dans l’unité de la fiche ; aucune conversion automatique des conditionnements.') }}</p>
+<div class="table-responsive"><table class="table" id="righe-table"><thead><tr><th>{{ t('Codice fornitore', 'Code fournisseur') }}</th><th>{{ t('Descrizione', 'Description') }}</th><th>{{ t('Q.tà', 'Qté') }}</th><th>{{ t('Articolo magazzino', 'Article de stock') }}</th><th></th></tr></thead><tbody>
       {% for line in form_data.lines %}
       <tr>
         <td><input type="text" name="codice" list="supplier-codes-list" value="{{ line.codice or '' }}" placeholder="cod." data-codice></td>
         <td><input type="text" name="description" value="{{ line.description }}" required data-desc></td>
-        <td><input type="number" name="qty_ordered" min="0" step="0.01" value="{{ line.qty_ordered }}" required></td>
-        <td><select name="magazzino_item_id"><option value="">{{ t('Seleziona', 'Sélectionner') }}</option>{% for item in magazzino_items %}<option value="{{ item.id }}" {% if line.magazzino_item_id == item.id|string %}selected{% endif %}>{{ item.nome }}</option>{% endfor %}</select></td>
-        <td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td>
+        <td><input type="number" name="qty_ordered" min="0.01" step="0.01" value="{{ line.qty_ordered }}" required></td>
+        <td><select name="magazzino_item_id"><option value="">{{ t('Seleziona', 'Sélectionner') }}</option><option value="__new__" {% if line.magazzino_item_id == '__new__' %}selected{% endif %}>{{ t('Crea nuovo articolo (pz)', 'Créer un nouvel article (pz)') }}</option>{% for item in magazzino_items %}<option value="{{ item.id }}" {% if line.magazzino_item_id == item.id|string %}selected{% endif %} data-name="{{ item.nome }}">{{ item.codice or '—' }} · {{ item.nome }} ({{ item.unita_misura }})</option>{% endfor %}</select></td>
+        <td><button type="button" class="btn btn-secondary btn-sm remove-row" aria-label="{{ t('Rimuovi riga','Supprimer la ligne') }}">×</button></td>
       </tr>
       {% endfor %}
-    </tbody></table>
+    </tbody></table></div>
     <button type="button" id="add-row" class="btn btn-secondary">+ {{ t('Riga', 'Ligne') }}</button>
   </div></div>
 
@@ -158,6 +160,9 @@ const supplierError = document.getElementById('supplier-error');
 const sName = document.getElementById('s-name');
 const sEmail = document.getElementById('s-email');
 const sPhone = document.getElementById('s-phone');
+const contactSelect = document.getElementById('supplier-contact-select');
+const initialContact = {{ (form_data.supplier_contact_id or '')|tojson }};
+
 // --- Classificazione articolo: 3 modalità (esistente / nuova cat in macro / nuova macro+cat) ---
 const catPanels = document.querySelectorAll('[data-cat-panel]');
 const newCatHidden = document.getElementById('new_category_name_hidden');
@@ -203,6 +208,8 @@ function setKindVisibility() {
 
 async function loadSupplier() {
   const supplierId = supplierSelect.value;
+  contactSelect.replaceChildren(new Option({{ t('Nessuno / inserimento manuale','Aucun / saisie manuelle')|tojson }}, ''));
+
   const newPanel = document.getElementById('new-supplier-panel');
   supplierError.style.display = 'none';
 
@@ -230,6 +237,10 @@ async function loadSupplier() {
     const res = await fetch(`/api/suppliers/${supplierId}`);
     if (!res.ok) throw new Error({{ t('Fornitore non trovato', 'Fournisseur introuvable')|tojson }});
     const data = await res.json();
+    if (supplierSelect.value !== supplierId) return;
+    (data.contacts || []).forEach(c => contactSelect.add(new Option(c.name + (c.role_label ? ' · ' + c.role_label : ''), c.id)));
+    if (initialContact && !contactSelect.dataset.changed) contactSelect.value = initialContact;
+
     sName.textContent = data.name || '-';
     sEmail.textContent = data.email || '-';
     sPhone.textContent = data.phone || '-';
@@ -243,50 +254,59 @@ async function loadSupplier() {
 }
 
 document.querySelectorAll('input[name="order_kind"]').forEach((el)=>el.addEventListener('change', setKindVisibility));
-supplierSelect.addEventListener('change', loadSupplier);
+supplierSelect.addEventListener('change', () => {contactSelect.dataset.changed = '1'; loadSupplier();});
+contactSelect.addEventListener('change', () => {
+  ['contact_name_override','contact_email_override'].forEach(id => {document.getElementById(id).disabled = !!contactSelect.value;});
+});
 setKindVisibility();
 loadSupplier();
 setCatModeVisibility();
 document.getElementById('order-form')?.addEventListener('submit', syncCatFields);
 
-document.getElementById('add-row').addEventListener('click', ()=>{
-  document.querySelector('#righe-table tbody').insertAdjacentHTML('beforeend', `<tr><td><input type="text" name="codice" list="supplier-codes-list" placeholder="cod." data-codice></td><td><input type="text" name="description" required data-desc></td><td><input type="number" name="qty_ordered" step="0.01" min="0" required></td><td><select name="magazzino_item_id"><option value="">{{ t('Seleziona', 'Sélectionner') }}</option>{% for item in magazzino_items %}<option value="{{ item.id }}">{{ item.nome }}</option>{% endfor %}</select></td><td><button type="button" class="btn btn-danger btn-sm remove-row">🗑️</button></td></tr>`);
+const body = document.querySelector('#righe-table tbody');
+const blankRow = body.querySelector('tr').cloneNode(true);
+blankRow.querySelectorAll('input').forEach(el => el.value = '');
+blankRow.querySelectorAll('select').forEach(el => el.value = '');
+document.getElementById('add-row').addEventListener('click', () => body.appendChild(blankRow.cloneNode(true)));
+body.addEventListener('click', e => {
+  if (!e.target.closest('.remove-row')) return;
+  if (body.rows.length > 1) e.target.closest('tr').remove();
+  else body.replaceChildren(blankRow.cloneNode(true));
 });
-document.querySelector('#righe-table tbody').addEventListener('click',(e)=>{ if(e.target.classList.contains('remove-row')) e.target.closest('tr').remove(); });
-
-/* Catalogo codici del fornitore: suggerimenti + autocompletamento descrizione */
-(function(){
-  var sel = document.getElementById('supplier-id-select');
-  var dl = document.getElementById('supplier-codes-list');
-  var codeMap = {};
-  function loadArticles(){
-    var sid = sel && sel.value;
-    if(!sid){ if(dl) dl.innerHTML=''; codeMap={}; return; }
-    fetch('/manager/ordini/api/fornitore/'+encodeURIComponent(sid)+'/articoli')
-      .then(function(r){ return r.json(); })
-      .then(function(data){
-        codeMap={}; if(dl) dl.innerHTML='';
-        (data.articoli||[]).forEach(function(a){
-          if(dl){ var o=document.createElement('option'); o.value=a.codice; o.label=a.descrizione||''; dl.appendChild(o); }
-          codeMap[a.codice]=a.descrizione||'';
-        });
-      }).catch(function(){});
-  }
-  if(sel){ sel.addEventListener('change', loadArticles); loadArticles(); }
-  var table = document.getElementById('righe-table');
-  if(table){
-    table.addEventListener('input', function(e){
-      var t=e.target;
-      if(t && t.getAttribute && t.getAttribute('data-codice')!==null && t.name==='codice'){
-        var code=(t.value||'').trim();
-        if(codeMap[code]){
-          var row=t.closest('tr');
-          var desc=row ? row.querySelector('[data-desc]') : null;
-          if(desc && !(''+desc.value).trim()) desc.value=codeMap[code];
-        }
-      }
-    });
-  }
-})();
+let articles = [];
+async function loadArticles(clearCodes = false) {
+  const sid = supplierSelect.value;
+  articles = [];
+  const list = document.getElementById('supplier-codes-list');
+  list.replaceChildren();
+  if (clearCodes) body.querySelectorAll('[data-codice]').forEach(el => el.value = '');
+  if (!sid || sid === '__new__') return;
+  try {
+    const response = await fetch('/manager/ordini/api/fornitore/' + encodeURIComponent(sid) + '/articoli');
+    if (!response.ok) throw new Error();
+    const data = await response.json();
+    if (supplierSelect.value !== sid) return;
+    articles = data.articoli || [];
+    articles.forEach(a => list.appendChild(new Option((a.internal_code || '') + ' · ' + (a.descrizione || ''), a.codice)));
+  } catch (_) { /* Server validation remains authoritative when suggestions are unavailable. */ }
+}
+supplierSelect.addEventListener('change', () => loadArticles(true));
+loadArticles();
+body.addEventListener('input', e => {
+  if (!e.target.matches('[data-codice]')) return;
+  const match = articles.find(a => a.codice.toLowerCase() === e.target.value.trim().toLowerCase());
+  if (!match) return;
+  const row = e.target.closest('tr');
+  if (match.magazzino_item_id) row.querySelector('select').value = String(match.magazzino_item_id);
+  if (!row.querySelector('[data-desc]').value) row.querySelector('[data-desc]').value = match.descrizione || '';
+});
+body.addEventListener('change', e => {
+  if (e.target.name !== 'magazzino_item_id') return;
+  const row = e.target.closest('tr');
+  const selected = e.target.selectedOptions[0];
+  if (selected.dataset.name) row.querySelector('[data-desc]').value = selected.dataset.name;
+  const matches = articles.filter(a => String(a.magazzino_item_id) === e.target.value);
+  row.querySelector('[data-codice]').value = matches.length === 1 ? matches[0].codice : '';
+});
 </script>
 {% endblock %}

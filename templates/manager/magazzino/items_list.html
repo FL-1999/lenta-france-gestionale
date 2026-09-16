@@ -187,7 +187,7 @@
                                             {% if item.preferito %}★{% else %}☆{% endif %}
                                         </button>
                                     </form>
-                                    <h3>{{ item.nome }}</h3>
+                                    <h3><a href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ item.nome }}</a></h3>
                                 </div>
                                 {% if esaurito %}
                                     <span class="badge badge-danger">{% if lang == 'fr' %}Épuisé{% else %}Esaurito{% endif %}</span>
@@ -381,7 +381,7 @@
                     </div>
                     <div class="form-field">
                         <label>{% if lang == 'fr' %}Code article{% else %}Codice articolo{% endif %}*</label>
-                        <input type="text" name="codice" required>
+                        <input type="hidden" name="codice" value=""><p>{{ t("Codice interno automatico a 6 cifre", "Code interne automatique à 6 chiffres") }}</p>
                     </div>
                     <div class="form-field">
                         <label>{% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}</label>

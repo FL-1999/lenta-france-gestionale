@@ -360,3 +360,18 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
  .workspace-ui .vehicle-editor .workspace-context { padding:20px 16px; }
  .vehicle-save .btn { flex:1; min-height:48px; }
 }
+
+/* Purchasing: clear sections, readable forms and horizontally scrollable line items. */
+.purchasing-section { margin-block: 1.25rem; }
+.purchasing-contact { padding-block: 1rem; border-top: 1px solid var(--border-color, #68839c66); }
+.purchasing-contact summary { cursor: pointer; padding-block: .5rem; font-weight: 600; }
+.purchasing-contact .vehicle-fields, .purchasing-section form .vehicle-fields { margin-block: 1rem; }
+.order-form-layout { display: grid; gap: 1.25rem; }
+.order-form-layout .form-grid-2 { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); gap: 1rem; }
+.order-form-layout .form-field { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.order-form-layout input:not([type=radio]):not([type=checkbox]), .order-form-layout select, .order-form-layout textarea { width: 100%; box-sizing: border-box; }
+#righe-table { min-width: 780px; }
+#righe-table th:first-child { width: 18%; }
+#righe-table th:nth-child(3) { width: 12%; }
+#righe-table th:nth-child(4) { width: 32%; }
+.purchasing-step { padding: 1rem; margin-block: 1rem; border-left: 3px solid #ce2647; border-radius: 12px; background: var(--card-bg, #8899aa15); }

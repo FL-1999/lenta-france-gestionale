@@ -1,4 +1,5 @@
 import logging
+from math import isfinite
 import shutil
 from pathlib import Path
 from uuid import uuid4
@@ -29,6 +30,7 @@ from models import (
     PurchaseOrderLine,
     Site,
     Supplier,
+    SupplierContact,
     User,
 )
 from permissions import has_perm
@@ -67,8 +69,9 @@ def _parse_float(value: str | None) -> float | None:
     if value in (None, ""):
         return None
     try:
-        return float(value)
-    except ValueError:
+        parsed = float(str(value).strip().replace(',', '.'))
+        return parsed if isfinite(parsed) else None
+    except (TypeError, ValueError):
         return None
 
 
@@ -186,6 +189,7 @@ def _render_bolla_form(
     if form_data is None:
         form_data = {
             "delivery_number": _get_next_delivery_number(db, order),
+            "delivery_date": date.today().isoformat(), "quantities": {}, "delivery_id": 0,
         }
 
     return render_template(
@@ -544,10 +548,10 @@ def _render_order_form(
     grouped_warehouse_categories = _group_warehouse_categories_by_macro(warehouse_categories)
     if form_data is None:
         form_data = {
-            "supplier_id": "",
+            "supplier_id": request.query_params.get("supplier_id", ""),
             "contact_name_override": "",
             "contact_email_override": "",
-            "order_date": "",
+            "order_date": date.today().isoformat(),
             "requester_user_id": str(current_user.id),
             "description_text": "",
             "order_kind": "warehouse",
@@ -996,6 +1000,8 @@ def manager_fornitori_create(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+    if not name.strip():
+        raise HTTPException(status_code=400, detail="Il nome del fornitore è obbligatorio")
     supplier = Supplier(
         name=name.strip() or None,
         city=city.strip() or None,
@@ -1011,7 +1017,7 @@ def manager_fornitori_create(
     )
     db.add(supplier)
     db.commit()
-    return RedirectResponse(url=request.url_for("manager_fornitori_list"), status_code=303)
+    return RedirectResponse(url=request.url_for("manager_fornitori_edit", supplier_id=supplier.id), status_code=303)
 
 
 @router.get(
@@ -1035,6 +1041,7 @@ def manager_fornitori_edit(
         "manager/fornitori/form.html",
         {
             "supplier": supplier,
+            "supplier_orders": db.query(PurchaseOrder).filter_by(supplier_id=supplier.id).order_by(PurchaseOrder.id.desc()).limit(50).all(),
             "form_action": request.url_for("manager_fornitori_save", supplier_id=supplier.id),
             "error_message": None,
             "is_new": False,
@@ -1066,6 +1073,8 @@ def manager_fornitori_save(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+    if not name.strip():
+        raise HTTPException(status_code=400, detail="Il nome del fornitore è obbligatorio")
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Fornitore non trovato")
@@ -1081,7 +1090,7 @@ def manager_fornitori_save(
     supplier.vat_number = vat_number.strip() or None
     supplier.notes = notes.strip() or None
     db.commit()
-    return RedirectResponse(url=request.url_for("manager_fornitori_list"), status_code=303)
+    return RedirectResponse(url=request.url_for("manager_fornitori_edit", supplier_id=supplier.id), status_code=303)
 
 
 @router.post(
@@ -1121,7 +1130,9 @@ def manager_fornitori_delete(
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Fornitore non trovato")
-    orders = db.query(PurchaseOrder).filter(PurchaseOrder.supplier_id == supplier_id).all()
+    orders = db.query(PurchaseOrder).filter(PurchaseOrder.supplier_id == supplier_id).order_by(PurchaseOrder.id).with_for_update().all()
+    if any(d.confirmed for o in orders for d in o.deliveries) or (orders and db.query(MagazzinoMovimento.id).filter(MagazzinoMovimento.purchase_order_id.in_([o.id for o in orders])).first()):
+        return RedirectResponse(str(request.url_for('manager_fornitori_list'))+'?'+urlencode({'err':'Fornitore con consegne registrate: disattivalo per conservare lo storico.'}),303)
     if orders and not (force or "").strip():
         query_string = urlencode({"err": f"Impossibile eliminare: ci sono {len(orders)} ordini collegati. Usa «Elimina con ordini» oppure eliminali prima."})
         return RedirectResponse(url=f"{request.url_for('manager_fornitori_list')}?{query_string}", status_code=303)
@@ -1167,9 +1178,11 @@ def manager_ordini_delete(
 ):
     """Elimina definitivamente un ordine (righe e consegne in cascade)."""
     _ensure_manager(current_user)
-    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
+    if any(d.confirmed for d in order.deliveries) or db.query(MagazzinoMovimento.id).filter_by(purchase_order_id=order.id).first():
+        return RedirectResponse(str(request.url_for('manager_ordini_detail',order_id=order.id))+'?'+urlencode({'err':'Ordine con movimenti registrati: lo storico non può essere eliminato.'}),303)
     log_audit_event(db, current_user, "ORDER_DELETED", "purchase_order", order.id, {"order_number": order.order_number})
     db.delete(order)
     db.commit()
@@ -1211,7 +1224,8 @@ def manager_ordini_supplier_articles(
     return JSONResponse({
         "articoli": [
             {"codice": a.codice, "descrizione": a.descrizione or "", "unita": a.unita or "",
-             "ultimo_prezzo": a.ultimo_prezzo}
+             "ultimo_prezzo": a.ultimo_prezzo, "magazzino_item_id": a.magazzino_item_id,
+             "internal_code": a.magazzino_item.codice if a.magazzino_item else None}
             for a in articoli
         ]
     })
@@ -1230,19 +1244,24 @@ def _apply_line_codes_and_catalog(db, order, line_codes, supplier) -> None:
     for line, code in zip(order_lines, line_codes):
         if not code:
             continue
-        art = (
-            db.query(SupplierArticle)
-            .filter(SupplierArticle.supplier_id == supplier.id, SupplierArticle.codice == code)
-            .first()
-        )
+        matches = db.query(SupplierArticle).filter(
+            SupplierArticle.supplier_id == supplier.id, func.lower(SupplierArticle.codice) == code.lower()
+        ).all()
+        if len(matches) > 1:
+            raise ValueError(f"Il codice fornitore {code} è ambiguo nel catalogo storico")
+        art = matches[0] if matches else None
         if art:
+            if art.magazzino_item_id and line.magazzino_item_id and art.magazzino_item_id != line.magazzino_item_id:
+                raise ValueError(f"Il codice fornitore {code} è collegato a un altro articolo interno")
+            if line.magazzino_item_id:
+                art.magazzino_item_id = line.magazzino_item_id
             if not art.descrizione and line.description:
                 art.descrizione = line.description
             art.last_used_at = now
             art.usi = (art.usi or 0) + 1
         else:
             db.add(SupplierArticle(
-                supplier_id=supplier.id, codice=code,
+                supplier_id=supplier.id, codice=code, magazzino_item_id=line.magazzino_item_id,
                 descrizione=line.description, last_used_at=now, usi=1,
             ))
 
@@ -1279,11 +1298,13 @@ def manager_ordini_create(
     codice: list[str] = Form([]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
+    supplier_contact_id: str = Form(""),
 ):
     _ensure_manager(current_user)
 
     form_data = {
         "supplier_id": supplier_id or "",
+        "supplier_contact_id": supplier_contact_id or "",
         "supplier_name": supplier_name or "",
         "new_supplier_name": new_supplier_name or "",
         "new_supplier_email": new_supplier_email or "",
@@ -1307,6 +1328,8 @@ def manager_ordini_create(
         ],
     }
 
+    for index, line in enumerate(form_data['lines']):
+        line['codice'] = codice[index] if isinstance(codice, list) and index < len(codice) else ''
     parsed_order_date = _parse_date(order_date)
     if not parsed_order_date:
         return _render_order_form(request, db, current_user, error_message="La data ordine è obbligatoria.", form_data=form_data)
@@ -1322,6 +1345,8 @@ def manager_ordini_create(
         return _render_order_form(request, db, current_user, error_message="Seleziona un fornitore.", form_data=form_data)
 
     if supplier_id_raw == "__new__":
+        if not (new_supplier_name or supplier_name or '').strip():
+            return _render_order_form(request, db, current_user, error_message="Inserisci il nome del fornitore.", form_data=form_data)
         new_supplier = Supplier(
             name=(new_supplier_name or supplier_name or "").strip() or None,
             email=(new_supplier_email or "").strip() or None,
@@ -1339,7 +1364,7 @@ def manager_ordini_create(
             selected_supplier_id = int(supplier_id_raw)
         except (TypeError, ValueError):
             return _render_order_form(request, db, current_user, error_message="Fornitore non valido.", form_data=form_data)
-        supplier = db.query(Supplier).filter(Supplier.id == selected_supplier_id).first()
+        supplier = db.query(Supplier).filter(Supplier.id == selected_supplier_id, Supplier.is_active.is_(True)).with_for_update().first()
         if not supplier:
             return _render_order_form(request, db, current_user, error_message="Fornitore non trovato.", form_data=form_data)
         selected_supplier = supplier
@@ -1357,6 +1382,17 @@ def manager_ordini_create(
 
     if selected_supplier is None:
         return _render_order_form(request, db, current_user, error_message="Il fornitore è obbligatorio.", form_data=form_data)
+
+    if supplier_contact_id:
+        contact = db.query(SupplierContact).filter(
+            SupplierContact.id == int(supplier_contact_id) if supplier_contact_id.isdigit() else False,
+            SupplierContact.supplier_id == selected_supplier.id, SupplierContact.is_active.is_(True),
+        ).first()
+        if not contact:
+            db.rollback()
+            return _render_order_form(request, db, current_user, error_message="Referente non valido per questo fornitore.", form_data=form_data)
+        contact_name_override_clean = contact.name
+        contact_email_override_clean = contact.email or selected_supplier.email
 
     try:
         requester_id_int = int(requester_user_id)
@@ -1402,6 +1438,30 @@ def manager_ordini_create(
         db.rollback()
         return _render_order_form(request, db, current_user, error_message="Righe ordine non valide.", form_data=form_data)
 
+    codici_input = list(codice) if isinstance(codice, list) else []
+    for i, raw_id in enumerate(magazzino_item_id):
+        code = (codici_input[i] or "").strip() if i < len(codici_input) else ""
+        known = db.query(SupplierArticle).filter(
+            SupplierArticle.supplier_id == selected_supplier.id,
+            func.lower(SupplierArticle.codice) == code.lower(),
+        ).first() if code else None
+        if known and known.magazzino_item_id:
+            if raw_id and raw_id != str(known.magazzino_item_id):
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message=f"Il codice {code} è già collegato a un altro articolo interno.", form_data=form_data)
+            magazzino_item_id[i] = str(known.magazzino_item_id)
+        elif raw_id == '__new__':
+            if normalized_kind != 'warehouse':
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message="Crea il materiale nel catalogo prima di un ordine cantiere.", form_data=form_data)
+            item_name = (description[i] or '').strip()
+            if not item_name:
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message="Inserisci il nome del nuovo materiale.", form_data=form_data)
+            new_item = MagazzinoItem(nome=item_name, categoria_id=selected_category_id, quantita_disponibile=0, attivo=True)
+            db.add(new_item); db.flush()
+            magazzino_item_id[i] = str(new_item.id)
+
     selected_item_ids: set[int] = set()
     for raw_id in magazzino_item_id:
         if raw_id:
@@ -1415,7 +1475,7 @@ def manager_ordini_create(
         existing_item_ids = {
             item_id
             for (item_id,) in db.query(MagazzinoItem.id)
-            .filter(MagazzinoItem.id.in_(selected_item_ids))
+            .filter(MagazzinoItem.id.in_(selected_item_ids), MagazzinoItem.attivo.is_(True))
             .all()
         }
         if selected_item_ids - existing_item_ids:
@@ -1473,6 +1533,10 @@ def manager_ordini_create(
 
         lines = updated_lines
 
+    if normalized_kind == 'warehouse' and any(item_id is None for _, _, item_id in lines):
+        db.rollback()
+        return _render_order_form(request, db, current_user, error_message="Collega ogni riga a un articolo interno oppure scegli Nuovo materiale.", form_data=form_data)
+
     try:
         order = _create_order_with_lines(
             db,
@@ -1503,6 +1567,9 @@ def manager_ordini_create(
         db.flush()
         _apply_line_codes_and_catalog(db, order, line_codes, selected_supplier)
         db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return _render_order_form(request, db, current_user, error_message=str(exc), form_data=form_data)
     except IntegrityError:
         db.rollback()
         request_id = _get_request_id(request)
@@ -1539,7 +1606,7 @@ def manager_ordini_create(
         )
 
     return RedirectResponse(
-        url=request.url_for("manager_ordini_new"),
+        url=request.url_for("manager_ordini_detail", order_id=order.id),
         status_code=303,
     )
 
@@ -1584,6 +1651,7 @@ def api_supplier_by_id(
         'contact_name': supplier.contact_name,
         'contact_email': supplier.contact_email,
         'contact_phone': supplier.contact_phone,
+        'contacts': [{'id':c.id,'name':c.name,'email':c.email or '', 'phone':c.phone or '', 'role_label':c.role_label or ''} for c in supplier.contacts if c.is_active],
     }
 
 
@@ -1599,18 +1667,37 @@ def api_ordini_create(
     if not supplier_id or not isinstance(lines, list) or not lines:
         raise HTTPException(status_code=400, detail='supplier_id e almeno una riga sono obbligatori')
 
-    supplier = db.query(Supplier).filter(Supplier.id == int(supplier_id)).first()
+    try:
+        supplier_id = int(supplier_id)
+    except (TypeError, ValueError):
+        raise HTTPException(400, 'Fornitore non valido')
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id, Supplier.is_active.is_(True)).with_for_update().first()
     if not supplier:
         raise HTTPException(status_code=404, detail='Fornitore non trovato')
 
     parsed_lines: list[tuple[str, float, int | None]] = []
+    line_codes = []
     for row in lines:
+        if not isinstance(row, dict): raise HTTPException(400, "Riga non valida")
         description = (row.get('description') or '').strip()
         qty = _parse_float(str(row.get('qty_ordered') or ''))
         if not description or qty is None or qty <= 0:
             raise HTTPException(status_code=400, detail='Riga ordine non valida')
         item_id = row.get('magazzino_item_id')
-        parsed_lines.append((description, qty, int(item_id) if item_id else None))
+        code = str(row.get('codice') or '').strip()
+        known = db.query(SupplierArticle).filter(SupplierArticle.supplier_id==supplier.id,func.lower(SupplierArticle.codice)==code.lower()).first() if code else None
+        try:
+            item_id = int(item_id) if item_id else None
+        except (TypeError, ValueError):
+            raise HTTPException(400, 'Articolo non valido')
+        if known and known.magazzino_item_id:
+            if item_id and item_id != known.magazzino_item_id: raise HTTPException(409, 'Codice fornitore associato a un altro articolo')
+            item_id = known.magazzino_item_id
+        item = db.get(MagazzinoItem,item_id) if item_id else None
+        if not item or not item.attivo: raise HTTPException(400, 'Seleziona un articolo interno attivo')
+        parsed_lines.append((description, qty, item_id))
+        line_codes.append(code)
+
 
     order = _create_order_with_lines(
         db,
@@ -1631,7 +1718,12 @@ def api_ordini_create(
     order.recipient_email = supplier.contact_email or supplier.email
     order.contact_name_override = (payload.get('contact_name_override') or payload.get('contact_name') or '').strip() or None
     order.contact_email_override = (payload.get('contact_email_override') or payload.get('recipient_email') or '').strip() or None
-    db.commit()
+    try:
+        _apply_line_codes_and_catalog(db,order,line_codes,supplier)
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(409,str(exc))
     return {'ok': True, 'order_id': order.id, 'order_number': order.order_number}
 
 
@@ -1842,9 +1934,9 @@ def manager_ordini_list(
     query = db.query(PurchaseOrder)
     if normalized_kind:
         query = query.filter(func.lower(PurchaseOrder.order_kind) == normalized_kind)
-    if normalized_status:
+    if normalized_status and normalized_status != "tutti":
         query = query.filter(func.lower(PurchaseOrder.status) == normalized_status)
-    elif not normalized_kind:
+    elif not normalized_kind and normalized_status != "tutti":
         # Vista di default: nascondi gli ordini con stato "chiuso" (completati).
         # Se invece stiamo filtrando per tipo (kind), mostriamo tutto.
         query = query.filter(
@@ -1913,6 +2005,10 @@ def manager_ordini_list(
         page_title = "Ordini cantiere"
     elif normalized_kind == "warehouse":
         page_title = "Ordini magazzino"
+    elif normalized_status == "tutti":
+        page_title = "Tutti gli ordini"
+    elif normalized_status == "parziale":
+        page_title = "Consegne parziali"
     elif normalized_status == "chiuso":
         page_title = "Ordini chiusi"
     else:
@@ -1994,6 +2090,7 @@ def manager_ordini_detail(
         {
             "id": line.id,
             "description": line.description,
+            "supplier_code": line.codice,
             "magazzino_item": line.magazzino_item,
             "qty_ordered": line.qty_ordered,
             "qty_delivered": delivered_totals.get(line.id, 0.0),
@@ -2023,6 +2120,9 @@ def manager_ordini_detail(
         "manager/ordini/ordini_detail.html",
         {
             "order": order,
+            "remaining_lines": sum(1 for line in lines if line["qty_remaining"] > 0),
+            "pending_deliveries": sum(1 for d in deliveries if not d.confirmed),
+            "catalog_items": db.query(MagazzinoItem).filter(MagazzinoItem.attivo.is_(True)).order_by(MagazzinoItem.nome).all() if any(not l["magazzino_item"] for l in lines) else [],
             "lines": lines,
             "deliveries": deliveries,
             "completion_percent": completion_percent,
@@ -2161,73 +2261,117 @@ def manager_ordini_bolle_nuova(
     name="manager_ordini_bolle_create",
 )
 def manager_ordini_bolle_create(
-    request: Request,
-    order_id: int,
-    delivery_number: str = Form(""),
-    order_line_id: list[int] = Form(...),
-    qty_delivered: list[str] = Form(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
+    request: Request, order_id: int, delivery_number: str = Form(""),
+    order_line_id: list[int] = Form(...), qty_delivered: list[str] = Form(...),
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user_html),
+    delivery_date: str = Form(""), confirm_now: bool = Form(False), delivery_id: int = Form(0),
 ):
     _ensure_manager(current_user)
-    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Ordine non trovato")
+    order=db.query(PurchaseOrder).filter_by(id=order_id).populate_existing().with_for_update().first()
+    if not order: raise HTTPException(404,"Ordine non trovato")
+    form_data={'delivery_number':delivery_number,'delivery_date':delivery_date or date.today().isoformat(),
+               'quantities':{str(i):q for i,q in zip(order_line_id,qty_delivered)},'delivery_id':delivery_id}
+    try:
+        number=delivery_number.strip()
+        if not number: raise ValueError("Inserisci il numero bolla.")
+        if len(number) > 100: raise ValueError("Numero bolla: massimo 100 caratteri.")
+        when=_parse_date(delivery_date) if delivery_date else date.today()
+        if not when: raise ValueError("Data bolla non valida")
+        if len(order_line_id)!=len(qty_delivered) or len(order_line_id)!=len(set(order_line_id)):
+            raise ValueError("Righe bolla non valide o duplicate")
+        totals=_load_delivered_totals(db,order.id)
+        valid={line.id:line for line in order.lines}
+        parsed=[]
+        for line_id,raw in zip(order_line_id,qty_delivered):
+            qty=_parse_float(raw)
+            if line_id not in valid or qty is None or qty<0: raise ValueError("Quantità consegnata non valida")
+            if qty>0: parsed.append((line_id,qty))
+        if not parsed: raise ValueError("Inserisci almeno una quantità ricevuta")
+        existing=db.query(PurchaseDelivery).filter(PurchaseDelivery.order_id==order.id,
+            func.lower(PurchaseDelivery.delivery_number)==number.lower(), PurchaseDelivery.id!=delivery_id).first()
+        if existing:
+            previous=sorted((l.order_line_id,l.qty_delivered) for l in existing.lines)
+            if previous!=sorted(parsed) or existing.delivery_date!=when:
+                raise ValueError("Questo numero bolla esiste già con dati diversi. Modifica la bozza esistente.")
+            if confirm_now: _confirm_purchase_delivery(db,order,existing,current_user)
+            db.commit()
+            return RedirectResponse(request.url_for('manager_ordini_detail',order_id=order.id),303)
+        for line_id,qty in parsed:
+            if qty>max(0,valid[line_id].qty_ordered-totals.get(line_id,0))+1e-9:
+                raise ValueError(f"Quantità superiore al residuo per {valid[line_id].description}")
+        delivery=db.get(PurchaseDelivery,delivery_id) if delivery_id else PurchaseDelivery(order_id=order.id,confirmed=False)
+        if not delivery or delivery.order_id!=order.id: raise ValueError("Bolla non trovata per questo ordine")
+        if delivery.confirmed: raise ValueError("La bolla confermata non è modificabile: il movimento è già registrato")
+        delivery.delivery_number=number;delivery.delivery_date=when
+        delivery.delivery_type=order.delivery_type
+        delivery.delivery_site_id=order.delivery_site_id;delivery.delivery_depot_id=order.delivery_depot_id
+        if delivery_id: delivery.lines.clear();db.flush()
+        db.add(delivery);db.flush()
+        for line_id,qty in parsed:
+            db.add(PurchaseDeliveryLine(delivery_id=delivery.id,order_line_id=line_id,qty_delivered=qty))
+        db.flush()
+        db.expire(delivery,['lines'])
+        if confirm_now: _confirm_purchase_delivery(db,order,delivery,current_user)
+        db.commit()
+        if confirm_now:
+            from routes.magazzino import _invalidate_magazzino_cache
+            _invalidate_magazzino_cache()
+        return RedirectResponse(request.url_for('manager_ordini_detail',order_id=order.id),303)
+    except ValueError as exc:
+        db.rollback()
+        return _render_bolla_form(request,db,current_user,order=db.get(PurchaseOrder,order_id),error_message=str(exc),form_data=form_data)
 
-    clean_delivery_number = delivery_number.strip()
-    if not clean_delivery_number:
-        return _render_bolla_form(
-            request,
-            db,
-            current_user,
-            order=order,
-            error_message="Inserisci il numero bolla.",
-            form_data={"delivery_number": ""},
-        )
 
-    lines_payload = list(zip(order_line_id, qty_delivered))
-    if not lines_payload:
-        raise HTTPException(status_code=400, detail="Nessuna riga bolla valida")
+@router.get('/manager/ordini/bolle/{delivery_id}/modifica',name='manager_ordini_bolle_edit')
+def edit_delivery(delivery_id:int,request:Request,db:Session=Depends(get_db),current_user:User=Depends(get_current_active_user_html)):
+    _ensure_manager(current_user)
+    delivery=db.get(PurchaseDelivery,delivery_id)
+    if not delivery: raise HTTPException(404,'Bolla non trovata')
+    if delivery.confirmed: raise HTTPException(409,'Bolla già confermata')
+    return _render_bolla_form(request,db,current_user,order=delivery.order,form_data={
+        'delivery_id':delivery.id,'delivery_number':delivery.delivery_number,
+        'delivery_date':delivery.delivery_date.isoformat() if delivery.delivery_date else '',
+        'quantities':{str(l.order_line_id):l.qty_delivered for l in delivery.lines}})
 
-    valid_line_ids = {line.id for line in order.lines}
-    parsed_lines: list[tuple[int, float]] = []
-    for line_id, raw_qty in lines_payload:
-        if line_id not in valid_line_ids:
-            raise HTTPException(status_code=400, detail="Riga ordine non valida")
-        parsed_qty = _parse_float(raw_qty)
-        if parsed_qty is None or parsed_qty < 0:
-            raise HTTPException(status_code=400, detail="Quantità consegnata non valida")
-        if parsed_qty == 0:
-            continue
-        parsed_lines.append((line_id, parsed_qty))
 
-    if not parsed_lines:
-        raise HTTPException(status_code=400, detail="Nessuna quantità consegnata valida")
-
-    delivery = PurchaseDelivery(
-        order_id=order.id,
-        delivery_number=clean_delivery_number,
-        delivery_date=date.today(),
-        confirmed=False,
-    )
-    db.add(delivery)
+def _confirm_purchase_delivery(db, order, delivery, current_user):
+    """Caller locks the order first; stock and delivery confirmation commit together."""
+    db.refresh(delivery)
+    if delivery.confirmed:
+        return
+    totals = _load_delivered_totals(db, order.id)
+    by_line = {}
+    for line in delivery.lines:
+        qty = line.qty_delivered
+        if not isfinite(qty) or qty <= 0 or not line.order_line or line.order_line.order_id != order.id:
+            raise ValueError("Riga bolla non valida")
+        if not line.order_line.magazzino_item_id:
+            raise ValueError("Collega le righe ordine a un articolo interno prima di confermare la bolla")
+        by_line[line.order_line_id] = by_line.get(line.order_line_id, 0) + qty
+    if not by_line:
+        raise ValueError("La bolla non contiene quantità da ricevere")
+    for line in order.lines:
+        if by_line.get(line.id, 0) > max(0, line.qty_ordered - totals.get(line.id, 0)) + 1e-9:
+            raise ValueError(f"Quantità superiore al residuo per {line.description}. Verifica le altre bolle confermate.")
+    items = {item.id:item for item in db.query(MagazzinoItem).filter(MagazzinoItem.id.in_(
+        [line.order_line.magazzino_item_id for line in delivery.lines]
+    )).order_by(MagazzinoItem.id).populate_existing().with_for_update().all()}
+    if any(line.order_line.magazzino_item_id not in items or not items[line.order_line.magazzino_item_id].attivo for line in delivery.lines):
+        raise ValueError("Articolo di magazzino non disponibile")
+    # Legacy movements may already exist even if the confirmation flag was not set.
+    existing = db.query(MagazzinoMovimento.id).filter_by(purchase_delivery_id=delivery.id).first()
+    if not existing:
+        for line in delivery.lines:
+            item=items[line.order_line.magazzino_item_id]
+            item.quantita_disponibile=(item.quantita_disponibile or 0) + line.qty_delivered
+            db.add(MagazzinoMovimento(item_id=item.id,tipo=MagazzinoMovimentoTipoEnum.carico,
+                quantita=line.qty_delivered,creato_da_user_id=current_user.id,
+                purchase_order_id=order.id,purchase_delivery_id=delivery.id,note=f"Bolla {delivery.delivery_number}"))
+    delivery.confirmed=True
     db.flush()
-
-    for line_id, parsed_qty in parsed_lines:
-        db.add(
-            PurchaseDeliveryLine(
-                delivery_id=delivery.id,
-                order_line_id=line_id,
-                qty_delivered=parsed_qty,
-            )
-        )
-
-    db.commit()
-
-    return RedirectResponse(
-        url=request.url_for("manager_ordini_detail", order_id=order.id),
-        status_code=303,
-    )
+    totals=_load_delivered_totals(db,order.id)
+    order.status = 'CHIUSO' if order.lines and all(totals.get(l.id,0)+1e-9 >= l.qty_ordered for l in order.lines) else ('PARZIALE' if any(totals.values()) else 'APERTO')
+    log_audit_event(db,current_user,'DELIVERY_CONFIRMED','purchase_delivery',delivery.id,{'order_id':order.id,'number':delivery.delivery_number})
 
 
 @router.post(
@@ -2235,112 +2379,24 @@ def manager_ordini_bolle_create(
     name="manager_ordini_bolle_conferma",
 )
 def manager_ordini_bolle_conferma(
-    request: Request,
-    delivery_id: int,
-    db: Session = Depends(get_db),
+    request: Request, delivery_id: int, db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    delivery = (
-        db.query(PurchaseDelivery).filter(PurchaseDelivery.id == delivery_id).first()
-    )
-    if not delivery:
-        raise HTTPException(status_code=404, detail="Bolla non trovata")
-
-    order = (
-        db.query(PurchaseOrder)
-        .filter(PurchaseOrder.id == delivery.order_id)
-        .populate_existing().with_for_update().first()
-    )
-    if not order:
-        raise HTTPException(status_code=404, detail="Ordine non trovato")
-
-    missing_line = next(
-        (
-            line
-            for line in delivery.lines
-            if line.order_line and line.order_line.magazzino_item_id is None
-        ),
-        None,
-    )
-    if missing_line:
-        message = (
-            "Impossibile confermare: associa un articolo di magazzino alla "
-            f"riga ordine {missing_line.order_line_id}"
-        )
-        query_string = urlencode({"err": message})
-        url = f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{query_string}"
-        return RedirectResponse(url=url, status_code=303)
-
-    # Same lock order as request fulfilment, including several items on one delivery.
-    db.query(MagazzinoItem).filter(MagazzinoItem.id.in_(
-        [line.order_line.magazzino_item_id for line in delivery.lines if line.order_line]
-    )).order_by(MagazzinoItem.id).populate_existing().with_for_update().all()
-    existing_movimento = (
-        db.query(MagazzinoMovimento.id)
-        .filter(MagazzinoMovimento.purchase_delivery_id == delivery.id)
-        .first()
-    )
-    if not existing_movimento:
-        if not delivery.confirmed:
-            delivery.confirmed = True
-            db.add(delivery)
-            db.flush()
-        for line in delivery.lines:
-            qty = line.qty_delivered or 0.0
-            if qty <= 0:
-                continue
-            item = (
-                db.query(MagazzinoItem)
-                .filter(MagazzinoItem.id == line.order_line.magazzino_item_id)
-                .first()
-            )
-            if not item:
-                raise HTTPException(
-                    status_code=400, detail="Articolo magazzino non valido"
-                )
-            item.quantita_disponibile = (item.quantita_disponibile or 0.0) + qty
-            db.add(item)
-            db.add(
-                MagazzinoMovimento(
-                    item_id=item.id,
-                    tipo=MagazzinoMovimentoTipoEnum.carico,
-                    quantita=qty,
-                    creato_da_user_id=current_user.id,
-                    purchase_order_id=delivery.order_id,
-                    purchase_delivery_id=delivery.id,
-                    note=f"Bolla {delivery.delivery_number}",
-                )
-            )
-    elif not delivery.confirmed:
-        delivery.confirmed = True
-        db.add(delivery)
-
-    delivered_totals = _load_delivered_totals(db, order.id)
-    order_lines = order.lines
-    if not order_lines:
-        order.status = "APERTO"
-    else:
-        all_delivered = all(
-            delivered_totals.get(line.id, 0.0) >= (line.qty_ordered or 0.0)
-            for line in order_lines
-        )
-        any_delivered = any(
-            delivered_totals.get(line.id, 0.0) > 0.0 for line in order_lines
-        )
-        if all_delivered:
-            order.status = "CHIUSO"
-        elif any_delivered:
-            order.status = "PARZIALE"
-        else:
-            order.status = "APERTO"
-    db.add(order)
-    db.commit()
-
-    return RedirectResponse(
-        url=request.url_for("manager_ordini_detail", order_id=order.id),
-        status_code=303,
-    )
+    delivery=db.get(PurchaseDelivery,delivery_id)
+    if not delivery: raise HTTPException(404,"Bolla non trovata")
+    order=db.query(PurchaseOrder).filter_by(id=delivery.order_id).populate_existing().with_for_update().first()
+    if not order: raise HTTPException(404,"Ordine non trovato")
+    order_id=order.id
+    try:
+        _confirm_purchase_delivery(db,order,delivery,current_user)
+        db.commit()
+        from routes.magazzino import _invalidate_magazzino_cache
+        _invalidate_magazzino_cache()
+    except ValueError as exc:
+        db.rollback()
+        return RedirectResponse(str(request.url_for('manager_ordini_detail',order_id=order_id))+'?'+urlencode({'err':str(exc)}),303)
+    return RedirectResponse(request.url_for('manager_ordini_detail',order_id=order_id),303)
 
 
 @router.post(

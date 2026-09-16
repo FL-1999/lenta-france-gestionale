@@ -28,6 +28,7 @@ class Supplier(Base, TimestampMixin):
     is_active = Column(Boolean, default=True, nullable=False)
 
     purchase_orders = relationship("PurchaseOrder", back_populates="supplier")
+    contacts = relationship("SupplierContact", cascade="all, delete-orphan", order_by="SupplierContact.id")
     articoli = relationship(
         "SupplierArticle",
         back_populates="supplier",
@@ -49,6 +50,7 @@ class SupplierArticle(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id", ondelete="CASCADE"), nullable=False, index=True)
+    magazzino_item_id = Column(Integer, ForeignKey("magazzino_items.id"), nullable=True, index=True)
     codice = Column(String(100), nullable=False)
     descrizione = Column(Text, nullable=True)
     unita = Column(String(50), nullable=True)
@@ -57,3 +59,40 @@ class SupplierArticle(Base, TimestampMixin):
     usi = Column(Integer, nullable=False, default=0)
 
     supplier = relationship("Supplier", back_populates="articoli")
+    magazzino_item = relationship("MagazzinoItem")
+
+
+class SupplierContact(Base, TimestampMixin):
+    __tablename__ = "supplier_contacts"
+    id = Column(Integer, primary_key=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(100), nullable=True)
+    role_label = Column(String(120), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+
+class WarehouseArticleNumber(Base):
+    """Reserved numbers: never recycle a code when an article is deleted."""
+    __tablename__ = "warehouse_article_numbers"
+    __table_args__ = {"sqlite_autoincrement": True}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+
+# Runs for every ORM creation path, including items created from purchase orders.
+from sqlalchemy import event, select
+from .entities import MagazzinoItem
+
+
+@event.listens_for(MagazzinoItem, "before_insert")
+def assign_internal_article_code(_mapper, connection, item):
+    if (item.codice or "").strip():
+        return  # Keep existing/integrated codes; the UI creates automatic codes.
+    while True:
+        result = connection.execute(WarehouseArticleNumber.__table__.insert().values())
+        code = str(result.inserted_primary_key[0]).zfill(6)
+        exists = connection.execute(select(MagazzinoItem.id).where(MagazzinoItem.codice == code)).first()
+        if exists is None:
+            item.codice = code
+            return

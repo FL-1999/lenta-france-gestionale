@@ -1278,7 +1278,7 @@ class OrdiniRoutesTests(unittest.TestCase):
                 "macro_id": str(macro_a_id),
                 "description": ["item mismatch"],
                 "qty_ordered": ["1"],
-                "magazzino_item_id": [""],
+                "magazzino_item_id": ["__new__"],
             },
             follow_redirects=False,
         )

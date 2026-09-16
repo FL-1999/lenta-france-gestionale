@@ -24,9 +24,10 @@
         <a href="{{ url_for('manager_ordini_list') }}" class="btn btn-secondary">
             ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
         </a>
-        <a href="{{ url_for('manager_ordini_bolle_nuova', order_id=order.id) }}" class="btn btn-primary">
+        {% if remaining_lines %}<a href="{{ url_for('manager_ordini_bolle_nuova', order_id=order.id) }}" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvelle livraison{% else %}Nuova bolla{% endif %}
         </a>
+        {% endif %}
         {% if can_send_email %}
         <a href="{{ url_for('manager_ordini_email', order_id=order.id) }}" class="btn btn-primary">
             ✉️ {% if lang == 'fr' %}Envoyer commande{% else %}Invia ordine{% endif %}
@@ -64,6 +65,7 @@
     </div>
 </div>
 
+<div class="purchasing-step">{% if remaining_lines %}{{ t('Da ricevere: controlla il residuo qui sotto e registra una nuova bolla per ogni consegna.', 'À recevoir : vérifiez le solde ci-dessous et enregistrez un bon par livraison.') }}{% else %}{{ t('Ordine completamente ricevuto. Tutte le bolle restano nello storico.', 'Commande entièrement reçue. Tous les bons restent dans l’historique.') }}{% endif %}{% if pending_deliveries %}<br>{{ t('Ci sono bolle in bozza: non hanno ancora aggiornato la giacenza.', 'Des bons sont en brouillon : ils n’ont pas encore mis à jour le stock.') }}{% endif %}</div>
 {% if error_message %}
     <div class="alert alert-danger">
         {{ error_message }}
@@ -73,6 +75,8 @@
 <div class="card" style="margin-bottom: 1.5rem;">
     <div class="card-body">
         <div class="form-grid-2">
+            <div><strong>{{ t('Fornitore','Fournisseur') }}:</strong> {% if order.supplier_id %}<a href="{{ url_for('manager_fornitori_edit',supplier_id=order.supplier_id) }}">{{ supplier_label }}</a>{% else %}{{ supplier_label }}{% endif %}</div>
+            <div><strong>{{ t('Referente ordine','Contact de la commande') }}:</strong> {{ order.contact_name_override or order.contact_name or '—' }} · {{ order.contact_email_override or order.recipient_email or '—' }}</div>
             <div>
                 <strong>{% if lang == 'fr' %}Date{% else %}Data{% endif %}:</strong>
                 {{ order.order_date.strftime("%d/%m/%Y") if order.order_date else '-' }}
@@ -133,7 +137,7 @@
             📦 {% if lang == 'fr' %}Lignes de commande{% else %}Righe ordine{% endif %}
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body table-responsive">
         <table class="data-table">
             <thead>
                 <tr>
@@ -147,12 +151,12 @@
             <tbody>
                 {% for line in lines %}
                 <tr>
-                    <td>{{ line.description or '-' }}</td>
+                    <td>{{ line.description or '-' }}<br><small>{{ t("Codice fornitore", "Code fournisseur") }}: {{ line.supplier_code or '—' }}</small></td>
                     <td>
                         {% if line.magazzino_item %}
-                            {{ line.magazzino_item.codice or '-' }} - {{ line.magazzino_item.nome }}
+                            <a href="{{ url_for('warehouse_item_card',item_id=line.magazzino_item.id) }}">{{ line.magazzino_item.codice or '-' }} · {{ line.magazzino_item.nome }}</a> ({{ line.magazzino_item.unita_misura }})
                         {% else %}
-                            -
+                            <form method="post" action="{{ url_for('purchase_line_link',order_id=order.id,line_id=line.id) }}"><select name="item_id" required aria-label="{{ t('Articolo interno','Article interne') }}"><option value="">{{ t('Collega articolo','Associer un article') }}</option>{% for item in catalog_items %}<option value="{{ item.id }}">{{ item.codice }} · {{ item.nome }}</option>{% endfor %}</select><button class="btn btn-sm btn-secondary" type="submit">{{ t('Collega','Associer') }}</button></form>
                         {% endif %}
                     </td>
                     <td class="text-right">{{ line.qty_ordered }}</td>
@@ -177,7 +181,7 @@
             🚚 {% if lang == 'fr' %}Livraisons{% else %}Bolle{% endif %}
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body table-responsive">
         <table class="data-table">
             <thead>
                 <tr>
@@ -190,7 +194,7 @@
             <tbody>
                 {% for delivery in deliveries %}
                 <tr>
-                    <td>Bolla: {{ delivery.delivery_number or '—' }}</td>
+                    <td><strong>{{ delivery.delivery_number or '—' }}</strong><ul>{% for dl in delivery.lines %}<li>{{ dl.order_line.description }}: {{ dl.qty_delivered }} {{ dl.order_line.magazzino_item.unita_misura if dl.order_line.magazzino_item else '' }}</li>{% endfor %}</ul></td>
                     <td>{{ delivery.delivery_date.strftime("%d/%m/%Y") if delivery.delivery_date else '-' }}</td>
                     <td>
                         {% if delivery.confirmed %}
@@ -201,6 +205,7 @@
                     </td>
                     <td>
                         {% if not delivery.confirmed %}
+                        <a class="btn btn-sm btn-secondary" href="{{ url_for('manager_ordini_bolle_edit',delivery_id=delivery.id) }}">{{ t('Modifica bozza','Modifier le brouillon') }}</a>
                         <form method="post" action="{{ url_for('manager_ordini_bolle_conferma', delivery_id=delivery.id) }}">
                             <button type="submit" class="btn btn-sm btn-primary">
                                 {% if lang == 'fr' %}Confirmer{% else %}Conferma{% endif %}
@@ -209,9 +214,7 @@
                         {% else %}
                             <span class="badge badge-success">OK</span>
                         {% endif %}
-                        <a href="{{ url_for('manager_ordini_fattura_form', order_id=order.id) }}" class="btn btn-sm btn-secondary" style="margin-top:0.25rem;">
-                            {% if order.file_invoice %}✏️ {% if lang == 'fr' %}Modifier facture{% else %}Modifica fattura{% endif %}{% else %}➕ {% if lang == 'fr' %}Ajouter facture{% else %}Aggiungi fattura{% endif %}{% endif %}
-                        </a>
+
                     
                     </td>
                 </tr>
