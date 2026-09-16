@@ -65,7 +65,7 @@
     <thead><tr><th>{{ t('Tipo', 'Type') }}</th><th>{{ t('Selezione', 'Sélection') }}</th></tr></thead>
     <tbody>
       {% for row in equipment_panel %}
-      <tr><td>{{ row.tipo|capitalize }}</td><td>{% if row.ok %}✔ {{ row.selected_code }}{% else %}❌ {{ t('non selezionato', 'non sélectionné') }}{% endif %}</td></tr>
+      <tr><td>{{ row.tipo|capitalize }}<br><small>{{ t('Carico', 'Chargement') }} {{ row.pickup if row.pickup else t('origine', 'origine') }} → {{ t('tappa', 'étape') }} {{ row.dropoff }}</small></td><td>{% if row.ok %}✔ {{ row.selected_code }}{% else %}{{ t('Da caricare', 'À charger') }}{% endif %}</td></tr>
       {% else %}<tr><td colspan="2">{{ t('Nessuna attrezzatura richiesta', 'Aucun équipement demandé') }}</td></tr>{% endfor %}
     </tbody>
   </table>
@@ -77,7 +77,7 @@
     <table class="data-table">
       <thead><tr><th>{{ t('Tipo', 'Type') }}</th><th>{{ t('Attrezzatura disponibile', 'Équipement disponible') }}</th></tr></thead>
       <tbody>
-        {% for req, disponibili in richieste_disponibili %}
+        {% for req, disponibili in richieste_disponibili if not req.origine_tappa_ordine %}
           {% for idx in range(req.quantita) %}
           <tr>
             <td>{{ req.tipo_attrezzatura|capitalize }} #{{ idx + 1 }}</td>

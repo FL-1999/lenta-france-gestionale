@@ -90,6 +90,7 @@ def test_mobile_profile_logout_and_driver_navigation(driver_browser):
 
 def test_scanner_pauses_and_displays_equipment_name_as_text(driver_browser):
     page, requests = driver_browser
+    page.locator('#scan-camera').click()
     page.evaluate("scanQR('TEST-QR'); scanQR('TEST-QR');")
     expect(page.locator("#scan-result")).to_contain_text("CARICATO")
     assert len(requests) == 1
@@ -102,4 +103,4 @@ def test_scanner_pauses_and_displays_equipment_name_as_text(driver_browser):
     page.evaluate("scanQR('TEST-QR')")
     expect(page.locator("#scan-result")).to_contain_text("SCARICATO")
     assert len(requests) == 2
-    assert requests[-1].endswith("action=scarico")
+    assert "action=scarico" in requests[-1]

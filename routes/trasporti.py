@@ -6,7 +6,7 @@ from urllib.parse import quote, urlencode
 from fastapi import APIRouter, Body, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_html
@@ -41,6 +41,56 @@ from utils.trips import can_edit_trip, compute_trip_progress, format_trip_dateti
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
 router = APIRouter(tags=["trasporti"])
+
+def _validate_trip_manifest(db, raw_stops, final_place, types, quantities, destinations, pickups):
+    """Validate before writes; stop numbers must stay stable and include the final place."""
+    stops = []
+    blank_seen = False
+    for raw in raw_stops:
+        if not (raw or "").strip():
+            blank_seen = True
+            continue
+        place = get_place_by_value(db, raw, include_inactive=False)
+        if not place or blank_seen:
+            raise HTTPException(status_code=400, detail="Compila le tappe in ordine, senza vuoti intermedi, usando luoghi esistenti")
+        stops.append(place)
+    if not stops or (stops[-1].kind, stops[-1].id) != (final_place.kind, final_place.id):
+        stops.append(final_place)
+    plan = []
+    for i, raw_type in enumerate(types):
+        kind = (raw_type or "").strip().lower()
+        if not kind:
+            continue
+        try:
+            qty = int(quantities[i]) if i < len(quantities) else 1
+            drop = int(destinations[i]) if i < len(destinations) else 1
+            pickup = int(pickups[i]) if isinstance(pickups, list) and i < len(pickups) else 0
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Quantità e numeri delle tappe devono essere interi")
+        if not (1 <= qty <= 1000 and 0 <= pickup < drop <= len(stops)):
+            raise HTTPException(status_code=400, detail="Verifica quantità (1–1000) e tappe: il carico deve precedere la consegna")
+        plan.append((kind, qty, pickup, drop))
+    return stops, plan
+
+
+def _pickup_location(trip, assignment):
+    pickup = next((t for t in trip.tappe if t.ordine == assignment.origine_tappa_ordine), None)
+    return ((pickup.destinazione, pickup.site_id, pickup.depot_id) if pickup else
+            (trip.origine, trip.origine_site_id, trip.origine_depot_id))
+
+
+def _record_equipment_delivery(db, trip, assignment, driver_id):
+    origin, site_id, depot_id = _pickup_location(trip, assignment)
+    dest = assignment.tappa_destinazione
+    db.add(MovimentoAttrezzatura(
+        attrezzatura_id=assignment.attrezzatura_id, viaggio_id=trip.id,
+        origine=origin, origine_site_id=site_id, origine_depot_id=depot_id,
+        destinazione=dest.destinazione if dest else trip.destinazione,
+        destinazione_site_id=dest.site_id if dest else trip.destinazione_site_id,
+        destinazione_depot_id=dest.depot_id if dest else trip.destinazione_depot_id,
+        autista_id=driver_id, data=datetime.utcnow(),
+    ))
+
 
 WEEKDAY_LABELS = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
 
@@ -349,14 +399,14 @@ def _trip_missing_equipment_alerts(viaggi: list[TrasportoViaggio]) -> list[dict[
     for viaggio in viaggi:
         ass_by_type: dict[str, int] = {}
         for ass in viaggio.assegnazioni_attrezzature:
-            key = (ass.attrezzatura.tipo or "").strip().lower()
+            key = ((ass.attrezzatura.tipo or "").strip().lower(), ass.tappa_destinazione_id, ass.origine_tappa_ordine or 0)
             if not key:
                 continue
             ass_by_type[key] = ass_by_type.get(key, 0) + 1
 
         missing_types = []
         for req in viaggio.richieste_attrezzature:
-            req_key = (req.tipo_attrezzatura or "").strip().lower()
+            req_key = ((req.tipo_attrezzatura or "").strip().lower(), req.tappa_id, req.origine_tappa_ordine or 0)
             selected = ass_by_type.get(req_key, 0)
             if selected < req.quantita:
                 missing_types.append(req.tipo_attrezzatura)
@@ -948,6 +998,7 @@ def manager_trasporti_viaggi_create(
     richiesta_tappa_idx: list[str] = Form(default=[]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
+    richiesta_origine_idx: list[str] = Form(default=[]),
 ):
     _ensure_manager(current_user)
     autisti, mezzi, luoghi = _load_trip_form_dependencies(db)
@@ -967,6 +1018,7 @@ def manager_trasporti_viaggi_create(
         "tipo_attrezzatura": tipo_attrezzatura,
         "quantita": quantita,
         "richiesta_tappa_idx": richiesta_tappa_idx,
+        "richiesta_origine_idx": richiesta_origine_idx,
     }
     try:
         parsed_orario_partenza = _parse_optional_time(orario_partenza)
@@ -1011,6 +1063,10 @@ def manager_trasporti_viaggi_create(
             current_user,
             status_code=400,
         )
+    tappe_clean, planned = _validate_trip_manifest(
+        db, tappa_destinazione, destinazione_obj, tipo_attrezzatura,
+        quantita, richiesta_tappa_idx, richiesta_origine_idx,
+    )
     viaggio = TrasportoViaggio(
         codice_viaggio=codice_viaggio.strip().upper(),
         data_partenza=datetime.strptime(data_partenza, "%Y-%m-%d").date(),
@@ -1031,10 +1087,6 @@ def manager_trasporti_viaggi_create(
     db.add(viaggio)
     db.flush()
 
-    tappe_clean = [get_place_by_value(db, raw, include_inactive=False) for raw in tappa_destinazione if (raw or "").strip()]
-    tappe_clean = [tappa for tappa in tappe_clean if tappa is not None]
-    if not tappe_clean:
-        tappe_clean = [destinazione_obj]
 
     tappe: list[TrasportoTappa] = []
     for idx, place in enumerate(tappe_clean, start=1):
@@ -1049,23 +1101,11 @@ def manager_trasporti_viaggi_create(
         tappe.append(tappa)
     db.flush()
 
-    for idx, tipo in enumerate(tipo_attrezzatura):
-        tipo_clean = (tipo or "").strip().lower()
-        if not tipo_clean:
-            continue
-        q_raw = quantita[idx] if idx < len(quantita) else "1"
-        q = max(1, int(q_raw or 1))
-        tappa_idx_raw = richiesta_tappa_idx[idx] if idx < len(richiesta_tappa_idx) else "1"
-        tappa_idx = max(1, int(tappa_idx_raw or 1))
-        tappa = tappe[tappa_idx - 1] if tappa_idx <= len(tappe) else tappe[-1]
-        db.add(
-            TrasportoRichiestaAttrezzatura(
-                viaggio_id=viaggio.id,
-                tappa_id=tappa.id,
-                tipo_attrezzatura=tipo_clean,
-                quantita=q,
-            )
-        )
+    for tipo, q, pickup, dropoff in planned:
+        db.add(TrasportoRichiestaAttrezzatura(
+            viaggio_id=viaggio.id, tappa_id=tappe[dropoff - 1].id,
+            tipo_attrezzatura=tipo, quantita=q, origine_tappa_ordine=pickup,
+        ))
 
     eta_message = _sync_trip_eta(viaggio)
     db.commit()
@@ -1113,6 +1153,7 @@ def manager_trasporti_viaggi_edit(
         "materiali_attrezzature": viaggio.materiali_attrezzature or "",
         "note": viaggio.note or "",
         "tappa_destinazione": [_stop_place_value(tappa) for tappa in viaggio.tappe] or [""],
+        "richiesta_origine_idx": [str(req.origine_tappa_ordine or 0) for req in viaggio.richieste_attrezzature],
         "tipo_attrezzatura": [req.tipo_attrezzatura for req in viaggio.richieste_attrezzature] or ["", "", ""],
         "quantita": [str(req.quantita) for req in viaggio.richieste_attrezzature] or ["1", "1", "1"],
         "richiesta_tappa_idx": [
@@ -1171,6 +1212,7 @@ def manager_trasporti_viaggi_update(
     richiesta_tappa_idx: list[str] = Form(default=[]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
+    richiesta_origine_idx: list[str] = Form(default=[]),
 ):
     _ensure_manager(current_user)
     autisti, mezzi, luoghi = _load_trip_form_dependencies(db)
@@ -1178,11 +1220,11 @@ def manager_trasporti_viaggi_update(
         db.query(TrasportoViaggio)
         .options(joinedload(TrasportoViaggio.richieste_attrezzature), joinedload(TrasportoViaggio.tappe))
         .filter(TrasportoViaggio.id == viaggio_id)
-        .first()
+        .with_for_update(of=TrasportoViaggio).first()
     )
     if not viaggio:
         return RedirectResponse(url=request.url_for("manager_trasporti_dashboard"), status_code=303)
-    if not can_edit_trip(viaggio):
+    if not can_edit_trip(viaggio) or any(a.caricato for a in viaggio.assegnazioni_attrezzature):
         return _trip_locked_redirect(request, viaggio.id)
 
     form_data = {
@@ -1201,6 +1243,7 @@ def manager_trasporti_viaggi_update(
         "tipo_attrezzatura": tipo_attrezzatura,
         "quantita": quantita,
         "richiesta_tappa_idx": richiesta_tappa_idx,
+        "richiesta_origine_idx": richiesta_origine_idx,
     }
     try:
         parsed_orario_partenza = _parse_optional_time(orario_partenza)
@@ -1246,6 +1289,10 @@ def manager_trasporti_viaggi_update(
             status_code=400,
         )
 
+    tappe_clean, planned = _validate_trip_manifest(
+        db, tappa_destinazione, destinazione_obj, tipo_attrezzatura,
+        quantita, richiesta_tappa_idx, richiesta_origine_idx,
+    )
     viaggio.codice_viaggio = codice_viaggio.strip().upper()
     viaggio.data_partenza = datetime.strptime(data_partenza, "%Y-%m-%d").date()
     viaggio.orario_partenza = parsed_orario_partenza
@@ -1264,10 +1311,6 @@ def manager_trasporti_viaggi_update(
     db.query(TrasportoTappa).filter(TrasportoTappa.viaggio_id == viaggio.id).delete()
     db.flush()
 
-    tappe_clean = [get_place_by_value(db, raw, include_inactive=False) for raw in tappa_destinazione if (raw or "").strip()]
-    tappe_clean = [tappa for tappa in tappe_clean if tappa is not None]
-    if not tappe_clean:
-        tappe_clean = [destinazione_obj]
 
     tappe: list[TrasportoTappa] = []
     for idx, place in enumerate(tappe_clean, start=1):
@@ -1282,23 +1325,11 @@ def manager_trasporti_viaggi_update(
         tappe.append(tappa)
     db.flush()
 
-    for idx, tipo in enumerate(tipo_attrezzatura):
-        tipo_clean = (tipo or "").strip().lower()
-        if not tipo_clean:
-            continue
-        q_raw = quantita[idx] if idx < len(quantita) else "1"
-        q = max(1, int(q_raw or 1))
-        tappa_idx_raw = richiesta_tappa_idx[idx] if idx < len(richiesta_tappa_idx) else "1"
-        tappa_idx = max(1, int(tappa_idx_raw or 1))
-        tappa = tappe[tappa_idx - 1] if tappa_idx <= len(tappe) else tappe[-1]
-        db.add(
-            TrasportoRichiestaAttrezzatura(
-                viaggio_id=viaggio.id,
-                tappa_id=tappa.id,
-                tipo_attrezzatura=tipo_clean,
-                quantita=q,
-            )
-        )
+    for tipo, q, pickup, dropoff in planned:
+        db.add(TrasportoRichiestaAttrezzatura(
+            viaggio_id=viaggio.id, tappa_id=tappe[dropoff - 1].id,
+            tipo_attrezzatura=tipo, quantita=q, origine_tappa_ordine=pickup,
+        ))
 
     eta_message = _sync_trip_eta(viaggio)
     db.commit()
@@ -1341,13 +1372,13 @@ def manager_trasporti_viaggi_detail(
 
     assigned_counts: dict[str, list[str]] = {}
     for ass in viaggio.assegnazioni_attrezzature:
-        key = (ass.attrezzatura.tipo or "").strip().lower()
+        key = ((ass.attrezzatura.tipo or "").strip().lower(), ass.tappa_destinazione_id, ass.origine_tappa_ordine or 0)
         assigned_counts.setdefault(key, []).append(ass.attrezzatura.codice)
 
     equipment_panel = []
     richieste_disponibili = []
     for req in viaggio.richieste_attrezzature:
-        key = (req.tipo_attrezzatura or "").strip().lower()
+        key = ((req.tipo_attrezzatura or "").strip().lower(), req.tappa_id, req.origine_tappa_ordine or 0)
         codes = assigned_counts.get(key, [])
         disponibili = (
             db.query(Attrezzatura)
@@ -1361,6 +1392,8 @@ def manager_trasporti_viaggi_detail(
             equipment_panel.append(
                 {
                     "tipo": req.tipo_attrezzatura,
+                    "pickup": req.origine_tappa_ordine or 0,
+                    "dropoff": req.tappa.ordine if req.tappa else 1,
                     "selected_code": selected_code,
                     "ok": bool(selected_code),
                 }
@@ -1622,6 +1655,10 @@ def _add_trip_load(db: Session, viaggio: TrasportoViaggio, form) -> None:
         req = selected[att.id]
         existing = assignments.get(att.id)
         already_loaded = existing and existing.caricato and not existing.scaricato
+        if req.origine_tappa_ordine:
+            raise HTTPException(status_code=409, detail="Questo materiale va caricato alla tappa prevista tramite scanner o codice")
+        if existing and existing.tappa_destinazione_id != req.tappa_id:
+            raise HTTPException(status_code=409, detail="Attrezzatura già assegnata a un’altra tappa")
         if att.tipo != req.tipo_attrezzatura:
             raise HTTPException(status_code=400, detail="Tipo attrezzatura non compatibile")
         if not (already_loaded and att.stato == AttrezzaturaStatoEnum.in_trasporto) and att.stato != AttrezzaturaStatoEnum.disponibile:
@@ -1635,7 +1672,7 @@ def _add_trip_load(db: Session, viaggio: TrasportoViaggio, form) -> None:
         else:
             db.add(TrasportoAttrezzaturaViaggio(
                 viaggio_id=viaggio.id, attrezzatura_id=att.id,
-                tappa_destinazione_id=selected[att.id].tappa_id, caricato=True,
+                tappa_destinazione_id=selected[att.id].tappa_id, caricato=True, origine_tappa_ordine=0,
             ))
         att.stato = AttrezzaturaStatoEnum.in_trasporto
     viaggio.stato = TrasportoStatoEnum.in_carico
@@ -1684,6 +1721,8 @@ def driver_trasporti_viaggi_scan(
     action: str = "carico",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
+    tappa_id: int | None = None,
+    origine_tappa_ordine: int = 0,
 ):
     _ensure_driver(current_user)
     viaggio = db.query(TrasportoViaggio).filter(TrasportoViaggio.id == viaggio_id, TrasportoViaggio.autista_id == current_user.id).with_for_update(of=TrasportoViaggio).first()
@@ -1695,7 +1734,8 @@ def driver_trasporti_viaggi_scan(
     if viaggio.stato == TrasportoStatoEnum.completato and action == "carico":
         raise HTTPException(status_code=409, detail="Viaggio già completato")
     attrezzatura = db.query(Attrezzatura).filter(
-        Attrezzatura.qr_code == qr_code.strip().upper()
+        or_(func.upper(Attrezzatura.qr_code) == qr_code.strip().upper(),
+            func.upper(Attrezzatura.codice) == qr_code.strip().upper())
     ).with_for_update().first()
     if not attrezzatura:
         raise HTTPException(status_code=404, detail="Attrezzatura non trovata")
@@ -1704,6 +1744,13 @@ def driver_trasporti_viaggi_scan(
         TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id,
         TrasportoAttrezzaturaViaggio.attrezzatura_id == attrezzatura.id,
     ).first()
+
+    stops = {stop.id: stop for stop in viaggio.tappe}
+    if tappa_id is not None and tappa_id not in stops:
+        raise HTTPException(status_code=400, detail="La tappa non appartiene al viaggio")
+    if tappa_id is None and len(stops) > 1:
+        raise HTTPException(status_code=400, detail="Seleziona la tappa di consegna")
+    destination = stops.get(tappa_id) if tappa_id is not None else next(iter(stops.values()), None)
 
     def _resp(action: str, reason: str | None = None):
         return {
@@ -1718,6 +1765,8 @@ def driver_trasporti_viaggi_scan(
     if action == "scarico":
         if not assignment or not assignment.caricato:
             return _resp("bloccato", "non_a_bordo")
+        if destination and assignment.tappa_destinazione_id != destination.id:
+            return _resp("bloccato", "tappa_errata")
         if assignment.scaricato:
             return _resp("scaricato")
         if attrezzatura.stato != AttrezzaturaStatoEnum.in_trasporto:
@@ -1726,9 +1775,18 @@ def driver_trasporti_viaggi_scan(
         attrezzatura.stato = AttrezzaturaStatoEnum.disponibile
         dest = assignment.tappa_destinazione.destinazione if assignment.tappa_destinazione else viaggio.destinazione
         attrezzatura.posizione_attuale = dest
+        _record_equipment_delivery(db, viaggio, assignment, current_user.id)
         db.commit()
         return _resp("scaricato")
 
+    if origine_tappa_ordine < 0 or (origine_tappa_ordine and not any(t.ordine == origine_tappa_ordine for t in stops.values())):
+        raise HTTPException(status_code=400, detail="Punto di carico non valido")
+    if destination and origine_tappa_ordine >= destination.ordine:
+        raise HTTPException(status_code=400, detail="La consegna deve seguire il punto di carico")
+    if assignment and destination and assignment.tappa_destinazione_id != destination.id:
+        return _resp("bloccato", "tappa_errata")
+    if assignment and (assignment.origine_tappa_ordine or 0) != origine_tappa_ordine:
+        return _resp("bloccato", "tappa_errata")
     if assignment and assignment.caricato:
         if assignment.scaricato:
             return _resp("bloccato", "gia_consegnata")
@@ -1738,16 +1796,31 @@ def driver_trasporti_viaggi_scan(
     # Carico: consentito SOLO se l'attrezzatura è disponibile.
     if attrezzatura.stato == AttrezzaturaStatoEnum.disponibile:
         if assignment is None:
-            first_tappa = db.query(TrasportoTappa).filter(TrasportoTappa.viaggio_id == viaggio.id).order_by(TrasportoTappa.ordine.asc()).first()
+            matching = [r for r in viaggio.richieste_attrezzature
+                        if r.tipo_attrezzatura.strip().lower() == (attrezzatura.tipo or "").strip().lower()
+                        and r.tappa_id == (destination.id if destination else None)
+                        and (r.origine_tappa_ordine or 0) == origine_tappa_ordine]
+            if viaggio.richieste_attrezzature:
+                assigned_count = db.query(TrasportoAttrezzaturaViaggio).join(Attrezzatura).filter(
+                    TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id,
+                    TrasportoAttrezzaturaViaggio.tappa_destinazione_id == (destination.id if destination else None),
+                    func.coalesce(TrasportoAttrezzaturaViaggio.origine_tappa_ordine, 0) == origine_tappa_ordine,
+                    func.lower(Attrezzatura.tipo) == (attrezzatura.tipo or "").strip().lower(),
+                ).count()
+                if not matching or assigned_count >= sum(r.quantita for r in matching):
+                    return _resp("bloccato", "fuori_lista")
             assignment = TrasportoAttrezzaturaViaggio(
                 viaggio_id=viaggio.id,
                 attrezzatura_id=attrezzatura.id,
-                tappa_destinazione_id=first_tappa.id if first_tappa else None,
+                tappa_destinazione_id=destination.id if destination else None,
+                origine_tappa_ordine=origine_tappa_ordine,
             )
             db.add(assignment)
         assignment.caricato = True
         assignment.scaricato = False
         attrezzatura.stato = AttrezzaturaStatoEnum.in_trasporto
+        if viaggio.stato == TrasportoStatoEnum.programmato:
+            viaggio.stato = TrasportoStatoEnum.in_carico
         db.commit()
         return _resp("caricato")
 
@@ -1793,8 +1866,6 @@ async def driver_trasporti_viaggi_stato(
         return RedirectResponse(url=request.url_for("driver_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
     if viaggio.stato == TrasportoStatoEnum.completato:
         raise HTTPException(status_code=409, detail="Viaggio già completato")
-    viaggio.stato = stato
-
     if stato == TrasportoStatoEnum.in_viaggio:
         for ass in viaggio.assegnazioni_attrezzature:
             if ass.caricato and not ass.scaricato:
@@ -1803,9 +1874,11 @@ async def driver_trasporti_viaggi_stato(
     if stato == TrasportoStatoEnum.completato:
         form = await request.form()
         remaining_ids = {int(v) for v in form.getlist("resta_sul_camion") if str(v).isdigit()}
+        if len(viaggio.tappe) > 1 and any(a.caricato and not a.scaricato and a.attrezzatura_id not in remaining_ids for a in viaggio.assegnazioni_attrezzature):
+            raise HTTPException(status_code=409, detail="Conferma gli scarichi alle singole tappe prima di chiudere, oppure indica cosa resta sul camion")
         now = datetime.utcnow()
         for ass in viaggio.assegnazioni_attrezzature:
-            if ass.scaricato:
+            if ass.scaricato or not ass.caricato:
                 continue
             att = ass.attrezzatura
             tappa_dest = ass.tappa_destinazione.destinazione if ass.tappa_destinazione else viaggio.destinazione
@@ -1827,17 +1900,18 @@ async def driver_trasporti_viaggi_stato(
                 MovimentoAttrezzatura(
                     attrezzatura_id=att.id,
                     viaggio_id=viaggio.id,
-                    origine_site_id=viaggio.origine_site_id,
-                    origine_depot_id=viaggio.origine_depot_id,
+                    origine_site_id=_pickup_location(viaggio, ass)[1],
+                    origine_depot_id=_pickup_location(viaggio, ass)[2],
                     destinazione_site_id=destinazione_site_id,
                     destinazione_depot_id=destinazione_depot_id,
-                    origine=viaggio.origine,
+                    origine=_pickup_location(viaggio, ass)[0],
                     destinazione=movement_dest,
                     data=now,
                     autista_id=current_user.id,
                 )
             )
 
+    viaggio.stato = stato
     db.commit()
     return RedirectResponse(url=request.url_for("driver_trasporti_viaggi_detail", viaggio_id=viaggio.id), status_code=303)
 

@@ -41,7 +41,7 @@
           <th>{% if lang == 'fr' %}Révision{% else %}Revisione{% endif %}</th>
           <th>{% if lang == 'fr' %}Assurance{% else %}Assicurazione{% endif %}</th>
           <th>{% if lang == 'fr' %}Assigné à{% else %}Assegnato a{% endif %}</th>
-          <th>{% if lang == 'fr' %}Chantier{% else %}Cantiere{% endif %}</th>
+          <th>{% if lang == 'fr' %}Transports{% else %}Trasporti{% endif %}</th>
           <th class="table-actions-col">{% if lang == 'fr' %}Actions{% else %}Azioni{% endif %}</th>
         </tr>
       </thead>
@@ -56,18 +56,15 @@
           <td>{{ v.revisione_scadenza.strftime('%Y-%m-%d') if v.revisione_scadenza else '-' }}</td>
           <td>{{ v.assicurazione_scadenza.strftime('%Y-%m-%d') if v.assicurazione_scadenza else '-' }}</td>
           <td>
-            {% if v.personale %}
-              {{ v.personale.cognome }} {{ v.personale.nome }}
-            {% elif v.personale_id %}
-              #{{ v.personale_id }}
+            {% set person = vehicle_assignees.get(v.assegnato_a_id) %}
+            {% if person %}
+              {{ person.nome }} {{ person.cognome or '' }}
+            {% elif v.assegnato_a_id %}
+              #{{ v.assegnato_a_id }}
             {% else %}-{% endif %}
           </td>
           <td>
-            {% if v.cantiere %}
-              {{ v.cantiere.name }}
-            {% elif v.cantiere_id %}
-              #{{ v.cantiere_id }}
-            {% else %}-{% endif %}
+            {% if v.visibile_trasporti %}{{ 'Disponible' if lang == 'fr' else 'Disponibile' }}{% else %}—{% endif %}
           </td>
           <td class="table-actions">
             <a href="{{ url_for('manager_veicoli_edit', veicolo_id=v.id) }}" class="btn btn-secondary btn-sm">

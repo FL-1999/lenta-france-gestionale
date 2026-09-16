@@ -1538,6 +1538,9 @@ class TrasportoRichiestaAttrezzatura(Base):
     tipo_attrezzatura = Column(String(100), nullable=False, index=True)
     quantita = Column(Integer, nullable=False, default=1)
 
+    # NULL/0 means the trip origin; otherwise the numbered pickup stop.
+    origine_tappa_ordine = Column(Integer, nullable=True)
+
     viaggio = relationship("TrasportoViaggio", back_populates="richieste_attrezzature")
     tappa = relationship("TrasportoTappa", back_populates="richieste_attrezzature")
 
@@ -1554,6 +1557,9 @@ class TrasportoAttrezzaturaViaggio(Base):
     tappa_destinazione_id = Column(Integer, ForeignKey("trasporto_tappe.id"), nullable=True, index=True)
     caricato = Column(Boolean, nullable=False, default=False)
     scaricato = Column(Boolean, nullable=False, default=False)
+
+    # NULL/0 means the trip origin; otherwise the numbered pickup stop.
+    origine_tappa_ordine = Column(Integer, nullable=True)
 
     viaggio = relationship("TrasportoViaggio", back_populates="assegnazioni_attrezzature")
     attrezzatura = relationship("Attrezzatura")

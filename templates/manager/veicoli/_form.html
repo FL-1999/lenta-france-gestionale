@@ -1,0 +1,53 @@
+{% macro field(name, label, type='text', required=false, hint='') %}
+<div class="vehicle-field">
+  <label for="vehicle-{{ name }}">{{ label }}{% if required %} *{% endif %}</label>
+  {% set value = veicolo[name] if veicolo else '' %}
+  <input id="vehicle-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ value if value is not none else '' }}" {% if required %}required{% endif %}{% if type == 'number' %} min="{{ 1900 if name == 'anno' else 0 }}"{% if name == 'anno' %} max="2100"{% endif %}{% endif %}{% if hint %} aria-describedby="hint-{{ name }}"{% endif %}>
+  {% if hint %}<small id="hint-{{ name }}">{{ hint }}</small>{% endif %}
+</div>
+{% endmacro %}
+{% macro heading(number, title, description) %}
+<header class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">{{ number }}</span><div><h2>{{ title }}</h2><p>{{ description }}</p></div></header>
+{% endmacro %}
+<form method="post" class="vehicle-editor" id="veicoli-form">
+  <section class="workspace-context">
+    {{ heading('01', t('Identità del veicolo', 'Identité du véhicule'), t('I dati che identificano il mezzo nella flotta.', 'Les données qui identifient le véhicule dans le parc.')) }}
+    <div class="vehicle-fields">
+      {{ field('marca', t('Marca', 'Marque'), required=true) }}
+      {{ field('modello', t('Modello', 'Modèle'), required=true) }}
+      {{ field('targa', t('Targa', 'Immatriculation'), required=true, hint=t('Salvata automaticamente in maiuscolo.', 'Enregistrée automatiquement en majuscules.')) }}
+      {{ field('anno', t('Anno', 'Année'), 'number') }}
+    </div>
+  </section>
+  <section class="workspace-context">
+    {{ heading('02', t('Utilizzo e assegnazione', 'Utilisation et affectation'), t('Come viene utilizzato e a chi è affidato.', 'Son utilisation et la personne à qui il est confié.')) }}
+    <div class="vehicle-fields">
+      <div class="vehicle-field"><label for="vehicle-categoria">{{ t('Categoria mezzo', 'Catégorie') }}</label><select id="vehicle-categoria" name="categoria">
+        {% for value, label in [('altro', t('Altro mezzo', 'Autre véhicule')), ('camion', t('Camion', 'Camion'))] %}<option value="{{ value }}" {% if veicolo and veicolo.categoria == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select></div>
+      <div class="vehicle-field"><label for="vehicle-carburante">{{ t('Carburante', 'Carburant') }}</label><select id="vehicle-carburante" name="carburante">
+        <option value="">{{ t('Seleziona', 'Sélectionner') }}</option>
+        {% for value, label in [('Diesel', 'Diesel'), ('Benzina', t('Benzina', 'Essence')), ('GPL', 'GPL'), ('Ibrido', t('Ibrido', 'Hybride')), ('Elettrico', t('Elettrico', 'Électrique'))] %}<option value="{{ value }}" {% if veicolo and veicolo.carburante == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select></div>
+      {{ field('km', t('Chilometraggio', 'Kilométrage'), 'number', hint=t('Chilometri attuali del mezzo.', 'Kilométrage actuel du véhicule.')) }}
+      <div class="vehicle-field"><label for="vehicle-assignee">{{ t('Assegnato a', 'Affecté à') }}</label><select id="vehicle-assignee" name="assegnato_a_id"><option value="">{{ t('Veicolo condiviso', 'Véhicule partagé') }}</option>{% for persona in personale_list|default([]) %}<option value="{{ persona.id }}" {% if veicolo and veicolo.assegnato_a_id == persona.id %}selected{% endif %}>{{ persona.nome }} {{ persona.cognome or '' }}</option>{% endfor %}</select></div>
+      <label class="vehicle-availability vehicle-wide" for="visibile_trasporti"><input type="checkbox" id="visibile_trasporti" name="visibile_trasporti" {% if veicolo and veicolo.visibile_trasporti %}checked{% endif %}><span><strong>{{ t('Disponibile nella pianificazione trasporti', 'Disponible dans la planification des transports') }}</strong><small>{{ t('Il mezzo comparirà fra quelli selezionabili per un viaggio.', 'Le véhicule apparaîtra dans la sélection des trajets.') }}</small></span></label>
+    </div>
+  </section>
+  <section class="workspace-context">
+    {{ heading('03', t('Scadenze', 'Échéances'), t('Le prossime date da tenere sotto controllo.', 'Les prochaines dates à surveiller.')) }}
+    <div class="vehicle-fields">
+      {{ field('revisione_scadenza', t('Scadenza revisione', 'Échéance du contrôle technique'), 'date') }}
+      {{ field('assicurazione_scadenza', t('Scadenza assicurazione', 'Échéance de l’assurance'), 'date') }}
+    </div>
+  </section>
+  <section class="workspace-context">
+    {{ heading('04', t('Note e collegamenti', 'Notes et connexions'), t('Informazioni utili e configurazione GPS facoltativa.', 'Informations utiles et configuration GPS facultative.')) }}
+    <div class="vehicle-field"><label for="vehicle-note">{{ t('Note', 'Notes') }}</label><textarea id="vehicle-note" name="note" rows="3">{{ (veicolo.note or '') if veicolo else '' }}</textarea></div>
+    <details class="vehicle-gps"><summary>{{ t('Collegamento GPS · facoltativo', 'Connexion GPS · facultative') }}</summary><p class="text-muted">{{ t('Compila solo se disponi di un servizio GPS configurato. Questi codici, da soli, non attivano il tracciamento.', 'À compléter uniquement avec un service GPS configuré. Ces codes seuls n’activent pas le suivi.') }}</p><div class="vehicle-fields">
+      {{ field('gps_device_id', t('Codice dispositivo GPS', 'Identifiant du dispositif GPS')) }}
+      {{ field('provider_vehicle_id', t('Codice veicolo del fornitore GPS', 'Identifiant véhicule du fournisseur GPS')) }}
+    </div></details>
+  </section>
+  <div class="vehicle-save"><a class="btn btn-secondary" href="{{ url_for('manager_veicoli_list') }}">{{ t('Annulla', 'Annuler') }}</a><button class="btn btn-primary" type="submit">{{ t('Salva veicolo', 'Enregistrer le véhicule') }}</button></div>
+</form>
