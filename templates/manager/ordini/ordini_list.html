@@ -40,7 +40,7 @@
             ➕ {% if lang == 'fr' %}Nouvel ordre{% else %}Nuovo ordine{% endif %}
         </a>
         {% if status_filter == 'chiuso' %}
-            <a href="/manager/ordini" class="btn btn-secondary">
+            <a href="/manager/ordini?status=tutti" class="btn btn-secondary">
                 {% if lang == 'fr' %}Tous les ordres{% else %}Tutti gli ordini{% endif %}
             </a>
         {% else %}
@@ -51,6 +51,8 @@
     </div>
 </div>
 
+<nav class="page-actions" aria-label="{{ t('Stato consegna','État des livraisons') }}" style="margin-bottom:1rem">
+{% for value,it,fr in [('tutti','Tutti e storico','Toutes et historique'),('aperto','Da ricevere','À recevoir'),('parziale','Consegne parziali','Livraisons partielles'),('chiuso','Consegnati','Livrées')] %}<a class="btn {{ 'btn-primary' if status_filter == value else 'btn-secondary' }}" href="?status={{ value }}{% if kind_filter %}&kind={{ kind_filter }}{% endif %}">{{ t(it,fr) }}</a>{% endfor %}</nav>
 <div class="dashboard-kpi-grid" style="margin-bottom: 1.5rem;">
     <div class="kpi-card kpi-accent-1">
         <div class="kpi-top">

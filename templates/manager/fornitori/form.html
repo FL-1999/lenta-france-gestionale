@@ -7,9 +7,9 @@
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
-        <h1 class="page-title">🏷️ {% if is_new %}{% if lang == 'fr' %}Nouveau fournisseur{% else %}Nuovo fornitore{% endif %}{% else %}{% if lang == 'fr' %}Modifier fournisseur{% else %}Modifica fornitore{% endif %}{% endif %}</h1>
+        <h1 class="page-title">{% if is_new %}{% if lang == 'fr' %}Nouveau fournisseur{% else %}Nuovo fornitore{% endif %}{% else %}{% if lang == 'fr' %}Modifier fournisseur{% else %}Modifica fornitore{% endif %}{% endif %}</h1>
     </div>
-    <div class="page-actions">
+    <div class="page-actions">{% if not is_new %}<a class="btn btn-primary" href="{{ url_for('manager_ordini_new') }}?supplier_id={{ supplier.id }}">{{ t("Nuovo ordine", "Nouvelle commande") }}</a>{% endif %}
         <a href="{{ url_for('manager_fornitori_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
     </div>
 </div>
@@ -19,64 +19,56 @@
 <form method="post" action="{{ form_action }}">
     <div class="card large-form-card">
         <div class="card-body">
-            <p style="margin-top:0; opacity:.8;">{% if lang == 'fr' %}Tous les champs sont facultatifs. Nom conseillé.{% else %}Tutti i campi sono facoltativi. Nome consigliato.{% endif %}</p>
-            <div class="form-grid-2">
-                <div class="form-field"><label>{% if lang == 'fr' %}Nom / raison sociale{% else %}Nome / ragione sociale{% endif %}</label><input type="text" name="name" value="{{ supplier.name if supplier else '' }}"></div>
-                <div class="form-field"><label>{% if lang == 'fr' %}Lieu / ville{% else %}Luogo / città{% endif %}</label><input type="text" name="city" value="{{ supplier.city if supplier else '' }}"></div>
-                <div class="form-field"><label>{% if lang == 'fr' %}Adresse{% else %}Indirizzo{% endif %}</label><input type="text" name="address" value="{{ supplier.address if supplier else '' }}"></div>
-                <div class="form-field"><label>CAP</label><input type="text" name="zip_code" value="{{ supplier.zip_code if supplier else '' }}"></div>
-                <div class="form-field"><label>{% if lang == 'fr' %}Province{% else %}Provincia{% endif %}</label><input type="text" name="province" value="{{ supplier.province if supplier else '' }}"></div>
-                <div class="form-field"><label>{% if lang == 'fr' %}Pays{% else %}Nazione{% endif %}</label><input type="text" name="country" value="{{ supplier.country if supplier else '' }}"></div>
-                <div class="form-field"><label>Email</label><input type="email" name="email" value="{{ supplier.email if supplier else '' }}"></div>
-                <div class="form-field"><label>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</label><input type="text" name="phone" value="{{ supplier.phone if supplier else '' }}"></div>
-                <div class="form-field"><label>{% if lang == 'fr' %}TVA{% else %}Partita IVA/TVA{% endif %}</label><input type="text" name="vat_number" value="{{ supplier.vat_number if supplier else '' }}"></div>
+            <p style="margin-top:0; opacity:.8;">{% if lang == 'fr' %}Indiquez le nom du fournisseur. Ajoutez ensuite ses contacts.{% else %}Inserisci il nome del fornitore. Dopo il salvataggio puoi aggiungere più referenti.{% endif %}</p>
+            <div class="vehicle-fields">
+                <div class="vehicle-field"><label>{% if lang == 'fr' %}Nom / raison sociale{% else %}Nome / ragione sociale{% endif %}</label><input type="text" name="name" required value="{{ (supplier.name or '') if supplier else '' }}"></div>
+                <div class="vehicle-field"><label>{% if lang == 'fr' %}Lieu / ville{% else %}Luogo / città{% endif %}</label><input type="text" name="city" value="{{ (supplier.city or '') if supplier else '' }}"></div>
+                <div class="vehicle-field"><label>{% if lang == 'fr' %}Adresse{% else %}Indirizzo{% endif %}</label><input type="text" name="address" value="{{ (supplier.address or '') if supplier else '' }}"></div>
+                <div class="vehicle-field"><label>CAP</label><input type="text" name="zip_code" value="{{ (supplier.zip_code or '') if supplier else '' }}"></div>
+                <div class="vehicle-field"><label>{% if lang == 'fr' %}Province{% else %}Provincia{% endif %}</label><input type="text" name="province" value="{{ (supplier.province or '') if supplier else '' }}"></div>
+                <div class="vehicle-field"><label>{% if lang == 'fr' %}Pays{% else %}Nazione{% endif %}</label><input type="text" name="country" value="{{ (supplier.country or '') if supplier else '' }}"></div>
+                <div class="vehicle-field"><label>Email</label><input type="email" name="email" value="{{ (supplier.email or '') if supplier else '' }}"></div>
+                <div class="vehicle-field"><label>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</label><input type="text" name="phone" value="{{ (supplier.phone or '') if supplier else '' }}"></div>
+                <div class="vehicle-field"><label>{% if lang == 'fr' %}TVA{% else %}Partita IVA/TVA{% endif %}</label><input type="text" name="vat_number" value="{{ (supplier.vat_number or '') if supplier else '' }}"></div>
             </div>
-            <div class="form-field" style="margin-top: 12px;"><label>Note</label><textarea name="notes" rows="4">{{ supplier.notes if supplier else '' }}</textarea></div>
+            <div class="vehicle-field" style="margin-top: 12px;"><label>Note</label><textarea name="notes" rows="4">{{ (supplier.notes or '') if supplier else '' }}</textarea></div>
         </div>
     </div>
 
     <div class="form-actions" style="margin-top: 16px;">
         <a href="{{ url_for('manager_fornitori_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
-        <button class="btn btn-primary" type="submit">💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
+        <button class="btn btn-primary" type="submit">{% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
     </div>
 </form>
 
 {% if not is_new %}
-<section class="card" style="margin-top: var(--space-4);">
-    <div class="card-header"><div class="card-title">📇 {% if lang == 'fr' %}Catalogue codes articles{% else %}Catalogo codici articolo{% endif %}</div></div>
-    <div class="card-body">
-        <p class="text-muted">{% if lang == 'fr' %}Ces codes se remplissent automatiquement au fur et à mesure des commandes à ce fournisseur.{% else %}Questi codici si salvano automaticamente man mano che fai gli ordini a questo fornitore.{% endif %}</p>
-        {% if supplier.articoli %}
-        <div class="table-responsive">
-            <table class="table">
-                <thead><tr>
-                    <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Utilisations{% else %}Utilizzi{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Dernier usage{% else %}Ultimo uso{% endif %}</th>
-                    <th></th>
-                </tr></thead>
-                <tbody>
-                    {% for a in supplier.articoli %}
-                    <tr>
-                        <td><strong>{{ a.codice }}</strong></td>
-                        <td>{{ a.descrizione or '—' }}</td>
-                        <td>{{ a.usi or 0 }}</td>
-                        <td>{{ a.last_used_at.strftime('%d/%m/%Y') if a.last_used_at else '—' }}</td>
-                        <td>
-                            <form method="post" action="{{ url_for('manager_fornitori_article_delete', article_id=a.id) }}" onsubmit="return confirm('{% if lang == 'fr' %}Supprimer ce code ?{% else %}Eliminare questo codice?{% endif %}');" style="display:inline;">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-muted">{% if lang == 'fr' %}Aucun code enregistré pour le moment.{% else %}Nessun codice salvato per ora.{% endif %}</p>
-        {% endif %}
-    </div>
-</section>
+<section class="card purchasing-section" id="referenti"><div class="card-body">
+<h2>{{ t('Referenti', 'Contacts') }}</h2>
+<p class="text-muted">{{ t('Scegli il referente desiderato quando crei un ordine. Disattivarlo conserva lo storico.', 'Choisissez le contact lors de la création de la commande. Le désactiver conserve son historique.') }}</p>
+{% if supplier.contact_name %}<p>{{ t('Referente precedente', 'Ancien contact') }}: {{ supplier.contact_name }} · {{ supplier.contact_email or '' }} · {{ supplier.contact_phone or '' }}</p>{% endif %}
+{% for contact in supplier.contacts %}
+<form class="purchasing-contact" method="post" action="{{ url_for('supplier_contact_save', supplier_id=supplier.id) }}">
+<input type="hidden" name="contact_id" value="{{ contact.id }}">
+<div class="vehicle-fields">
+{% for key,label in [('name',t('Nome','Nom')),('email','Email'),('phone',t('Telefono','Téléphone')),('role_label',t('Funzione','Fonction'))] %}
+<label class="vehicle-field">{{ label }}<input name="{{ key }}" type="{{ 'email' if key == 'email' else 'text' }}" value="{{ contact[key] or '' }}" {% if key == 'name' %}required{% endif %}></label>
+{% endfor %}</div>
+<label><input type="checkbox" name="active" value="true" {% if contact.is_active %}checked{% endif %}> {{ t('Attivo','Actif') }}</label>
+<button class="btn btn-secondary" type="submit">{{ t('Salva referente','Enregistrer le contact') }}</button>
+</form>{% endfor %}
+<details class="purchasing-contact" {% if not supplier.contacts %}open{% endif %}><summary>{{ t('Aggiungi referente','Ajouter un contact') }}</summary>
+<form method="post" action="{{ url_for('supplier_contact_save', supplier_id=supplier.id) }}"><input type="hidden" name="active" value="true">
+<div class="vehicle-fields">
+{% for key,label in [('name',t('Nome','Nom')),('email','Email'),('phone',t('Telefono','Téléphone')),('role_label',t('Funzione','Fonction'))] %}
+<label class="vehicle-field">{{ label }}<input name="{{ key }}" type="{{ 'email' if key == 'email' else 'text' }}" {% if key == 'name' %}required{% endif %}></label>
+{% endfor %}</div><button class="btn btn-primary" type="submit">{{ t('Aggiungi referente','Ajouter un contact') }}</button></form></details>
+</div></section>
+<section class="card purchasing-section"><div class="card-body"><h2>{{ t('Articoli del fornitore','Articles du fournisseur') }}</h2>
+<p>{{ t('Il codice fornitore identifica il prodotto nel suo catalogo. Il codice interno identifica la tua unica scheda di magazzino.', 'Le code fournisseur identifie le produit dans son catalogue. Le code interne identifie votre fiche de stock unique.') }}</p>
+<div class="table-responsive"><table class="data-table"><thead><tr><th>{{ t('Codice fornitore','Code fournisseur') }}</th><th>{{ t('Descrizione','Description') }}</th><th>{{ t('Articolo interno','Article interne') }}</th></tr></thead><tbody>
+{% for a in supplier.articoli %}<tr><td>{{ a.codice }}</td><td>{{ a.descrizione or '—' }}</td><td>{% if a.magazzino_item %}<a href="{{ url_for('warehouse_item_card',item_id=a.magazzino_item_id) }}">{{ a.magazzino_item.codice }} · {{ a.magazzino_item.nome }}</a>{% else %}{{ t('Da collegare dalla scheda articolo','À associer depuis la fiche article') }}{% endif %}</td></tr>{% else %}<tr><td colspan="3">{{ t('Nessun articolo collegato. Aggiungilo dalla scheda di magazzino o dal primo ordine.', 'Aucun article associé. Ajoutez-le depuis sa fiche de stock ou la première commande.') }}</td></tr>{% endfor %}</tbody></table></div>
+<a class="btn btn-secondary" href="{{ url_for('manager_magazzino_list') }}">{{ t('Apri magazzino','Ouvrir le stock') }}</a></div></section>
+<section class="card purchasing-section"><div class="card-body"><h2>{{ t('Ultimi 50 ordini','50 dernières commandes') }}</h2><div class="table-responsive"><table class="data-table"><thead><tr><th>{{ t('Ordine','Commande') }}</th><th>{{ t('Data','Date') }}</th><th>{{ t('Stato','Statut') }}</th></tr></thead><tbody>
+{% for o in supplier_orders %}<tr><td><a href="{{ url_for('manager_ordini_detail',order_id=o.id) }}">#{{ o.order_number }}</a></td><td>{{ o.order_date or '—' }}</td><td>{{ o.status or 'APERTO' }}</td></tr>{% else %}<tr><td colspan="3">{{ t('Nessun ordine','Aucune commande') }}</td></tr>{% endfor %}</tbody></table></div></div></section>
 {% endif %}
 {% endblock %}

@@ -40,16 +40,17 @@
 <form method="post" action="{{ url_for(form_action, item_id=item.id) if is_edit else url_for(form_action) }}">
     <div class="card large-form-card">
         <div class="card-body">
-            <div class="form-grid-2">
-                <div class="form-field">
+            <div class="vehicle-fields">
+                <label class="vehicle-field">{{ t('Unità di misura','Unité de mesure') }}{% if item %}<input value="{{ item.unita_misura }}" readonly>{% else %}<select name="unita_misura">{% for unit in ['pz','kg','m','m2','m3','l'] %}<option value="{{ unit }}">{{ unit }}</option>{% endfor %}</select>{% endif %}</label>
+                <div class="vehicle-field">
                     <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
                     <input type="text" name="nome" value="{{ item.nome if item else '' }}" required>
                 </div>
-                <div class="form-field">
+                <div class="vehicle-field">
                     <label>{% if lang == 'fr' %}Code article{% else %}Codice articolo{% endif %}*</label>
-                    <input type="text" name="codice" value="{{ item.codice if item else '' }}" required>
+                    {% if item %}<input name="codice" value="{{ item.codice or '' }}" readonly>{% else %}<input type="hidden" name="codice" value=""><p>{{ t('Generato automaticamente al salvataggio (6 cifre).','Généré automatiquement à l’enregistrement (6 chiffres).') }}</p>{% endif %}
                 </div>
-                <div class="form-field">
+                <div class="vehicle-field">
                     <label>{% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}</label>
                     {% if item %}
                         {% set categoria_value = item.categoria_id %}
@@ -68,26 +69,26 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-field">
+                <div class="vehicle-field">
                     <label>{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</label>
                     <input type="number" name="quantita_disponibile" step="0.01" min="0" value="{{ item.quantita_disponibile if item else '' }}">
                 </div>
-                <div class="form-field">
+                <div class="vehicle-field">
                     <label>{% if lang == 'fr' %}Seuil minimum{% else %}Soglia minima{% endif %}</label>
                     <input type="number" name="soglia_minima" step="0.01" min="0" value="{{ item.soglia_minima if item and item.soglia_minima is not none else '' }}">
                 </div>
-                <div class="form-field">
+                <div class="vehicle-field">
                     <label>{% if lang == 'fr' %}Coût unitaire (€){% else %}Costo unitario (€){% endif %}</label>
                     <input type="number" name="costo_unitario" step="0.01" min="0" value="{{ item.costo_unitario if item and item.costo_unitario is not none else '' }}" placeholder="0.00">
                 </div>
             </div>
 
-            <div class="form-field">
+            <div class="vehicle-field">
                 <label>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</label>
                 <textarea name="descrizione">{{ item.descrizione if item else '' }}</textarea>
             </div>
 
-            <div class="form-field">
+            <div class="vehicle-field">
                 <label class="checkbox">
                     <input type="checkbox" name="attivo" {% if item is none or item.attivo %}checked{% endif %}>
                     <span>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>

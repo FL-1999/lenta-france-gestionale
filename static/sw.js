@@ -1,4 +1,4 @@
-const CACHE_NAME = 'app-cache-v20260917r2';
+const CACHE_NAME = 'app-cache-v20260917r3';
 const PRECACHE_NAME = `${CACHE_NAME}-precache`;
 const RUNTIME_NAME = `${CACHE_NAME}-runtime`;
 const OFFLINE_URL = '/offline';

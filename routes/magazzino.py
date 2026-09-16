@@ -20,6 +20,7 @@ from models import (
     MagazzinoItem,
     MagazzinoMacro,
     MagazzinoMovimento,
+    SupplierArticle,
     MagazzinoMovimentoTipoEnum,
     MagazzinoRichiesta,
     MagazzinoRichiestaRiga,
@@ -599,6 +600,7 @@ def capo_magazzino_list(
         query = query.filter(
             or_(
                 MagazzinoItem.codice.ilike(like_pattern),
+                MagazzinoItem.id.in_(db.query(SupplierArticle.magazzino_item_id).filter(SupplierArticle.codice.ilike(like_pattern))),
                 MagazzinoItem.nome.ilike(like_pattern),
             )
         )
@@ -1049,6 +1051,7 @@ def manager_magazzino_archiviati(
             or_(
                 MagazzinoItem.nome.ilike(like_pattern),
                 MagazzinoItem.codice.ilike(like_pattern),
+                MagazzinoItem.id.in_(db.query(SupplierArticle.magazzino_item_id).filter(SupplierArticle.codice.ilike(like_pattern))),
                 MagazzinoCategoria.nome.ilike(like_pattern),
                 MagazzinoMacro.name.ilike(like_pattern),
             )
@@ -1192,6 +1195,7 @@ def _render_magazzino_items_list(
         query = query.filter(
             or_(
                 MagazzinoItem.codice.ilike(like_pattern),
+                MagazzinoItem.id.in_(db.query(SupplierArticle.magazzino_item_id).filter(SupplierArticle.codice.ilike(like_pattern))),
                 MagazzinoItem.nome.ilike(like_pattern),
                 MagazzinoCategoria.nome.ilike(like_pattern),
                 MagazzinoMacro.name.ilike(like_pattern),
@@ -2819,7 +2823,7 @@ def manager_magazzino_new(
 def manager_magazzino_create(
     request: Request,
     nome: str = Form(...),
-    codice: str = Form(...),
+    codice: str = Form(""),
     descrizione: str = Form(""),
     categoria_id: str | None = Form(None),
     quantita_disponibile: str | None = Form(""),
@@ -2828,6 +2832,7 @@ def manager_magazzino_create(
     attivo: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
+    unita_misura: str = Form("pz"),
 ):
     ensure_magazzino_catalog_manager(current_user)
     ensure_magazzino_access(current_user)
@@ -2836,8 +2841,11 @@ def manager_magazzino_create(
     if initial_stock is None or initial_stock < 0:
         raise HTTPException(status_code=400, detail="Quantità iniziale non valida")
 
+    if not nome.strip() or unita_misura not in {'pz','kg','m','m2','m3','l'}:
+        raise HTTPException(400, 'Nome o unità di misura non valida')
     item = MagazzinoItem(
         nome=nome.strip(),
+        unita_misura=unita_misura,
         codice=codice.strip(),
         descrizione=(descrizione or "").strip() or None,
         categoria_id=_parse_categoria_id(categoria_id),
@@ -2890,7 +2898,7 @@ def manager_magazzino_create(
     _invalidate_magazzino_cache()
 
     return RedirectResponse(
-        url=f"{request.url_for('manager_magazzino_list')}?ok=duplicato",
+        url=str(request.url_for("warehouse_item_card", item_id=item.id)),
         status_code=303,
     )
 
