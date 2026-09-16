@@ -4,7 +4,7 @@
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
     navigator.serviceWorker
-      .register('/static/sw.js?v=20260729')
+      .register('/static/sw.js?v=20260916w1')
       .catch(function (error) {
         console.warn('Service worker registration failed:', error);
       });

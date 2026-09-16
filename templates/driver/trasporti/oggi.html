@@ -15,7 +15,7 @@
     <h3>{{ t('Materiale da caricare', 'Matériel à charger') }}</h3>
     {% for req, disponibili in richieste_disponibili %}
       {% for idx in range(req.quantita) %}
-      <div style="border:1px solid #d9d9d9;border-radius:12px;padding:0.8rem;margin-bottom:0.7rem;">
+      <div class="workspace-trip" style="margin-bottom:0.7rem;">
         <button class="btn btn-secondary" type="button" onclick="togglePicker('pick_{{ req.id }}_{{ idx }}')" style="width:100%;font-size:1.1rem;">☐ {{ req.tipo_attrezzatura|capitalize }} {{ idx + 1 }}</button>
         <div id="pick_{{ req.id }}_{{ idx }}" style="display:none;margin-top:.5rem;">
           <select name="req_{{ req.id }}_{{ idx }}" style="width:100%;font-size:1.1rem;padding:0.8rem;">

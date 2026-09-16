@@ -1,0 +1,51 @@
+{% from 'shared/workspace_icons.html' import icon %}
+{% macro item(href, label, symbol, active=false) -%}
+<a class="workspace-nav-link{% if active %} is-active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}>{{ icon(symbol) }}<span>{{ label }}</span></a>
+{%- endmacro %}
+<aside class="workspace-sidebar" id="workspace-sidebar" aria-label="{{ t('Menu principale', 'Menu principal') }}" tabindex="-1">
+  <div class="workspace-sidebar-brand"><a href="{{ home_path }}"><img src="/static/img/logo.png" alt="Lenta France — Fondations spéciales" width="140" height="43"></a><button class="workspace-sidebar-close" type="button" data-workspace-close aria-label="{{ t('Chiudi menu', 'Fermer le menu') }}">{{ icon('close') }}</button></div>
+  <nav class="workspace-navigation" aria-label="{{ t('Navigazione principale', 'Navigation principale') }}">
+    {{ item(home_path, t('Dashboard', 'Tableau de bord') if is_manager or is_capo else (t('I miei viaggi','Mes trajets') if active_role_value == 'driver' else (t('Gabbie armatura',"Cages d’armature") if active_role_value == 'ferraiolo' else t('Dashboard magazzino','Tableau de bord entrepôt'))), 'home', is_home_active) }}
+    {% if is_manager or is_capo %}
+      {{ item('/operazioni', t('Oggi','Aujourd’hui'), 'today', current_path == '/operazioni') }}
+      {{ item('/operazioni/pianificazione', t('Pianificazione','Planning'), 'calendar', current_path.startswith('/operazioni/pianificazione')) }}
+    {% elif active_role_value == 'driver' %}
+      {{ item(url_for('driver_trasporti_oggi'), t('Viaggio oggi',"Trajet aujourd’hui"), 'today', current_path == '/driver/trasporti/oggi') }}
+    {% endif %}
+    {% if is_manager or is_capo %}
+      <p class="workspace-nav-label">{{ t('Operatività','Opérations') }}</p>
+      {% if is_manager %}{{ item('/manager/cantieri', t('Cantieri','Chantiers'), 'site', is_cantieri_active) }}{% endif %}
+      {{ item('/manager/rapportini' if is_manager else '/capo/rapportini', t('Rapportini','Rapports journaliers'), 'report', current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') or current_path.startswith('/operazioni/rapportini')) }}
+      {{ item('/manager/fiches' if is_manager else '/capo/fiches', 'Fiches', 'file', '/fiches' in current_path or '/fiche' in current_path) }}
+      {% if is_manager %}{{ item(url_for('manager_production_dashboard'), t('Produzione','Production'), 'chart', current_path.startswith('/manager/dashboard/produzione')) }}{% endif %}
+    {% endif %}
+    {% if show_magazzino or (show_trasporti and active_role_value != 'driver') or show_depositi %}
+      <p class="workspace-nav-label">{{ t('Risorse','Ressources') }}</p>
+      {% if is_manager %}{{ item('/manager/ordini', t('Ordini','Commandes'), 'file', current_path.startswith('/manager/ordini')) }}{% endif %}
+      {% if show_magazzino %}
+        {{ item(magazzino_path, t('Magazzino','Entrepôt'), 'box', is_magazzino_active and current_path != home_path) }}
+        {% if is_capo %}{{ item(url_for('capo_magazzino_richieste'), t('Le mie richieste','Mes demandes'), 'today', current_path.startswith('/capo/magazzino/richieste')) }}{% endif %}
+      {% endif %}
+      {% if show_trasporti and active_role_value != 'driver' %}{{ item(trasporti_path, t('Trasporti','Transports'), 'truck', is_trasporti_active) }}{% endif %}
+      {% if show_depositi %}{{ item(depositi_path, t('Depositi','Dépôts'), 'box', is_depositi_active) }}{% endif %}
+      {% if is_manager %}{{ item(url_for('manager_attrezzature_list'), t('Attrezzature','Équipements'), 'settings', current_path.startswith('/manager/attrezzature')) }}{% endif %}
+      {% if show_personale %}
+        {{ item(url_for('manager_personale_list'), t('Personale','Personnel'), 'users', current_path.startswith('/manager/personale') and 'presenze' not in current_path) }}
+        {{ item(url_for('manager_personale_presenze'), t('Presenze','Présences'), 'calendar', 'presenze' in current_path) }}
+      {% endif %}
+    {% endif %}
+    {% if has_perm(user, 'gabbie.read') and active_role_value != 'ferraiolo' %}{{ item(url_for('gabbie_home'), t('Gabbie armatura',"Cages d’armature"), 'grid', current_path.startswith('/gabbie')) }}{% endif %}
+    {% if show_settings_dropdown %}
+      <details class="workspace-nav-group"{% if current_path.startswith('/admin') or current_path.startswith('/manager/utenti') or '/audit' in current_path %} open{% endif %}>
+        <summary>{{ icon('settings') }}<span>{{ t('Generali','Général') }}</span><span aria-hidden="true">⌄</span></summary>
+        {{ item(audit_path, 'Audit', 'report', '/audit' in current_path) }}
+        {{ item(report_path, t('Report e riepiloghi','Rapports et synthèses'), 'chart', current_path == '/manager/report') }}
+        {% if can_manage_users %}{{ item('/manager/utenti', t('Utenti','Utilisateurs'), 'users', current_path.startswith('/manager/utenti')) }}{% endif %}
+        {% if show_backup %}{{ item(url_for('admin_backup_export'), 'Backup & Export', 'file') }}{% endif %}
+        {% if show_api_docs %}{{ item('/docs', 'API Docs', 'file') }}{% endif %}
+      </details>
+    {% endif %}
+  </nav>
+  <div class="workspace-sidebar-footer"><strong>Lenta France</strong><span>{{ t('Gestionale interno','Gestion interne') }} · {{ active_role_label }}</span></div>
+</aside>
+<button type="button" class="workspace-scrim" data-workspace-close aria-label="{{ t('Chiudi menu','Fermer le menu') }}" tabindex="-1" hidden></button>

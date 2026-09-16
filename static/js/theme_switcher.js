@@ -1,32 +1,20 @@
-document.addEventListener("DOMContentLoaded", function () {
+(() => {
   const root = document.documentElement;
-  const toggleBtn = document.getElementById("theme-toggle");
-
-  if (!root) return;
-
-  function applyTheme(theme) {
-    if (theme === "light") {
-      root.setAttribute("data-theme", "light");
-    } else {
-      root.setAttribute("data-theme", "dark");
-    }
+  let stored;
+  try { stored = localStorage.getItem('appTheme'); } catch (_) { /* Storage can be disabled. */ }
+  const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  function apply(theme) {
+    root.setAttribute('data-theme', theme);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#111315' : '#f6f6f4');
+    document.getElementById('theme-toggle')?.setAttribute('aria-pressed', String(theme === 'dark'));
   }
-
-  const storedTheme = localStorage.getItem("appTheme");
-  if (storedTheme === "light" || storedTheme === "dark") {
-    applyTheme(storedTheme);
-  } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
-    applyTheme("light");
-  } else {
-    applyTheme("dark");
-  }
-
-  if (toggleBtn) {
-    toggleBtn.addEventListener("click", function () {
-      const current = root.getAttribute("data-theme") === "light" ? "light" : "dark";
-      const next = current === "light" ? "dark" : "light";
-      applyTheme(next);
-      localStorage.setItem("appTheme", next);
+  apply(['light', 'dark'].includes(stored) ? stored : preferred);
+  document.addEventListener('DOMContentLoaded', () => {
+    apply(root.getAttribute('data-theme'));
+    document.getElementById('theme-toggle')?.addEventListener('click', () => {
+      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      apply(next);
+      try { localStorage.setItem('appTheme', next); } catch (_) { /* Keep working without persistence. */ }
     });
-  }
-});
+  });
+})();

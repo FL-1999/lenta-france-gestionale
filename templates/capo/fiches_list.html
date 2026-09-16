@@ -1,0 +1,9 @@
+{% extends 'shared/base.html' %}
+{% block title %}Fiches · Lenta France{% endblock %}
+{% block content %}
+<div class="page-header"><div><p class="page-eyebrow">{{ t('Area Caposquadra', 'Espace Chef d’équipe') }}</p><h1>Fiches</h1><p class="page-subtitle">{{ t('Le schede dei cantieri a te assegnati.', 'Les fiches des chantiers qui vous sont assignés.') }} · {{ total }}</p></div><a class="btn btn-primary" href="/capo/fiches/nuova">{{ t('Nuova fiche', 'Nouvelle fiche') }}</a></div>
+<section class="card"><div class="card-body"><div class="table-wrapper"><table class="data-table"><thead><tr><th>{{ t('Data','Date') }}</th><th>{{ t('Cantiere','Chantier') }}</th><th>{{ t('Elemento','Élément') }}</th><th>{{ t('Tipo','Type') }}</th></tr></thead><tbody>
+{% for fiche in fiches %}<tr><td>{{ fiche.date.strftime('%d/%m/%Y') }}</td><td><a href="/capo/cantieri/{{ fiche.site_id }}">{{ fiche.site.name }}</a></td><td>{{ fiche.numero_pannello or '—' }}</td><td>{{ fiche.fiche_type.value if fiche.fiche_type else '—' }}</td></tr>{% else %}<tr><td colspan="4">{{ t('Nessuna fiche disponibile.', 'Aucune fiche disponible.') }}</td></tr>{% endfor %}
+</tbody></table></div></div></section>
+{% if total_pages > 1 %}<nav class="form-actions" aria-label="{{ t('Pagine fiches','Pages des fiches') }}">{% if page > 1 %}<a class="btn btn-secondary" href="?page={{ page - 1 }}">{{ t('Precedente','Précédent') }}</a>{% endif %}<span>{{ page }} / {{ total_pages }}</span>{% if page < total_pages %}<a class="btn btn-secondary" href="?page={{ page + 1 }}">{{ t('Successiva','Suivant') }}</a>{% endif %}</nav>{% endif %}
+{% endblock %}
