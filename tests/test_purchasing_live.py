@@ -15,7 +15,7 @@ def test_supplier_order_partial_and_final_receipt_in_browser(live_operations):
         db.add(category);db.commit();cat_id=category.id
     with sync_playwright() as pw:
         browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
-        context=browser.new_context(viewport={'width':1440,'height':1000})
+        context=browser.new_context(viewport={'width':1440,'height':1000}, reduced_motion='reduce')
         page=context.new_page();errors=[];failures=[]
         page.on('pageerror',lambda e: errors.append(str(e)))
         page.on('response',lambda r: failures.append(r.url) if r.status>=500 else None)
