@@ -13,33 +13,41 @@
       {{ item(url_for('driver_trasporti_oggi'), t('Viaggio oggi',"Trajet aujourd’hui"), 'today', current_path == '/driver/trasporti/oggi') }}
     {% endif %}
     {% if is_manager or is_capo %}
-      <p class="workspace-nav-label">{{ t('Operatività','Opérations') }}</p>
+      <p class="workspace-nav-label">{{ t('Cantieri e lavoro','Chantiers et travail') }}</p>
       {% if is_manager %}{{ item('/manager/cantieri', t('Cantieri','Chantiers'), 'site', is_cantieri_active) }}{% endif %}
       {{ item('/manager/rapportini' if is_manager else '/capo/rapportini', t('Rapportini','Rapports journaliers'), 'report', current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') or current_path.startswith('/operazioni/rapportini')) }}
       {{ item('/manager/fiches' if is_manager else '/capo/fiches', 'Fiches', 'file', '/fiches' in current_path or '/fiche' in current_path) }}
-      {% if is_manager %}{{ item(url_for('manager_production_dashboard'), t('Produzione','Production'), 'chart', current_path.startswith('/manager/dashboard/produzione')) }}{% endif %}
     {% endif %}
+    {% if has_perm(user, 'gabbie.read') and active_role_value != 'ferraiolo' %}{{ item(url_for('gabbie_home'), t('Gabbie armatura',"Cages d’armature"), 'grid', current_path.startswith('/gabbie')) }}{% endif %}
     {% if show_magazzino or (show_trasporti and active_role_value != 'driver') or show_depositi %}
-      <p class="workspace-nav-label">{{ t('Risorse','Ressources') }}</p>
+      <p class="workspace-nav-label">{{ t('Logistica e risorse','Logistique et ressources') }}</p>
       {% if is_manager %}{{ item('/manager/ordini', t('Ordini','Commandes'), 'file', current_path.startswith('/manager/ordini')) }}{% endif %}
       {% if show_magazzino %}
-        {{ item(magazzino_path, t('Magazzino','Entrepôt'), 'box', is_magazzino_active and current_path != home_path) }}
+        {{ item(magazzino_path, t('Magazzino','Entrepôt'), 'box', is_magazzino_active and current_path != home_path and not (is_capo and current_path.startswith('/capo/magazzino/richieste'))) }}
         {% if is_capo %}{{ item(url_for('capo_magazzino_richieste'), t('Le mie richieste','Mes demandes'), 'today', current_path.startswith('/capo/magazzino/richieste')) }}{% endif %}
       {% endif %}
       {% if show_trasporti and active_role_value != 'driver' %}{{ item(trasporti_path, t('Trasporti','Transports'), 'truck', is_trasporti_active) }}{% endif %}
       {% if show_depositi %}{{ item(depositi_path, t('Depositi','Dépôts'), 'box', is_depositi_active) }}{% endif %}
       {% if is_manager %}{{ item(url_for('manager_attrezzature_list'), t('Attrezzature','Équipements'), 'settings', current_path.startswith('/manager/attrezzature')) }}{% endif %}
+      {% if is_manager %}
+        {{ item(url_for('manager_machines_list'), t('Macchinari','Machines'), 'settings', current_path.startswith('/manager/macchinari')) }}
+        {{ item(url_for('manager_veicoli_list'), t('Veicoli','Véhicules'), 'truck', current_path.startswith('/manager/veicoli')) }}
+      {% endif %}
+    {% endif %}
       {% if show_personale %}
+        <p class="workspace-nav-label">{{ t('Persone e squadre','Personnel et équipes') }}</p>
         {{ item(url_for('manager_personale_list'), t('Personale','Personnel'), 'users', current_path.startswith('/manager/personale') and 'presenze' not in current_path) }}
         {{ item(url_for('manager_personale_presenze'), t('Presenze','Présences'), 'calendar', 'presenze' in current_path) }}
       {% endif %}
+    {% if is_manager %}
+      <p class="workspace-nav-label">{{ t('Controllo operativo','Suivi opérationnel') }}</p>
+      {{ item(url_for('manager_production_dashboard'), t('Produzione','Production'), 'chart', current_path.startswith('/manager/dashboard/produzione')) }}
+      {{ item(report_path, t('Report e riepiloghi','Rapports et synthèses'), 'chart', current_path == '/manager/report') }}
     {% endif %}
-    {% if has_perm(user, 'gabbie.read') and active_role_value != 'ferraiolo' %}{{ item(url_for('gabbie_home'), t('Gabbie armatura',"Cages d’armature"), 'grid', current_path.startswith('/gabbie')) }}{% endif %}
     {% if show_settings_dropdown %}
       <details class="workspace-nav-group"{% if current_path.startswith('/admin') or current_path.startswith('/manager/utenti') or '/audit' in current_path %} open{% endif %}>
         <summary>{{ icon('settings') }}<span>{{ t('Generali','Général') }}</span><span aria-hidden="true">⌄</span></summary>
         {{ item(audit_path, 'Audit', 'report', '/audit' in current_path) }}
-        {{ item(report_path, t('Report e riepiloghi','Rapports et synthèses'), 'chart', current_path == '/manager/report') }}
         {% if can_manage_users %}{{ item('/manager/utenti', t('Utenti','Utilisateurs'), 'users', current_path.startswith('/manager/utenti')) }}{% endif %}
         {% if show_backup %}{{ item(url_for('admin_backup_export'), 'Backup & Export', 'file') }}{% endif %}
         {% if show_api_docs %}{{ item('/docs', 'API Docs', 'file') }}{% endif %}

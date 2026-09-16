@@ -17,6 +17,7 @@
 </div>
 
 <div class="card card-body">
+  <h2>{{ t('01 · Viaggio e percorso', '01 · Trajet et itinéraire') }}</h2>
   <div class="form-grid" style="gap: 1rem;">
     <div>
       <p><strong>{{ t('Camion', 'Camion') }}</strong><br>{{ ((viaggio.mezzo.marca ~ ' ' ~ viaggio.mezzo.modello)|trim ~ ' (' ~ viaggio.mezzo.targa ~ ')') if viaggio.mezzo else '-' }}</p>
@@ -71,6 +72,7 @@
 </div>
 
 <div class="card card-body" style="margin-top: 1rem;">
+  <h2>{{ t('02 · Carico e materiali', '02 · Chargement et matériel') }}</h2>
   <h3>{{ t('Materiale da caricare (reale o generico)', 'Matériel à charger (réel ou générique)') }}</h3><p>{{ t('Il materiale già caricato resta salvato. Per scaricarlo seleziona Scarica nello scanner.', 'Le matériel déjà chargé reste enregistré. Pour le décharger, sélectionnez Décharger dans le scanner.') }}</p>
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     {% for req, disponibili in richieste_disponibili %}
@@ -91,7 +93,7 @@
 
   <h3>{{ t('Tappe e materiali', 'Étapes et matériel') }}</h3>
   {% for tappa in viaggio.tappe %}
-    <div style="border:1px solid #ddd;padding:0.7rem;margin-bottom:0.7rem; border-radius: 12px;">
+    <div class="workspace-trip" style="margin-bottom:0.7rem;">
       <strong>→ {{ t('TAPPA', 'ÉTAPE') }} {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
       <ul>
         {% for req in viaggio.richieste_attrezzature if req.tappa_id == tappa.id %}
@@ -103,7 +105,9 @@
     </div>
   {% endfor %}
 
-  <h3>{{ t('Scanner QR', 'Scanner QR') }}</h3>
+</div>
+<div class="card card-body" style="margin-top:1rem;">
+  <h2>{{ t('03 · Scanner e attrezzature a bordo', '03 · Scanner et équipements à bord') }}</h2>
   <div id="reader" style="width:320px;max-width:100%;"></div>
   <label for="scan-action">{{ t('Operazione', 'Opération') }}</label>
   <select id="scan-action"><option value="carico">{{ t('Carica', 'Charger') }}</option><option value="scarico">{{ t('Scarica', 'Décharger') }}</option></select>
@@ -122,6 +126,9 @@
     {% endfor %}
   </ul>
 
+</div>
+<div class="card card-body" style="margin-top:1rem;">
+  <h2>{{ t('04 · Partenza e fine viaggio', '04 · Départ et fin du trajet') }}</h2>
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_stato', viaggio_id=viaggio.id) }}" style="margin-top:1rem;">
     <input type="hidden" name="nuovo_stato" value="in_viaggio">
     <button class="btn btn-secondary" type="submit">{{ t('In viaggio', 'En route') }}</button>

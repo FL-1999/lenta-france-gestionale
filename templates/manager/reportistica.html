@@ -156,8 +156,15 @@
     <script>
         const chartData = {{ chart_data | tojson | safe }};
         const ctx = document.getElementById("reportCantieriChart");
-        if (ctx && chartData.length) {
-            new Chart(ctx, {
+        if (ctx && chartData.length && !window.Chart) {
+            ctx.hidden = true;
+            const notice = document.createElement('p');
+            notice.className = 'text-muted';
+            notice.textContent = {{ t('Grafico non disponibile. I dati sono consultabili nella tabella.', 'Graphique indisponible. Les données restent accessibles dans le tableau.') | tojson }};
+            ctx.after(notice);
+        }
+        if (ctx && chartData.length && window.Chart) {
+            const chart = new Chart(ctx, {
                 type: "bar",
                 data: {
                     labels: chartData.map(item => item.label),
@@ -177,6 +184,18 @@
                     }
                 }
             });
+            function updateReportTheme() {
+                const style = getComputedStyle(document.documentElement);
+                const ink = style.getPropertyValue('--ws-ink').trim();
+                const line = style.getPropertyValue('--ws-line').trim();
+                chart.options.plugins = { legend: { labels: { color: ink } } };
+                for (const axis of ['x', 'y']) {
+                    chart.options.scales[axis] = { ...chart.options.scales[axis], ticks: { color: ink }, grid: { color: line } };
+                }
+                chart.update('none');
+            }
+            updateReportTheme();
+            new MutationObserver(updateReportTheme).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
         }
     </script>
 {% endif %}

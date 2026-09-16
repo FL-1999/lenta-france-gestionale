@@ -1,9 +1,11 @@
 /* Lenta Workspace: shared interface for every operational role.
    Legacy page geometry stays in style.css; semantic state colours remain distinct. */
 :root[data-theme] {
-  --ws-canvas:#141416; --ws-paper:#202023; --ws-nav:#19191c; --ws-ink:#f5f5f7;
-  --ws-muted:#abb3bd; --ws-line:#343a42; --ws-hover:#252b32; --ws-input:#13171b;
-  --ws-accent:#c63042; --ws-accent-hover:#ac2637; --ws-tint:#352027;
+  --ws-canvas:#0b192b; --ws-paper:#203b54; --ws-nav:#102237; --ws-ink:#f3f7fc;
+  --ws-muted:#b8c9da; --ws-line:#3a536b; --ws-hover:#294861; --ws-input:#142b40;
+  --ws-accent:#c82945; --ws-accent-hover:#ad213a; --ws-tint:#402c40;
+  --ws-section:#192f46; --ws-section-line:#a2c9ef; --ws-glow:#1f4665;
+  --ws-glass:linear-gradient(135deg,#223d55,#162b42 65%); --ws-context-radius:20px;
   --ws-success:#a5ddba; --ws-success-bg:#20382a; --ws-warning:#f0cd8b; --ws-warning-bg:#3a3020;
   --ws-danger:#ffc0c7; --ws-danger-bg:#40242a; --ws-info:#b6d6f6; --ws-info-bg:#223349;
   --ws-sidebar:224px; --ws-header:64px;
@@ -11,6 +13,7 @@
   --color-bg-card-strong:var(--ws-paper); --color-bg-navbar:var(--ws-nav); --color-bg-table-head:var(--ws-hover);
   --color-bg-row-alt:var(--ws-input); --color-border-soft:var(--ws-line); --color-border-strong:var(--ws-line);
   --color-text-main:var(--ws-ink); --color-text-strong:var(--ws-ink); --color-text-muted:var(--ws-muted); --color-text-subtle:var(--ws-muted);
+  --color-text-primary:var(--ws-ink); --color-text-secondary:var(--ws-muted);
   --color-nav-text:var(--ws-ink); --color-nav-hover:var(--ws-hover); --color-accent:var(--ws-accent); --color-accent-soft:var(--ws-tint);
   --color-kpi-bg:var(--ws-paper); --color-kpi-text:var(--ws-muted); --color-kpi-value:var(--ws-ink); --color-kpi-sub:var(--ws-muted);
   --color-kpi-border:var(--ws-line); --color-kpi-shadow:none; --color-btn-primary-bg:var(--ws-accent);
@@ -26,16 +29,18 @@
   --color-nav-text-hover:var(--ws-ink); --color-table-head-text:var(--ws-muted);
   --color-btn-primary-bg-hover:var(--ws-accent-hover); --color-btn-secondary-bg-hover:var(--ws-hover);
   --shadow-card-subtle:none;
-  --ws-card-shadow:0 2px 8px #00000018,0 14px 32px #00000012;
+  --ws-card-shadow:0 3px 8px #030d1c16,0 12px 26px #030d1c20;
 }
 :root[data-theme="light"] {
-  --ws-canvas:#f5f5f7; --ws-paper:#fff; --ws-nav:#ededf0; --ws-ink:#1d1d1f;
-  --ws-muted:#58656e; --ws-line:#dde2e1; --ws-hover:#eef1f0; --ws-input:#fafbf9; --ws-tint:#fbeef0;
+  --ws-canvas:#e4e4df; --ws-paper:#fffefa; --ws-nav:#edede8; --ws-ink:#162b41;
+  --ws-muted:#455b70; --ws-line:#c3cfcd; --ws-hover:#e5edec; --ws-input:#fffefa; --ws-tint:#fbeef0;
+  --ws-section:#f2f2ed; --ws-section-line:#365965; --ws-glow:#d7e0e0;
+  --ws-glass:linear-gradient(135deg,#e5edec,#f2f2ed); --ws-context-radius:22px;
   --ws-success:#24613e; --ws-success-bg:#eaf5ee; --ws-warning:#795114; --ws-warning-bg:#fcf2dd;
   --ws-danger:#9e2433; --ws-danger-bg:#fcebef; --ws-info:#254f7e; --ws-info-bg:#ebf3fb;
   --ws-card-shadow:0 2px 5px #18202c04,0 12px 28px #18202c06;
 }
-body.workspace-ui { margin:0; background:var(--ws-canvas)!important; color:var(--ws-ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; font-size:14px; line-height:1.5; }
+body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--ws-glow),transparent 65%) var(--ws-canvas)!important; background-attachment:fixed!important; color:var(--ws-ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; font-size:14px; line-height:1.5; }
 .workspace-ui *, .workspace-ui *::before, .workspace-ui *::after { box-sizing:border-box; }
 .workspace-ui [hidden] { display:none!important; }
 .workspace-ui :focus-visible { outline:3px solid var(--ws-accent); outline-offset:3px; }
@@ -202,10 +207,97 @@ body.workspace-ui { margin:0; background:var(--ws-canvas)!important; color:var(-
 }
 @media(pointer:coarse) { .workspace-ui .btn,.workspace-ui .workspace-nav-link,.workspace-ui .nav-dropdown__item,.workspace-ui .theme-toggle-btn,.workspace-ui .lang-flag { min-height:44px; } }
 @media(prefers-reduced-motion:reduce) { .workspace-ui *, .workspace-ui *::before, .workspace-ui *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+/* Context hierarchy: glass for a work area, solid paper for its contents.
+   Explicit sections and existing top-level cards share the same language;
+   nested cards, individual KPI values and printable technical sheets do not
+   acquire a second accent rail. No JavaScript moves forms or business controls. */
+.workspace-ui .workspace-topbar { background:var(--ws-nav); }
+.workspace-ui main a:not(.btn):not(.button):not(.shortcut-card-link):not(.site-detail-link):not(.trip-block) { color:var(--ws-section-line); }
+.workspace-ui .workspace-context,
+.workspace-ui main .card:not(.card .card):not(.workspace-context .card):not(.module-card):not(.kpi-card):not(.technical-sheet .card),
+.workspace-ui main > .form-card,
+.workspace-ui .dashboard-reporting-suite {
+  background:var(--ws-glass)!important; border:1px solid var(--ws-line)!important;
+  border-left:3px solid var(--ws-section-line)!important; border-radius:var(--ws-context-radius)!important;
+  box-shadow:inset 0 1px 0 #ffffff14,var(--ws-card-shadow)!important;
+}
+.workspace-ui .workspace-context { padding:24px; margin:0 0 26px; min-width:0; }
+.workspace-context-heading { display:flex; align-items:center; gap:13px; margin:0 0 20px; }
+.workspace-context-heading h2 { margin:0; }
+.workspace-context-heading p { color:var(--ws-muted); font-size:13px; margin:4px 0 0; }
+.workspace-context-number { flex-shrink:0; display:grid; place-items:center; width:36px; height:36px; border:1px solid var(--ws-line); border-radius:11px; color:var(--ws-section-line); font-size:12px; }
+.workspace-context .dashboard-modules-grid,.workspace-context .workspace-modules { margin:0; gap:16px; }
+.workspace-ui .workspace-context .dashboard-modules-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); }
+.workspace-ui .workspace-context .module-card { margin:0; }
+.workspace-ui .workspace-context .module-card .card-header { border-bottom:0; padding-bottom:0; }
+.workspace-ui .workspace-context .module-card .card-body { padding-top:12px; }
+.workspace-ui .workspace-context .module-card .card-body p { color:var(--ws-muted); font-size:13px; margin:0 0 18px; }
+.workspace-ui .workspace-context .module-card .card-title { gap:10px; }
+.workspace-ui .workspace-context .module-card .card-icon { background:none!important; color:var(--ws-section-line)!important; padding:0; width:auto; height:auto; }
+.workspace-ui .workspace-context .dashboard-kpi-grid { margin:0 0 20px; }
+.workspace-ui .workspace-context-links { display:flex; flex-wrap:wrap; gap:12px; margin:18px 0 0; }
+.workspace-ui .workspace-context-links a { font-size:13px; text-underline-offset:4px; }
+.workspace-ui .workspace-overview { background:var(--ws-glass); border-radius:14px; box-shadow:inset 0 1px 0 #ffffff14; }
+.workspace-ui .workspace-overview-label { color:var(--ws-ink); }
+.workspace-ui .workspace-module { background:var(--ws-paper); }
+.workspace-ui :is(.btn,.button) { border-radius:10px!important; }
+.workspace-ui :is(.btn-outline-secondary,.btn-outline-primary) { background:var(--ws-paper)!important; color:var(--ws-ink)!important; border:1px solid var(--ws-line)!important; }
+.workspace-ui :is(.form-section,.form-section-wrapper) { padding:20px; margin:22px 0; border:1px solid var(--ws-line); border-left:3px solid var(--ws-section-line); border-radius:16px; background:var(--ws-paper); }
+.workspace-ui :is(.form-section,.form-section-wrapper) :is(.form-section,.form-section-wrapper) { border-left-width:1px; padding:14px; }
+.workspace-ui :is(.section-title,.form-section-title) { color:var(--ws-ink); margin-top:0; }
+.workspace-ui .form-step-nav { gap:10px; }
+.workspace-ui .workspace-trip { background:var(--ws-paper); border-radius:14px; }
+.workspace-ui :is(.workspace-trip,.workspace-context,.form-section,.form-section-wrapper) { scroll-margin-top:calc(var(--ws-header) + 20px); }
+.workspace-ui main > .card + .card { margin-top:24px; }
+.workspace-ui .workspace-subsection { border-top:1px solid var(--ws-line); padding-top:20px; margin-top:24px; }
+.workspace-equipment-grid { display:grid; grid-template-columns:minmax(0,1fr) 100px 100px; gap:12px; }
+.workspace-equipment-grid > * { min-width:0; }
+.workspace-ui .workspace-nav-label:not(:first-child) { border-top:1px solid var(--ws-line); padding-top:18px; }
+.workspace-ui :is(.filter-card,.filters-card,.filter-bar,.filters-bar,.filter-panel,.filters-panel,.table-filters) { background:var(--ws-section); border-color:var(--ws-line); color:var(--ws-ink); }
+.workspace-ui :is(.magazzino-pill,.nav-pill,.tab-button) { color:var(--ws-ink); border-color:var(--ws-line); }
+/* Older technical/editorial surfaces used fixed dark colours. Keep diagrams,
+   progress/status colours and PDF paper intact, theme only their app chrome. */
+.workspace-ui :is(.project-summary-card,.project-section-heading,.project-equipment-grid,.project-coupe-card,.project-block,.theoretical-soil-builder,.economics-weekend-panel,.economics-json-preview,.economics-overview-item,.economics-stacked-list > div,.fiche-creation-summary,.site-progress-card) { background:var(--ws-paper); color:var(--ws-ink); border-color:var(--ws-line); box-shadow:var(--ws-card-shadow); }
+.workspace-ui .project-coupe-card { background:var(--ws-glass); border-left:3px solid var(--ws-section-line); }
+.workspace-ui :is(.project-summary-value,.project-section-heading h2,.project-coupe-card__header h3,.project-block h4,.project-field .form-label,.project-equipment-row) { color:var(--ws-ink); }
+.workspace-ui :is(.project-summary-label,.project-coupe-card__eyebrow,.project-equipment-row--head,.theoretical-soil-row--head,.soil-legend,.note-summary-lbl,.quick-due-btn) { color:var(--ws-muted); }
+.workspace-ui :is(.project-summary-value--ok) { color:var(--ws-success); }
+.workspace-ui :is(.project-summary-value--warning,.economics-weekend-badge.is-warning) { color:var(--ws-warning); }
+.workspace-ui .project-config-note { color:var(--ws-info); background:var(--ws-info-bg); border-color:var(--ws-line); }
+.workspace-ui .project-sticky-actions { background:var(--ws-nav); border-color:var(--ws-line); bottom:14px; z-index:70; }
+.workspace-ui :is(.gab-modal__box,.map-modal__panel,.map-modal__header,.modal-content) { background:var(--ws-section); color:var(--ws-ink); border-color:var(--ws-line); }
+.workspace-ui .workspace-danger { border-left-color:var(--ws-danger)!important; }
+.workspace-ui .workspace-danger .card-title { color:var(--ws-danger)!important; }
+.workspace-ui :is(.map-extra-filters label,.map-legend) { color:var(--ws-muted); }
+.workspace-ui .planner-day { background:var(--ws-section); border-color:var(--ws-line); }
+.workspace-ui .trip-block { color:#fff; }
+.workspace-ui .trip-block.stato-in_carico { color:#162b41; }
+.workspace-ui :is(.advanced-progress-summary-card,.advanced-preview-row,.coupe-metric-card,.fiche-summary-item,.production-stat,.courbe-table,.cantiere-stepper-item) { background:var(--ws-paper); color:var(--ws-ink); border-color:var(--ws-line); }
+.workspace-ui :is(.advanced-progress-section,.courbe-beton-form) { background:var(--ws-glass); border-color:var(--ws-line); border-left:3px solid var(--ws-section-line); box-shadow:var(--ws-card-shadow); }
+.workspace-ui :is(.advanced-preview-modal__panel,.courbe-chart-card) { background:var(--ws-section); color:var(--ws-ink); border-color:var(--ws-line); }
+.workspace-ui :is(.production-stat__value,.coupe-metric-card strong,.courbe-input-grid h4,.courbe-table__head,.courbe-toggle,.fiche-summary-item strong) { color:var(--ws-ink); }
+.workspace-ui :is(.production-group__title,.production-stat__label,.production-stat__sub,.coupe-metric-card span) { color:var(--ws-muted); }
+.workspace-ui :is(.production-stat__value--under,.coupe-metric-card--future strong,.advanced-progress-summary-card__percent) { color:var(--ws-success); }
+.workspace-ui .production-stat__value--over { color:var(--ws-danger); }
+.workspace-ui .production-stat__sub--warn { color:var(--ws-warning); }
+.workspace-ui :is(.production-stats-badge,.fiche-coupe-validation--neutral) { background:var(--ws-info-bg); color:var(--ws-info); border-color:var(--ws-line); }
+.workspace-ui .fiche-coupe-validation--valid { background:var(--ws-success-bg); color:var(--ws-success); }
+.workspace-ui .fiche-coupe-validation--invalid { background:var(--ws-danger-bg); color:var(--ws-danger); }
+.workspace-ui .courbe-beton-form :is(.form-label,.form-text,.text-muted,.form-control,.form-control::placeholder) { color:var(--ws-ink)!important; }
+.workspace-ui .fiche-creation-summary { position:static; top:auto; }
+.workspace-ui .cantiere-stepper-item.is-active { background:var(--ws-hover); box-shadow:inset 3px 0 var(--ws-section-line); }
+@media(max-width:1023px) { .workspace-ui .project-sticky-actions { bottom:calc(74px + env(safe-area-inset-bottom)); } }
+@media(max-width:767px) {
+  .workspace-equipment-grid { grid-template-columns:minmax(0,1fr) 62px 62px; gap:6px; }
+  .workspace-ui .workspace-equipment-grid input { padding:10px 5px; }
+  .workspace-ui .workspace-context { padding:16px; margin-bottom:20px; }
+  .workspace-context-heading { margin-bottom:16px; align-items:flex-start; }
+  .workspace-ui :is(.form-section,.form-section-wrapper) { padding:14px; margin:18px 0; }
+}
 @media print {
   .workspace-sidebar,.workspace-topbar,.workspace-ui .workspace-bottom-nav,.workspace-scrim,.workspace-skip { display:none!important; }
   .workspace-auth .workspace-frame { margin-left:0; }
   .workspace-ui .container.main-content { padding:0; min-height:0; max-width:none; }
-  :root[data-theme] { --ws-canvas:#fff; --ws-paper:#fff; --ws-ink:#000; --ws-muted:#333; --ws-line:#ccc; --ws-input:#fff; --ws-hover:#eee; }
+  :root[data-theme] { --ws-canvas:#fff; --ws-paper:#fff; --ws-ink:#000; --ws-muted:#333; --ws-line:#ccc; --ws-input:#fff; --ws-hover:#eee; --ws-glass:none; --ws-section:#fff; --ws-section-line:#666; --ws-glow:transparent; --ws-card-shadow:none; }
   .workspace-ui :is(.table-responsive,.table-wrapper,.workspace-table-scroll) { overflow:visible; }
 }

@@ -23,6 +23,8 @@
 {% endif %}
 
 <form method="post" class="card card-body" action="{{ form_action }}">
+  <section class="form-section">
+  <h2>{{ t('01 · Viaggio e assegnazione', '01 · Trajet et affectation') }}</h2>
   <div class="form-grid">
     <div class="form-group">
       <label class="form-label">{{ t('Codice viaggio', 'Code trajet') }}</label>
@@ -91,7 +93,9 @@
     </div>
   </div>
 
-  <h3 style="margin-top:1.5rem;">{{ t('Tappe', 'Étapes') }}</h3>
+  </section>
+  <section class="form-section">
+  <h2>{{ t('02 · Tappe', '02 · Étapes') }}</h2>
   <p class="text-muted">{{ t('Ogni tappa usa un luogo esistente. Se lasci vuoto, verrà usata la destinazione principale.', 'Chaque étape utilise un lieu existant. Si laissé vide, la destination principale sera utilisée.') }}</p>
   <div class="form-grid">
     {% for idx in range(0, form_data.tappa_destinazione|length) %}
@@ -107,15 +111,17 @@
     {% endfor %}
   </div>
 
-  <h3 style="margin-top:1.5rem;">{{ t('Richiesta attrezzature', 'Demande d\'équipements') }}</h3>
-  <div style="display:grid;grid-template-columns:minmax(180px,1fr) 120px 120px;gap:0.75rem;">
+  </section>
+  <section class="form-section">
+  <h2>{{ t('03 · Richiesta attrezzature', '03 · Demande d’équipements') }}</h2>
+  <div class="workspace-equipment-grid">
     {% for idx in range(0, form_data.tipo_attrezzatura|length) %}
     <input class="form-control" name="tipo_attrezzatura" placeholder="{{ t('pompa', 'pompe') }}" value="{{ form_data.tipo_attrezzatura[idx] }}" />
     <input class="form-control" type="number" min="1" value="{{ form_data.quantita[idx] }}" name="quantita" />
     <input class="form-control" type="number" min="1" value="{{ form_data.richiesta_tappa_idx[idx] }}" name="richiesta_tappa_idx" placeholder="{{ t('Tappa', 'Étape') }}" />
     {% endfor %}
   </div>
-  <br>
+  </section>
   <button class="btn btn-primary" type="submit">{{ t('Salva modifiche', 'Enregistrer les modifications') if mode == "edit" else t('Salva viaggio', 'Enregistrer trajet') }}</button>
 </form>
 {% endblock %}

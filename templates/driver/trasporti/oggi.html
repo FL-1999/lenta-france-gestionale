@@ -11,7 +11,7 @@
   <p><strong>{{ t('Partenza prevista:', 'Départ prévu :') }}</strong> {{ viaggio.departure_display }}</p>
   <p><strong>{{ t('Arrivo stimato:', 'Arrivée estimée :') }}</strong> {{ viaggio.arrival_estimate_display }}</p>
   {% if trip_google_maps_url %}<p><a class="btn btn-secondary" href="{{ trip_google_maps_url }}" target="_blank" rel="noopener">🧭 {{ t('Apri in Google Maps', 'Ouvrir dans Google Maps') }}</a></p>{% endif %}
-  <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
+  <form class="workspace-subsection" method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
     <h3>{{ t('Materiale da caricare', 'Matériel à charger') }}</h3>
     {% for req, disponibili in richieste_disponibili %}
       {% for idx in range(req.quantita) %}

@@ -46,16 +46,20 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   if (!window.ApexCharts) return;
 
-  const palette = {
-    primary: "#7c8dff",
-    secondary: "#38bdf8",
-    success: "#34d399",
-    danger: "#fb7185",
-    glow: "rgba(124, 141, 255, 0.35)",
-    grid: "rgba(148, 163, 184, 0.18)",
-    text: "#dbe5f5",
-    muted: "#94a3b8",
+  const themePalette = () => {
+    const style = getComputedStyle(document.documentElement);
+    const token = name => style.getPropertyValue(name).trim();
+    return {
+      primary: token('--ws-accent'), secondary: token('--ws-section-line'),
+      success: token('--ws-success'), danger: token('--ws-danger'),
+      grid: token('--ws-line'), text: token('--ws-ink'), muted: token('--ws-muted'),
+      paper: token('--ws-paper'), track: token('--ws-input'),
+    };
   };
+  const palette = themePalette();
+  const charts = [];
+  const tooltipTheme = () => document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const baseChartOptions = {
     chart: {
@@ -63,7 +67,7 @@ document.addEventListener("DOMContentLoaded", function () {
       zoom: { enabled: false },
       foreColor: palette.text,
       animations: {
-        enabled: true,
+        enabled: !reducedMotion,
         easing: "easeinout",
         speed: 700,
       },
@@ -77,7 +81,7 @@ document.addEventListener("DOMContentLoaded", function () {
       labels: { colors: palette.text },
     },
     tooltip: {
-      theme: "dark",
+      theme: tooltipTheme(),
     },
   };
 
@@ -141,12 +145,12 @@ document.addEventListener("DOMContentLoaded", function () {
       markers: {
         size: 3,
         hover: { size: 6 },
-        colors: ["#0f172a"],
+        colors: [palette.paper],
         strokeColors: [palette.primary],
       },
     });
 
-    reportsChart.render();
+    charts.push({chart:reportsChart, kind:'reports', ready:reportsChart.render()});
   }
 
   const hoursTarget = document.getElementById("chartHoursPerSite");
@@ -180,7 +184,7 @@ document.addEventListener("DOMContentLoaded", function () {
           barHeight: "58%",
           distributed: false,
           colors: {
-            backgroundBarColors: ["rgba(15, 23, 42, 0.5)"],
+            backgroundBarColors: [palette.track],
             backgroundBarRadius: 7,
           },
         },
@@ -190,7 +194,7 @@ document.addEventListener("DOMContentLoaded", function () {
         gradient: {
           type: "horizontal",
           shadeIntensity: 0.8,
-          gradientToColors: ["#67e8f9"],
+          gradientToColors: [palette.secondary],
           opacityFrom: 0.95,
           opacityTo: 0.75,
           stops: [0, 100],
@@ -212,14 +216,14 @@ document.addEventListener("DOMContentLoaded", function () {
         },
       },
       tooltip: {
-        theme: "dark",
+        theme: tooltipTheme(),
         y: {
           formatter: (value) => `${formatNumber(value, 1)} ore`,
         },
       },
     });
 
-    hoursChart.render();
+    charts.push({chart:hoursChart, kind:'hours', ready:hoursChart.render()});
   }
 
   const statusTarget = document.getElementById("chartReportsByStatus");
@@ -236,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       labels,
       series: values,
-      colors: [palette.danger, palette.success, "#22d3ee"].slice(0, values.length),
+      colors: [palette.danger, palette.success, palette.secondary].slice(0, values.length),
       stroke: {
         width: 0,
       },
@@ -280,12 +284,35 @@ document.addEventListener("DOMContentLoaded", function () {
         },
       },
       tooltip: {
+        theme: tooltipTheme(),
         y: {
           formatter: (value) => `${formatNumber(value)} rapportini`,
         },
       },
     });
 
-    statusChart.render();
+    charts.push({chart:statusChart, kind:'status', ready:statusChart.render()});
   }
+  new MutationObserver(() => {
+    for (const entry of charts) Promise.resolve(entry.ready).then(() => {
+      const next = themePalette();
+      const options = {
+        chart: { foreColor: next.text }, grid: { borderColor: next.grid },
+        legend: { labels: { colors: next.text } }, tooltip: { theme: tooltipTheme() },
+      };
+      if (entry.kind === 'status') {
+        options.colors = [next.danger, next.success, next.secondary].slice(0, reportsByStatus.length);
+        options.plotOptions = { pie: { donut: { labels: {name:{color:next.muted}, value:{color:next.text}, total:{color:next.muted}} } } };
+      } else {
+        options.xaxis = { labels:{style:{colors:next.muted}}, axisBorder:{color:next.grid} };
+        options.yaxis = { labels:{style:{colors:next.muted}} };
+        options.colors = [entry.kind === 'hours' ? next.secondary : next.primary];
+        if (entry.kind === 'hours') {
+          options.plotOptions = {bar:{colors:{backgroundBarColors:[next.track]}}};
+          options.fill = {gradient:{gradientToColors:[next.secondary]}};
+        } else options.markers = {colors:[next.paper],strokeColors:[next.primary]};
+      }
+      entry.chart.updateOptions(options, false, false);
+    });
+  }).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
 });
