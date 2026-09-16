@@ -78,7 +78,8 @@ def copy_week_attendance_from_monday(
 
     created = 0
     updated = 0
-    for offset in range(1, 7):
+    # Weekend work is entered explicitly and must never be overwritten here.
+    for offset in range(1, 5):
         day = week_start + timedelta(days=offset)
         existing = presenze_by_day.get(day)
         if existing:

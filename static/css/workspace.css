@@ -45,6 +45,43 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
 .workspace-ui [hidden] { display:none!important; }
 .workspace-ui :focus-visible { outline:3px solid var(--ws-accent); outline-offset:3px; }
 .workspace-icon { width:18px; height:18px; flex-shrink:0; vertical-align:middle; }
+.page-title > .workspace-icon { width:26px; height:26px; margin-right:6px; color:var(--ws-section-line); }
+.workspace-ui .btn > .workspace-icon { margin-right:5px; }
+.workspace-ui .workspace-filter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); gap:16px; align-items:end; }
+.workspace-filter-grid .form-field { display:flex; flex-direction:column; gap:6px; }
+.workspace-filter-grid input { width:100%; min-height:40px; }
+.workspace-filter-grid .form-actions { margin:0; padding:0; }
+.workspace-ui .attendance-extra-day { display:inline-flex; align-items:center; gap:8px; margin:0; white-space:nowrap; }
+.workspace-ui .attendance-extra-day input { width:18px; height:18px; }
+.attendance-help { color:var(--ws-muted); max-width:85ch; }
+.attendance-help strong { display:block; margin-top:6px; color:var(--ws-ink); }
+.workspace-ui .attendance-table { table-layout:auto; }
+.workspace-ui .attendance-table .attendance-person { min-width:180px; }
+.workspace-ui .fiche-site-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:18px; }
+.workspace-ui .workspace-fiche-site { background:var(--ws-paper); border:1px solid var(--ws-line); border-radius:16px; padding:22px; box-shadow:none; }
+.workspace-ui .fiche-sites-section > .card-header { border-bottom:0; padding-bottom:0; }
+.workspace-ui .fiche-site-symbol { display:inline-flex; padding:10px; background:var(--ws-hover); color:var(--ws-section-line); border-radius:10px; margin-bottom:12px; }
+.workspace-ui .fiche-site-card__title { color:var(--ws-ink); font-size:18px; margin:0 0 6px; }
+.workspace-ui .fiche-site-card__meta { color:var(--ws-muted); }
+.workspace-ui .fiche-site-card__progress { height:6px; background:var(--ws-hover); margin:20px 0; }
+.workspace-ui .fiche-site-card__progress span { background:var(--ws-section-line); }
+.workspace-ui .fiche-progress-pill { background:var(--ws-hover); color:var(--ws-ink); border:1px solid var(--ws-line); border-radius:10px; padding:6px 10px; }
+.workspace-ui .fiche-progress-pill--done { background:var(--ws-success-bg); color:var(--ws-success); }
+/* Paper uses technical black ink in both app themes. Keep the historic geometry
+   at a stable width, then scale the entire sheet instead of clipping columns. */
+.workspace-ui #technical-sheet-export :is(h2,h3,h4) { color:#111; font-family:"Courier New",monospace; font-weight:900; letter-spacing:normal; }
+.workspace-ui #technical-sheet-export h2 { font-size:18px; }
+.workspace-ui #technical-sheet-export h3 { font-size:13px; }
+@media screen {
+  .workspace-ui .technical-sheet-viewport { display:block; position:relative; width:100%; max-width:1080px; margin:0 auto; overflow:hidden; }
+  .workspace-ui #technical-sheet-export { width:1080px; max-width:none; min-width:0; transform-origin:top left; margin:0; color:#111; }
+  .workspace-ui #technical-sheet-export .technical-sheet-grid { display:grid; grid-template-columns:200px minmax(0,1fr); padding-right:24px; }
+  .workspace-ui #technical-sheet-export .technical-drawing-layout { display:grid; grid-template-columns:minmax(570px,1fr) 196px; overflow:visible; }
+  .workspace-ui #technical-sheet-export .technical-data-column { grid-column:auto; display:block; min-height:890px; padding-top:76px; }
+  .workspace-ui #technical-sheet-export .technical-ground-column { grid-column:auto; padding:176px 0 0; min-height:920px; }
+  .workspace-ui #technical-sheet-export .technical-sheet__header-details-row { display:flex; }
+  .workspace-ui #technical-sheet-export .technical-sheet__header-table { width:auto; }
+}
 .workspace-skip { position:fixed; z-index:500; top:-100px; left:16px; padding:12px 20px; background:var(--ws-paper); color:var(--ws-ink); }
 .workspace-skip:focus { top:12px; }
 .workspace-sidebar { position:fixed; inset:0 auto 0 0; width:var(--ws-sidebar); z-index:110; display:flex; flex-direction:column; padding:24px 14px 16px; background:var(--ws-nav); border-right:1px solid var(--ws-line); }

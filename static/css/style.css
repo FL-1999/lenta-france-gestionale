@@ -1306,6 +1306,10 @@ body {
     overflow-x: auto;
 }
 
+/* Shared by the app, standalone PDF and print popup: A4 width includes padding
+   and borders. Without this the standalone sheet exceeded the right margin. */
+#technical-sheet-export, #technical-sheet-export * { box-sizing: border-box; }
+
 .stratigrafia-card {
     background: var(--color-bg-card);
     border: 1px solid var(--color-border-soft);

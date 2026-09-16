@@ -1,4 +1,4 @@
-const CACHE_NAME = 'app-cache-v20260916g1';
+const CACHE_NAME = 'app-cache-v20260917r1';
 const PRECACHE_NAME = `${CACHE_NAME}-precache`;
 const RUNTIME_NAME = `${CACHE_NAME}-runtime`;
 const OFFLINE_URL = '/offline';
@@ -10,6 +10,8 @@ const PRECACHE_URLS = [
   '/static/css/style.css',
   '/static/css/workspace.css',
   '/static/js/workspace.js',
+  '/static/js/workspace_icons.js',
+  '/static/js/fiche_sheet.js',
   '/static/js/theme_switcher.js',
   '/static/img/logo.png',
   '/static/img/icon-192.png',

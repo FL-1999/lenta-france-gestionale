@@ -10,6 +10,7 @@
     {% endif %}
 {% endblock %}
 {% block content %}
+{% from "shared/workspace_icons.html" import icon %}
 {% set lang = request.cookies.get('lang', 'it') %}
 
 <div class="page-header">
@@ -25,7 +26,7 @@
             {% if selected_site %}
                 {{ selected_site.name }} – fiches
             {% else %}
-                Fiches per cantiere
+                {{ t("Fiches per cantiere", "Fiches par chantier") }}
             {% endif %}
         </h1>
         <p class="page-subtitle">
@@ -60,28 +61,28 @@
 </div>
 
 {% macro site_progress_card(card) %}
-    <article class="fiche-site-card">
+    <article class="fiche-site-card workspace-fiche-site">
         <div class="fiche-site-card__main">
             <div>
-                <h3 class="fiche-site-card__title">{{ card.site.name }}</h3>
+                <span class="fiche-site-symbol">{{ icon("site") }}</span><h3 class="fiche-site-card__title">{{ card.site.name }}</h3>
                 <p class="fiche-site-card__meta">
                     {% if card.site.code %}{{ card.site.code }} · {% endif %}
-                    {{ card.created }}/{{ card.total }} fiches
+                    {{ card.created }}{% if card.total %}/{{ card.total }}{% endif %} fiches
                     {% if card.total == 0 %}
                         · {% if lang == 'fr' %}total parois non défini{% else %}totale paratie non definito{% endif %}
                     {% endif %}
                 </p>
             </div>
             <div class="fiche-progress-pill {% if card.is_completed %}fiche-progress-pill--done{% endif %}">
-                {{ card.percent }}%
+                {% if card.total %}{{ card.percent }}%{% else %}—{% endif %}
             </div>
         </div>
-        <div class="fiche-site-card__progress" aria-label="Avanzamento fiches {{ card.percent }}%">
+        <div class="fiche-site-card__progress" role="progressbar" aria-valuenow="{{ card.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ t('Avanzamento fiches', 'Avancement des fiches') }}">
             <span style="width: {{ card.percent }}%;"></span>
         </div>
         <div class="fiche-site-card__footer">
             <span class="text-muted">
-                {% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}: {{ card.created }} / {{ card.total }}
+                {{ t('Completato', 'Terminé') if card.is_completed else t('In corso', 'En cours') }}
             </span>
             <a href="{{ url_for('manager_fiches_list') }}?site_id={{ card.site.id }}" class="btn btn-sm btn-secondary">
                 {% if lang == 'fr' %}Ouvrir fiches{% else %}Apri fiches{% endif %}
@@ -93,7 +94,7 @@
 {% if not selected_site %}
     <section class="card fiche-sites-section">
         <div class="card-header">
-            <div class="card-title">🏗️ {% if lang == 'fr' %}Chantiers en cours{% else %}Cantieri in corso{% endif %}</div>
+            <div class="workspace-context-heading"><span class="workspace-context-number">01</span><div><h2>{{ t('Cantieri in corso', 'Chantiers en cours') }}</h2><p>{{ t('Schede e avanzamento del lavoro sul campo.', 'Fiches et avancement des travaux sur le terrain.') }}</p></div></div>
         </div>
         <div class="card-body">
             <div class="fiche-site-grid">
@@ -108,7 +109,7 @@
 
     <section class="card fiche-sites-section">
         <div class="card-header">
-            <div class="card-title">📚 {% if lang == 'fr' %}Chantiers terminés / historique fiches{% else %}Cantieri completati / storico fiches{% endif %}</div>
+            <div class="workspace-context-heading"><span class="workspace-context-number">02</span><div><h2>{{ t('Archivio cantieri completati', 'Archives des chantiers terminés') }}</h2><p>{{ t('Fiches dei lavori conclusi, sempre consultabili.', 'Les fiches des travaux terminés restent consultables.') }}</p></div></div>
         </div>
         <div class="card-body">
             <div class="fiche-site-grid">

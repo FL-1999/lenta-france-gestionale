@@ -109,10 +109,8 @@ def _parse_month(value: str | None) -> tuple[int, int] | None:
 
 
 def _get_week_start(value: date | None) -> date:
-    if value:
-        return value
-    today = date.today()
-    return today - timedelta(days=today.weekday())
+    selected = value or date.today()
+    return selected - timedelta(days=selected.weekday())
 
 
 @router.get(
@@ -339,6 +337,8 @@ def manager_personale_presenze(
     personale_id: Optional[int] = Query(None),
     site_id: Optional[int] = Query(None),
     week_start: Optional[date] = Query(None),
+    show_saturday: bool = False,
+    show_sunday: bool = False,
     autofill: str | None = None,
     autofill_personale: Optional[int] = None,
     session: Session = Depends(get_session),
@@ -365,7 +365,8 @@ def manager_personale_presenze(
         site_id = None
     week_start = _get_week_start(week_start)
     week_end = week_start + timedelta(days=6)
-    week_days = [week_start + timedelta(days=offset) for offset in range(7)]
+    week_days = [week_start + timedelta(days=offset) for offset in range(7)
+                 if offset < 5 or (offset == 5 and show_saturday) or (offset == 6 and show_sunday)]
 
     personale_query = (
         select(Personale)
@@ -593,6 +594,10 @@ def manager_personale_presenze(
             "week_start": week_start,
             "week_end": week_end,
             "week_days": week_days,
+            "show_saturday": show_saturday,
+            "show_sunday": show_sunday,
+            "week_visible_end": week_days[-1],
+            "hidden_weekend_records": sum(1 for p in presenze if p.attendance_date not in week_days),
             "prev_week": week_start - timedelta(days=7),
             "next_week": week_start + timedelta(days=7),
             "attendance_map": attendance_map,
@@ -688,6 +693,8 @@ def manager_personale_presenze_update(
     hours: str = Form(""),
     week_start: str = Form(""),
     personale_filter: str = Form(""),
+    show_saturday: bool = Form(False),
+    show_sunday: bool = Form(False),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -699,7 +706,7 @@ def manager_personale_presenze_update(
 
     parsed_site_id = _parse_int(site_id)
     parsed_hours = _parse_float(hours)
-    redirect_week = _parse_date(week_start) or _get_week_start(None)
+    redirect_week = _get_week_start(_parse_date(week_start))
     redirect_personale = _parse_int(personale_filter)
 
     if status != "WORK":
@@ -716,7 +723,7 @@ def manager_personale_presenze_update(
     session.commit()
 
     url = request.url_for("manager_personale_presenze")
-    url = url.include_query_params(week_start=redirect_week.isoformat())
+    url = url.include_query_params(week_start=redirect_week.isoformat(), show_saturday=str(show_saturday).lower(), show_sunday=str(show_sunday).lower())
     if redirect_personale:
         url = url.include_query_params(personale_id=redirect_personale)
     return RedirectResponse(url=url, status_code=303)
@@ -733,6 +740,8 @@ def manager_personale_presenze_autofill(
     week_start: str = Form(...),
     overwrite: bool = Form(False),
     personale_filter: str = Form(""),
+    show_saturday: bool = Form(False),
+    show_sunday: bool = Form(False),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -742,6 +751,7 @@ def manager_personale_presenze_autofill(
     if not parsed_week_start:
         raise HTTPException(status_code=400, detail="Data non valida")
 
+    parsed_week_start = _get_week_start(parsed_week_start)
     redirect_personale = _parse_int(personale_filter)
 
     created, updated, has_monday = copy_week_attendance_from_monday(
@@ -760,7 +770,7 @@ def manager_personale_presenze_autofill(
         session.commit()
 
     url = request.url_for("manager_personale_presenze")
-    url = url.include_query_params(week_start=parsed_week_start.isoformat())
+    url = url.include_query_params(week_start=parsed_week_start.isoformat(), show_saturday=str(show_saturday).lower(), show_sunday=str(show_sunday).lower())
     if redirect_personale:
         url = url.include_query_params(personale_id=redirect_personale)
     url = url.include_query_params(
