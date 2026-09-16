@@ -2250,7 +2250,7 @@ def manager_ordini_bolle_conferma(
     order = (
         db.query(PurchaseOrder)
         .filter(PurchaseOrder.id == delivery.order_id)
-        .first()
+        .populate_existing().with_for_update().first()
     )
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
@@ -2272,6 +2272,10 @@ def manager_ordini_bolle_conferma(
         url = f"{request.url_for('manager_ordini_detail', order_id=order.id)}?{query_string}"
         return RedirectResponse(url=url, status_code=303)
 
+    # Same lock order as request fulfilment, including several items on one delivery.
+    db.query(MagazzinoItem).filter(MagazzinoItem.id.in_(
+        [line.order_line.magazzino_item_id for line in delivery.lines if line.order_line]
+    )).order_by(MagazzinoItem.id).populate_existing().with_for_update().all()
     existing_movimento = (
         db.query(MagazzinoMovimento.id)
         .filter(MagazzinoMovimento.purchase_delivery_id == delivery.id)
@@ -2350,7 +2354,7 @@ def manager_ordini_scarico(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).populate_existing().with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
 
@@ -2378,7 +2382,7 @@ def manager_ordini_scarico(
         item.id: item
         for item in db.query(MagazzinoItem)
         .filter(MagazzinoItem.id.in_(list(required_by_item.keys())))
-        .all()
+        .order_by(MagazzinoItem.id).populate_existing().with_for_update().all()
     }
     for item_id, required_qty in required_by_item.items():
         item = items.get(item_id)

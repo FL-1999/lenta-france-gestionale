@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import date, datetime, time, timedelta
-from math import ceil
+from math import ceil, isfinite
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Body, Depends, Form, HTTPException, Request
@@ -128,8 +128,9 @@ def _parse_float(value: str | None) -> float | None:
     if value in (None, ""):
         return None
     try:
-        return float(value)
-    except ValueError:
+        parsed = float(str(value).strip().replace(',', '.'))
+        return parsed if isfinite(parsed) else None
+    except (TypeError, ValueError):
         return None
 
 
@@ -2831,12 +2832,16 @@ def manager_magazzino_create(
     ensure_magazzino_catalog_manager(current_user)
     ensure_magazzino_access(current_user)
 
+    initial_stock = _parse_float(quantita_disponibile) if quantita_disponibile not in (None, "") else 0.0
+    if initial_stock is None or initial_stock < 0:
+        raise HTTPException(status_code=400, detail="Quantità iniziale non valida")
+
     item = MagazzinoItem(
         nome=nome.strip(),
         codice=codice.strip(),
         descrizione=(descrizione or "").strip() or None,
         categoria_id=_parse_categoria_id(categoria_id),
-        quantita_disponibile=_parse_float(quantita_disponibile) or 0.0,
+        quantita_disponibile=initial_stock,
         soglia_minima=_parse_float(soglia_minima),
         costo_unitario=_parse_float(costo_unitario),
         attivo=attivo,
@@ -2954,7 +2959,7 @@ def manager_magazzino_update(
     ensure_magazzino_catalog_manager(current_user)
     ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
-    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).populate_existing().with_for_update().first()
     if not item:
         return RedirectResponse(
             url=request.url_for("manager_magazzino_list"),
@@ -2963,8 +2968,8 @@ def manager_magazzino_update(
 
     try:
         quantita_precedente = item.quantita_disponibile or 0.0
-        nuova_quantita = _parse_float(quantita_disponibile) or 0.0
-        if nuova_quantita < 0:
+        nuova_quantita = _parse_float(quantita_disponibile) if quantita_disponibile not in (None, "") else quantita_precedente
+        if nuova_quantita is None or nuova_quantita < 0:
             raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
         item.nome = nome.strip()
@@ -3293,7 +3298,7 @@ def manager_magazzino_rettifica_submit(
     ensure_magazzino_requests_operator(current_user)
     ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
-    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).populate_existing().with_for_update().first()
     if not item:
         return RedirectResponse(
             url=f"{request.url_for('manager_magazzino_list')}?err=item_non_trovato",
@@ -3417,8 +3422,8 @@ def manager_magazzino_scarico(
     ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     try:
-        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
-        if not item:
+        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).populate_existing().with_for_update().first()
+        if not item or not item.attivo:
             raise ValueError(_magazzino_error_message(lang, "item_non_trovato"))
 
         quantita_valore = _parse_float(quantita)
@@ -3514,8 +3519,8 @@ def manager_magazzino_carico_rapido(
     ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     try:
-        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
-        if not item:
+        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).populate_existing().with_for_update().first()
+        if not item or not item.attivo:
             raise ValueError(_magazzino_error_message(lang, "item_non_trovato"))
 
         quantita_valore = _parse_float(quantita)
@@ -3590,8 +3595,8 @@ def manager_magazzino_scarico_rapido(
     ensure_magazzino_access(current_user)
     lang = get_lang_from_request(request)
     try:
-        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
-        if not item:
+        item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).populate_existing().with_for_update().first()
+        if not item or not item.attivo:
             raise ValueError(_magazzino_error_message(lang, "item_non_trovato"))
 
         quantita_valore = _parse_float(quantita)
@@ -3680,7 +3685,7 @@ def manager_magazzino_delete(
     ensure_magazzino_access(current_user)
     if not has_perm(current_user, "records.delete"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
-    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
+    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).populate_existing().with_for_update().first()
     if item:
         quantita_da_archiviare = item.quantita_disponibile or 0.0
         if quantita_da_archiviare > 0:
@@ -3900,18 +3905,21 @@ def manager_magazzino_richiesta_approva(
     richiesta = (
         db.query(MagazzinoRichiesta)
         .options(
-            joinedload(MagazzinoRichiesta.righe).joinedload(
+            selectinload(MagazzinoRichiesta.righe).joinedload(
                 MagazzinoRichiestaRiga.item
             )
         )
         .filter(MagazzinoRichiesta.id == richiesta_id)
-        .first()
+        .populate_existing().with_for_update(of=MagazzinoRichiesta).first()
     )
     if not richiesta:
         return RedirectResponse(
             url=request.url_for("manager_magazzino_richieste"),
             status_code=303,
         )
+
+    if richiesta.stato in (MagazzinoRichiestaStatusEnum.approvata, MagazzinoRichiestaStatusEnum.parziale, MagazzinoRichiestaStatusEnum.evasa):
+        return RedirectResponse(url=request.url_for("manager_magazzino_richiesta_detail", richiesta_id=richiesta.id), status_code=303)
 
     try:
         for riga in richiesta.righe:
@@ -3992,12 +4000,12 @@ async def manager_magazzino_richiesta_evadi(
     richiesta = (
         db.query(MagazzinoRichiesta)
         .options(
-            joinedload(MagazzinoRichiesta.righe).joinedload(
+            selectinload(MagazzinoRichiesta.righe).joinedload(
                 MagazzinoRichiestaRiga.item
             )
         )
         .filter(MagazzinoRichiesta.id == richiesta_id)
-        .first()
+        .populate_existing().with_for_update(of=MagazzinoRichiesta).first()
     )
     if not richiesta:
         return RedirectResponse(
@@ -4011,9 +4019,9 @@ async def manager_magazzino_richiesta_evadi(
     ):
         return RedirectResponse(
             url=(
-                request.url_for(
+                str(request.url_for(
                     "manager_magazzino_richiesta_detail", richiesta_id=richiesta.id
-                )
+                ))
                 + "?err=stato_non_approvato"
             ),
             status_code=303,
@@ -4021,6 +4029,10 @@ async def manager_magazzino_richiesta_evadi(
 
     try:
         form_data = await request.form()
+        # Request first, then stock in a stable order: concurrent approvals/deliveries serialize.
+        db.query(MagazzinoItem).filter(
+            MagazzinoItem.id.in_([r.item_id for r in richiesta.righe])
+        ).order_by(MagazzinoItem.id).populate_existing().with_for_update().all()
         righe_quantita = {}
         item_totals: dict[int, float] = {}
 
@@ -4089,6 +4101,7 @@ async def manager_magazzino_richiesta_evadi(
             )
             riga.quantita_evasa = (riga.quantita_evasa or 0.0) + quantita_da_evadere
             db.add(riga.item)
+            _check_low_stock(db, riga.item)
             db.add(riga)
             movimento = MagazzinoMovimento(
                 item_id=riga.item.id,

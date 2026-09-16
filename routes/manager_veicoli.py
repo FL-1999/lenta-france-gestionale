@@ -93,6 +93,9 @@ def manager_veicoli_list(
         "manager/veicoli/veicoli_list.html",
         {
             "veicoli": veicoli,
+            "vehicle_assignees": {p.id: p for p in db.query(Personale).filter(
+                Personale.id.in_([v.assegnato_a_id for v in veicoli if v.assegnato_a_id])
+            ).all()},
             "page": page,
             "per_page": per_page,
             "total_pages": max(1, (total_count + per_page - 1) // per_page),

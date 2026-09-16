@@ -96,7 +96,7 @@
   </section>
   <section class="form-section">
   <h2>{{ t('02 · Tappe', '02 · Étapes') }}</h2>
-  <p class="text-muted">{{ t('Ogni tappa usa un luogo esistente. Se lasci vuoto, verrà usata la destinazione principale.', 'Chaque étape utilise un lieu existant. Si laissé vide, la destination principale sera utilisée.') }}</p>
+  <p class="text-muted">{{ t('Inserisci le tappe in ordine, senza righe vuote intermedie. La destinazione finale viene aggiunta automaticamente se manca.', 'Saisissez les étapes dans l’ordre, sans lignes vides intermédiaires. La destination finale est ajoutée automatiquement si nécessaire.') }}</p>
   <div class="form-grid">
     {% for idx in range(0, form_data.tappa_destinazione|length) %}
     <div class="form-group">
@@ -114,13 +114,17 @@
   </section>
   <section class="form-section">
   <h2>{{ t('03 · Richiesta attrezzature', '03 · Demande d’équipements') }}</h2>
-  <div class="workspace-equipment-grid">
-    {% for idx in range(0, form_data.tipo_attrezzatura|length) %}
-    <input class="form-control" name="tipo_attrezzatura" placeholder="{{ t('pompa', 'pompe') }}" value="{{ form_data.tipo_attrezzatura[idx] }}" />
-    <input class="form-control" type="number" min="1" value="{{ form_data.quantita[idx] }}" name="quantita" />
-    <input class="form-control" type="number" min="1" value="{{ form_data.richiesta_tappa_idx[idx] }}" name="richiesta_tappa_idx" placeholder="{{ t('Tappa', 'Étape') }}" />
-    {% endfor %}
+  <p class="text-muted">{{ t('Per ogni materiale indica dove caricarlo e dove consegnarlo. 0 = origine del viaggio. Usa il tipo indicato nel catalogo Attrezzature.', 'Pour chaque matériel, indiquez le point de chargement et de livraison. 0 = origine du trajet. Utilisez le type du catalogue Équipements.') }}</p>
+  {% for idx in range(0, form_data.tipo_attrezzatura|length) %}
+  <div class="workspace-trip" style="margin-bottom:16px">
+    <div class="vehicle-fields">
+      <div class="vehicle-field"><label for="req-type-{{ idx }}">{{ t('Tipo attrezzatura', 'Type d’équipement') }}</label><input id="req-type-{{ idx }}" name="tipo_attrezzatura" placeholder="{{ t('pompa', 'pompe') }}" value="{{ form_data.tipo_attrezzatura[idx] }}"></div>
+      <div class="vehicle-field"><label for="req-qty-{{ idx }}">{{ t('Quantità', 'Quantité') }}</label><input id="req-qty-{{ idx }}" type="number" min="1" max="1000" name="quantita" value="{{ form_data.quantita[idx] }}"></div>
+      <div class="vehicle-field"><label for="req-from-{{ idx }}">{{ t('Carico · numero tappa (0 = origine)', 'Chargement · numéro étape (0 = origine)') }}</label><input id="req-from-{{ idx }}" type="number" min="0" name="richiesta_origine_idx" value="{{ form_data.richiesta_origine_idx[idx] if form_data.richiesta_origine_idx is defined and idx < form_data.richiesta_origine_idx|length else 0 }}"></div>
+      <div class="vehicle-field"><label for="req-to-{{ idx }}">{{ t('Consegna · numero tappa', 'Livraison · numéro étape') }}</label><input id="req-to-{{ idx }}" type="number" min="1" name="richiesta_tappa_idx" value="{{ form_data.richiesta_tappa_idx[idx] }}"></div>
+    </div>
   </div>
+  {% endfor %}
   </section>
   <button class="btn btn-primary" type="submit">{{ t('Salva modifiche', 'Enregistrer les modifications') if mode == "edit" else t('Salva viaggio', 'Enregistrer trajet') }}</button>
 </form>

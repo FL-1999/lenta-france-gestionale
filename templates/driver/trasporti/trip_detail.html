@@ -75,7 +75,7 @@
   <h2>{{ t('02 · Carico e materiali', '02 · Chargement et matériel') }}</h2>
   <h3>{{ t('Materiale da caricare (reale o generico)', 'Matériel à charger (réel ou générique)') }}</h3><p>{{ t('Il materiale già caricato resta salvato. Per scaricarlo seleziona Scarica nello scanner.', 'Le matériel déjà chargé reste enregistré. Pour le décharger, sélectionnez Décharger dans le scanner.') }}</p>
   <form method="post" action="{{ url_for('driver_trasporti_viaggi_carico', viaggio_id=viaggio.id) }}">
-    {% for req, disponibili in richieste_disponibili %}
+    {% for req, disponibili in richieste_disponibili if not req.origine_tappa_ordine %}
       {% for idx in range(req.quantita) %}
         <div style="margin-bottom:0.8rem;">
           <label style="display:block;font-weight:700;">☐ {{ req.tipo_attrezzatura|capitalize }} #{{ idx + 1 }} ({{ t('Tappa', 'Étape') }} {{ req.tappa.ordine if req.tappa else 1 }})</label>
@@ -97,7 +97,7 @@
       <strong>→ {{ t('TAPPA', 'ÉTAPE') }} {{ tappa.ordine }}: {{ tappa.destinazione_label }}</strong>
       <ul>
         {% for req in viaggio.richieste_attrezzature if req.tappa_id == tappa.id %}
-          <li>{{ req.tipo_attrezzatura }} x {{ req.quantita }}</li>
+          <li>{{ req.tipo_attrezzatura }} × {{ req.quantita }} · {{ t('Carico', 'Chargement') }}: {{ t('tappa', 'étape') ~ ' ' ~ req.origine_tappa_ordine if req.origine_tappa_ordine else t('origine', 'origine') }} → {{ t('consegna', 'livraison') }}: {{ t('tappa', 'étape') }} {{ tappa.ordine }}</li>
         {% else %}
           <li>{{ t('Nessun materiale', 'Aucun matériel') }}</li>
         {% endfor %}
@@ -108,17 +108,24 @@
 </div>
 <div class="card card-body" style="margin-top:1rem;">
   <h2>{{ t('03 · Scanner e attrezzature a bordo', '03 · Scanner et équipements à bord') }}</h2>
-  <div id="reader" style="width:320px;max-width:100%;"></div>
-  <label for="scan-action">{{ t('Operazione', 'Opération') }}</label>
-  <select id="scan-action"><option value="carico">{{ t('Carica', 'Charger') }}</option><option value="scarico">{{ t('Scarica', 'Décharger') }}</option></select>
+  <p>{{ t('Seleziona l’operazione e la tappa. Inquadra il QR dell’attrezzatura oppure digita il codice stampato. Ogni conferma aggiorna il viaggio.', 'Sélectionnez l’opération et l’étape. Scannez le QR de l’équipement ou saisissez son code imprimé. Chaque confirmation met à jour le trajet.') }}</p>
+  <div class="trip-scan-fields">
+    <div><label for="scan-action">{{ t('Operazione', 'Opération') }}</label><select id="scan-action"><option value="carico">{{ t('Carica', 'Charger') }}</option><option value="scarico">{{ t('Scarica', 'Décharger') }}</option></select></div>
+    <div id="scan-pickup-field"><label for="scan-pickup">{{ t('Punto di carico', 'Point de chargement') }}</label><select id="scan-pickup"><option value="0">{{ t('Origine', 'Origine') }} · {{ viaggio.origine }}</option>{% for stop in viaggio.tappe %}<option value="{{ stop.ordine }}">{{ stop.ordine }} · {{ stop.destinazione }}</option>{% endfor %}</select></div>
+    <div><label for="scan-stop">{{ t('Tappa di consegna / scarico', 'Étape de livraison / déchargement') }}</label><select id="scan-stop">{% if viaggio.tappe|length > 1 %}<option value="">{{ t('Seleziona la tappa', 'Sélectionner l’étape') }}</option>{% endif %}{% for stop in viaggio.tappe %}<option value="{{ stop.id }}">{{ stop.ordine }} · {{ stop.destinazione }}</option>{% else %}<option value="">{{ viaggio.destinazione }}</option>{% endfor %}</select></div>
+  </div>
+  <form id="scan-manual"><div class="trip-scan-fields"><div><label for="scan-code">{{ t('Codice attrezzatura', 'Code équipement') }}</label><input id="scan-code" required autocomplete="off" autocapitalize="characters" placeholder="ATT-…"></div><div style="align-self:end"><button type="submit" class="btn btn-primary">{{ t('Conferma codice', 'Confirmer le code') }}</button></div></div></form>
+  <button type="button" id="scan-camera" class="btn btn-secondary">{{ t('Usa fotocamera', 'Utiliser la caméra') }}</button>
+  <div id="reader" style="width:320px;max-width:100%;margin-top:16px"></div>
   <div id="scan-result" role="status" aria-live="polite" style="margin-top:0.5rem;"></div>
   <button type="button" class="btn btn-secondary" id="scan-next" hidden>{{ t('Scansiona il prossimo QR', 'Scanner le QR suivant') }}</button>
 
+  <a class="btn btn-secondary" id="scan-refresh" href="{{ url_for('driver_trasporti_viaggi_detail', viaggio_id=viaggio.id) }}" hidden>{{ t('Aggiorna elenco e fine viaggio', 'Actualiser la liste et la fin du trajet') }}</a>
   <h3>{{ t('Assegnato', 'Assigné') }}</h3>
   <ul>
     {% for a in viaggio.assegnazioni_attrezzature %}
       <li>
-        {{ a.attrezzatura.codice }} - {{ a.attrezzatura.qr_code }}
+        {{ a.attrezzatura.codice }} · {{ t("Consegnato", "Livré") if a.scaricato else (t("A bordo", "À bord") if a.caricato else t("Da caricare", "À charger")) }}
         {% if a.tappa_destinazione %}(dest: {{ a.tappa_destinazione.destinazione_label if a.tappa_destinazione.destinazione_label is defined else a.tappa_destinazione.destinazione }}){% endif %}
       </li>
     {% else %}
@@ -162,15 +169,20 @@ window.addEventListener('DOMContentLoaded', () => {
     non_disponibile: tr('non disponibile', 'non disponible'),
     non_a_bordo: tr('non caricata su questo viaggio', 'non chargée sur ce trajet'),
     gia_consegnata: tr('già consegnata', 'déjà livrée'),
+    tappa_errata: tr('tappa diversa da quella assegnata', 'étape différente de celle prévue'),
+    fuori_lista: tr('materiale o quantità non previsti per questa tratta; contatta il responsabile', 'matériel ou quantité non prévus pour cette étape ; contactez le responsable'),
   };
 
   let busy = false;
   const next = document.getElementById('scan-next');
   const actionSelect = document.getElementById('scan-action');
+  const stopSelect = document.getElementById('scan-stop');
+  const pickupSelect = document.getElementById('scan-pickup');
+  actionSelect.addEventListener('change', () => { document.getElementById('scan-pickup-field').hidden = actionSelect.value === 'scarico'; });
   next.addEventListener('click', () => {
     busy = false;
     next.hidden = true;
-    actionSelect.disabled = false;
+    actionSelect.disabled = stopSelect.disabled = pickupSelect.disabled = false;
     result.textContent = tr('Inquadra un QR.', 'Visez un QR.');
   });
   function show(message, color) {
@@ -189,25 +201,27 @@ window.addEventListener('DOMContentLoaded', () => {
   function handleCode(code) {
     if (busy) return;
     busy = true;
-    actionSelect.disabled = true;
+    actionSelect.disabled = stopSelect.disabled = pickupSelect.disabled = true;
 
-    fetch(`{{ url_for('driver_trasporti_viaggi_scan', viaggio_id=viaggio.id) }}?action=${encodeURIComponent(actionSelect.value)}`, {
+    fetch(`{{ url_for('driver_trasporti_viaggi_scan', viaggio_id=viaggio.id) }}?action=${encodeURIComponent(actionSelect.value)}&origine_tappa_ordine=${encodeURIComponent(pickupSelect.value)}${stopSelect.value ? '&tappa_id='+encodeURIComponent(stopSelect.value) : ''}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: `qr_code=${encodeURIComponent(code)}`
     })
       .then(async r => {
         if (r.status === 404) { throw new Error('notfound'); }
-        if (!r.ok || r.redirected) { throw new Error('requestfailed'); }
+        if (!r.ok || r.redirected) { const problem = await r.json().catch(() => ({})); throw new Error(typeof problem.detail === 'string' ? problem.detail : 'requestfailed'); }
         return r.json();
       })
       .then(data => {
         const nome = data.nome || data.codice || code;
         if (data.action === 'caricato') {
           show(`✅ ${tr('CARICATO', 'CHARGÉ')}: ${nome}`, '#16a34a');
+          document.getElementById('scan-refresh').hidden = false;
           feedback(true);
         } else if (data.action === 'scaricato') {
           show(`📤 ${tr('SCARICATO', 'DÉCHARGÉ')}: ${nome}`, '#2563eb');
+          document.getElementById('scan-refresh').hidden = false;
           feedback(true);
         } else if (data.action === 'bloccato') {
           const why = REASONS[data.reason] || tr('non caricabile', 'non chargeable');
@@ -221,18 +235,30 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e && e.message === 'notfound') {
           show(`⚠️ ${tr('QR sconosciuto', 'QR inconnu')}: ${code}`, '#d97706');
         } else {
-          show(`${tr('Errore di scansione', 'Erreur de scan')}: ${code}`, '#6b7280');
+          show(tr('Operazione non confermata. ', 'Opération non confirmée. ') + (e.message === 'requestfailed' || e instanceof TypeError ? tr('Verifica la connessione e riprova.', 'Vérifiez la connexion et réessayez.') : e.message), '#6b7280');
         }
         feedback(false);
       }).finally(() => { next.hidden = false; });
   }
-  if (window.Html5Qrcode) {
+  document.getElementById('scan-manual').addEventListener('submit', e => {
+    e.preventDefault();
+    handleCode(document.getElementById('scan-code').value.trim());
+  });
+  const camera = document.getElementById('scan-camera');
+  camera.addEventListener('click', async () => {
+    if (!window.Html5Qrcode) {
+      show(tr('Scanner non disponibile. Puoi inserire il codice manualmente.', 'Scanner indisponible. Vous pouvez saisir le code manuellement.'), '#6b7280');
+      return;
+    }
+    camera.disabled = true;
     const qr = new Html5Qrcode('reader');
-    qr.start({facingMode:'environment'}, {fps:10, qrbox:220}, (decodedText) => handleCode(decodedText))
-      .catch(() => show(tr('Fotocamera non disponibile: verifica i permessi del browser.', 'Caméra indisponible : vérifiez les autorisations du navigateur.'), '#6b7280'));
-  } else {
-    show(tr('Scanner non disponibile. Ricarica la pagina.', 'Scanner indisponible. Rechargez la page.'), '#6b7280');
-  }
+    try {
+      await qr.start({facingMode:'environment'}, {fps:10, qrbox:220}, handleCode);
+    } catch (_) {
+      camera.disabled = false;
+      show(tr('Fotocamera non disponibile: verifica i permessi o inserisci il codice.', 'Caméra indisponible : vérifiez les autorisations ou saisissez le code.'), '#6b7280');
+    }
+  });
 });
 </script>
 {% endblock %}

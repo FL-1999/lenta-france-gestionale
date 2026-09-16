@@ -338,3 +338,25 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
   :root[data-theme] { --ws-canvas:#fff; --ws-paper:#fff; --ws-ink:#000; --ws-muted:#333; --ws-line:#ccc; --ws-input:#fff; --ws-hover:#eee; --ws-glass:none; --ws-section:#fff; --ws-section-line:#666; --ws-glow:transparent; --ws-card-shadow:none; }
   .workspace-ui :is(.table-responsive,.table-wrapper,.workspace-table-scroll) { overflow:visible; }
 }
+
+/* Vehicle editor: one rail per context, usable field sizes on all screens. */
+.vehicle-editor { display:grid; gap:20px; }
+.workspace-ui .vehicle-editor .workspace-context { margin:0; padding:26px; }
+.vehicle-fields,.trip-scan-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px 28px; }
+.vehicle-field { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.vehicle-field label,.trip-scan-fields label { display:block; font-weight:600; font-size:14px; }
+.workspace-ui .vehicle-field :is(input,select,textarea),.workspace-ui .trip-scan-fields :is(input,select) { width:100%; max-width:100%; min-height:46px; padding:11px 13px; box-sizing:border-box; font-size:16px; }
+.vehicle-field small,.vehicle-availability small { color:var(--ws-muted); font-size:13px; display:block; line-height:1.5; }
+.vehicle-wide { grid-column:1/-1; }
+.vehicle-availability { display:flex; align-items:center; gap:14px; padding:17px; border:1px solid var(--ws-line); border-radius:14px; background:var(--ws-paper); cursor:pointer; }
+.vehicle-availability input { width:20px; height:20px; flex-shrink:0; }
+.vehicle-gps { margin-top:22px; border-top:1px solid var(--ws-line); padding-top:18px; }
+.vehicle-gps summary { cursor:pointer; font-weight:600; }
+.vehicle-save { display:flex; justify-content:flex-end; gap:12px; padding:6px 0 22px; }
+.trip-scan-fields { margin:18px 0; }
+.trip-scan-fields label { margin-bottom:8px; }
+@media(max-width:650px) {
+ .vehicle-fields,.trip-scan-fields { grid-template-columns:1fr; gap:18px; }
+ .workspace-ui .vehicle-editor .workspace-context { padding:20px 16px; }
+ .vehicle-save .btn { flex:1; min-height:48px; }
+}
