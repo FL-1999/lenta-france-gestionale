@@ -1,0 +1,11 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ t('Revisioni documento', 'Révisions du document') }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>{{ t('Revisioni', 'Révisions') }} · {{ root.filename }}</h1><a class="btn btn-secondary" href="/manager/cantieri/{{ root.site_id }}/documenti">{{ t('Documenti cantiere', 'Documents du chantier') }}</a></div>
+<div class="alert alert-info">{{ t('Versione corrente', 'Version actuelle') }}: {{ current.filename }} · {{ t('Revisione', 'Révision') }} {{ versions[0][0].number if versions else 1 }}<br><a href="/manager/documenti/{{ current.id }}/download">{{ t('Scarica la versione corrente', 'Télécharger la version actuelle') }}</a></div>
+<section class="card"><div class="card-body"><h2>{{ t('Carica una nuova revisione', 'Déposer une nouvelle révision') }}</h2><p>{{ t('Le versioni precedenti vengono conservate. Massimo 20 MB.', 'Les versions précédentes sont conservées. Maximum 20 Mo.') }}</p>
+<form method="post" action="/operazioni/documenti/{{ root.id }}/revisione" enctype="multipart/form-data" data-ops-form>
+<input type="hidden" name="current_id" value="{{ current.id }}"><label>{{ t('File', 'Fichier') }}<input class="form-control" type="file" name="file" required></label><label>{{ t('Scadenza, solo se applicabile', "Échéance, uniquement si applicable") }}<input class="form-control" type="date" name="expires_on"></label><button class="btn btn-primary">{{ t('Salva nuova revisione', 'Enregistrer la nouvelle révision') }}</button><p data-ops-error role="alert"></p></form></div></section>
+<section class="card"><div class="card-body"><h2>{{ t('Storico', 'Historique') }}</h2>{% for version, doc in versions %}<p><a href="/manager/documenti/{{ doc.id }}/download">{{ t('Revisione', 'Révision') }} {{ version.number }} · {{ doc.filename }}</a>{% if loop.first %} · {{ t('Corrente', 'Actuelle') }}{% endif %}{% if version.expires_on %}<br>{{ t('Scadenza', 'Échéance') }}: {{ version.expires_on }}{% if version.expires_on < today %} · {{ t('SCADUTO', 'EXPIRÉ') }}{% endif %}{% endif %}</p>{% endfor %}<p><a href="/manager/documenti/{{ root.id }}/download">{{ t('Revisione 1 — originale', 'Révision 1 — original') }} · {{ root.filename }}</a></p></div></section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/operations.js?v=2" defer></script>{% endblock %}

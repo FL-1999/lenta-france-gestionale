@@ -3,6 +3,7 @@
 {% block title %}{{ t('Dettaglio rapportino – Manager', 'Détail du rapport – Manager') }}{% endblock %}
 
 {% block content %}
+<a class="btn btn-primary" href="/operazioni/rapportini/{{ report.id }}">{{ t("Verifica e correzioni", "Vérification et corrections") }}</a>
 <div class="page-header d-flex align-items-center justify-content-between flex-wrap">
     <div>
         <h1>📝 {{ t('Rapportino del', 'Rapport du') }} {{ report.date.strftime("%d/%m/%Y") }}</h1>

@@ -9058,6 +9058,11 @@ body {
 }
 /* Keep account actions usable when the desktop links are hidden. */
 @media (max-width: 767px) {
+    .navbar { padding-inline: 8px; gap: 8px; }
+    .navbar .brand { display: none; }
+    .navbar .nav-left { flex: 1 1 80px; min-width: 0; }
+    .navbar .logo { width: 100%; max-width: 112px; height: auto; max-height: 28px; margin-right: 0; }
+    .navbar .nav-right { flex: 0 0 auto; gap: 4px; }
     .navbar .nav-right .nav-profile-toggle,
     .navbar .nav-right .notification-button {
         display: inline-flex;
