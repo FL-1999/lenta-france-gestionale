@@ -7796,6 +7796,28 @@ def pagina_nuovo_rapportino_capo_post(
     return RedirectResponse(url=CAPO_REPORT_CREATED_REDIRECT_URL, status_code=303)
 
 
+@app.get("/capo/fiches", response_class=HTMLResponse, name="capo_fiches_list")
+def capo_fiches_list(
+    request: Request,
+    page: int = 1,
+    current_user: User = Depends(get_current_active_user_html),
+):
+    if current_user.role != RoleEnum.caposquadra:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    page, per_page = _normalize_pagination(page, 30)
+    with SessionLocal() as db:
+        query = db.query(Fiche).join(Site).filter(Site.caposquadra_id == current_user.id)
+        total = query.count()
+        total_pages = max(1, ceil(total / per_page))
+        page = min(page, total_pages)
+        fiches = (query.options(joinedload(Fiche.site))
+                  .order_by(Fiche.date.desc(), Fiche.id.desc())
+                  .offset((page - 1) * per_page).limit(per_page).all())
+    return templates.TemplateResponse(request, "capo/fiches_list.html", build_template_context(
+        request, current_user, fiches=fiches, page=page, total_pages=total_pages, total=total,
+    ))
+
+
 @app.get("/capo/fiches/nuova", response_class=HTMLResponse)
 def capo_fiche_nuova_get(
     request: Request,

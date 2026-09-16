@@ -626,7 +626,9 @@ def test_capo_nuovo_rapportino_renders_with_safe_dicts() -> None:
     assert 'name="numero_operai"' not in output
     assert 'href="/capo/dashboard" class="btn btn-secondary">⬅️ Menu caposquadra' in output
     assert 'window.location.href = "/capo/dashboard?rapportino_created=1"' in output
-    assert 'href="/capo/rapportini"' not in output
+    # The shared workspace menu now includes the report archive; the form's
+    # success destination must still be the capo dashboard (asserted above).
+    assert 'href="/capo/rapportini"' in output
     for total in range(1, 11):
         assert f'value="{total}"' in output
 

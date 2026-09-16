@@ -10,7 +10,7 @@
         </div>
         <div class="page-actions">
             <a
-                href="{{ url_for('manager_reports_export', report_type=filters.report_type, date_from=filters.date_from, date_to=filters.date_to, preset=filters.preset) }}"
+                href="{{ url_for('manager_reports_export').include_query_params(report_type=filters.report_type, date_from=filters.date_from, date_to=filters.date_to, preset=filters.preset or '') }}"
                 class="btn btn-secondary"
             >
                 📤 {{ t('Esporta CSV', 'Exporter CSV') }}

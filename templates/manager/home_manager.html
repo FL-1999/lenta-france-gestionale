@@ -8,52 +8,25 @@
     {% endif %}
 {% endblock %}
 {% block content %}
-<div class="form-actions"><a class="btn btn-primary" href="/operazioni">{{ t("Oggi: attività e verifiche", "Aujourd’hui : tâches et vérifications") }}</a><a class="btn btn-secondary" href="/operazioni/pianificazione">{{ t("Pianificazione", "Planning") }}</a></div>
+{% from 'shared/workspace_icons.html' import icon %}
 <div class="dashboard-page">
     <div class="page-header dashboard-header">
         <div>
-            <p class="eyebrow">
-                {% if lang == 'fr' %}
-                    Espace Manager
-                {% else %}
-                    Pannello Manager
-                {% endif %}
-            </p>
-            <h1>
-                {% if lang == 'fr' %}
-                    Tableau de bord Manager
-                {% else %}
-                    Dashboard Manager
-                {% endif %}
-            </h1>
-            <p>
-                {% if lang == 'fr' %}
-                    Bienvenue{{ ' ' + user.full_name if user and user.full_name else '' }}, ici vous trouvez le récapitulatif des rapports enregistrés et les raccourcis pour la gestion.
-                {% else %}
-                    Benvenuto{{ ' ' + user.full_name if user and user.full_name else '' }}, qui trovi il riepilogo dei rapportini salvati e le scorciatoie per la gestione.
-                {% endif %}
-            </p>
+            <p class="eyebrow">{{ t('Il tuo spazio di lavoro', 'Votre espace de travail') }}</p>
+            <h1>{{ t('Dashboard Manager', 'Tableau de bord Manager') }}</h1>
+            <p class="page-subtitle">{{ t('Cantieri, persone e attività. Tutto sotto controllo.', 'Chantiers, équipes et activités. Une vue d’ensemble.') }}</p>
         </div>
-        <div class="header-actions dashboard-actions">
-            <a href="{{ url_for('manager_site_tasks_overview') }}" class="btn btn-lg btn-secondary">
-                🧭 {% if lang == 'fr' %}Notes opérationnelles{% else %}Note operative{% endif %}
-            </a>
-            <a href="{{ url_for('manager_production_dashboard') }}" class="btn btn-lg btn-secondary">
-                📈 {% if lang == 'fr' %}Production{% else %}Produzione{% endif %}
-            </a>
-            <a href="/capo/rapportini/nuovo" class="btn btn-lg btn-secondary">
-                ➕ {% if lang == 'fr' %}Nouveau rapport{% else %}Nuovo rapportino{% endif %}
-            </a>
-            <a href="/manager/rapportini" class="btn btn-lg btn-secondary">
-                {% if lang == 'fr' %}Liste des rapports{% else %}Elenco rapportini{% endif %}
-            </a>
-            <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-lg btn-secondary">
-                📄 {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
-            </a>
-            <a href="/manager/fiches" class="btn btn-lg btn-secondary">
-                {% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}
-            </a>
-        </div>
+        <div class="header-actions"><a href="/capo/rapportini/nuovo" class="btn btn-primary">{{ icon('plus') }} {{ t('Nuovo rapportino', 'Nouveau rapport') }}</a></div>
+    </div>
+    <div class="workspace-overview">
+        <div><span class="workspace-overview-label">{{ t('Oggi', 'Aujourd’hui') }}</span><p>{{ t('Attività, rapportini da verificare e scadenze in un unico posto.', 'Tâches, rapports à vérifier et échéances au même endroit.') }}</p></div>
+        <a class="btn btn-secondary" href="/operazioni/pianificazione">{{ t('Pianificazione', 'Planning') }}</a>
+        <a class="btn btn-secondary" href="/operazioni">{{ t('Apri le attività', 'Voir les tâches') }} {{ icon('arrow') }}</a>
+    </div>
+    <div class="workspace-modules">
+        <section class="workspace-module"><h2>{{ icon('report') }} {{ t('Rapportini', 'Rapports journaliers') }}</h2><p>{{ t('Consulta e verifica il lavoro delle squadre.', 'Consultez et vérifiez le travail des équipes.') }}</p><div class="workspace-module-actions"><a href="/manager/rapportini">{{ t('Elenco rapportini', 'Liste des rapports') }}</a><a href="{{ url_for('manager_production_dashboard') }}">{{ t('Produzione', 'Production') }}</a></div></section>
+        <section class="workspace-module"><h2>{{ icon('file') }} Fiches</h2><p>{{ t('Schede tecniche e registrazioni di cantiere.', 'Fiches techniques et relevés de chantier.') }}</p><div class="workspace-module-actions"><a href="{{ url_for('manager_fiche_new_form') }}">{{ t('Nuova fiche', 'Nouvelle fiche') }}</a><a href="/manager/fiches">{{ t('Vedi fiches', 'Voir les fiches') }}</a></div></section>
+        <section class="workspace-module"><h2>{{ icon('site') }} {{ t('Cantieri', 'Chantiers') }}</h2><p>{{ t('Avanzamento e note per il lavoro sul campo.', 'Avancement et notes pour le travail sur le terrain.') }}</p><div class="workspace-module-actions"><a href="/manager/cantieri">{{ t('Elenco cantieri', 'Liste des chantiers') }}</a><a href="{{ url_for('manager_site_tasks_overview') }}">{{ t('Note operative', 'Notes opérationnelles') }}</a></div></section>
     </div>
 
     {% set nuove_richieste = nuove_richieste_count|default(0) %}

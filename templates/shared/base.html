@@ -1,27 +1,21 @@
 <!DOCTYPE html>
-<html lang="{{ request.cookies.get('lang', 'it') }}" data-theme="dark">
+<html lang="{{ request.cookies.get('lang', 'it') }}" data-theme="light">
 <head>
-    <meta charset="UTF-8" />
-    <!-- BASE_HTML_MARKER -->
-    <title>{% block title %}
-        {% if lang == 'fr' %}
-            {{ title if title else "Lenta France Logiciel" }}
-        {% else %}
-            {{ title if title else "Lenta France Gestionale" }}
-        {% endif %}
-    {% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b1120" />
-<!-- PWA / Mobile -->
-<link rel="manifest" href="/static/manifest.webmanifest" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Lenta France" />
-<link rel="apple-touch-icon" href="/static/img/icon-192.png" />
-    <!-- Foglio di stile -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v=20260916a" />
+  <meta charset="UTF-8">
+  <!-- BASE_HTML_MARKER -->
+  <title>{% block title %}{{ title if title else 'Lenta France Gestionale' }}{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f6f4">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Lenta France">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+  <script src="/static/js/theme_switcher.js?v=20260916w1"></script>
+  <link rel="stylesheet" href="/static/css/style.css?v=20260916a">
+  <link rel="stylesheet" href="/static/css/workspace.css?v=20260916w1">
 </head>
-<body>
+<body class="workspace-ui {{ 'workspace-auth' if user else 'workspace-guest' }}">
     {% set lang = request.cookies.get('lang', 'it') %}
     {% set current_path = request.url.path %}
     {% set section = request.query_params.get('section') %}
@@ -95,29 +89,24 @@
     {% set show_reports = can_access_reports %}
     {% set show_trasporti = is_manager or is_magazzino_role or can_access_logistics or can_access_driver_trasporti %}
     {% set trasporti_path = '/driver/trasporti/viaggi' if active_role_value == 'driver' else '/manager/trasporti' %}
-    <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="nav-left">
-             <img src="{{ url_for('static', path='/img/logo.png') }}" class="logo" alt="Logo Lenta France" />
-            <span class="brand">
-                {% if lang == 'fr' %}
-                    Lenta France Logiciel
-                {% else %}
-                    Lenta France Gestionale
-                {% endif %}
-            </span>
-        </div>
-        <div class="nav-right">
-            {% if not is_authenticated %}
-                <a href="/login" class="nav-link">
-                    🔐
-                    {% if lang == 'fr' %}
-                        Se connecter
-                    {% else %}
-                        Login
-                    {% endif %}
-                </a>
-            {% else %}
+
+  {% from 'shared/workspace_icons.html' import icon %}
+  {% if active_role_value == 'ferraiolo' %}{% set home_path = '/gabbie' %}{% set is_home_active = current_path == '/gabbie' %}{% endif %}
+  <a class="workspace-skip" href="#main-content">{{ t('Vai al contenuto', 'Aller au contenu') }}</a>
+  {% if user %}{% include 'shared/workspace_sidebar.html' %}{% endif %}
+  <div class="workspace-frame" data-role="{{ active_role_value }}">
+    <header class="workspace-topbar">
+      <div class="workspace-topbar-start">
+        {% if user %}
+          <button type="button" class="workspace-menu-toggle" data-workspace-toggle aria-expanded="false" aria-controls="workspace-sidebar" aria-label="{{ t('Apri navigazione','Ouvrir la navigation') }}">{{ icon('menu') }}</button>
+          <span class="workspace-role">{{ t('Area','Espace') }} {{ active_role_label }}</span><span class="workspace-breadcrumb-separator" aria-hidden="true">/</span>
+          <span class="workspace-current-page">{{ t('Gestionale','Gestion') }}</span>
+        {% else %}
+          <a href="/"><img class="workspace-login-logo" src="/static/img/logo.png" alt="Lenta France" width="140" height="43"></a>
+        {% endif %}
+      </div>
+      <div class="workspace-topbar-actions">
+        {% if user %}
                 <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/recent" data-mark-read-endpoint="/api/notifications/mark-read" data-clear-all-endpoint="/api/notifications/clear-all" data-poll-interval="30000">
                     <button type="button" class="nav-link nav-link--icon notification-button" aria-label="{{ 'Notifications' if lang == 'fr' else 'Notifiche' }}" id="notificationsToggle" data-notifications-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notificationsPanel">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
@@ -140,49 +129,6 @@
                         </div>
                     </div>
                 </div>
-
-                {% if show_settings_dropdown and not is_magazzino_role %}
-                    <div class="nav-dropdown nav-right__item" data-nav-dropdown>
-                        <button type="button" class="nav-link nav-dropdown__toggle" data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
-                            ⚙
-                            {% if lang == 'fr' %}
-                                Général ▾
-                            {% else %}
-                                Generali ▾
-                            {% endif %}
-                        </button>
-                        <div class="nav-dropdown__menu" data-nav-dropdown-menu>
-                            <a href="{{ audit_path }}" class="nav-dropdown__item">🧾 Audit</a>
-                            {% if can_manage_users %}
-                                <a href="/manager/utenti" class="nav-dropdown__item">👤 {% if lang == 'fr' %}Utilisateurs{% else %}Utenti{% endif %}</a>
-                            {% endif %}
-                            <a href="{{ report_path }}" class="nav-dropdown__item">📊 {% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</a>
-                            {% if is_manager %}
-                                <a href="{{ url_for('manager_production_dashboard') }}" class="nav-dropdown__item">📈 {% if lang == 'fr' %}Production{% else %}Produzione{% endif %}</a>
-                            {% endif %}
-                            {% if user and has_perm(user, 'gabbie.read') %}
-                                <a href="{{ url_for('gabbie_home') }}" class="nav-dropdown__item">🧱 {% if lang == 'fr' %}Cages d'armature{% else %}Gabbie armatura{% endif %}</a>
-                            {% endif %}
-                            <a href="{{ url_for('manager_personale_list') }}" class="nav-dropdown__item">👥 {% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</a>
-                            {% if show_backup %}
-                                <a href="{{ url_for('admin_backup_export') }}" class="nav-dropdown__item">🛡️ Backup & Export</a>
-                            {% endif %}
-                            {% if show_api_docs %}
-                                <a href="/docs" class="nav-dropdown__item">📘 {% if lang == 'fr' %}Docs API{% else %}API Docs{% endif %}</a>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endif %}
-
-                <a href="{{ home_path }}" class="nav-link nav-right__item">
-                    🏠
-                    {% if lang == 'fr' %}
-                        Accueil
-                    {% else %}
-                        Home
-                    {% endif %}
-                </a>
-
 
                 <div class="nav-dropdown nav-dropdown--align-right nav-right__item" data-nav-dropdown>
                     <button type="button" class="nav-link nav-dropdown__toggle nav-profile-toggle" aria-label="{{ 'Menu du compte' if lang == 'fr' else 'Menu account' }}" data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
@@ -219,202 +165,42 @@
                         {% endif %}
 
                         <div class="nav-dropdown__divider"></div>
-                        <a href="{{ url_for('logout') }}" class="nav-dropdown__item nav-dropdown__item--danger">🚪 {% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
+                        <a href="{{ url_for('logout') }}" class="nav-dropdown__item nav-dropdown__item--danger">{% if lang == 'fr' %}Déconnexion{% else %}Logout{% endif %}</a>
                     </div>
                 </div>
 
-                {% if show_magazzino_card %}
-                    {% set manager_badges = manager_badge_counts(request, user) %}
-                    <a href="{{ url_for('manager_magazzino_home') }}" class="nav-link nav-right__item">
-                        📦
-                        {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}
-                        {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
-                            <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
-                                {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
-                            </span>
-                        {% endif %}
-                    </a>
-                {% elif is_capo %}
-                    <a href="{{ url_for('capo_magazzino_list') }}" class="nav-link nav-right__item">
-                        📦
-                        {% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}
-                        {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
-                            <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
-                                {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
-                            </span>
-                        {% endif %}
-                    </a>
-                {% endif %}
 
-                {# Operational navigation grouped in one dropdown to keep the navbar clean #}
-                {% set show_nav_dropdown = show_cantieri or show_fiches or show_personale or show_depositi or show_reports or show_trasporti %}
-                {% if show_nav_dropdown %}
-                    <div class="nav-dropdown nav-right__item" data-nav-dropdown>
-                        <button type="button" class="nav-link nav-dropdown__toggle" data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
-                            {% if lang == 'fr' %}Navigation ▾{% else %}Menu ▾{% endif %}
-                        </button>
-                        <div class="nav-dropdown__menu" data-nav-dropdown-menu>
-                            {% if show_cantieri %}
-                                <a href="{{ cantieri_path }}" class="nav-dropdown__item">🏗️ {% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}</a>
-                            {% endif %}
-                            {% if show_fiches %}
-                                <a href="{{ fiches_path }}" class="nav-dropdown__item">📄 Fiches</a>
-                            {% endif %}
-                            {% if show_personale %}
-                                <a href="{{ url_for('manager_personale_presenze') }}" class="nav-dropdown__item">📅 {% if lang == 'fr' %}Présences{% else %}Presenze{% endif %}</a>
-                            {% endif %}
-                            {% if show_depositi %}
-                                <a href="{{ depositi_path }}" class="nav-dropdown__item">📦 {% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</a>
-                            {% endif %}
-                            {% if show_reports %}
-                                <a href="{{ report_path }}" class="nav-dropdown__item">📊 {% if lang == 'fr' %}{% if is_manager %}Rapports{% else %}Rapports journaliers{% endif %}{% else %}{% if is_manager %}Report{% else %}Rapportini{% endif %}{% endif %}</a>
-                            {% endif %}
-                            {% if is_manager %}
-                                <a href="{{ url_for('manager_production_dashboard') }}" class="nav-dropdown__item">📈 {% if lang == 'fr' %}Production{% else %}Produzione{% endif %}</a>
-                            {% endif %}
-                            {% if user and has_perm(user, 'gabbie.read') %}
-                                <a href="{{ url_for('gabbie_home') }}" class="nav-dropdown__item">🧱 {% if lang == 'fr' %}Cages d'armature{% else %}Gabbie armatura{% endif %}</a>
-                            {% endif %}
-                            {% if show_trasporti %}
-                                <a href="{{ trasporti_path }}" class="nav-dropdown__item">🚚 Trasporti</a>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endif %}
-
-                <div class="nav-lang-switch nav-right__item">
-                    <a href="/set-language/it"
-                       class="lang-flag {% if request.cookies.get('lang', 'it') == 'it' %}lang-flag--active{% endif %}">
-                        🇮🇹
-                    </a>
-                    <a href="/set-language/fr"
-                       class="lang-flag {% if request.cookies.get('lang', 'it') == 'fr' %}lang-flag--active{% endif %}">
-                        🇫🇷
-                    </a>
-                </div>
-                <button id="theme-toggle" class="theme-toggle-btn nav-right__item" type="button" aria-label="{% if lang == 'fr' %}Changer de thème{% else %}Cambia tema{% endif %}">
-                    <span class="theme-toggle-icon theme-toggle-icon--sun">&#9728;</span>
-                    <span class="theme-toggle-icon theme-toggle-icon--moon">&#9790;</span>
-                </button>
-            {% endif %}
-        </div>
-    </nav>
-
-    <!-- CONTENUTO -->
-    <main class="container main-content page-fade">
-        {% block content %}
-        {% endblock %}
+        {% endif %}
+        <div class="nav-lang-switch"><a href="/set-language/it" class="lang-flag{% if lang == 'it' %} lang-flag--active{% endif %}" lang="it" aria-label="Italiano"{% if lang == 'it' %} aria-current="true"{% endif %}>IT</a><a href="/set-language/fr" class="lang-flag{% if lang == 'fr' %} lang-flag--active{% endif %}" lang="fr" aria-label="Français"{% if lang == 'fr' %} aria-current="true"{% endif %}>FR</a></div>
+        <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="{{ t('Cambia tema','Changer de thème') }}"><span class="theme-toggle-icon theme-toggle-icon--sun">☀</span><span class="theme-toggle-icon theme-toggle-icon--moon">☾</span></button>
+      </div>
+    </header>
+    <main id="main-content" class="container main-content" tabindex="-1">
+      {% block content %}{% endblock %}
     </main>
-
-    {% if user %}
-        <nav class="bottom-nav" aria-label="{% if lang == 'fr' %}Navigation principale{% else %}Navigazione principale{% endif %}">
-            <a href="{{ home_path }}" class="bottom-nav__link {% if is_home_active %}bottom-nav__link--active{% endif %}">
-                <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
-                <span class="bottom-nav__label">{% if lang == 'fr' %}Accueil{% else %}Home{% endif %}</span>
-            </a>
-
-            {% if show_cantieri %}
-                <a href="{{ cantieri_path }}" class="bottom-nav__link {% if is_cantieri_active %}bottom-nav__link--active{% endif %}">
-                    <span class="bottom-nav__icon" aria-hidden="true">🏗️</span>
-                    <span class="bottom-nav__label">{% if lang == 'fr' %}Chantiers{% else %}Cantieri{% endif %}</span>
-                </a>
-            {% endif %}
-
-            {% if show_depositi %}
-                <a href="{{ depositi_path }}" class="bottom-nav__link {% if is_depositi_active %}bottom-nav__link--active{% endif %}">
-                    <span class="bottom-nav__icon" aria-hidden="true">📦</span>
-                    <span class="bottom-nav__label">{% if lang == 'fr' %}Dépôts{% else %}Depositi{% endif %}</span>
-                </a>
-            {% endif %}
-
-            {% if show_magazzino %}
-                <a href="{{ magazzino_path }}" class="bottom-nav__link {% if is_magazzino_active %}bottom-nav__link--active{% endif %}">
-                    <span class="bottom-nav__icon" aria-hidden="true">📦</span>
-                    <span class="bottom-nav__label">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</span>
-
-                    {# ✅ SOLO badge numerico anche in bottom-nav #}
-                    {% if unread_warehouse_request_notifications_count and unread_warehouse_request_notifications_count > 0 %}
-                        <span class="badge-notification" title="{% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}">
-                            {{ '99+' if unread_warehouse_request_notifications_count > 99 else unread_warehouse_request_notifications_count }}
-                        </span>
-                    {% endif %}
-                </a>
-            {% endif %}
-
-            {% if show_reports %}
-                <a href="{{ report_path }}" class="bottom-nav__link {% if is_report_active %}bottom-nav__link--active{% endif %}">
-                    <span class="bottom-nav__icon" aria-hidden="true">📊</span>
-                    <span class="bottom-nav__label">{% if lang == 'fr' %}Rapports{% else %}Report{% endif %}</span>
-                </a>
-            {% endif %}
-            {% if show_trasporti %}
-                <a href="{{ trasporti_path }}" class="bottom-nav__link {% if is_trasporti_active %}bottom-nav__link--active{% endif %}">
-                    <span class="bottom-nav__icon" aria-hidden="true">🚚</span>
-                    <span class="bottom-nav__label">Trasporti</span>
-                </a>
-            {% endif %}
-
-            {% if show_profile %}
-                <a href="{{ profile_path }}" class="bottom-nav__link {% if is_profile_active %}bottom-nav__link--active{% endif %}">
-                    <span class="bottom-nav__icon" aria-hidden="true">👤</span>
-                    <span class="bottom-nav__label">{% if lang == 'fr' %}Profil{% else %}Profilo{% endif %}</span>
-                </a>
-            {% endif %}
-        </nav>
+  </div>
+  {% if user %}
+  <nav class="bottom-nav workspace-bottom-nav" aria-label="{{ t('Accesso rapido','Accès rapide') }}">
+    <a href="{{ home_path }}" class="bottom-nav__link{% if is_home_active %} bottom-nav__link--active{% endif %}">{{ icon('truck' if active_role_value == 'driver' else 'home') }}<span class="bottom-nav__label">{{ t('Viaggi','Trajets') if active_role_value == 'driver' else t('Home','Accueil') }}</span></a>
+    {% if active_role_value == 'driver' %}
+      <a href="/driver/trasporti/oggi" class="bottom-nav__link{% if current_path == '/driver/trasporti/oggi' %} bottom-nav__link--active{% endif %}">{{ icon('today') }}<span class="bottom-nav__label">{{ t('Oggi','Aujourd’hui') }}</span></a>
+    {% elif is_manager %}
+      <a href="/manager/cantieri" class="bottom-nav__link{% if is_cantieri_active %} bottom-nav__link--active{% endif %}">{{ icon('site') }}<span class="bottom-nav__label">{{ t('Cantieri','Chantiers') }}</span></a>
+      <a href="/manager/rapportini" class="bottom-nav__link{% if is_report_active %} bottom-nav__link--active{% endif %}">{{ icon('report') }}<span class="bottom-nav__label">{{ t('Rapportini','Rapports') }}</span></a>
+    {% elif is_capo %}
+      <a href="/capo/rapportini" class="bottom-nav__link{% if is_report_active %} bottom-nav__link--active{% endif %}">{{ icon('report') }}<span class="bottom-nav__label">{{ t('Rapportini','Rapports') }}</span></a>
+      <a href="{{ magazzino_path }}" class="bottom-nav__link{% if is_magazzino_active %} bottom-nav__link--active{% endif %}">{{ icon('box') }}<span class="bottom-nav__label">{{ t('Magazzino','Entrepôt') }}</span></a>
+    {% elif is_magazzino_role %}
+      <a href="{{ magazzino_path }}" class="bottom-nav__link">{{ icon('box') }}<span class="bottom-nav__label">{{ t('Magazzino','Entrepôt') }}</span></a>
+      <a href="{{ trasporti_path }}" class="bottom-nav__link">{{ icon('truck') }}<span class="bottom-nav__label">{{ t('Trasporti','Transports') }}</span></a>
     {% endif %}
-
-    <script src="{{ url_for('static', path='/js/theme_switcher.js') }}?v=20260212c"></script>
-    <script src="/static/js/notifications.js?v=20260506a"></script>
-    <script src="{{ url_for('static', path='/js/sw_register.js') }}?v=20260916a"></script>
-    <script>
-        (() => {
-            const dropdowns = Array.from(document.querySelectorAll('[data-nav-dropdown]'));
-            if (!dropdowns.length) return;
-
-            const closeDropdown = (dropdown) => {
-                const toggle = dropdown.querySelector('[data-nav-dropdown-toggle]');
-                dropdown.classList.remove('is-open');
-                if (toggle) toggle.setAttribute('aria-expanded', 'false');
-            };
-
-            dropdowns.forEach((dropdown) => {
-                const toggle = dropdown.querySelector('[data-nav-dropdown-toggle]');
-                const menu = dropdown.querySelector('[data-nav-dropdown-menu]');
-                if (!toggle || !menu) return;
-
-                toggle.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const willOpen = !dropdown.classList.contains('is-open');
-                    dropdowns.forEach((item) => closeDropdown(item));
-                    if (willOpen) {
-                        dropdown.classList.add('is-open');
-                        toggle.setAttribute('aria-expanded', 'true');
-                    }
-                });
-
-                menu.addEventListener('click', (e) => e.stopPropagation());
-            });
-
-            document.addEventListener('click', (e) => {
-                dropdowns.forEach((dropdown) => {
-                    if (!dropdown.contains(e.target)) closeDropdown(dropdown);
-                });
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    dropdowns.forEach((dropdown) => {
-                        if (dropdown.classList.contains('is-open')) {
-                            closeDropdown(dropdown);
-                            dropdown.querySelector('[data-nav-dropdown-toggle]').focus();
-                        }
-                    });
-                }
-            });
-        })();
-    </script>
-
-    {% block scripts %}{% endblock %}
+    <button type="button" class="bottom-nav__link" data-workspace-toggle aria-expanded="false" aria-controls="workspace-sidebar">{{ icon('menu') }}<span class="bottom-nav__label">Menu</span></button>
+  </nav>
+  {% endif %}
+  <script src="/static/js/workspace.js?v=20260916w1" defer></script>
+  <script src="/static/js/notifications.js?v=20260506a" defer></script>
+  <script src="/static/js/sw_register.js?v=20260916w1" defer></script>
+  {% block scripts %}{% endblock %}
+  <noscript><style>@media(max-width:1023px){.workspace-sidebar{position:static!important;visibility:visible!important;transform:none!important;width:100%!important}.workspace-scrim,.workspace-menu-toggle{display:none!important}}</style></noscript>
 </body>
 </html>
