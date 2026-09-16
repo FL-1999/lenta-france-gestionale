@@ -25,7 +25,8 @@
       if (form.dataset.confirm && !confirm(form.dataset.confirm)) return;
       const data = new FormData(form);
       if (event.submitter?.name) data.set(event.submitter.name, event.submitter.value);
-      send(form, form.action, {method: 'POST', body: data});
+      // Buttons named "action" shadow the form.action DOM property.
+      send(form, form.getAttribute('action'), {method: 'POST', body: data});
     });
   });
   document.querySelectorAll('[data-report-edit]').forEach(form => {

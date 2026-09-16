@@ -25,4 +25,4 @@
 <button class="btn btn-primary">{{ t('Salva correzioni', 'Enregistrer les corrections') }}</button><p data-ops-error role="alert"></p></form></div></details>{% endif %}
 <section class="card"><div class="card-body"><h2>{{ t('Storico delle verifiche', 'Historique des vérifications') }}</h2>{% for event, actor in events %}<p>{{ event.created_at.strftime('%d/%m/%Y %H:%M') }} UTC · {{ actor.full_name or actor.email }} · {{ labels.get(event.status, event.status) }}{% if event.note %}<br>{{ event.note }}{% endif %}</p>{% else %}<p>{{ t('Nessuna verifica registrata.', 'Aucune vérification enregistrée.') }}</p>{% endfor %}</div></section>
 {% endblock %}
-{% block scripts %}<script src="/static/js/operations.js?v=1" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/operations.js?v=2" defer></script>{% endblock %}
