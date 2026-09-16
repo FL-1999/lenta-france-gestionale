@@ -114,12 +114,19 @@ def test_workspace_roles_and_responsive_navigation(live_operations):
                 page.screenshot(path=str(screenshots / f'{role}-{urlsplit(path).path.replace("/", "-")}-mobile.png'))
             page.goto(origin + home)
             page.screenshot(path=str(screenshots / f'{role}-mobile.png'))
-            page.locator('a[lang=fr]').click()
+            # The lang attribute arrives before deferred navigation handlers.
+            # Complete the actual navigation before clicking the next menu.
+            with page.expect_navigation(wait_until='load'):
+                page.locator('a[lang=fr]').click()
             expect(page.locator('html')).to_have_attribute('lang', 'fr')
             page.locator('.workspace-topbar [data-workspace-toggle]').click()
             expect(page.locator('.workspace-sidebar')).to_have_attribute('aria-label', 'Menu principal')
+            expect(page.locator('.workspace-sidebar')).to_have_attribute('aria-modal', 'true')
             page.keyboard.press('Escape')
-            page.get_by_role('button', name='Menu du compte').click()
+            expect(page.locator('.workspace-topbar [data-workspace-toggle]')).to_have_attribute('aria-expanded', 'false')
+            account = page.get_by_role('button', name='Menu du compte')
+            account.click()
+            expect(account).to_have_attribute('aria-expanded', 'true')
             if role == 'admin':
                 page.locator('a[href="/switch-role/driver"]').click()
                 page.wait_for_url('**/driver/trasporti/viaggi')
