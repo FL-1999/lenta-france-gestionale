@@ -1,7 +1,7 @@
 /* Lenta Workspace: shared interface for every operational role.
    Legacy page geometry stays in style.css; semantic state colours remain distinct. */
 :root[data-theme] {
-  --ws-canvas:#111315; --ws-paper:#191c20; --ws-nav:#15171a; --ws-ink:#eef1f3;
+  --ws-canvas:#141416; --ws-paper:#202023; --ws-nav:#19191c; --ws-ink:#f5f5f7;
   --ws-muted:#abb3bd; --ws-line:#343a42; --ws-hover:#252b32; --ws-input:#13171b;
   --ws-accent:#c63042; --ws-accent-hover:#ac2637; --ws-tint:#352027;
   --ws-success:#a5ddba; --ws-success-bg:#20382a; --ws-warning:#f0cd8b; --ws-warning-bg:#3a3020;
@@ -26,14 +26,16 @@
   --color-nav-text-hover:var(--ws-ink); --color-table-head-text:var(--ws-muted);
   --color-btn-primary-bg-hover:var(--ws-accent-hover); --color-btn-secondary-bg-hover:var(--ws-hover);
   --shadow-card-subtle:none;
+  --ws-card-shadow:0 2px 8px #00000018,0 14px 32px #00000012;
 }
 :root[data-theme="light"] {
-  --ws-canvas:#f6f6f4; --ws-paper:#fff; --ws-nav:#eeefed; --ws-ink:#20282b;
+  --ws-canvas:#f5f5f7; --ws-paper:#fff; --ws-nav:#ededf0; --ws-ink:#1d1d1f;
   --ws-muted:#58656e; --ws-line:#dde2e1; --ws-hover:#eef1f0; --ws-input:#fafbf9; --ws-tint:#fbeef0;
   --ws-success:#24613e; --ws-success-bg:#eaf5ee; --ws-warning:#795114; --ws-warning-bg:#fcf2dd;
   --ws-danger:#9e2433; --ws-danger-bg:#fcebef; --ws-info:#254f7e; --ws-info-bg:#ebf3fb;
+  --ws-card-shadow:0 2px 5px #18202c04,0 12px 28px #18202c06;
 }
-body.workspace-ui { margin:0; background:var(--ws-canvas)!important; color:var(--ws-ink); font-family:Inter,"Segoe UI",system-ui,sans-serif; font-size:14px; line-height:1.5; }
+body.workspace-ui { margin:0; background:var(--ws-canvas)!important; color:var(--ws-ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; font-size:14px; line-height:1.5; }
 .workspace-ui *, .workspace-ui *::before, .workspace-ui *::after { box-sizing:border-box; }
 .workspace-ui [hidden] { display:none!important; }
 .workspace-ui :focus-visible { outline:3px solid var(--ws-accent); outline-offset:3px; }
@@ -92,9 +94,19 @@ body.workspace-ui { margin:0; background:var(--ws-canvas)!important; color:var(-
 .workspace-ui :is(.page-eyebrow,.eyebrow) { color:var(--ws-muted); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; }
 .workspace-ui :is(.page-subtitle,.text-muted,.muted,.help-text,.form-help) { color:var(--ws-muted); }
 .workspace-ui .page-subtitle { font-size:13px; line-height:1.6; margin-top:9px; }
-.workspace-ui :is(.card,.kpi-card,.module-card,.shortcut-card,.form-card) { background:var(--ws-paper)!important; background-image:none!important; border:1px solid var(--ws-line)!important; border-radius:10px!important; box-shadow:none!important; animation:none!important; color:var(--ws-ink); }
+.workspace-ui :is(.card,.kpi-card,.module-card,.shortcut-card,.form-card) { background:var(--ws-paper)!important; background-image:none!important; border:1px solid var(--ws-line)!important; border-radius:16px!important; box-shadow:var(--ws-card-shadow)!important; animation:none!important; color:var(--ws-ink); }
+/* Legacy cards start transparent before their entrance animation. The workspace
+   does not run that animation, so its steady visible state must be explicit. */
+.workspace-ui .dashboard-modules-grid .card { opacity:1; transform:none; }
+.workspace-ui .dashboard-modules-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:18px; margin-top:24px; }
+.workspace-ui .module-card { display:flex; flex-direction:column; }
+.workspace-ui .module-card .card-body { display:flex; flex-direction:column; flex:1; }
+.workspace-ui .module-card .page-actions-row,.workspace-ui .module-card .card-actions { margin-top:auto; flex-wrap:wrap; }
+.workspace-ui .dashboard-reporting-suite { background:var(--ws-nav)!important; border:1px solid var(--ws-line)!important; border-radius:20px; box-shadow:none!important; padding:22px; }
+.workspace-ui .trend-bar { fill:var(--ws-accent); }
+.workspace-ui .analytics-chart.workspace-chart-empty { min-height:110px; height:auto; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center; color:var(--ws-muted); font-size:13px; }
 .workspace-ui :is(.card,.kpi-card,.module-card,.shortcut-card)::before,.workspace-ui :is(.card,.kpi-card,.module-card,.shortcut-card)::after { background:none; box-shadow:none; }
-.workspace-ui :is(.card,.kpi-card,.module-card,.shortcut-card):hover { transform:none; box-shadow:none!important; }
+.workspace-ui :is(.card,.kpi-card,.module-card,.shortcut-card):hover { transform:none; box-shadow:var(--ws-card-shadow)!important; }
 .workspace-ui .card-header { padding:17px 20px; background:none; border-bottom:1px solid var(--ws-line); }
 .workspace-ui .card-body { padding:20px; }
 .workspace-ui .card-title { color:var(--ws-ink); font-weight:600; }
@@ -147,9 +159,8 @@ body.workspace-ui { margin:0; background:var(--ws-canvas)!important; color:var(-
 .workspace-overview > div { flex:1; }
 .workspace-overview-label { color:var(--ws-accent); font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
 .workspace-overview p { margin:3px 0 0; color:var(--ws-muted); font-size:13px; }
-.workspace-modules { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:26px; border:1px solid var(--ws-line); border-radius:9px; background:var(--ws-paper); }
-.workspace-module { min-width:0; padding:20px; }
-.workspace-module + .workspace-module { border-left:1px solid var(--ws-line); }
+.workspace-modules { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-bottom:26px; }
+.workspace-module { min-width:0; padding:22px; border:1px solid var(--ws-line); border-radius:16px; background:var(--ws-paper); box-shadow:var(--ws-card-shadow); }
 .workspace-module h2 { display:flex; align-items:center; gap:9px; margin:0; font-size:15px; }
 .workspace-module p { margin:8px 0 18px; font-size:12px; color:var(--ws-muted); }
 .workspace-module-actions { display:flex; flex-wrap:wrap; gap:12px; }
@@ -182,7 +193,6 @@ body.workspace-ui { margin:0; background:var(--ws-canvas)!important; color:var(-
   .workspace-ui .card-body,.workspace-ui .card-header { padding:17px; }
   .workspace-ui .page-header { align-items:flex-start; }
   .workspace-modules { grid-template-columns:1fr; }
-  .workspace-module + .workspace-module { border-left:0; border-top:1px solid var(--ws-line); }
   .workspace-module { padding:17px; }
   .workspace-overview { flex-wrap:wrap; gap:12px; padding:15px 17px; }
   .workspace-overview > div { flex-basis:100%; }

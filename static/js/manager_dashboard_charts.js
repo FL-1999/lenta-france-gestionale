@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-  if (!window.managerDashboardData || !window.ApexCharts) return;
+  if (!window.managerDashboardData) return;
 
   const { reportsLast30Days = [], hoursPerSite30Days = [], reportsByStatus = [] } = window.managerDashboardData;
 
@@ -29,6 +29,22 @@ document.addEventListener("DOMContentLoaded", function () {
   if (reportsKpi) reportsKpi.textContent = formatNumber(totalReports30);
   if (hoursKpi) hoursKpi.textContent = `${formatNumber(totalHours30, 1)} h`;
   if (closedKpi) closedKpi.textContent = `${formatNumber(closedPct, 1)}%`;
+
+  const french = document.documentElement.lang === "fr";
+  for (const [id, rows] of [
+    ["chartReportsLast30Days", reportsLast30Days],
+    ["chartHoursPerSite", hoursPerSite30Days],
+    ["chartReportsByStatus", reportsByStatus],
+  ]) {
+    const target = document.getElementById(id);
+    if (target && (!rows.length || !window.ApexCharts)) {
+      target.classList.add("workspace-chart-empty");
+      target.textContent = !rows.length
+        ? (french ? "Aucune donnée pour cette période." : "Nessun dato per questo periodo.")
+        : (french ? "Le graphique n’a pas pu être chargé. Actualisez la page pour réessayer." : "Il grafico non è stato caricato. Aggiorna la pagina per riprovare.");
+    }
+  }
+  if (!window.ApexCharts) return;
 
   const palette = {
     primary: "#7c8dff",

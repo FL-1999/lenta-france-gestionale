@@ -80,6 +80,17 @@ def test_workspace_roles_and_responsive_navigation(live_operations):
             if role == 'driver':
                 assert context.request.get(origin + '/manager/dashboard').status == 403
                 assert page.locator('a[href="/manager/trasporti"]').count() == 0
+            if role in ('manager', 'admin', 'caposquadra'):
+                cards = page.locator('.module-card')
+                assert cards.count() > 0
+                # Visibility assertions alone do not detect opacity:0.
+                for motion in ('reduce', 'no-preference'):
+                    page.emulate_media(reduced_motion=motion)
+                    assert cards.evaluate_all('(cards) => cards.every(c => getComputedStyle(c).opacity === "1" && c.getBoundingClientRect().height > 0)')
+            if role in ('manager', 'admin'):
+                expect(page.locator('.workspace-chart-empty')).to_have_count(3)
+                expect(page.locator('#chartReportsLast30Days')).to_contain_text('Nessun dato')
+                page.locator('.dashboard-modules-grid').screenshot(path=str(screenshots / f'{role}-cards.png'))
             page.screenshot(path=str(screenshots / f'{role}-desktop.png'))
             page.locator('#theme-toggle').click()
             expect(page.locator('html')).to_have_attribute('data-theme', 'dark')
