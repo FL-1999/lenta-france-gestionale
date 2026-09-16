@@ -64,7 +64,7 @@
                 </button>
                 <a
                     class="btn btn-secondary"
-                    href="{{ url_for('manager_magazzino_report_consumi', cantiere_id=cantiere.id, date_from=date_from.strftime('%Y-%m-%d') if date_from else '', date_to=date_to.strftime('%Y-%m-%d') if date_to else '', export='csv') }}"
+                    href="{{ url_for('manager_magazzino_report_consumi').include_query_params(cantiere_id=cantiere.id, date_from=date_from.strftime('%Y-%m-%d') if date_from else '', date_to=date_to.strftime('%Y-%m-%d') if date_to else '', export='csv') }}"
                 >
                     {% if lang == 'fr' %}Exporter CSV{% else %}Esporta CSV{% endif %}
                 </a>

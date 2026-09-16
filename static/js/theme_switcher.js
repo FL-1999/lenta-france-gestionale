@@ -5,7 +5,7 @@
   const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   function apply(theme) {
     root.setAttribute('data-theme', theme);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#111315' : '#f6f6f4');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#102237' : '#edede8');
     document.getElementById('theme-toggle')?.setAttribute('aria-pressed', String(theme === 'dark'));
   }
   apply(['light', 'dark'].includes(stored) ? stored : preferred);

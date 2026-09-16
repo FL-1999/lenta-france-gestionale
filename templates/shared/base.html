@@ -5,15 +5,15 @@
   <!-- BASE_HTML_MARKER -->
   <title>{% block title %}{{ title if title else 'Lenta France Gestionale' }}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f6f6f4">
+  <meta name="theme-color" content="#edede8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Lenta France">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/static/img/icon-192.png">
-  <script src="/static/js/theme_switcher.js?v=20260916w1"></script>
+  <script src="/static/js/theme_switcher.js?v=20260916g1"></script>
   <link rel="stylesheet" href="/static/css/style.css?v=20260916a">
-  <link rel="stylesheet" href="/static/css/workspace.css?v=20260916w2">
+  <link rel="stylesheet" href="/static/css/workspace.css?v=20260916g1">
 </head>
 <body class="workspace-ui {{ 'workspace-auth' if user else 'workspace-guest' }}">
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -199,7 +199,7 @@
   {% endif %}
   <script src="/static/js/workspace.js?v=20260916w1" defer></script>
   <script src="/static/js/notifications.js?v=20260506a" defer></script>
-  <script src="/static/js/sw_register.js?v=20260916w2" defer></script>
+  <script src="/static/js/sw_register.js?v=20260916g1" defer></script>
   {% block scripts %}{% endblock %}
   <noscript><style>@media(max-width:1023px){.workspace-sidebar{position:static!important;visibility:visible!important;transform:none!important;width:100%!important}.workspace-scrim,.workspace-menu-toggle{display:none!important}}</style></noscript>
 </body>
