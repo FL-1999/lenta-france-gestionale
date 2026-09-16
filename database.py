@@ -82,7 +82,6 @@ def ensure_model_columns(db_engine, metadatas) -> None:
     Le tabelle nuove sono gestite da create_all e qui vengono ignorate.
     """
     from sqlalchemy.schema import CreateColumn
-    import copy as _copy
 
     dialect = db_engine.dialect
     inspector = inspect(db_engine)
@@ -91,14 +90,17 @@ def ensure_model_columns(db_engine, metadatas) -> None:
     except Exception:
         return
 
-    seen_tables: set[str] = set()
+    # The same physical table can be mapped by both Base and SQLModel (veicoli).
+    # Track columns, not table names: the second mapping may contain extra fields.
+    columns_by_table: dict[str, set[str]] = {}
     for metadata in metadatas:
         for table in metadata.sorted_tables:
-            if table.name not in existing_tables or table.name in seen_tables:
+            if table.name not in existing_tables:
                 continue
-            seen_tables.add(table.name)
             try:
-                existing_cols = {c["name"] for c in inspector.get_columns(table.name)}
+                if table.name not in columns_by_table:
+                    columns_by_table[table.name] = {c["name"] for c in inspector.get_columns(table.name)}
+                existing_cols = columns_by_table[table.name]
             except Exception:
                 continue
             for column in table.columns:
@@ -111,6 +113,7 @@ def ensure_model_columns(db_engine, metadatas) -> None:
                     col_ddl = str(CreateColumn(col_copy).compile(dialect=dialect))
                     with db_engine.begin() as conn:
                         conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN {col_ddl}'))
+                    existing_cols.add(column.name)
                     print(f"[migrazione] aggiunta colonna {table.name}.{column.name}")
                 except Exception as exc:  # noqa: BLE001
                     print(f"[migrazione] impossibile aggiungere {table.name}.{column.name}: {exc}")

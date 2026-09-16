@@ -53,3 +53,29 @@ quando la libreria esterna dei grafici non viene caricata.
 
 Nessuna migrazione del database o nuova variabile ambiente è richiesta. CSS,
 grafici, tema e service worker usano una nuova versione di cache per il rilascio.
+
+## Correzioni dopo il riscontro sulle pagine operative
+
+- Veicoli e Trasporti: `veicoli` è descritta sia da Base sia da SQLModel.
+  L'aggiornamento saltava il secondo modello e lasciava colonne mancanti
+  (per esempio `anno`), mascherate in locale dalle migrazioni SQLite.
+  Ora controlla l'unione delle colonne e interviene prima di accettare richieste.
+  L'operazione aggiunge solo campi mancanti nullable e conserva i record esistenti.
+  La regressione riproduce l'errore su un database parziale, verifica due esecuzioni
+  consecutive e apre le pagine con un veicolo già presente. Gira anche su PostgreSQL.
+- Presenze: la data selezionata viene ricondotta al lunedì. Sono visibili lun–ven;
+  sabato e domenica si aggiungono separatamente con le caselle e Vai. I record
+  del weekend rimangono salvati e un avviso segnala quelli nascosti. La copia del
+  lunedì compila solo mar–ven, anche se il weekend è visualizzato.
+- Icone: adattatore condiviso per le icone decorative delle vecchie etichette,
+  con SVG lineari locali. Non modifica campi di input né il documento tecnico.
+- Fiches: elenco con card del tema condiviso e sezioni numerate; foglio tecnico
+  completo adattato alla larghezza reale su desktop e mobile, titoli neri anche
+  in modalità notte. Tolti i due blocchi 3D duplicati; conservati il confronto
+  reale/teorico nel foglio e la tabella degli strati. Creazione fiche invariata.
+- Ordini: filtri allineati in una griglia adattabile.
+
+`test_workspace_feedback_browser.py` verifica schermate popolate, weekend,
+icone, fiche a 1440/1024/390 px e stampa su una pagina A4. `test_workspace_repairs.py`
+controlla schema, conservazione dei dati e presenze. Nessuna operazione manuale
+è richiesta per l'aggiornamento; la cache grafica è `20260917r1`.

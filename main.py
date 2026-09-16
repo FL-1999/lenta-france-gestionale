@@ -325,6 +325,11 @@ def initialize_application() -> None:
             if table.name not in combined.tables:
                 table.to_metadata(combined)
     combined.create_all(bind=engine)
+    # Both mappings of shared tables must be usable before accepting requests.
+    # create_all never adds fields to an existing table; SQLite's historical
+    # migrations previously masked missing Veicolo fields on PostgreSQL.
+    from database import ensure_model_columns
+    ensure_model_columns(engine, (Base.metadata, SQLModel.metadata))
     logger.info("Schema di base inizializzato.")
 
 
