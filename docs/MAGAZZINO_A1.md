@@ -1,6 +1,6 @@
 # Magazzino A1
 
-La pagina **Magazzino** mostra le famiglie effettivamente presenti nel catalogo e un elenco compatto degli articoli. Non vengono create categorie dimostrative né riclassificati i dati esistenti. I precedenti raggruppamenti restano disponibili in **Gestisci**.
+La pagina **Magazzino** mostra le macro categorie effettivamente presenti nel catalogo. Apri una macro per vedere le categorie, poi una categoria per vedere i suoi articoli. Il percorso in alto permette di tornare ai livelli precedenti. **Tutti gli articoli** apre l'elenco completo; la ricerca permette di trovare direttamente un materiale. Non vengono create categorie dimostrative né riclassificati i dati esistenti. Le voci senza classificazione restano accessibili.
 
 - Seleziona una famiglia oppure cerca per nome, codice interno o codice fornitore.
 - **Apri scheda** mostra giacenza, fornitori equivalenti, posizione e ultimi movimenti.

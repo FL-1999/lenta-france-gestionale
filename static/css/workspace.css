@@ -440,3 +440,22 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
   .warehouse-row-stock { grid-column:2; grid-row:1; }
   .warehouse-open { grid-column:1/-1; justify-self:start; }
 }
+
+/* Per-article purchasing: independent classifications and responsive fields. */
+#order-lines { display:grid; gap:20px; margin-block:20px; }
+.workspace-ui .order-line { padding:22px; border:1px solid var(--ws-line); border-left:3px solid var(--ws-section-line); border-radius:16px; background:var(--ws-paper); min-width:0; }
+.order-line-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.order-line-fields { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:16px; }
+.order-line-classification { margin-top:18px; border-top:1px solid var(--ws-line); padding-top:18px; display:grid; gap:14px; }
+.order-line .form-field { margin:0; }
+.order-line [data-existing-classification] { font-size:12px; }
+.order-form-layout [type=radio] { width:auto; }
+@media(max-width:640px) {.order-line-fields { grid-template-columns:minmax(0,1fr); }.workspace-ui .order-line { padding:16px; }}
+
+.warehouse-breadcrumbs { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:22px 0; color:var(--ws-muted); }
+.warehouse-breadcrumbs a { color:var(--ws-section-line); }
+.warehouse-breadcrumbs strong { color:var(--ws-ink); }
+.warehouse-all-link { margin-left:auto; }
+.warehouse-family.warehouse-macro { grid-template-columns:1fr; }
+.warehouse-macro > span { font-size:13px; }
+@media(max-width:640px) {.warehouse-all-link { margin-left:0; flex-basis:100%; }}

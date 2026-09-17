@@ -13,6 +13,7 @@
 {% if error_message %}<div class="alert alert-danger" role="alert">{{ error_message }}</div>{% endif %}
 
 <form method="post" class="order-form-layout" id="order-form">
+  <input type="hidden" name="classification_scope" value="line">
   <div class="card"><div class="card-body">
     <h3>1) {{ t('Fornitore', 'Fournisseur') }}</h3>
     <div class="form-field">
@@ -66,87 +67,17 @@
       <label><input type="radio" name="order_kind" value="closed" {% if form_data.order_kind == 'closed' %}checked{% endif %}> {{ t('Cantiere', 'Chantier') }}</label>
       <label><input type="radio" name="order_kind" value="warehouse" {% if form_data.order_kind != 'closed' %}checked{% endif %}> {{ t('Magazzino', 'Stock') }}</label>
     </div>
-    <div id="closed-section" class="form-field"><label>{{ t('Cantiere', 'Chantier') }}</label><select name="site_id"><option value="">{{ t('Seleziona', 'Sélectionner') }}</option>{% for site in sites %}<option value="{{ site.id }}" {% if form_data.site_id == site.id|string %}selected{% endif %}>{{ site.name }}</option>{% endfor %}</select></div>
-    <div id="warehouse-section" class="form-field">
-      <label>{{ t('Classificazione articolo', "Classification de l'article") }}</label>
-      <div class="cat-mode-choices" style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">
-        <label><input type="radio" name="category_mode" value="existing" {% if form_data.category_mode not in ['new_in_macro','new_macro','new'] %}checked{% endif %}> {{ t('Categoria esistente', 'Catégorie existante') }}</label>
-        <label><input type="radio" name="category_mode" value="new_in_macro" {% if form_data.category_mode == 'new_in_macro' %}checked{% endif %}> {{ t('Nuova categoria in una macro esistente', 'Nouvelle catégorie dans une macro existante') }}</label>
-        <label><input type="radio" name="category_mode" value="new_macro" {% if form_data.category_mode in ['new_macro','new'] %}checked{% endif %}> {{ t('Nuova macro + nuova categoria', 'Nouvelle macro + nouvelle catégorie') }}</label>
-      </div>
-
-      {# Modalità 1: categoria esistente #}
-      <div class="cat-panel form-field" data-cat-panel="existing">
-        <label for="warehouse_category_id">{{ t('Categoria', 'Catégorie') }}</label>
-        <select name="warehouse_category_id" id="warehouse_category_id">
-          <option value="">{{ t('Seleziona', 'Sélectionner') }}</option>
-          {% for group in grouped_warehouse_categories %}
-          <optgroup label="{{ group.macro_name }}">
-            {% for category in group.categories %}
-            <option value="{{ category.id }}" {% if form_data.warehouse_category_id == category.id|string %}selected{% endif %}>{{ category.nome }}</option>
-            {% endfor %}
-          </optgroup>
-          {% endfor %}
-        </select>
-      </div>
-
-      {# Modalità 2: nuova categoria in una macro esistente #}
-      <div class="cat-panel" data-cat-panel="new_in_macro" style="display:none;">
-        <div class="form-grid-2">
-          <div class="form-field">
-            <label for="macro_id">{{ t('Macro esistente', 'Macro existante') }}</label>
-            <select id="macro_id" name="macro_id">
-              <option value="">{{ t('Seleziona', 'Sélectionner') }}</option>
-              {% for macro in macros %}
-              <option value="{{ macro.id }}" {% if form_data.macro_id == macro.id|string %}selected{% endif %}>{{ macro.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-field">
-            <label for="new_category_name_in_macro">{{ t('Nome nuova categoria', 'Nom de la nouvelle catégorie') }}</label>
-            <input type="text" id="new_category_name_in_macro" placeholder="{{ t('Es. Viti inox', 'Ex. Vis inox') }}">
-          </div>
-        </div>
-      </div>
-
-      {# Modalità 3: nuova macro + nuova categoria #}
-      <div class="cat-panel" data-cat-panel="new_macro" style="display:none;">
-        <div class="form-grid-2">
-          <div class="form-field">
-            <label for="new_macro_name_input">{{ t('Nome nuova macro', 'Nom de la nouvelle macro') }}</label>
-            <input type="text" id="new_macro_name_input" placeholder="{{ t('Es. Ferramenta', 'Ex. Quincaillerie') }}">
-          </div>
-          <div class="form-field">
-            <label for="new_category_name_new_macro">{{ t('Nome nuova categoria', 'Nom de la nouvelle catégorie') }}</label>
-            <input type="text" id="new_category_name_new_macro" placeholder="{{ t('Es. Viti inox', 'Ex. Vis inox') }}">
-          </div>
-        </div>
-      </div>
-
-      {# Campi effettivamente inviati (popolati via JS dai pannelli attivi) #}
-      <input type="hidden" name="new_category_name" id="new_category_name_hidden" value="{{ form_data.new_category_name or '' }}">
-      <input type="hidden" name="new_macro_name" id="new_macro_name_hidden" value="{{ form_data.new_macro_name or '' }}">
-      <input type="hidden" name="macro" value=""><input type="hidden" name="new_category_macro_id" value="">
-    </div>
+    <div id="closed-section" class="form-field" hidden><label for="order-site">{{ t('Cantiere di destinazione', 'Chantier de destination') }}</label><select id="order-site" name="site_id"><option value="">{{ t('Seleziona un cantiere', 'Sélectionner un chantier') }}</option>{% for site in sites %}<option value="{{ site.id }}" {% if form_data.site_id == site.id|string %}selected{% endif %}>{{ site.name }}</option>{% endfor %}</select>{% if not sites %}<p>{{ t('Nessun cantiere attivo disponibile. Crea o riattiva un cantiere prima di continuare.', 'Aucun chantier actif disponible. Créez ou réactivez un chantier avant de continuer.') }}</p>{% endif %}</div>
   </div></div>
 
-  <div class="card"><div class="card-body">
-    <h3>{{ t('Righe ordine', 'Lignes de commande') }}</h3>
+  <section class="card"><div class="card-body">
+    <h3>4) {{ t('Articoli dell’ordine', 'Articles de la commande') }}</h3>
+    <p class="text-muted">{{ t('Ogni articolo ha la propria categoria. Le quantità seguono l’unità indicata, senza conversione di confezioni.', 'Chaque article a sa propre catégorie. Quantités dans l’unité indiquée, sans conversion de conditionnement.') }}</p>
     <datalist id="supplier-codes-list"></datalist>
-    <p class="text-muted">{{ t('Collega ogni riga all’articolo interno: i codici del fornitore già conosciuti lo selezionano automaticamente. Quantità nella stessa unità della scheda; nessuna conversione automatica di confezioni.', 'Associez chaque ligne à l’article interne : les codes fournisseur connus le sélectionnent automatiquement. Quantités dans l’unité de la fiche ; aucune conversion automatique des conditionnements.') }}</p>
-<div class="table-responsive"><table class="table" id="righe-table"><thead><tr><th>{{ t('Codice fornitore', 'Code fournisseur') }}</th><th>{{ t('Descrizione', 'Description') }}</th><th>{{ t('Q.tà', 'Qté') }}</th><th>{{ t('Articolo magazzino', 'Article de stock') }}</th><th></th></tr></thead><tbody>
-      {% for line in form_data.lines %}
-      <tr>
-        <td><input type="text" name="codice" list="supplier-codes-list" value="{{ line.codice or '' }}" placeholder="cod." data-codice></td>
-        <td><input type="text" name="description" value="{{ line.description }}" required data-desc></td>
-        <td><input type="number" name="qty_ordered" min="0.01" step="0.01" value="{{ line.qty_ordered }}" required></td>
-        <td><select name="magazzino_item_id"><option value="">{{ t('Seleziona', 'Sélectionner') }}</option><option value="__new__" {% if line.magazzino_item_id == '__new__' %}selected{% endif %}>{{ t('Crea nuovo articolo (pz)', 'Créer un nouvel article (pz)') }}</option>{% for item in magazzino_items %}<option value="{{ item.id }}" {% if line.magazzino_item_id == item.id|string %}selected{% endif %} data-name="{{ item.nome }}">{{ item.codice or '—' }} · {{ item.nome }} ({{ item.unita_misura }})</option>{% endfor %}</select></td>
-        <td><button type="button" class="btn btn-secondary btn-sm remove-row" aria-label="{{ t('Rimuovi riga','Supprimer la ligne') }}">×</button></td>
-      </tr>
-      {% endfor %}
-    </tbody></table></div>
-    <button type="button" id="add-row" class="btn btn-secondary">+ {{ t('Riga', 'Ligne') }}</button>
-  </div></div>
+    <div id="order-lines">{% for line in form_data.lines %}{% include 'manager/ordini/_order_line.html' %}{% endfor %}</div>
+    <template id="blank-order-line">{% set line = {} %}{% include 'manager/ordini/_order_line.html' %}</template>
+    <button type="button" id="add-row" class="btn btn-secondary">+ {{ t('Aggiungi articolo', 'Ajouter un article') }}</button>
+  </div></section>
 
   <div class="form-actions"><button type="submit" class="btn btn-primary">{{ t('Crea ordine', 'Créer la commande') }}</button></div>
 </form>
@@ -163,47 +94,10 @@ const sPhone = document.getElementById('s-phone');
 const contactSelect = document.getElementById('supplier-contact-select');
 const initialContact = {{ (form_data.supplier_contact_id or '')|tojson }};
 
-// --- Classificazione articolo: 3 modalità (esistente / nuova cat in macro / nuova macro+cat) ---
-const catPanels = document.querySelectorAll('[data-cat-panel]');
-const newCatHidden = document.getElementById('new_category_name_hidden');
-const newMacroHidden = document.getElementById('new_macro_name_hidden');
-const newCatInMacro = document.getElementById('new_category_name_in_macro');
-const newCatNewMacro = document.getElementById('new_category_name_new_macro');
-const newMacroInput = document.getElementById('new_macro_name_input');
-
-function currentCatMode() {
-  return document.querySelector('input[name="category_mode"]:checked')?.value || 'existing';
-}
-
-function syncCatFields() {
-  const mode = currentCatMode();
-  if (mode === 'new_in_macro') {
-    newCatHidden.value = newCatInMacro?.value || '';
-    newMacroHidden.value = '';
-  } else if (mode === 'new_macro') {
-    newCatHidden.value = newCatNewMacro?.value || '';
-    newMacroHidden.value = newMacroInput?.value || '';
-  } else {
-    newCatHidden.value = '';
-    newMacroHidden.value = '';
-  }
-}
-
-function setCatModeVisibility() {
-  const mode = currentCatMode();
-  catPanels.forEach((panel) => {
-    panel.style.display = panel.dataset.catPanel === mode ? '' : 'none';
-  });
-  syncCatFields();
-}
-
-document.querySelectorAll('input[name="category_mode"]').forEach((el) => el.addEventListener('change', setCatModeVisibility));
-[newCatInMacro, newCatNewMacro, newMacroInput].forEach((el) => el?.addEventListener('input', syncCatFields));
-
 function setKindVisibility() {
-  const kind = document.querySelector('input[name="order_kind"]:checked')?.value;
-  document.getElementById('closed-section').style.display = kind === 'closed' ? 'block' : 'none';
-  document.getElementById('warehouse-section').style.display = kind === 'warehouse' ? 'block' : 'none';
+  const isSite = document.querySelector('input[name="order_kind"]:checked')?.value === 'closed';
+  document.getElementById('closed-section').hidden = !isSite;
+  document.getElementById('order-site').required = isSite;
 }
 
 async function loadSupplier() {
@@ -260,19 +154,35 @@ contactSelect.addEventListener('change', () => {
 });
 setKindVisibility();
 loadSupplier();
-setCatModeVisibility();
-document.getElementById('order-form')?.addEventListener('submit', syncCatFields);
-
-const body = document.querySelector('#righe-table tbody');
-const blankRow = body.querySelector('tr').cloneNode(true);
-blankRow.querySelectorAll('input').forEach(el => el.value = '');
-blankRow.querySelectorAll('select').forEach(el => el.value = '');
-document.getElementById('add-row').addEventListener('click', () => body.appendChild(blankRow.cloneNode(true)));
+const body = document.getElementById('order-lines');
+const blankRow = document.getElementById('blank-order-line');
+function updateRow(row) {
+  const selected = row.querySelector('[name="magazzino_item_id"]');
+  const isNew = selected.value === '__new__';
+  row.querySelector('[data-new-classification]').hidden = !isNew;
+  const mode = row.querySelector('[name="line_category_mode"]').value;
+  row.querySelectorAll('[data-category-panel]').forEach(panel => {
+    const visible = isNew && panel.dataset.categoryPanel.split(' ').includes(mode);
+    panel.hidden = !visible;
+    panel.querySelectorAll('input,select').forEach(field => {field.required = visible;});
+  });
+  const option = selected.selectedOptions[0];
+  row.querySelector('[data-existing-classification]').textContent = option?.dataset.classification || '';
+  row.querySelector('[data-row-unit]').textContent = isNew ? row.querySelector('[name="line_unit"]').value : (option?.dataset.unit || '');
+}
+function numberRows() {body.querySelectorAll('[data-order-line]').forEach((row,i) => {row.querySelector('[data-row-number]').textContent = i+1;updateRow(row);});}
+document.getElementById('add-row').addEventListener('click', () => {
+  body.appendChild(blankRow.content.cloneNode(true));numberRows();
+  body.lastElementChild.querySelector('[name="magazzino_item_id"]').focus();
+});
 body.addEventListener('click', e => {
   if (!e.target.closest('.remove-row')) return;
-  if (body.rows.length > 1) e.target.closest('tr').remove();
-  else body.replaceChildren(blankRow.cloneNode(true));
+  e.target.closest('[data-order-line]').remove();
+  if (!body.children.length) body.appendChild(blankRow.content.cloneNode(true));
+  numberRows();
 });
+body.addEventListener('change',e => {const row=e.target.closest('[data-order-line]');if(row)updateRow(row);});
+numberRows();
 let articles = [];
 async function loadArticles(clearCodes = false) {
   const sid = supplierSelect.value;
@@ -296,17 +206,19 @@ body.addEventListener('input', e => {
   if (!e.target.matches('[data-codice]')) return;
   const match = articles.find(a => a.codice.toLowerCase() === e.target.value.trim().toLowerCase());
   if (!match) return;
-  const row = e.target.closest('tr');
-  if (match.magazzino_item_id) row.querySelector('select').value = String(match.magazzino_item_id);
-  if (!row.querySelector('[data-desc]').value) row.querySelector('[data-desc]').value = match.descrizione || '';
+  const row = e.target.closest('[data-order-line]');
+  if (match.magazzino_item_id) row.querySelector('[name=magazzino_item_id]').value = String(match.magazzino_item_id);
+  if (!row.querySelector('[data-desc]').value) row.querySelector('[data-desc]').value = match.descrizione || row.querySelector('[name=magazzino_item_id]').selectedOptions[0]?.dataset.name || '';
+  updateRow(row);
 });
 body.addEventListener('change', e => {
   if (e.target.name !== 'magazzino_item_id') return;
-  const row = e.target.closest('tr');
+  const row = e.target.closest('[data-order-line]');
   const selected = e.target.selectedOptions[0];
   if (selected.dataset.name) row.querySelector('[data-desc]').value = selected.dataset.name;
   const matches = articles.filter(a => String(a.magazzino_item_id) === e.target.value);
-  row.querySelector('[data-codice]').value = matches.length === 1 ? matches[0].codice : '';
+  if (matches.length === 1) row.querySelector('[data-codice]').value = matches[0].codice;
+  updateRow(row);
 });
 </script>
 {% endblock %}

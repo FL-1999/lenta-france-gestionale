@@ -1,7 +1,7 @@
 from sqlalchemy import text
 from test_operations import operations
 from test_purchasing_workflows import setup
-from models import Base, MagazzinoItem, MagazzinoCategoria, MagazzinoMovimento, Supplier, SupplierArticle, User, RoleEnum
+from models import Base, MagazzinoItem, MagazzinoCategoria, MagazzinoMacro, MagazzinoMovimento, Supplier, SupplierArticle, User, RoleEnum
 from database import ensure_model_columns
 
 
@@ -39,7 +39,7 @@ def test_catalog_filters_and_four_supplier_codes(operations):
         vendor=Supplier(name=f'Fornitore {n}',is_active=True);db.add(vendor);db.commit()
         assert c.post(f'/manager/magazzino/items/{item.id}/fornitori',data={'supplier_id':vendor.id,'code':f'SKU-{n}'},follow_redirects=False).status_code==303
     assert db.query(SupplierArticle).filter_by(magazzino_item_id=item.id).count()==4
-    page=c.get('/manager/magazzino');assert page.status_code==200
+    page=c.get('/manager/magazzino?view=all');assert page.status_code==200
     assert '4 fornitori' in page.text and 'Pompa libera' in page.text
     page=c.get('/manager/magazzino',params={'categoria_id':cat.id})
     assert 'Bullone M12' in page.text and 'Pompa libera' not in page.text
@@ -65,3 +65,34 @@ def test_location_columns_upgrade_existing_inventory(operations):
     db.expire_all();stored=db.get(MagazzinoItem,item_id)
     assert stored.codice==code and stored.quantita_disponibile==12
     assert stored.ubicazione_zona is None and stored.ubicazione_scaffale is None and stored.ubicazione_ripiano is None
+
+
+def test_macro_category_article_navigation_and_search(operations):
+    db,c,s,item,cat=setup(operations)
+    macro=MagazzinoMacro(name='Sollevamento')
+    other=MagazzinoMacro(name='Lubrificanti')
+    second=MagazzinoCategoria(nome='Catene',slug='catene',attiva=True,macro=macro)
+    third=MagazzinoCategoria(nome='Oli',slug='oli',attiva=True,macro=other)
+    cat.macro=macro
+    db.add_all([MagazzinoItem(nome='Catena prova',categoria=second,attivo=True),
+                MagazzinoItem(nome='Olio prova',categoria=third,attivo=True)])
+    db.commit()
+    root=c.get('/manager/magazzino');assert root.status_code==200
+    assert 'Sollevamento' in root.text and 'Lubrificanti' in root.text
+    assert 'warehouse-row-name' not in root.text
+    page=c.get('/manager/magazzino',params={'macro_id':macro.id})
+    assert 'Catene' in page.text and 'Bulloneria' in page.text
+    assert 'Olio prova' not in page.text and 'warehouse-row-name' not in page.text
+    page=c.get('/manager/magazzino',params={'categoria_id':second.id})
+    assert 'Catena prova' in page.text and 'Olio prova' not in page.text and 'Bullone M12' not in page.text
+    assert 'Sollevamento' in page.text
+    page=c.get('/manager/magazzino?view=all')
+    assert 'Catena prova' in page.text and 'Olio prova' in page.text and 'Bullone M12' in page.text
+    page=c.get('/manager/magazzino',params={'macro_id':macro.id,'view':'all'})
+    assert 'Catena prova' in page.text and 'Olio prova' not in page.text
+    assert 'Catena prova' in c.get('/manager/magazzino?q=Catena').text
+    orphan=MagazzinoCategoria(nome='Senza gruppo',slug='senza-gruppo',attiva=True)
+    db.add(MagazzinoItem(nome='Orfano prova',categoria=orphan,attivo=True));db.commit()
+    page=c.get('/manager/magazzino?macro_id=0&view=all')
+    assert 'Orfano prova' in page.text and 'Catena prova' not in page.text
+    assert c.get('/manager/magazzino?macro_id=999999').status_code==404
