@@ -55,6 +55,9 @@ def test_location_columns_upgrade_existing_inventory(operations):
     db,c,s,item,cat=setup(operations)
     item.quantita_disponibile=12;db.commit();item_id=item.id;code=item.codice
     engine=db.get_bind()
+    # Reading expired attributes starts a transaction. Release its PostgreSQL
+    # table lock before simulating an older schema on a separate connection.
+    db.commit()
     with engine.begin() as conn:
         for field in ['ubicazione_zona','ubicazione_scaffale','ubicazione_ripiano']:
             conn.execute(text(f'ALTER TABLE magazzino_items DROP COLUMN {field}'))
