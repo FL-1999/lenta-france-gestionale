@@ -3,6 +3,7 @@
 {% block title %}{{ t('Articoli','Articles') }}{% endblock %}
 {% block content %}
 {% set can_edit = has_perm(user,'manager.access') %}
+{% set can_classify = can_edit and filters.categoria_id == 0 and items %}
 <div class="warehouse-a1">
   <header class="page-header">
     <h1 class="page-title">{{ t('Articoli','Articles') }}</h1>
@@ -12,7 +13,7 @@
       <a class="btn btn-primary" href="/manager/magazzino/nuovo">{{ icon('plus') }} {{ t('Nuovo articolo','Nouvel article') }}</a>
     {% endif %}</div>
   </header>
-  {% if success_message %}<p class="alert alert-success" role="status">{{ success_message }}</p>{% endif %}
+  {% if success_message %}<p class="alert alert-success" role="status">{{ success_message }}{% if bulk_destination %} <a href="{{ url_for('manager_magazzino_home').include_query_params(categoria_id=bulk_destination.id) }}">{{ t('Apri categoria','Ouvrir la catégorie') }}: {{ bulk_destination.nome }}</a>{% endif %}</p>{% endif %}
   {% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
   <nav class="warehouse-breadcrumbs" aria-label="{{ t('Percorso magazzino','Parcours du magasin') }}">
     <a href="{{ url_for('manager_magazzino_home') }}">{{ t('Macro categorie','Macro catégories') }}</a>
@@ -44,19 +45,30 @@
         {% if filters.q or filters.stock_status or filters.macro_id or filters.categoria_id is not none %}<a class="btn btn-secondary" href="{{ url_for('manager_magazzino_home') }}">{{ t('Azzera','Réinitialiser') }}</a>{% endif %}
       </form>
       {% if show_articles %}
-      <div class="warehouse-list-title"><h2>{{ selected_category.nome if selected_category else t('Articoli','Articles') }}</h2><span>{{ items_count }}</span></div>
+      <div class="warehouse-list-title"><h2>{{ selected_category.nome if selected_category else (t('Da classificare','À classer') if filters.categoria_id == 0 else t('Articoli','Articles')) }}</h2><span>{{ items_count }}</span></div>
+      {% if can_classify %}
+      <form id="warehouse-bulk-classification" method="post" action="{{ url_for('warehouse_bulk_classification') }}">
+        <input type="hidden" name="q" value="{{ filters.q }}"><input type="hidden" name="stock_status" value="{{ filters.stock_status }}">
+        <div class="warehouse-bulk-toolbar">
+          <div class="warehouse-bulk-selection"><label><input type="checkbox" data-select-all> {{ t('Seleziona tutti i risultati','Sélectionner tous les résultats') }} ({{ items_count }})</label><span role="status" aria-live="polite"><strong data-selected-count>0</strong> {{ t('selezionati','sélectionnés') }}</span></div>
+          <div class="warehouse-bulk-destination"><label class="vehicle-field">{{ t('Categoria di destinazione','Catégorie de destination') }}<select name="category_id" required aria-label="{{ t('Categoria di destinazione','Catégorie de destination') }}"><option value="">{{ t('Scegli macro / categoria','Choisir macro / catégorie') }}</option>{% for category in classification_categories %}<option value="{{ category.id }}" {% if bulk_category_id == category.id %}selected{% endif %}>{{ category.macro.name ~ ' / ' if category.macro else '' }}{{ category.nome }}</option>{% endfor %}</select></label><button class="btn btn-primary" type="submit">{{ t('Assegna selezionati','Classer la sélection') }}</button></div>
+          {% if not classification_categories %}<p>{{ t('Crea prima una categoria con il pulsante “Nuova categoria”.','Créez d’abord une catégorie avec le bouton « Nouvelle catégorie ».') }}</p>{% endif %}
+        </div>
+      {% endif %}
       <div class="warehouse-rows">
       {% for item in items %}
-        <article class="warehouse-row">
-          <div class="warehouse-row-icon">{{ icon('box') }}</div>
+        <article class="warehouse-row{% if can_classify %} warehouse-row-selectable{% endif %}">
+          {% if can_classify %}<label class="warehouse-row-select"><input type="checkbox" name="item_ids" value="{{ item.id }}" aria-label="{{ t('Seleziona','Sélectionner') }} {{ item.codice }} · {{ item.nome }}" {% if item.id in bulk_selected_ids %}checked{% endif %}></label>{% else %}<div class="warehouse-row-icon">{{ icon('box') }}</div>{% endif %}
           <div class="warehouse-row-name"><h3><a href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ item.nome }}</a></h3>{% if item.categoria and not selected_category %}<p>{{ item.categoria.macro.name ~ ' / ' if item.categoria.macro else '' }}{{ item.categoria.nome }}</p>{% endif %}<p><span class="warehouse-code">{{ item.codice }}</span> · {{ supplier_counts.get(item.id,0) }} {{ t('fornitori','fournisseurs') }}{% if item.preferito %} · {{ t('Preferito','Favori') }}{% endif %}</p>{% if item.ubicazione_zona or item.ubicazione_scaffale or item.ubicazione_ripiano %}<p class="warehouse-row-location">{{ [item.ubicazione_zona,item.ubicazione_scaffale,item.ubicazione_ripiano]|select|join(' / ') }}</p>{% endif %}</div>
           <div class="warehouse-row-stock"><strong>{{ '%g'|format(item.quantita_disponibile or 0) }} <small>{{ item.unita_misura }}</small></strong>{% if not item.quantita_disponibile %}<span class="warehouse-stock-warning">{{ t('Esaurito','Épuisé') }}</span>{% elif item.soglia_minima is not none and item.quantita_disponibile < item.soglia_minima %}<span class="warehouse-stock-warning">{{ t('Sotto soglia','Sous seuil') }}</span>{% endif %}</div>
           <a class="btn btn-secondary btn-sm warehouse-open" href="{{ url_for('warehouse_item_card',item_id=item.id) }}" aria-label="{{ t('Apri scheda','Ouvrir la fiche') }}: {{ item.nome }}">{{ t('Apri scheda','Ouvrir la fiche') }} {{ icon('arrow') }}</a>
         </article>
       {% else %}<p class="warehouse-empty">{{ t('Nessun articolo trovato','Aucun article trouvé') }}</p>{% endfor %}
       </div>
+      {% if can_classify %}</form>{% endif %}
       {% endif %}
     </div>
   </section>
 </div>
 {% endblock %}
+{% block scripts %}<script src="/static/js/warehouse-bulk-classification.js?v=20260917r13" defer></script>{% endblock %}
