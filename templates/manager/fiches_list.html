@@ -54,12 +54,15 @@
                 {% if lang == 'fr' %}Grille d’avancement{% else %}Griglia avanzamento{% endif %}
             </a>
         {% endif %}
-        <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-primary">
-            ➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+        <a href="{{ url_for('manager_fiche_new_form') }}{% if selected_site %}?cantiere_id={{ selected_site.id }}{% endif %}" class="btn btn-primary">
+            {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
         </a>
     </div>
 </div>
 
+{% if selected_site %}
+<nav class="fiche-project-nav" aria-label="Progetto cantiere"><a href="/manager/cantieri/{{ selected_site.id }}/pianta">01 · Pianta</a><a href="/manager/cantieri/{{ selected_site.id }}/configurazione-progetto">02 · Coupe</a><strong aria-current="page">03 · Fiches</strong><a class="btn btn-secondary" href="/manager/cantieri/{{ selected_site.id }}/fiches-pdf/tutte">PDF completo cantiere</a></nav>
+{% endif %}
 {% macro site_progress_card(card) %}
     <article class="fiche-site-card workspace-fiche-site">
         <div class="fiche-site-card__main">
@@ -84,6 +87,7 @@
             <span class="text-muted">
                 {{ t('Completato', 'Terminé') if card.is_completed else t('In corso', 'En cours') }}
             </span>
+            <a class="btn btn-sm btn-secondary" href="/manager/cantieri/{{ card.site.id }}/pianta">Pianta</a>
             <a href="{{ url_for('manager_fiches_list') }}?site_id={{ card.site.id }}" class="btn btn-sm btn-secondary">
                 {% if lang == 'fr' %}Ouvrir fiches{% else %}Apri fiches{% endif %}
             </a>
@@ -142,15 +146,15 @@
                 {% for f in section_fiches %}
                     <tr>
                         <td>{{ f.date }}</td>
-                        <td>{{ f.numero_pannello }}</td>
+                        <td>{{ f.panel_label }}</td>
                         <td>{{ f.machine.name if f.machine else '-' }}</td>
                         <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
                         <td>{{ f.hours if f.hours is not none else '-' }}</td>
-                        <td>{{ f.fiche_type.value if f.fiche_type else '-' }}</td>
-                        <td class="text-end">
+                        <td>{{ 'Getto registrato' if f.data_getto and f.metri_cubi_gettati is not none else 'Scavo registrato' }}</td>
+                        <td class="text-end"><div class="fiche-row-actions"><a class="btn btn-sm btn-secondary" href="/manager/fiches/{{ f.id }}/pdf">PDF</a>
                             <a href="{{ url_for('manager_fiches_detail', fiche_id=f.id) }}" class="btn btn-sm btn-secondary">
                                 {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
-                            </a>
+                            </a></div>
                         </td>
                     </tr>
                 {% else %}
@@ -165,7 +169,7 @@
     <section class="card table-card fiche-section fiche-section--paratie">
         <div class="card-header">
             <div class="card-title">
-                📄 PARATIE – {{ selected_site.name }}
+                PARATIE – {{ selected_site.name }}
             </div>
             <div class="card-actions text-muted">
                 {{ paratie_fiches|length }} fiches
@@ -182,7 +186,7 @@
     <section class="card table-card fiche-section fiche-section--pali">
         <div class="card-header">
             <div class="card-title">
-                📄 PALI – {{ selected_site.name }}
+                PALI – {{ selected_site.name }}
             </div>
             <div class="card-actions text-muted">
                 {{ pali_fiches|length }} fiches
@@ -197,4 +201,7 @@
     </section>
 {% endif %}
 
+<style>
+.fiche-project-nav{display:flex;align-items:center;flex-wrap:wrap;gap:1rem;border-bottom:1px solid var(--ws-line);margin:0 0 1.5rem;padding-bottom:1rem}.fiche-project-nav>strong{padding:.7rem;border-bottom:3px solid var(--ws-accent)}.fiche-project-nav .btn{margin-left:auto}.fiche-row-actions{display:flex;gap:.5rem;justify-content:flex-end}.fiche-site-card__footer{gap:.75rem}.fiche-site-card__footer>span{margin-right:auto}.fiche-site-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr))}.fiche-section .card-body{overflow:auto}.fiche-section .data-table{min-width:650px}
+</style>
 {% endblock %}

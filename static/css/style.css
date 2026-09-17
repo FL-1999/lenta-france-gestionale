@@ -9085,3 +9085,13 @@ body {
         overflow-y: auto;
     }
 }
+
+/* The guide walls and all elevation markers share the SVG wall's top plane.
+   SVG front face y=107..860; back face offset (+30,-30). */
+.technical-drawing-column--historic .technical-section-canvas--panel {
+  --technical-top-offset:107px;
+  --technical-bottom-offset:60px;
+}
+@media print {
+  .technical-drawing-column--historic .technical-section-canvas--panel {height:920px!important;}
+}

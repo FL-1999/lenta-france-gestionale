@@ -140,4 +140,6 @@ def test_automatic_link_only_unique_custom_name_and_no_mutation_of_fiches(operat
 def test_unlinked_panels_can_be_approved_without_fabricating_progress(operations):
     c,url,pid,plan=setup(operations);body=payload(plan);body['panels'][0]['element']=None
     assert c.put(url+f'/{pid}/convalida',json=body).status_code==200
-    assert c.get(url+'/data').json()['plan']['layout']['panels'][0]['element'] is None
+    assert c.get(url+'/data').json()['plan']['layout']['panels'][0]['element'] == 1
+    assert operations['db'].query(Fiche).count() == 0
+    assert c.get(url+'/data').json()['elements'][0]['status'] == 'planned'

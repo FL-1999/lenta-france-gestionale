@@ -8,6 +8,7 @@
     <div class="page-actions"><a class="btn btn-secondary" href="/manager/cantieri/{{ site.id }}">Torna al cantiere</a>
     {% if plan_can_edit %}<button class="btn btn-primary" type="button" data-upload-toggle>Carica PDF</button>{% endif %}</div>
   </header>
+  {% if plan_can_edit %}<nav class="sp-project-flow" aria-label="Progetto cantiere"><strong aria-current="page">01 · Pianta</strong><a href="/manager/cantieri/{{ site.id }}/configurazione-progetto">02 · Coupe</a><a href="/manager/fiches?site_id={{ site.id }}">03 · Fiches</a></nav>{% endif %}
   <div role="status" aria-live="polite" class="sp-message" data-message>Caricamento pianta…</div>
   {% if plan_can_edit %}
   <form class="card sp-upload" data-upload hidden>
@@ -60,4 +61,4 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/js/site-plan.js?v=1" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/site-plan.js?v=2" defer></script>{% endblock %}

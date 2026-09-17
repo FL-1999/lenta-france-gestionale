@@ -5,6 +5,9 @@
 {% endblock %}
 {% block content %}
 {% set lang = request.cookies.get('lang', 'it') %}
+{% set report_responsable = fiche.responsable_pdf or ((fiche.capocantiere.full_name or fiche.capocantiere.email) if fiche.capocantiere else none) or '—' %}
+{% set report_coupe = fiche.report_coupe %}
+{% set datum = fiche.quota_reference_label or (report_coupe.quota_reference_label if report_coupe else none) or 'NGF' %}
 {% set diametro_cm = fiche.diametro_palo * 100 if fiche.diametro_palo is not none else None %}
 {% set larghezza_m = fiche.larghezza_pannello if fiche.larghezza_pannello is not none else None %}
 {% set spessore_m = fiche.altezza_pannello if fiche.altezza_pannello is not none else None %}
@@ -20,15 +23,15 @@
 {% set has_ngf_quote = fiche.quota_ngf_testa is not none or fiche.quota_ngf_fondo is not none or fiche.quota_ngf_note or fiche.quota_partenza is not none or fiche.quota_testa_getto is not none %}
 {% set has_courbe_beton = fiche.courbe_beton_active %}
 
-{# ── Schema NGF variables ── #}
-{% set schema_quota_tn = fiche.quota_tn if fiche.quota_tn is not none else (fiche.coupe.quota_tn if fiche.coupe and fiche.coupe.quota_tn is not none else (fiche.quota_ngf_testa if fiche.quota_ngf_testa is not none else fiche.quota_partenza)) %}
-{% set schema_quota_partenza = fiche.quota_partenza if fiche.quota_partenza is not none else (fiche.coupe.quota_testa if fiche.coupe and fiche.coupe.quota_testa is not none else fiche.quota_ngf_testa) %}
-{% set schema_quota_fondo = fiche.quota_ngf_fondo if fiche.quota_ngf_fondo is not none else (schema_quota_tn - fiche.profondita_totale if schema_quota_tn is not none and fiche.profondita_totale is not none else none) %}
+{# Drawing elevation variables #}
+{% set schema_quota_tn = fiche.quota_tn if fiche.quota_tn is not none else (report_coupe.quota_tn if report_coupe and report_coupe.quota_tn is not none else (fiche.quota_ngf_testa if fiche.quota_ngf_testa is not none else fiche.quota_partenza)) %}
+{% set schema_quota_partenza = fiche.quota_partenza if fiche.quota_partenza is not none else (report_coupe.quota_testa if report_coupe and report_coupe.quota_testa is not none else fiche.quota_ngf_testa) %}
+{% set schema_quota_fondo = fiche.quota_ngf_fondo if fiche.quota_ngf_fondo is not none else (schema_quota_partenza - fiche.profondita_totale if schema_quota_partenza is not none and fiche.profondita_totale is not none else none) %}
 {% set schema_quota_getto = fiche.quota_testa_getto %}
-{% set schema_depth = fiche.profondita_totale if fiche.profondita_totale is not none else ((schema_quota_tn - schema_quota_fondo) if schema_quota_tn is not none and schema_quota_fondo is not none else none) %}
+{% set schema_depth = fiche.profondita_totale if fiche.profondita_totale is not none else ((schema_quota_partenza - schema_quota_fondo) if schema_quota_partenza is not none and schema_quota_fondo is not none else none) %}
 {% set can_render_ngf_schema = schema_depth is not none and schema_depth > 0 %}
-{% set schema_fondo_teorico = fiche.coupe.quota_fondo_teorica if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else none %}
-{% set schema_depth_diff = fiche.profondita_totale - fiche.coupe.profondita_teorica if fiche.coupe and fiche.profondita_totale is not none and fiche.coupe.profondita_teorica is not none else none %}
+{% set schema_fondo_teorico = report_coupe.quota_fondo_teorica if report_coupe and report_coupe.quota_fondo_teorica is not none else none %}
+{% set schema_depth_diff = fiche.profondita_totale - report_coupe.profondita_teorica if report_coupe and fiche.profondita_totale is not none and report_coupe.profondita_teorica is not none else none %}
 {% set schema_fondo_diff = schema_quota_fondo - schema_fondo_teorico if schema_quota_fondo is not none and schema_fondo_teorico is not none else none %}
 
 {# ══════════════════════════════════════════════════════
@@ -41,7 +44,7 @@
         </p>
         <h1 class="page-title">
             {{ fiche_element_label_fr(fiche.tipologia_scavo) if lang == 'fr' else fiche.tipologia_scavo or 'Fiche' }}
-            — {{ fiche.numero_pannello or '—' }}
+            — {{ fiche.panel_label or '—' }}
         </h1>
         <p class="page-subtitle">
             {{ fiche.site.name if fiche.site else '—' }}
@@ -50,21 +53,22 @@
     </div>
     <div class="page-actions">
         <a href="{{ url_for('manager_fiches_edit_form', fiche_id=fiche.id) }}" class="btn btn-primary">
-            ✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
         </a>
-        <a href="{{ url_for('manager_fiches_list') }}" class="btn btn-secondary">
+        <a href="{{ url_for('manager_fiches_list') }}?site_id={{ fiche.site_id }}" class="btn btn-secondary">
             ← {% if lang == 'fr' %}Retour{% else %}Lista{% endif %}
         </a>
     </div>
 </div>
 
+<nav class="project-flow" aria-label="Cantiere"><a class="btn btn-secondary" href="/manager/cantieri/{{ fiche.site_id }}/pianta">Pianta</a> <a class="btn btn-secondary" href="/manager/cantieri/{{ fiche.site_id }}/configurazione-progetto">Coupe</a> <a class="btn btn-secondary" href="/manager/fiches?site_id={{ fiche.site_id }}">Fiches del cantiere</a></nav>
 {# ══════════════════════════════════════════════════════
    2. KPI CARDS
    ══════════════════════════════════════════════════════ #}
 <section class="card fiche-section">
     <div class="card-header">
         <div class="card-title">
-            📌 {% if lang == 'fr' %}Indicateurs principaux{% else %}Indicatori principali{% endif %}
+            {% if lang == 'fr' %}Indicateurs principaux{% else %}Indicatori principali{% endif %}
         </div>
     </div>
     <div class="card-body">
@@ -181,7 +185,7 @@
 </section>
 
 {# ══════════════════════════════════════════════════════
-   3. INFORMATIONS DE BASE + NGF
+   3. INFORMATIONS DE BASE + {{ datum }}
    ══════════════════════════════════════════════════════ #}
 <section class="card fiche-section">
     <div class="card-header">
@@ -203,7 +207,7 @@
             </div>
             <div>
                 <p class="info-field__label">{% if lang == 'fr' %}N° panneau / pieu{% else %}N° paratia / palo{% endif %}</p>
-                <p class="info-field__value">{{ fiche.numero_pannello or "—" }}</p>
+                <p class="info-field__value">{{ fiche.panel_label or "—" }}</p>
             </div>
             <div>
                 <p class="info-field__label">{% if lang == 'fr' %}Machine{% else %}Macchinario{% endif %}</p>
@@ -225,16 +229,16 @@
             </div>
             {% if has_ngf_quote %}
                 <div>
-                    <p class="info-field__label">{% if lang == 'fr' %}Cote NGF tête{% else %}Quota NGF testa{% endif %}</p>
-                    <p class="info-field__value">{{ "%.2f m NGF"|format(fiche.quota_ngf_testa) if fiche.quota_ngf_testa is not none else "—" }}</p>
+                    <p class="info-field__label">{% if lang == 'fr' %}Cote {{ datum }} tête{% else %}Quota {{ datum }} testa{% endif %}</p>
+                    <p class="info-field__value">{{ "%.2f m"|format(fiche.quota_ngf_testa) if fiche.quota_ngf_testa is not none else "—" }}</p>
                 </div>
                 <div>
-                    <p class="info-field__label">{% if lang == 'fr' %}Cote NGF fond{% else %}Quota NGF fondo{% endif %}</p>
-                    <p class="info-field__value">{{ "%.2f m NGF"|format(fiche.quota_ngf_fondo) if fiche.quota_ngf_fondo is not none else "—" }}</p>
+                    <p class="info-field__label">{% if lang == 'fr' %}Cote {{ datum }} fond{% else %}Quota {{ datum }} fondo{% endif %}</p>
+                    <p class="info-field__value">{{ "%.2f m"|format(fiche.quota_ngf_fondo) if fiche.quota_ngf_fondo is not none else "—" }}</p>
                 </div>
                 {% if fiche.quota_ngf_note %}
                     <div>
-                        <p class="info-field__label">{% if lang == 'fr' %}Notes NGF{% else %}Note NGF{% endif %}</p>
+                        <p class="info-field__label">{% if lang == 'fr' %}Notes {{ datum }}{% else %}Note {{ datum }}{% endif %}</p>
                         <p class="info-field__value">{{ fiche.quota_ngf_note }}</p>
                     </div>
                 {% endif %}
@@ -252,7 +256,7 @@
             📈 Rapport d'exécution — {{ 'Pieu' if is_palo else 'Paroi moulée' }}
         </div>
         <a href="{{ url_for('manager_fiche_pdf', fiche_id=fiche.id) }}" class="btn btn-primary btn-sm" download>
-            📄 {% if lang == 'fr' %}Télécharger PDF{% else %}Scarica PDF{% endif %}
+            {% if lang == 'fr' %}Télécharger PDF{% else %}Scarica PDF{% endif %}
         </a>
         <button type="button" class="btn btn-secondary btn-sm technical-print-button" data-print-technical-sheet>
             🖨️ {% if lang == 'fr' %}Imprimer{% else %}Stampa{% endif %}
@@ -260,8 +264,8 @@
     </div>
     <div class="card-body">
         {% if can_render_ngf_schema %}
-            {% set coupe_base_mecanique = fiche.coupe.base_paroi_mecanique|default(none) if fiche.coupe else none %}
-            {% set schema_quota_base_meccanica = coupe_base_mecanique if coupe_base_mecanique is not none else (fiche.coupe.quota_fondo_teorica if fiche.coupe and fiche.coupe.quota_fondo_teorica is not none else schema_quota_fondo) %}
+            {% set coupe_base_mecanique = report_coupe.base_paroi_mecanique|default(none) if report_coupe else none %}
+            {% set schema_quota_base_meccanica = coupe_base_mecanique if coupe_base_mecanique is not none else (report_coupe.quota_fondo_teorica if report_coupe and report_coupe.quota_fondo_teorica is not none else schema_quota_fondo) %}
             {% set schema_quota_base_idraulica = schema_quota_fondo %}
             {% set schema_width_label = (("%.2f"|format(larghezza_m)).replace(".", ",") ~ " m") if larghezza_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
             {% set schema_thickness_label = (("%.2f"|format(spessore_m)).replace(".", ",") ~ " m") if spessore_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
@@ -276,8 +280,8 @@
                             </div>
                             <div class="technical-sheet__header-details-row">
                                 <table class="technical-sheet__header-table">
-                                    <tr><td>CHANTIER</td><td><strong>{{ fiche.site.name|upper if fiche.site else '—' }}</strong></td><td>{{ 'PIEU' if is_palo else 'PANNEAU' }}</td><td><strong>{{ fiche.numero_pannello or '—' }}</strong></td></tr>
-                                    <tr><td>RESPONSABLE</td><td><strong>{{ fiche.responsable_pdf or '—' }}</strong></td><td>COUPE</td><td><strong>{{ fiche.coupe.name if fiche.coupe else '—' }}</strong></td></tr>
+                                    <tr><td>CHANTIER</td><td><strong>{{ fiche.site.name|upper if fiche.site else '—' }}</strong></td><td>{{ 'PIEU' if is_palo else 'PANNEAU' }}</td><td><strong>{{ fiche.panel_label or '—' }}</strong></td></tr>
+                                    <tr><td>RESPONSABLE</td><td><strong>{{ report_responsable }}</strong></td><td>COUPE</td><td><strong>{{ report_coupe.nome if report_coupe else '—' }}</strong></td></tr>
                                     <tr><td colspan="3"></td><td><strong>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</strong></td></tr>
                                 </table>
                                 <div class="technical-sheet__header-title">
@@ -295,7 +299,7 @@
                                 <dl>
                                     <div><dt>Date de forage</dt><dd>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</dd></div>
                                     <div><dt>Chantier</dt><dd>{{ fiche.site.name if fiche.site else '—' }}</dd></div>
-                                    <div><dt>Responsable</dt><dd>{{ fiche.responsable_pdf or '—' }}</dd></div>
+                                    <div><dt>Responsable</dt><dd>{{ report_responsable }}</dd></div>
                                     <div><dt>Machine</dt><dd>{{ fiche.machine.name if fiche.machine else '—' }}</dd></div>
                                 </dl>
                             </section>
@@ -311,7 +315,7 @@
                                     <div><dt>Largeur</dt><dd>{{ "%.2f m"|format(larghezza_m) if larghezza_m is not none else '—' }}</dd></div>
                                     <div><dt>Épaisseur</dt><dd>{{ "%.2f m"|format(spessore_m) if spessore_m is not none else '—' }}</dd></div>
                                     <div><dt>Longueur forée</dt><dd>{{ "%.2f m"|format(fiche.profondita_totale) if fiche.profondita_totale is not none else '—' }}</dd></div>
-                                    <div><dt>Base paroi mécanique</dt><dd>{{ "%.2f NGF"|format(schema_quota_base_meccanica) if schema_quota_base_meccanica is not none else '—' }}</dd></div>
+                                    <div><dt>Base paroi mécanique</dt><dd>{{ "%.2f"|format(schema_quota_base_meccanica) if schema_quota_base_meccanica is not none else '—' }}</dd></div>
                                     <div><dt>Volume théorique</dt><dd>{{ "%.2f m³"|format(volume_teorico) if volume_teorico is not none else '—' }}</dd></div>
                                     <div><dt>Volume réel</dt><dd>{{ "%.2f m³"|format(volume_gettato) if volume_gettato is not none else '—' }}</dd></div>
                                     <div><dt>Différence / surconsommation</dt><dd>{% if volume_diff is not none %}{{ "%+.2f m³"|format(volume_diff) }}{% if volume_diff_percent is not none %} ({{ "%+.1f %%"|format(volume_diff_percent) }}){% endif %}{% else %}—{% endif %}</dd></div>
@@ -384,7 +388,7 @@
                             {# G. Modèle géologique #}
                             <section class="technical-data-block">
                                 <h3>G. Modèle géologique</h3>
-                                <p>{{ technical_fr(fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '—')) }}</p>
+                                <p>{{ technical_fr(fiche.terreno_teorico or (report_coupe.terreno_teorico if report_coupe and report_coupe.terreno_teorico else '—')) }}</p>
                             </section>
                         </aside>
 
@@ -393,8 +397,8 @@
                             <div class="technical-drawing-layout">
                                 <div class="technical-section-canvas technical-section-canvas--{{ 'pile' if is_palo else 'panel' }}">
                                     <div class="technical-top-levels" aria-hidden="true">
-                                        <span>TN = {{ ("%.2f"|format(schema_quota_tn)).replace(".", ",") }} NGF</span>
-                                        <span>{{ 'ARASE SUPERIEURE PIEU' if is_palo else 'ARASE SUPERIEURE PANNEAU' }} = {{ (("%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto)).replace(".", ",") if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—") }} NGF</span>
+                                        <span>TN = {{ ("%.2f"|format(schema_quota_tn)).replace(".", ",") if schema_quota_tn is not none else "—" }} {{ datum }}</span>
+                                        <span>{{ 'ARASE SUPERIEURE PIEU' if is_palo else 'ARASE SUPERIEURE PANNEAU' }} = {{ (("%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto)).replace(".", ",") if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—") }} {{ datum }}</span>
                                     </div>
                                     {% if is_paratia %}
                                         <div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div>
@@ -428,11 +432,11 @@
                                     {% endif %}
                                     <div class="technical-level technical-level--bottom" style="--level-top: 100%;" aria-hidden="true"></div>
 
-                                    {# NGF scale at top #}
+                                    {# Elevation reference scale #}
                                     {% if schema_quota_tn is not none %}
                                     <div class="technical-ngf-scale" aria-hidden="true">
                                         <div class="technical-ngf-row">
-                                            <span class="ngf-label">NGF</span>
+                                            <span class="ngf-label">{{ datum }}</span>
                                             <span class="ngf-label">Prof.</span>
                                         </div>
                                         <div class="technical-ngf-row">
@@ -446,10 +450,10 @@
                                     {% if schema_quota_fondo is not none or schema_fondo_teorico is not none %}
                                     <div class="technical-base-summary" aria-hidden="true">
                                         {% if schema_quota_base_meccanica is not none %}
-                                            <p><strong>BASE PAROI MECANIQUE = {{ ("%.2f"|format(schema_quota_base_meccanica)).replace(".", ",") }} NGF</strong></p>
+                                            <p><strong>BASE PAROI MECANIQUE = {{ ("%.2f"|format(schema_quota_base_meccanica)).replace(".", ",") }} {{ datum }}</strong></p>
                                         {% endif %}
                                         {% if schema_quota_fondo is not none %}
-                                            <p><strong>BASE PAROI HYDRAULIQUE = {{ ("%.2f"|format(schema_quota_fondo)).replace(".", ",") }} NGF</strong></p>
+                                            <p><strong>BASE PAROI HYDRAULIQUE = {{ ("%.2f"|format(schema_quota_fondo)).replace(".", ",") }} {{ datum }}</strong></p>
                                         {% endif %}
                                     </div>
                                     {% endif %}
@@ -479,8 +483,8 @@
                                                         <span>{{ technical_fr(layer.materiale) }}</span>
                                                     </div>
                                                 {% endfor %}
-                                            {% elif fiche.terreno_teorico or (fiche.coupe and fiche.coupe.terreno_teorico) %}
-                                                <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ technical_fr(fiche.terreno_teorico or fiche.coupe.terreno_teorico) }}</span></div>
+                                            {% elif fiche.terreno_teorico or (report_coupe and report_coupe.terreno_teorico) %}
+                                                <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ technical_fr(fiche.terreno_teorico or report_coupe.terreno_teorico) }}</span></div>
                                             {% else %}
                                                 <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
                                             {% endif %}
@@ -629,7 +633,7 @@
     <div class="card-body">
         <form method="post" action="{{ url_for('manager_fiches_update_pdf_data', fiche_id=fiche.id) }}" class="form-grid form-grid--four">
             <div class="form-group"><label class="form-label">Responsable</label><input class="form-control" name="responsable_pdf" value="{{ fiche.responsable_pdf or '' }}"></div>
-            <div class="form-group"><label class="form-label">Terrain naturel (TN)</label><input class="form-control" type="number" step="0.01" name="quota_tn" value="{{ fiche.quota_tn if fiche.quota_tn is not none else (fiche.coupe.quota_tn if fiche.coupe and fiche.coupe.quota_tn is not none else '') }}"></div>
+            <div class="form-group"><label class="form-label">Terrain naturel (TN)</label><input class="form-control" type="number" step="0.01" name="quota_tn" value="{{ fiche.quota_tn if fiche.quota_tn is not none else (report_coupe.quota_tn if report_coupe and report_coupe.quota_tn is not none else '') }}"></div>
             <div class="form-group"><label class="form-label">Cote tête béton</label><input class="form-control" type="number" step="0.01" name="quota_testa_getto" value="{{ fiche.quota_testa_getto if fiche.quota_testa_getto is not none else '' }}"></div>
             <div class="form-group"><label class="form-label">Largeur</label><input class="form-control" type="number" step="0.01" name="larghezza_pannello" value="{{ fiche.larghezza_pannello if fiche.larghezza_pannello is not none else '' }}"></div>
             <div class="form-group"><label class="form-label">Épaisseur</label><input class="form-control" type="number" step="0.01" name="altezza_pannello" value="{{ fiche.altezza_pannello if fiche.altezza_pannello is not none else '' }}"></div>
@@ -684,7 +688,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe and fiche.coupe.terreno_teorico else '') }}</textarea></div>
+            <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico or (report_coupe.terreno_teorico if report_coupe and report_coupe.terreno_teorico else '') }}</textarea></div>
             {% if fiche.sonic_previsto %}
               <div class="form-group"><label class="form-label">Sonic réalisé ?</label><select class="form-select" name="sonic_realizzato" required><option value="" {% if fiche.sonic_realizzato is none %}selected{% endif %}>—</option><option value="1" {% if fiche.sonic_realizzato is sameas true %}selected{% endif %}>Oui</option><option value="0" {% if fiche.sonic_realizzato is sameas false %}selected{% endif %}>Non</option></select></div>
             {% endif %}

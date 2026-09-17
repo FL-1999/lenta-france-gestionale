@@ -33,7 +33,7 @@
       versions.value = plan.id; selected = plan.layout.panels[0]?.key; showOriginal = editing;
       q('[data-pdf]').href = plan.original_url; q('[data-page]').textContent = `Pagina ${plan.page_number}`;
       const image = q('[data-preview]'); image.setAttribute('href', plan.preview_url); image.setAttribute('width', plan.layout.width); image.setAttribute('height', plan.layout.height);
-      const links = form.elements.element; links.replaceChildren(new Option('Da collegare', ''));
+      const links = form.elements.element; links.replaceChildren(new Option('Crea pannello alla convalida', ''));
       data.elements.forEach(e => links.add(new Option(`${e.label} · elemento ${e.number}${e.fiche_id ? ' · fiche presente' : ''}`, e.number)));
       plan.layout.panels.forEach(p => shapeWidths.set(p.key, p.width_m));
       fit(); render();
@@ -92,12 +92,14 @@
     const dl = q('[data-details]'); dl.replaceChildren();
     const rows = p ? [['Larghezza pianta',num(p.width_m,' m')],['Collegamento', e ? `${e.label} · #${e.number}` : 'Da associare'],['Stato', !e ? 'Non collegato' : {cast:'Getto registrato',fiche:'Fiche presente',planned:'Da eseguire'}[e.status]],['Coupe', e?.coupe || '—'],['Profondità prevista',num(e?.planned_depth_m,' m')],['Profondità effettiva',num(e?.depth_m,' m')],['Calcestruzzo gettato',num(e?.concrete_m3,' m³')],['Data getto',e?.cast_date || '—'],['Controlli previsti',[e?.sonic?'Sonico':'',e?.inclinometer?'Inclinometro':''].filter(Boolean).join(' + ') || '—']] : [];
     rows.forEach(([k,v])=>{const row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;row.append(dt,dd);dl.append(row);});
-    q('[data-fiche]').hidden = !e?.fiche_url; if (e?.fiche_url) q('[data-fiche]').href = e.fiche_url;
+    const action = q('[data-fiche]'), target = e?.fiche_url || (!editing && e?.create_url);
+    action.hidden = !target; if (target) action.href = target;
+    action.textContent = e?.fiche_url ? 'Apri fiche' : 'Crea fiche';
   }
   function renderFooter() {
     if (!plan) return;
     const pending = plan.layout.panels.filter(p=>!p.reviewed||!p.width_m).length, unlinked = plan.layout.panels.filter(p=>!p.element).length;
-    q('[data-pending]').textContent = `${pending} da verificare · ${unlinked} da collegare alle fiches${dirty ? ' · Modifiche non salvate' : ''}`;
+    q('[data-pending]').textContent = `${pending} da verificare · ${unlinked} pannelli da creare alla convalida${dirty ? ' · Modifiche non salvate' : ''}`;
     q('[data-state]').textContent = editing ? 'Bozza da convalidare' : 'Disegno convalidato';
   }
   function render() {
@@ -175,7 +177,7 @@
     if(busy)return;
     if(approve){const missing=plan.layout.panels.filter(p=>!p.reviewed||!p.width_m);if(!plan.layout.panels.length||missing.length){message(`Controlla le larghezze e verifica tutti i pannelli (${missing.length} ancora da verificare).`,true);return;}
       const unlinked=plan.layout.panels.filter(p=>!p.element).length;
-      if(!confirm(`Convalidare il disegno?${unlinked?` ${unlinked} pannelli non sono ancora collegati: non mostreranno avanzamento finché non li assocerai.`:''}`))return;
+      if(!confirm(`Convalidare il disegno?${unlinked?` ${unlinked} pannelli verranno creati nel progetto con queste sigle. Potrai poi assegnarli alle coupe.`:''}`))return;
     }
     const id=plan.id;lock(true);
     try{await api(`${base}/${id}/${approve?'convalida':'bozza'}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:plan.revision,panels:plan.layout.panels,confirm:approve})});dirty=false;await load(id,!approve);message(approve?'Disegno convalidato.':'Bozza salvata. Il disegno convalidato resta invariato.');}catch(e){message(e.message,true);}finally{lock(false);}

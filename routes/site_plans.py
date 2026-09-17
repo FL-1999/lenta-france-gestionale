@@ -15,6 +15,7 @@ from deps import get_site_for_user
 from models import (SitePlan, SiteProgressGridName, SiteCoupeAssignment,
                     SiteSpecialEquipmentConfig, Fiche, RoleEnum, User)
 from permissions import has_perm
+from services.site_plan_project import confirm_project_panels
 from services.site_plan_import import import_pdf, MAX_PDF_BYTES, MAX_PANELS
 from template_context import register_manager_badges, render_template
 
@@ -56,6 +57,7 @@ def elements(db, site, user):
         f,c,e=fiches.get(n),assignments.get(n),equipment.get(n)
         result.append({'number':n,'label':labels.get(n,str(n)), 'custom_label':labels.get(n),
             'fiche_id':f.id if f else None,
+            'create_url':(f'/manager/fiches/nuova?cantiere_id={site.id}&numero_pannello={n}&tipologia_scavo=paratia' if has_perm(user,'manager.access') else f'/capo/fiches/nuova?cantiere_id={site.id}&numero_pannello={n}&tipologia_scavo=paratia') if not f else None,
             'fiche_url':f'/manager/fiches/{f.id}' if f and has_perm(user,'manager.access') else None,
             'status':'cast' if f and f.data_getto and f.metri_cubi_gettati is not None else 'fiche' if f else 'planned',
             'concrete_m3':f.metri_cubi_gettati if f else None,
@@ -176,6 +178,8 @@ def save(site_id:int,plan_id:int,request:Request,body:LayoutInput,
     approve=request.url.path.endswith('/convalida')
     layout=validate_layout(body,json.loads(row.draft),{e['number'] for e in elements(db,site,user)},approve)
     if row.revision!=body.revision: raise HTTPException(409,'La pianta è cambiata. Ricarica prima di salvare.')
+    if approve:
+        confirm_project_panels(db,site,layout,json.loads(row.approved) if row.approved else None)
     new_revision=row.revision+1
     values={'draft':json.dumps(layout),'revision':new_revision,'updated_by_id':user.id}
     if approve: values.update(approved=json.dumps(layout),approved_revision=new_revision,approved_at=datetime.utcnow())

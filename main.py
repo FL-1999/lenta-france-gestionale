@@ -1223,6 +1223,9 @@ def _load_manager_form_collections() -> tuple[list[Site], list[Machine]]:
         db.close()
 
 
+from services.site_plan_project import panel_details, approved_panels
+
+
 def _render_fiche_create_form(
     request: Request,
     current_user: User,
@@ -1246,6 +1249,31 @@ def _render_fiche_create_form(
             .all()
             if site_ids else []
         )
+        if form_data is None and request.query_params.get("cantiere_id"):
+            try:
+                selected_site_id = int(request.query_params["cantiere_id"])
+                number = int(request.query_params.get("numero_pannello", "0"))
+            except ValueError:
+                raise HTTPException(400, "Pannello non valido")
+            if selected_site_id not in site_ids:
+                raise HTTPException(404, "Cantiere non disponibile")
+            kind = request.query_params.get("tipologia_scavo", "paratia")
+            if kind not in ("paratia", "palo"):
+                raise HTTPException(400, "Tipologia non valida")
+            values = {"cantiere_id": selected_site_id, "tipologia_scavo": kind}
+            if number > 0:
+                existing = db.query(Fiche).filter_by(site_id=selected_site_id, tipologia_scavo=kind, numero_pannello=number).first()
+                if existing and has_perm(current_user, "manager.access"):
+                    return RedirectResponse(f"/manager/fiches/{existing.id}", status_code=303)
+                details = panel_details(db, selected_site_id, number, kind)
+                assigned = next((c for c in coupes if c.site_id == selected_site_id and any(a.tipologia_scavo == kind and a.numero_elemento == number for a in c.assignments)), None)
+                values.update(numero_pannello=number, coupe_id=assigned.id if assigned else None, larghezza_pannello=details['width_m'], scavo_da_tn=assigned.scavo_da_tn if assigned else True)
+            form_data = _build_fiche_form_data(**values)
+        panel_catalog = {}
+        for available_site in sites:
+            panel_catalog[str(available_site.id)] = [
+                {"number": p['element'], "label": p['label'], "width_m": p.get('width_m')}
+                for p in approved_panels(db, available_site.id) if p.get('element')]
         capocantieri = (
             db.query(User)
             .filter(User.is_active.is_(True), User.role.in_([RoleEnum.admin, RoleEnum.manager]))
@@ -1270,12 +1298,15 @@ def _render_fiche_create_form(
         "macchinari": machines,
         "capocantieri": capocantieri,
         "coupes": coupes,
+        "fiche_panel_catalog": panel_catalog,
         "equipment_configs": _serialize_site_special_equipment_configs(equipment_configs),
         "form_data": form_data or _build_fiche_form_data(),
         "error_message": error_message,
     }
     if extra_context:
         context.update(extra_context)
+    if form_data and form_data.get("cantiere_id") and has_perm(current_user, "manager.access") and not context.get("is_edit"):
+        context["fiche_cancel_url"] = f"/manager/fiches?site_id={form_data['cantiere_id']}"
     return templates.TemplateResponse(
         request,
         template_name,
@@ -1612,7 +1643,7 @@ def _apply_coupe_defaults_to_fiche_values(
     larghezza_value: float | None,
     altezza_value: float | None,
 ) -> dict[str, float | bool | None]:
-    scavo_da_tn_value = scavo_da_tn in (True, "1", "true", "on", "si", "SI")
+    scavo_da_tn_value = True if scavo_da_tn is None else scavo_da_tn in (True, "1", "true", "on", "si", "SI")
     quota_partenza_value = None
     if coupe:
         scavo_da_tn_value = coupe.scavo_da_tn if scavo_da_tn is None else scavo_da_tn_value
@@ -1632,8 +1663,9 @@ def _apply_coupe_defaults_to_fiche_values(
         quota_testa_getto_value,
         quota_tn=coupe.quota_tn if coupe and coupe.quota_tn is not None else quota_ngf_testa_value,
     )
-    if quota_ngf_fondo_value is None and quota_ngf_testa_value is not None and profondita_value is not None:
-        quota_ngf_fondo_value = quota_ngf_testa_value - profondita_value
+    origin = quota_partenza_value if quota_partenza_value is not None else quota_ngf_testa_value
+    if quota_ngf_fondo_value is None and origin is not None and profondita_value is not None:
+        quota_ngf_fondo_value = round(origin - profondita_value, 6)
 
     return {
         "scavo_da_tn_value": scavo_da_tn_value,
@@ -1696,6 +1728,15 @@ def _validate_required_fiche_stratigrafia(
         strato_a=[layer[1] for layer in layers],
     )
     return layers
+
+
+def _fiche_coupe_snapshot(coupe):
+    if not coupe:
+        return None
+    return json.dumps({key: getattr(coupe, key) for key in (
+        "id", "nome", "quota_reference_label", "quota_tn", "quota_testa", "quota_fondo_teorica",
+        "base_paroi_mecanique", "profondita_teorica", "scavo_da_tn", "quota_partenza_scavo",
+        "quota_testa_getto_prevista", "larghezza", "spessore", "diametro", "terreno_teorico")})
 
 
 def _create_validated_fiche(
@@ -1796,6 +1837,9 @@ def _create_validated_fiche(
         tipologia_scavo=normalized_tipologia,
         numero_elemento=parsed_numero_pannello,
     )
+    plan_panel = panel_details(db, site.id, parsed_numero_pannello, normalized_tipologia)
+    if larghezza_value is None and normalized_tipologia == "paratia":
+        larghezza_value = plan_panel['width_m']
     coupe_values = _apply_coupe_defaults_to_fiche_values(
         coupe,
         scavo_da_tn=scavo_da_tn,
@@ -1873,6 +1917,9 @@ def _create_validated_fiche(
     fiche = Fiche(
         date=data_scavo,
         numero_pannello=parsed_numero_pannello,
+        panel_name=plan_panel["label"],
+        coupe_snapshot=_fiche_coupe_snapshot(coupe),
+        quota_reference_label=(coupe.quota_reference_label or "NGF") if coupe else "NGF",
         site_id=cantiere_id,
         coupe_id=coupe.id if coupe else None,
         machine_id=parsed_machine_id,
@@ -2042,7 +2089,7 @@ def _update_validated_fiche(
         numero_elemento=parsed_numero_pannello,
     )
     coupe_values = _apply_coupe_defaults_to_fiche_values(
-        coupe,
+        fiche.report_coupe if coupe and fiche.coupe_id == coupe.id and fiche.coupe_snapshot else coupe,
         scavo_da_tn=scavo_da_tn,
         quota_tn_value=fiche.quota_tn,
         quota_testa_getto_value=_parse_decimal_comma_float(quota_testa_getto, "quota testa getto"),
@@ -2112,9 +2159,15 @@ def _update_validated_fiche(
 
     previous_site_id = fiche.site_id
     diametro_value_m = diametro_value_cm / 100 if diametro_value_cm is not None else None
+    coupe_changed = fiche.coupe_id != (coupe.id if coupe else None)
     fiche.date = data_scavo
     fiche.numero_pannello = parsed_numero_pannello
     fiche.site_id = cantiere_id
+    if fiche.coupe_id != (coupe.id if coupe else None) or not fiche.coupe_snapshot:
+        fiche.coupe_snapshot = _fiche_coupe_snapshot(coupe)
+    fiche.panel_name = panel_details(db, site.id, parsed_numero_pannello, normalized_tipologia)["label"]
+    if coupe and (fiche.coupe_id != coupe.id or not fiche.quota_reference_label):
+        fiche.quota_reference_label = coupe.quota_reference_label or "NGF"
     fiche.coupe_id = coupe.id if coupe else None
     fiche.machine_id = parsed_machine_id
     fiche.capocantiere_id = parsed_capocantiere_id
@@ -2135,7 +2188,7 @@ def _update_validated_fiche(
     fiche.quota_ngf_fondo = quota_ngf_fondo_value
     fiche.quota_ngf_note = (quota_ngf_note or "").strip() or None
     fiche.quota_tn = quota_tn_value
-    if coupe:
+    if coupe and (coupe_changed or not fiche.terreno_teorico):
         fiche.type_beton = coupe.type_beton or fiche.materiale
         fiche.type_coulage = coupe.type_coulage or "Gravitaire"
         fiche.terreno_teorico = coupe.terreno_teorico
@@ -3224,7 +3277,7 @@ async def manager_fiche_create(
     macchinario_id: str | None = Form(None),
     capocantiere_id: str | None = Form(None),
     coupe_id: str | None = Form(None),
-    scavo_da_tn: str | None = Form("1"),
+    scavo_da_tn: str | None = Form(None),
     quota_testa_getto: str | None = Form(None),
     sonic_realizzato: str | None = Form(None),
     inclinometre_realizzato: str | None = Form(None),
@@ -3263,7 +3316,7 @@ async def manager_fiche_create(
     try:
         db = SessionLocal()
         try:
-            _create_validated_fiche(
+            created_fiche = _create_validated_fiche(
                 db,
                 current_user=current_user,
                 cantiere_id=cantiere_id,
@@ -3374,7 +3427,7 @@ async def manager_fiche_create(
         )
 
     return RedirectResponse(
-        url=request.url_for("manager_fiches_list"), status_code=303
+        url=request.url_for("manager_fiches_detail", fiche_id=created_fiche.id), status_code=303
     )
 
 
@@ -5174,6 +5227,7 @@ def _sync_site_coupes_from_form(
     coupe_note: list[str] | None,
     coupe_paratie: list[str] | None,
     coupe_pali: list[str] | None,
+    coupe_quota_reference_label: list[str] | None = None,
     delete_coupe_id: list[str] | None = None,
 ) -> None:
     requested_delete_ids = {str(value).strip() for value in (delete_coupe_id or []) if str(value).strip()}
@@ -5205,7 +5259,7 @@ def _sync_site_coupes_from_form(
             for values in (
                 coupe_descrizione_zona, coupe_quota_tn, coupe_quota_testa, coupe_quota_fondo_teorica,
                 coupe_base_paroi_mecanique, coupe_profondita_teorica, coupe_quota_partenza_scavo, coupe_quota_testa_getto_prevista,
-                coupe_type_beton, coupe_type_coulage, coupe_spessore, coupe_larghezza, coupe_diametro, coupe_terreno_teorico, coupe_note,
+                coupe_type_beton, coupe_spessore, coupe_larghezza, coupe_diametro, coupe_terreno_teorico, coupe_note,
                 coupe_paratie, coupe_pali,
             )
         )
@@ -5221,20 +5275,27 @@ def _sync_site_coupes_from_form(
             coupe = SiteCoupe(site_id=site.id, nome=name)
             db.add(coupe)
         coupe.nome = name
+        datum = value(coupe_quota_reference_label, index).strip() or coupe.quota_reference_label or "NGF"
+        if len(datum) > 30 or any(ord(c) < 32 for c in datum):
+            raise HTTPException(400, "Il riferimento quote deve contenere al massimo 30 caratteri.")
+        coupe.quota_reference_label = datum
         coupe.descrizione_zona = value(coupe_descrizione_zona, index).strip() or None
         coupe.quota_tn = _optional_float_from_form(value(coupe_quota_tn, index))
         coupe.quota_testa = _optional_float_from_form(value(coupe_quota_testa, index))
         coupe.quota_fondo_teorica = _optional_float_from_form(value(coupe_quota_fondo_teorica, index))
         coupe.base_paroi_mecanique = _optional_float_from_form(value(coupe_base_paroi_mecanique, index))
         coupe.profondita_teorica = _optional_float_from_form(value(coupe_profondita_teorica, index))
-        if (
-            coupe.quota_fondo_teorica is None
-            and coupe.quota_testa is not None
-            and coupe.profondita_teorica is not None
-        ):
-            coupe.quota_fondo_teorica = round(coupe.quota_testa - coupe.profondita_teorica, 2)
         coupe.scavo_da_tn = value(coupe_scavo_da_tn, index) != "0"
         coupe.quota_partenza_scavo = _optional_float_from_form(value(coupe_quota_partenza_scavo, index))
+        origin = coupe.quota_tn if coupe.scavo_da_tn else (coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not None else coupe.quota_testa)
+        if coupe.quota_fondo_teorica is not None and origin is not None and coupe.profondita_teorica is None:
+            coupe.profondita_teorica = round(origin - coupe.quota_fondo_teorica, 6)
+        if (
+            coupe.quota_fondo_teorica is None
+            and origin is not None
+            and coupe.profondita_teorica is not None
+        ):
+            coupe.quota_fondo_teorica = round(origin - coupe.profondita_teorica, 6)
         coupe.quota_testa_getto_prevista = _optional_float_from_form(value(coupe_quota_testa_getto_prevista, index))
         _validate_quota_testa_getto_not_above_tn(coupe.quota_testa_getto_prevista, quota_tn=coupe.quota_tn)
         coupe.type_beton = value(coupe_type_beton, index).strip() or None
@@ -5242,6 +5303,9 @@ def _sync_site_coupes_from_form(
         coupe.spessore = _optional_float_from_form(value(coupe_spessore, index))
         coupe.larghezza = _optional_float_from_form(value(coupe_larghezza, index))
         coupe.diametro = _optional_float_from_form(value(coupe_diametro, index))
+        for dimension in (coupe.profondita_teorica, coupe.spessore, coupe.larghezza, coupe.diametro):
+            if dimension is not None and dimension <= 0:
+                raise HTTPException(400, "Le dimensioni della coupe devono essere maggiori di zero.")
         coupe.terreno_teorico = value(coupe_terreno_teorico, index).strip() or None
         coupe.note = value(coupe_note, index).strip() or None
         db.flush()
@@ -5657,6 +5721,7 @@ def manager_site_project_config_post(
     coupe_note: List[str] = Form(default_factory=list),
     coupe_paratie: List[str] = Form(default_factory=list),
     coupe_pali: List[str] = Form(default_factory=list),
+    coupe_quota_reference_label: List[str] = Form(default_factory=list),
     delete_coupe_id: List[str] = Form(default_factory=list),
     equipment_tipologia: List[str] = Form(default_factory=list),
     equipment_numero: List[str] = Form(default_factory=list),
@@ -5700,6 +5765,7 @@ def manager_site_project_config_post(
                 coupe_note=coupe_note,
                 coupe_paratie=coupe_paratie,
                 coupe_pali=coupe_pali,
+                coupe_quota_reference_label=coupe_quota_reference_label,
                 delete_coupe_id=delete_coupe_id,
             )
             _sync_site_special_equipment_from_form(
@@ -7848,7 +7914,7 @@ async def capo_fiche_nuova_post(
     numero_pannello: str | None = Form(None),
     macchinario_id: str | None = Form(None),
     coupe_id: str | None = Form(None),
-    scavo_da_tn: str | None = Form("1"),
+    scavo_da_tn: str | None = Form(None),
     quota_testa_getto: str | None = Form(None),
     sonic_realizzato: str | None = Form(None),
     inclinometre_realizzato: str | None = Form(None),
@@ -8247,6 +8313,7 @@ def manager_fiche_edit_form(
                 url=request.url_for("manager_fiches_list"), status_code=303
             )
         form_data = _build_fiche_form_data_from_model(fiche)
+        form_data["quota_reference_label"] = fiche.quota_reference_label or "NGF"
     finally:
         db.close()
 
@@ -8289,7 +8356,7 @@ async def manager_fiche_update(
     macchinario_id: str | None = Form(None),
     capocantiere_id: str | None = Form(None),
     coupe_id: str | None = Form(None),
-    scavo_da_tn: str | None = Form("1"),
+    scavo_da_tn: str | None = Form(None),
     quota_testa_getto: str | None = Form(None),
     sonic_realizzato: str | None = Form(None),
     inclinometre_realizzato: str | None = Form(None),
@@ -8576,7 +8643,7 @@ def manager_fiche_dettaglio(
             volume_teorico=_calculate_fiche_volume_teorico(fiche),
             stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
             theoretical_soil_layers=_parse_theoretical_soil_layers(
-                fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe else None),
+                fiche.terreno_teorico or (fiche.report_coupe.terreno_teorico if fiche.report_coupe else None),
                 fiche.profondita_totale,
             ),
             technical_fr=_translate_fiche_technical_text,
@@ -8673,7 +8740,7 @@ def _html_to_pdf_chromium(html: str) -> bytes:
 def _load_style_css() -> str:
     import os
     css_path = os.path.join(_pdf_project_dir(), "static", "css", "style.css")
-    with open(css_path) as f:
+    with open(css_path, encoding="utf-8") as f:
         return f.read()
 
 
@@ -8830,7 +8897,7 @@ def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) ->
         volume_teorico=_calculate_fiche_volume_teorico(fiche),
         stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
         theoretical_soil_layers=_parse_theoretical_soil_layers(
-            fiche.terreno_teorico or (fiche.coupe.terreno_teorico if fiche.coupe else None),
+            fiche.terreno_teorico or (fiche.report_coupe.terreno_teorico if fiche.report_coupe else None),
             fiche.profondita_totale,
         ),
         technical_fr=_translate_fiche_technical_text,
@@ -8905,7 +8972,7 @@ def manager_site_fiches_pdf(
     if not has_perm(current_user, "manager.access"):
         raise HTTPException(status_code=403, detail="Non autorizzato")
 
-    if tipo not in ("paratie", "pali"):
+    if tipo not in ("paratie", "pali", "tutte"):
         raise HTTPException(status_code=404, detail="Type non valide")
     is_palo = tipo == "pali"
     tipologia = "palo" if is_palo else "paratia"
@@ -8927,7 +8994,8 @@ def manager_site_fiches_pdf(
                 joinedload(Fiche.stratigrafie),
                 joinedload(Fiche.layers),
             )
-            .filter(Fiche.site_id == site_id, Fiche.tipologia_scavo == tipologia)
+            .filter(Fiche.site_id == site_id)
+            .filter(Fiche.tipologia_scavo.in_(["paratia", "palo"]) if tipo == "tutte" else Fiche.tipologia_scavo == tipologia)
             .order_by(Fiche.numero_pannello.asc(), Fiche.id.asc())
             .all()
         )
@@ -8948,6 +9016,7 @@ def manager_site_fiches_pdf(
             current_user,
             site=site,
             is_palo=is_palo,
+            all_types=tipo == "tutte",
             affaire=site.projet_affaire or site.code,
             indice=site.projet_indice or "0",
             mission=site.projet_mission or "SUIVI DE MISSION G3",

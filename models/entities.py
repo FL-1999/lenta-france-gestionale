@@ -795,6 +795,7 @@ class SiteCoupe(Base, TimestampMixin):
     site = relationship("Site", back_populates="coupes")
     nome = Column(String(100), nullable=False)
     descrizione_zona = Column(Text, nullable=True)
+    quota_reference_label = Column(String(30), nullable=True)
     quota_tn = Column(Float, nullable=True)
     quota_testa = Column(Float, nullable=True)
     quota_fondo_teorica = Column(Float, nullable=True)
@@ -885,6 +886,22 @@ class Fiche(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
 
     date = Column(Date, nullable=False)
+    panel_name = Column(String(100), nullable=True)
+    coupe_snapshot = Column(Text, nullable=True)
+
+    @property
+    def report_coupe(self):
+        if self.coupe_snapshot:
+            import json
+            from types import SimpleNamespace
+            return SimpleNamespace(**json.loads(self.coupe_snapshot))
+        return self.coupe
+
+
+    @property
+    def panel_label(self):
+        return self.panel_name or str(self.numero_pannello or "—")
+
     numero_pannello = Column(Integer, nullable=False)
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=False)
     site = relationship("Site", back_populates="fiches")
@@ -920,6 +937,7 @@ class Fiche(Base, TimestampMixin):
     quota_ngf_note = Column(Text, nullable=True)
     scavo_da_tn = Column(Boolean, nullable=False, default=True)
     quota_partenza = Column(Float, nullable=True)
+    quota_reference_label = Column(String(30), nullable=True)
     quota_tn = Column(Float, nullable=True)
     quota_testa_getto = Column(Float, nullable=True)
     responsable_pdf = Column(String(255), nullable=True)
