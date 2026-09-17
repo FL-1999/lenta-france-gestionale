@@ -91,8 +91,9 @@ def test_workspace_roles_and_responsive_navigation(live_operations):
                 expect(page.locator('.workspace-chart-empty')).to_have_count(3)
                 expect(page.locator('#chartReportsLast30Days')).to_contain_text('Nessun dato')
                 page.locator('.workspace-context').first.screenshot(path=str(screenshots / f'{role}-cards.png'))
+                page.locator('[aria-labelledby=context-purchasing]').screenshot(path=str(screenshots / f'{role}-purchasing.png'))
                 expect(page.locator('.workspace-context-heading h2')).to_have_text([
-                    'Cantieri e lavoro', 'Logistica e risorse', 'Persone e squadre', 'Controllo operativo'])
+                    'Cantieri e lavoro', 'Acquisti e magazzino', 'Logistica e risorse', 'Persone e squadre', 'Controllo operativo'])
                 for href in page.locator('.workspace-context a').evaluate_all('(links) => [...new Set(links.map(a => a.href))]'):
                     assert context.request.get(href).ok, (role, href)
             page.screenshot(path=str(screenshots / f'{role}-desktop.png'))
