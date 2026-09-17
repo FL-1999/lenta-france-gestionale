@@ -1023,6 +1023,10 @@ class MagazzinoItem(Base, TimestampMixin):
     attivo = Column(Boolean, default=True, nullable=False)
     preferito = Column(Boolean, default=False, nullable=False)
 
+    ubicazione_zona = Column(String(100), nullable=True)
+    ubicazione_scaffale = Column(String(100), nullable=True)
+    ubicazione_ripiano = Column(String(100), nullable=True)
+
     categoria = relationship("MagazzinoCategoria")
     righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")
 

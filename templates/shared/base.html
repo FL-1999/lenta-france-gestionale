@@ -11,9 +11,9 @@
   <meta name="apple-mobile-web-app-title" content="Lenta France">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/static/img/icon-192.png">
-  <script src="/static/js/theme_switcher.js?v=20260917r3"></script>
-  <link rel="stylesheet" href="/static/css/style.css?v=20260917r3">
-  <link rel="stylesheet" href="/static/css/workspace.css?v=20260917r3">
+  <script src="/static/js/theme_switcher.js?v=20260917r4"></script>
+  <link rel="stylesheet" href="/static/css/style.css?v=20260917r4">
+  <link rel="stylesheet" href="/static/css/workspace.css?v=20260917r4">
 </head>
 <body class="workspace-ui {{ 'workspace-auth' if user else 'workspace-guest' }}">
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -102,7 +102,7 @@
           <span class="workspace-role">{{ t('Area','Espace') }} {{ active_role_label }}</span><span class="workspace-breadcrumb-separator" aria-hidden="true">/</span>
           <span class="workspace-current-page">{{ t('Gestionale','Gestion') }}</span>
         {% else %}
-          <a href="/"><img class="workspace-login-logo" src="/static/img/logo.png" alt="Lenta France" width="140" height="43"></a>
+          <a href="/">{% include 'shared/workspace_brand.html' %}</a>
         {% endif %}
       </div>
       <div class="workspace-topbar-actions">
@@ -198,9 +198,9 @@
   </nav>
   {% endif %}
   <script src="/static/js/workspace.js?v=20260916w1" defer></script>
-  <script src="/static/js/workspace_icons.js?v=20260917r3" defer></script>
+  <script src="/static/js/workspace_icons.js?v=20260917r4" defer></script>
   <script src="/static/js/notifications.js?v=20260506a" defer></script>
-  <script src="/static/js/sw_register.js?v=20260917r3" defer></script>
+  <script src="/static/js/sw_register.js?v=20260917r4" defer></script>
   {% block scripts %}{% endblock %}
   <noscript><style>@media(max-width:1023px){.workspace-sidebar{position:static!important;visibility:visible!important;transform:none!important;width:100%!important}.workspace-scrim,.workspace-menu-toggle{display:none!important}}</style></noscript>
 </body>

@@ -1,0 +1,71 @@
+                            <div style="display: grid; gap: var(--space-2);">
+                                <details>
+                                    <summary class="btn btn-primary btn-sm">➕ {% if lang == 'fr' %}Chargement rapide +N{% else %}Carico rapido +N{% endif %}</summary>
+                                    <form method="post" action="{{ url_for('manager_magazzino_carico_rapido', item_id=item.id) }}" style="margin-top: 0.75rem;">
+                                        <div class="form-grid-2">
+                                            <div class="form-field">
+                                                <label>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}*</label>
+                                                <input type="number" name="quantita" min="0.01" step="0.01" required>
+                                            </div>
+                                            <div class="form-field">
+                                                <label>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
+                                                <input type="text" name="note" placeholder="{% if lang == 'fr' %}Optionnel{% else %}Opzionale{% endif %}">
+                                            </div>
+                                        </div>
+                                        <div class="form-actions">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                ➕ {% if lang == 'fr' %}Ajouter{% else %}Aggiungi{% endif %}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </details>
+                                <details>
+                                    <summary class="btn btn-secondary btn-sm">➖ {% if lang == 'fr' %}Déstockage rapide -N{% else %}Scarico rapido -N{% endif %}</summary>
+                                    <form method="post" action="{{ url_for('manager_magazzino_scarico_rapido', item_id=item.id) }}" style="margin-top: 0.75rem;">
+                                        <div class="form-grid-2">
+                                            <div class="form-field">
+                                                <label>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}*</label>
+                                                <input type="number" name="quantita" min="0.01" step="0.01" required>
+                                            </div>
+                                            <div class="form-field">
+                                                <label>
+                                                    {% if lang == 'fr' %}
+                                                        Destination (Chantier et/ou Personnel)
+                                                    {% else %}
+                                                        Destinazione (Cantiere e/o Personale)
+                                                    {% endif %}
+                                                </label>
+                                                <div class="form-grid-2">
+                                                    <div class="form-field">
+                                                        <label>{% if lang == 'fr' %}Lieu{% else %}Luogo{% endif %}</label>
+                                                        <select name="location_id">
+                                                            <option value="">Nessuno</option>
+                                                            {% for location in locations %}
+                                                                <option value="{{ location.value }}">{{ location.label }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-field">
+                                                        <label>{% if lang == 'fr' %}Personnel/Chef d'équipe{% else %}Personale/Caposquadra{% endif %}</label>
+                                                        <select name="caposquadra_id">
+                                                            <option value="">Nessuno</option>
+                                                            {% for capo in personale %}
+                                                                <option value="{{ capo.id }}">{{ capo.full_name or capo.email }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-field">
+                                            <label>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
+                                            <input type="text" name="note" placeholder="{% if lang == 'fr' %}Optionnel{% else %}Opzionale{% endif %}">
+                                        </div>
+                                        <div class="form-actions">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                ➖ {% if lang == 'fr' %}Retirer{% else %}Scarica{% endif %}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </details>
+                            </div>

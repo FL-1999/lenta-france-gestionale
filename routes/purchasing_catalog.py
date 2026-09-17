@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session, joinedload
 from auth import get_current_active_user_html
 from database import get_db
 from models import Supplier, SupplierArticle, SupplierContact, MagazzinoItem, MagazzinoMovimento, User, PurchaseOrder, PurchaseOrderLine
-from permissions import has_perm, can_access_warehouse_area
+from permissions import has_perm, can_access_warehouse_area, can_manage_warehouse_requests
+from utils.places import get_selectable_places
+from models import RoleEnum
 from template_context import register_manager_badges, render_template
 from audit_utils import log_audit_event
 
@@ -48,10 +50,34 @@ def item_card(item_id:int,request:Request,db:Session=Depends(get_db),current_use
     if not item: raise HTTPException(404,'Articolo non trovato')
     return render_template(templates,request,'manager/magazzino/item_card.html',{
         'item':item,'can_edit_catalog':has_perm(current_user,'manager.access'),
+        'can_handle_stock':can_manage_warehouse_requests(current_user),
+        'can_edit_location':has_perm(current_user,'manager.access') or has_perm(current_user,'inventory.manage'),
+        'locations':get_selectable_places(db, include_inactive=False),
+        'personale':db.query(User).filter(User.is_active.is_(True),User.role.notin_([RoleEnum.admin,RoleEnum.manager])).order_by(User.full_name,User.email).all(),
         'supplier_articles':db.query(SupplierArticle).options(joinedload(SupplierArticle.supplier)).filter_by(magazzino_item_id=item.id).all(),
         'suppliers':db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name).all(),
         'movements':db.query(MagazzinoMovimento).filter_by(item_id=item.id).order_by(MagazzinoMovimento.id.desc()).limit(50).all(),
     },db,current_user)
+
+
+@router.post('/manager/magazzino/items/{item_id}/posizione',name='warehouse_item_location_save')
+def save_location(item_id:int,request:Request,zona:str=Form(''),scaffale:str=Form(''),ripiano:str=Form(''),
+                  remove:bool=Form(False),db:Session=Depends(get_db),
+                  current_user:User=Depends(get_current_active_user_html)):
+    if not (has_perm(current_user,'manager.access') or has_perm(current_user,'inventory.manage')):
+        raise HTTPException(403,'Permessi insufficienti')
+    item=db.query(MagazzinoItem).filter_by(id=item_id).with_for_update().first()
+    if not item: raise HTTPException(404,'Articolo non trovato')
+    fields=('ubicazione_zona','ubicazione_scaffale','ubicazione_ripiano')
+    values=[None,None,None] if remove else [v.strip() or None for v in (zona,scaffale,ripiano)]
+    if any(v and len(v)>100 for v in values):
+        raise HTTPException(400,'Ogni campo posizione può contenere al massimo 100 caratteri')
+    before={field:getattr(item,field) for field in fields}
+    for field,value in zip(fields,values): setattr(item,field,value)
+    log_audit_event(db,current_user,'WAREHOUSE_LOCATION_SAVE','magazzino_item',item.id,
+                    {'before':before,'after':dict(zip(fields,values))})
+    db.commit()
+    return RedirectResponse(str(request.url_for('warehouse_item_card',item_id=item_id))+'?saved=location#posizione',303)
 
 
 @router.post('/manager/magazzino/items/{item_id}/fornitori',name='warehouse_item_supplier_link')
