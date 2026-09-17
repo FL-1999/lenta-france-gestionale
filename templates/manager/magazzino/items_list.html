@@ -6,7 +6,11 @@
 <div class="warehouse-a1">
   <header class="page-header">
     <h1 class="page-title">{{ t('Articoli','Articles') }}</h1>
-    <div class="page-actions">{% if can_edit %}<a class="btn btn-primary" href="/manager/magazzino/nuovo">{{ icon('plus') }} {{ t('Nuovo articolo','Nouvel article') }}</a>{% endif %}</div>
+    <div class="page-actions">{% if can_edit %}
+      <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_macro_new') }}">{{ icon('plus') }} {{ t('Nuova macro','Nouvelle macro') }}</a>
+      <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_categorie_new').include_query_params(macro_id=selected_macro.id) if selected_macro and selected_macro.id else url_for('manager_magazzino_categorie_new') }}">{{ icon('plus') }} {{ t('Nuova categoria','Nouvelle catégorie') }}</a>
+      <a class="btn btn-primary" href="/manager/magazzino/nuovo">{{ icon('plus') }} {{ t('Nuovo articolo','Nouvel article') }}</a>
+    {% endif %}</div>
   </header>
   {% if success_message %}<p class="alert alert-success" role="status">{{ success_message }}</p>{% endif %}
   {% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}

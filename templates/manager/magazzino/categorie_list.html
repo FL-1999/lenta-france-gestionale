@@ -3,7 +3,7 @@
 {% set lang = request.cookies.get('lang', 'it') %}
 
 {% block title %}
-    {% if lang == 'fr' %}Catégories magasin{% else %}Macro categorie magazzino{% endif %}
+    {% if lang == 'fr' %}Catégories magasin{% else %}Categorie magazzino{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -27,6 +27,7 @@
 
     .macro-header {
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
         gap: var(--space-2);
@@ -35,6 +36,8 @@
 
     .macro-title {
         margin: 0;
+        overflow-wrap: anywhere;
+        flex: 1 1 160px;
         font-size: 1.1rem;
     }
 
@@ -122,12 +125,13 @@
     <div class="page-header-main">
         <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
         <h1 class="page-title">
-            {{ icon('grid') }} {% if lang == 'fr' %}Catégories{% else %}Macro categorie{% endif %}
+            {{ icon('grid') }} {{ t('Categorie','Catégories') }}
         </h1>
     </div>
     <div class="header-actions">
 
-        <a href="/manager/magazzino/macro/nuova" class="btn btn-primary">➕ Nuova macro</a>
+        <a href="{{ url_for('manager_magazzino_macro_new') }}" class="btn btn-secondary">{{ icon('plus') }} {{ t('Nuova macro','Nouvelle macro') }}</a>
+        <a href="{{ url_for('manager_magazzino_categorie_new') }}" class="btn btn-primary">{{ icon('plus') }} {{ t('Nuova categoria','Nouvelle catégorie') }}</a>
     </div>
 </div>
 
@@ -145,14 +149,14 @@
                 {% for macro in macros %}
                     <section class="macro-card">
                         <div class="macro-header">
-                            <h2 class="macro-title">📂 {{ macro.name }}</h2>
+                            <h2 class="macro-title">{{ icon('grid') }} {{ macro.name }}</h2>
+                            <a class="btn btn-secondary btn-sm" href="{{ url_for('manager_magazzino_categorie_new').include_query_params(macro_id=macro.id) }}">{{ icon('plus') }} {{ t('Nuova categoria','Nouvelle catégorie') }}</a>
                             <div class="dropdown">
                                 <button type="button" class="settings-btn" title="Azioni macro" aria-label="Azioni macro" onclick="toggleDropdown(this)">{{ icon('settings') }}</button>
                                 <div class="dropdown-menu">
-                                    <a href="/manager/magazzino/categorie/nuova?macro_id={{ macro.id }}">➕ Nuova categoria</a>
-                                    <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}">✏️ Modifica macro</a>
+                                    <a href="{{ url_for('manager_magazzino_macro_edit', macro_id=macro.id) }}">Modifica macro</a>
                                     <form method="post" action="{{ url_for('manager_magazzino_macro_delete', macro_id=macro.id) }}" onsubmit="return confirm('Confermi eliminazione macro?');">
-                                        <button type="submit">🗑 Elimina macro</button>
+                                        <button type="submit">Elimina macro</button>
                                     </form>
                                 </div>
                             </div>
@@ -171,10 +175,10 @@
                                         <div class="dropdown">
                                             <button type="button" class="settings-btn" title="Azioni categoria" aria-label="Azioni categoria" onclick="toggleDropdown(this)">{{ icon('settings') }}</button>
                                             <div class="dropdown-menu">
-                                                <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}">✏️ Modifica categoria</a>
-                                                <a href="{{ url_for('manager_magazzino_categorie_move', categoria_id=categoria.id) }}">📂 Sposta in altra macro</a>
+                                                <a href="{{ url_for('manager_magazzino_categorie_edit', categoria_id=categoria.id) }}">Modifica categoria</a>
+                                                <a href="{{ url_for('manager_magazzino_categorie_move', categoria_id=categoria.id) }}">Sposta in altra macro</a>
                                                 <form method="post" action="{{ url_for('manager_magazzino_categorie_delete', categoria_id=categoria.id) }}" onsubmit="return confirm('Confermi eliminazione categoria?');">
-                                                    <button type="submit">🗑 Elimina categoria</button>
+                                                    <button type="submit">Elimina categoria</button>
                                                 </form>
                                             </div>
                                         </div>

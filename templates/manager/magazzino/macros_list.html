@@ -21,7 +21,10 @@
             {% endif %}
         </p>
     </div>
-
+    <div class="page-actions">
+      <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_categorie_new') }}">{{ icon('plus') }} {{ t('Nuova categoria','Nouvelle catégorie') }}</a>
+      <a class="btn btn-primary" href="{{ url_for('manager_magazzino_macro_new') }}">{{ icon('plus') }} {{ t('Nuova macro','Nouvelle macro') }}</a>
+    </div>
 </div>
 
 
@@ -42,7 +45,7 @@
                         {% for macro in macros %}
                             <tr>
                                 <td>{{ macro.ordine }}</td>
-                                <td>{{ macro.name }}</td>
+                                <td><a href="{{ url_for('manager_magazzino_home').include_query_params(macro_id=macro.id) }}">{{ macro.name }}</a></td>
                                 <td>{{ macro.icon or '—' }}</td>
                                 <td>{{ macro.color or '—' }}</td>
                             </tr>
