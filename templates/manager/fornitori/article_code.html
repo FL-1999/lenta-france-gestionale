@@ -1,0 +1,15 @@
+{% extends 'shared/base.html' %}
+{% block title %}{{ t('Modifica codice fornitore','Modifier le code fournisseur') }}{% endblock %}
+{% block content %}
+<div class="supplier-workspace">
+<header class="page-header"><div><h1>{{ t('Modifica codice fornitore','Modifier le code fournisseur') }}</h1><p>{{ supplier.name }}{% if article.magazzino_item %} · {{ article.magazzino_item.codice }} · {{ article.magazzino_item.nome }}{% endif %}</p></div></header>
+<section class="card"><div class="card-body">
+{% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
+<p>{{ t('Codice attuale','Code actuel') }}: <strong>{{ article.codice }}</strong></p>
+<form method="post" action="{{ url_for('supplier_article_code_save',supplier_id=supplier.id,article_id=article.id) }}">
+<input type="hidden" name="expected_code" value="{{ article.codice }}">
+<label class="vehicle-field">{{ t('Codice articolo del fornitore','Code article du fournisseur') }}<input name="code" value="{{ code }}" required maxlength="100"></label>
+<p class="text-muted">{{ t('Il nuovo codice sarà usato per la ricerca e i prossimi ordini. Gli ordini già registrati conservano il codice originale.','Le nouveau code sera utilisé pour la recherche et les prochaines commandes. Les commandes enregistrées conservent le code original.') }}</p>
+<div class="supplier-form-actions"><a class="btn btn-secondary" href="{{ url_for('manager_fornitori_edit',supplier_id=supplier.id) }}#articoli">{{ t('Annulla','Annuler') }}</a><button class="btn btn-primary" type="submit">{{ t('Salva codice','Enregistrer le code') }}</button></div>
+</form></div></section></div>
+{% endblock %}

@@ -37,11 +37,15 @@ def purchasing_navigation(request, user, context):
     parent_label = label
     # Forms return to their record by default, even when opened in a fresh tab.
     order_match = re.fullmatch(r'/manager/ordini/(\d+)/.+', path)
+    supplier_match = re.fullmatch(r'/manager/fornitori/(\d+)/articoli/\d+/codice', path)
     item_match = re.fullmatch(r'/manager/magazzino/(?:items/)?(\d+)/(?:modifica|duplica|rettifica|classificazione|elimina)', path)
     if order_match:
         parent = '/manager/ordini/' + order_match[1]
         order = context.get('order')
         parent_label = ('Commande' if request.cookies.get('lang') == 'fr' else 'Ordine') + ' ' + str(getattr(order, 'order_number', order_match[1]))
+    elif supplier_match:
+        parent = '/manager/fornitori/' + supplier_match[1]
+        parent_label = getattr(context.get('supplier'), 'name', label)
     elif item_match:
         parent = '/manager/magazzino/items/' + item_match[1] + '/scheda'
         parent_label = getattr(context.get('item'), 'nome', label)

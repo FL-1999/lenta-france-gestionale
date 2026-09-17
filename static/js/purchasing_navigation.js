@@ -20,7 +20,7 @@
     '/manager/magazzino', '/manager/magazzino/items', '/manager/magazzino/movimenti',
     '/manager/magazzino/richieste', '/manager/magazzino/categorie', '/manager/magazzino/macros',
     '/manager/magazzino/archiviati', '/manager/magazzino/sotto-soglia']);
-  const pages = /^\/manager\/(?:ordini(?:\/(?:nuovo|chiusi|email-wizard|\d+(?:\/(?:bolle\/nuova|fattura|email))?))?|fornitori(?:\/(?:nuovo|\d+))?|magazzino(?:\/(?:dashboard|items(?:\/\d+\/(?:scheda|duplica|rettifica|classificazione|elimina))?|nuovo|\d+\/modifica|movimenti|report-consumi|richieste(?:\/\d+)?|categorie(?:\/(?:nuova|\d+\/(?:modifica|sposta)))?|macros|macro\/(?:nuova|\d+\/modifica)|archiviati|sotto-soglia))?)$/;
+  const pages = /^\/manager\/(?:ordini(?:\/(?:nuovo|chiusi|email-wizard|\d+(?:\/(?:bolle\/nuova|fattura|email))?))?|fornitori(?:\/(?:nuovo|\d+(?:\/articoli\/\d+\/codice)?))?|magazzino(?:\/(?:dashboard|items(?:\/\d+\/(?:scheda|duplica|rettifica|classificazione|elimina))?|nuovo|\d+\/modifica|movimenti|report-consumi|richieste(?:\/\d+)?|categorie(?:\/(?:nuova|\d+\/(?:modifica|sposta)))?|macros|macro\/(?:nuova|\d+\/modifica)|archiviati|sotto-soglia))?)$/;
   function safe(value) {
     try {
       if (typeof value !== 'string' || value.length > 4000) return null;

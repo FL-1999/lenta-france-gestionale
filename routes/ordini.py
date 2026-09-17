@@ -1171,6 +1171,7 @@ def manager_fornitori_edit(
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Fornitore non trovato")
+    from utils.supplier_purchases import supplier_purchase_materials
     orders = db.query(PurchaseOrder).filter_by(supplier_id=supplier.id)
     order_count = orders.count()
     order_pages = max(1, (order_count + 19) // 20)
@@ -1183,6 +1184,7 @@ def manager_fornitori_edit(
         {
             "supplier": supplier,
             "supplier_orders": supplier_orders,
+            "purchased_materials": supplier_purchase_materials(db, supplier.id),
             **_order_list_details(db, supplier_orders),
             "order_count": order_count, "order_page": order_page, "order_pages": order_pages,
             "form_action": request.url_for("manager_fornitori_save", supplier_id=supplier.id),

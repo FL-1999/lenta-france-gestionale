@@ -1,0 +1,14 @@
+<section class="card purchasing-section" id="acquisti"><div class="card-body">
+<div class="supplier-section-heading"><h2>{{ icon('box') }} {{ t('Materiali acquistati','Matériaux commandés') }}</h2><span>{{ purchased_materials|default([])|length }}</span></div>
+<p class="text-muted">{{ t('Solo ordini di questo fornitore. Ricevuto: bolle confermate, comprese le consegne in cantiere.','Uniquement les commandes de ce fournisseur. Reçu : bons confirmés, y compris les livraisons sur chantier.') }}</p>
+<div class="supplier-materials">
+{% for material in purchased_materials|default([]) %}
+<article class="supplier-material">
+  <header><h3>{% if material.item %}<a href="{{ url_for('warehouse_item_card',item_id=material.item.id) }}">{{ material.name }}</a>{% else %}{{ material.name }}{% endif %}</h3><span>{{ material.item.codice if material.item else t('Articolo non collegato','Article non associé') }}</span></header>
+  <p class="supplier-material-codes">{{ t('Codici negli ordini','Codes des commandes') }}: {{ material.codes|join(' · ') or '—' }}</p>
+  <dl class="supplier-material-quantities">{% for key,it,fr in [('ordered','Ordinato','Commandé'),('received','Ricevuto','Reçu'),('remaining','Da ricevere','À recevoir')] %}<div><dt>{{ t(it,fr) }}</dt><dd>{{ '%g'|format(material[key]) }}{% if material.unit %} <small>{{ material.unit }}</small>{% endif %}</dd></div>{% endfor %}</dl>
+  {% if not material.unit %}<p class="text-muted">{{ t('Unità non registrata sulla riga storica.','Unité non enregistrée sur la ligne historique.') }}</p>{% endif %}
+  <footer><span>{{ material.order_count }} {{ t('ordini','commandes') }}</span><a href="{{ url_for('manager_ordini_detail',order_id=material.latest_order.id) }}">{{ t('Ultimo ordine','Dernière commande') }} · {{ material.latest_order.order_number }} {{ icon('arrow') }}</a></footer>
+</article>
+{% else %}<p>{{ t('Nessun materiale ancora ordinato a questo fornitore. Gli articoli registrati sono nel catalogo qui sopra.','Aucun matériau encore commandé à ce fournisseur. Les articles enregistrés figurent dans le catalogue ci-dessus.') }}</p>{% endfor %}
+</div></div></section>
