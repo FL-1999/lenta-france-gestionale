@@ -155,6 +155,7 @@
                     <td>
                         {% if line.magazzino_item %}
                             <a href="{{ url_for('warehouse_item_card',item_id=line.magazzino_item.id) }}">{{ line.magazzino_item.codice or '-' }} · {{ line.magazzino_item.nome }}</a> ({{ line.magazzino_item.unita_misura }})
+                            {% if line.magazzino_item.categoria %}<br><small>{{ line.magazzino_item.categoria.macro.name ~ ' / ' if line.magazzino_item.categoria.macro else '' }}{{ line.magazzino_item.categoria.nome }}</small>{% endif %}
                         {% else %}
                             <form method="post" action="{{ url_for('purchase_line_link',order_id=order.id,line_id=line.id) }}"><select name="item_id" required aria-label="{{ t('Articolo interno','Article interne') }}"><option value="">{{ t('Collega articolo','Associer un article') }}</option>{% for item in catalog_items %}<option value="{{ item.id }}">{{ item.codice }} · {{ item.nome }}</option>{% endfor %}</select><button class="btn btn-sm btn-secondary" type="submit">{{ t('Collega','Associer') }}</button></form>
                         {% endif %}

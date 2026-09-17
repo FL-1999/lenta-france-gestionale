@@ -50,7 +50,6 @@ def test_supplier_order_partial_and_final_receipt_in_browser(live_operations):
         page.goto(origin+f'/manager/ordini/nuovo?supplier_id={supplier_id}')
         expect(page.locator('#supplier-contact-select option')).to_have_count(3)
         page.locator('#supplier-contact-select').select_option(str(contact_id))
-        page.locator('#warehouse_category_id').select_option(str(cat_id))
         expect(page.locator('#supplier-codes-list option')).to_have_count(1)
         page.locator('[data-codice]').fill('678')
         expect(page.locator('[data-desc]')).to_have_value('Bullone M12')

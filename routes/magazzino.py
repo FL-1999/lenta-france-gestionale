@@ -1201,8 +1201,10 @@ def _render_magazzino_items_list(
                 MagazzinoMacro.name.ilike(like_pattern),
             )
         )
-    if macro_id:
-        query = query.filter(MagazzinoCategoria.macro_id == macro_id)
+    if macro_id == 0:
+        query = query.filter(MagazzinoCategoria.macro_id.is_(None),MagazzinoCategoria.attiva.is_(True))
+    elif macro_id is not None:
+        query = query.filter(MagazzinoCategoria.macro_id == macro_id,MagazzinoCategoria.attiva.is_(True))
     if categoria_id == 0:
         active_ids = [c.id for c in categorie if c.id is not None]
         query = query.filter(or_(MagazzinoItem.categoria_id.is_(None), MagazzinoItem.categoria_id.notin_(active_ids)))
@@ -1257,6 +1259,25 @@ def _render_magazzino_items_list(
     active_ids = {c.id for c in categorie if c.id is not None}
     family_counts = {c.id: category_counts.get(c.id, 0) for c in categorie if c.id is not None}
     family_counts[None] = sum(n for cid,n in category_counts.items() if cid not in active_ids)
+    active_categories = [c for c in categorie if c.id is not None]
+    macro_cards = []
+    for macro in macros:
+        children = [c for c in active_categories if c.macro_id == macro.id]
+        macro_cards.append({'id':macro.id,'name':macro.name,'categories':len(children),
+                            'count':sum(family_counts.get(c.id,0) for c in children)})
+    ungrouped = [c for c in active_categories if c.macro_id is None]
+    if ungrouped:
+        macro_cards.append({'id':0,'name':None,'categories':len(ungrouped),
+                            'count':sum(family_counts.get(c.id,0) for c in ungrouped)})
+    selected_category = next((c for c in active_categories if c.id == categoria_id),None)
+    if categoria_id not in (None,0) and selected_category is None:
+        raise HTTPException(404,'Categoria non disponibile')
+    selected_macro_id = (selected_category.macro_id or 0) if selected_category else macro_id
+    selected_macro = next((m for m in macro_cards if m['id']==selected_macro_id),None)
+    if macro_id is not None and selected_macro is None:
+        raise HTTPException(404,'Macro non disponibile')
+    child_categories = [c for c in active_categories if (c.macro_id or 0)==macro_id] if macro_id is not None else []
+    show_articles = categoria_id is not None or bool(q_value or stock_status) or request.query_params.get('view')=='all'
     supplier_counts = dict(db.query(SupplierArticle.magazzino_item_id,func.count(func.distinct(SupplierArticle.supplier_id)))
         .group_by(SupplierArticle.magazzino_item_id).all())
     badges = build_magazzino_badges(db, current_user)
@@ -1268,6 +1289,11 @@ def _render_magazzino_items_list(
             "categorie": categorie_display,
             "categorie_sections": categorie_sections,
             "macros": macros,
+            "macro_cards":macro_cards,
+            "selected_macro":selected_macro,
+            "selected_category":selected_category,
+            "child_categories":child_categories,
+            "show_articles":show_articles,
             "fallback_categoria": fallback_categoria,
             "default_categoria_id": fallback_categoria_id,
             "items_by_categoria": items_by_categoria,

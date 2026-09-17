@@ -267,6 +267,8 @@ def _order_destination_label(order: PurchaseOrder) -> str:
     if order.order_kind == "closed":
         site_name = order.site.name if order.site else "-"
         return f"CHIUSO/CANTIERE: {site_name}"
+    if not order.warehouse_category_id:
+        return "MAGAZZINO: categorie per articolo"
     category_name = order.warehouse_category.nome if order.warehouse_category else "-"
     macro_name = (
         order.warehouse_category.macro.name
@@ -805,6 +807,83 @@ def _resolve_warehouse_category(
     return categoria
 
 
+def _resolve_classified_order_lines(db, supplier, rows):
+    """Resolve each article independently. Caller commits the complete order or rolls back."""
+    resolved, codes, category_ids = [], [], set()
+    new_codes = {}
+    for index, row in enumerate(rows, 1):
+        try:
+            description = row['description'].strip()
+            qty = _parse_float(row['qty_ordered'])
+            code = row.get('codice', '').strip()
+            raw_id = row['magazzino_item_id']
+            if not description or qty is None or qty <= 0:
+                raise ValueError('Inserisci descrizione e quantità positiva.')
+            if len(code) > 100:
+                raise ValueError('Il codice fornitore può contenere al massimo 100 caratteri.')
+            known = db.query(SupplierArticle).filter(
+                SupplierArticle.supplier_id == supplier.id,
+                func.lower(SupplierArticle.codice) == code.lower(),
+            ).all() if code else []
+            if len(known) > 1:
+                raise ValueError('Codice fornitore ambiguo nel catalogo: verifica i collegamenti.')
+            known_id = known[0].magazzino_item_id if known else None
+            if known_id:
+                if raw_id and raw_id != str(known_id):
+                    raise ValueError('Questo codice fornitore è già collegato a un articolo: seleziona quello esistente.')
+                raw_id = str(known_id)
+            if raw_id == '__new__':
+                unit = row.get('line_unit') or 'pz'
+                if unit not in {'pz','kg','m','m2','m3','l'}:
+                    raise ValueError('Unità di misura non valida.')
+                if len(description) > 255:
+                    raise ValueError('Il nome del nuovo articolo può contenere al massimo 255 caratteri.')
+                mode = row.get('line_category_mode') or 'existing'
+                if mode not in {'existing','new_in_macro','new_macro'}:
+                    raise ValueError('Classificazione non valida.')
+                new_category = row.get('line_new_category','').strip()
+                new_macro = row.get('line_new_macro','').strip()
+                if len(new_category) > 255 or len(new_macro) > 120:
+                    raise ValueError('Nome categoria o macro troppo lungo.')
+                category = _resolve_warehouse_category(db, category_mode=mode,
+                    warehouse_category_id=row.get('line_category_id',''),
+                    macro_value=row.get('line_macro_id',''), new_macro_name=new_macro,
+                    new_category_name=new_category)
+                if not category.attiva:
+                    raise ValueError('La categoria è archiviata: scegli una categoria attiva.')
+                # Category names are globally unique in the existing database.
+                # Never silently reuse a same-name category belonging to another macro.
+                if mode == 'new_in_macro' and str(category.macro_id) != row.get('line_macro_id',''):
+                    raise ValueError('Il nome categoria esiste in un’altra macro. Scegli quella categoria o un nome distinto.')
+                if mode == 'new_macro' and (not category.macro or category.macro.name.lower() != new_macro.lower()):
+                    raise ValueError('Il nome categoria esiste in un’altra macro. Scegli quella categoria o un nome distinto.')
+                item = new_codes.get(code.lower()) if code else None
+                if item:
+                    if (item.nome.casefold(),item.categoria_id,item.unita_misura) != (description.casefold(),category.id,unit):
+                        raise ValueError('Lo stesso codice fornitore è usato per due materiali diversi.')
+                else:
+                    item = MagazzinoItem(nome=description,categoria_id=category.id,unita_misura=unit,
+                                        quantita_disponibile=0,attivo=True)
+                    db.add(item);db.flush()
+                    if code:new_codes[code.lower()]=item
+            else:
+                item = db.get(MagazzinoItem,int(raw_id)) if raw_id.isdigit() else None
+                if not item or not item.attivo:
+                    raise ValueError('Seleziona un articolo esistente oppure Crea nuovo articolo.')
+                if code and code.lower() in new_codes and new_codes[code.lower()].id != item.id:
+                    raise ValueError('Lo stesso codice fornitore è usato per due articoli diversi.')
+                if code:new_codes[code.lower()]=item
+            resolved.append((description,qty,item.id));codes.append(code or None)
+            category_ids.add(item.categoria_id)
+        except HTTPException as exc:
+            raise ValueError(f'Riga {index}: {exc.detail}') from exc
+        except ValueError as exc:
+            raise ValueError(f'Riga {index}: {exc}') from exc
+    if not resolved:raise ValueError('Inserisci almeno una riga ordine.')
+    category_id = next(iter(category_ids)) if len(category_ids)==1 else None
+    return resolved,codes,category_id
+
+
 @router.post(
     "/api/ordini/ensure-warehouse-item",
     name="api_ordini_ensure_warehouse_item",
@@ -1299,6 +1378,13 @@ def manager_ordini_create(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
     supplier_contact_id: str = Form(""),
+    classification_scope: str = Form("order"),
+    line_category_mode: list[str] = Form([]),
+    line_category_id: list[str] = Form([]),
+    line_macro_id: list[str] = Form([]),
+    line_new_category: list[str] = Form([]),
+    line_new_macro: list[str] = Form([]),
+    line_unit: list[str] = Form([]),
 ):
     _ensure_manager(current_user)
 
@@ -1330,6 +1416,14 @@ def manager_ordini_create(
 
     for index, line in enumerate(form_data['lines']):
         line['codice'] = codice[index] if isinstance(codice, list) and index < len(codice) else ''
+        for key,values in [('line_category_mode',line_category_mode),('line_category_id',line_category_id),
+                           ('line_macro_id',line_macro_id),('line_new_category',line_new_category),
+                           ('line_new_macro',line_new_macro),('line_unit',line_unit)]:
+            line[key] = values[index] if index < len(values) else ''
+    if classification_scope == 'line' and (not description or any(len(values)!=len(description) for values in
+            [qty_ordered,magazzino_item_id,codice,line_category_mode,line_category_id,line_macro_id,line_new_category,line_new_macro,line_unit])):
+        return _render_order_form(request,db,current_user,error_message='Righe ordine incomplete: verifica i campi.',form_data=form_data)
+
     parsed_order_date = _parse_date(order_date)
     if not parsed_order_date:
         return _render_order_form(request, db, current_user, error_message="La data ordine è obbligatoria.", form_data=form_data)
@@ -1417,7 +1511,7 @@ def manager_ordini_create(
         if not site:
             return _render_order_form(request, db, current_user, error_message="Per ordine chiuso devi selezionare un cantiere valido.", form_data=form_data)
         form_data["warehouse_category_id"] = ""
-    else:
+    elif classification_scope != 'line':
         try:
             categoria = _resolve_warehouse_category(
                 db,
@@ -1434,108 +1528,116 @@ def manager_ordini_create(
         form_data["warehouse_category_id"] = str(selected_category_id)
         form_data["site_id"] = ""
 
-    if len(description) != len(qty_ordered) or len(description) != len(magazzino_item_id):
-        db.rollback()
-        return _render_order_form(request, db, current_user, error_message="Righe ordine non valide.", form_data=form_data)
-
-    codici_input = list(codice) if isinstance(codice, list) else []
-    for i, raw_id in enumerate(magazzino_item_id):
-        code = (codici_input[i] or "").strip() if i < len(codici_input) else ""
-        known = db.query(SupplierArticle).filter(
-            SupplierArticle.supplier_id == selected_supplier.id,
-            func.lower(SupplierArticle.codice) == code.lower(),
-        ).first() if code else None
-        if known and known.magazzino_item_id:
-            if raw_id and raw_id != str(known.magazzino_item_id):
-                db.rollback()
-                return _render_order_form(request, db, current_user, error_message=f"Il codice {code} è già collegato a un altro articolo interno.", form_data=form_data)
-            magazzino_item_id[i] = str(known.magazzino_item_id)
-        elif raw_id == '__new__':
-            if normalized_kind != 'warehouse':
-                db.rollback()
-                return _render_order_form(request, db, current_user, error_message="Crea il materiale nel catalogo prima di un ordine cantiere.", form_data=form_data)
-            item_name = (description[i] or '').strip()
-            if not item_name:
-                db.rollback()
-                return _render_order_form(request, db, current_user, error_message="Inserisci il nome del nuovo materiale.", form_data=form_data)
-            new_item = MagazzinoItem(nome=item_name, categoria_id=selected_category_id, quantita_disponibile=0, attivo=True)
-            db.add(new_item); db.flush()
-            magazzino_item_id[i] = str(new_item.id)
-
-    selected_item_ids: set[int] = set()
-    for raw_id in magazzino_item_id:
-        if raw_id:
-            try:
-                selected_item_ids.add(int(raw_id))
-            except ValueError:
-                db.rollback()
-                return _render_order_form(request, db, current_user, error_message="Articolo magazzino non valido.", form_data=form_data)
-
-    if selected_item_ids:
-        existing_item_ids = {
-            item_id
-            for (item_id,) in db.query(MagazzinoItem.id)
-            .filter(MagazzinoItem.id.in_(selected_item_ids), MagazzinoItem.attivo.is_(True))
-            .all()
-        }
-        if selected_item_ids - existing_item_ids:
+    if classification_scope == 'line':
+        try:
+            lines,line_codes,selected_category_id = _resolve_classified_order_lines(db,selected_supplier,form_data['lines'])
+        except (ValueError,IntegrityError) as exc:
             db.rollback()
-            return _render_order_form(request, db, current_user, error_message="Uno o più articoli magazzino non sono validi.", form_data=form_data)
-
-    # Codici articolo per riga (allineati a description/qty), padding se mancanti.
-    codici_padded = list(codice) + [""] * max(0, len(description) - len(codice))
-    lines: list[tuple[str, float, int | None]] = []
-    line_codes: list[str | None] = []
-    for raw_description, raw_qty, raw_item_id, raw_codice in zip(description, qty_ordered, magazzino_item_id, codici_padded):
-        if not raw_description and not raw_qty:
-            continue
-        parsed_qty = _parse_float(raw_qty)
-        if parsed_qty is None or parsed_qty <= 0:
+            message = str(exc) if isinstance(exc,ValueError) else 'Classificazione già modificata: verifica i nomi e riprova.'
+            return _render_order_form(request,db,current_user,error_message=message,form_data=form_data)
+    else:
+        if len(description) != len(qty_ordered) or len(description) != len(magazzino_item_id):
             db.rollback()
-            return _render_order_form(request, db, current_user, error_message="Quantità non valida nelle righe ordine.", form_data=form_data)
-        description_clean = (raw_description or "").strip()
-        if not description_clean:
-            db.rollback()
-            return _render_order_form(request, db, current_user, error_message="Descrizione riga mancante.", form_data=form_data)
-        item_id = int(raw_item_id) if raw_item_id else None
-        lines.append((description_clean, parsed_qty, item_id))
-        line_codes.append((raw_codice or "").strip() or None)
+            return _render_order_form(request, db, current_user, error_message="Righe ordine non valide.", form_data=form_data)
 
-    if not lines:
-        db.rollback()
-        return _render_order_form(request, db, current_user, error_message="Inserisci almeno una riga ordine valida.", form_data=form_data)
+        codici_input = list(codice) if isinstance(codice, list) else []
+        for i, raw_id in enumerate(magazzino_item_id):
+            code = (codici_input[i] or "").strip() if i < len(codici_input) else ""
+            known = db.query(SupplierArticle).filter(
+                SupplierArticle.supplier_id == selected_supplier.id,
+                func.lower(SupplierArticle.codice) == code.lower(),
+            ).first() if code else None
+            if known and known.magazzino_item_id:
+                if raw_id and raw_id != str(known.magazzino_item_id):
+                    db.rollback()
+                    return _render_order_form(request, db, current_user, error_message=f"Il codice {code} è già collegato a un altro articolo interno.", form_data=form_data)
+                magazzino_item_id[i] = str(known.magazzino_item_id)
+            elif raw_id == '__new__':
+                if normalized_kind != 'warehouse':
+                    db.rollback()
+                    return _render_order_form(request, db, current_user, error_message="Crea il materiale nel catalogo prima di un ordine cantiere.", form_data=form_data)
+                item_name = (description[i] or '').strip()
+                if not item_name:
+                    db.rollback()
+                    return _render_order_form(request, db, current_user, error_message="Inserisci il nome del nuovo materiale.", form_data=form_data)
+                new_item = MagazzinoItem(nome=item_name, categoria_id=selected_category_id, quantita_disponibile=0, attivo=True)
+                db.add(new_item); db.flush()
+                magazzino_item_id[i] = str(new_item.id)
 
-    is_new_warehouse_category = normalized_kind == "warehouse" and (
-        (category_mode or "").strip() in _NEW_CATEGORY_MODES
-        or warehouse_category_id == "__new__"
-    )
-    if is_new_warehouse_category and selected_category_id is not None:
-        cached_items_by_name: dict[str, MagazzinoItem] = {}
-        updated_lines: list[tuple[str, float, int | None]] = []
-        for index, (description_clean, parsed_qty, item_id) in enumerate(lines):
-            if item_id is not None:
-                updated_lines.append((description_clean, parsed_qty, item_id))
+        selected_item_ids: set[int] = set()
+        for raw_id in magazzino_item_id:
+            if raw_id:
+                try:
+                    selected_item_ids.add(int(raw_id))
+                except ValueError:
+                    db.rollback()
+                    return _render_order_form(request, db, current_user, error_message="Articolo magazzino non valido.", form_data=form_data)
+
+        if selected_item_ids:
+            existing_item_ids = {
+                item_id
+                for (item_id,) in db.query(MagazzinoItem.id)
+                .filter(MagazzinoItem.id.in_(selected_item_ids), MagazzinoItem.attivo.is_(True))
+                .all()
+            }
+            if selected_item_ids - existing_item_ids:
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message="Uno o più articoli magazzino non sono validi.", form_data=form_data)
+
+        # Codici articolo per riga (allineati a description/qty), padding se mancanti.
+        codici_padded = list(codice) + [""] * max(0, len(description) - len(codice))
+        lines: list[tuple[str, float, int | None]] = []
+        line_codes: list[str | None] = []
+        for raw_description, raw_qty, raw_item_id, raw_codice in zip(description, qty_ordered, magazzino_item_id, codici_padded):
+            if not raw_description and not raw_qty:
                 continue
+            parsed_qty = _parse_float(raw_qty)
+            if parsed_qty is None or parsed_qty <= 0:
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message="Quantità non valida nelle righe ordine.", form_data=form_data)
+            description_clean = (raw_description or "").strip()
+            if not description_clean:
+                db.rollback()
+                return _render_order_form(request, db, current_user, error_message="Descrizione riga mancante.", form_data=form_data)
+            item_id = int(raw_item_id) if raw_item_id else None
+            lines.append((description_clean, parsed_qty, item_id))
+            line_codes.append((raw_codice or "").strip() or None)
 
-            cache_key = description_clean.lower()
-            selected_item = cached_items_by_name.get(cache_key)
-            if selected_item is None:
-                selected_item = _get_or_create_warehouse_item(
-                    db,
-                    categoria_id=selected_category_id,
-                    nome_item=description_clean,
-                )
-                cached_items_by_name[cache_key] = selected_item
+        if not lines:
+            db.rollback()
+            return _render_order_form(request, db, current_user, error_message="Inserisci almeno una riga ordine valida.", form_data=form_data)
 
-            updated_lines.append((description_clean, parsed_qty, selected_item.id))
-            if index < len(form_data["lines"]):
-                form_data["lines"][index]["magazzino_item_id"] = str(selected_item.id)
+        is_new_warehouse_category = normalized_kind == "warehouse" and (
+            (category_mode or "").strip() in _NEW_CATEGORY_MODES
+            or warehouse_category_id == "__new__"
+        )
+        if is_new_warehouse_category and selected_category_id is not None:
+            cached_items_by_name: dict[str, MagazzinoItem] = {}
+            updated_lines: list[tuple[str, float, int | None]] = []
+            for index, (description_clean, parsed_qty, item_id) in enumerate(lines):
+                if item_id is not None:
+                    updated_lines.append((description_clean, parsed_qty, item_id))
+                    continue
 
-        lines = updated_lines
+                cache_key = description_clean.lower()
+                selected_item = cached_items_by_name.get(cache_key)
+                if selected_item is None:
+                    selected_item = _get_or_create_warehouse_item(
+                        db,
+                        categoria_id=selected_category_id,
+                        nome_item=description_clean,
+                    )
+                    cached_items_by_name[cache_key] = selected_item
 
-    if normalized_kind == 'warehouse' and any(item_id is None for _, _, item_id in lines):
-        db.rollback()
-        return _render_order_form(request, db, current_user, error_message="Collega ogni riga a un articolo interno oppure scegli Nuovo materiale.", form_data=form_data)
+                updated_lines.append((description_clean, parsed_qty, selected_item.id))
+                if index < len(form_data["lines"]):
+                    form_data["lines"][index]["magazzino_item_id"] = str(selected_item.id)
+
+            lines = updated_lines
+
+        if normalized_kind == 'warehouse' and any(item_id is None for _, _, item_id in lines):
+            db.rollback()
+            return _render_order_form(request, db, current_user, error_message="Collega ogni riga a un articolo interno oppure scegli Nuovo materiale.", form_data=form_data)
 
     try:
         order = _create_order_with_lines(

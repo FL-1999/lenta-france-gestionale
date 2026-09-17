@@ -17,34 +17,48 @@
   </nav>
   {% if success_message %}<p class="alert alert-success" role="status">{{ success_message }}</p>{% endif %}
   {% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
-  <nav class="warehouse-families" aria-label="{{ t('Famiglie di articoli','Familles d’articles') }}">
-    <a class="warehouse-family{% if filters.categoria_id is none %} is-selected{% endif %}" href="{{ request.url.remove_query_params(['categoria_id','macro_id','ok','err']) }}" {% if filters.categoria_id is none %}aria-current="true"{% endif %}>{{ icon('grid') }}<strong>{{ t('Tutti','Tous') }}</strong><span>{{ total_count }}</span></a>
-    {% for cat in categorie %}{% if cat.id is not none or family_counts.get(none,0) %}
-    {% set cid = cat.id if cat.id is not none else 0 %}
-    <a class="warehouse-family{% if filters.categoria_id == cid %} is-selected{% endif %}" href="{{ request.url.remove_query_params(['macro_id','ok','err']).include_query_params(categoria_id=cid) }}" {% if filters.categoria_id == cid %}aria-current="true"{% endif %}>{{ icon('box') }}<strong>{{ cat.nome if cat.id is not none else t('Da classificare','À classer') }}</strong><span>{{ family_counts.get(cat.id,0) }}</span></a>
-    {% endif %}{% endfor %}
+  <nav class="warehouse-breadcrumbs" aria-label="{{ t('Percorso magazzino','Parcours du magasin') }}">
+    <a href="{{ url_for('manager_magazzino_home') }}">{{ t('Macro categorie','Macro catégories') }}</a>
+    {% if selected_macro %}<span aria-hidden="true">/</span><a href="{{ url_for('manager_magazzino_home').include_query_params(macro_id=selected_macro.id) }}">{{ selected_macro.name or t('Senza macro','Sans macro') }}</a>{% endif %}
+    {% if selected_category %}<span aria-hidden="true">/</span><strong aria-current="page">{{ selected_category.nome }}</strong>{% elif filters.categoria_id == 0 %}<span aria-hidden="true">/</span><strong aria-current="page">{{ t('Da classificare','À classer') }}</strong>{% elif show_articles and not selected_macro %}<span aria-hidden="true">/</span><strong>{{ t('Tutti gli articoli','Tous les articles') }}</strong>{% endif %}
+    <a class="warehouse-all-link" href="{{ url_for('manager_magazzino_home').include_query_params(view='all') }}">{{ t('Tutti gli articoli','Tous les articles') }} · {{ total_count }}</a>
   </nav>
+  {% if filters.categoria_id is none and not show_articles %}
+  <div class="warehouse-list-title"><h2>{{ t('Categorie','Catégories') if selected_macro else t('Macro categorie','Macro catégories') }}</h2></div>
+  <nav class="warehouse-families" aria-label="{{ t('Categorie','Catégories') if selected_macro else t('Macro categorie','Macro catégories') }}">
+    {% if selected_macro %}
+      {% for cat in child_categories %}<a class="warehouse-family" href="{{ url_for('manager_magazzino_home').include_query_params(categoria_id=cat.id) }}">{{ icon('box') }}<strong>{{ cat.nome }}</strong><span>{{ family_counts.get(cat.id,0) }} {{ t('articoli','articles') }}</span></a>{% else %}<p>{{ t('Nessuna categoria in questa macro','Aucune catégorie dans cette macro') }}</p>{% endfor %}
+    {% else %}
+      {% for macro in macro_cards %}<a class="warehouse-family warehouse-macro" href="{{ url_for('manager_magazzino_home').include_query_params(macro_id=macro.id) }}">{{ icon('grid') }}<strong>{{ macro.name or t('Senza macro','Sans macro') }}</strong><span>{{ macro.categories }} {{ t('categorie','catégories') }} · {{ macro.count }} {{ t('articoli','articles') }}</span></a>{% endfor %}
+      {% if family_counts.get(none,0) %}<a class="warehouse-family" href="{{ url_for('manager_magazzino_home').include_query_params(categoria_id=0) }}">{{ icon('box') }}<strong>{{ t('Da classificare','À classer') }}</strong><span>{{ family_counts.get(none,0) }} {{ t('articoli','articles') }}</span></a>{% endif %}
+      {% if not macro_cards and not family_counts.get(none,0) %}<p>{{ t('Nessuna macro ancora creata','Aucune macro créée') }}</p>{% endif %}
+    {% endif %}
+  </nav>
+  {% endif %}
   <section class="card warehouse-catalog">
     <div class="card-body">
       <form class="warehouse-search" method="get" action="{{ url_for('manager_magazzino_home') }}">
+        <input type="hidden" name="view" value="all">
         {% if filters.categoria_id is not none %}<input type="hidden" name="categoria_id" value="{{ filters.categoria_id }}">{% endif %}
-        {% if filters.macro_id %}<input type="hidden" name="macro_id" value="{{ filters.macro_id }}">{% endif %}
+        {% if filters.macro_id is not none %}<input type="hidden" name="macro_id" value="{{ filters.macro_id }}">{% endif %}
         <label class="vehicle-field warehouse-query">{{ t('Cerca articolo o codice','Rechercher un article ou un code') }}<input name="q" value="{{ filters.q }}" placeholder="{{ t('Nome, codice interno o fornitore','Nom, code interne ou fournisseur') }}"></label>
         <label class="vehicle-field">{{ t('Giacenza','Stock') }}<select name="stock_status"><option value="">{{ t('Tutte','Tous') }}</option>{% for value,it,fr in [('disponibili','Disponibili','Disponibles'),('sotto_soglia','Sotto soglia','Sous seuil'),('esauriti','Esauriti','Épuisés')] %}<option value="{{ value }}" {% if filters.stock_status == value %}selected{% endif %}>{{ t(it,fr) }}</option>{% endfor %}</select></label>
         <button class="btn btn-secondary" type="submit">{{ t('Cerca','Rechercher') }}</button>
         {% if filters.q or filters.stock_status or filters.macro_id or filters.categoria_id is not none %}<a class="btn btn-secondary" href="{{ url_for('manager_magazzino_home') }}">{{ t('Azzera','Réinitialiser') }}</a>{% endif %}
       </form>
-      <div class="warehouse-list-title"><h2>{{ t('Articoli','Articles') }}</h2><span>{{ items_count }}</span></div>
+      {% if show_articles %}
+      <div class="warehouse-list-title"><h2>{{ selected_category.nome if selected_category else t('Articoli','Articles') }}</h2><span>{{ items_count }}</span></div>
       <div class="warehouse-rows">
       {% for item in items %}
         <article class="warehouse-row">
           <div class="warehouse-row-icon">{{ icon('box') }}</div>
-          <div class="warehouse-row-name"><h3><a href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ item.nome }}</a></h3><p><span class="warehouse-code">{{ item.codice }}</span> · {{ supplier_counts.get(item.id,0) }} {{ t('fornitori','fournisseurs') }}{% if item.preferito %} · {{ t('Preferito','Favori') }}{% endif %}</p>{% if item.ubicazione_zona or item.ubicazione_scaffale or item.ubicazione_ripiano %}<p class="warehouse-row-location">{{ [item.ubicazione_zona,item.ubicazione_scaffale,item.ubicazione_ripiano]|select|join(' / ') }}</p>{% endif %}</div>
+          <div class="warehouse-row-name"><h3><a href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ item.nome }}</a></h3>{% if item.categoria and not selected_category %}<p>{{ item.categoria.macro.name ~ ' / ' if item.categoria.macro else '' }}{{ item.categoria.nome }}</p>{% endif %}<p><span class="warehouse-code">{{ item.codice }}</span> · {{ supplier_counts.get(item.id,0) }} {{ t('fornitori','fournisseurs') }}{% if item.preferito %} · {{ t('Preferito','Favori') }}{% endif %}</p>{% if item.ubicazione_zona or item.ubicazione_scaffale or item.ubicazione_ripiano %}<p class="warehouse-row-location">{{ [item.ubicazione_zona,item.ubicazione_scaffale,item.ubicazione_ripiano]|select|join(' / ') }}</p>{% endif %}</div>
           <div class="warehouse-row-stock"><strong>{{ '%g'|format(item.quantita_disponibile or 0) }} <small>{{ item.unita_misura }}</small></strong>{% if not item.quantita_disponibile %}<span class="warehouse-stock-warning">{{ t('Esaurito','Épuisé') }}</span>{% elif item.soglia_minima is not none and item.quantita_disponibile < item.soglia_minima %}<span class="warehouse-stock-warning">{{ t('Sotto soglia','Sous seuil') }}</span>{% endif %}</div>
           <a class="btn btn-secondary btn-sm warehouse-open" href="{{ url_for('warehouse_item_card',item_id=item.id) }}" aria-label="{{ t('Apri scheda','Ouvrir la fiche') }}: {{ item.nome }}">{{ t('Apri scheda','Ouvrir la fiche') }} {{ icon('arrow') }}</a>
         </article>
       {% else %}<p class="warehouse-empty">{{ t('Nessun articolo trovato','Aucun article trouvé') }}</p>{% endfor %}
       </div>
+      {% endif %}
     </div>
   </section>
 </div>

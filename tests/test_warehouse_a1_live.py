@@ -3,7 +3,7 @@ import pytest
 from playwright.sync_api import expect,sync_playwright
 from sqlalchemy.orm import Session
 from test_operations_live import live_operations
-from models import MagazzinoItem,MagazzinoCategoria,Supplier,SupplierArticle
+from models import MagazzinoItem,MagazzinoCategoria,MagazzinoMacro,Supplier,SupplierArticle
 
 pytestmark=pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS')!='1',reason='Browser opt-in')
 
@@ -11,7 +11,8 @@ pytestmark=pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS')!='1',reason='Browse
 def test_a1_catalog_location_themes_and_mobile(live_operations):
     origin,engine,ids,password,artifacts=live_operations
     with Session(engine) as db:
-        cat=MagazzinoCategoria(nome='Ferramenta',slug='ferramenta',attiva=True)
+        macro=MagazzinoMacro(name='Materiali di cantiere')
+        cat=MagazzinoCategoria(nome='Ferramenta',slug='ferramenta',attiva=True,macro=macro)
         item=MagazzinoItem(nome='Bullone M12',categoria=cat,quantita_disponibile=240,attivo=True)
         db.add(item);db.flush()
         for n in range(4):
@@ -30,6 +31,12 @@ def test_a1_catalog_location_themes_and_mobile(live_operations):
         page.locator('#email').fill('smoke-manager@example.com');page.locator('#password').fill(password)
         page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
         page.goto(origin+'/manager/magazzino')
+        expect(page.locator('.warehouse-row')).to_have_count(0)
+        page.locator('.warehouse-family').filter(has_text='Materiali di cantiere').click()
+        expect(page.locator('.warehouse-row')).to_have_count(0)
+        page.locator('.warehouse-family').filter(has_text='Ferramenta').click()
+        expect(page.locator('.warehouse-breadcrumbs')).to_contain_text('Materiali di cantiere')
+        expect(page.locator('.warehouse-breadcrumbs')).to_contain_text('Ferramenta')
         expect(page.locator('.warehouse-row')).to_have_count(3)
         expect(page.locator('.warehouse-row').filter(has_text='Bullone M12')).to_contain_text('4 fornitori')
         expect(page.locator('.workspace-wordmark')).to_be_visible()
