@@ -795,6 +795,7 @@ class SiteCoupe(Base, TimestampMixin):
     site = relationship("Site", back_populates="coupes")
     nome = Column(String(100), nullable=False)
     descrizione_zona = Column(Text, nullable=True)
+    armatura = Column(Text, nullable=True)
     quota_reference_label = Column(String(30), nullable=True)
     quota_tn = Column(Float, nullable=True)
     quota_testa = Column(Float, nullable=True)

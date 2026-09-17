@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import math
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -16,7 +17,7 @@ from models import (SitePlan, SiteProgressGridName, SiteCoupeAssignment,
                     SiteSpecialEquipmentConfig, Fiche, RoleEnum, User)
 from permissions import has_perm
 from services.site_plan_project import confirm_project_panels
-from services.site_plan_import import import_pdf, MAX_PDF_BYTES, MAX_PANELS
+from services.site_plan_import import import_pdf, MAX_PDF_BYTES, MAX_PANELS, layout_scale, needs_extent_review
 from template_context import register_manager_badges, render_template
 
 router=APIRouter(prefix='/manager/cantieri/{site_id}/pianta', tags=['pianta cantiere'])
@@ -63,7 +64,7 @@ def elements(db, site, user):
             'concrete_m3':f.metri_cubi_gettati if f else None,
             'cast_date':f.data_getto.isoformat() if f and f.data_getto else None,
             'depth_m':f.profondita_totale if f else None,
-            'coupe':c.nome if c else None,'planned_depth_m':c.profondita_teorica if c else None,
+            'coupe':c.nome if c else None,'armatura':c.armatura if c else None,'planned_depth_m':c.profondita_teorica if c else None,
             'sonic':bool(e.sonic_previsto) if e else bool(f and f.sonic_previsto),
             'inclinometer':bool(e.inclinometre_previsto) if e else bool(f and f.inclinometre_previsto)})
     return result
@@ -130,17 +131,21 @@ class PanelInput(BaseModel):
     width_m:FiniteFloat|None=Field(default=None,gt=0,le=100)
     element:int|None=Field(default=None,gt=0)
     reviewed:bool=False
+    extent_confirmed:bool=False
 
 
 class LayoutInput(BaseModel):
     revision:int=Field(ge=1)
     panels:list[PanelInput]=Field(max_length=MAX_PANELS)
     confirm:bool=False
+    scale_ppm:FiniteFloat|None=Field(default=None,gt=0,le=10000)
 
 
 def validate_layout(body,source,allowed,approve):
     if approve and (not body.confirm or not body.panels):
         raise HTTPException(400,'Controlla la pianta e conferma la convalida.')
+    scale=body.scale_ppm or layout_scale(source)
+    if approve and not scale: raise HTTPException(400,'Calibra la scala usando un pannello di larghezza nota.')
     keys=set();links=set();panels=[]
     original={p['key']:p for p in source['panels']}
     for p in body.panels:
@@ -151,8 +156,8 @@ def validate_layout(body,source,allowed,approve):
             if p.element not in allowed: raise HTTPException(400,'Elemento non presente nel cantiere')
             if p.element in links: raise HTTPException(400,'Due zone non possono collegarsi allo stesso elemento')
             links.add(p.element)
-        if any(not 0<=x<=source['width'] or not 0<=y<=source['height'] for x,y in p.points):
-            raise HTTPException(400,'La sagoma deve rimanere nel foglio')
+        if any(not -source['width']<=x<=2*source['width'] or not -source['height']<=y<=2*source['height'] for x,y in p.points):
+            raise HTTPException(400,'La sagoma supera lo spazio di lavoro disponibile')
         # Require a non-degenerate convex quadrilateral (no crossed corners).
         cross=[]
         for i in range(4):
@@ -162,11 +167,18 @@ def validate_layout(body,source,allowed,approve):
             raise HTTPException(400,'Sagoma non valida: controlla gli angoli del pannello')
         if approve and (p.width_m is None or not p.reviewed):
             raise HTTPException(400,f'Verifica sagoma e larghezza di {p.label}.')
+        reference=original.get(p.key,{}).get('reference_points') or original.get(p.key,{}).get('points')
+        extent=needs_extent_review(p.points,reference,source['width'],source['height'])
+        if approve and any(abs(math.dist(p.points[i],p.points[j])/(p.width_m*scale)-1)>.02 for i,j in ((0,1),(3,2))):
+            raise HTTPException(400,f'{p.label}: sagoma fuori scala. Applica la larghezza alla scala comune.')
+        if approve and extent and not p.extent_confirmed:
+            raise HTTPException(400,f'{p.label}: possibile sbordo. Controlla e conferma gli estremi sul PDF.')
         panel=p.model_dump();panel['label']=p.label.strip()
+        panel['reference_points']=reference or p.points
         panel['recognition']=original.get(p.key,{}).get('recognition','manual')
         panel['warnings']=original.get(p.key,{}).get('warnings',[])
         panels.append(panel)
-    return {**source,'panels':panels}
+    return {**source,'panels':panels,'scale_ppm':scale}
 
 
 @router.put('/{plan_id}/bozza')

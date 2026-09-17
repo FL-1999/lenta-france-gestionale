@@ -357,6 +357,7 @@
                             <section class="technical-data-block technical-data-block--notes">
                                 <h3>E. Observation</h3>
                                 <p>{{ technical_fr(fiche.notes or fiche.quota_ngf_note or fiche.description or '—') }}</p>
+                                {% if report_coupe and report_coupe.armatura %}<p><strong>Armature:</strong> {{ report_coupe.armatura }}</p>{% endif %}
                             </section>
 
                             {# F. Nature des sols #}

@@ -143,3 +143,37 @@ def test_unlinked_panels_can_be_approved_without_fabricating_progress(operations
     assert c.get(url+'/data').json()['plan']['layout']['panels'][0]['element'] == 1
     assert operations['db'].query(Fiche).count() == 0
     assert c.get(url+'/data').json()['elements'][0]['status'] == 'planned'
+
+
+def test_internal_crossing_does_not_shorten_scaled_panel():
+    from services.site_plan_import import _geometry, scaled_points, needs_extent_review
+    import math
+    label={'x':50,'y':5,'angle':0,'size':8}
+    segments=[((0,0),(100,0)),((0,10),(100,10)),((0,0),(0,10)),
+              ((60,0),(60,10)),((100,0),(100,10))]
+    old,_=_geometry(label,segments)
+    proposed,exact=_geometry(label,segments,target_length=100)
+    assert math.dist(*old[:2])==60
+    assert exact and math.dist(*proposed[:2])==100
+    assert needs_extent_review(proposed,old,200,200)
+    resized=scaled_points(proposed,125)
+    assert math.dist(*resized[:2])==125
+    assert resized[0][0]<0  # Never clip a protruding panel at the page boundary.
+
+
+def test_scale_and_extent_confirmation_are_independent(operations):
+    c,url,pid,plan=setup(operations);body=payload(plan)
+    body['panels'][0]['width_m']=5.8
+    response=c.put(url+f'/{pid}/convalida',json=body)
+    assert response.status_code==400 and 'scala' in response.json()['detail']
+    body['panels'][0]['width_m']=2.9
+    body['panels'][0]['points']=[[x-100,y] for x,y in body['panels'][0]['points']]
+    response=c.put(url+f'/{pid}/convalida',json=body)
+    assert response.status_code==400 and 'sbordo' in response.json()['detail']
+    body['panels'][0]['extent_confirmed']=True
+    response=c.put(url+f'/{pid}/convalida',json=body)
+    assert response.status_code==200,response.text
+    approved=c.get(url+'/data').json()['plan']['layout']
+    assert approved['scale_ppm']==pytest.approx(140/2.9)
+    assert min(x for x,y in approved['panels'][0]['points'])==-50
+    assert approved['panels'][0]['extent_confirmed']

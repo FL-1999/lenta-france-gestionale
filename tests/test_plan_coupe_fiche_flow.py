@@ -11,6 +11,7 @@ from test_site_plans import setup, payload
 def configure(o, number=1):
     return o['client'].post(f'/manager/cantieri/{o["site"].id}/configurazione-progetto', data={
         'coupe_id':['',''], 'coupe_nome':['Coupe 1',''],
+        'coupe_armatura':['Gabbia A - tavola 12',''],
         'coupe_paratie':[str(number),''], 'coupe_pali':['',''],
         'coupe_quota_reference_label':['NGM','NGF'],
         'coupe_quota_tn':['10.5',''], 'coupe_quota_testa':['10.5',''],
@@ -25,6 +26,7 @@ def configure(o, number=1):
 def test_confirm_coupe_create_fiche_and_historical_snapshot(operations):
     o=operations;c,url,pid,plan=setup(o)
     body=payload(plan);body['panels'][0].update(element=None,width_m=5.2)
+    body['scale_ppm']=140/5.2
     assert c.put(url+f'/{pid}/convalida',json=body).status_code==200
     assert configure(o).status_code==303
     db=o['db'];db.expire_all()
@@ -47,10 +49,13 @@ def test_confirm_coupe_create_fiche_and_historical_snapshot(operations):
     assert fiche.quota_ngf_fondo==-1.5 and fiche.quota_partenza==10.5
     assert _calculate_fiche_volume_teorico(fiche)==pytest.approx(26.208)
     assert fiche.report_coupe.base_paroi_mecanique==-1.38
+    assert fiche.report_coupe.armatura=='Gabbia A - tavola 12'
+    coupe.armatura='Gabbia B'
     coupe.base_paroi_mecanique=99;coupe.quota_reference_label='CHANGED';db.commit()
     detail=c.get(f'/manager/fiches/{fiche.id}')
     assert detail.status_code==200 and 'NGM' in detail.text and '-1,38' in detail.text
     assert 'CHANGED' not in detail.text
+    assert 'Gabbia A - tavola 12' in detail.text and 'Gabbia B' not in detail.text
     assert c.get(link,follow_redirects=False).status_code==303
     duplicate=c.post('/manager/fiches/nuova',data=data,follow_redirects=False)
     assert duplicate.status_code==400 and db.query(Fiche).count()==1

@@ -1734,7 +1734,7 @@ def _fiche_coupe_snapshot(coupe):
     if not coupe:
         return None
     return json.dumps({key: getattr(coupe, key) for key in (
-        "id", "nome", "quota_reference_label", "quota_tn", "quota_testa", "quota_fondo_teorica",
+        "id", "nome", "armatura", "quota_reference_label", "quota_tn", "quota_testa", "quota_fondo_teorica",
         "base_paroi_mecanique", "profondita_teorica", "scavo_da_tn", "quota_partenza_scavo",
         "quota_testa_getto_prevista", "larghezza", "spessore", "diametro", "terreno_teorico")})
 
@@ -5227,6 +5227,7 @@ def _sync_site_coupes_from_form(
     coupe_note: list[str] | None,
     coupe_paratie: list[str] | None,
     coupe_pali: list[str] | None,
+    coupe_armatura: list[str] | None = None,
     coupe_quota_reference_label: list[str] | None = None,
     delete_coupe_id: list[str] | None = None,
 ) -> None:
@@ -5243,7 +5244,7 @@ def _sync_site_coupes_from_form(
         len(coupe_base_paroi_mecanique or []), len(coupe_profondita_teorica or []), len(coupe_scavo_da_tn or []), len(coupe_quota_partenza_scavo or []),
         len(coupe_quota_testa_getto_prevista or []), len(coupe_type_beton or []), len(coupe_type_coulage or []),
         len(coupe_spessore or []), len(coupe_larghezza or []),
-        len(coupe_diametro or []), len(coupe_terreno_teorico or []), len(coupe_note or []),
+        len(coupe_diametro or []), len(coupe_terreno_teorico or []), len(coupe_note or []), len(coupe_armatura or []),
         len(coupe_paratie or []), len(coupe_pali or []), 0
     )
     seen: set[int] = set()
@@ -5259,7 +5260,7 @@ def _sync_site_coupes_from_form(
             for values in (
                 coupe_descrizione_zona, coupe_quota_tn, coupe_quota_testa, coupe_quota_fondo_teorica,
                 coupe_base_paroi_mecanique, coupe_profondita_teorica, coupe_quota_partenza_scavo, coupe_quota_testa_getto_prevista,
-                coupe_type_beton, coupe_spessore, coupe_larghezza, coupe_diametro, coupe_terreno_teorico, coupe_note,
+                coupe_type_beton, coupe_spessore, coupe_larghezza, coupe_diametro, coupe_terreno_teorico, coupe_note, coupe_armatura,
                 coupe_paratie, coupe_pali,
             )
         )
@@ -5311,6 +5312,10 @@ def _sync_site_coupes_from_form(
                 raise HTTPException(400, "Le dimensioni della coupe devono essere maggiori di zero.")
         coupe.terreno_teorico = value(coupe_terreno_teorico, index).strip() or None
         coupe.note = value(coupe_note, index).strip() or None
+        if coupe_armatura:
+            coupe.armatura = value(coupe_armatura, index).strip() or None
+            if coupe.armatura and len(coupe.armatura)>2000:
+                raise HTTPException(400, "Descrizione armatura: massimo 2000 caratteri.")
         db.flush()
         seen.add(coupe.id)
         for numero in _parse_coupe_element_numbers(value(coupe_paratie, index)):
@@ -5721,6 +5726,7 @@ def manager_site_project_config_post(
     coupe_larghezza: List[str] = Form(default_factory=list),
     coupe_diametro: List[str] = Form(default_factory=list),
     coupe_terreno_teorico: List[str] = Form(default_factory=list),
+    coupe_armatura: List[str] = Form(default_factory=list),
     coupe_note: List[str] = Form(default_factory=list),
     coupe_paratie: List[str] = Form(default_factory=list),
     coupe_pali: List[str] = Form(default_factory=list),
@@ -5766,6 +5772,7 @@ def manager_site_project_config_post(
                 coupe_diametro=coupe_diametro,
                 coupe_terreno_teorico=coupe_terreno_teorico,
                 coupe_note=coupe_note,
+                coupe_armatura=coupe_armatura,
                 coupe_paratie=coupe_paratie,
                 coupe_pali=coupe_pali,
                 coupe_quota_reference_label=coupe_quota_reference_label,

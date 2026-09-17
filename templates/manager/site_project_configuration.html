@@ -111,6 +111,7 @@
             </div>
             <small class="form-text text-muted">Gli strati salvati nella coupe vengono caricati automaticamente nella fiche associata come modello geologico teorico.</small>
           </div>
+          <div class="project-field"><label class="form-label">Armatura · caratteristiche e riferimento disegno</label><textarea class="form-textarea" name="coupe_armatura" rows="3" maxlength="2000" placeholder="Tipo gabbia, lunghezze, diametri e riferimento della tavola approvata">{{ coupe.armatura if coupe and coupe.armatura else '' }}</textarea></div>
           <div class="project-field"><label class="form-label">Note</label><textarea class="form-textarea" name="coupe_note" rows="4" placeholder="Note operative per fiches e controllo">{{ coupe.note if coupe and coupe.note else '' }}</textarea></div>
         </div>
       </section>
