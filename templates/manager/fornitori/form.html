@@ -1,74 +1,66 @@
 {% extends "shared/base.html" %}
-{% set lang = request.cookies.get('lang', 'it') %}
-
-{% block title %}{% if is_new %}{% if lang == 'fr' %}Nouveau fournisseur{% else %}Nuovo fornitore{% endif %}{% else %}{% if lang == 'fr' %}Modifier fournisseur{% else %}Modifica fornitore{% endif %}{% endif %}{% endblock %}
-
+{% from 'shared/workspace_icons.html' import icon %}
+{% block title %}{{ t('Nuovo fornitore','Nouveau fournisseur') if is_new else supplier.name }}{% endblock %}
 {% block content %}
-<div class="page-header">
-    <div class="page-header-main">
-        <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
-        <h1 class="page-title">{% if is_new %}{% if lang == 'fr' %}Nouveau fournisseur{% else %}Nuovo fornitore{% endif %}{% else %}{% if lang == 'fr' %}Modifier fournisseur{% else %}Modifica fornitore{% endif %}{% endif %}</h1>
-    </div>
-    <div class="page-actions">{% if not is_new %}<a class="btn btn-primary" href="{{ url_for('manager_ordini_new') }}?supplier_id={{ supplier.id }}">{{ t("Nuovo ordine", "Nouvelle commande") }}</a>{% endif %}
-        <a href="{{ url_for('manager_fornitori_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
-    </div>
-</div>
-
-{% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
-
-<form method="post" action="{{ form_action }}">
-    <div class="card large-form-card">
-        <div class="card-body">
-            <p style="margin-top:0; opacity:.8;">{% if lang == 'fr' %}Indiquez le nom du fournisseur. Ajoutez ensuite ses contacts.{% else %}Inserisci il nome del fornitore. Dopo il salvataggio puoi aggiungere più referenti.{% endif %}</p>
-            <div class="vehicle-fields">
-                <div class="vehicle-field"><label>{% if lang == 'fr' %}Nom / raison sociale{% else %}Nome / ragione sociale{% endif %}</label><input type="text" name="name" required value="{{ (supplier.name or '') if supplier else '' }}"></div>
-                <div class="vehicle-field"><label>{% if lang == 'fr' %}Lieu / ville{% else %}Luogo / città{% endif %}</label><input type="text" name="city" value="{{ (supplier.city or '') if supplier else '' }}"></div>
-                <div class="vehicle-field"><label>{% if lang == 'fr' %}Adresse{% else %}Indirizzo{% endif %}</label><input type="text" name="address" value="{{ (supplier.address or '') if supplier else '' }}"></div>
-                <div class="vehicle-field"><label>CAP</label><input type="text" name="zip_code" value="{{ (supplier.zip_code or '') if supplier else '' }}"></div>
-                <div class="vehicle-field"><label>{% if lang == 'fr' %}Province{% else %}Provincia{% endif %}</label><input type="text" name="province" value="{{ (supplier.province or '') if supplier else '' }}"></div>
-                <div class="vehicle-field"><label>{% if lang == 'fr' %}Pays{% else %}Nazione{% endif %}</label><input type="text" name="country" value="{{ (supplier.country or '') if supplier else '' }}"></div>
-                <div class="vehicle-field"><label>Email</label><input type="email" name="email" value="{{ (supplier.email or '') if supplier else '' }}"></div>
-                <div class="vehicle-field"><label>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</label><input type="text" name="phone" value="{{ (supplier.phone or '') if supplier else '' }}"></div>
-                <div class="vehicle-field"><label>{% if lang == 'fr' %}TVA{% else %}Partita IVA/TVA{% endif %}</label><input type="text" name="vat_number" value="{{ (supplier.vat_number or '') if supplier else '' }}"></div>
-            </div>
-            <div class="vehicle-field" style="margin-top: 12px;"><label>Note</label><textarea name="notes" rows="4">{{ (supplier.notes or '') if supplier else '' }}</textarea></div>
-        </div>
-    </div>
-
-    <div class="form-actions" style="margin-top: 16px;">
-        <a href="{{ url_for('manager_fornitori_list') }}" class="btn btn-secondary">{% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}</a>
-        <button class="btn btn-primary" type="submit">{% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}</button>
-    </div>
-</form>
-
+<div class="supplier-workspace">
+<header class="page-header"><div><p class="page-eyebrow">{{ t('Fornitori','Fournisseurs') }}</p><h1 class="page-title">{{ t('Nuovo fornitore','Nouveau fournisseur') if is_new else supplier.name }}</h1></div><div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('manager_fornitori_list') }}">{{ t('Tutti i fornitori','Tous les fournisseurs') }}</a>{% if supplier and supplier.is_active %}<a class="btn btn-primary" href="{{ url_for('manager_ordini_new').include_query_params(supplier_id=supplier.id) }}">{{ icon('plus') }} {{ t('Nuovo ordine','Nouvelle commande') }}</a>{% endif %}</div></header>
+{% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
+{% if not is_new %}
+<nav class="warehouse-toolbar supplier-section-nav" aria-label="{{ t('Scheda fornitore','Fiche fournisseur') }}"><a href="#profilo">{{ t('Dati aziendali','Entreprise') }}</a><a href="#referenti">{{ t('Referenti','Contacts') }} <span>{{ supplier.contacts|length }}</span></a><a href="#articoli">{{ t('Articoli','Articles') }} <span>{{ supplier.articoli|length }}</span></a><a href="#ordini">{{ t('Ordini','Commandes') }} <span>{{ order_count }}</span></a></nav>
+{% endif %}
+<section class="card purchasing-section" id="profilo"><div class="card-body">
+  <div class="supplier-section-heading"><h2>{{ icon('site') }} {{ t('Dati aziendali','Entreprise') }}</h2>{% if supplier %}<span class="supplier-state {{ 'is-active' if supplier.is_active else '' }}">{{ t('Attivo','Actif') if supplier.is_active else t('Disattivo','Inactif') }}</span>{% endif %}</div>
+  {% if not is_new %}<div class="supplier-profile-summary">
+    <div><span class="text-muted">{{ t('Contatti','Coordonnées') }}</span><div class="supplier-contact-links">{% if supplier.email %}<a href="mailto:{{ supplier.email|urlencode }}">{{ supplier.email }}</a>{% endif %}{% if supplier.phone %}<a href="tel:{{ supplier.phone|urlencode }}">{{ supplier.phone }}</a>{% endif %}{% if not supplier.email and not supplier.phone %}{{ t('Da aggiungere','À renseigner') }}{% endif %}</div></div>
+    <div><span class="text-muted">{{ t('Sede','Adresse') }}</span><p>{{ [supplier.address,supplier.zip_code,supplier.city,supplier.province,supplier.country]|select|join(' · ') or '—' }}</p></div>
+    <div><span class="text-muted">{{ t('Partita IVA / TVA','TVA') }}</span><p>{{ supplier.vat_number or '—' }}</p></div>
+  </div>{% if supplier.notes %}<p class="supplier-notes">{{ supplier.notes }}</p>{% endif %}{% endif %}
+  <details class="supplier-edit" {% if is_new %}open{% endif %}><summary>{{ t('Inserisci i dati','Renseigner les informations') if is_new else t('Modifica dati aziendali','Modifier les informations') }}</summary>
+  <form method="post" action="{{ form_action }}" id="supplier-profile-form">
+    <div class="vehicle-fields">
+    {% for key,it,fr,type in [('name','Nome / ragione sociale','Nom / raison sociale','text'),('vat_number','Partita IVA / TVA','TVA','text'),('email','Email aziendale','Email de l’entreprise','email'),('phone','Telefono','Téléphone','tel'),('address','Indirizzo','Adresse','text'),('city','Città','Ville','text'),('zip_code','CAP','Code postal','text'),('province','Provincia','Département','text'),('country','Nazione','Pays','text')] %}
+      <label class="vehicle-field" for="supplier-{{ key }}">{{ t(it,fr) }}{{ ' *' if key == 'name' else '' }}<input id="supplier-{{ key }}" name="{{ key }}" type="{{ type }}" value="{{ supplier[key] or '' if supplier else '' }}" {% if key == 'name' %}required{% endif %}></label>
+    {% endfor %}
+    </div><label class="vehicle-field">{{ t('Note','Notes') }}<textarea name="notes" rows="3">{{ supplier.notes or '' if supplier else '' }}</textarea></label>
+    <div class="supplier-form-actions"><button class="btn btn-primary" type="submit">{{ t('Salva','Enregistrer') }}</button>{% if is_new %}<span class="text-muted">{{ t('Dopo il salvataggio puoi aggiungere i referenti.','Vous pourrez ensuite ajouter les contacts.') }}</span>{% endif %}</div>
+  </form></details>
+</div></section>
 {% if not is_new %}
 <section class="card purchasing-section" id="referenti"><div class="card-body">
-<h2>{{ t('Referenti', 'Contacts') }}</h2>
-<p class="text-muted">{{ t('Scegli il referente desiderato quando crei un ordine. Disattivarlo conserva lo storico.', 'Choisissez le contact lors de la création de la commande. Le désactiver conserve son historique.') }}</p>
-{% if supplier.contact_name %}<p>{{ t('Referente precedente', 'Ancien contact') }}: {{ supplier.contact_name }} · {{ supplier.contact_email or '' }} · {{ supplier.contact_phone or '' }}</p>{% endif %}
-{% for contact in supplier.contacts %}
-<form class="purchasing-contact" method="post" action="{{ url_for('supplier_contact_save', supplier_id=supplier.id) }}">
-<input type="hidden" name="contact_id" value="{{ contact.id }}">
-<div class="vehicle-fields">
-{% for key,label in [('name',t('Nome','Nom')),('email','Email'),('phone',t('Telefono','Téléphone')),('role_label',t('Funzione','Fonction'))] %}
-<label class="vehicle-field">{{ label }}<input name="{{ key }}" type="{{ 'email' if key == 'email' else 'text' }}" value="{{ contact[key] or '' }}" {% if key == 'name' %}required{% endif %}></label>
-{% endfor %}</div>
-<label><input type="checkbox" name="active" value="true" {% if contact.is_active %}checked{% endif %}> {{ t('Attivo','Actif') }}</label>
-<button class="btn btn-secondary" type="submit">{{ t('Salva referente','Enregistrer le contact') }}</button>
-</form>{% endfor %}
-<details class="purchasing-contact" {% if not supplier.contacts %}open{% endif %}><summary>{{ t('Aggiungi referente','Ajouter un contact') }}</summary>
-<form method="post" action="{{ url_for('supplier_contact_save', supplier_id=supplier.id) }}"><input type="hidden" name="active" value="true">
-<div class="vehicle-fields">
-{% for key,label in [('name',t('Nome','Nom')),('email','Email'),('phone',t('Telefono','Téléphone')),('role_label',t('Funzione','Fonction'))] %}
-<label class="vehicle-field">{{ label }}<input name="{{ key }}" type="{{ 'email' if key == 'email' else 'text' }}" {% if key == 'name' %}required{% endif %}></label>
-{% endfor %}</div><button class="btn btn-primary" type="submit">{{ t('Aggiungi referente','Ajouter un contact') }}</button></form></details>
+  <div class="supplier-section-heading"><h2>{{ icon('users') }} {{ t('Referenti','Contacts') }}</h2><span>{{ supplier.contacts|length }}</span></div>
+  {% if supplier.contact_name %}<p>{{ t('Referente precedente','Ancien contact') }}: {{ supplier.contact_name }} · {{ supplier.contact_email or '' }} · {{ supplier.contact_phone or '' }}</p>{% endif %}
+  {% for contact in supplier.contacts %}
+  <details class="purchasing-contact supplier-contact-editor"><summary><span><strong>{{ contact.name }}</strong>{% if contact.role_label %}<span class="text-muted"> · {{ contact.role_label }}</span>{% endif %}</span><span class="supplier-state {{ 'is-active' if contact.is_active else '' }}">{{ t('Attivo','Actif') if contact.is_active else t('Disattivo','Inactif') }}</span></summary>
+    <div class="supplier-contact-links">{% if contact.email %}<a href="mailto:{{ contact.email|urlencode }}">{{ contact.email }}</a>{% endif %}{% if contact.phone %}<a href="tel:{{ contact.phone|urlencode }}">{{ contact.phone }}</a>{% endif %}</div>
+    <form method="post" action="{{ url_for('supplier_contact_save',supplier_id=supplier.id) }}"><input type="hidden" name="contact_id" value="{{ contact.id }}">
+      <div class="vehicle-fields">{% for key,label in [('name',t('Nome','Nom')),('email','Email'),('phone',t('Telefono','Téléphone')),('role_label',t('Funzione','Fonction'))] %}<label class="vehicle-field">{{ label }}<input name="{{ key }}" type="{{ 'email' if key == 'email' else 'tel' if key == 'phone' else 'text' }}" value="{{ contact[key] or '' }}" {% if key == 'name' %}required{% endif %}></label>{% endfor %}</div>
+      <div class="supplier-form-actions"><label><input type="checkbox" name="active" value="true" {% if contact.is_active %}checked{% endif %}> {{ t('Disponibile negli ordini','Disponible dans les commandes') }}</label><button class="btn btn-secondary" type="submit">{{ t('Salva referente','Enregistrer le contact') }}</button></div>
+    </form>
+  </details>{% endfor %}
+  <details class="purchasing-contact" id="new-contact" {% if not supplier.contacts %}open{% endif %}><summary>{{ icon('plus') }} {{ t('Aggiungi referente','Ajouter un contact') }}</summary>
+    <form method="post" action="{{ url_for('supplier_contact_save',supplier_id=supplier.id) }}"><input type="hidden" name="active" value="true"><div class="vehicle-fields">{% for key,label in [('name',t('Nome','Nom')),('email','Email'),('phone',t('Telefono','Téléphone')),('role_label',t('Funzione','Fonction'))] %}<label class="vehicle-field">{{ label }}<input name="{{ key }}" type="{{ 'email' if key == 'email' else 'tel' if key == 'phone' else 'text' }}" {% if key == 'name' %}required{% endif %}></label>{% endfor %}</div><button class="btn btn-primary" type="submit">{{ t('Aggiungi referente','Ajouter un contact') }}</button></form>
+  </details>
 </div></section>
-<section class="card purchasing-section"><div class="card-body"><h2>{{ t('Articoli del fornitore','Articles du fournisseur') }}</h2>
-<p>{{ t('Il codice fornitore identifica il prodotto nel suo catalogo. Il codice interno identifica la tua unica scheda di magazzino.', 'Le code fournisseur identifie le produit dans son catalogue. Le code interne identifie votre fiche de stock unique.') }}</p>
-<div class="table-responsive"><table class="data-table"><thead><tr><th>{{ t('Codice fornitore','Code fournisseur') }}</th><th>{{ t('Descrizione','Description') }}</th><th>{{ t('Articolo interno','Article interne') }}</th></tr></thead><tbody>
-{% for a in supplier.articoli %}<tr><td>{{ a.codice }}</td><td>{{ a.descrizione or '—' }}</td><td>{% if a.magazzino_item %}<a href="{{ url_for('warehouse_item_card',item_id=a.magazzino_item_id) }}">{{ a.magazzino_item.codice }} · {{ a.magazzino_item.nome }}</a>{% else %}{{ t('Da collegare dalla scheda articolo','À associer depuis la fiche article') }}{% endif %}</td></tr>{% else %}<tr><td colspan="3">{{ t('Nessun articolo collegato. Aggiungilo dalla scheda di magazzino o dal primo ordine.', 'Aucun article associé. Ajoutez-le depuis sa fiche de stock ou la première commande.') }}</td></tr>{% endfor %}</tbody></table></div>
-<a class="btn btn-secondary" href="{{ url_for('manager_magazzino_list') }}">{{ t('Apri magazzino','Ouvrir le stock') }}</a></div></section>
-<section class="card purchasing-section"><div class="card-body"><h2>{{ t('Ultimi 50 ordini','50 dernières commandes') }}</h2><div class="table-responsive"><table class="data-table"><thead><tr><th>{{ t('Ordine','Commande') }}</th><th>{{ t('Data','Date') }}</th><th>{{ t('Stato','Statut') }}</th></tr></thead><tbody>
-{% for o in supplier_orders %}<tr><td><a href="{{ url_for('manager_ordini_detail',order_id=o.id) }}">#{{ o.order_number }}</a></td><td>{{ o.order_date or '—' }}</td><td>{{ o.status or 'APERTO' }}</td></tr>{% else %}<tr><td colspan="3">{{ t('Nessun ordine','Aucune commande') }}</td></tr>{% endfor %}</tbody></table></div></div></section>
+<section class="card purchasing-section" id="articoli"><div class="card-body">
+  <div class="supplier-section-heading"><h2>{{ icon('box') }} {{ t('Articoli del fornitore','Articles du fournisseur') }}</h2><a class="btn btn-secondary" href="{{ url_for('manager_magazzino_home') }}">{{ t('Magazzino','Magasin') }} {{ icon('arrow') }}</a></div>
+  {% if supplier.articoli %}<div class="table-responsive"><table class="data-table"><thead><tr><th>{{ t('Codice fornitore','Code fournisseur') }}</th><th>{{ t('Descrizione','Description') }}</th><th>{{ t('Articolo interno','Article interne') }}</th></tr></thead><tbody>
+    {% for a in supplier.articoli %}<tr><td class="warehouse-code">{{ a.codice }}</td><td>{{ a.descrizione or '—' }}</td><td>{% if a.magazzino_item %}<a href="{{ url_for('warehouse_item_card',item_id=a.magazzino_item_id) }}">{{ a.magazzino_item.codice }} · {{ a.magazzino_item.nome }} {{ icon('arrow') }}</a>{% else %}{{ t('Da collegare dalla scheda articolo','À associer depuis la fiche article') }}{% endif %}</td></tr>{% else %}<tr><td colspan="3">{{ t('Gli articoli compariranno dal primo ordine o collegandoli dal magazzino.','Les articles apparaîtront après la première commande ou leur association depuis le stock.') }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="text-muted">{{ t("Gli articoli compariranno dal primo ordine o collegandoli dal magazzino.","Les articles apparaîtront après la première commande ou leur association depuis le stock.") }}</p>{% endif %}
+</div></section>
+<section class="card purchasing-section" id="ordini"><div class="card-body">
+  <div class="supplier-section-heading"><h2>{{ icon('report') }} {{ t('Storico ordini','Historique des commandes') }}</h2><span>{{ order_count }}</span></div>
+  {% if supplier_orders %}<div class="table-responsive"><table class="data-table"><thead><tr><th>{{ t('Ordine','Commande') }}</th><th>{{ t('Data','Date') }}</th><th>{{ t('Stato','Statut') }}</th></tr></thead><tbody>
+  {% for o in supplier_orders %}<tr><td><a href="{{ url_for('manager_ordini_detail',order_id=o.id) }}">#{{ o.order_number }} {{ icon('arrow') }}</a></td><td>{{ o.order_date.strftime('%d/%m/%Y') if o.order_date else '—' }}</td><td><span class="supplier-state">{% set status = (o.status or 'APERTO')|upper %}{{ t('Chiuso','Clôturée') if status in ['CHIUSO','COMPLETATO'] else t('Parziale','Partielle') if status == 'PARZIALE' else t('Aperto','Ouverte') if status == 'APERTO' else status }}</span></td></tr>{% else %}<tr><td colspan="3">{{ t('Nessun ordine ancora registrato','Aucune commande enregistrée') }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="text-muted">{{ t("Nessun ordine ancora registrato","Aucune commande enregistrée") }}</p>{% endif %}
+  {% if order_pages > 1 %}<nav class="supplier-pagination" aria-label="{{ t('Pagine ordini','Pages commandes') }}">{% if order_page > 1 %}<a class="btn btn-secondary" href="{{ request.url.include_query_params(order_page=order_page-1) }}#ordini">{{ t('Precedenti','Précédentes') }}</a>{% endif %}<span>{{ order_page }} / {{ order_pages }}</span>{% if order_page < order_pages %}<a class="btn btn-secondary" href="{{ request.url.include_query_params(order_page=order_page+1) }}#ordini">{{ t('Successivi','Suivantes') }}</a>{% endif %}</nav>{% endif %}
+</div></section>
+<details class="supplier-management"><summary>{{ icon('settings') }} {{ t('Gestisci fornitore','Gérer le fournisseur') }}</summary>
+  <p class="text-muted">{{ t('La disattivazione conserva articoli e storico ordini.','La désactivation conserve les articles et l’historique des commandes.') }}</p>
+  <div class="supplier-form-actions"><form method="post" action="{{ url_for('manager_fornitori_toggle',supplier_id=supplier.id) }}"><button class="btn btn-secondary" type="submit">{{ t('Disattiva fornitore','Désactiver le fournisseur') if supplier.is_active else t('Riattiva fornitore','Réactiver le fournisseur') }}</button></form>
+    <form method="post" action="{{ url_for('manager_fornitori_delete',supplier_id=supplier.id) }}" onsubmit="return confirm('{{ t('Eliminare definitivamente questo fornitore?','Supprimer définitivement ce fournisseur ?') }}');"><button class="btn btn-outline-danger" type="submit">{{ t('Elimina fornitore','Supprimer le fournisseur') }}</button></form>
+  </div>
+  {% if order_count %}<details class="supplier-delete-orders"><summary>{{ t('Eliminazione con ordini','Suppression avec commandes') }}</summary><p>{{ t('Le consegne registrate impediscono l’eliminazione. Gli altri ordini saranno eliminati definitivamente.','Les réceptions enregistrées empêchent la suppression. Les autres commandes seront supprimées définitivement.') }}</p><form method="post" action="{{ url_for('manager_fornitori_delete',supplier_id=supplier.id) }}" onsubmit="return confirm('{{ t('Eliminare il fornitore e TUTTI i suoi ordini? Azione irreversibile.','Supprimer le fournisseur et TOUTES ses commandes ? Action irréversible.') }}');"><input type="hidden" name="force" value="1"><button class="btn btn-outline-danger" type="submit">{{ t('Elimina con ordini','Supprimer avec commandes') }}</button></form></details>{% endif %}
+</details>
 {% endif %}
+</div>
 {% endblock %}

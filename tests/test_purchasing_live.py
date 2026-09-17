@@ -28,7 +28,7 @@ def test_supplier_order_partial_and_final_receipt_in_browser(live_operations):
         page.get_by_role('button',name='Salva',exact=True).click()
         page.wait_for_url('**/manager/fornitori/*')
         for name in ['Maria acquisti','Luca consegne']:
-            details=page.locator('#referenti details');details.evaluate('(el)=>el.open=true')
+            details=page.locator('#new-contact');details.evaluate('(el)=>el.open=true')
             details.locator('input[name=name]').fill(name)
             details.locator('input[name=email]').fill('referente@example.com')
             details.get_by_role('button',name='Aggiungi referente').click()
