@@ -6,3 +6,7 @@
   </nav>
   <a class="purchase-return" href="{{ purchase_nav.parent }}" data-purchase-return{% if purchase_nav.is_list %} hidden{% endif %}>← {{ t('Torna a','Retour à') }} {{ purchase_nav.parent_label }}</a>
 </div>
+{% from 'shared/purchasing_links.html' import purchase_sections with context %}
+<nav class="purchase-tabs" data-purchase-tabs aria-label="{{ t('Sezioni acquisti e magazzino','Sections achats et magasin') }}">
+  {{ purchase_sections('tabs') }}
+</nav>

@@ -8,6 +8,14 @@
   const back = context.querySelector('[data-purchase-return]');
   const fallbackBack = {href: back.getAttribute('href'), text: back.textContent, hidden: back.hidden};
   const roots = [...document.querySelectorAll('[data-purchase-section]')];
+  const tabs = document.querySelector('[data-purchase-tabs]');
+  function showActiveTab() {
+    const active = tabs?.querySelector('[aria-current=page]');
+    if (active && (active.offsetLeft < tabs.scrollLeft || active.offsetLeft + active.offsetWidth > tabs.scrollLeft + tabs.clientWidth)) {
+      tabs.scrollLeft = Math.max(0, active.offsetLeft - (tabs.clientWidth - active.offsetWidth) / 2);
+    }
+  }
+  window.addEventListener('resize', showActiveTab);
   const lists = new Set(['/manager/ordini', '/manager/ordini/chiusi', '/manager/fornitori',
     '/manager/magazzino', '/manager/magazzino/items', '/manager/magazzino/movimenti',
     '/manager/magazzino/richieste', '/manager/magazzino/categorie', '/manager/magazzino/macros',
@@ -140,6 +148,6 @@
     trail = history.state?.lfPurchasing?.account === account ? cleanTrail(history.state.lfPurchasing.trail) : [];
     clear(':pending'); refresh();
   });
-  rememberHistory(); refresh();
+  rememberHistory(); refresh(); showActiveTab();
   if (restoreY !== null) requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, restoreY)));
 })();
