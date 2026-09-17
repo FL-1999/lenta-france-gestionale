@@ -2,8 +2,9 @@
 from decimal import Decimal, InvalidOperation
 import math
 
-ARTICLE_UNITS = {'pz', 'kg', 'm', 'm2', 'm3', 'l', 'sacco', 'bancale'}
+ARTICLE_UNITS = {'pz', 'kg', 'm', 'm2', 'm3', 'l', 'sacco', 'bancale', 'rotolo'}
 PACKAGING_UNITS = ('bancale', 'sacco', 'kg')
+ROLL_UNITS = ('bancale', 'rotolo', 'm')
 
 
 def number(value):
@@ -29,16 +30,42 @@ def validate_packaging(enabled, base, bags, weight):
     return int(bags), float(weight)
 
 
-def convert_quantity(value, source, base, bags=None, weight=None):
+def validate_article_packaging(enabled, base, kind, bags, weight, rolls, length):
+    if not enabled:
+        return None, None, None, None
+    if kind == 'sacchi':
+        bags, weight = validate_packaging(True, base, bags, weight)
+        return bags, weight, None, None
+    if kind != 'rotoli' or base not in ROLL_UNITS:
+        raise ValueError('Per i rotoli scegli m, rotolo o bancale / Pour les rouleaux choisissez m, rotolo ou bancale.')
+    rolls, length = number(rolls), number(length)
+    if rolls <= 0 or rolls != rolls.to_integral_value() or length < Decimal('0.001'):
+        raise ValueError('Inserisci un numero intero di rotoli e almeno 0,001 m per rotolo / Nombre entier de rouleaux et au moins 0,001 m par rouleau requis.')
+    if rolls > 1000000 or length > 1000000:
+        raise ValueError('Formato confezione fuori limite / Conditionnement hors limite.')
+    return None, None, int(rolls), float(length)
+
+
+def factors(bags=None, weight=None, rolls=None, length=None):
+    if rolls and length:
+        return {'bancale': Decimal(str(rolls)) * Decimal(str(length)),
+                'rotolo': Decimal(str(length)), 'm': Decimal(1)}
+    if bags and weight:
+        return {'bancale': Decimal(str(bags)) * Decimal(str(weight)),
+                'sacco': Decimal(str(weight)), 'kg': Decimal(1)}
+    return {}
+
+
+def convert_quantity(value, source, base, bags=None, weight=None, rolls=None, length=None):
     value = number(value)
     source = source or base
     if value < 0:
         raise ValueError('La quantità non può essere negativa / La quantité ne peut pas être négative.')
     if source != base:
-        if not bags or not weight or source not in PACKAGING_UNITS or base not in PACKAGING_UNITS:
+        units = factors(bags, weight, rolls, length)
+        if source not in units or base not in units:
             raise ValueError('Unità non compatibile con questo articolo / Unité incompatible avec cet article.')
-        kg = {'kg': Decimal(1), 'sacco': number(weight), 'bancale': number(bags) * number(weight)}
-        value = value * kg[source] / kg[base]
+        value = value * units[source] / units[base]
     result = float(value)
     if not math.isfinite(result) or result > 1e12 or (value > 0 and result == 0):
         raise ValueError('Quantità convertita fuori limite / Quantité convertie hors limite.')
@@ -46,16 +73,16 @@ def convert_quantity(value, source, base, bags=None, weight=None):
 
 
 def equivalents(item):
-    if not item.sacchi_per_bancale or not item.kg_per_sacco or item.unita_misura not in PACKAGING_UNITS:
+    units = factors(item.sacchi_per_bancale, item.kg_per_sacco, item.rotoli_per_bancale, item.metri_per_rotolo)
+    if item.unita_misura not in units:
         return {}
-    kg = {'kg': Decimal(1), 'sacco': Decimal(str(item.kg_per_sacco)),
-          'bancale': Decimal(str(item.sacchi_per_bancale)) * Decimal(str(item.kg_per_sacco))}
-    total = Decimal(str(item.quantita_disponibile or 0)) * kg[item.unita_misura]
-    return {unit: float(total / kg[unit]) for unit in PACKAGING_UNITS}
+    total = Decimal(str(item.quantita_disponibile or 0)) * units[item.unita_misura]
+    return {unit: float(total / factor) for unit, factor in units.items()}
 
 
 def movement_quantity(item, quantity, unit, note):
-    converted = convert_quantity(quantity, unit, item.unita_misura, item.sacchi_per_bancale, item.kg_per_sacco)
+    converted = convert_quantity(quantity, unit, item.unita_misura, item.sacchi_per_bancale, item.kg_per_sacco,
+                                 item.rotoli_per_bancale, item.metri_per_rotolo)
     if converted <= 0:
         raise ValueError('Inserisci una quantità positiva / Saisissez une quantité positive.')
     if unit and unit != item.unita_misura:

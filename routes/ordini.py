@@ -874,7 +874,7 @@ def _resolve_classified_order_lines(db, supplier, rows):
                 raw_id = str(known_id)
             if raw_id == '__new__':
                 unit = row.get('line_unit') or 'pz'
-                if unit not in {'pz','kg','m','m2','m3','l','sacco','bancale'}:
+                if unit not in {'pz','kg','m','m2','m3','l','sacco','bancale','rotolo'}:
                     raise ValueError('Unità di misura non valida.')
                 if len(description) > 255:
                     raise ValueError('Il nome del nuovo articolo può contenere al massimo 255 caratteri.')

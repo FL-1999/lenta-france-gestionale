@@ -137,7 +137,7 @@ def test_vehicle_create_edit_preserves_zero_and_optional_values(operations):
     assert db.query(Veicolo).one().note=='Veicolo collaudo'
 
 
-@pytest.mark.parametrize('packaged',[False,True])
+@pytest.mark.parametrize('packaged',[False,True,'rotoli'])
 def test_postgres_competing_withdrawals_cannot_oversell(operations, monkeypatch, packaged):
     """Two independent transactions request 8 units each from a balance of 10."""
     from concurrent.futures import ThreadPoolExecutor
@@ -154,6 +154,9 @@ def test_postgres_competing_withdrawals_cannot_oversell(operations, monkeypatch,
     item=MagazzinoItem(codice='CONCURRENT',nome='Articolo concorrente',quantita_disponibile=10,attivo=True)
     if packaged:
         item.unita_misura='sacco';item.sacchi_per_bancale=100;item.kg_per_sacco=25
+    if packaged == 'rotoli':
+        item.unita_misura='m';item.sacchi_per_bancale=None;item.kg_per_sacco=None
+        item.rotoli_per_bancale=10;item.metri_per_rotolo=10
     o['db'].add(item);o['db'].commit()
     item_id,manager_id,site_id=item.id,o['manager'].id,o['site'].id
     monkeypatch.setattr('routes.magazzino._render_magazzino_items_list', lambda *a,**kw:HTMLResponse('Stock insufficiente',status_code=400))

@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from auth import get_current_active_user_html
-from utils.warehouse_packaging import ARTICLE_UNITS, validate_packaging, convert_quantity, movement_quantity
+from utils.warehouse_packaging import ARTICLE_UNITS, validate_article_packaging, convert_quantity, movement_quantity
 from database import get_db
 from models import (
     MagazzinoCategoria,
@@ -2944,6 +2944,9 @@ def manager_magazzino_create(
     packaging_enabled: bool = Form(False),
     sacchi_per_bancale: str = Form(""),
     kg_per_sacco: str = Form(""),
+    packaging_kind: str = Form("sacchi"),
+    rotoli_per_bancale: str = Form(""),
+    metri_per_rotolo: str = Form(""),
     stock_unit: str = Form(""),
     supplier_ids: list[str] = Form([]),
     supplier_codes: list[str] = Form([]),
@@ -2954,7 +2957,8 @@ def manager_magazzino_create(
     form_data = dict(nome=nome, descrizione=descrizione, categoria_id=categoria_id,
                      quantita_disponibile=quantita_disponibile, soglia_minima=soglia_minima,
                      costo_unitario=costo_unitario, attivo=attivo, unita_misura=unita_misura, packaging_enabled=packaging_enabled,
-                     sacchi_per_bancale=sacchi_per_bancale, kg_per_sacco=kg_per_sacco, stock_unit=stock_unit)
+                     sacchi_per_bancale=sacchi_per_bancale, kg_per_sacco=kg_per_sacco, stock_unit=stock_unit,
+                     packaging_kind=packaging_kind, rotoli_per_bancale=rotoli_per_bancale, metri_per_rotolo=metri_per_rotolo)
     supplier_rows = [dict(supplier_id=supplier_ids[i] if i < len(supplier_ids) else '',
                           code=supplier_codes[i] if i < len(supplier_codes) else '')
                      for i in range(max(len(supplier_ids),len(supplier_codes)))]
@@ -2969,8 +2973,8 @@ def manager_magazzino_create(
     if not nome.strip() or unita_misura not in ARTICLE_UNITS:
         return invalid('Nome o unità di misura non valida')
     try:
-        bags, weight = validate_packaging(packaging_enabled, unita_misura, sacchi_per_bancale, kg_per_sacco)
-        initial_stock = convert_quantity(initial_stock, stock_unit, unita_misura, bags, weight)
+        bags, weight, rolls, length = validate_article_packaging(packaging_enabled, unita_misura, packaging_kind, sacchi_per_bancale, kg_per_sacco, rotoli_per_bancale, metri_per_rotolo)
+        initial_stock = convert_quantity(initial_stock, stock_unit, unita_misura, bags, weight, rolls, length)
     except ValueError as exc:
         return invalid(str(exc))
     for value in (soglia_minima,costo_unitario):
@@ -3007,6 +3011,7 @@ def manager_magazzino_create(
         unita_misura=unita_misura,
         sacchi_per_bancale=bags,
         kg_per_sacco=weight,
+        rotoli_per_bancale=rolls, metri_per_rotolo=length,
         codice=codice.strip(),
         descrizione=(descrizione or "").strip() or None,
         categoria_id=_parse_categoria_id(categoria_id),
@@ -3035,6 +3040,7 @@ def manager_magazzino_create(
             "quantita_iniziale": item.quantita_disponibile,
             "categoria_id": item.categoria_id,
             "sacchi_per_bancale": bags, "kg_per_sacco": weight,
+            "rotoli_per_bancale": rolls, "metri_per_rotolo": length,
         },
     )
 
@@ -3131,6 +3137,9 @@ def manager_magazzino_update(
     packaging_enabled: bool = Form(False),
     sacchi_per_bancale: str = Form(""),
     kg_per_sacco: str = Form(""),
+    packaging_kind: str = Form("sacchi"),
+    rotoli_per_bancale: str = Form(""),
+    metri_per_rotolo: str = Form(""),
     stock_unit: str = Form(""),
     packaging_form: bool = Form(False),
     db: Session = Depends(get_db),
@@ -3152,13 +3161,14 @@ def manager_magazzino_update(
         if nuova_quantita is None or nuova_quantita < 0:
             raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
-        bags, weight = item.sacchi_per_bancale, item.kg_per_sacco
+        bags, weight, rolls, length = item.sacchi_per_bancale, item.kg_per_sacco, item.rotoli_per_bancale, item.metri_per_rotolo
         if packaging_form:
-            bags, weight = validate_packaging(packaging_enabled, item.unita_misura, sacchi_per_bancale, kg_per_sacco)
+            bags, weight, rolls, length = validate_article_packaging(packaging_enabled, item.unita_misura, packaging_kind, sacchi_per_bancale, kg_per_sacco, rotoli_per_bancale, metri_per_rotolo)
         if quantita_disponibile not in (None, ""):
-            nuova_quantita = convert_quantity(nuova_quantita, stock_unit, item.unita_misura, bags, weight)
-        previous_packaging = [item.sacchi_per_bancale, item.kg_per_sacco]
+            nuova_quantita = convert_quantity(nuova_quantita, stock_unit, item.unita_misura, bags, weight, rolls, length)
+        previous_packaging = [item.sacchi_per_bancale, item.kg_per_sacco, item.rotoli_per_bancale, item.metri_per_rotolo]
         item.sacchi_per_bancale, item.kg_per_sacco = bags, weight
+        item.rotoli_per_bancale, item.metri_per_rotolo = rolls, length
         selected_category_id = _parse_categoria_id(categoria_id)
         if categoria_id and (selected_category_id is None or (selected_category_id != item.categoria_id and not db.query(MagazzinoCategoria).filter_by(id=selected_category_id, attiva=True).first())):
             raise ValueError("Seleziona una categoria attiva valida.")
@@ -3223,7 +3233,7 @@ def manager_magazzino_update(
                 "quantita": item.quantita_disponibile,
                 "categoria_id": item.categoria_id,
                 "attivo": item.attivo,
-                "packaging_before": previous_packaging, "packaging_after": [bags, weight],
+                "packaging_before": previous_packaging, "packaging_after": [bags, weight, rolls, length],
             },
         )
         db.commit()
@@ -3250,7 +3260,8 @@ def manager_magazzino_update(
                 "form_data": dict(nome=nome, codice=codice, descrizione=descrizione, categoria_id=categoria_id,
                     quantita_disponibile=quantita_disponibile, soglia_minima=soglia_minima, costo_unitario=costo_unitario,
                     attivo=attivo, unita_misura=item.unita_misura, packaging_enabled=packaging_enabled,
-                    sacchi_per_bancale=sacchi_per_bancale, kg_per_sacco=kg_per_sacco, stock_unit=stock_unit),
+                    sacchi_per_bancale=sacchi_per_bancale, kg_per_sacco=kg_per_sacco, stock_unit=stock_unit,
+                     packaging_kind=packaging_kind, rotoli_per_bancale=rotoli_per_bancale, metri_per_rotolo=metri_per_rotolo),
             },
             db,
             current_user,
@@ -3389,6 +3400,7 @@ def manager_magazzino_duplicate_create(
         descrizione=item.descrizione,
         unita_misura=item.unita_misura,
         sacchi_per_bancale=item.sacchi_per_bancale, kg_per_sacco=item.kg_per_sacco,
+        rotoli_per_bancale=item.rotoli_per_bancale, metri_per_rotolo=item.metri_per_rotolo,
         categoria_id=item.categoria_id,
         quantita_disponibile=quantita_value,
         soglia_minima=item.soglia_minima,

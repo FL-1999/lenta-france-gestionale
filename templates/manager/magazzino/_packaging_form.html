@@ -1,14 +1,20 @@
 <section class="card" id="article-packaging"><div class="card-body">
-  <div class="warehouse-section-heading"><h2>{{ icon('box') }} {{ t('Confezioni e peso','Conditionnement et poids') }}</h2><span class="text-muted">{{ t('Facoltativo','Facultatif') }}</span></div>
+  <div class="warehouse-section-heading"><h2>{{ icon('box') }} {{ t('Confezioni e quantità','Conditionnement et quantités') }}</h2><span class="text-muted">{{ t('Facoltativo','Facultatif') }}</span></div>
   <input type="hidden" name="packaging_form" value="true">
-  <label class="warehouse-checkbox"><input type="checkbox" name="packaging_enabled" {% if values.packaging_enabled|default(values.sacchi_per_bancale) %}checked{% endif %}> {{ t('Gestisci bancali, sacchi e kg','Gérer palettes, sacs et kg') }}</label>
+  <label class="warehouse-checkbox"><input type="checkbox" name="packaging_enabled" {% if values.packaging_enabled|default(values.sacchi_per_bancale or values.rotoli_per_bancale) %}checked{% endif %}> {{ t('Gestisci confezioni ed equivalenze','Gérer les conditionnements et équivalences') }}</label>
   <div data-packaging-fields>
-    <div class="vehicle-fields">
+    {% set kind = values.packaging_kind|default('rotoli' if values.rotoli_per_bancale else 'sacchi') %}
+    <label class="vehicle-field">{{ t('Tipo di confezione','Type de conditionnement') }}<select name="packaging_kind"><option value="sacchi" {% if kind == 'sacchi' %}selected{% endif %}>{{ t('Sacchi · kg','Sacs · kg') }}</option><option value="rotoli" {% if kind == 'rotoli' %}selected{% endif %}>{{ t('Rotoli · metri','Rouleaux · mètres') }}</option></select></label>
+    <div class="vehicle-fields" data-packaging-kind="sacchi">
       <label class="vehicle-field">{{ t('Sacchi per bancale','Sacs par palette') }}<input type="number" name="sacchi_per_bancale" min="1" max="1000000" step="1" value="{{ values.sacchi_per_bancale or '' }}" placeholder="100"></label>
       <label class="vehicle-field">{{ t('Kg per sacco','Kg par sac') }}<input type="number" name="kg_per_sacco" min="0.001" max="1000000" step="any" value="{{ values.kg_per_sacco or '' }}" placeholder="25"></label>
     </div>
+    <div class="vehicle-fields" data-packaging-kind="rotoli">
+      <label class="vehicle-field">{{ t('Rotoli per bancale','Rouleaux par palette') }}<input type="number" name="rotoli_per_bancale" min="1" max="1000000" step="1" value="{{ values.rotoli_per_bancale or '' }}" placeholder="10"></label>
+      <label class="vehicle-field">{{ t('Metri per rotolo','Mètres par rouleau') }}<input type="number" name="metri_per_rotolo" min="0.001" max="1000000" step="any" value="{{ values.metri_per_rotolo or '' }}" placeholder="20"></label>
+    </div>
     <p class="packaging-preview" data-packaging-preview role="status"></p>
-    <p class="text-muted">{{ t('Usa kg, sacco o bancale come unità di misura. Le quantità equivalenti si aggiornano dalla stessa giacenza.','Utilisez kg, sacco ou bancale comme unité. Les équivalences utilisent un seul stock.') }}</p>
+    <p class="text-muted">{{ t('Sacchi: kg, sacco o bancale. Rotoli: m, rotolo o bancale. Le equivalenze usano sempre la stessa giacenza.','Sacs : kg, sacco ou bancale. Rouleaux : m, rotolo ou bancale. Les équivalences utilisent un seul stock.') }}</p>
     {% if is_edit %}<p class="text-muted">{{ t('Cambiare la confezione aggiorna le equivalenze; la quantità nella tua unità di misura resta invariata.','Modifier le conditionnement actualise les équivalences ; la quantité dans votre unité reste inchangée.') }}</p>{% endif %}
   </div>
 </div></section>

@@ -20,14 +20,14 @@
   {{ field('nome','Nome articolo','Nom de l’article',required=true) }}
   <label class="vehicle-field">{{ t('Codice interno','Code interne') }}{% if is_edit %}<input name="codice" value="{{ item.codice }}" readonly>{% else %}<input type="hidden" name="codice" value=""><input value="{{ t('Automatico al salvataggio','Automatique à l’enregistrement') }}" readonly aria-label="{{ t('Codice interno automatico','Code interne automatique') }}">{% endif %}</label>
   <label class="vehicle-field">{{ t('Macro / categoria','Macro / catégorie') }}<select name="categoria_id"><option value="">{{ t('Da classificare','À classer') }}</option>{% set selected = values.categoria_id|default(default_categoria_id)|string %}{% for categoria in categorie %}{% if categoria.id is not none %}<option value="{{ categoria.id }}" {% if selected == categoria.id|string %}selected{% endif %}>{{ categoria.macro.name ~ ' / ' if categoria.macro else '' }}{{ categoria.nome }}</option>{% endif %}{% endfor %}</select></label>
-  <label class="vehicle-field">{{ t('Unità di misura','Unité de mesure') }}{% if is_edit %}<input name="unita_misura" value="{{ item.unita_misura }}" readonly>{% else %}<select name="unita_misura">{% for unit in ['pz','kg','m','m2','m3','l','sacco','bancale'] %}<option value="{{ unit }}" {% if values.unita_misura == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select>{% endif %}</label>
+  <label class="vehicle-field">{{ t('Unità di misura','Unité de mesure') }}{% if is_edit %}<input name="unita_misura" value="{{ item.unita_misura }}" readonly>{% else %}<select name="unita_misura">{% for unit in ['pz','kg','m','m2','m3','l','sacco','bancale','rotolo'] %}<option value="{{ unit }}" {% if values.unita_misura == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select>{% endif %}</label>
 </div>
 <label class="vehicle-field">{{ t('Descrizione','Description') }}<textarea name="descrizione" rows="3">{{ values.descrizione or '' }}</textarea></label>
 </div></section>
 {% include 'manager/magazzino/_packaging_form.html' %}
 <section class="card"><div class="card-body"><h2>{{ icon('chart') }} {{ t('Giacenza e riordino','Stock et réapprovisionnement') }}</h2><div class="vehicle-fields">
   {{ field('quantita_disponibile','Quantità disponibile' if is_edit else 'Giacenza iniziale','Quantité disponible' if is_edit else 'Stock initial','number') }}
-  <label class="vehicle-field">{{ t('Unità della quantità inserita','Unité de la quantité saisie') }}<select name="stock_unit" data-selected="{{ values.stock_unit or '' }}"><option value="">{{ t('Unità dell’articolo','Unité de l’article') }}</option>{% for unit in ['bancale','sacco','kg'] %}<option value="{{ unit }}" {% if values.stock_unit == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select></label>
+  <label class="vehicle-field">{{ t('Unità della quantità inserita','Unité de la quantité saisie') }}<select name="stock_unit" data-selected="{{ values.stock_unit or '' }}"><option value="">{{ t('Unità dell’articolo','Unité de l’article') }}</option>{% for unit in ['bancale','sacco','kg','rotolo','m'] %}<option value="{{ unit }}" {% if values.stock_unit == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select></label>
   {{ field('soglia_minima' ,'Soglia minima','Seuil minimum','number') }}
   {{ field('costo_unitario','Costo unitario (€)','Coût unitaire (€)','number') }}
 </div><p class="packaging-preview" data-stock-preview role="status"></p><p class="text-muted">{{ t('Unità usata per soglia minima e costo unitario:','Unité du seuil minimum et du coût unitaire :') }} <strong data-base-unit>{{ values.unita_misura or 'pz' }}</strong>.</p><label class="warehouse-checkbox"><input name="attivo" type="checkbox" {% if values.attivo|default(true) %}checked{% endif %}> {{ t('Articolo attivo','Article actif') }}</label></div></section>
@@ -41,5 +41,5 @@
 <div class="form-actions warehouse-save"><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) if is_edit else url_for('manager_magazzino_home') }}">{{ t('Annulla','Annuler') }}</a><button class="btn btn-primary" type="submit">{{ t('Salva','Enregistrer') }}</button></div>
 </form>
 {% if not is_edit %}<template id="article-supplier-template">{{ supplier_row() }}</template><script src="/static/js/warehouse-item-suppliers.js?v=20260917r7" defer></script>{% endif %}
-<script src="/static/js/warehouse-packaging.js?v=20260917r16" defer></script>
+<script src="/static/js/warehouse-packaging.js?v=20260917r17" defer></script>
 {% endblock %}
