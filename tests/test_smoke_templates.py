@@ -221,8 +221,8 @@ def test_site_project_configuration_renders_multi_coupe_cards() -> None:
         },
     )
 
-    assert "Configurazione progetto — Cantiere Config" in output
-    assert "✅ Configurato" in output
+    assert "Coupe — Cantiere Config" in output
+    assert "Configurato" in output
     assert "Coupe A" in output
     assert 'value="1-3"' in output
     assert "Totale pali" in output

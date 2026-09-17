@@ -17,3 +17,5 @@ playwright
 psycopg2-binary
 segno
 tzdata
+pdfplumber>=0.11,<0.12
+pypdfium2>=4.30,<6

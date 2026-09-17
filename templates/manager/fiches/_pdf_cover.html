@@ -28,9 +28,9 @@
     {% endif %}
 
     <div class="pdf-cover__title-block">
-        <h1 class="pdf-cover__type">{{ 'PIEUX' if is_palo else 'PAROI MOULEE' }}</h1>
+        <h1 class="pdf-cover__type">{{ 'PAROIS ET PIEUX' if all_types else ('PIEUX' if is_palo else 'PAROI MOULEE') }}</h1>
         <h2 class="pdf-cover__mission">{{ mission }}</h2>
-        <h3 class="pdf-cover__subtitle">FICHES DE FORAGES DES {{ 'PIEUX' if is_palo else 'PANNEAUX' }}</h3>
+        <h3 class="pdf-cover__subtitle">FICHES DE FORAGES DES {{ 'PANNEAUX ET PIEUX' if all_types else ('PIEUX' if is_palo else 'PANNEAUX') }}</h3>
     </div>
 
     <div class="pdf-cover__affaire-row">

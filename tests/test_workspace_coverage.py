@@ -68,7 +68,7 @@ def test_module_pages_day_night_and_phone(live_operations):
             response=page.goto(origin+path)
             assert response.ok,(path,response.status,(artifacts/'server.log').read_text(encoding='utf-8',errors='replace')[-7000:])
             expect(page.locator('.workspace-topbar')).to_be_visible()
-            assert page.locator('link[href*="workspace.css"]').count()==1,path
+            assert page.locator('link[href^="/static/css/workspace.css?"]').count()==1,path
             for theme,background in [('light','rgb(228, 228, 223)'),('dark','rgb(11, 25, 43)')]:
                 if page.locator('html').get_attribute('data-theme')!=theme:
                     page.locator('#theme-toggle').click()

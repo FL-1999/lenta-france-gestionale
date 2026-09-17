@@ -1,6 +1,6 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Configurazione progetto — {{ site.name }}{% endblock %}
+{% block title %}Coupe — {{ site.name }}{% endblock %}
 
 {% macro coupe_value(value) -%}
   {{ value if value is not none else '' }}
@@ -8,7 +8,7 @@
 
 {% macro render_coupe_card(coupe=None, index=1, is_new=false, site_id=None, can_delete=false) %}
   {% set complete = false if is_new else is_coupe_configured(coupe) %}
-  <article class="project-coupe-card{% if is_new %} project-coupe-card--new{% endif %}" data-coupe-card>
+  <article class="project-coupe-card{% if is_new %} project-coupe-card--new{% endif %}" data-coupe-card {% if is_new and site.coupes %}hidden{% endif %}>
     <div class="project-coupe-card__header">
       <div>
         <p class="project-coupe-card__eyebrow">Coupe {{ index }}</p>
@@ -16,9 +16,9 @@
       </div>
       <div class="project-coupe-card__actions">
         {% if complete %}
-          <span class="badge badge-success">✅ completa</span>
+          <span class="badge badge-success">completa</span>
         {% else %}
-          <span class="badge badge-danger">⚠️ incompleta</span>
+          <span class="badge badge-danger">incompleta</span>
         {% endif %}
         <button type="button" class="btn btn-secondary btn-sm" data-focus-coupe>Modifica</button>
         {% if not is_new %}
@@ -26,21 +26,23 @@
             <input type="checkbox" name="delete_coupe_id" value="{{ coupe.id }}">
             Elimina
           </label>
-          {% if can_delete and site_id and coupe and coupe.id %}
-            <button type="button" class="btn btn-danger btn-sm"
-              onclick="if(confirm('Eliminare definitivamente questa coupe? Le fiches che la usano verranno scollegate (non eliminate).')){var f=document.createElement('form');f.method='post';f.action='/manager/cantieri/{{ site_id }}/coupe/{{ coupe.id }}/elimina';document.body.appendChild(f);f.submit();}">
-              🗑 Elimina def.
-            </button>
-          {% endif %}
+
         {% endif %}
       </div>
     </div>
 
     <input type="hidden" name="coupe_id" value="{{ coupe.id if coupe else '' }}">
 
-    <div class="project-section-grid">
+    <details class="coupe-editor" {% if is_new %}open{% endif %}><summary>Quote, dimensioni e pannelli <span data-selection-summary></span></summary><div class="project-section-grid">
+      <section class="project-block project-block--wide coupe-associations">
+        <h4>Pannelli di questa coupe</h4>
+        <div class="form-grid">
+          <div class="project-field"><label class="form-label">Paratie associate</label><input class="form-control" name="coupe_paratie" placeholder="es. 1,2,3,4 oppure 1-8" value="{{ format_coupe_assignments(coupe, 'paratia') if coupe else '' }}"></div>
+          <div class="project-field"><label class="form-label">Pali associati</label><input class="form-control" name="coupe_pali" placeholder="es. 1,2,5-10" value="{{ format_coupe_assignments(coupe, 'palo') if coupe else '' }}"></div>
+        </div>
+      </section>
       <section class="project-block project-block--wide">
-        <h4>1. Identificazione</h4>
+        <h4>Identificazione</h4>
         <div class="form-grid form-grid--two">
           <div class="project-field">
             <label class="form-label">Nome coupe</label>
@@ -54,18 +56,19 @@
       </section>
 
       <section class="project-block project-block--wide">
-        <h4>2. Quote NGF</h4>
+        <h4>Quote di progetto</h4>
+        <div class="project-field coupe-datum"><label class="form-label">Riferimento quote</label><input class="form-control" name="coupe_quota_reference_label" maxlength="30" value="{{ coupe.quota_reference_label or 'NGF' if coupe else 'NGF' }}" placeholder="NGF"><small>Etichetta delle quote in metri; non converte le altitudini.</small></div>
         <div class="form-grid form-grid--four">
           <div class="project-field"><label class="form-label">Quota TN</label><input class="form-control" type="number" step="0.01" name="coupe_quota_tn" value="{{ coupe_value(coupe.quota_tn) if coupe else '' }}" placeholder="es. 24.50"></div>
           <div class="project-field"><label class="form-label">Quota testa paratia/palo</label><input class="form-control" type="number" step="0.01" name="coupe_quota_testa" value="{{ coupe_value(coupe.quota_testa) if coupe else '' }}" placeholder="es. 23.80"></div>
           <div class="project-field"><label class="form-label">Quota fondo scavo / base hydraulique</label><input class="form-control" type="number" step="0.01" name="coupe_quota_fondo_teorica" value="{{ coupe_value(coupe.quota_fondo_teorica) if coupe else '' }}" placeholder="es. 11.30"><small class="form-text text-muted">La base paroi hydraulique du PDF reprend cette cote.</small></div>
-          <div class="project-field"><label class="form-label">Base paroi mécanique (NGF)</label><input class="form-control" type="number" step="0.01" name="coupe_base_paroi_mecanique" value="{{ coupe_value(coupe.base_paroi_mecanique) if coupe else '' }}" placeholder="NGF"></div>
+          <div class="project-field"><label class="form-label">Base paroi mécanique (m)</label><input class="form-control" type="number" step="0.01" name="coupe_base_paroi_mecanique" value="{{ coupe_value(coupe.base_paroi_mecanique) if coupe else '' }}" placeholder="NGF"></div>
           <div class="project-field"><label class="form-label">Profondità teorica</label><input class="form-control" type="number" step="0.01" name="coupe_profondita_teorica" value="{{ coupe_value(coupe.profondita_teorica) if coupe else '' }}" placeholder="m"></div>
         </div>
       </section>
 
       <section class="project-block">
-        <h4>3. Scavo / getto</h4>
+        <h4>Scavo e getto</h4>
         <div class="form-grid">
           <div class="project-field">
             <label class="form-label">Scavo da TN</label>
@@ -82,7 +85,7 @@
       </section>
 
       <section class="project-block">
-        <h4>4. Dimensioni</h4>
+        <h4>Dimensioni in metri</h4>
         <div class="form-grid">
           <div class="project-field"><label class="form-label">Spessore</label><input class="form-control" type="number" step="0.01" name="coupe_spessore" value="{{ coupe_value(coupe.spessore) if coupe else '' }}" placeholder="m"></div>
           <div class="project-field"><label class="form-label">Larghezza paratia</label><input class="form-control" type="number" step="0.01" name="coupe_larghezza" value="{{ coupe_value(coupe.larghezza) if coupe else '' }}" placeholder="m"></div>
@@ -90,16 +93,10 @@
         </div>
       </section>
 
-      <section class="project-block">
-        <h4>5. Associazioni</h4>
-        <div class="form-grid">
-          <div class="project-field"><label class="form-label">Paratie associate</label><input class="form-control" name="coupe_paratie" placeholder="es. 1,2,3,4 oppure 1-8" value="{{ format_coupe_assignments(coupe, 'paratia') if coupe else '' }}"></div>
-          <div class="project-field"><label class="form-label">Pali associati</label><input class="form-control" name="coupe_pali" placeholder="es. 1,2,5-10" value="{{ format_coupe_assignments(coupe, 'palo') if coupe else '' }}"></div>
-        </div>
-      </section>
 
-      <section class="project-block">
-        <h4>6. Terreno teorico</h4>
+
+      <section class="project-block project-block--wide">
+        <h4>Terreno teorico</h4>
         <div class="form-grid">
           <div class="project-field project-field--theoretical-soil" data-theoretical-soil>
             <label class="form-label">Terreno teorico</label>
@@ -114,10 +111,11 @@
             </div>
             <small class="form-text text-muted">Gli strati salvati nella coupe vengono caricati automaticamente nella fiche associata come modello geologico teorico.</small>
           </div>
+          <div class="project-field"><label class="form-label">Armatura · caratteristiche e riferimento disegno</label><textarea class="form-textarea" name="coupe_armatura" rows="3" maxlength="2000" placeholder="Tipo gabbia, lunghezze, diametri e riferimento della tavola approvata">{{ coupe.armatura if coupe and coupe.armatura else '' }}</textarea></div>
           <div class="project-field"><label class="form-label">Note</label><textarea class="form-textarea" name="coupe_note" rows="4" placeholder="Note operative per fiches e controllo">{{ coupe.note if coupe and coupe.note else '' }}</textarea></div>
         </div>
       </section>
-    </div>
+    </div></details>
   </article>
 {% endmacro %}
 
@@ -128,8 +126,8 @@
 <div class="page-header project-config-header">
   <div>
     <p class="page-eyebrow">Area Manager · Configurazione cantiere</p>
-    <h1 class="page-title">Configurazione progetto — {{ site.name }}</h1>
-    <p class="page-subtitle">Imposta coupe multiple, quote NGF, dati teorici e associazioni paratie/pali prima della creazione fiches.</p>
+    <h1 class="page-title">Coupe — {{ site.name }}</h1>
+    <p class="page-subtitle">Seleziona i pannelli e definisci le quote comuni. Le nuove fiches riprendono questi dati.</p>
   </div>
   <div class="page-actions">
     <button type="button" class="btn btn-primary" data-add-coupe-card>+ Aggiungi coupe</button>
@@ -148,9 +146,9 @@
   <div class="project-summary-card project-summary-card--status">
     <span class="project-summary-label">Stato configurazione</span>
     {% if is_project_configured %}
-      <strong class="project-summary-value project-summary-value--ok">✅ Configurato</strong>
+      <strong class="project-summary-value project-summary-value--ok">Configurato</strong>
     {% else %}
-      <strong class="project-summary-value project-summary-value--warning">⚠️ Da completare</strong>
+      <strong class="project-summary-value project-summary-value--warning">Da completare</strong>
     {% endif %}
   </div>
   <div class="project-summary-card">
@@ -167,11 +165,9 @@
   </div>
 </section>
 
-<div class="project-config-note">
-  <strong>Integrazione fiches:</strong> quando caposquadra o manager crea una fiche, il sistema controlla tipologia paratia/palo e numero elemento, trova la coupe associata e riutilizza automaticamente quote NGF, profondità, dimensioni e dati teorici. Il caposquadra non inserisce manualmente le quote NGF.
-</div>
+<nav class="project-flow" aria-label="Progetto cantiere"><a href="/manager/cantieri/{{ site.id }}/pianta">01 · Pianta</a><strong aria-current="page">02 · Coupe</strong><a href="/manager/fiches?site_id={{ site.id }}">03 · Fiches</a></nav>
 
-<form method="post" class="project-config-form">
+<form method="post" class="project-config-form" data-site="{{ site.id }}">
   <section class="project-coupes-section">
     <div class="project-section-heading">
       <div>
@@ -188,7 +184,7 @@
       {{ render_coupe_card(None, coupe_rows|length + 1, true) }}
     </div>
 
-  <section class="project-equipment-section">
+  <details class="project-equipment-section"><summary>Controlli speciali · sonici e inclinometri</summary>
     <div class="project-section-heading">
       <div>
         <p class="page-eyebrow">Contrôles spéciaux / Équipements</p>
@@ -219,7 +215,7 @@
     {% else %}
       <div class="alert alert-warning">Definisci prima il numero totale di paratie/pali nel cantiere per configurare i controlli speciali.</div>
     {% endif %}
-  </section>
+  </details>
 
     <div class="form-actions project-sticky-actions">
       <button type="submit" class="btn btn-primary">Salva configurazione progetto</button>
@@ -312,24 +308,26 @@
         const cls = textureClass(layer.materiale);
         div.className = `soil-layer ${cls}`;
         div.style.height = `${totalDepth > 0 ? Math.max(((layer.a - layer.da) / totalDepth) * 100, 4) : 100}%`;
-        div.innerHTML = `<span class="soil-layer-label">${layer.materiale}<small>${layer.da.toFixed(2)}–${layer.a.toFixed(2)} m</small></span>`;
+        div.textContent = `${layer.materiale} · ${layer.da.toFixed(2)}–${layer.a.toFixed(2)} m`;
         preview.appendChild(div);
         if (!used.has(layer.materiale)) used.set(layer.materiale, cls);
       });
       used.forEach((cls, material) => {
         const item = document.createElement('span');
         item.className = 'soil-legend-item';
-        item.innerHTML = `<span class="soil-legend-swatch ${cls}"></span>${material}`;
+        item.textContent = material;
         legend.appendChild(item);
       });
     }
 
     function syncQuotaFondo(card) {
-      const testaInput = card.querySelector('input[name="coupe_quota_testa"]');
+      const fromTN = card.querySelector('[name="coupe_scavo_da_tn"]').value !== '0';
+      const testaInput = card.querySelector(fromTN ? '[name="coupe_quota_tn"]' : '[name="coupe_quota_partenza_scavo"]');
       const depthInput = card.querySelector('input[name="coupe_profondita_teorica"]');
       const fondoInput = card.querySelector('input[name="coupe_quota_fondo_teorica"]');
       if (!testaInput || !depthInput || !fondoInput || fondoInput.dataset.manual === '1') return;
-      const testa = Number(String(testaInput.value || '').replace(',', '.'));
+      if (!testaInput.value || !depthInput.value) return;
+      const testa = Number(String(testaInput.value).replace(',', '.'));
       const depth = Number(String(depthInput.value || '').replace(',', '.'));
       if (Number.isFinite(testa) && Number.isFinite(depth)) fondoInput.value = (testa - depth).toFixed(2);
     }
@@ -375,6 +373,7 @@
     function bindFocusButton(card) {
       card.querySelector('[data-focus-coupe]')?.addEventListener('click', () => {
         const field = card.querySelector('input[name="coupe_nome"]');
+        card.querySelector('.coupe-editor').open = true;
         field?.focus();
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
@@ -384,16 +383,26 @@
       const fondoInput = card.querySelector('input[name="coupe_quota_fondo_teorica"]');
       fondoInput?.addEventListener('input', () => { fondoInput.dataset.manual = '1'; });
       [testaInput, depthInput].forEach((input) => input?.addEventListener('input', () => syncQuotaFondo(card)));
-      syncQuotaFondo(card);
+      if (fondoInput?.value) fondoInput.dataset.manual = '1';
+      card.querySelectorAll('[name="coupe_quota_tn"],[name="coupe_quota_partenza_scavo"],[name="coupe_scavo_da_tn"]').forEach(input => input.addEventListener('change', () => syncQuotaFondo(card)));
     }
 
     document.querySelectorAll('[data-coupe-card]').forEach(bindFocusButton);
     document.querySelectorAll('[data-add-coupe-card]').forEach((button) => {
       button.addEventListener('click', () => {
+        if (templateCard.hidden) {
+          templateCard.hidden = false;
+          templateCard.querySelector('.coupe-editor').open = true;
+          templateCard.querySelector('[name="coupe_nome"]').focus();
+          templateCard.scrollIntoView({behavior:'smooth', block:'start'});
+          return;
+        }
         const clone = templateCard.cloneNode(true);
+        clone.hidden = false;
         clone.querySelectorAll('input, textarea, select').forEach((field) => {
           if (field.type === 'checkbox') field.checked = false;
           else if (field.name === 'coupe_scavo_da_tn') field.value = '1';
+          else if (field.name === 'coupe_quota_reference_label') field.value = 'NGF';
           else if (field.name === 'coupe_type_coulage') field.value = 'Gravitaire';
           else field.value = '';
         });
@@ -403,10 +412,13 @@
         clone.querySelector('h3').textContent = 'Nuova coupe';
         bindFocusButton(clone);
         list.appendChild(clone);
+        clone.querySelector('.coupe-editor').open = true;
+        document.dispatchEvent(new CustomEvent('coupe-added', {detail: clone}));
         clone.scrollIntoView({ behavior: 'smooth', block: 'start' });
         clone.querySelector('input[name="coupe_nome"]')?.focus();
       });
     });
   });
 </script>
+<link rel="stylesheet" href="/static/css/coupe-workspace.css?v=1"><script src="/static/js/coupe-workspace.js?v=1" defer></script>
 {% endblock %}
