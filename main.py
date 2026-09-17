@@ -9006,6 +9006,8 @@ def manager_site_fiches_pdf(
 
 from routes import operations
 app.include_router(operations.router)
+from routes import site_plans
+app.include_router(site_plans.router)
 
 app.include_router(auth_router)       # /auth/token, /auth/me
 app.include_router(users.router)      # /users

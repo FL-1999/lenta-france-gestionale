@@ -29,6 +29,7 @@
         </p>
     </div>
     <div class="page-actions">
+        <a href="{{ url_for('manager_site_plan', site_id=site.id) }}" class="btn btn-secondary">Pianta e pannelli</a>
         <a href="{{ url_for('manager_site_documents', site_id=site.id) }}" class="btn btn-secondary">
             📁 {% if lang == 'fr' %}Documents{% else %}Documenti{% endif %}
         </a>
