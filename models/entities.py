@@ -1018,6 +1018,8 @@ class MagazzinoItem(Base, TimestampMixin):
     unita_misura = Column(String(50), nullable=False, default="pz")
     sacchi_per_bancale = Column(Integer, nullable=True)
     kg_per_sacco = Column(Float, nullable=True)
+    rotoli_per_bancale = Column(Integer, nullable=True)
+    metri_per_rotolo = Column(Float, nullable=True)
     categoria_id = Column(Integer, ForeignKey("magazzino_categorie.id"), nullable=True)
     quantita_disponibile = Column(Float, nullable=False, default=0.0)
     soglia_minima = Column(Float, nullable=True)

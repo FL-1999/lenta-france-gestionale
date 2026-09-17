@@ -58,3 +58,57 @@ def test_packaging_preview_save_edit_and_movement(live_operations):
         assert not errors,errors
         print('PACKAGING_SCREENSHOTS='+str(artifacts))
         browser.close()
+
+
+def test_roll_packaging_selection_and_partial_meter_withdrawal(live_operations):
+    origin,engine,ids,password,artifacts=live_operations
+    with sync_playwright() as pw:
+        browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        page=browser.new_page(viewport={'width':1440,'height':1000},reduced_motion='reduce')
+        errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+        page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(origin+'/') else r.abort())
+        page.goto(origin+'/login');page.locator('#email').fill('smoke-manager@example.com');page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
+        page.goto(origin+'/manager/magazzino/nuovo')
+        page.locator('[name=nome]').fill('Caucciu in rotoli')
+        page.locator('[name=unita_misura]').select_option('m')
+        page.locator('[name=packaging_enabled]').check()
+        expect(page.locator('[name=packaging_kind]')).to_have_value('rotoli')
+        expect(page.locator('[name=sacchi_per_bancale]')).to_be_disabled()
+        page.locator('[name=rotoli_per_bancale]').fill('10')
+        page.locator('[name=metri_per_rotolo]').fill('20')
+        page.locator('[name=quantita_disponibile]').fill('2')
+        page.locator('[name=stock_unit]').select_option('bancale')
+        expect(page.locator('[data-stock-preview]')).to_have_text('2 bancali = 20 rotoli = 400 metri')
+        for width in [1440,390]:
+            page.set_viewport_size({'width':width,'height':1000})
+            for theme in ['day','night']:
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                page.screenshot(path=str(artifacts/f'roll-new-{theme}-{width}.png'),full_page=True)
+                page.locator('#theme-toggle').click()
+        page.get_by_role('button',name='Salva',exact=True).click();page.wait_for_url('**/scheda')
+        expect(page.locator('#packaging-stock')).to_contain_text('Metri totali')
+        expect(page.locator('#packaging-stock')).not_to_contain_text('Kg totali')
+        with Session(engine) as db:
+            item=db.query(MagazzinoItem).filter_by(nome='Caucciu in rotoli').one();item_id=item.id
+            assert item.quantita_disponibile==400 and item.rotoli_per_bancale==10 and item.metri_per_rotolo==20
+        page.get_by_role('link',name='Modifica articolo',exact=True).click()
+        expect(page.locator('[name=packaging_kind]')).to_have_value('rotoli')
+        expect(page.locator('[name=stock_unit]')).to_have_value('m')
+        expect(page.locator('[data-stock-preview]')).to_have_text('2 bancali = 20 rotoli = 400 metri')
+        page.get_by_role('button',name='Salva',exact=True).click()
+        page.goto(origin+f'/manager/magazzino/items/{item_id}/scheda')
+        page.get_by_text('Carichi e prelievi',exact=True).click()
+        page.locator('details').filter(has=page.locator('form[action$="/scarico-rapido"]')).last.locator(':scope > summary').click()
+        form=page.locator('form[action$="/scarico-rapido"]')
+        expect(form.locator('[name=quantity_unit] option')).to_have_count(3)
+        form.locator('[name=quantita]').fill('7');form.locator('[name=quantity_unit]').select_option('m')
+        form.locator('button[type=submit]').click();page.wait_for_url('**/items?ok=scarico')
+        page.goto(origin+f'/manager/magazzino/items/{item_id}/scheda')
+        expect(page.locator('#packaging-stock')).to_contain_text('393')
+        expect(page.locator('#packaging-stock')).to_contain_text('19.65')
+        page.screenshot(path=str(artifacts/'roll-card-mobile.png'),full_page=True)
+        with Session(engine) as db: assert db.get(MagazzinoItem,item_id).quantita_disponibile==393
+        assert not errors,errors
+        print('ROLL_SCREENSHOTS='+str(artifacts))
+        browser.close()

@@ -94,7 +94,83 @@ def test_packaging_migration_preserves_existing_stock(operations):
     with engine.begin() as conn:
         conn.execute(text('ALTER TABLE magazzino_items DROP COLUMN sacchi_per_bancale'))
         conn.execute(text('ALTER TABLE magazzino_items DROP COLUMN kg_per_sacco'))
+        conn.execute(text('ALTER TABLE magazzino_items DROP COLUMN rotoli_per_bancale'))
+        conn.execute(text('ALTER TABLE magazzino_items DROP COLUMN metri_per_rotolo'))
     for _ in range(2):ensure_model_columns(engine,(Base.metadata,))
     db.expire_all();db.refresh(item)
     assert item.quantita_disponibile==12 and item.sacchi_per_bancale is None and item.kg_per_sacco is None
     assert equivalents(item)=={}
+    assert item.rotoli_per_bancale is None and item.metri_per_rotolo is None
+
+
+def rolled(c, **changes):
+    return packaged(c, **dict({'nome':'Caucciu','unita_misura':'m','packaging_kind':'rotoli',
+        'rotoli_per_bancale':'10','metri_per_rotolo':'20'}, **changes))
+
+
+@pytest.mark.parametrize('base,expected',[('m',400),('rotolo',20),('bancale',2)])
+def test_roll_balances_partial_withdrawals_and_deliveries(operations,base,expected):
+    db,c,s,old,cat=setup(operations)
+    assert rolled(c,unita_misura=base).status_code==303
+    item=db.query(MagazzinoItem).filter_by(nome='Caucciu').one()
+    assert item.quantita_disponibile==expected and item.sacchi_per_bancale is None and item.kg_per_sacco is None
+    assert equivalents(item)=={'bancale':2,'rotolo':20,'m':400}
+    url=f'/manager/magazzino/items/{item.id}'
+    assert 'Metri totali' in c.get(url+'/scheda').text
+    assert c.post(url+'/scarico-rapido',data={'quantita':'7','quantity_unit':'m'},follow_redirects=False).status_code==303
+    db.refresh(item);assert equivalents(item)['m']==pytest.approx(393)
+    assert equivalents(item)['rotolo']==pytest.approx(19.65)
+    assert c.post(url+'/carico-rapido',data={'quantita':'1','quantity_unit':'rotolo'},follow_redirects=False).status_code==303
+    db.refresh(item);assert equivalents(item)['m']==pytest.approx(413)
+    before=item.quantita_disponibile
+    for unit in ['kg','sacco']:
+        c.post(url+'/carico-rapido',data={'quantita':'1','quantity_unit':unit})
+        db.refresh(item);assert item.quantita_disponibile==before
+    assert order(operations,s,item,cat,qty_ordered=['2']).status_code==303
+    po=db.query(PurchaseOrder).one()
+    assert receive(c,po,'ROTOLI-1',1).status_code==303
+    db.refresh(item);assert item.quantita_disponibile==pytest.approx(before+1)
+
+
+@pytest.mark.parametrize('changes',[{'rotoli_per_bancale':'2.5'},{'rotoli_per_bancale':'0'},
+    {'metri_per_rotolo':'nan'},{'metri_per_rotolo':'-1'},{'unita_misura':'kg'},{'stock_unit':'sacco'},
+    {'packaging_kind':'unknown'}])
+def test_invalid_roll_configuration_is_atomic(operations,changes):
+    db,c,*_=setup(operations)
+    result=rolled(c,**changes)
+    assert result.status_code==400 and 'value="Caucciu"' in result.text
+    assert db.query(MagazzinoItem).filter_by(nome='Caucciu').count()==0
+    assert db.query(MagazzinoMovimento).count()==0
+
+
+def test_configure_existing_meter_item_and_duplicate_rolls(operations):
+    db,c,*_=setup(operations)
+    assert create(c,nome='Caucciu',unita_misura='m',quantita_disponibile='125').status_code==303
+    item=db.query(MagazzinoItem).filter_by(nome='Caucciu').one()
+    edit={'nome':item.nome,'codice':item.codice,'attivo':'true','packaging_form':'true',
+          'packaging_enabled':'true','packaging_kind':'rotoli','rotoli_per_bancale':'10','metri_per_rotolo':'12.5'}
+    url=f'/manager/magazzino/{item.id}/modifica'
+    assert c.post(url,data=edit,follow_redirects=False).status_code==303
+    db.refresh(item);assert item.quantita_disponibile==125 and equivalents(item)=={'bancale':1,'rotolo':10,'m':125}
+    assert db.query(MagazzinoMovimento).filter_by(item_id=item.id).count()==1
+    assert 'value="rotoli" selected' in c.get(url).text
+    assert c.post(f'/manager/magazzino/items/{item.id}/duplica',data={'nome':'Copia','codice':'COPY-ROLL','quantita_iniziale':'25'},follow_redirects=False).status_code==303
+    copy=db.query(MagazzinoItem).filter_by(codice='COPY-ROLL').one()
+    assert equivalents(copy)=={'bancale':0.2,'rotolo':2,'m':25}
+    assert c.post(url,data={**edit,'packaging_enabled':'false'},follow_redirects=False).status_code==303
+    db.refresh(item);assert equivalents(item)=={} and item.quantita_disponibile==125
+    assert create(c,nome='Rotolo semplice',unita_misura='rotolo').status_code==303
+
+
+def test_roll_column_upgrade_preserves_bag_configuration(operations):
+    from database import ensure_model_columns
+    db,c,*_=setup(operations)
+    assert packaged(c).status_code==303
+    item=db.query(MagazzinoItem).filter_by(nome='Bentonite').one()
+    db.commit();engine=db.get_bind()
+    with engine.begin() as conn:
+        conn.execute(text('ALTER TABLE magazzino_items DROP COLUMN rotoli_per_bancale'))
+        conn.execute(text('ALTER TABLE magazzino_items DROP COLUMN metri_per_rotolo'))
+    for _ in range(2):ensure_model_columns(engine,(Base.metadata,))
+    db.expire_all();db.refresh(item)
+    assert equivalents(item)=={'bancale':2,'sacco':200,'kg':5000}
