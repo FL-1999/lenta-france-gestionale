@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_active_user_html
 from database import get_db
@@ -284,6 +284,32 @@ def _order_supplier_label(order: PurchaseOrder) -> str:
     if order.supplier_name:
         return order.supplier_name
     return "-"
+
+
+def _order_list_options():
+    return [joinedload(getattr(PurchaseOrder, name)) for name in
+            ('supplier', 'requester', 'site', 'delivery_site', 'delivery_depot')]
+
+
+def _order_list_details(db: Session, orders: list) -> dict:
+    """Batched, read-only summaries shared by the order directory and supplier history."""
+    ids = [order.id for order in orders]
+    ordered, delivered, receipts = {}, {}, {}
+    if ids:
+        ordered = dict(db.query(PurchaseOrderLine.order_id, func.sum(PurchaseOrderLine.qty_ordered))
+                       .filter(PurchaseOrderLine.order_id.in_(ids)).group_by(PurchaseOrderLine.order_id).all())
+        delivered = dict(db.query(PurchaseDelivery.order_id, func.sum(PurchaseDeliveryLine.qty_delivered))
+                         .join(PurchaseDeliveryLine, PurchaseDeliveryLine.delivery_id == PurchaseDelivery.id)
+                         .filter(PurchaseDelivery.order_id.in_(ids), PurchaseDelivery.confirmed.is_(True))
+                         .group_by(PurchaseDelivery.order_id).all())
+        receipts = dict(db.query(PurchaseDelivery.order_id, func.count(PurchaseDelivery.id))
+                        .filter(PurchaseDelivery.order_id.in_(ids), PurchaseDelivery.confirmed.is_(True))
+                        .group_by(PurchaseDelivery.order_id).all())
+    return {
+        'completion_map': {o.id: _calculate_completion_percent(ordered.get(o.id, 0) or 0, delivered.get(o.id, 0) or 0) for o in orders},
+        'receipt_map': receipts,
+        'supplier_label_map': {o.id: _order_supplier_label(o) for o in orders},
+    }
 
 
 def _order_email_recipient(order: PurchaseOrder) -> str:
@@ -1149,13 +1175,15 @@ def manager_fornitori_edit(
     order_count = orders.count()
     order_pages = max(1, (order_count + 19) // 20)
     order_page = max(1, min(order_page, order_pages))
+    supplier_orders = orders.options(*_order_list_options()).order_by(PurchaseOrder.id.desc()).offset((order_page-1)*20).limit(20).all()
     return render_template(
         templates,
         request,
         "manager/fornitori/form.html",
         {
             "supplier": supplier,
-            "supplier_orders": orders.order_by(PurchaseOrder.id.desc()).offset((order_page-1)*20).limit(20).all(),
+            "supplier_orders": supplier_orders,
+            **_order_list_details(db, supplier_orders),
             "order_count": order_count, "order_page": order_page, "order_pages": order_pages,
             "form_action": request.url_for("manager_fornitori_save", supplier_id=supplier.id),
             "error_message": None,
@@ -2045,160 +2073,93 @@ def manager_ordini_list(
     date_from: str | None = None,
     date_to: str | None = None,
     kind: str | None = None,
+    q: str | None = None,
+    supplier_id: int | None = None,
+    page: int = 1,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
-    normalized_status = (status or "").strip().lower() or None
-    normalized_kind = (kind or "").strip().lower() or None
-    if normalized_kind not in {"closed", "warehouse", None}:
+    normalized_kind = (kind or '').strip().lower() or None
+    supplier_id = supplier_id if supplier_id and supplier_id > 0 else None
+    if normalized_kind not in {'closed', 'warehouse', None}:
         normalized_kind = None
-    supplier_filter = (supplier or "").strip() or None
-    parsed_date_from = _parse_date(date_from)
-    parsed_date_to = _parse_date(date_to)
-    total_orders = db.query(func.count(PurchaseOrder.id)).scalar() or 0
-    partial_orders = (
-        db.query(func.count(PurchaseOrder.id))
-        .filter(func.lower(PurchaseOrder.status) == "parziale")
-        .scalar()
-        or 0
-    )
-    closed_orders = (
-        db.query(func.count(PurchaseOrder.id))
-        .filter(func.lower(PurchaseOrder.status).in_(["chiuso", "completato"]))
-        .scalar()
-        or 0
-    )
-    query = db.query(PurchaseOrder)
+    normalized_status = (status or '').strip().lower() or ('tutti' if normalized_kind else 'in_corso')
+    if normalized_status not in {'tutti', 'in_corso', 'aperto', 'parziale', 'chiuso'}:
+        normalized_status = 'in_corso'
+    supplier_filter = (supplier or '').strip() or None
+    search = (q or '').strip()
+    parsed_date_from, parsed_date_to = _parse_date(date_from), _parse_date(date_to)
+    query = db.query(PurchaseOrder).outerjoin(Supplier, Supplier.id == PurchaseOrder.supplier_id)
     if normalized_kind:
         query = query.filter(func.lower(PurchaseOrder.order_kind) == normalized_kind)
-    if normalized_status and normalized_status != "tutti":
-        query = query.filter(func.lower(PurchaseOrder.status) == normalized_status)
-    elif not normalized_kind and normalized_status != "tutti":
-        # Vista di default: nascondi gli ordini con stato "chiuso" (completati).
-        # Se invece stiamo filtrando per tipo (kind), mostriamo tutto.
-        query = query.filter(
-            or_(
-                PurchaseOrder.status.is_(None),
-                func.lower(PurchaseOrder.status) != "chiuso",
-            )
-        )
+    if supplier_id is not None:
+        query = query.filter(PurchaseOrder.supplier_id == supplier_id)
     if supplier_filter:
-        query = query.outerjoin(Supplier, Supplier.id == PurchaseOrder.supplier_id).filter(
-            or_(
-                func.lower(PurchaseOrder.supplier_name).contains(supplier_filter.lower()),
-                func.lower(Supplier.name).contains(supplier_filter.lower()),
-                func.lower(Supplier.email).contains(supplier_filter.lower()),
-            )
-        )
+        query = query.filter(or_(
+            func.lower(PurchaseOrder.supplier_name).contains(supplier_filter.lower(), autoescape=True),
+            func.lower(Supplier.name).contains(supplier_filter.lower(), autoescape=True),
+            func.lower(Supplier.email).contains(supplier_filter.lower(), autoescape=True)))
+    if search:
+        query = query.filter(or_(*[func.lower(column).contains(search.lower(), autoescape=True) for column in
+            (PurchaseOrder.order_number, PurchaseOrder.description, PurchaseOrder.supplier_name, Supplier.name, Supplier.email)]))
     if parsed_date_from:
         query = query.filter(PurchaseOrder.order_date >= parsed_date_from)
     if parsed_date_to:
         query = query.filter(PurchaseOrder.order_date <= parsed_date_to)
-    orders = query.order_by(PurchaseOrder.order_date.desc()).all()
-    order_ids = [order.id for order in orders]
-    ordered_totals = {}
-    delivered_totals = {}
-    if order_ids:
-        ordered_totals = {
-            order_id: total
-            for order_id, total in (
-                db.query(
-                    PurchaseOrderLine.order_id,
-                    func.coalesce(func.sum(PurchaseOrderLine.qty_ordered), 0.0),
-                )
-                .filter(PurchaseOrderLine.order_id.in_(order_ids))
-                .group_by(PurchaseOrderLine.order_id)
-                .all()
-            )
-        }
-        delivered_totals = {
-            order_id: total
-            for order_id, total in (
-                db.query(
-                    PurchaseDelivery.order_id,
-                    func.coalesce(func.sum(PurchaseDeliveryLine.qty_delivered), 0.0),
-                )
-                .join(
-                    PurchaseDeliveryLine,
-                    PurchaseDeliveryLine.delivery_id == PurchaseDelivery.id,
-                )
-                .filter(
-                    PurchaseDelivery.order_id.in_(order_ids),
-                    PurchaseDelivery.confirmed.is_(True),
-                )
-                .group_by(PurchaseDelivery.order_id)
-                .all()
-            )
-        }
-    completion_map = {
-        order.id: _calculate_completion_percent(
-            ordered_totals.get(order.id, 0.0),
-            delivered_totals.get(order.id, 0.0),
-        )
-        for order in orders
-    }
-    destination_map = {order.id: _order_destination_label(order) for order in orders}
-    if normalized_kind == "closed":
-        page_title = "Ordini cantiere"
-    elif normalized_kind == "warehouse":
-        page_title = "Ordini magazzino"
-    elif normalized_status == "tutti":
-        page_title = "Tutti gli ordini"
-    elif normalized_status == "parziale":
-        page_title = "Consegne parziali"
-    elif normalized_status == "chiuso":
-        page_title = "Ordini chiusi"
-    else:
-        page_title = "Ordini aperti"
-    return render_template(
-        templates,
-        request,
-        "manager/ordini/ordini_list.html",
-        {
-            "orders": orders,
-            "status_filter": normalized_status,
-            "kind_filter": normalized_kind,
-            "supplier_filter": supplier_filter,
-            "date_from": parsed_date_from,
-            "date_to": parsed_date_to,
-            "page_title": page_title,
-            "total_orders": total_orders,
-            "partial_orders": partial_orders,
-            "closed_orders": closed_orders,
-            "completion_map": completion_map,
-            "destination_map": destination_map,
-            "supplier_label_map": {order.id: _order_supplier_label(order) for order in orders},
-            **_orders_navigation_counts(db),
-        },
-        db,
-        current_user,
-    )
+    closed = func.lower(PurchaseOrder.status).in_(['chiuso', 'completato'])
+    ongoing = or_(PurchaseOrder.status.is_(None), ~closed)
+    partial = func.lower(PurchaseOrder.status) == 'parziale'
+    counts = {'tutti': query.count(), 'in_corso': query.filter(ongoing).count(),
+              'parziale': query.filter(partial).count(), 'chiuso': query.filter(closed).count()}
+    if normalized_status == 'chiuso':
+        query = query.filter(closed)
+    elif normalized_status == 'in_corso':
+        query = query.filter(ongoing)
+    elif normalized_status == 'parziale':
+        query = query.filter(partial)
+    elif normalized_status == 'aperto':
+        query = query.filter(or_(PurchaseOrder.status.is_(None), func.lower(PurchaseOrder.status) == 'aperto'))
+    result_count = query.count()
+    pages = max(1, (result_count + 19) // 20)
+    page = max(1, min(page, pages))
+    orders = query.options(*_order_list_options()).order_by(PurchaseOrder.order_date.desc().nullslast(), PurchaseOrder.id.desc()).offset((page-1)*20).limit(20).all()
+    filter_params = {key: value for key, value in {
+        'q': search, 'supplier': supplier_filter, 'supplier_id': supplier_id, 'kind': normalized_kind,
+        'date_from': date_from if parsed_date_from else None, 'date_to': date_to if parsed_date_to else None,
+    }.items() if value not in (None, '')}
+    directory_url = request.url_for('manager_ordini_list')
+    status_links = {value: directory_url.include_query_params(**filter_params, status=value) for value in counts}
+    page_url = directory_url.include_query_params(**filter_params, status=normalized_status)
+    titles = {'tutti': 'Tutti gli ordini', 'in_corso': 'Ordini in corso', 'aperto': 'Da ricevere',
+              'parziale': 'Consegne parziali', 'chiuso': 'Ordini chiusi'}
+    return render_template(templates, request, 'manager/ordini/ordini_list.html', {
+        'orders': orders, 'status_filter': normalized_status, 'kind_filter': normalized_kind,
+        'supplier_filter': supplier_filter, 'selected_supplier_id': supplier_id,
+        'suppliers': db.query(Supplier).order_by(Supplier.name).all(), 'search': search,
+        'date_from': parsed_date_from, 'date_to': parsed_date_to, 'page_title': titles[normalized_status],
+        'counts': counts, 'status_links': status_links, 'page_url': page_url,
+        'page': page, 'pages': pages, 'result_count': result_count,
+        **_order_list_details(db, orders),
+    }, db, current_user)
 
 
-@router.get(
-    "/manager/ordini/chiusi",
-    response_class=HTMLResponse,
-
-    name="manager_ordini_closed",
-)
+@router.get('/manager/ordini/chiusi', response_class=HTMLResponse, name='manager_ordini_closed')
 def manager_ordini_list_chiusi(
     request: Request,
     supplier: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    kind: str | None = None,
+    q: str | None = None,
+    supplier_id: int | None = None,
+    page: int = 1,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    return manager_ordini_list(
-        request=request,
-        status="chiuso",
-        supplier=supplier,
-        date_from=date_from,
-        date_to=date_to,
-        db=db,
-        current_user=current_user,
-    )
+    return manager_ordini_list(request=request, status='chiuso', supplier=supplier,
+        date_from=date_from, date_to=date_to, kind=kind, q=q, supplier_id=supplier_id,
+        page=page, db=db, current_user=current_user)
 
 
 @router.get(
