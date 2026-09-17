@@ -137,7 +137,8 @@ def test_vehicle_create_edit_preserves_zero_and_optional_values(operations):
     assert db.query(Veicolo).one().note=='Veicolo collaudo'
 
 
-def test_postgres_competing_withdrawals_cannot_oversell(operations, monkeypatch):
+@pytest.mark.parametrize('packaged',[False,True])
+def test_postgres_competing_withdrawals_cannot_oversell(operations, monkeypatch, packaged):
     """Two independent transactions request 8 units each from a balance of 10."""
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
@@ -151,6 +152,8 @@ def test_postgres_competing_withdrawals_cannot_oversell(operations, monkeypatch)
     if engine.dialect.name!='postgresql':
         pytest.skip('Row locking is exercised by the PostgreSQL CI job')
     item=MagazzinoItem(codice='CONCURRENT',nome='Articolo concorrente',quantita_disponibile=10,attivo=True)
+    if packaged:
+        item.unita_misura='sacco';item.sacchi_per_bancale=100;item.kg_per_sacco=25
     o['db'].add(item);o['db'].commit()
     item_id,manager_id,site_id=item.id,o['manager'].id,o['site'].id
     monkeypatch.setattr('routes.magazzino._render_magazzino_items_list', lambda *a,**kw:HTMLResponse('Stock insufficiente',status_code=400))
@@ -161,7 +164,8 @@ def test_postgres_competing_withdrawals_cannot_oversell(operations, monkeypatch)
             request=Request({'type':'http','method':'POST','path':'/','query_string':b'',
                 'scheme':'http','server':('testserver',80),'headers':[], 'app':app,'router':app.router})
             gate.wait(timeout=10)
-            return manager_magazzino_scarico_rapido(item_id,request,quantita='8',note='',
+            return manager_magazzino_scarico_rapido(item_id,request,quantita='0.08' if packaged else '8',note='',
+                quantity_unit='bancale' if packaged else '',
                 location_id=f'site:{site_id}',caposquadra_id=None,db=db,current_user=user).status_code
     with ThreadPoolExecutor(max_workers=2) as pool:
         jobs=[pool.submit(withdraw) for _ in range(2)]
