@@ -649,6 +649,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
 
         response = self.client.post(
             f"/manager/magazzino/items/{item_id}/delete-permanent",
+            data={"confirmed": "true"},
             cookies={"lang": "it"},
             follow_redirects=False,
         )
@@ -682,6 +683,7 @@ class MagazzinoRoutesTests(unittest.TestCase):
 
         response = self.client.post(
             f"/manager/magazzino/items/{item_id}/delete-permanent",
+            data={"confirmed": "true"},
             cookies={"lang": "it"},
             follow_redirects=False,
         )

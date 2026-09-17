@@ -1,0 +1,18 @@
+{% extends 'shared/base.html' %}
+{% block title %}{{ t('Elimina articolo','Supprimer l’article') }}{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>{{ t('Elimina articolo','Supprimer l’article') }}</h1><p>{{ item.codice }} · {{ item.nome }}</p></div></header>
+<section class="card"><div class="card-body">
+{% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
+{% if delete_block %}
+<p role="status">{% if delete_block == 'stock' %}{{ t('Questo articolo ha una giacenza: non può essere eliminato definitivamente.','Cet article a du stock : il ne peut pas être supprimé définitivement.') }}{% else %}{{ t('Questo articolo è collegato a ordini, richieste o movimenti. Lo storico deve essere conservato; puoi archiviarlo dalla scheda articolo.','Cet article est lié à des commandes, demandes ou mouvements. L’historique doit être conservé ; vous pouvez l’archiver depuis sa fiche.') }}{% endif %}</p>
+<a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ t('Torna alla scheda','Retour à la fiche') }}</a>
+{% else %}
+<p>{{ t('L’articolo verrà eliminato definitivamente. I codici fornitori resteranno nel loro catalogo, scollegati da questo articolo.','L’article sera supprimé définitivement. Les codes fournisseurs resteront dans leur catalogue, dissociés de cet article.') }}</p>
+<form method="post" data-purchase-reset action="{{ url_for('manager_magazzino_item_delete_permanent',item_id=item.id) }}">
+<label class="warehouse-checkbox"><input type="checkbox" name="confirmed" value="true" required> {{ t('Confermo l’eliminazione di questo articolo','Je confirme la suppression de cet article') }}</label>
+<div class="form-actions"><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ t('Annulla','Annuler') }}</a><button class="btn btn-danger" type="submit">{{ t('Elimina definitivamente','Supprimer définitivement') }}</button></div>
+</form>
+{% endif %}
+</div></section>
+{% endblock %}

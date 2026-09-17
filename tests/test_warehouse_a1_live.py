@@ -8,6 +8,69 @@ from models import MagazzinoItem,MagazzinoCategoria,MagazzinoMacro,Supplier,Supp
 pytestmark=pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS')!='1',reason='Browser opt-in')
 
 
+def test_article_classification_and_confirmed_deletion(live_operations):
+    from auth import hash_password
+    from models import User,RoleEnum
+    origin,engine,ids,password,artifacts=live_operations
+    with Session(engine) as db:
+        admin=User(email='catalog-admin@example.com',role=RoleEnum.admin,is_active=True,hashed_password=hash_password(password))
+        item=MagazzinoItem(nome='Articolo creato per errore',attivo=True,quantita_disponibile=0)
+        macro=MagazzinoMacro(name='Sollevamento')
+        category=MagazzinoCategoria(nome='Catene',slug='catene',macro=macro,attiva=True)
+        db.add_all([admin,item,category]);db.commit();item_id=item.id;category_id=category.id
+    with sync_playwright() as pw:
+        browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        context=browser.new_context(viewport={'width':1440,'height':1000},reduced_motion='reduce')
+        page=context.new_page();errors=[]
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(origin+'/') else r.abort())
+        page.goto(origin+'/login');page.locator('#email').fill('catalog-admin@example.com');page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
+        page.goto(origin+'/manager/magazzino?view=all&q=errore')
+        page.get_by_role('link',name='Apri scheda',exact=False).click()
+        page.get_by_role('link',name='Assegna categoria',exact=True).click()
+        expect(page.locator('[name=category_name]')).not_to_be_visible()
+        page.locator('[name=mode]').select_option('new')
+        expect(page.locator('[name=category_id]')).not_to_be_visible()
+        expect(page.locator('[name=macro_name]')).not_to_be_visible()
+        page.locator('[name=category_name]').fill('Ganci')
+        page.locator('[name=macro_id]').select_option('__new__')
+        page.locator('[name=macro_name]').fill('Accessori')
+        for theme in ['light','dark']:
+            if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme-toggle').click()
+            for width in [1440,390]:
+                page.set_viewport_size({'width':width,'height':900})
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                page.screenshot(path=str(artifacts/f'article-classification-{theme}-{width}.png'),full_page=True)
+        page.get_by_role('button',name='Salva classificazione',exact=True).click()
+        page.wait_for_url('**/scheda?saved=classification')
+        expect(page.get_by_text('Classificazione aggiornata',exact=True)).to_be_visible()
+        expect(page.locator('[data-purchase-return]')).to_have_attribute('href','/manager/magazzino?view=all&q=errore')
+        page.get_by_role('link',name='Cambia categoria',exact=True).click()
+        page.locator('[name=category_id]').select_option(str(category_id))
+        page.get_by_role('button',name='Salva classificazione',exact=True).click();page.wait_for_url('**/scheda?saved=classification')
+        expect(page.get_by_text('Sollevamento / Catene',exact=True)).to_be_visible()
+        page.get_by_role('link',name='Elimina articolo',exact=True).click()
+        page.get_by_role('link',name='Annulla',exact=True).click();page.wait_for_url('**/scheda')
+        page.get_by_role('link',name='Elimina articolo',exact=True).click()
+        for theme in ['light','dark']:
+            if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme-toggle').click()
+            for width in [1440,390]:
+                page.set_viewport_size({'width':width,'height':900})
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                page.screenshot(path=str(artifacts/f'article-delete-{theme}-{width}.png'),full_page=True)
+        page.get_by_role('button',name='Elimina definitivamente',exact=True).click()
+        expect(page.locator('[name=confirmed]')).not_to_be_checked()
+        assert page.url.endswith('/elimina')
+        with Session(engine) as db:assert db.get(MagazzinoItem,item_id) is not None
+        page.locator('[name=confirmed]').check()
+        page.get_by_role('button',name='Elimina definitivamente',exact=True).click();page.wait_for_url('**/manager/magazzino')
+        assert f'/items/{item_id}/' not in (page.locator('[data-purchase-return]').get_attribute('href') or '')
+        assert not errors,errors
+        context.close();browser.close()
+    with Session(engine) as db:assert db.get(MagazzinoItem,item_id) is None
+
+
 def test_create_classification_from_empty_catalog(live_operations):
     from models import PurchaseOrder, MagazzinoMovimento
     origin,engine,ids,password,artifacts=live_operations

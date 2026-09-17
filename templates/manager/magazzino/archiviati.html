@@ -89,9 +89,7 @@
                                         <form method="post" action="{{ url_for('manager_magazzino_item_riattiva', item_id=item.id) }}">
                                             <button type="submit" class="btn btn-secondary btn-sm">↩️ {% if lang == 'fr' %}Réactiver{% else %}Riattiva articolo{% endif %}</button>
                                         </form>
-                                        <form method="post" action="{{ url_for('manager_magazzino_item_delete_permanent', item_id=item.id) }}" onsubmit="return confirm('{% if lang == 'fr' %}Confirmer la suppression définitive ?{% else %}Confermi eliminazione definitiva?{% endif %}');">
-                                            <button type="submit" class="btn btn-danger btn-sm" {% if (item.quantita_disponibile or 0) != 0 %}disabled title="{% if lang == 'fr' %}Quantité doit être 0{% else %}La quantità deve essere 0{% endif %}"{% endif %}>🗑️ {% if lang == 'fr' %}Supprimer définitivement{% else %}Elimina definitivamente{% endif %}</button>
-                                        </form>
+                                        {% if has_perm(user,'records.delete') %}<a class="btn btn-danger btn-sm" href="{{ url_for('warehouse_item_delete_confirm',item_id=item.id) }}">{{ t('Elimina articolo','Supprimer l’article') }}</a>{% endif %}
                                     </div>
                                 </td>
                             </tr>

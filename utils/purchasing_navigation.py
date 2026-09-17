@@ -37,7 +37,7 @@ def purchasing_navigation(request, user, context):
     parent_label = label
     # Forms return to their record by default, even when opened in a fresh tab.
     order_match = re.fullmatch(r'/manager/ordini/(\d+)/.+', path)
-    item_match = re.fullmatch(r'/manager/magazzino/(?:items/)?(\d+)/(?:modifica|duplica|rettifica)', path)
+    item_match = re.fullmatch(r'/manager/magazzino/(?:items/)?(\d+)/(?:modifica|duplica|rettifica|classificazione|elimina)', path)
     if order_match:
         parent = '/manager/ordini/' + order_match[1]
         order = context.get('order')

@@ -12,7 +12,7 @@
     '/manager/magazzino', '/manager/magazzino/items', '/manager/magazzino/movimenti',
     '/manager/magazzino/richieste', '/manager/magazzino/categorie', '/manager/magazzino/macros',
     '/manager/magazzino/archiviati', '/manager/magazzino/sotto-soglia']);
-  const pages = /^\/manager\/(?:ordini(?:\/(?:nuovo|chiusi|email-wizard|\d+(?:\/(?:bolle\/nuova|fattura|email))?))?|fornitori(?:\/(?:nuovo|\d+))?|magazzino(?:\/(?:dashboard|items(?:\/\d+\/(?:scheda|duplica|rettifica))?|nuovo|\d+\/modifica|movimenti|report-consumi|richieste(?:\/\d+)?|categorie(?:\/(?:nuova|\d+\/(?:modifica|sposta)))?|macros|macro\/(?:nuova|\d+\/modifica)|archiviati|sotto-soglia))?)$/;
+  const pages = /^\/manager\/(?:ordini(?:\/(?:nuovo|chiusi|email-wizard|\d+(?:\/(?:bolle\/nuova|fattura|email))?))?|fornitori(?:\/(?:nuovo|\d+))?|magazzino(?:\/(?:dashboard|items(?:\/\d+\/(?:scheda|duplica|rettifica|classificazione|elimina))?|nuovo|\d+\/modifica|movimenti|report-consumi|richieste(?:\/\d+)?|categorie(?:\/(?:nuova|\d+\/(?:modifica|sposta)))?|macros|macro\/(?:nuova|\d+\/modifica)|archiviati|sotto-soglia))?)$/;
   function safe(value) {
     try {
       if (typeof value !== 'string' || value.length > 4000) return null;
@@ -31,7 +31,12 @@
                      title: entry.title.slice(0, 160), y: Number.isFinite(entry.y) ? Math.max(0, Math.min(entry.y, 1000000)) : 0}));
   }
   const currentURL = () => location.pathname + location.search + location.hash;
-  const canonical = value => { const u = safe(value); return u ? u.pathname + u.search : null; };
+  const canonical = value => {
+    const u = safe(value);
+    if (!u) return null;
+    u.searchParams.delete('saved'); // A save notice does not make a different record.
+    return u.pathname + u.search;
+  };
   const headingText = () => (document.querySelector('main h1')?.textContent || document.title)
     .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').replace(/\s+/g, ' ').trim();
   const title = () => {
@@ -127,7 +132,7 @@
       pendingNavigation(url.href, trail);
     } else {
       // Carry the current parent across the normal server POST/redirect, without touching the form.
-      pendingNavigation(currentURL(), trail, true);
+      pendingNavigation(currentURL(), form.hasAttribute('data-purchase-reset') ? [] : trail, true);
     }
   });
   window.addEventListener('pageshow', event => {
