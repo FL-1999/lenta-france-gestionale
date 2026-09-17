@@ -8,6 +8,71 @@ from models import MagazzinoItem,MagazzinoCategoria,MagazzinoMacro,Supplier,Supp
 pytestmark=pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS')!='1',reason='Browser opt-in')
 
 
+def test_bulk_classification_visible_selection_and_destination(live_operations):
+    origin,engine,ids,password,artifacts=live_operations
+    with Session(engine) as db:
+        macro=MagazzinoMacro(name='Accessori sollevamento')
+        category=MagazzinoCategoria(nome='Catene e ganci',slug='catene-ganci',macro=macro,attiva=True)
+        items=[MagazzinoItem(nome=name,attivo=True,quantita_disponibile=4) for name in ['Gancio A','Gancio B','Pompa']]
+        db.add_all([category,*items]);db.commit();category_id=category.id;item_ids=[item.id for item in items]
+    with sync_playwright() as pw:
+        browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        context=browser.new_context(viewport={'width':1440,'height':1000},reduced_motion='reduce')
+        page=context.new_page();errors=[]
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(origin+'/') else r.abort())
+        page.goto(origin+'/login');page.locator('#email').fill('smoke-manager@example.com');page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
+        page.goto(origin+'/manager/magazzino')
+        page.locator('.warehouse-family').filter(has_text='Da classificare').click()
+        expect(page.locator('input[name=item_ids]')).to_have_count(3)
+        page.get_by_label('Cerca articolo o codice',exact=True).fill('Gancio')
+        page.get_by_role('button',name='Cerca',exact=True).click()
+        expect(page.locator('input[name=item_ids]')).to_have_count(2)
+        form=page.locator('#warehouse-bulk-classification')
+        expect(form.get_by_role('button',name='Assegna selezionati')).to_be_disabled()
+        form.locator('input[name=item_ids]').first.check()
+        expect(form.locator('[data-selected-count]')).to_have_text('1')
+        assert form.locator('[data-select-all]').evaluate('(el)=>el.indeterminate')
+        form.locator('[data-select-all]').check()
+        expect(form.locator('[data-selected-count]')).to_have_text('2')
+        form.locator('[data-select-all]').uncheck()
+        expect(form.locator('[data-selected-count]')).to_have_text('0')
+        form.locator('[data-select-all]').check()
+        form.get_by_label('Categoria di destinazione',exact=True).select_option(str(category_id))
+        expect(form.locator('select option:checked')).to_have_text('Accessori sollevamento / Catene e ganci')
+        expect(form.get_by_role('button',name='Assegna selezionati')).to_be_enabled()
+        for theme in ['light','dark']:
+            if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme-toggle').click()
+            for width in [1440,390]:
+                page.set_viewport_size({'width':width,'height':1000})
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                expect(form.locator('input[name=item_ids]').first).to_be_visible()
+                page.screenshot(path=str(artifacts/f'bulk-classification-{theme}-{width}.png'),full_page=True)
+        form.get_by_role('button',name='Assegna selezionati',exact=True).click()
+        page.wait_for_url('**/manager/magazzino?**ok=classification**')
+        expect(page.get_by_role('status').filter(has_text='Articoli selezionati assegnati')).to_be_visible()
+        expect(page.locator('.warehouse-row')).to_have_count(0)
+        page.get_by_role('link',name='Apri categoria:',exact=False).click()
+        expect(page.locator('.warehouse-row')).to_have_count(2)
+        expect(page.locator('.warehouse-breadcrumbs')).to_contain_text('Catene e ganci')
+        page.goto(origin+'/manager/magazzino?categoria_id=0')
+        expect(page.locator('.warehouse-row')).to_have_count(1)
+        expect(page.locator('.warehouse-row')).to_contain_text('Pompa')
+        # The original single-item path must work for an article with no category too.
+        page.get_by_role('link',name='Apri scheda',exact=False).click()
+        page.get_by_role('link',name='Assegna categoria',exact=True).click()
+        page.locator('[name=category_id]').select_option(str(category_id))
+        page.get_by_role('button',name='Salva classificazione',exact=True).click()
+        page.wait_for_url('**/scheda?saved=classification')
+        expect(page.get_by_text('Accessori sollevamento / Catene e ganci',exact=True)).to_be_visible()
+        assert not errors,errors
+        context.close();browser.close()
+    with Session(engine) as db:
+        saved=db.query(MagazzinoItem).filter(MagazzinoItem.id.in_(item_ids)).all()
+        assert all(item.categoria_id==category_id and item.quantita_disponibile==4 for item in saved)
+
+
 def test_article_classification_and_confirmed_deletion(live_operations):
     from auth import hash_password
     from models import User,RoleEnum

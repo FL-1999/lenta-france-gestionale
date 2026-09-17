@@ -5,6 +5,68 @@ from models import Base, MagazzinoItem, MagazzinoCategoria, MagazzinoMacro, Maga
 from database import ensure_model_columns
 
 
+def test_bulk_classification_moves_only_selected_unclassified_items(operations):
+    from models import AuditLog, MagazzinoMovimentoTipoEnum, PurchaseOrder, PurchaseOrderLine
+    db,c,s,existing,category=setup(operations)
+    macro=MagazzinoMacro(name='Accessori');category.macro=macro
+    old_category=MagazzinoCategoria(nome='Vecchia',slug='vecchia',attiva=False)
+    first=MagazzinoItem(nome='Gancio libero',attivo=True,quantita_disponibile=8)
+    second=MagazzinoItem(nome='Gancio storico',attivo=True,quantita_disponibile=3,categoria=old_category)
+    untouched=MagazzinoItem(nome='Non selezionato',attivo=True)
+    db.add_all([first,second,untouched]);db.flush()
+    code=first.codice
+    vendor=SupplierArticle(supplier_id=s.id,codice='SKU-GANCIO',magazzino_item_id=first.id)
+    po=PurchaseOrder(order_number='BULK-1');db.add(po);db.flush()
+    line=PurchaseOrderLine(order_id=po.id,description='Gancio',qty_ordered=8,magazzino_item_id=first.id)
+    db.add_all([vendor,line,MagazzinoMovimento(item_id=first.id,tipo=MagazzinoMovimentoTipoEnum.carico,quantita=8)])
+    db.commit()
+    response=c.post('/manager/magazzino/classificazione-multipla',data={
+        'item_ids':[first.id,second.id,first.id], 'category_id':category.id,
+        'q':'Gancio','stock_status':'disponibili'},follow_redirects=False)
+    assert response.status_code==303,response.text
+    assert 'q=Gancio' in response.headers['location'] and 'stock_status=disponibili' in response.headers['location']
+    page=c.get(response.headers['location']);assert page.status_code==200 and 'Apri categoria' in page.text
+    assert 'Articoli selezionati assegnati' in page.text
+    for item in [first,second,untouched,existing]:db.refresh(item)
+    assert first.categoria_id==second.categoria_id==existing.categoria_id==category.id
+    assert untouched.categoria_id is None
+    assert first.quantita_disponibile==8 and second.quantita_disponibile==3 and first.codice==code
+    db.refresh(vendor);db.refresh(line)
+    assert vendor.magazzino_item_id==line.magazzino_item_id==first.id
+    assert db.query(MagazzinoMovimento).count()==1
+    assert db.query(AuditLog).filter_by(action='WAREHOUSE_CLASSIFICATION_SAVE').count()==2
+    assert 'Gancio libero' in c.get('/manager/magazzino',params={'categoria_id':category.id}).text
+    assert 'Non selezionato' in c.get('/manager/magazzino?categoria_id=0').text
+
+
+def test_bulk_classification_rejects_invalid_or_stale_selection_atomically(operations):
+    from models import AuditLog
+    db,c,s,classified,category=setup(operations)
+    item=MagazzinoItem(nome='Libero',attivo=True)
+    archived=MagazzinoItem(nome='Archiviato',attivo=False)
+    inactive=MagazzinoCategoria(nome='Inattiva',slug='inattiva',attiva=False)
+    db.add_all([item,archived,inactive]);db.commit()
+    url='/manager/magazzino/classificazione-multipla'
+    cases=[({},400),({'item_ids':[item.id]},400),
+           ({'item_ids':[item.id],'category_id':inactive.id},400),
+           ({'item_ids':[item.id],'category_id':999999},400),
+           ({'item_ids':[item.id,999999],'category_id':category.id},409),
+           ({'item_ids':[item.id,archived.id],'category_id':category.id},409),
+           ({'item_ids':[item.id,classified.id],'category_id':category.id},409)]
+    for data,status in cases:
+        response=c.post(url,data=data)
+        assert response.status_code==status,response.text
+        db.refresh(item);assert item.categoria_id is None
+        assert db.query(AuditLog).filter_by(action='WAREHOUSE_CLASSIFICATION_SAVE').count()==0
+    operations['actor'][0]=operations['capo']
+    assert c.post(url,data={'item_ids':[item.id],'category_id':category.id}).status_code==403
+    keeper=User(email='bulk-keeper@example.com',role=RoleEnum.magazzino,is_active=True,hashed_password='x')
+    db.add(keeper);db.commit();operations['actor'][0]=keeper
+    page=c.get('/manager/magazzino?categoria_id=0');assert page.status_code==200
+    assert 'id="warehouse-bulk-classification"' not in page.text
+    assert c.post(url,data={'item_ids':[item.id],'category_id':category.id}).status_code==403
+
+
 def test_reclassify_existing_article_preserves_identity_stock_and_history(operations):
     from models import PurchaseOrder, PurchaseOrderLine, MagazzinoMovimentoTipoEnum
     db,c,s,item,cat=setup(operations)

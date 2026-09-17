@@ -1177,6 +1177,9 @@ def _render_magazzino_items_list(
     stock_status: str | None = None,
     success_message: str | None = None,
     error_message: str | None = None,
+    bulk_selected_ids: list[int] | None = None,
+    bulk_category_id: int | None = None,
+    status_code: int = 200,
 ):
     categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
         db,
@@ -1281,6 +1284,12 @@ def _render_magazzino_items_list(
     show_articles = categoria_id is not None or bool(q_value or stock_status) or request.query_params.get('view')=='all'
     supplier_counts = dict(db.query(SupplierArticle.magazzino_item_id,func.count(func.distinct(SupplierArticle.supplier_id)))
         .group_by(SupplierArticle.magazzino_item_id).all())
+    bulk_destination = None
+    if request.query_params.get('ok') == 'classification':
+        success_message = ('Articles sélectionnés classés.' if get_lang_from_request(request) == 'fr'
+                           else 'Articoli selezionati assegnati alla categoria.')
+        destination_id = _parse_categoria_id(request.query_params.get('destination_id'))
+        bulk_destination = next((c for c in active_categories if c.id == destination_id), None)
     badges = build_magazzino_badges(db, current_user)
     return render_template(
         templates,
@@ -1311,12 +1320,61 @@ def _render_magazzino_items_list(
             "default_categoria_color": DEFAULT_CATEGORIA_COLOR,
             "success_message": success_message,
             "error_message": error_message,
+            "bulk_selected_ids": bulk_selected_ids or [],
+            "bulk_category_id": bulk_category_id,
+            "bulk_destination": bulk_destination,
+            "classification_categories": sorted(active_categories, key=lambda c: ((c.macro.name if c.macro else '').casefold(), c.nome.casefold())),
             **_orders_navigation_counts(db),
             **badges,
         },
         db,
         current_user,
+        status_code=status_code,
     )
+
+
+@router.post('/manager/magazzino/classificazione-multipla', name='warehouse_bulk_classification')
+def warehouse_bulk_classification(
+    request: Request, item_ids: list[int] = Form([]), category_id: int | None = Form(None),
+    q: str = Form(''), stock_status: str = Form(''),
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user_html),
+):
+    ensure_magazzino_catalog_manager(current_user)
+    ids = sorted(set(item_ids))
+    fr = get_lang_from_request(request) == 'fr'
+
+    def invalid(it, french, status=400):
+        db.rollback()
+        return _render_magazzino_items_list(request, db, current_user, categoria_id=0,
+            q=q, stock_status=stock_status, bulk_selected_ids=ids, bulk_category_id=category_id,
+            error_message=french if fr else it, status_code=status)
+
+    if not ids:
+        return invalid('Seleziona almeno un articolo.', 'Sélectionnez au moins un article.')
+    items = db.query(MagazzinoItem).filter(MagazzinoItem.id.in_(ids)).order_by(MagazzinoItem.id).populate_existing().with_for_update().all()
+    if len(items) != len(ids) or any(not item.attivo for item in items):
+        return invalid('Alcuni articoli non sono più disponibili. Nessun articolo è stato spostato.',
+                       'Certains articles ne sont plus disponibles. Aucun article n’a été déplacé.', 409)
+    category = db.query(MagazzinoCategoria).filter_by(id=category_id, attiva=True).with_for_update().first()
+    if not category:
+        return invalid('Seleziona una categoria attiva di destinazione.', 'Sélectionnez une catégorie de destination active.')
+    active_ids = {row.id for row in db.query(MagazzinoCategoria.id).filter_by(attiva=True).all()}
+    if any(item.categoria_id in active_ids for item in items):
+        return invalid('Alcuni articoli sono già stati classificati. Controlla l’elenco e selezionali di nuovo: nessun articolo è stato spostato.',
+                       'Certains articles ont déjà été classés. Vérifiez la liste et refaites la sélection : aucun article n’a été déplacé.', 409)
+    try:
+        for item in items:
+            previous = item.categoria_id
+            item.categoria_id = category.id
+            _log_audit(db, current_user, 'WAREHOUSE_CLASSIFICATION_SAVE', 'MagazzinoItem', item.id,
+                       {'before': previous, 'after': category.id, 'bulk': True})
+        db.commit()
+    except IntegrityError:
+        return invalid('La classificazione è cambiata nel frattempo. Nessun articolo è stato spostato; riprova.',
+                       'La classification a changé entre-temps. Aucun article n’a été déplacé ; réessayez.', 409)
+    _invalidate_magazzino_cache()
+    return RedirectResponse(request.url_for('manager_magazzino_home').include_query_params(
+        categoria_id=0, q=q, stock_status=stock_status, ok='classification', destination_id=category_id), 303)
 
 
 @router.get(
