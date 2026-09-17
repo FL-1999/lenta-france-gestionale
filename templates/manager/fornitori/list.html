@@ -1,78 +1,33 @@
 {% extends "shared/base.html" %}
-{% set lang = request.cookies.get('lang', 'it') %}
-
-{% block title %}{% if lang == 'fr' %}Fournisseurs{% else %}Fornitori{% endif %}{% endblock %}
-
+{% from 'shared/workspace_icons.html' import icon %}
+{% block title %}{{ t('Fornitori','Fournisseurs') }}{% endblock %}
 {% block content %}
-<div class="page-header">
-    <div class="page-header-main">
-        <p class="page-eyebrow">{% if lang == 'fr' %}Achats{% else %}Acquisti{% endif %}</p>
-        <h1 class="page-title">🏷️ {% if lang == 'fr' %}Fournisseurs{% else %}Fornitori{% endif %}</h1>
+<div class="supplier-workspace">
+  <header class="page-header"><div><p class="page-eyebrow">{{ t('Acquisti','Achats') }}</p><h1 class="page-title">{{ t('Fornitori','Fournisseurs') }}</h1></div><a class="btn btn-primary" href="{{ url_for('manager_fornitori_new') }}">{{ icon('plus') }} {{ t('Nuovo fornitore','Nouveau fournisseur') }}</a></header>
+  <nav class="warehouse-toolbar" aria-label="{{ t('Sezioni magazzino','Rubriques du magasin') }}"><a href="{{ url_for('manager_magazzino_home') }}">{{ t('Articoli','Articles') }}</a><a href="{{ url_for('manager_ordini_list') }}">{{ t('Ordini','Commandes') }}</a><a class="is-current" aria-current="page" href="{{ url_for('manager_fornitori_list') }}">{{ t('Fornitori','Fournisseurs') }}</a></nav>
+  {% if request.query_params.get('err') %}<p class="alert alert-danger" role="alert">{{ request.query_params.get('err') }}</p>{% endif %}
+  <section class="card"><div class="card-body">
+    <form method="get" class="supplier-search">
+      <label class="vehicle-field">{{ t('Cerca fornitore','Rechercher un fournisseur') }}<input name="q" value="{{ q }}" placeholder="{{ t('Nome, email, città o referente','Nom, email, ville ou contact') }}"></label>
+      <input type="hidden" name="stato" value="{{ stato }}"><button class="btn btn-secondary" type="submit">{{ t('Cerca','Rechercher') }}</button>
+      {% if q or stato %}<a class="btn btn-secondary" href="{{ url_for('manager_fornitori_list') }}">{{ t('Azzera','Réinitialiser') }}</a>{% endif %}
+    </form>
+    <nav class="supplier-filters" aria-label="{{ t('Stato fornitori','Statut des fournisseurs') }}">
+    {% for value,key,label in [('', 'all',t('Tutti','Tous')),('active','active',t('Attivi','Actifs')),('inactive','inactive',t('Disattivi','Inactifs'))] %}
+      <a href="{{ url_for('manager_fornitori_list').include_query_params(q=q,stato=value) }}" {% if stato == value %}class="is-current" aria-current="true"{% endif %}>{{ label }} <span>{{ counts[key] }}</span></a>
+    {% endfor %}</nav>
+    <div class="supplier-directory">
+    {% for supplier in suppliers %}
+      <article class="supplier-row">
+        <div class="supplier-avatar" aria-hidden="true">{{ icon('site') }}</div>
+        <div class="supplier-identity"><h2><a href="{{ url_for('manager_fornitori_edit',supplier_id=supplier.id) }}">{{ supplier.name or '—' }}</a></h2><p>{{ supplier.city or t('Città non indicata','Ville non renseignée') }}{% if supplier.country %} · {{ supplier.country }}{% endif %}</p></div>
+        <div class="supplier-contact-links">{% if supplier.email %}<a href="mailto:{{ supplier.email|urlencode }}">{{ supplier.email }}</a>{% endif %}{% if supplier.phone %}<a href="tel:{{ supplier.phone|urlencode }}">{{ supplier.phone }}</a>{% endif %}{% if not supplier.email and not supplier.phone %}<span>{{ t('Contatti da aggiungere','Coordonnées à ajouter') }}</span>{% endif %}</div>
+        <span class="supplier-state {{ 'is-active' if supplier.is_active else '' }}">{{ t('Attivo','Actif') if supplier.is_active else t('Disattivo','Inactif') }}</span>
+        <div class="supplier-row-actions"><a class="btn btn-secondary" href="{{ url_for('manager_fornitori_edit',supplier_id=supplier.id) }}">{{ t('Apri scheda','Ouvrir la fiche') }} {{ icon('arrow') }}</a>{% if supplier.is_active %}<a class="supplier-order-link" href="{{ url_for('manager_ordini_new').include_query_params(supplier_id=supplier.id) }}">{{ icon('plus') }} {{ t('Nuovo ordine','Nouvelle commande') }}</a>{% endif %}</div>
+      </article>
+    {% else %}<div class="supplier-empty"><h2>{{ t('Nessun fornitore trovato','Aucun fournisseur trouvé') }}</h2><p>{{ t('Modifica la ricerca o aggiungi il primo fornitore.','Modifiez la recherche ou ajoutez votre premier fournisseur.') }}</p></div>{% endfor %}
     </div>
-    <div class="page-actions">
-        <a href="{{ url_for('manager_ordini_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Commandes{% else %}Ordini{% endif %}</a>
-        <a href="{{ url_for('manager_fornitori_new') }}" class="btn btn-primary">➕ {% if lang == 'fr' %}Nouveau fournisseur{% else %}Nuovo fornitore{% endif %}</a>
-    </div>
-</div>
-
-{% if request.query_params.get('err') %}
-<div class="alert alert-danger">⚠️ {{ request.query_params.get('err') }}</div>
-{% endif %}
-
-<div class="card" style="margin-bottom: 1rem;">
-    <div class="card-body">
-        <form method="get" class="form-grid-2">
-            <div class="form-field">
-                <label>{% if lang == 'fr' %}Recherche nom/email{% else %}Ricerca nome/email{% endif %}</label>
-                <input type="text" name="q" value="{{ q or '' }}">
-            </div>
-            <div class="form-actions" style="align-items:flex-end;">
-                <button class="btn btn-secondary" type="submit">🔎 {% if lang == 'fr' %}Rechercher{% else %}Cerca{% endif %}</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="card table-card">
-    <div class="card-body">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-                    <th>Email</th>
-                    <th>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Ville{% else %}Città{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for supplier in suppliers %}
-                <tr>
-                    <td>{{ supplier.name or '-' }}</td>
-                    <td>{{ supplier.email or '-' }}</td>
-                    <td>{{ supplier.phone or '-' }}</td>
-                    <td>{{ supplier.city or '-' }}</td>
-                    <td>{% if supplier.is_active %}✅ {% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}{% else %}⏸️ {% if lang == 'fr' %}Inactif{% else %}Disattivo{% endif %}{% endif %}</td>
-                    <td>
-                        <a class="btn btn-sm btn-secondary" href="{{ url_for('manager_fornitori_edit', supplier_id=supplier.id) }}">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a>
-                        <form method="post" action="{{ url_for('manager_fornitori_toggle', supplier_id=supplier.id) }}" style="display:inline-block;">
-                            <button class="btn btn-sm btn-secondary" type="submit">{% if supplier.is_active %}{% if lang == 'fr' %}Désactiver{% else %}Disattiva{% endif %}{% else %}{% if lang == 'fr' %}Activer{% else %}Attiva{% endif %}{% endif %}</button>
-                        </form>
-                        <form method="post" action="{{ url_for('manager_fornitori_delete', supplier_id=supplier.id) }}" style="display:inline-block;" onsubmit="return confirm('{% if lang == 'fr' %}Supprimer définitivement ce fournisseur ?{% else %}Eliminare definitivamente questo fornitore?{% endif %}');">
-                            <button class="btn btn-sm btn-outline-danger" type="submit">🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}</button>
-                        </form>
-                        <form method="post" action="{{ url_for('manager_fornitori_delete', supplier_id=supplier.id) }}" style="display:inline-block;" onsubmit="return confirm('{% if lang == 'fr' %}Supprimer ce fournisseur ET toutes ses commandes ? Action irréversible.{% else %}Eliminare questo fornitore E TUTTI i suoi ordini? Azione irreversibile.{% endif %}');">
-                            <input type="hidden" name="force" value="1">
-                            <button class="btn btn-sm btn-danger" type="submit">🗑️ {% if lang == 'fr' %}Avec commandes{% else %}Con ordini{% endif %}</button>
-                        </form>
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="6" class="table-empty">{% if lang == 'fr' %}Aucun fournisseur{% else %}Nessun fornitore{% endif %}</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    {% if pages > 1 %}<nav class="supplier-pagination" aria-label="{{ t('Pagine fornitori','Pages fournisseurs') }}">{% if page > 1 %}<a class="btn btn-secondary" href="{{ request.url.include_query_params(page=page-1) }}">{{ t('Precedente','Précédente') }}</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a class="btn btn-secondary" href="{{ request.url.include_query_params(page=page+1) }}">{{ t('Successiva','Suivante') }}</a>{% endif %}</nav>{% endif %}
+  </div></section>
 </div>
 {% endblock %}

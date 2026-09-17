@@ -1008,6 +1008,8 @@ def api_tipologie_create(
 def manager_fornitori_list(
     request: Request,
     q: str | None = None,
+    stato: str = "",
+    page: int = 1,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -1017,16 +1019,30 @@ def manager_fornitori_list(
     if query_text:
         supplier_query = supplier_query.filter(
             or_(
-                func.lower(Supplier.name).contains(query_text.lower()),
-                func.lower(Supplier.email).contains(query_text.lower()),
+                func.lower(Supplier.name).contains(query_text.lower(), autoescape=True),
+                func.lower(Supplier.email).contains(query_text.lower(), autoescape=True),
+                func.lower(Supplier.city).contains(query_text.lower(), autoescape=True),
+                Supplier.contacts.any(or_(
+                    func.lower(SupplierContact.name).contains(query_text.lower(), autoescape=True),
+                    func.lower(SupplierContact.email).contains(query_text.lower(), autoescape=True),
+                )),
             )
         )
-    suppliers = supplier_query.order_by(Supplier.updated_at.desc(), Supplier.id.desc()).all()
+    counts = {"all": supplier_query.count(), "active": supplier_query.filter(Supplier.is_active.is_(True)).count(),
+              "inactive": supplier_query.filter(Supplier.is_active.is_(False)).count()}
+    stato = stato if stato in {"active", "inactive"} else ""
+    if stato:
+        supplier_query = supplier_query.filter(Supplier.is_active.is_(stato == "active"))
+    total = counts.get(stato, counts["all"])
+    pages = max(1, (total + 29) // 30)
+    page = max(1, min(page, pages))
+    suppliers = supplier_query.order_by(func.lower(Supplier.name), Supplier.id).offset((page-1)*30).limit(30).all()
     return render_template(
         templates,
         request,
         "manager/fornitori/list.html",
-        {"suppliers": suppliers, "q": query_text},
+        {"suppliers": suppliers, "q": query_text, "stato": stato, "counts": counts,
+         "total": total, "page": page, "pages": pages},
         db,
         current_user,
     )
@@ -1107,6 +1123,7 @@ def manager_fornitori_create(
 def manager_fornitori_edit(
     request: Request,
     supplier_id: int,
+    order_page: int = 1,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -1114,13 +1131,18 @@ def manager_fornitori_edit(
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Fornitore non trovato")
+    orders = db.query(PurchaseOrder).filter_by(supplier_id=supplier.id)
+    order_count = orders.count()
+    order_pages = max(1, (order_count + 19) // 20)
+    order_page = max(1, min(order_page, order_pages))
     return render_template(
         templates,
         request,
         "manager/fornitori/form.html",
         {
             "supplier": supplier,
-            "supplier_orders": db.query(PurchaseOrder).filter_by(supplier_id=supplier.id).order_by(PurchaseOrder.id.desc()).limit(50).all(),
+            "supplier_orders": orders.order_by(PurchaseOrder.id.desc()).offset((order_page-1)*20).limit(20).all(),
+            "order_count": order_count, "order_page": order_page, "order_pages": order_pages,
             "form_action": request.url_for("manager_fornitori_save", supplier_id=supplier.id),
             "error_message": None,
             "is_new": False,
