@@ -21,6 +21,7 @@ from models import (
     MagazzinoMacro,
     MagazzinoMovimento,
     SupplierArticle,
+    Supplier,
     MagazzinoMovimentoTipoEnum,
     MagazzinoRichiesta,
     MagazzinoRichiestaRiga,
@@ -2816,6 +2817,40 @@ def manager_magazzino_categorie_down(
     )
 
 
+def _render_new_item_form(request, db, current_user, *, form_data=None, supplier_rows=None,
+                          error_message=None, status_code=200):
+    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
+        db,
+        include_inactive=False,
+        include_fallback=False,
+    )
+    categoria_param = (form_data or {}).get("categoria_id", request.query_params.get("categoria_id"))
+    parsed_categoria_id = _parse_categoria_id(categoria_param)
+    valid_ids = {categoria.id for categoria in categorie if categoria.id is not None}
+    if parsed_categoria_id not in valid_ids:
+        parsed_categoria_id = fallback_categoria_id
+    return render_template(
+        templates,
+        request,
+        "manager/magazzino/item_new.html",
+        {
+            "item": None,
+            "form_data": form_data or {},
+            "error_message": error_message,
+            "supplier_rows": supplier_rows or [],
+            "suppliers": db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name).all(),
+            "categorie": categorie,
+            "fallback_categoria": fallback_categoria,
+            "default_categoria_id": parsed_categoria_id,
+            "form_action": "manager_magazzino_create",
+            "title": "Nuovo articolo",
+        },
+        db,
+        current_user,
+        status_code=status_code,
+    )
+
+
 @router.get(
     "/manager/magazzino/nuovo",
     response_class=HTMLResponse,
@@ -2828,31 +2863,7 @@ def manager_magazzino_new(
 ):
     ensure_magazzino_catalog_manager(current_user)
     ensure_magazzino_access(current_user)
-    categorie, fallback_categoria, fallback_categoria_id = _load_categorie(
-        db,
-        include_inactive=False,
-        include_fallback=False,
-    )
-    categoria_param = request.query_params.get("categoria_id")
-    parsed_categoria_id = _parse_categoria_id(categoria_param)
-    valid_ids = {categoria.id for categoria in categorie if categoria.id is not None}
-    if parsed_categoria_id not in valid_ids:
-        parsed_categoria_id = fallback_categoria_id
-    return render_template(
-        templates,
-        request,
-        "manager/magazzino/item_new.html",
-        {
-            "item": None,
-            "categorie": categorie,
-            "fallback_categoria": fallback_categoria,
-            "default_categoria_id": parsed_categoria_id,
-            "form_action": "manager_magazzino_create",
-            "title": "Nuovo articolo",
-        },
-        db,
-        current_user,
-    )
+    return _render_new_item_form(request, db, current_user)
 
 
 @router.post(
@@ -2873,16 +2884,57 @@ def manager_magazzino_create(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
     unita_misura: str = Form("pz"),
+    supplier_ids: list[str] = Form([]),
+    supplier_codes: list[str] = Form([]),
 ):
     ensure_magazzino_catalog_manager(current_user)
     ensure_magazzino_access(current_user)
 
+    form_data = dict(nome=nome, descrizione=descrizione, categoria_id=categoria_id,
+                     quantita_disponibile=quantita_disponibile, soglia_minima=soglia_minima,
+                     costo_unitario=costo_unitario, attivo=attivo, unita_misura=unita_misura)
+    supplier_rows = [dict(supplier_id=supplier_ids[i] if i < len(supplier_ids) else '',
+                          code=supplier_codes[i] if i < len(supplier_codes) else '')
+                     for i in range(max(len(supplier_ids),len(supplier_codes)))]
+    def invalid(message, status=400):
+        db.rollback()
+        return _render_new_item_form(request,db,current_user,form_data=form_data,
+                                    supplier_rows=supplier_rows,error_message=message,status_code=status)
+
     initial_stock = _parse_float(quantita_disponibile) if quantita_disponibile not in (None, "") else 0.0
     if initial_stock is None or initial_stock < 0:
-        raise HTTPException(status_code=400, detail="Quantità iniziale non valida")
-
+        return invalid("Quantità iniziale non valida")
     if not nome.strip() or unita_misura not in {'pz','kg','m','m2','m3','l'}:
-        raise HTTPException(400, 'Nome o unità di misura non valida')
+        return invalid('Nome o unità di misura non valida')
+    for value in (soglia_minima,costo_unitario):
+        if value not in (None,'') and (_parse_float(value) is None or _parse_float(value)<0):
+            return invalid('Soglia e costo devono essere numeri maggiori o uguali a zero')
+    if categoria_id and not db.query(MagazzinoCategoria).filter_by(id=_parse_categoria_id(categoria_id),attiva=True).first():
+        return invalid('Seleziona una categoria disponibile')
+    if len(supplier_ids) != len(supplier_codes):
+        return invalid('Completa le righe dei fornitori')
+    rows=[];seen=set()
+    for index,row in enumerate(supplier_rows,1):
+        sid=row['supplier_id'].strip();code=row['code'].strip()
+        if not sid and not code: continue
+        if not sid.isdigit() or not code or len(code)>100:
+            return invalid(f'Fornitore {index}: seleziona il fornitore e inserisci il suo codice articolo (massimo 100 caratteri)')
+        key=(int(sid),code.lower())
+        if key in seen: return invalid(f'Fornitore {index}: questo codice è già presente nelle righe precedenti')
+        seen.add(key);rows.append((int(sid),code))
+    # Lock suppliers in a stable order, as other catalog writes do, before claiming vendor codes.
+    supplier_map={s.id:s for s in db.query(Supplier).filter(Supplier.id.in_([sid for sid,_ in rows]))
+                  .order_by(Supplier.id).with_for_update().all()} if rows else {}
+    links=[]
+    for sid,code in rows:
+        supplier=supplier_map.get(sid)
+        if not supplier or not supplier.is_active: return invalid('Uno dei fornitori non è più disponibile')
+        matches=db.query(SupplierArticle).filter(SupplierArticle.supplier_id==sid,
+                    func.lower(SupplierArticle.codice)==code.lower()).all()
+        if len(matches)>1 or (matches and matches[0].magazzino_item_id is not None):
+            return invalid(f'{supplier.name}: il codice {code} è già associato o ambiguo. Apri l’articolo esistente oppure correggi il codice.',409)
+        links.append(matches[0] if matches else SupplierArticle(supplier_id=sid,codice=code,
+                     descrizione=nome.strip(),unita=unita_misura))
     item = MagazzinoItem(
         nome=nome.strip(),
         unita_misura=unita_misura,
@@ -2896,6 +2948,11 @@ def manager_magazzino_create(
     )
     db.add(item)
     db.flush()
+    for link in links:
+        link.magazzino_item_id=item.id
+        db.add(link);db.flush()
+        _log_audit(db,current_user,'SUPPLIER_ARTICLE_LINK','supplier_article',link.id,
+                   {'item_id':item.id,'supplier_id':link.supplier_id,'code':link.codice})
 
     _log_audit(
         db,
