@@ -83,3 +83,18 @@ def test_coupe_rejects_overlapping_assignments_atomically(operations):
     assert response.status_code==400
     o['db'].expire_all()
     assert o['db'].query(SiteCoupeAssignment).one().coupe_id==original
+
+
+def test_alternative_excavation_level_controls_depth(operations):
+    o=operations;c,url,pid,plan=setup(o)
+    route=f'/manager/cantieri/{o["site"].id}/configurazione-progetto'
+    data={'coupe_nome':'Coupe ribassata','coupe_quota_tn':'25','coupe_quota_testa':'24',
+          'coupe_scavo_da_tn':'0','coupe_quota_partenza_scavo':'23','coupe_quota_fondo_teorica':'8',
+          'coupe_paratie':'1'}
+    assert c.post(route,data=data,follow_redirects=False).status_code==303
+    o['db'].expire_all();coupe=o['db'].query(SiteCoupe).one()
+    assert coupe.profondita_teorica==15
+    data.update(coupe_id=str(coupe.id),coupe_profondita_teorica='17')
+    assert c.post(route,data=data).status_code==400
+    o['db'].expire_all()
+    assert coupe.profondita_teorica==15

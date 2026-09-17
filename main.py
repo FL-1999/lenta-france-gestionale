@@ -5296,6 +5296,9 @@ def _sync_site_coupes_from_form(
             and coupe.profondita_teorica is not None
         ):
             coupe.quota_fondo_teorica = round(origin - coupe.profondita_teorica, 6)
+        if origin is not None and coupe.quota_fondo_teorica is not None and coupe.profondita_teorica is not None:
+            if abs((origin - coupe.quota_fondo_teorica) - coupe.profondita_teorica) > 0.02:
+                raise HTTPException(400, f"{name}: profondità e quote non coincidono. La profondità è la quota di partenza scavo meno la quota fondo.")
         coupe.quota_testa_getto_prevista = _optional_float_from_form(value(coupe_quota_testa_getto_prevista, index))
         _validate_quota_testa_getto_not_above_tn(coupe.quota_testa_getto_prevista, quota_tn=coupe.quota_tn)
         coupe.type_beton = value(coupe_type_beton, index).strip() or None
