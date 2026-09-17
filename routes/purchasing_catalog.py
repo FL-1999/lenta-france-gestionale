@@ -48,7 +48,12 @@ def item_card(item_id:int,request:Request,db:Session=Depends(get_db),current_use
     if not can_access_warehouse_area(current_user): raise HTTPException(403,'Permessi insufficienti')
     item=db.get(MagazzinoItem,item_id)
     if not item: raise HTTPException(404,'Articolo non trovato')
+    return _render_item_card(request,db,current_user,item)
+
+
+def _render_item_card(request,db,current_user,item,*,error_message=None,supplier_form=None,status_code=200):
     return render_template(templates,request,'manager/magazzino/item_card.html',{
+        'error_message':error_message,'supplier_form':supplier_form or {},
         'item':item,'can_edit_catalog':has_perm(current_user,'manager.access'),
         'can_handle_stock':can_manage_warehouse_requests(current_user),
         'can_edit_location':has_perm(current_user,'manager.access') or has_perm(current_user,'inventory.manage'),
@@ -57,7 +62,7 @@ def item_card(item_id:int,request:Request,db:Session=Depends(get_db),current_use
         'supplier_articles':db.query(SupplierArticle).options(joinedload(SupplierArticle.supplier)).filter_by(magazzino_item_id=item.id).all(),
         'suppliers':db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name).all(),
         'movements':db.query(MagazzinoMovimento).filter_by(item_id=item.id).order_by(MagazzinoMovimento.id.desc()).limit(50).all(),
-    },db,current_user)
+    },db,current_user,status_code=status_code)
 
 
 @router.post('/manager/magazzino/items/{item_id}/posizione',name='warehouse_item_location_save')
@@ -86,15 +91,20 @@ def link_supplier(item_id:int,request:Request,supplier_id:int=Form(...),code:str
     manager(current_user)
     supplier=db.query(Supplier).filter_by(id=supplier_id).with_for_update().first()
     item=db.get(MagazzinoItem,item_id)
-    if not supplier or not supplier.is_active or not item or not item.attivo:
-        raise HTTPException(400,'Fornitore o articolo non disponibile')
+    if not item: raise HTTPException(404,'Articolo non trovato')
+    def invalid(message,status=400):
+        db.rollback()
+        return _render_item_card(request,db,current_user,item,error_message=message,
+                                 supplier_form={'supplier_id':supplier_id,'code':code},status_code=status)
+    if not supplier or not supplier.is_active or not item.attivo:
+        return invalid('Fornitore o articolo non disponibile')
     code=code.strip()
-    if not code or len(code)>100: raise HTTPException(400,'Codice fornitore non valido')
+    if not code or len(code)>100: return invalid('Codice fornitore non valido')
     matches=db.query(SupplierArticle).filter(SupplierArticle.supplier_id==supplier_id,func.lower(SupplierArticle.codice)==code.lower()).all()
-    if len(matches)>1: raise HTTPException(409,'Esistono più codici storici equivalenti: correggi il catalogo prima di collegarli')
+    if len(matches)>1: return invalid('Esistono più codici storici equivalenti: correggi il catalogo prima di collegarli',409)
     article=matches[0] if matches else None
     if article and article.magazzino_item_id not in (None,item_id):
-        raise HTTPException(409,'Questo codice fornitore è già collegato a un altro articolo interno')
+        return invalid('Questo codice fornitore è già collegato a un altro articolo interno',409)
     if not article:
         article=SupplierArticle(supplier_id=supplier_id,codice=code,descrizione=item.nome,unita=item.unita_misura)
     article.magazzino_item_id=item_id;db.add(article);db.flush()

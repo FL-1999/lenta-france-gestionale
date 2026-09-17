@@ -566,6 +566,20 @@ def _render_order_form(
             "new_macro_name": "",
             "lines": [{"description": "", "qty_ordered": "", "magazzino_item_id": ""}],
         }
+        item_id = request.query_params.get('item_id', '')
+        selected_item = next((item for item in magazzino_items if str(item.id) == item_id), None)
+        if selected_item:
+            vendor_code = ''
+            supplier_id = form_data['supplier_id']
+            if any(str(s.id) == supplier_id for s in suppliers):
+                codes = db.query(SupplierArticle).filter_by(
+                    supplier_id=int(supplier_id), magazzino_item_id=selected_item.id).all()
+                requested_code = request.query_params.get('supplier_article_id', '')
+                selected_code = next((a for a in codes if str(a.id) == requested_code), None)
+                if selected_code or len(codes) == 1:
+                    vendor_code = (selected_code or codes[0]).codice
+            form_data['lines'] = [{'description': selected_item.nome, 'qty_ordered': '',
+                                  'magazzino_item_id': str(selected_item.id), 'codice': vendor_code}]
     return render_template(
         templates,
         request,

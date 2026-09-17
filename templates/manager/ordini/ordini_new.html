@@ -72,7 +72,7 @@
 
   <section class="card"><div class="card-body">
     <h3>4) {{ t('Articoli dell’ordine', 'Articles de la commande') }}</h3>
-    <p class="text-muted">{{ t('Ogni articolo ha la propria categoria. Le quantità seguono l’unità indicata, senza conversione di confezioni.', 'Chaque article a sa propre catégorie. Quantités dans l’unité indiquée, sans conversion de conditionnement.') }}</p>
+    <p class="text-muted">{{ t('Cerca l’articolo per codice interno o nome, oppure usa un codice fornitore già collegato. Quantità nell’unità indicata, senza conversione di confezioni.', 'Recherchez l’article par code interne ou nom, ou utilisez un code fournisseur déjà associé. Quantités dans l’unité indiquée, sans conversion de conditionnement.') }}</p>
     <datalist id="supplier-codes-list"></datalist>
     <div id="order-lines">{% for line in form_data.lines %}{% include 'manager/ordini/_order_line.html' %}{% endfor %}</div>
     <template id="blank-order-line">{% set line = {} %}{% include 'manager/ordini/_order_line.html' %}</template>
@@ -198,17 +198,35 @@ async function loadArticles(clearCodes = false) {
     if (supplierSelect.value !== sid) return;
     articles = data.articoli || [];
     articles.forEach(a => list.appendChild(new Option((a.internal_code || '') + ' · ' + (a.descrizione || ''), a.codice)));
+    if (clearCodes) body.querySelectorAll('[data-order-line]').forEach(row => {
+      const matches = articles.filter(a => String(a.magazzino_item_id) === row.querySelector('[name=magazzino_item_id]').value);
+      if (matches.length === 1) row.querySelector('[data-codice]').value = matches[0].codice;
+    });
   } catch (_) { /* Server validation remains authoritative when suggestions are unavailable. */ }
 }
 supplierSelect.addEventListener('change', () => loadArticles(true));
 loadArticles();
 body.addEventListener('input', e => {
+  if (e.target.matches('[data-item-search]')) {
+    const select = e.target.closest('[data-order-line]').querySelector('[name=magazzino_item_id]');
+    const query = e.target.value.trim().toLocaleLowerCase();
+    Array.from(select.options).forEach(option => {
+      option.hidden = !!option.dataset.name && !option.textContent.toLocaleLowerCase().includes(query) && !option.selected;
+    });
+    return;
+  }
   if (!e.target.matches('[data-codice]')) return;
   const match = articles.find(a => a.codice.toLowerCase() === e.target.value.trim().toLowerCase());
   if (!match) return;
   const row = e.target.closest('[data-order-line]');
-  if (match.magazzino_item_id) row.querySelector('[name=magazzino_item_id]').value = String(match.magazzino_item_id);
-  if (!row.querySelector('[data-desc]').value) row.querySelector('[data-desc]').value = match.descrizione || row.querySelector('[name=magazzino_item_id]').selectedOptions[0]?.dataset.name || '';
+  const select = row.querySelector('[name=magazzino_item_id]');
+  const changed = match.magazzino_item_id && select.value !== String(match.magazzino_item_id);
+  if (match.magazzino_item_id) {
+    select.value = String(match.magazzino_item_id);
+    row.querySelector('[data-item-search]').value = '';
+    Array.from(select.options).forEach(option => option.hidden = false);
+  }
+  if (changed || !row.querySelector('[data-desc]').value) row.querySelector('[data-desc]').value = match.descrizione || row.querySelector('[name=magazzino_item_id]').selectedOptions[0]?.dataset.name || '';
   updateRow(row);
 });
 body.addEventListener('change', e => {
@@ -217,7 +235,15 @@ body.addEventListener('change', e => {
   const selected = e.target.selectedOptions[0];
   if (selected.dataset.name) row.querySelector('[data-desc]').value = selected.dataset.name;
   const matches = articles.filter(a => String(a.magazzino_item_id) === e.target.value);
-  if (matches.length === 1) row.querySelector('[data-codice]').value = matches[0].codice;
+  const codeInput = row.querySelector('[data-codice]');
+  if (matches.length === 1) {
+    codeInput.value = matches[0].codice;
+  } else {
+    const previous = articles.find(a => a.codice.toLowerCase() === codeInput.value.trim().toLowerCase());
+    // Keep a newly typed vendor code when choosing 'Create article'. Only clear
+    // a known code that would point to a different internal article.
+    if (previous?.magazzino_item_id && String(previous.magazzino_item_id) !== e.target.value) codeInput.value = '';
+  }
   updateRow(row);
 });
 </script>

@@ -1,3 +1,4 @@
+{% from 'shared/workspace_icons.html' import icon %}
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
 
@@ -9,7 +10,7 @@
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">{% if lang == 'fr' %}ERP{% else %}ERP{% endif %}</p>
-        <h1 class="page-title">🗄️ {% if lang == 'fr' %}Articles archivés{% else %}Articoli archiviati{% endif %}</h1>
+        <h1 class="page-title">{{ icon('box') }} {% if lang == 'fr' %}Articles archivés{% else %}Articoli archiviati{% endif %}</h1>
         <p class="page-subtitle">
             {% if lang == 'fr' %}
                 Liste des articles désactivés du magasin.

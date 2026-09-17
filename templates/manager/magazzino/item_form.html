@@ -1,109 +1,42 @@
 {% extends "shared/base.html" %}
-{% set lang = request.cookies.get('lang', 'it') %}
+{% from 'shared/workspace_icons.html' import icon %}
 {% set is_edit = item is not none %}
-
-{% block title %}
-    {% if lang == 'fr' %}
-        {% if is_edit %}Modifier article{% else %}Nouvel article{% endif %}
-    {% else %}
-        {% if is_edit %}Modifica articolo{% else %}Nuovo articolo{% endif %}
-    {% endif %}
-{% endblock %}
-
-{% block content %}
-<div class="page-header">
-    <div class="page-header-main">
-        <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
-        <h1 class="page-title">
-            📦
-            {% if lang == 'fr' %}
-                {% if is_edit %}Modifier article{% else %}Nouvel article{% endif %}
-            {% else %}
-                {% if is_edit %}Modifica articolo{% else %}Nuovo articolo{% endif %}
-            {% endif %}
-        </h1>
-        <p class="page-subtitle">
-            {% if lang == 'fr' %}
-                Renseignez les informations principales de l'article.
-            {% else %}
-                Compila le informazioni principali dell'articolo.
-            {% endif %}
-        </p>
-    </div>
-    <div class="header-actions">
-        <a href="{{ url_for('manager_magazzino_home') }}" class="btn btn-secondary">
-            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
-        </a>
-    </div>
+{% set values = item if is_edit else form_data|default({}) %}
+{% macro field(name,it,fr,type='text',required=false) %}<label class="vehicle-field">{{ t(it,fr) }}{{ ' *' if required else '' }}<input name="{{ name }}" type="{{ type }}" value="{{ values[name] if values[name] is defined and values[name] is not none else '' }}" {% if required %}required{% endif %} {% if type == 'number' %}min="0" step="0.01"{% endif %}></label>{% endmacro %}
+{% macro supplier_row(row={}) %}
+<div class="article-supplier-row" data-supplier-row>
+  <label class="vehicle-field">{{ t('Fornitore','Fournisseur') }}<select name="supplier_ids"><option value="">{{ t('Seleziona fornitore','Sélectionner un fournisseur') }}</option>{% for s in suppliers %}<option value="{{ s.id }}" {% if row.supplier_id|default('') == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></label>
+  <label class="vehicle-field">{{ t('Codice articolo del fornitore','Code article du fournisseur') }}<input name="supplier_codes" maxlength="100" value="{{ row.code or '' }}" placeholder="{{ t('Es. 2CLC3','Ex. 2CLC3') }}"></label>
+  <button class="btn btn-secondary" type="button" data-remove-supplier>{{ icon('close') }} {{ t('Rimuovi','Retirer') }}</button>
 </div>
-
-<form method="post" action="{{ url_for(form_action, item_id=item.id) if is_edit else url_for(form_action) }}">
-    <div class="card large-form-card">
-        <div class="card-body">
-            <div class="vehicle-fields">
-                <label class="vehicle-field">{{ t('Unità di misura','Unité de mesure') }}{% if item %}<input value="{{ item.unita_misura }}" readonly>{% else %}<select name="unita_misura">{% for unit in ['pz','kg','m','m2','m3','l'] %}<option value="{{ unit }}">{{ unit }}</option>{% endfor %}</select>{% endif %}</label>
-                <div class="vehicle-field">
-                    <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
-                    <input type="text" name="nome" value="{{ item.nome if item else '' }}" required>
-                </div>
-                <div class="vehicle-field">
-                    <label>{% if lang == 'fr' %}Code article{% else %}Codice articolo{% endif %}*</label>
-                    {% if item %}<input name="codice" value="{{ item.codice or '' }}" readonly>{% else %}<input type="hidden" name="codice" value=""><p>{{ t('Generato automaticamente al salvataggio (6 cifre).','Généré automatiquement à l’enregistrement (6 chiffres).') }}</p>{% endif %}
-                </div>
-                <div class="vehicle-field">
-                    <label>{% if lang == 'fr' %}Macro catégorie{% else %}Macro categoria{% endif %}</label>
-                    {% if item %}
-                        {% set categoria_value = item.categoria_id %}
-                    {% else %}
-                        {% set categoria_value = default_categoria_id %}
-                    {% endif %}
-                    <select name="categoria_id">
-                        <option value="">{% if lang == 'fr' %}Sans catégorie{% else %}Senza categoria{% endif %}</option>
-                        {% for categoria in categorie %}
-                            {% if categoria.id is not none %}
-                                <option value="{{ categoria.id }}"
-                                        {% if categoria_value == categoria.id %}selected{% endif %}>
-                                    {{ categoria.nome }}
-                                </option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="vehicle-field">
-                    <label>{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</label>
-                    <input type="number" name="quantita_disponibile" step="0.01" min="0" value="{{ item.quantita_disponibile if item else '' }}">
-                </div>
-                <div class="vehicle-field">
-                    <label>{% if lang == 'fr' %}Seuil minimum{% else %}Soglia minima{% endif %}</label>
-                    <input type="number" name="soglia_minima" step="0.01" min="0" value="{{ item.soglia_minima if item and item.soglia_minima is not none else '' }}">
-                </div>
-                <div class="vehicle-field">
-                    <label>{% if lang == 'fr' %}Coût unitaire (€){% else %}Costo unitario (€){% endif %}</label>
-                    <input type="number" name="costo_unitario" step="0.01" min="0" value="{{ item.costo_unitario if item and item.costo_unitario is not none else '' }}" placeholder="0.00">
-                </div>
-            </div>
-
-            <div class="vehicle-field">
-                <label>{% if lang == 'fr' %}Description{% else %}Descrizione{% endif %}</label>
-                <textarea name="descrizione">{{ item.descrizione if item else '' }}</textarea>
-            </div>
-
-            <div class="vehicle-field">
-                <label class="checkbox">
-                    <input type="checkbox" name="attivo" {% if item is none or item.attivo %}checked{% endif %}>
-                    <span>{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
-                </label>
-            </div>
-
-            <div class="form-actions">
-                <a href="{{ url_for('manager_magazzino_home') }}" class="btn btn-secondary">
-                    {% if lang == 'fr' %}Annuler{% else %}Annulla{% endif %}
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
-                </button>
-            </div>
-        </div>
-    </div>
+{% endmacro %}
+{% block title %}{{ t('Modifica articolo','Modifier l’article') if is_edit else t('Nuovo articolo','Nouvel article') }}{% endblock %}
+{% block content %}
+<header class="page-header"><div class="page-header-main"><p class="page-eyebrow">{{ t('Magazzino','Magasin') }}</p><h1 class="page-title">{{ t('Modifica articolo','Modifier l’article') if is_edit else t('Nuovo articolo','Nouvel article') }}</h1></div><div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) if is_edit else url_for('manager_magazzino_home') }}">{{ t('Indietro','Retour') }}</a></div></header>
+{% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
+<form method="post" id="warehouse-item-form" class="warehouse-editor" action="{{ url_for(form_action,item_id=item.id) if is_edit else url_for(form_action) }}">
+<section class="card"><div class="card-body"><h2>{{ icon('box') }} {{ t('Articolo e classificazione','Article et classification') }}</h2>
+<div class="vehicle-fields">
+  {{ field('nome','Nome articolo','Nom de l’article',required=true) }}
+  <label class="vehicle-field">{{ t('Codice interno','Code interne') }}{% if is_edit %}<input name="codice" value="{{ item.codice }}" readonly>{% else %}<input type="hidden" name="codice" value=""><input value="{{ t('Automatico al salvataggio','Automatique à l’enregistrement') }}" readonly aria-label="{{ t('Codice interno automatico','Code interne automatique') }}">{% endif %}</label>
+  <label class="vehicle-field">{{ t('Macro / categoria','Macro / catégorie') }}<select name="categoria_id"><option value="">{{ t('Da classificare','À classer') }}</option>{% set selected = values.categoria_id|default(default_categoria_id)|string %}{% for categoria in categorie %}{% if categoria.id is not none %}<option value="{{ categoria.id }}" {% if selected == categoria.id|string %}selected{% endif %}>{{ categoria.macro.name ~ ' / ' if categoria.macro else '' }}{{ categoria.nome }}</option>{% endif %}{% endfor %}</select></label>
+  <label class="vehicle-field">{{ t('Unità di misura','Unité de mesure') }}{% if is_edit %}<input value="{{ item.unita_misura }}" readonly>{% else %}<select name="unita_misura">{% for unit in ['pz','kg','m','m2','m3','l'] %}<option value="{{ unit }}" {% if values.unita_misura == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select>{% endif %}</label>
+</div>
+<label class="vehicle-field">{{ t('Descrizione','Description') }}<textarea name="descrizione" rows="3">{{ values.descrizione or '' }}</textarea></label>
+</div></section>
+<section class="card"><div class="card-body"><h2>{{ icon('chart') }} {{ t('Giacenza e riordino','Stock et réapprovisionnement') }}</h2><div class="vehicle-fields">
+  {{ field('quantita_disponibile','Quantità disponibile' if is_edit else 'Giacenza iniziale','Quantité disponible' if is_edit else 'Stock initial','number') }}
+  {{ field('soglia_minima','Soglia minima','Seuil minimum','number') }}
+  {{ field('costo_unitario','Costo unitario (€)','Coût unitaire (€)','number') }}
+</div><label class="warehouse-checkbox"><input name="attivo" type="checkbox" {% if values.attivo|default(true) %}checked{% endif %}> {{ t('Articolo attivo','Article actif') }}</label></div></section>
+{% if not is_edit %}
+<section class="card" id="initial-suppliers"><div class="card-body"><div class="warehouse-section-heading"><h2>{{ icon('users') }} {{ t('Fornitori e codici','Fournisseurs et codes') }}</h2><span class="text-muted">{{ t('Facoltativo','Facultatif') }}</span></div>
+<p class="text-muted">{{ t('Uno stesso articolo interno può avere più fornitori, ciascuno con il proprio codice. Puoi aggiungerli anche dopo dalla scheda articolo.','Un même article interne peut avoir plusieurs fournisseurs, chacun avec son code. Vous pouvez aussi les ajouter plus tard depuis la fiche article.') }}</p>
+<div id="article-suppliers">{% for row in supplier_rows|default([]) %}{{ supplier_row(row) }}{% endfor %}</div>
+<div class="form-actions"><button class="btn btn-secondary" type="button" id="add-article-supplier">{{ icon('plus') }} {{ t('Aggiungi fornitore','Ajouter un fournisseur') }}</button></div>
+</div></section>
+{% else %}<section class="card"><div class="card-body warehouse-section-heading"><h2>{{ icon('users') }} {{ t('Fornitori e codici','Fournisseurs et codes') }}</h2><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) }}#fornitori">{{ t('Gestisci dalla scheda articolo','Gérer depuis la fiche article') }} {{ icon('arrow') }}</a></div></section>{% endif %}
+<div class="form-actions warehouse-save"><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) if is_edit else url_for('manager_magazzino_home') }}">{{ t('Annulla','Annuler') }}</a><button class="btn btn-primary" type="submit">{{ t('Salva','Enregistrer') }}</button></div>
 </form>
+{% if not is_edit %}<template id="article-supplier-template">{{ supplier_row() }}</template><script src="/static/js/warehouse-item-suppliers.js?v=20260917r7" defer></script>{% endif %}
 {% endblock %}
