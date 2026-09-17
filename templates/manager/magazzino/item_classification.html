@@ -1,0 +1,22 @@
+{% extends 'shared/base.html' %}
+{% block title %}{{ t('Classifica articolo','Classer l’article') }}{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>{{ t('Classifica articolo','Classer l’article') }}</h1><p>{{ item.codice }} · {{ item.nome }}</p></div></header>
+<form class="warehouse-editor" id="classification-form" method="post" action="{{ url_for('warehouse_item_classification_save',item_id=item.id) }}">
+<section class="card"><div class="card-body">
+{% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
+<p>{{ t('Categoria attuale','Catégorie actuelle') }}: <strong>{{ (item.categoria.macro.name ~ ' / ' if item.categoria.macro else '') ~ item.categoria.nome if item.categoria else t('Da classificare','À classer') }}</strong></p>
+<div class="vehicle-fields">
+<label class="vehicle-field">{{ t('Operazione','Opération') }}<select name="mode"><option value="existing" {% if values.mode=='existing' %}selected{% endif %}>{{ t('Scegli una categoria esistente','Choisir une catégorie existante') }}</option><option value="new" {% if values.mode=='new' %}selected{% endif %}>{{ t('Crea una nuova categoria','Créer une nouvelle catégorie') }}</option><option value="none" {% if values.mode=='none' %}selected{% endif %}>{{ t('Lascia senza categoria','Laisser sans catégorie') }}</option></select></label>
+</div>
+<div data-classification-mode="existing"><label class="vehicle-field">{{ t('Categoria di destinazione','Catégorie de destination') }}<select name="category_id"><option value="">{{ t('Seleziona','Sélectionner') }}</option>{% for category in categories %}<option value="{{ category.id }}" {% if values.category_id|string==category.id|string %}selected{% endif %}>{{ category.macro.name ~ ' / ' if category.macro else '' }}{{ category.nome }}</option>{% endfor %}</select></label></div>
+<div data-classification-mode="new"><div class="vehicle-fields">
+<label class="vehicle-field">{{ t('Nome nuova categoria','Nom de la nouvelle catégorie') }}<input name="category_name" maxlength="255" value="{{ values.category_name or '' }}"></label>
+<label class="vehicle-field">{{ t('Macro di destinazione','Macro de destination') }}<select name="macro_id"><option value="">{{ t('Seleziona','Sélectionner') }}</option>{% for macro in macros %}<option value="{{ macro.id }}" {% if values.macro_id|string==macro.id|string %}selected{% endif %}>{{ macro.name }}</option>{% endfor %}<option value="__new__" {% if values.macro_id=='__new__' %}selected{% endif %}>{{ t('Crea nuova macro','Créer une macro') }}</option></select></label>
+<div data-new-macro><label class="vehicle-field">{{ t('Nome nuova macro','Nom de la nouvelle macro') }}<input name="macro_name" maxlength="120" value="{{ values.macro_name or '' }}"></label></div>
+</div></div>
+<p class="text-muted">{{ t('Codice interno, giacenza, fornitori e storico restano associati allo stesso articolo.','Le code interne, le stock, les fournisseurs et l’historique restent associés au même article.') }}</p>
+<div class="form-actions"><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ t('Annulla','Annuler') }}</a><button class="btn btn-primary" type="submit">{{ t('Salva classificazione','Enregistrer la classification') }}</button></div>
+</div></section></form>
+{% endblock %}
+{% block scripts %}<script src="/static/js/warehouse-classification.js?v=20260917r12" defer></script>{% endblock %}

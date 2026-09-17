@@ -138,3 +138,79 @@ def link_purchase_line(order_id:int,line_id:int,request:Request,item_id:int=Form
     log_audit_event(db,current_user,'PURCHASE_LINE_LINK','purchase_order_line',line.id,{'item_id':item.id})
     db.commit()
     return RedirectResponse(request.url_for('manager_ordini_detail',order_id=order.id),303)
+
+
+def _classification_form(request, db, user, item, values=None, error=None, status=200):
+    from models import MagazzinoCategoria, MagazzinoMacro
+    return render_template(templates, request, 'manager/magazzino/item_classification.html', {
+        'item': item, 'error_message': error,
+        'values': values if values is not None else {'mode': 'existing', 'category_id': str(item.categoria_id or '')},
+        'categories': db.query(MagazzinoCategoria).options(joinedload(MagazzinoCategoria.macro)).filter_by(attiva=True).order_by(MagazzinoCategoria.nome).all(),
+        'macros': db.query(MagazzinoMacro).order_by(MagazzinoMacro.name).all(),
+    }, db, user, status_code=status)
+
+
+@router.get('/manager/magazzino/items/{item_id}/classificazione', name='warehouse_item_classification')
+def item_classification(item_id: int, request: Request, db: Session = Depends(get_db),
+                        current_user: User = Depends(get_current_active_user_html)):
+    manager(current_user)
+    item = db.get(MagazzinoItem, item_id)
+    if not item: raise HTTPException(404, 'Articolo non trovato')
+    return _classification_form(request, db, current_user, item)
+
+
+@router.post('/manager/magazzino/items/{item_id}/classificazione', name='warehouse_item_classification_save')
+def save_classification(item_id: int, request: Request, mode: str = Form('existing'),
+        category_id: str = Form(''), macro_id: str = Form(''), category_name: str = Form(''),
+        macro_name: str = Form(''), db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_active_user_html)):
+    from models import MagazzinoCategoria, MagazzinoMacro
+    from sqlalchemy.exc import IntegrityError
+    from template_context import get_lang_from_request, invalidate_manager_badges_cache
+    from uuid import uuid4
+    manager(current_user)
+    item = db.query(MagazzinoItem).filter_by(id=item_id).populate_existing().with_for_update().first()
+    if not item: raise HTTPException(404, 'Articolo non trovato')
+    values = dict(mode=mode, category_id=category_id, macro_id=macro_id,
+                  category_name=category_name, macro_name=macro_name)
+    fr = get_lang_from_request(request) == 'fr'
+    def fail(it, french):
+        raise ValueError(french if fr else it)
+    try:
+        previous = item.categoria_id
+        category = None
+        if mode == 'existing':
+            category = db.query(MagazzinoCategoria).filter_by(id=int(category_id) if category_id.isdigit() else 0, attiva=True).with_for_update().first()
+            if not category: fail('Seleziona una categoria attiva.', 'Sélectionnez une catégorie active.')
+        elif mode == 'new':
+            name = category_name.strip()
+            if not name or len(name)>255: fail('Inserisci un nome categoria (massimo 255 caratteri).', 'Indiquez un nom de catégorie (255 caractères maximum).')
+            if db.query(MagazzinoCategoria.id).filter(func.lower(MagazzinoCategoria.nome)==name.lower()).first():
+                fail('Esiste già una categoria con questo nome: selezionala tra quelle esistenti.', 'Cette catégorie existe déjà : sélectionnez-la dans la liste.')
+            if macro_id == '__new__':
+                macro_title = macro_name.strip()
+                if not macro_title or len(macro_title)>120: fail('Inserisci un nome macro (massimo 120 caratteri).', 'Indiquez un nom de macro (120 caractères maximum).')
+                if db.query(MagazzinoMacro.id).filter(func.lower(MagazzinoMacro.name)==macro_title.lower()).first():
+                    fail('Questa macro esiste già: selezionala dalla lista.', 'Cette macro existe déjà : sélectionnez-la dans la liste.')
+                macro = MagazzinoMacro(name=macro_title)
+                db.add(macro); db.flush()
+                log_audit_event(db,current_user,'MACRO_CREATE','MagazzinoMacro',macro.id,{'name':macro.name})
+            else:
+                macro = db.query(MagazzinoMacro).filter_by(id=int(macro_id) if macro_id.isdigit() else 0).with_for_update().first()
+                if not macro: fail('Seleziona una macro o creane una nuova.', 'Sélectionnez une macro ou créez-en une.')
+            category = MagazzinoCategoria(nome=name, slug='categoria-'+uuid4().hex, macro_id=macro.id,
+                                         attiva=True, icon=macro.icon, color=macro.color)
+            db.add(category); db.flush()
+            log_audit_event(db,current_user,'CATEGORIA_CREATE','MagazzinoCategoria',category.id,{'nome':name,'macro_id':macro.id})
+        elif mode != 'none':
+            fail('Scegli una modalità valida.', 'Choisissez une option valide.')
+        item.categoria_id = category.id if category else None
+        log_audit_event(db,current_user,'WAREHOUSE_CLASSIFICATION_SAVE','MagazzinoItem',item.id,
+                        {'before':previous,'after':item.categoria_id})
+        db.commit()
+    except (ValueError, IntegrityError) as exc:
+        db.rollback()
+        error = str(exc) if isinstance(exc,ValueError) else ('Classification modifiée entre-temps. Vérifiez les choix et réessayez.' if fr else 'La classificazione è cambiata nel frattempo. Verifica le scelte e riprova.')
+        return _classification_form(request,db,current_user,item,values,error,400)
+    invalidate_manager_badges_cache()
+    return RedirectResponse(str(request.url_for('warehouse_item_card',item_id=item.id))+'?saved=classification',303)

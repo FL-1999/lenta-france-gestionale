@@ -3075,6 +3075,9 @@ def manager_magazzino_update(
         if nuova_quantita is None or nuova_quantita < 0:
             raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
+        selected_category_id = _parse_categoria_id(categoria_id)
+        if categoria_id and (selected_category_id is None or (selected_category_id != item.categoria_id and not db.query(MagazzinoCategoria).filter_by(id=selected_category_id, attiva=True).first())):
+            raise ValueError("Seleziona una categoria attiva valida.")
         item.nome = nome.strip()
         item.codice = codice.strip()
         item.descrizione = (descrizione or "").strip() or None
@@ -3856,38 +3859,59 @@ def manager_magazzino_item_riattiva(
     )
 
 
-@router.post(
-    "/manager/magazzino/items/{item_id}/delete-permanent",
-    response_class=HTMLResponse,
-    name="manager_magazzino_item_delete_permanent",
-)
+def _render_item_delete(request, db, user, item, *, error=None, status_code=200):
+    from utils.warehouse_articles import article_deletion_block
+    return render_template(templates, request, 'manager/magazzino/item_delete.html', {
+        'item': item, 'delete_block': article_deletion_block(db, item), 'error_message': error,
+    }, db, user, status_code=status_code)
+
+
+@router.get('/manager/magazzino/items/{item_id}/elimina', name='warehouse_item_delete_confirm')
+def item_delete_confirm(item_id: int, request: Request, db: Session = Depends(get_db),
+                        current_user: User = Depends(get_current_active_user_html)):
+    ensure_magazzino_catalog_manager(current_user)
+    if not has_perm(current_user, 'records.delete'):
+        raise HTTPException(403, 'Permessi insufficienti')
+    item = db.get(MagazzinoItem, item_id)
+    if not item: raise HTTPException(404, 'Articolo non trovato')
+    return _render_item_delete(request, db, current_user, item)
+
+
+@router.post('/manager/magazzino/items/{item_id}/delete-permanent',
+             response_class=HTMLResponse, name='manager_magazzino_item_delete_permanent')
 def manager_magazzino_item_delete_permanent(
-    item_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user_html),
+    item_id: int, request: Request, confirmed: bool = Form(False),
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user_html),
 ):
+    from utils.warehouse_articles import article_deletion_block
     ensure_magazzino_catalog_manager(current_user)
     ensure_magazzino_access(current_user)
-    if not has_perm(current_user, "records.delete"):
-        raise HTTPException(status_code=403, detail="Permessi insufficienti")
-
-    item = db.query(MagazzinoItem).filter(MagazzinoItem.id == item_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Articolo non trovato")
-    if (item.quantita_disponibile or 0) != 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Puoi eliminare definitivamente solo articoli con quantità 0.",
-        )
-
-    db.delete(item)
-    db.commit()
+    if not has_perm(current_user, 'records.delete'):
+        raise HTTPException(403, 'Permessi insufficienti')
+    item = db.query(MagazzinoItem).filter_by(id=item_id).populate_existing().with_for_update().first()
+    if not item: raise HTTPException(404, 'Articolo non trovato')
+    if not confirmed:
+        message = "Confirmez la suppression avant de continuer." if get_lang_from_request(request)=='fr' else "Conferma l’eliminazione prima di continuare."
+        return _render_item_delete(request, db, current_user, item, error=message, status_code=400)
+    blocked = article_deletion_block(db, item)
+    if blocked:
+        return _render_item_delete(request, db, current_user, item, status_code=400 if blocked=='stock' else 409)
+    was_active = item.attivo
+    try:
+        supplier_ids = [row.id for row in db.query(SupplierArticle).filter_by(magazzino_item_id=item_id).all()]
+        db.query(SupplierArticle).filter_by(magazzino_item_id=item_id).update(
+            {SupplierArticle.magazzino_item_id: None}, synchronize_session='fetch')
+        _log_audit(db, current_user, 'MAGAZZINO_ITEM_DELETE', 'MagazzinoItem', item_id,
+                   {'codice': item.codice, 'nome': item.nome, 'supplier_articles_detached': supplier_ids})
+        db.delete(item)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        message = "L’article vient d’être utilisé. Suppression annulée." if get_lang_from_request(request)=='fr' else "L’articolo è stato utilizzato nel frattempo. Eliminazione annullata."
+        return _render_item_delete(request, db, current_user, item, error=message, status_code=409)
     _invalidate_magazzino_cache()
-    return RedirectResponse(
-        url=request.url_for("manager_magazzino_archiviati"),
-        status_code=303,
-    )
+    target = 'manager_magazzino_home' if was_active else 'manager_magazzino_archiviati'
+    return RedirectResponse(request.url_for(target), 303)
 
 
 @router.get(
