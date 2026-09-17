@@ -5,6 +5,41 @@ from models import Base, MagazzinoItem, MagazzinoCategoria, MagazzinoMacro, Maga
 from database import ensure_model_columns
 
 
+def test_empty_catalog_can_create_macro_and_category_without_order(operations):
+    from models import PurchaseOrder
+    o=operations;db=o['db'];c=o['client'];o['actor'][0]=o['manager']
+    empty=c.get('/manager/magazzino/categorie/nuova')
+    assert empty.status_code==200 and 'Crea prima una macro' in empty.text
+    assert 'name="macro_id"' not in empty.text
+    for path in ['/manager/magazzino','/manager/magazzino/macros','/manager/magazzino/categorie']:
+        page=c.get(path)
+        assert page.status_code==200 and 'Nuova macro' in page.text and 'Nuova categoria' in page.text
+    assert c.post('/manager/magazzino/macro/nuova',data={'name':'Sollevamento'},follow_redirects=False).status_code==303
+    macro=db.query(MagazzinoMacro).filter_by(name='Sollevamento').one()
+    catalog=c.get('/manager/magazzino')
+    assert 'Sollevamento' in catalog.text
+    page=c.get('/manager/magazzino',params={'macro_id':macro.id})
+    assert f'categorie/nuova?macro_id={macro.id}' in page.text
+    form=c.get('/manager/magazzino/categorie/nuova',params={'macro_id':macro.id})
+    assert f'<option value="{macro.id}" selected>' in form.text
+    result=c.post('/manager/magazzino/categorie/nuova',data={'nome':'Catene','macro_id':macro.id,'attiva':'on'},follow_redirects=False)
+    assert result.status_code==303
+    category=db.query(MagazzinoCategoria).filter_by(nome='Catene').one()
+    assert category.macro_id==macro.id and category.attiva
+    assert 'Catene' in c.get('/manager/magazzino',params={'macro_id':macro.id}).text
+    assert db.query(PurchaseOrder).count()==db.query(MagazzinoItem).count()==db.query(MagazzinoMovimento).count()==0
+    duplicate=c.post('/manager/magazzino/macro/nuova',data={'name':'SOLLEVAMENTO','ordine':'3'})
+    assert duplicate.status_code==200 and 'Esiste già una macro' in duplicate.text
+    assert duplicate.context['macro'].ordine==3 and db.query(MagazzinoMacro).count()==1
+    duplicate_category=c.post('/manager/magazzino/categorie/nuova',data={'nome':'Catene','macro_id':macro.id,'ordine':'4','attiva':'on'})
+    assert 'Esiste già una categoria' in duplicate_category.text
+    assert duplicate_category.context['categoria'].nome=='Catene'
+    assert duplicate_category.context['categoria'].macro_id==str(macro.id)
+    o['actor'][0]=o['capo']
+    assert c.post('/manager/magazzino/macro/nuova',data={'name':'Vietato'}).status_code==403
+    assert c.post('/manager/magazzino/categorie/nuova',data={'nome':'Vietata','macro_id':macro.id}).status_code==403
+
+
 def test_optional_location_preserves_stock_and_permissions(operations):
     db,c,s,item,cat=setup(operations)
     item.quantita_disponibile=37;db.commit()

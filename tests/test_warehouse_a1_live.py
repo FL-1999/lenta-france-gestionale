@@ -8,6 +8,48 @@ from models import MagazzinoItem,MagazzinoCategoria,MagazzinoMacro,Supplier,Supp
 pytestmark=pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS')!='1',reason='Browser opt-in')
 
 
+def test_create_classification_from_empty_catalog(live_operations):
+    from models import PurchaseOrder, MagazzinoMovimento
+    origin,engine,ids,password,artifacts=live_operations
+    with sync_playwright() as pw:
+        browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        context=browser.new_context(viewport={'width':1440,'height':1000},reduced_motion='reduce')
+        page=context.new_page();errors=[]
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(origin+'/') else r.abort())
+        page.goto(origin+'/login');page.locator('#email').fill('smoke-manager@example.com');page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
+        page.goto(origin+'/manager/magazzino')
+        page.get_by_role('link',name='Nuova categoria',exact=True).click()
+        expect(page.get_by_text('Crea prima una macro',exact=False)).to_be_visible()
+        page.get_by_role('link',name='Nuova macro',exact=True).click()
+        page.get_by_label('Nome macro',exact=False).fill('Accessori sollevamento')
+        page.get_by_role('button',name='Salva',exact=True).click();page.wait_for_url('**/categorie')
+        page.locator('.macro-card').filter(has_text='Accessori sollevamento').get_by_role('link',name='Nuova categoria',exact=True).click()
+        expect(page.locator('#macro_id option:checked')).to_have_text('Accessori sollevamento')
+        page.get_by_label('Nome',exact=False).fill('Catene')
+        page.get_by_role('button',name='Salva',exact=True).click();page.wait_for_url('**/categorie')
+        expect(page.locator('.categoria-name')).to_contain_text('Catene')
+        page.goto(origin+'/manager/magazzino')
+        page.locator('.warehouse-macro').filter(has_text='Accessori sollevamento').click()
+        expect(page.locator('.warehouse-family')).to_contain_text('Catene')
+        page.get_by_role('link',name='Nuova categoria',exact=True).click()
+        expect(page.locator('#macro_id option:checked')).to_have_text('Accessori sollevamento')
+        for theme in ['light','dark']:
+            if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme-toggle').click()
+            for width in [1440,390]:
+                page.set_viewport_size({'width':width,'height':900})
+                for path,label in [('/manager/magazzino','catalog'),('/manager/magazzino/categorie','categories'),('/manager/magazzino/categorie/nuova','category-form'),('/manager/magazzino/macro/nuova','macro-form')]:
+                    page.goto(origin+path)
+                    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),(path,width)
+                    page.screenshot(path=str(artifacts/f'catalog-create-{label}-{theme}-{width}.png'),full_page=True)
+        assert not errors,errors
+        context.close();browser.close()
+    with Session(engine) as db:
+        assert db.query(MagazzinoMacro).count()==db.query(MagazzinoCategoria).count()==1
+        assert db.query(PurchaseOrder).count()==db.query(MagazzinoItem).count()==db.query(MagazzinoMovimento).count()==0
+
+
 def test_a1_catalog_location_themes_and_mobile(live_operations):
     origin,engine,ids,password,artifacts=live_operations
     with Session(engine) as db:

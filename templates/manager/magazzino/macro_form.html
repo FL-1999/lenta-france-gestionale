@@ -4,45 +4,46 @@
 {% set is_edit = macro is not none and macro.id is defined and macro.id %}
 
 {% block title %}
-    {{ title if title is defined else ('Modifica macro categoria' if is_edit else 'Nuova macro') }}
+    {{ t('Modifica macro','Modifier la macro') if is_edit else t('Nuova macro','Nouvelle macro') }}
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
-        <h1 class="page-title">{{ icon('grid') }} {{ title if title is defined else ('Modifica macro categoria' if is_edit else 'Nuova macro') }}</h1>
+        <h1 class="page-title">{{ icon('grid') }} {{ t('Modifica macro','Modifier la macro') if is_edit else t('Nuova macro','Nouvelle macro') }}</h1>
+        <p class="page-subtitle">{{ t('Crea un raggruppamento e aggiungi le categorie quando vuoi.','Créez un regroupement et ajoutez les catégories quand vous le souhaitez.') }}</p>
     </div>
 
 </div>
 
-<form method="post" action="{{ url_for(form_action, macro_id=macro.id) if is_edit else url_for(form_action) }}">
+<form class="warehouse-editor" method="post" action="{{ url_for(form_action, macro_id=macro.id) if is_edit else url_for(form_action) }}">
     <div class="card large-form-card">
         <div class="card-body">
-            {% if error_message %}<div class="form-error">{{ error_message }}</div>{% endif %}
+            {% if error_message %}<div class="form-error" role="alert">{{ error_message }}</div>{% endif %}
             <div class="form-grid-2">
                 <div class="form-field">
-                    <label>Nome macro*</label>
-                    <input type="text" name="name" value="{{ macro.name if macro else '' }}" required>
+                    <label for="macro-name">{{ t('Nome macro','Nom de la macro') }}*</label>
+                    <input id="macro-name" type="text" name="name" value="{{ macro.name if macro else '' }}" required>
                 </div>
                 <div class="form-field">
-                    <label>Ordine</label>
-                    <input type="number" name="ordine" value="{{ macro.ordine if macro else 0 }}" min="0">
+                    <label for="macro-order">{{ t('Posizione nell’elenco','Position dans la liste') }}</label>
+                    <input id="macro-order" type="number" name="ordine" value="{{ macro.ordine if macro else 0 }}" min="0">
                 </div>
             </div>
-            <div class="form-grid-2">
+            <details><summary>{{ t('Aspetto (facoltativo)','Apparence (facultatif)') }}</summary><div class="form-grid-2">
                 <div class="form-field">
-                    <label>Icona</label>
-                    <input type="text" name="icon" value="{{ macro.icon if macro else '' }}">
+                    <label for="macro-icon">{{ t('Icona','Icône') }}</label>
+                    <input id="macro-icon" type="text" name="icon" value="{{ (macro.icon or '') if macro else '' }}">
                 </div>
                 <div class="form-field">
-                    <label>Colore</label>
-                    <input type="text" name="color" value="{{ macro.color if macro else '' }}">
+                    <label for="macro-color">{{ t('Colore','Couleur') }}</label>
+                    <input id="macro-color" type="text" name="color" value="{{ (macro.color or '') if macro else '' }}">
                 </div>
-            </div>
+            </div></details>
             <div class="form-actions">
-                <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">Annulla</a>
-                <button type="submit" class="btn btn-primary">Salva</button>
+                <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">{{ t('Annulla','Annuler') }}</a>
+                <button type="submit" class="btn btn-primary">{{ t('Salva','Enregistrer') }}</button>
             </div>
         </div>
     </div>

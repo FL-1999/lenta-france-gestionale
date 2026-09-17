@@ -1927,13 +1927,19 @@ def manager_magazzino_categorie_create(
         .all()
     )
     nome_value = nome.strip()
+    try:
+        ordine_value = int(ordine or 0)
+    except ValueError:
+        ordine_value = 0
+    categoria_preview = SimpleNamespace(nome=nome_value, ordine=ordine_value,
+                                       attiva=attiva, macro_id=(macro_id or '').strip())
     if not nome_value:
         return render_template(
             templates,
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "categoria": None,
+                "categoria": categoria_preview,
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova categoria",
                 "error_message": "Il nome della categoria è obbligatorio.",
@@ -1957,7 +1963,7 @@ def manager_magazzino_categorie_create(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "categoria": None,
+                "categoria": categoria_preview,
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova categoria",
                 "error_message": "Esiste già una categoria con questo nome.",
@@ -1970,10 +1976,6 @@ def manager_magazzino_categorie_create(
             db,
             current_user,
         )
-    try:
-        ordine_value = int(ordine or 0)
-    except ValueError:
-        ordine_value = 0
     macro_value = (macro_id or "").strip()
     try:
         macro_id_int = int(macro_value)
@@ -1985,12 +1987,6 @@ def manager_magazzino_categorie_create(
         .first()
     )
     if not selected_macro:
-        categoria_preview = SimpleNamespace(
-            nome=nome_value,
-            ordine=ordine_value,
-            attiva=attiva,
-            macro_id=macro_value,
-        )
         return render_template(
             templates,
             request,
@@ -2047,7 +2043,7 @@ def manager_magazzino_categorie_create(
             request,
             "manager/magazzino/categorie_form.html",
             {
-                "categoria": None,
+                "categoria": categoria_preview,
                 "form_action": "manager_magazzino_categorie_create",
                 "title": "Nuova categoria",
                 "error_message": _magazzino_error_message(lang, "operazione_fallita"),
@@ -2116,12 +2112,6 @@ def manager_magazzino_macro_create(
     ensure_magazzino_catalog_manager(current_user)
     ensure_magazzino_access(current_user)
     macro_name = (name or nome or "").strip()
-    if not macro_name:
-        return RedirectResponse(
-            url=request.url_for("manager_magazzino_categorie_list"),
-            status_code=303,
-        )
-
     order_raw = (order if order is not None else ordine) or "0"
     try:
         ordine_value = int(order_raw)
@@ -2130,16 +2120,26 @@ def manager_magazzino_macro_create(
     icon_value = (icon or "").strip() or None
     color_value = (color or "").strip().lower() or None
 
+    def form_error(it: str, fr: str):
+        return render_template(
+            templates, request, "manager/magazzino/macro_form.html",
+            {"macro": SimpleNamespace(name=macro_name, ordine=ordine_value,
+                                      icon=icon_value, color=color_value),
+             "form_action": "manager_magazzino_macro_create",
+             "error_message": fr if get_lang_from_request(request) == "fr" else it},
+            db, current_user,
+        )
+
+    if not macro_name:
+        return form_error("Il nome della macro è obbligatorio.", "Le nom de la macro est obligatoire.")
+
     existing_macro = (
         db.query(MagazzinoMacro)
         .filter(func.lower(MagazzinoMacro.name) == macro_name.lower())
         .first()
     )
     if existing_macro:
-        return RedirectResponse(
-            url=request.url_for("manager_magazzino_categorie_list"),
-            status_code=303,
-        )
+        return form_error("Esiste già una macro con questo nome.", "Une macro porte déjà ce nom.")
     try:
         macro = MagazzinoMacro(
             name=macro_name,
@@ -2162,12 +2162,10 @@ def manager_magazzino_macro_create(
             },
         )
         db.commit()
+        _invalidate_magazzino_cache()
     except Exception:
         db.rollback()
-        return RedirectResponse(
-            url=request.url_for("manager_magazzino_categorie_list"),
-            status_code=303,
-        )
+        return form_error("Non è stato possibile creare la macro. Riprova.", "Impossible de créer la macro. Réessayez.")
 
     return RedirectResponse(
         url=request.url_for("manager_magazzino_categorie_list"),

@@ -35,27 +35,31 @@
 
 </div>
 
-<form method="post" action="{{ url_for('manager_magazzino_categorie_update', categoria_id=categoria.id) if is_edit else url_for('manager_magazzino_categorie_create') }}">
+{% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
+{% if not macros %}
+<section class="card"><div class="card-body">
+    <p>{{ t('Crea prima una macro per raggruppare le categorie. Non serve creare un ordine o un articolo.','Créez d’abord une macro pour regrouper les catégories. Aucune commande ni aucun article n’est nécessaire.') }}</p>
+    <a class="btn btn-primary" href="{{ url_for('manager_magazzino_macro_new') }}">{{ icon('plus') }} {{ t('Nuova macro','Nouvelle macro') }}</a>
+</div></section>
+{% else %}
+<form class="warehouse-editor" method="post" action="{{ url_for('manager_magazzino_categorie_update', categoria_id=categoria.id) if is_edit else url_for('manager_magazzino_categorie_create') }}">
     <div class="card large-form-card">
         <div class="card-body">
-            {% if error_message %}
-                <div class="form-error">{{ error_message }}</div>
-            {% endif %}
             <div class="form-grid-2">
                 <div class="form-field">
-                    <label>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
-                    <input type="text" name="nome" value="{{ categoria.nome if categoria else '' }}" required>
+                    <label for="category-name">{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}*</label>
+                    <input id="category-name" type="text" name="nome" value="{{ categoria.nome if categoria else '' }}" required>
                 </div>
                 <div class="form-field">
-                    <label>{% if lang == 'fr' %}Ordre{% else %}Ordine{% endif %}</label>
-                    <input type="number" name="ordine" value="{{ categoria.ordine if categoria else 0 }}" min="0">
+                    <label for="category-order">{{ t('Posizione nell’elenco','Position dans la liste') }}</label>
+                    <input id="category-order" type="number" name="ordine" value="{{ categoria.ordine if categoria else 0 }}" min="0">
                 </div>
             </div>
             <div class="form-grid-2">
                 <div class="form-field">
-                    <label>Macro categoria</label>
+                    <label for="macro_id">{{ t('Macro categoria','Macro catégorie') }}</label>
                     <select name="macro_id" id="macro_id" required>
-                        <option value="">Seleziona macro</option>
+                        <option value="">{{ t('Seleziona macro','Sélectionner une macro') }}</option>
                         {% for macro in macros %}
                             <option value="{{ macro.id }}" {% if selected_macro_id == macro.id|string %}selected{% endif %}>{{ macro.name }}</option>
                         {% endfor %}
@@ -81,4 +85,5 @@
         </div>
     </div>
 </form>
+{% endif %}
 {% endblock %}
