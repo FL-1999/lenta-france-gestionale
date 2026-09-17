@@ -1203,7 +1203,10 @@ def _render_magazzino_items_list(
         )
     if macro_id:
         query = query.filter(MagazzinoCategoria.macro_id == macro_id)
-    if categoria_id:
+    if categoria_id == 0:
+        active_ids = [c.id for c in categorie if c.id is not None]
+        query = query.filter(or_(MagazzinoItem.categoria_id.is_(None), MagazzinoItem.categoria_id.notin_(active_ids)))
+    elif categoria_id:
         query = query.filter(MagazzinoItem.categoria_id == categoria_id)
     if stock_status == "disponibili":
         query = query.filter(MagazzinoItem.quantita_disponibile > 0)
@@ -1249,6 +1252,13 @@ def _render_magazzino_items_list(
         "categoria_id": categoria_id,
         "stock_status": stock_status or "",
     }
+    category_counts = dict(db.query(MagazzinoItem.categoria_id, func.count(MagazzinoItem.id))
+        .filter(MagazzinoItem.attivo.is_(True)).group_by(MagazzinoItem.categoria_id).all())
+    active_ids = {c.id for c in categorie if c.id is not None}
+    family_counts = {c.id: category_counts.get(c.id, 0) for c in categorie if c.id is not None}
+    family_counts[None] = sum(n for cid,n in category_counts.items() if cid not in active_ids)
+    supplier_counts = dict(db.query(SupplierArticle.magazzino_item_id,func.count(func.distinct(SupplierArticle.supplier_id)))
+        .group_by(SupplierArticle.magazzino_item_id).all())
     badges = build_magazzino_badges(db, current_user)
     return render_template(
         templates,
@@ -1262,6 +1272,10 @@ def _render_magazzino_items_list(
             "default_categoria_id": fallback_categoria_id,
             "items_by_categoria": items_by_categoria,
             "items_count": len(items),
+            "items": items,
+            "family_counts": family_counts,
+            "total_count": sum(category_counts.values()),
+            "supplier_counts": supplier_counts,
             "filters": filters,
             "locations": locations,
             "personale": personale,

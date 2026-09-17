@@ -3,7 +3,7 @@
 <a class="workspace-nav-link{% if active %} is-active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}>{{ icon(symbol) }}<span>{{ label }}</span></a>
 {%- endmacro %}
 <aside class="workspace-sidebar" id="workspace-sidebar" aria-label="{{ t('Menu principale', 'Menu principal') }}" tabindex="-1">
-  <div class="workspace-sidebar-brand"><a href="{{ home_path }}"><img src="/static/img/logo.png" alt="Lenta France — Fondations spéciales" width="140" height="43"></a><button class="workspace-sidebar-close" type="button" data-workspace-close aria-label="{{ t('Chiudi menu', 'Fermer le menu') }}">{{ icon('close') }}</button></div>
+  <div class="workspace-sidebar-brand"><a href="{{ home_path }}">{% include 'shared/workspace_brand.html' %}</a><button class="workspace-sidebar-close" type="button" data-workspace-close aria-label="{{ t('Chiudi menu', 'Fermer le menu') }}">{{ icon('close') }}</button></div>
   <nav class="workspace-navigation" aria-label="{{ t('Navigazione principale', 'Navigation principale') }}">
     {{ item(home_path, t('Dashboard', 'Tableau de bord') if is_manager or is_capo else (t('I miei viaggi','Mes trajets') if active_role_value == 'driver' else (t('Gabbie armatura',"Cages d’armature") if active_role_value == 'ferraiolo' else t('Dashboard magazzino','Tableau de bord entrepôt'))), 'home', is_home_active) }}
     {% if is_manager or is_capo %}
