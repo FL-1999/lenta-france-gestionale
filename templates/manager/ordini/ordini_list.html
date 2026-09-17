@@ -8,11 +8,6 @@
     <div><p class="page-eyebrow">{{ t('Acquisti e fornitori','Achats et fournisseurs') }}</p><h1 class="page-title">{{ headings[status_filter] }}</h1></div>
     <div class="page-actions"><a class="btn btn-primary" href="{{ url_for('manager_ordini_new').include_query_params(supplier_id=selected_supplier_id) if selected_supplier_id else url_for('manager_ordini_new') }}">{{ icon('plus') }} {{ t('Nuovo ordine','Nouvelle commande') }}</a></div>
   </header>
-  <nav class="warehouse-toolbar" aria-label="{{ t('Acquisti','Achats') }}">
-    <a class="is-current" href="{{ url_for('manager_ordini_list') }}" aria-current="page">{{ t('Ordini','Commandes') }}</a>
-    <a href="{{ url_for('manager_fornitori_list') }}">{{ t('Fornitori','Fournisseurs') }}</a>
-    <a href="{{ url_for('manager_magazzino_home') }}">{{ t('Magazzino','Magasin') }}</a>
-  </nav>
   <nav class="order-status-grid" aria-label="{{ t('Stato ordini','État des commandes') }}">
     {% for value,it,fr,symbol in [('in_corso','In corso','En cours','report'),('parziale','Parziali','Partielles','truck'),('chiuso','Chiusi','Clôturées','file'),('tutti','Tutti','Toutes','grid')] %}
     <a href="{{ status_links[value] }}" class="order-status-card {{ 'is-current' if status_filter == value else '' }}" {% if status_filter == value %}aria-current="page"{% endif %}>{{ icon(symbol) }}<span>{{ t(it,fr) }}</span><strong>{{ counts[value] }}</strong></a>

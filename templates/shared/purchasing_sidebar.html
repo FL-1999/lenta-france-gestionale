@@ -1,0 +1,23 @@
+{% from 'shared/workspace_icons.html' import icon %}
+{% macro purchase_link(href,label,symbol,section) -%}
+<a class="workspace-nav-link{% if purchase_nav and purchase_nav.section == section and current_path != '/manager/magazzino/dashboard' %} is-active{% endif %}" href="{{ href }}" data-purchase-section="{{ section }}"{% if purchase_nav and purchase_nav.section == section and current_path != '/manager/magazzino/dashboard' %} aria-current="page"{% endif %}>{{ icon(symbol) }}<span>{{ label }}</span></a>
+{%- endmacro %}
+<div class="purchase-sidebar-group" aria-label="{{ t('Acquisti e magazzino','Achats et magasin') }}">
+  <p class="workspace-nav-label">{{ t('Acquisti e magazzino','Achats et magasin') }}</p>
+  {{ purchase_link('/manager/magazzino',t('Articoli','Articles'),'box','items') }}
+  {% if is_manager %}
+  {{ purchase_link('/manager/ordini',t('Ordini','Commandes'),'report','orders') }}
+  {{ purchase_link('/manager/fornitori',t('Fornitori','Fournisseurs'),'users','suppliers') }}
+  {% endif %}
+  {{ purchase_link('/manager/magazzino/movimenti',t('Movimenti','Mouvements'),'chart','movements') }}
+  {{ purchase_link('/manager/magazzino/richieste',t('Richieste','Demandes'),'today','requests') }}
+  {% if is_manager %}
+  <details class="purchase-organization"{% if purchase_nav and purchase_nav.section in ['categories','macros','archived','low_stock'] %} open{% endif %}>
+    <summary>{{ icon('settings') }} {{ t('Organizzazione','Organisation') }}</summary>
+    {{ purchase_link('/manager/magazzino/categorie',t('Categorie','Catégories'),'grid','categories') }}
+    {{ purchase_link('/manager/magazzino/macros',t('Macro categorie','Macro catégories'),'grid','macros') }}
+    {{ purchase_link('/manager/magazzino/archiviati',t('Articoli archiviati','Articles archivés'),'box','archived') }}
+    {{ purchase_link('/manager/magazzino/sotto-soglia',t('Sotto soglia','Sous seuil'),'chart','low_stock') }}
+  </details>
+  {% endif %}
+</div>

@@ -126,16 +126,11 @@
         </h1>
     </div>
     <div class="header-actions">
-        <a href="{{ url_for('manager_magazzino_home') }}" class="btn btn-secondary">
-            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
-        </a>
+
         <a href="/manager/magazzino/macro/nuova" class="btn btn-primary">➕ Nuova macro</a>
     </div>
 </div>
 
-<div class="magazzino-pill-bar">
-    {% include "manager/magazzino/_nav_pills.html" %}
-</div>
 
 <div class="card">
     <div class="card-body">

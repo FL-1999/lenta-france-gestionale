@@ -12,7 +12,7 @@
 {% endmacro %}
 {% block title %}{{ t('Modifica articolo','Modifier l’article') if is_edit else t('Nuovo articolo','Nouvel article') }}{% endblock %}
 {% block content %}
-<header class="page-header"><div class="page-header-main"><p class="page-eyebrow">{{ t('Magazzino','Magasin') }}</p><h1 class="page-title">{{ t('Modifica articolo','Modifier l’article') if is_edit else t('Nuovo articolo','Nouvel article') }}</h1></div><div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) if is_edit else url_for('manager_magazzino_home') }}">{{ t('Indietro','Retour') }}</a></div></header>
+<header class="page-header"><div class="page-header-main"><p class="page-eyebrow">{{ t('Magazzino','Magasin') }}</p><h1 class="page-title">{{ t('Modifica articolo','Modifier l’article') if is_edit else t('Nuovo articolo','Nouvel article') }}</h1></div></header>
 {% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
 <form method="post" id="warehouse-item-form" class="warehouse-editor" action="{{ url_for(form_action,item_id=item.id) if is_edit else url_for(form_action) }}">
 <section class="card"><div class="card-body"><h2>{{ icon('box') }} {{ t('Articolo e classificazione','Article et classification') }}</h2>

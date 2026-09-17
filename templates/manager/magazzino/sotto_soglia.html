@@ -23,15 +23,10 @@
                 🧾 {% if lang == 'fr' %}Créer une demande{% else %}Crea richiesta{% endif %}
             </button>
         </form>
-        <a href="{{ url_for('manager_magazzino_home') }}" class="btn btn-secondary">
-            ← {% if lang == 'fr' %}Retour au magasin{% else %}Torna al magazzino{% endif %}
-        </a>
+
     </div>
 </div>
 
-<div class="magazzino-pill-bar">
-    {% include "manager/magazzino/_nav_pills.html" %}
-</div>
 
 <div class="list-search-sticky">
     <div class="list-search-inner">

@@ -32,11 +32,7 @@
             {% endif %}
         </p>
     </div>
-    <div class="header-actions">
-        <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">
-            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
-        </a>
-    </div>
+
 </div>
 
 <form method="post" action="{{ url_for('manager_magazzino_categorie_update', categoria_id=categoria.id) if is_edit else url_for('manager_magazzino_categorie_create') }}">

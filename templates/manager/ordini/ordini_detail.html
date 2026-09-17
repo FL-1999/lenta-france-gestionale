@@ -21,9 +21,7 @@
         </p>
     </div>
     <div class="page-actions">
-        <a href="{{ url_for('manager_ordini_list') }}" class="btn btn-secondary">
-            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
-        </a>
+
         {% if remaining_lines %}<a href="{{ url_for('manager_ordini_bolle_nuova', order_id=order.id) }}" class="btn btn-primary">
             ➕ {% if lang == 'fr' %}Nouvelle livraison{% else %}Nuova bolla{% endif %}
         </a>
@@ -216,7 +214,7 @@
                             <span class="badge badge-success">OK</span>
                         {% endif %}
 
-                    
+
                     </td>
                 </tr>
                 {% else %}

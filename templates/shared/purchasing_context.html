@@ -1,0 +1,8 @@
+<div class="purchase-context" data-purchase-context data-section="{{ purchase_nav.section }}" data-list="{{ 'true' if purchase_nav.is_list else 'false' }}" data-user="{{ user.id }}" data-role="{{ active_role_value }}" data-root="{{ purchase_nav.root }}" data-back-label="{{ t('Torna a','Retour à') }}">
+  <nav class="purchase-breadcrumbs" aria-label="{{ t('Percorso acquisti e magazzino','Parcours achats et magasin') }}">
+    <span>{{ t('Acquisti e magazzino','Achats et magasin') }}</span><span aria-hidden="true">/</span>
+    <a href="{{ purchase_nav.root }}" data-purchase-root{% if purchase_nav.is_list %} aria-current="page"{% endif %}>{{ purchase_nav.label }}</a>
+    {% if not purchase_nav.is_list %}<span aria-hidden="true">/</span><span data-purchase-page aria-current="page">{{ t('Dettaglio','Détail') }}</span>{% endif %}
+  </nav>
+  <a class="purchase-return" href="{{ purchase_nav.parent }}" data-purchase-return{% if purchase_nav.is_list %} hidden{% endif %}>← {{ t('Torna a','Retour à') }} {{ purchase_nav.parent_label }}</a>
+</div>

@@ -1,20 +1,13 @@
 {% extends "shared/base.html" %}
 {% from 'shared/workspace_icons.html' import icon %}
-{% block title %}{{ t('Magazzino','Magasin') }}{% endblock %}
+{% block title %}{{ t('Articoli','Articles') }}{% endblock %}
 {% block content %}
 {% set can_edit = has_perm(user,'manager.access') %}
 <div class="warehouse-a1">
   <header class="page-header">
-    <h1 class="page-title">{{ t('Magazzino','Magasin') }}</h1>
+    <h1 class="page-title">{{ t('Articoli','Articles') }}</h1>
     <div class="page-actions">{% if can_edit %}<a class="btn btn-primary" href="/manager/magazzino/nuovo">{{ icon('plus') }} {{ t('Nuovo articolo','Nouvel article') }}</a>{% endif %}</div>
   </header>
-  <nav class="warehouse-toolbar" aria-label="{{ t('Sezioni magazzino','Rubriques du magasin') }}">
-    <a class="is-current" aria-current="page" href="{{ url_for('manager_magazzino_home') }}">{{ t('Articoli','Articles') }}</a>
-    {% if can_edit %}<a href="/manager/ordini">{{ t('Ordini','Commandes') }}</a><a href="/manager/fornitori">{{ t('Fornitori','Fournisseurs') }}</a>{% endif %}
-    <a href="{{ url_for('manager_magazzino_movimenti') }}">{{ t('Movimenti','Mouvements') }}</a>
-    <a href="{{ url_for('manager_magazzino_richieste') }}">{{ t('Richieste','Demandes') }}</a>
-    {% if can_edit %}<details class="warehouse-settings"><summary>{{ icon('settings') }} {{ t('Gestisci','Gérer') }}</summary><div><a href="{{ url_for('manager_magazzino_categorie_list') }}">{{ t('Famiglie e categorie','Familles et catégories') }}</a><a href="{{ url_for('manager_magazzino_macros_list') }}">{{ t('Raggruppamenti','Regroupements') }}</a><a href="{{ url_for('manager_magazzino_archiviati') }}">{{ t('Articoli archiviati','Articles archivés') }}</a></div></details>{% endif %}
-  </nav>
   {% if success_message %}<p class="alert alert-success" role="status">{{ success_message }}</p>{% endif %}
   {% if error_message %}<p class="alert alert-danger" role="alert">{{ error_message }}</p>{% endif %}
   <nav class="warehouse-breadcrumbs" aria-label="{{ t('Percorso magazzino','Parcours du magasin') }}">

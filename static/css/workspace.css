@@ -580,6 +580,21 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
 .warehouse-workspace .main-content .list-search-sticky { background:var(--ws-paper); color:var(--ws-ink); border:1px solid var(--ws-line); border-radius:14px; padding:18px 24px; margin-bottom:20px; }
 
 /* Orders and supplier history use the same compact workspace directory. */
+.purchase-sidebar-group .workspace-nav-label { margin-top:24px; }
+.purchase-organization { margin:8px 0 16px; }
+.purchase-organization > summary { display:flex; align-items:center; gap:10px; color:var(--ws-muted); cursor:pointer; padding:10px 12px; font-size:12px; }
+.purchase-organization > summary::after { content:'⌄'; margin-left:auto; }
+.purchase-organization[open] > summary::after { content:'⌃'; }
+.purchase-organization .workspace-nav-link { padding-left:24px; font-size:12px; }
+.purchase-context { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px 20px; margin:0 0 22px; }
+.purchase-breadcrumbs { display:flex; flex-wrap:wrap; align-items:center; gap:8px; color:var(--ws-muted); font-size:12px; min-width:0; }
+.purchase-breadcrumbs a { color:var(--ws-muted); text-decoration:none; }
+.purchase-breadcrumbs [aria-current=page] { color:var(--ws-ink); overflow-wrap:anywhere; }
+.purchase-return { color:var(--ws-section-line); font-size:12px; text-decoration:none; overflow-wrap:anywhere; }
+.purchase-return[hidden] { display:none; }
+.purchase-return:focus-visible,.purchase-breadcrumbs a:focus-visible { outline:2px solid var(--ws-section-line); outline-offset:4px; }
+.purchasing-workspace .page-header { margin-top:0; }
+@media(max-width:650px) { .purchase-context { align-items:flex-start; }.purchase-return { min-height:36px; display:flex; align-items:center; }.purchase-breadcrumbs { font-size:11px; } }
 .orders-workspace { min-width:0; }
 .orders-workspace .page-actions { display:flex; flex-wrap:wrap; gap:12px; }
 .order-status-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:24px 0; }

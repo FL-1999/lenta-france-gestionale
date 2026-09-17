@@ -13,9 +13,7 @@
         <p class="page-eyebrow">{% if lang == 'fr' %}Magasin{% else %}Magazzino{% endif %}</p>
         <h1 class="page-title">{{ icon('grid') }} {{ title if title is defined else ('Modifica macro categoria' if is_edit else 'Nuova macro') }}</h1>
     </div>
-    <div class="header-actions">
-        <a href="{{ url_for('manager_magazzino_categorie_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}</a>
-    </div>
+
 </div>
 
 <form method="post" action="{{ url_for(form_action, macro_id=macro.id) if is_edit else url_for(form_action) }}">
