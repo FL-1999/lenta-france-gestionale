@@ -23,6 +23,59 @@ def manager(user):
         raise HTTPException(403,'Permessi insufficienti')
 
 
+def _supplier_code_form(request, db, user, article, *, code=None, error=None, status=200):
+    return render_template(templates, request, 'manager/fornitori/article_code.html', {
+        'article': article, 'supplier': article.supplier, 'code': article.codice if code is None else code,
+        'error_message': error,
+    }, db, user, status_code=status)
+
+
+@router.get('/manager/fornitori/{supplier_id}/articoli/{article_id}/codice', name='supplier_article_code_edit')
+def supplier_article_code_edit(supplier_id: int, article_id: int, request: Request,
+        db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user_html)):
+    manager(current_user)
+    article = db.query(SupplierArticle).filter_by(id=article_id, supplier_id=supplier_id).first()
+    if not article: raise HTTPException(404, 'Articolo fornitore non trovato')
+    return _supplier_code_form(request, db, current_user, article)
+
+
+@router.post('/manager/fornitori/{supplier_id}/articoli/{article_id}/codice', name='supplier_article_code_save')
+def supplier_article_code_save(supplier_id: int, article_id: int, request: Request,
+        code: str = Form(''), expected_code: str = Form(''), db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_active_user_html)):
+    from sqlalchemy.exc import IntegrityError
+    from template_context import get_lang_from_request
+    manager(current_user)
+    supplier = db.query(Supplier).filter_by(id=supplier_id).with_for_update().first()
+    article = db.query(SupplierArticle).filter_by(id=article_id, supplier_id=supplier_id).populate_existing().with_for_update().first()
+    if not supplier or not article: raise HTTPException(404, 'Articolo fornitore non trovato')
+    fr = get_lang_from_request(request) == 'fr'
+    def invalid(it, french, status=400):
+        db.rollback()
+        return _supplier_code_form(request, db, current_user, article, code=code,
+                                   error=french if fr else it, status=status)
+    code = code.strip()
+    if not code or len(code)>100:
+        return invalid('Inserisci un codice da 1 a 100 caratteri.', 'Saisissez un code de 1 à 100 caractères.')
+    if article.codice != expected_code:
+        return invalid('Il codice è cambiato nel frattempo. Controlla quello attuale prima di salvare.',
+                       'Le code a changé entre-temps. Vérifiez le code actuel avant d’enregistrer.', 409)
+    if db.query(SupplierArticle.id).filter(SupplierArticle.supplier_id==supplier_id,
+            SupplierArticle.id!=article_id, func.lower(SupplierArticle.codice)==code.lower()).first():
+        return invalid('Questo codice è già presente nel catalogo del fornitore.',
+                       'Ce code existe déjà dans le catalogue du fournisseur.', 409)
+    previous = article.codice
+    article.codice = code
+    log_audit_event(db, current_user, 'SUPPLIER_ARTICLE_CODE_CHANGED', 'supplier_article', article.id,
+                   {'before': previous, 'after': code, 'supplier_id': supplier_id, 'item_id': article.magazzino_item_id})
+    try:
+        db.commit()
+    except IntegrityError:
+        return invalid('Impossibile salvare: verifica che il codice non sia già utilizzato.',
+                       'Enregistrement impossible : vérifiez que le code n’est pas déjà utilisé.', 409)
+    return RedirectResponse(str(request.url_for('manager_fornitori_edit',supplier_id=supplier_id))+'?saved=code#articoli',303)
+
+
 @router.post('/manager/fornitori/{supplier_id}/referenti', name='supplier_contact_save')
 def contact_save(supplier_id:int, request:Request, contact_id:int=Form(0), name:str=Form(...),
                  email:str=Form(''), phone:str=Form(''), role_label:str=Form(''), active:bool=Form(False),
