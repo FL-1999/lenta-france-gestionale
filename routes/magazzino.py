@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from auth import get_current_active_user_html
+from utils.warehouse_packaging import ARTICLE_UNITS, validate_packaging, convert_quantity, movement_quantity
 from database import get_db
 from models import (
     MagazzinoCategoria,
@@ -2940,6 +2941,10 @@ def manager_magazzino_create(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
     unita_misura: str = Form("pz"),
+    packaging_enabled: bool = Form(False),
+    sacchi_per_bancale: str = Form(""),
+    kg_per_sacco: str = Form(""),
+    stock_unit: str = Form(""),
     supplier_ids: list[str] = Form([]),
     supplier_codes: list[str] = Form([]),
 ):
@@ -2948,7 +2953,8 @@ def manager_magazzino_create(
 
     form_data = dict(nome=nome, descrizione=descrizione, categoria_id=categoria_id,
                      quantita_disponibile=quantita_disponibile, soglia_minima=soglia_minima,
-                     costo_unitario=costo_unitario, attivo=attivo, unita_misura=unita_misura)
+                     costo_unitario=costo_unitario, attivo=attivo, unita_misura=unita_misura, packaging_enabled=packaging_enabled,
+                     sacchi_per_bancale=sacchi_per_bancale, kg_per_sacco=kg_per_sacco, stock_unit=stock_unit)
     supplier_rows = [dict(supplier_id=supplier_ids[i] if i < len(supplier_ids) else '',
                           code=supplier_codes[i] if i < len(supplier_codes) else '')
                      for i in range(max(len(supplier_ids),len(supplier_codes)))]
@@ -2960,8 +2966,13 @@ def manager_magazzino_create(
     initial_stock = _parse_float(quantita_disponibile) if quantita_disponibile not in (None, "") else 0.0
     if initial_stock is None or initial_stock < 0:
         return invalid("Quantità iniziale non valida")
-    if not nome.strip() or unita_misura not in {'pz','kg','m','m2','m3','l'}:
+    if not nome.strip() or unita_misura not in ARTICLE_UNITS:
         return invalid('Nome o unità di misura non valida')
+    try:
+        bags, weight = validate_packaging(packaging_enabled, unita_misura, sacchi_per_bancale, kg_per_sacco)
+        initial_stock = convert_quantity(initial_stock, stock_unit, unita_misura, bags, weight)
+    except ValueError as exc:
+        return invalid(str(exc))
     for value in (soglia_minima,costo_unitario):
         if value not in (None,'') and (_parse_float(value) is None or _parse_float(value)<0):
             return invalid('Soglia e costo devono essere numeri maggiori o uguali a zero')
@@ -2994,6 +3005,8 @@ def manager_magazzino_create(
     item = MagazzinoItem(
         nome=nome.strip(),
         unita_misura=unita_misura,
+        sacchi_per_bancale=bags,
+        kg_per_sacco=weight,
         codice=codice.strip(),
         descrizione=(descrizione or "").strip() or None,
         categoria_id=_parse_categoria_id(categoria_id),
@@ -3021,6 +3034,7 @@ def manager_magazzino_create(
             "codice": item.codice,
             "quantita_iniziale": item.quantita_disponibile,
             "categoria_id": item.categoria_id,
+            "sacchi_per_bancale": bags, "kg_per_sacco": weight,
         },
     )
 
@@ -3114,6 +3128,11 @@ def manager_magazzino_update(
     soglia_minima: str | None = Form(""),
     costo_unitario: str | None = Form(""),
     attivo: bool = Form(False),
+    packaging_enabled: bool = Form(False),
+    sacchi_per_bancale: str = Form(""),
+    kg_per_sacco: str = Form(""),
+    stock_unit: str = Form(""),
+    packaging_form: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -3133,6 +3152,13 @@ def manager_magazzino_update(
         if nuova_quantita is None or nuova_quantita < 0:
             raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
+        bags, weight = item.sacchi_per_bancale, item.kg_per_sacco
+        if packaging_form:
+            bags, weight = validate_packaging(packaging_enabled, item.unita_misura, sacchi_per_bancale, kg_per_sacco)
+        if quantita_disponibile not in (None, ""):
+            nuova_quantita = convert_quantity(nuova_quantita, stock_unit, item.unita_misura, bags, weight)
+        previous_packaging = [item.sacchi_per_bancale, item.kg_per_sacco]
+        item.sacchi_per_bancale, item.kg_per_sacco = bags, weight
         selected_category_id = _parse_categoria_id(categoria_id)
         if categoria_id and (selected_category_id is None or (selected_category_id != item.categoria_id and not db.query(MagazzinoCategoria).filter_by(id=selected_category_id, attiva=True).first())):
             raise ValueError("Seleziona una categoria attiva valida.")
@@ -3197,6 +3223,7 @@ def manager_magazzino_update(
                 "quantita": item.quantita_disponibile,
                 "categoria_id": item.categoria_id,
                 "attivo": item.attivo,
+                "packaging_before": previous_packaging, "packaging_after": [bags, weight],
             },
         )
         db.commit()
@@ -3220,9 +3247,14 @@ def manager_magazzino_update(
                 "form_action": "manager_magazzino_update",
                 "title": "Modifica articolo",
                 "error_message": str(exc),
+                "form_data": dict(nome=nome, codice=codice, descrizione=descrizione, categoria_id=categoria_id,
+                    quantita_disponibile=quantita_disponibile, soglia_minima=soglia_minima, costo_unitario=costo_unitario,
+                    attivo=attivo, unita_misura=item.unita_misura, packaging_enabled=packaging_enabled,
+                    sacchi_per_bancale=sacchi_per_bancale, kg_per_sacco=kg_per_sacco, stock_unit=stock_unit),
             },
             db,
             current_user,
+            status_code=400,
         )
     except Exception:
         db.rollback()
@@ -3356,6 +3388,7 @@ def manager_magazzino_duplicate_create(
         codice=codice_value,
         descrizione=item.descrizione,
         unita_misura=item.unita_misura,
+        sacchi_per_bancale=item.sacchi_per_bancale, kg_per_sacco=item.kg_per_sacco,
         categoria_id=item.categoria_id,
         quantita_disponibile=quantita_value,
         soglia_minima=item.soglia_minima,
@@ -3676,6 +3709,7 @@ def manager_magazzino_carico_rapido(
     request: Request,
     quantita: str = Form(...),
     note: str = Form(""),
+    quantity_unit: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -3687,9 +3721,7 @@ def manager_magazzino_carico_rapido(
         if not item or not item.attivo:
             raise ValueError(_magazzino_error_message(lang, "item_non_trovato"))
 
-        quantita_valore = _parse_float(quantita)
-        if not quantita_valore or quantita_valore <= 0:
-            raise ValueError(_magazzino_error_message(lang, "quantita_non_valida"))
+        quantita_valore, note = movement_quantity(item, quantita, quantity_unit, note)
 
         item.quantita_disponibile = (item.quantita_disponibile or 0.0) + quantita_valore
         db.add(item)
@@ -3750,6 +3782,7 @@ def manager_magazzino_scarico_rapido(
     request: Request,
     quantita: str = Form(...),
     note: str = Form(""),
+    quantity_unit: str = Form(""),
     location_id: str | None = Form(None),
     caposquadra_id: int | None = Form(None),
     db: Session = Depends(get_db),
@@ -3763,9 +3796,7 @@ def manager_magazzino_scarico_rapido(
         if not item or not item.attivo:
             raise ValueError(_magazzino_error_message(lang, "item_non_trovato"))
 
-        quantita_valore = _parse_float(quantita)
-        if not quantita_valore or quantita_valore <= 0:
-            raise ValueError(_magazzino_error_message(lang, "quantita_non_valida"))
+        quantita_valore, note = movement_quantity(item, quantita, quantity_unit, note)
 
         quantita_attuale = item.quantita_disponibile or 0.0
         if quantita_valore > quantita_attuale:

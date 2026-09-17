@@ -5,7 +5,8 @@
                                         <div class="form-grid-2">
                                             <div class="form-field">
                                                 <label>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}*</label>
-                                                <input type="number" name="quantita" min="0.01" step="0.01" required>
+                                                <input type="number" name="quantita" min="0.000001" step="any" required>
+                                                <label>{{ t('Unità','Unité') }}<select name="quantity_unit"><option value="{{ item.unita_misura }}">{{ item.unita_misura }}</option>{% if item.sacchi_per_bancale and item.kg_per_sacco %}{% for unit in ['bancale','sacco','kg'] %}{% if unit != item.unita_misura %}<option value="{{ unit }}">{{ unit }}</option>{% endif %}{% endfor %}{% endif %}</select></label>
                                             </div>
                                             <div class="form-field">
                                                 <label>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</label>
@@ -25,7 +26,8 @@
                                         <div class="form-grid-2">
                                             <div class="form-field">
                                                 <label>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}*</label>
-                                                <input type="number" name="quantita" min="0.01" step="0.01" required>
+                                                <input type="number" name="quantita" min="0.000001" step="any" required>
+                                                <label>{{ t('Unità','Unité') }}<select name="quantity_unit"><option value="{{ item.unita_misura }}">{{ item.unita_misura }}</option>{% if item.sacchi_per_bancale and item.kg_per_sacco %}{% for unit in ['bancale','sacco','kg'] %}{% if unit != item.unita_misura %}<option value="{{ unit }}">{{ unit }}</option>{% endif %}{% endfor %}{% endif %}</select></label>
                                             </div>
                                             <div class="form-field">
                                                 <label>

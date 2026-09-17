@@ -1016,6 +1016,8 @@ class MagazzinoItem(Base, TimestampMixin):
     codice = Column(String(120), nullable=False, default="")
     descrizione = Column(Text, nullable=True)
     unita_misura = Column(String(50), nullable=False, default="pz")
+    sacchi_per_bancale = Column(Integer, nullable=True)
+    kg_per_sacco = Column(Float, nullable=True)
     categoria_id = Column(Integer, ForeignKey("magazzino_categorie.id"), nullable=True)
     quantita_disponibile = Column(Float, nullable=False, default=0.0)
     soglia_minima = Column(Float, nullable=True)
@@ -1029,6 +1031,11 @@ class MagazzinoItem(Base, TimestampMixin):
 
     categoria = relationship("MagazzinoCategoria")
     righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")
+
+    @property
+    def packaging_equivalents(self):
+        from utils.warehouse_packaging import equivalents
+        return equivalents(self)
 
     def __repr__(self) -> str:
         return (

@@ -1,0 +1,14 @@
+<section class="card" id="article-packaging"><div class="card-body">
+  <div class="warehouse-section-heading"><h2>{{ icon('box') }} {{ t('Confezioni e peso','Conditionnement et poids') }}</h2><span class="text-muted">{{ t('Facoltativo','Facultatif') }}</span></div>
+  <input type="hidden" name="packaging_form" value="true">
+  <label class="warehouse-checkbox"><input type="checkbox" name="packaging_enabled" {% if values.packaging_enabled|default(values.sacchi_per_bancale) %}checked{% endif %}> {{ t('Gestisci bancali, sacchi e kg','Gérer palettes, sacs et kg') }}</label>
+  <div data-packaging-fields>
+    <div class="vehicle-fields">
+      <label class="vehicle-field">{{ t('Sacchi per bancale','Sacs par palette') }}<input type="number" name="sacchi_per_bancale" min="1" max="1000000" step="1" value="{{ values.sacchi_per_bancale or '' }}" placeholder="100"></label>
+      <label class="vehicle-field">{{ t('Kg per sacco','Kg par sac') }}<input type="number" name="kg_per_sacco" min="0.001" max="1000000" step="any" value="{{ values.kg_per_sacco or '' }}" placeholder="25"></label>
+    </div>
+    <p class="packaging-preview" data-packaging-preview role="status"></p>
+    <p class="text-muted">{{ t('Usa kg, sacco o bancale come unità di misura. Le quantità equivalenti si aggiornano dalla stessa giacenza.','Utilisez kg, sacco ou bancale comme unité. Les équivalences utilisent un seul stock.') }}</p>
+    {% if is_edit %}<p class="text-muted">{{ t('Cambiare la confezione aggiorna le equivalenze; la quantità nella tua unità di misura resta invariata.','Modifier le conditionnement actualise les équivalences ; la quantité dans votre unité reste inchangée.') }}</p>{% endif %}
+  </div>
+</div></section>

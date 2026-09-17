@@ -1,0 +1,7 @@
+{% set equivalents = item.packaging_equivalents %}
+{% if equivalents %}<section class="card purchasing-section" id="packaging-stock"><div class="card-body">
+  <div class="warehouse-section-heading"><h2>{{ t('Confezioni e peso','Conditionnement et poids') }}</h2><span class="text-muted">{{ t('Giacenza equivalente','Stock équivalent') }}</span></div>
+  <p>1 {{ t('bancale','palette') }} = {{ item.sacchi_per_bancale }} {{ t('sacchi','sacs') }} × {{ '%g'|format(item.kg_per_sacco) }} kg</p>
+  <div class="packaging-stock-grid">{% for unit,it,fr in [('bancale','Bancali equivalenti','Palettes équivalentes'),('sacco','Sacchi equivalenti','Sacs équivalents'),('kg','Kg totali','Kg au total')] %}<div><span>{{ t(it,fr) }}</span><strong>{{ ('%.4f'|format(equivalents[unit])).rstrip('0').rstrip('.') }}</strong></div>{% endfor %}</div>
+  <p class="text-muted">{{ t('Equivalenze della giacenza, non conteggio delle confezioni integre. Ordini, bolle, soglie e costi usano l’unità dell’articolo:','Équivalences du stock, pas un comptage des emballages intacts. Commandes, livraisons, seuils et coûts utilisent l’unité de l’article :') }} <strong>{{ item.unita_misura }}</strong>.</p>
+</div></section>{% endif %}
