@@ -1,0 +1,21 @@
+{% from 'shared/workspace_icons.html' import icon %}
+<div class="order-rows">
+{% for order in orders %}
+  {% set state = (order.status or 'aperto')|lower %}
+  {% set closed = state in ['chiuso','completato'] %}
+  {% set progress = completion_map.get(order.id,0) %}
+  <article class="order-row" aria-label="{{ t('Ordine','Commande') }} {{ order.order_number }}">
+    <div class="order-row-main">
+      <div class="order-row-number"><a href="{{ url_for('manager_ordini_detail',order_id=order.id) }}">{{ order.order_number }}</a><span class="order-state {{ 'is-closed' if closed else 'is-partial' if state == 'parziale' else '' }}">{{ t('Chiuso','Clôturée') if closed else t('Parziale','Partielle') if state == 'parziale' else t('Da ricevere','À recevoir') if state == 'aperto' else order.status }}</span></div>
+      {% if not hide_supplier|default(false) %}<div class="order-row-supplier">{% if order.supplier %}<a href="{{ url_for('manager_fornitori_edit',supplier_id=order.supplier_id) }}">{{ supplier_label_map.get(order.id,'—') }}</a>{% else %}{{ supplier_label_map.get(order.id,'—') }}{% endif %}</div>{% endif %}
+      {% if order.description %}<p class="order-description" title="{{ order.description }}">{{ order.description }}</p>{% endif %}
+      <div class="order-row-meta"><span>{{ order.order_date.strftime('%d/%m/%Y') if order.order_date else t('Data non indicata','Date non renseignée') }}</span>{% if order.requester %}<span>{{ order.requester.full_name or order.requester.email }}</span>{% endif %}</div>
+    </div>
+    <div class="order-row-destination"><span class="order-small-label">{{ t('Destinazione','Destination') }}</span><strong>{{ icon('site' if order.order_kind == 'closed' else 'box') }} {{ (order.site.name if order.site else t('Cantiere','Chantier')) if order.order_kind == 'closed' else t('Magazzino','Magasin') }}</strong>{% if order.delivery_type == 'SITE' and order.delivery_site %}<small>{{ order.delivery_site.name }}</small>{% elif order.delivery_type == 'DEPOT' and order.delivery_depot %}<small>{{ order.delivery_depot.name }}</small>{% elif order.delivery_type == 'PICKUP' %}<small>{{ t('Ritiro presso fornitore','Retrait chez le fournisseur') }}</small>{% endif %}</div>
+    <div class="order-row-progress"><div><span class="order-small-label">{{ t('Ricevuto','Reçu') }}</span><strong>{{ '%g'|format(progress) }}%</strong></div><progress value="{{ progress }}" max="100" aria-label="{{ t('Avanzamento ricezione ordine','Avancement réception commande') }} {{ order.order_number }}">{{ progress }}%</progress><small>{{ receipt_map.get(order.id,0) }} {{ t('bolla confermata','bon confirmé') if receipt_map.get(order.id,0) == 1 else t('bolle confermate','bons confirmés') }}</small></div>
+    <a class="btn btn-secondary order-open" href="{{ url_for('manager_ordini_detail',order_id=order.id) }}" aria-label="{{ t('Apri ordine','Ouvrir la commande') }} {{ order.order_number }}">{{ t('Apri ordine','Ouvrir') }} {{ icon('arrow') }}</a>
+  </article>
+{% else %}
+  <div class="order-empty">{{ icon('report') }}<h3>{{ t('Nessun ordine trovato','Aucune commande trouvée') }}</h3><p>{{ t('Modifica i filtri oppure crea un nuovo ordine.','Modifiez les filtres ou créez une commande.') }}</p></div>
+{% endfor %}
+</div>

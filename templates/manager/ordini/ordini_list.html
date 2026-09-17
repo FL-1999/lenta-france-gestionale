@@ -1,187 +1,38 @@
-{% extends "shared/base.html" %}
-{% set lang = request.cookies.get('lang', 'it') %}
-
-{% block title %}
-    {% if lang == 'fr' %}
-        {% if status_filter == 'chiuso' %}Ordres clos{% else %}Ordres{% endif %} – Manager – Lenta France
-    {% else %}
-        {{ page_title }} – Manager – Lenta France
-    {% endif %}
-{% endblock %}
-
+{% extends 'shared/base.html' %}
+{% from 'shared/workspace_icons.html' import icon %}
+{% set headings = {'tutti':t('Tutti gli ordini','Toutes les commandes'),'in_corso':t('Ordini in corso','Commandes en cours'),'aperto':t('Da ricevere','À recevoir'),'parziale':t('Consegne parziali','Livraisons partielles'),'chiuso':t('Ordini chiusi','Commandes clôturées')} %}
+{% block title %}{{ headings[status_filter] }} · Lenta France{% endblock %}
 {% block content %}
-<div class="page-header">
-    <div class="page-header-main">
-        <p class="page-eyebrow">
-            {% if lang == 'fr' %}Gestion des commandes{% else %}Gestione ordini{% endif %}
-        </p>
-        <h1 class="page-title">
-            {% if kind_filter == 'closed' %}🏗️{% else %}🧾{% endif %}
-            {% if lang == 'fr' %}
-                {% if kind_filter == 'closed' %}Commandes chantier{% elif kind_filter == 'warehouse' %}Commandes stock{% elif status_filter == 'chiuso' %}Ordres clos{% else %}Ordres{% endif %}
-            {% else %}
-                {{ page_title }}
-            {% endif %}
-        </h1>
-        {% include "shared/orders_navigation.html" %}
-        <p class="page-subtitle">
-            {% if lang == 'fr' %}
-                Consultez la liste des commandes d'achat.
-            {% else %}
-                Consulta la lista degli ordini di acquisto.
-            {% endif %}
-        </p>
-    </div>
-    <div class="page-actions">
-        <a href="{{ url_for('manager_fornitori_list') }}" class="btn btn-secondary">
-            🏷️ {% if lang == 'fr' %}Fournisseurs{% else %}Fornitori{% endif %}
-        </a>
-        <a href="/manager/ordini/nuovo" class="btn btn-primary">
-            ➕ {% if lang == 'fr' %}Nouvel ordre{% else %}Nuovo ordine{% endif %}
-        </a>
-        {% if status_filter == 'chiuso' %}
-            <a href="/manager/ordini?status=tutti" class="btn btn-secondary">
-                {% if lang == 'fr' %}Tous les ordres{% else %}Tutti gli ordini{% endif %}
-            </a>
-        {% else %}
-            <a href="/manager/ordini/chiusi" class="btn btn-secondary">
-                {% if lang == 'fr' %}Ordres clos{% else %}Ordini chiusi{% endif %}
-            </a>
-        {% endif %}
-    </div>
-</div>
-
-<nav class="page-actions" aria-label="{{ t('Stato consegna','État des livraisons') }}" style="margin-bottom:1rem">
-{% for value,it,fr in [('tutti','Tutti e storico','Toutes et historique'),('aperto','Da ricevere','À recevoir'),('parziale','Consegne parziali','Livraisons partielles'),('chiuso','Consegnati','Livrées')] %}<a class="btn {{ 'btn-primary' if status_filter == value else 'btn-secondary' }}" href="?status={{ value }}{% if kind_filter %}&kind={{ kind_filter }}{% endif %}">{{ t(it,fr) }}</a>{% endfor %}</nav>
-<div class="dashboard-kpi-grid" style="margin-bottom: 1.5rem;">
-    <div class="kpi-card kpi-accent-1">
-        <div class="kpi-top">
-            <span class="kpi-icon">📦</span>
-            <span class="badge badge-secondary">
-                {% if lang == 'fr' %}Totaux{% else %}Totali{% endif %}
-            </span>
-        </div>
-        <div class="kpi-value">{{ total_orders or 0 }}</div>
-        <div class="kpi-sub">
-            {% if lang == 'fr' %}Toutes les commandes{% else %}Tutti gli ordini{% endif %}
-        </div>
-    </div>
-    <div class="kpi-card kpi-accent-2">
-        <div class="kpi-top">
-            <span class="kpi-icon">🟡</span>
-            <span class="badge badge-warning">
-                {% if lang == 'fr' %}Partiels{% else %}Parziali{% endif %}
-            </span>
-        </div>
-        <div class="kpi-value">{{ partial_orders or 0 }}</div>
-        <div class="kpi-sub">
-            {% if lang == 'fr' %}Livraisons en cours{% else %}Consegne in corso{% endif %}
-        </div>
-    </div>
-    <div class="kpi-card kpi-accent-3">
-        <div class="kpi-top">
-            <span class="kpi-icon">✅</span>
-            <span class="badge badge-success">
-                {% if lang == 'fr' %}Clos{% else %}Chiusi{% endif %}
-            </span>
-        </div>
-        <div class="kpi-value">{{ closed_orders or 0 }}</div>
-        <div class="kpi-sub">
-            {% if lang == 'fr' %}Commandes complétées{% else %}Ordini completati{% endif %}
-        </div>
-    </div>
-</div>
-
-<div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-body">
-        <form method="get" class="workspace-filter-grid">
-            {% if status_filter %}
-                <input type="hidden" name="status" value="{{ status_filter }}">
-            {% endif %}
-            {% if kind_filter %}
-                <input type="hidden" name="kind" value="{{ kind_filter }}">
-            {% endif %}
-            <div class="form-field">
-                <label>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</label>
-                <input type="text" name="supplier" value="{{ supplier_filter or '' }}">
-            </div>
-            <div class="form-field">
-                <label>{% if lang == 'fr' %}Date de début{% else %}Data inizio{% endif %}</label>
-                <input type="date" name="date_from" value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
-            </div>
-            <div class="form-field">
-                <label>{% if lang == 'fr' %}Date de fin{% else %}Data fine{% endif %}</label>
-                <input type="date" name="date_to" value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
-            </div>
-            <div class="form-actions" style="align-items: flex-end;">
-                <button type="submit" class="btn btn-secondary">
-                    🔎 {% if lang == 'fr' %}Filtrer{% else %}Filtra{% endif %}
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="card table-card">
-    <div class="card-header">
-        <div class="card-title">
-            📋 {% if lang == 'fr' %}Liste des commandes{% else %}Elenco ordini{% endif %}
-        </div>
-    </div>
-    <div class="card-body">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{% if lang == 'fr' %}N° commande{% else %}N° ordine{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Fournisseur{% else %}Fornitore{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Demandeur{% else %}Richiedente{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Destinazione{% else %}Destinazione{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</th>
-                    <th class="text-right">{% if lang == 'fr' %}Avancement{% else %}Avanzamento{% endif %}</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% set orders_list = orders | default([]) %}
-                {% for order in orders_list %}
-                <tr>
-                    <td>
-                        <a href="{{ url_for('manager_ordini_detail', order_id=order.id) }}">
-                            {{ order.order_number }}
-                        </a>
-                    </td>
-                    <td>{{ supplier_label_map.get(order.id, '-') }}</td>
-                    <td>{{ order.order_date.strftime("%d/%m/%Y") if order.order_date else '-' }}</td>
-                    <td>
-                        {% if order.requester %}
-                            {{ order.requester.full_name or order.requester.email }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>{{ destination_map.get(order.id, '-') }}</td>
-                    <td>{{ order.status or '-' }}</td>
-                    <td class="text-right">{{ completion_map.get(order.id, 0) }}%</td>
-                    <td>
-                        <a href="{{ url_for('manager_ordini_detail', order_id=order.id) }}" class="btn btn-sm btn-secondary">
-                            {% if lang == 'fr' %}Détails{% else %}Dettaglio{% endif %}
-                        </a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="8" class="table-empty">
-                        {% if lang == 'fr' %}
-                            Aucune commande trouvée.
-                        {% else %}
-                            Nessun ordine trovato.
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<div class="orders-workspace">
+  <header class="page-header">
+    <div><p class="page-eyebrow">{{ t('Acquisti e fornitori','Achats et fournisseurs') }}</p><h1 class="page-title">{{ headings[status_filter] }}</h1></div>
+    <div class="page-actions"><a class="btn btn-primary" href="{{ url_for('manager_ordini_new').include_query_params(supplier_id=selected_supplier_id) if selected_supplier_id else url_for('manager_ordini_new') }}">{{ icon('plus') }} {{ t('Nuovo ordine','Nouvelle commande') }}</a></div>
+  </header>
+  <nav class="warehouse-toolbar" aria-label="{{ t('Acquisti','Achats') }}">
+    <a class="is-current" href="{{ url_for('manager_ordini_list') }}" aria-current="page">{{ t('Ordini','Commandes') }}</a>
+    <a href="{{ url_for('manager_fornitori_list') }}">{{ t('Fornitori','Fournisseurs') }}</a>
+    <a href="{{ url_for('manager_magazzino_home') }}">{{ t('Magazzino','Magasin') }}</a>
+  </nav>
+  <nav class="order-status-grid" aria-label="{{ t('Stato ordini','État des commandes') }}">
+    {% for value,it,fr,symbol in [('in_corso','In corso','En cours','report'),('parziale','Parziali','Partielles','truck'),('chiuso','Chiusi','Clôturées','file'),('tutti','Tutti','Toutes','grid')] %}
+    <a href="{{ status_links[value] }}" class="order-status-card {{ 'is-current' if status_filter == value else '' }}" {% if status_filter == value %}aria-current="page"{% endif %}>{{ icon(symbol) }}<span>{{ t(it,fr) }}</span><strong>{{ counts[value] }}</strong></a>
+    {% endfor %}
+  </nav>
+  <section class="card order-directory">
+    <form method="get" action="{{ url_for('manager_ordini_list') }}" class="order-filters" aria-label="{{ t('Filtra ordini','Filtrer les commandes') }}">
+      <input type="hidden" name="status" value="{{ status_filter }}">
+      {% if supplier_filter %}<input type="hidden" name="supplier" value="{{ supplier_filter }}">{% endif %}
+      <label class="order-search">{{ t('Cerca ordine o fornitore','Rechercher une commande ou un fournisseur') }}<input name="q" type="search" value="{{ search }}" placeholder="{{ t('Numero, descrizione o fornitore','Numéro, description ou fournisseur') }}"></label>
+      <label>{{ t('Fornitore','Fournisseur') }}<select name="supplier_id"><option value="0">{{ t('Tutti i fornitori','Tous les fournisseurs') }}</option>{% for s in suppliers %}<option value="{{ s.id }}" {% if selected_supplier_id == s.id %}selected{% endif %}>{{ s.name }}{{ t(' · disattivo',' · inactif') if not s.is_active else '' }}</option>{% endfor %}</select></label>
+      <label>{{ t('Tipo ordine','Type de commande') }}<select name="kind"><option value="">{{ t('Tutti','Toutes') }}</option><option value="warehouse" {% if kind_filter == 'warehouse' %}selected{% endif %}>{{ t('Magazzino','Magasin') }}</option><option value="closed" {% if kind_filter == 'closed' %}selected{% endif %}>{{ t('Cantiere','Chantier') }}</option></select></label>
+      <label>{{ t('Dal','Du') }}<input type="date" name="date_from" value="{{ date_from.isoformat() if date_from else '' }}"></label>
+      <label>{{ t('Al','Au') }}<input type="date" name="date_to" value="{{ date_to.isoformat() if date_to else '' }}"></label>
+      <div class="order-filter-actions"><button class="btn btn-secondary" type="submit">{{ t('Cerca','Rechercher') }}</button><a href="{{ url_for('manager_ordini_list').include_query_params(status=status_filter) }}">{{ t('Azzera','Réinitialiser') }}</a></div>
+    </form>
+    {% if supplier_filter %}<p class="text-muted">{{ t('Fornitore cercato','Fournisseur recherché') }}: {{ supplier_filter }}</p>{% endif %}
+    <div class="order-list-heading"><h2>{{ t('Elenco ordini','Liste des commandes') }} <span>{{ result_count }}</span></h2><span class="text-muted">{{ t('Più recenti prima','Les plus récentes en premier') }}</span></div>
+    {% include 'manager/ordini/_order_rows.html' %}
+    {% if pages > 1 %}<nav class="supplier-pagination" aria-label="{{ t('Pagine ordini','Pages commandes') }}">{% if page > 1 %}<a class="btn btn-secondary" href="{{ page_url.include_query_params(page=page-1) }}">{{ t('Precedenti','Précédentes') }}</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a class="btn btn-secondary" href="{{ page_url.include_query_params(page=page+1) }}">{{ t('Successivi','Suivantes') }}</a>{% endif %}</nav>{% endif %}
+  </section>
 </div>
 {% endblock %}

@@ -578,3 +578,64 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
 .warehouse-workspace .warehouse-editor #initial-suppliers .form-actions { justify-content:flex-start; }
 .warehouse-workspace .main-content .form-field > .btn { align-self:flex-start; min-height:40px; }
 .warehouse-workspace .main-content .list-search-sticky { background:var(--ws-paper); color:var(--ws-ink); border:1px solid var(--ws-line); border-radius:14px; padding:18px 24px; margin-bottom:20px; }
+
+/* Orders and supplier history use the same compact workspace directory. */
+.orders-workspace { min-width:0; }
+.orders-workspace .page-actions { display:flex; flex-wrap:wrap; gap:12px; }
+.order-status-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:24px 0; }
+.order-status-card { display:grid; grid-template-columns:24px 1fr auto; align-items:center; gap:12px; padding:22px; border:1px solid var(--ws-line); border-radius:16px; color:var(--ws-muted); background:var(--ws-paper); text-decoration:none; }
+.order-status-card strong { font-size:23px; font-variant-numeric:tabular-nums; color:var(--ws-ink); }
+.order-status-card.is-current { background:var(--ws-hover); border-color:var(--ws-section-line); box-shadow:inset 3px 0 var(--ws-section-line); color:var(--ws-ink); }
+.workspace-ui .order-directory { padding:26px; }
+.order-filters { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; padding-bottom:26px; border-bottom:1px solid var(--ws-line); align-items:end; }
+.order-filters label { display:flex; flex-direction:column; gap:8px; margin:0; font-size:13px; color:var(--ws-muted); min-width:0; }
+.order-filters .order-search { grid-column:span 2; }
+.order-filters input,.order-filters select { width:100%; min-height:44px; box-sizing:border-box; min-width:0; }
+.order-filter-actions { display:flex; align-items:center; gap:18px; grid-column:span 2; }
+.order-filter-actions .btn { min-height:44px; }
+.order-filter-actions > a { font-size:13px; color:var(--ws-muted); }
+.order-list-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:24px 0 6px; }
+.workspace-ui .order-list-heading h2 { margin:0; font-size:18px; }
+.order-list-heading h2 span { font-size:13px; font-weight:400; color:var(--ws-muted); margin-left:8px; }
+.order-list-heading > span { font-size:12px; }
+.order-row { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr) minmax(0,.8fr) auto; align-items:center; gap:24px; padding:24px 0; border-bottom:1px solid var(--ws-line); }
+.order-row:last-child { border-bottom:0; }
+.order-row-main,.order-row-destination,.order-row-progress { min-width:0; }
+.order-row-number { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:9px; }
+.order-row-number > a { font-size:17px; font-weight:650; color:var(--ws-ink); text-decoration:none; overflow-wrap:anywhere; }
+.order-state { display:inline-flex; padding:4px 8px; border-radius:7px; border:1px solid var(--ws-line); font-size:11px; color:var(--ws-muted); background:var(--ws-input); white-space:nowrap; }
+.order-state.is-partial { color:#f2ce8a; background:#443a29; border-color:#6d5933; }
+.order-state.is-closed { color:#acdfce; background:#203e38; border-color:#3c685b; }
+html[data-theme=light] .order-state.is-partial { color:#75510f; background:#f5ead2; border-color:#d9c494; }
+html[data-theme=light] .order-state.is-closed { color:#28594b; background:#e1eee8; border-color:#a9c9bb; }
+.order-row-supplier { font-size:14px; overflow-wrap:anywhere; }
+.order-row-supplier a { color:var(--ws-ink); text-decoration:none; }
+.order-description { font-size:13px; color:var(--ws-muted); margin:7px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.order-row-meta { display:flex; flex-wrap:wrap; gap:5px 12px; margin-top:8px; font-size:11px; color:var(--ws-muted); overflow-wrap:anywhere; }
+.order-small-label { display:block; font-size:11px; color:var(--ws-muted); margin-bottom:7px; }
+.order-row-destination strong { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:500; overflow-wrap:anywhere; }
+.order-row-destination small,.order-row-progress small { display:block; font-size:11px; color:var(--ws-muted); margin-top:8px; overflow-wrap:anywhere; }
+.order-row-progress > div { display:flex; justify-content:space-between; gap:8px; font-size:12px; }
+.order-row-progress progress { appearance:none; display:block; border:0; width:100%; height:5px; overflow:hidden; border-radius:9px; background:var(--ws-line); color:var(--ws-section-line); }
+.order-row-progress progress::-webkit-progress-bar { background:var(--ws-line); }
+.order-row-progress progress::-webkit-progress-value { background:var(--ws-section-line); border-radius:9px; }
+.order-row-progress progress::-moz-progress-bar { background:var(--ws-section-line); }
+.order-open { white-space:nowrap; min-height:40px; }
+.order-empty { text-align:center; padding:40px 15px; color:var(--ws-muted); }
+.order-empty p { font-size:14px; }
+.order-status-card:focus-visible,.order-row a:focus-visible { outline:2px solid var(--ws-section-line); outline-offset:4px; }
+@media(max-width:1100px) {
+ .order-status-card { grid-template-columns:1fr auto; padding:18px; gap:10px; }.order-status-card svg { display:none; }
+ .order-row { grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto; gap:18px; }
+ .order-row-progress { grid-column:2; grid-row:2; }.order-row-main { grid-row:span 2; }.order-row-destination { grid-column:2; }.order-open { grid-column:3; grid-row:span 2; }
+}
+@media(max-width:700px) {
+ .order-status-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+ .order-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .order-filters > label:nth-of-type(2),.order-filters > label:nth-of-type(3) { grid-column:span 2; }
+ .workspace-ui .order-directory { padding:20px; }
+ .order-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px 14px; }
+ .order-row-main { grid-column:1/-1; grid-row:auto; }
+ .order-row-destination { grid-column:1; grid-row:auto; }.order-row-progress { grid-column:2; grid-row:auto; }
+ .order-open { grid-column:1/-1; grid-row:auto; justify-self:start; }
+}
