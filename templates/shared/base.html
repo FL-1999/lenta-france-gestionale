@@ -11,11 +11,11 @@
   <meta name="apple-mobile-web-app-title" content="Lenta France">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/static/img/icon-192.png">
-  <script src="/static/js/theme_switcher.js?v=20260917r8"></script>
-  <link rel="stylesheet" href="/static/css/style.css?v=20260917r8">
-  <link rel="stylesheet" href="/static/css/workspace.css?v=20260917r8">
+  <script src="/static/js/theme_switcher.js?v=20260917r9"></script>
+  <link rel="stylesheet" href="/static/css/style.css?v=20260917r9">
+  <link rel="stylesheet" href="/static/css/workspace.css?v=20260917r9">
 </head>
-<body class="workspace-ui {{ 'warehouse-workspace' if request.url.path.startswith('/manager/magazzino') else '' }} {{ 'workspace-auth' if user else 'workspace-guest' }}">
+<body class="workspace-ui {{ 'purchasing-workspace' if purchase_nav else '' }} {{ 'warehouse-workspace' if request.url.path.startswith('/manager/magazzino') else '' }} {{ 'workspace-auth' if user else 'workspace-guest' }}">
     {% set lang = request.cookies.get('lang', 'it') %}
     {% set current_path = request.url.path %}
     {% set section = request.query_params.get('section') %}
@@ -176,6 +176,7 @@
       </div>
     </header>
     <main id="main-content" class="container main-content" tabindex="-1">
+      {% if purchase_nav %}{% include 'shared/purchasing_context.html' %}{% endif %}
       {% block content %}{% endblock %}
     </main>
   </div>
@@ -198,9 +199,10 @@
   </nav>
   {% endif %}
   <script src="/static/js/workspace.js?v=20260916w1" defer></script>
-  <script src="/static/js/workspace_icons.js?v=20260917r8" defer></script>
+  {% if purchase_nav %}<script src="/static/js/purchasing_navigation.js?v=20260917r9" defer></script>{% endif %}
+  <script src="/static/js/workspace_icons.js?v=20260917r9" defer></script>
   <script src="/static/js/notifications.js?v=20260506a" defer></script>
-  <script src="/static/js/sw_register.js?v=20260917r8" defer></script>
+  <script src="/static/js/sw_register.js?v=20260917r9" defer></script>
   {% block scripts %}{% endblock %}
   <noscript><style>@media(max-width:1023px){.workspace-sidebar{position:static!important;visibility:visible!important;transform:none!important;width:100%!important}.workspace-scrim,.workspace-menu-toggle{display:none!important}}</style></noscript>
 </body>

@@ -3190,7 +3190,7 @@ def manager_magazzino_update(
         )
 
     return RedirectResponse(
-        url=request.url_for("manager_magazzino_list"),
+        url=request.url_for("warehouse_item_card", item_id=item.id),
         status_code=303,
     )
 

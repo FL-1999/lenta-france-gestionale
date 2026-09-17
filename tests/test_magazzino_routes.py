@@ -37,7 +37,8 @@ class MagazzinoRoutesTests(unittest.TestCase):
         )
         response = self.client.get("/manager/magazzino", cookies={"lang": "it"})
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Magazzino", response.text)
+        self.assertIn("Articoli", response.text)
+        self.assertIn('data-purchase-section="items"', response.text)
 
     def test_categorie_new_form_shows_existing_macros(self) -> None:
         macro_name = f"Macro Test {self.unique}"

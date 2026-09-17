@@ -20,11 +20,7 @@
             {% endif %}
         </p>
     </div>
-    <div class="page-actions">
-        <a href="{{ url_for('manager_ordini_detail', order_id=order.id) }}" class="btn btn-secondary">
-            ← {% if lang == 'fr' %}Retour{% else %}Indietro{% endif %}
-        </a>
-    </div>
+
 </div>
 
 {% if error_message %}

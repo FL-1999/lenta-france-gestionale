@@ -4,7 +4,6 @@
 {% block content %}
 <div class="supplier-workspace">
   <header class="page-header"><div><p class="page-eyebrow">{{ t('Acquisti','Achats') }}</p><h1 class="page-title">{{ t('Fornitori','Fournisseurs') }}</h1></div><a class="btn btn-primary" href="{{ url_for('manager_fornitori_new') }}">{{ icon('plus') }} {{ t('Nuovo fornitore','Nouveau fournisseur') }}</a></header>
-  <nav class="warehouse-toolbar" aria-label="{{ t('Sezioni magazzino','Rubriques du magasin') }}"><a href="{{ url_for('manager_magazzino_home') }}">{{ t('Articoli','Articles') }}</a><a href="{{ url_for('manager_ordini_list') }}">{{ t('Ordini','Commandes') }}</a><a class="is-current" aria-current="page" href="{{ url_for('manager_fornitori_list') }}">{{ t('Fornitori','Fournisseurs') }}</a></nav>
   {% if request.query_params.get('err') %}<p class="alert alert-danger" role="alert">{{ request.query_params.get('err') }}</p>{% endif %}
   <section class="card"><div class="card-body">
     <form method="get" class="supplier-search">

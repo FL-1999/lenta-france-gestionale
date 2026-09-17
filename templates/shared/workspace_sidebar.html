@@ -19,12 +19,12 @@
       {{ item('/manager/fiches' if is_manager else '/capo/fiches', 'Fiches', 'file', '/fiches' in current_path or '/fiche' in current_path) }}
     {% endif %}
     {% if has_perm(user, 'gabbie.read') and active_role_value != 'ferraiolo' %}{{ item(url_for('gabbie_home'), t('Gabbie armatura',"Cages d’armature"), 'grid', current_path.startswith('/gabbie')) }}{% endif %}
+    {% if is_manager or can_access_inventory %}{% include 'shared/purchasing_sidebar.html' %}{% endif %}
     {% if show_magazzino or (show_trasporti and active_role_value != 'driver') or show_depositi %}
       <p class="workspace-nav-label">{{ t('Logistica e risorse','Logistique et ressources') }}</p>
-      {% if is_manager %}{{ item('/manager/ordini', t('Ordini','Commandes'), 'file', current_path.startswith('/manager/ordini')) }}{% endif %}
-      {% if show_magazzino %}
-        {{ item(magazzino_path, t('Magazzino','Entrepôt'), 'box', is_magazzino_active and current_path != home_path and not (is_capo and current_path.startswith('/capo/magazzino/richieste'))) }}
-        {% if is_capo %}{{ item(url_for('capo_magazzino_richieste'), t('Le mie richieste','Mes demandes'), 'today', current_path.startswith('/capo/magazzino/richieste')) }}{% endif %}
+      {% if is_capo %}
+        {{ item(magazzino_path, t('Magazzino','Entrepôt'), 'box', is_magazzino_active and not current_path.startswith('/capo/magazzino/richieste')) }}
+        {{ item(url_for('capo_magazzino_richieste'), t('Le mie richieste','Mes demandes'), 'today', current_path.startswith('/capo/magazzino/richieste')) }}
       {% endif %}
       {% if show_trasporti and active_role_value != 'driver' %}{{ item(trasporti_path, t('Trasporti','Transports'), 'truck', is_trasporti_active) }}{% endif %}
       {% if show_depositi %}{{ item(depositi_path, t('Depositi','Dépôts'), 'box', is_depositi_active) }}{% endif %}

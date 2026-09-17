@@ -29,16 +29,9 @@
             {% endif %}
         </p>
     </div>
-    <div class="header-actions">
-        <a href="{{ url_for('manager_magazzino_home') }}" class="btn btn-secondary">
-            ← {% if lang == 'fr' %}Articles{% else %}Articoli{% endif %}
-        </a>
-    </div>
+
 </div>
 
-<div class="magazzino-pill-bar">
-    {% include "manager/magazzino/_nav_pills.html" %}
-</div>
 
 {% set ok = request.query_params.get('ok') %}
 {% set err = request.query_params.get('err') %}
