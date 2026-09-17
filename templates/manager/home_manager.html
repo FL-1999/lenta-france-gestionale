@@ -52,7 +52,7 @@
                         {% if lang == 'fr' %}Liste des chantiers{% else %}Lista cantieri{% endif %}
                     </a>
                     <a href="/manager/cantieri/nuovo" class="btn btn-primary">
-                        ➕ {% if lang == 'fr' %}Nouveau chantier{% else %}Nuovo cantiere{% endif %}
+                        {{ icon('plus') }} {% if lang == 'fr' %}Nouveau chantier{% else %}Nuovo cantiere{% endif %}
                     </a>
                 </div>
             </div>
@@ -111,7 +111,7 @@
                         {% if lang == 'fr' %}Voir fiches{% else %}Vedi fiches{% endif %}
                     </a>
                     <a href="{{ url_for('manager_fiche_new_form') }}" class="btn btn-primary">
-                        ➕ {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
+                        {{ icon('plus') }} {% if lang == 'fr' %}Nouvelle fiche{% else %}Nuova fiche{% endif %}
                     </a>
                 </div>
             </div>
@@ -119,40 +119,25 @@
 </div><div class="workspace-context-links"><a href="{{ url_for('manager_site_tasks_overview') }}">{{ t('Note operative','Notes opérationnelles') }}</a></div>
 </section>
 
+{% macro purchase_card(href, symbol, label, description) -%}
+<a class="dashboard-purchase-card" href="{{ href }}">
+    <span class="dashboard-purchase-title">{{ icon(symbol) }}<strong>{{ label }}</strong>{{ icon('arrow') }}</span>
+    <span class="dashboard-purchase-description">{{ description }}</span>
+</a>
+{%- endmacro %}
+<section class="workspace-context" aria-labelledby="context-purchasing">
+<div class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">02</span><div><h2 id="context-purchasing">{{ t('Acquisti e magazzino','Achats et magasin') }}</h2><p>{{ t('Articoli, fornitori e flussi di materiale.','Articles, fournisseurs et flux de matériel.') }}</p></div></div>
+<div class="dashboard-purchasing-grid">
+    {{ purchase_card('/manager/magazzino', 'box', t('Articoli','Articles'), t('Macro categorie, disponibilità e codici.','Macro catégories, disponibilités et codes.')) }}
+    {{ purchase_card('/manager/ordini', 'report', t('Ordini','Commandes'), t('Acquisti, consegne parziali e storico.','Achats, livraisons partielles et historique.')) }}
+    {{ purchase_card('/manager/fornitori', 'users', t('Fornitori','Fournisseurs'), t('Contatti, articoli e ordini collegati.','Contacts, articles et commandes associés.')) }}
+    {{ purchase_card('/manager/magazzino/movimenti', 'chart', t('Movimenti','Mouvements'), t('Carichi, scarichi e tracciabilità.','Entrées, sorties et traçabilité.')) }}
+    {{ purchase_card('/manager/magazzino/richieste', 'today', t('Richieste','Demandes'), t('Prelievi da verificare e approvare.','Prélèvements à vérifier et à approuver.')) }}
+</div>
+</section>
+
 <section class="workspace-context" aria-labelledby="context-logistics">
-<div class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">02</span><div><h2 id="context-logistics">{{ t('Logistica e risorse','Logistique et ressources') }}</h2><p>{{ t('Acquisti, materiali, mezzi e movimentazioni.','Achats, matériel, véhicules et mouvements.') }}</p></div></div>
-        <div class="card shortcut-card orders-container">
-            <div class="orders-container-header">
-                <h3>📦 {{ t('Ordini & Magazzino', 'Commandes & Entrepôt') }}</h3>
-                <p>{{ t('Gestione ordini di acquisto e stock', 'Gestion des commandes d\'achat et du stock') }}</p>
-            </div>
-
-            <div class="orders-container-grid">
-                <div class="card shortcut-card compact">
-                    <a class="shortcut-card-link" href="/manager/ordini"></a>
-                    <div class="shortcut-title">🧾 {{ t('Ordini generali', 'Commandes générales') }}</div>
-                    <div class="shortcut-subtitle">
-                        {{ t('Lista completa ordini di acquisto', 'Liste complète des commandes d\'achat') }}
-                    </div>
-                </div>
-
-                <div class="card shortcut-card compact">
-                    <a class="shortcut-card-link" href="/manager/magazzino"></a>
-                    <div class="shortcut-title">📦 {{ t('Magazzino', 'Entrepôt') }}</div>
-                    <div class="shortcut-subtitle">
-                        {{ t('Articoli, richieste e movimenti', 'Articles, demandes et mouvements') }}
-                    </div>
-                </div>
-
-                <div class="card shortcut-card compact">
-                    <a class="shortcut-card-link" href="/manager/ordini?kind=closed"></a>
-                    <div class="shortcut-title">🏗️ {{ t('Ordini cantiere', 'Commandes chantier') }}</div>
-                    <div class="shortcut-subtitle">
-                        {{ t('Ordini una tantum per uno specifico cantiere', 'Commandes ponctuelles pour un chantier précis') }}
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">03</span><div><h2 id="context-logistics">{{ t('Logistica e risorse','Logistique et ressources') }}</h2><p>{{ t('Trasporti, mezzi e attrezzature.','Transports, véhicules et équipements.') }}</p></div></div>
 <div class="dashboard-modules-grid">
 <div class="card module-card">
             <div class="card-header">
@@ -181,7 +166,7 @@
                         {% if lang == 'fr' %}Liste des transports{% else %}Lista trasporti{% endif %}
                     </a>
                     <a href="/manager/trasporti/nuovo" class="btn btn-primary">
-                        ➕ {% if lang == 'fr' %}Nouveau trajet{% else %}Nuovo viaggio{% endif %}
+                        {{ icon('plus') }} {% if lang == 'fr' %}Nouveau trajet{% else %}Nuovo viaggio{% endif %}
                     </a>
                 </div>
             </div>
@@ -212,7 +197,7 @@
                         {% if lang == 'fr' %}Liste des machines{% else %}Lista macchinari{% endif %}
                     </a>
                     <a href="{{ request.url_for('new_machine_form') }}" class="btn btn-primary">
-                        🛠 {% if lang == 'fr' %}Nouveau macchinario{% else %}Nuovo macchinario{% endif %}
+                        {{ icon('plus') }} {% if lang == 'fr' %}Nouveau macchinario{% else %}Nuovo macchinario{% endif %}
                     </a>
                 </div>
             </div>
@@ -242,10 +227,10 @@
                 </p>
                 <div class="page-actions-row">
                     <a href="{{ url_for('manager_veicoli_list') }}" class="btn btn-secondary">
-                        🚐 {% if lang == 'fr' %}Liste des véhicules{% else %}Lista veicoli{% endif %}
+                        {{ icon('truck') }} {% if lang == 'fr' %}Liste des véhicules{% else %}Lista veicoli{% endif %}
                     </a>
                     <a href="{{ url_for('manager_veicoli_new') }}" class="btn btn-primary">
-                        ➕ {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
+                        {{ icon('plus') }} {% if lang == 'fr' %}Nouveau véhicule{% else %}Nuovo veicolo{% endif %}
                     </a>
                 </div>
             </div>
@@ -271,10 +256,10 @@
                 </p>
                 <div class="page-actions-row">
                     <a href="{{ url_for('manager_attrezzature_list') }}" class="btn btn-secondary">
-                        🧰 {% if lang == 'fr' %}Liste des équipements{% else %}Lista attrezzature{% endif %}
+                        {{ icon('settings') }} {% if lang == 'fr' %}Liste des équipements{% else %}Lista attrezzature{% endif %}
                     </a>
                     <a href="{{ url_for('manager_attrezzature_new') }}" class="btn btn-primary">
-                        ➕ {% if lang == 'fr' %}Nouvel équipement{% else %}Nuova attrezzatura{% endif %}
+                        {{ icon('plus') }} {% if lang == 'fr' %}Nouvel équipement{% else %}Nuova attrezzatura{% endif %}
                     </a>
                 </div>
             </div>
@@ -308,7 +293,7 @@
 </section>
 
 <section class="workspace-context" aria-labelledby="context-people">
-<div class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">03</span><div><h2 id="context-people">{{ t('Persone e squadre','Personnel et équipes') }}</h2><p>{{ t('Anagrafiche, presenze e organizzazione del lavoro.','Personnel, présences et organisation du travail.') }}</p></div></div>
+<div class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">04</span><div><h2 id="context-people">{{ t('Persone e squadre','Personnel et équipes') }}</h2><p>{{ t('Anagrafiche, presenze e organizzazione del lavoro.','Personnel, présences et organisation du travail.') }}</p></div></div>
 <div class="dashboard-modules-grid">
 <div class="card module-card">
             <div class="card-header">
@@ -334,10 +319,10 @@
                 </p>
                 <div class="page-actions-row">
                     <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary">
-                        📋 {% if lang == 'fr' %}Liste du personnel{% else %}Lista personale{% endif %}
+                        {{ icon('users') }} {% if lang == 'fr' %}Liste du personnel{% else %}Lista personale{% endif %}
                     </a>
                     <a href="{{ url_for('manager_personale_new') }}" class="btn btn-primary">
-                        ➕ {% if lang == 'fr' %}Nouvel employé{% else %}Nuovo personale{% endif %}
+                        {{ icon('plus') }} {% if lang == 'fr' %}Nouvel employé{% else %}Nuovo personale{% endif %}
                     </a>
                 </div>
             </div>
@@ -399,7 +384,7 @@
                     </a>
                     {% if has_perm(user, 'users.create') %}
                     <a href="/manager/utenti/nuovo" class="btn btn-primary">
-                        ➕ {% if lang == 'fr' %}Nouvel utilisateur{% else %}Nuovo utente{% endif %}
+                        {{ icon('plus') }} {% if lang == 'fr' %}Nouvel utilisateur{% else %}Nuovo utente{% endif %}
                     </a>
                     {% endif %}
                 </div>
@@ -408,7 +393,7 @@
 </div><div class="workspace-context-links"><a href="/operazioni/pianificazione">{{ t('Pianificazione settimanale','Planning hebdomadaire') }}</a></div>
 </section>
     <section class="dashboard-reporting-suite workspace-context" aria-labelledby="context-control">
-<div class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">04</span><div><h2 id="context-control">{{ t('Controllo operativo','Suivi opérationnel') }}</h2><p>{{ t('Riepilogo generale e andamento degli ultimi 30 giorni.','Vue générale et évolution des 30 derniers jours.') }}</p></div></div>
+<div class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">05</span><div><h2 id="context-control">{{ t('Controllo operativo','Suivi opérationnel') }}</h2><p>{{ t('Riepilogo generale e andamento degli ultimi 30 giorni.','Vue générale et évolution des 30 derniers jours.') }}</p></div></div>
     {% set rapportini_totali = reports_count|default(rapportini_count|default('—')) %}
     {% set cantieri_totali = sites_count|default(cantieri_count|default('—')) %}
     {% set macchinari_totali = macchinari_count|default(machines_count|default('—')) %}
@@ -546,7 +531,7 @@
         <div class="dashboard-reporting-kpis" id="dashboardReportingKpis">
             <article class="kpi-card kpi-accent-1 report-kpi-card">
                 <div class="kpi-top">
-                    <span class="kpi-icon" aria-hidden="true">📄</span>
+                    <span class="kpi-icon" aria-hidden="true">{{ icon('file') }}</span>
                     <span class="kpi-label">{% if lang == 'fr' %}Rapports 30j{% else %}Rapportini 30g{% endif %}</span>
                 </div>
                 <div class="kpi-value" id="kpiReports30Days">0</div>
@@ -555,7 +540,7 @@
 
             <article class="kpi-card kpi-accent-2 report-kpi-card">
                 <div class="kpi-top">
-                    <span class="kpi-icon" aria-hidden="true">⏱️</span>
+                    <span class="kpi-icon" aria-hidden="true">{{ icon('calendar') }}</span>
                     <span class="kpi-label">{% if lang == 'fr' %}Heures 30j{% else %}Ore 30g{% endif %}</span>
                 </div>
                 <div class="kpi-value" id="kpiHours30Days">0</div>
@@ -564,7 +549,7 @@
 
             <article class="kpi-card kpi-accent-3 report-kpi-card">
                 <div class="kpi-top">
-                    <span class="kpi-icon" aria-hidden="true">🏗️</span>
+                    <span class="kpi-icon" aria-hidden="true">{{ icon('site') }}</span>
                     <span class="kpi-label">{% if lang == 'fr' %}Chantiers actifs{% else %}Cantieri attivi{% endif %}</span>
                 </div>
                 <div class="kpi-value" id="kpiActiveSites">{{ cantieri_totali }}</div>
@@ -573,7 +558,7 @@
 
             <article class="kpi-card kpi-accent-4 report-kpi-card">
                 <div class="kpi-top">
-                    <span class="kpi-icon" aria-hidden="true">✅</span>
+                    <span class="kpi-icon" aria-hidden="true">{{ icon('today') }}</span>
                     <span class="kpi-label">{% if lang == 'fr' %}Rapports clôturés{% else %}Rapportini chiusi{% endif %}</span>
                 </div>
                 <div class="kpi-value" id="kpiClosedReportsPct">0%</div>
@@ -728,7 +713,7 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-cantieri-map-external>
                     {% if lang == 'fr' %}Ouvrir dans Google Maps{% else %}Apri in Google Maps{% endif %}
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm" data-cantieri-map-close>✖</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-cantieri-map-close aria-label="{{ t('Chiudi mappa','Fermer la carte') }}">{{ icon('close') }}</button>
             </div>
         </div>
         <div id="cantieri-map-modal-body" class="map-modal__body"></div>
