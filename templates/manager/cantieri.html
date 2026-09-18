@@ -289,9 +289,6 @@
     cursor:pointer;
     transition: background-color .15s ease;
   }
-  .site-row-clickable:hover td{
-    background: rgba(99, 102, 241, 0.12);
-  }
   .site-row-clickable td .btn,
   .site-row-clickable td a{
     position:relative;
@@ -302,9 +299,8 @@
     transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
   }
   .site-card-clickable:hover{
-    border-color: rgba(99, 102, 241, 0.45);
-    box-shadow: 0 10px 25px rgba(0,0,0,.22);
-    transform: translateY(-1px);
+    border-color: var(--ws-section-line);
+    box-shadow: none;
   }
   .project-status{font-size:1.2rem;display:inline-flex;align-items:center;justify-content:center;}
   .project-status--ok{filter:saturate(1.2);}
