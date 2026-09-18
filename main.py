@@ -7367,13 +7367,14 @@ def manager_cantiere_elimina(
     conferma_nome: str = Form(...),
     current_user: User = Depends(get_current_active_user_html),
 ):
-    """Elimina un cantiere e tutto ciò che è collegato. Solo admin. Registrato in audit."""
+    """Elimina atomicamente il cantiere e i documenti propri; conserva e scollega i dati aziendali condivisi. Solo admin, con conferma del nome e audit."""
     if not has_perm(current_user, "sites.delete"):
         raise HTTPException(status_code=403, detail="Solo un amministratore può eliminare un cantiere")
 
+    from sqlalchemy.exc import SQLAlchemyError
     db = SessionLocal()
     try:
-        site = db.query(Site).filter(Site.id == site_id).first()
+        site = db.query(Site).filter(Site.id == site_id).with_for_update().first()
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
 
@@ -7384,24 +7385,8 @@ def manager_cantiere_elimina(
         site_name = site.name
         site_code = site.code
 
-        # Annulla i riferimenti non gestiti dal cascade ORM (ordini, magazzino, trasporti)
-        from sqlalchemy import text as _sql_text
-        for stmt in (
-            "UPDATE purchase_orders SET site_id=NULL WHERE site_id=:sid",
-            "UPDATE purchase_orders SET delivery_site_id=NULL WHERE delivery_site_id=:sid",
-            "UPDATE magazzino_richieste SET cantiere_id=NULL WHERE cantiere_id=:sid",
-            "UPDATE magazzino_movimenti SET cantiere_id=NULL WHERE cantiere_id=:sid",
-            "UPDATE trasporti_viaggi SET origine_site_id=NULL WHERE origine_site_id=:sid",
-            "UPDATE trasporti_viaggi SET destinazione_site_id=NULL WHERE destinazione_site_id=:sid",
-            "UPDATE trasporto_tappe SET origine_site_id=NULL WHERE origine_site_id=:sid",
-            "UPDATE trasporto_tappe SET destinazione_site_id=NULL WHERE destinazione_site_id=:sid",
-        ):
-            try:
-                db.execute(_sql_text(stmt), {"sid": site_id})
-            except Exception:
-                logger.exception("Errore azzerando riferimenti al cantiere %s durante eliminazione", site_id)
-
-        db.delete(site)  # cascade ORM: fiches, coupes, rapportini, economia, ecc.
+        from services.site_deletion import delete_site_records
+        delete_site_records(db, site)
         log_audit_event(
             db,
             current_user,
@@ -7411,10 +7396,14 @@ def manager_cantiere_elimina(
             {"name": site_name, "code": site_code},
         )
         db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Eliminazione cantiere %s annullata", site_id)
+        raise HTTPException(409, "Il cantiere non è stato eliminato: un collegamento impedisce la cancellazione. Nessuna modifica è stata salvata.") from exc
     finally:
         db.close()
 
-    return RedirectResponse(url="/manager/cantieri", status_code=303)
+    return RedirectResponse(url="/manager/cantieri?deleted=1", status_code=303)
 
 
 @app.post("/manager/cantieri/{site_id}/coupe/{coupe_id}/elimina", name="manager_coupe_elimina")

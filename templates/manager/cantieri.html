@@ -4,6 +4,8 @@
     {% if lang == 'fr' %}Chantiers – Manager – Lenta France{% else %}Cantieri – Manager – Lenta France{% endif %}
 {% endblock %}
 {% block content %}
+{% if request.query_params.get('deleted') == '1' %}<div class="card" role="status"><div class="card-body">Cantiere eliminato correttamente.</div></div>{% endif %}
+
 <div class="page-header">
   <div class="page-header-main">
     <p class="page-eyebrow">

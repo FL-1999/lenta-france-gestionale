@@ -58,10 +58,10 @@
     <div class="card-body">
         <p class="text-muted mb-2">
             Eliminando questo cantiere si cancellano <strong>tutti</strong> i dati collegati
-            (fiches, coupe, rapportini, dati economici). Azione <strong>irreversibile</strong> e registrata.
+            (fiches, coupe, rapportini, documenti e dati economici). Ordini, movimenti, presenze e macchinari vengono conservati e scollegati dal cantiere. Azione <strong>irreversibile</strong> e registrata.
         </p>
         <form method="post" action="{{ url_for('manager_cantiere_elimina', site_id=site.id) }}"
-              onsubmit="return confirm('ATTENZIONE: stai per eliminare il cantiere «{{ site.name }}» e TUTTI i dati collegati. Azione irreversibile. Continuare?');"
+              onsubmit="return confirm('Eliminare definitivamente il cantiere, le fiches, i rapportini e i documenti collegati? Azione irreversibile.');"
               style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <input type="text" name="conferma_nome" required autocomplete="off"
                    placeholder="Digita «{{ site.name }}» per confermare"
