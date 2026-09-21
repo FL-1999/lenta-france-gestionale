@@ -5455,7 +5455,6 @@ def manager_cantiere_nuovo_get(
             .order_by(User.full_name, User.email)
             .all()
         )
-        depositi_disponibili = _load_real_depots_for_forms(db)
     finally:
         db.close()
 
@@ -5471,7 +5470,6 @@ def manager_cantiere_nuovo_get(
             capisquadra=capisquadra,
             ferraioli=ferraioli,
             google_maps_api_key=google_maps_api_key,
-            depositi_disponibili=depositi_disponibili,
         ),
     )
 
@@ -5610,7 +5608,6 @@ def manager_cantiere_nuovo_post(
                 .order_by(User.full_name, User.email)
                 .all()
             )
-            depositi_disponibili = _load_real_depots_for_forms(db)
             return templates.TemplateResponse(
                 request,
                 "manager/cantiere_form.html",
@@ -5623,7 +5620,6 @@ def manager_cantiere_nuovo_post(
                     capisquadra=capisquadra,
                     ferraioli=ferraioli,
                     google_maps_api_key=google_maps_api_key,
-                    depositi_disponibili=depositi_disponibili,
                     error_message=errors[0],
                     form_data={
                         "name": name,
