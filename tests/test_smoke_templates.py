@@ -537,19 +537,21 @@ def test_manager_site_detail_renders_panel_schema() -> None:
             "site_task_status_values": [],
             "site_task_priority_values": [],
             "manager_users": [],
+            "site_fiches": [SimpleNamespace(id=44,panel_label="P1",tipologia_scavo="paratia",date=None),SimpleNamespace(id=45,panel_label="P2",tipologia_scavo="palo",date=None)],
+            "production_stats": __import__("utils.production_stats",fromlist=["compute_site_production"]).compute_site_production(site,[]),
+            "workspace_plan": {"plan":None,"elements":[]},
+            "workspace_pours": [],
         },
     )
 
-    assert "Avanzamento lavori" in output
-    assert "Paratie — 1/2 completate — 50%" in output
-    assert "Pali — 1/2 completati — 50%" in output
-    assert 'href="http://testserver/manager/fiches/44"' in output
-    assert 'href="http://testserver/manager/fiches/45"' in output
-    assert "Fiche mancante" in output
-    assert "progress-map-bar" in output
-    assert "progress-map-grid" in output
-    assert "progress-cell done" in output
-    assert "progress-cell missing" in output
+    assert 'Pianta del cantiere' in output
+    assert 'Pannelli con fiche' in output and '1 / 2' in output
+    assert 'href="/manager/fiches/44"' in output
+    assert 'href="/manager/fiches/45"' in output
+    assert '<details class="card" id="sw-fiches">' in output
+    assert 'Segna come terminato' in output
+    assert 'data-make-group="angle"' in output
+    assert 'data-make-group="joint"' in output
 
 
 def test_capo_site_detail_renders_non_clickable_panel_schema() -> None:

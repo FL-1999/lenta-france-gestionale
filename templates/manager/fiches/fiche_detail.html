@@ -273,6 +273,17 @@
 
             <div class="technical-split-view technical-sheet-viewport" data-sheet-viewport>
                 <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d'exécution imprimable">
+                    {% if fiche.pour_panels %}
+                    {% set group=fiche.pour_panels[0].pour %}
+                    <div style="padding:5px 9px;border:1px solid #222;color:#111;background:#fff;font-size:10px;">
+                      <strong>{{ 'ANGLE / ANGOLO' if group.kind == 'angle' else 'BÉTONNAGE COMMUN / GETTO CONGIUNTO' }} · {{ group.label }}</strong>
+                      {% if group.kind == 'angle' %}
+                      <div>Fiche unica · {{ fiche.pour_panels|map(attribute='label')|join(' + ') }}. Schema: sviluppo dei bracci, larghezza netta complessiva.</div>
+                      {% else %}
+                      <div>Totale comune: {{ group.total_m3 if group.total_m3 is not none else '—' }} m³ · Quota di questa fiche: {{ fiche.metri_cubi_gettati if fiche.metri_cubi_gettati is not none else '—' }} m³ (ripartita, non misurata separatamente).</div>
+                      {% endif %}
+                    </div>
+                    {% endif %}
                     <header class="technical-sheet__titlebar technical-sheet__titlebar--historic">
                         <div class="technical-sheet__header-top">
                             <div class="technical-sheet__header-logo">

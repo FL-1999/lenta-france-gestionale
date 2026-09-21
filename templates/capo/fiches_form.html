@@ -18,6 +18,7 @@
 {% set show_courbe_beton_fields = show_courbe_beton_fields|default(false) %}
 
 <div class="form-page">
+    {% if pour_context %}<div class="card"><div class="card-body"><strong>{{ pour_context.label }}</strong> · {% if pour_context.kind == 'angle' %}Fiche unica dell’angolo. La larghezza rappresenta lo sviluppo netto dei due bracci; il calcestruzzo è il totale dell’angolo.{% else %}Pannello di un getto congiunto. Registra il volume comune nella pagina del cantiere dopo avere compilato le fiches.{% endif %}</div></div>{% endif %}
     <div class="form-page-header">
         <p class="page-eyebrow">
             {{ fiche_form_area_label.get(lang, fiche_form_area_label.get('it')) }}

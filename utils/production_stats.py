@@ -52,8 +52,9 @@ def compute_fiche_volumes(fiche) -> dict[str, Any]:
 
         # Spessore from linked coupe (project data, never invented)
         spessore: Optional[float] = None
-        if fiche.coupe_id and getattr(fiche, "coupe", None) and fiche.coupe.spessore:
-            spessore = fiche.coupe.spessore
+        spessore = getattr(fiche, 'altezza_pannello', None)
+        if not spessore and fiche.coupe_id and getattr(fiche, "report_coupe", None):
+            spessore = fiche.report_coupe.spessore
 
         if larghezza and spessore:
             vol = larghezza * spessore * profondita
@@ -194,6 +195,8 @@ def compute_site_production(site, fiches: list) -> dict[str, Any]:
     pali    = [f for f in prod_fiches if (f.tipologia_scavo or "").lower() in tipo_palo]
 
     paratie_stats = _aggregate_group(paratie)
+    from services.site_pours import completed_numbers
+    paratie_stats['count'] = len(completed_numbers(paratie, max(site.numero_totale_paratie or 0, max((f.numero_pannello or 0 for f in paratie), default=0))))
     pali_stats    = _aggregate_group(pali)
 
     target_paratie = site.numero_totale_paratie or 0

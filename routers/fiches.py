@@ -88,6 +88,10 @@ def _ensure_unique_numero_pannello(
     db: Session, site_id: int, tipologia_scavo: str | None, numero_pannello: int
 ) -> None:
     normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
+    from services.site_pours import group_for_panel
+    db.query(Site).filter_by(id=site_id).with_for_update().one()
+    if normalized_tipologia == "paratia" and group_for_panel(db, site_id, numero_pannello):
+        raise HTTPException(409, "Usa la creazione fiche dal cantiere per i pannelli raggruppati.")
     duplicate_exists = (
         db.query(Fiche.id)
         .filter(
