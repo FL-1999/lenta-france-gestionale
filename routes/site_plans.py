@@ -49,7 +49,8 @@ def elements(db, site, user):
     total=next((getattr(site,k) for k in ['numero_totale_paratie','totale_paratie_da_scavare','paratie_total_panels']
                 if getattr(site,k) is not None),0)
     labels={r.numero_elemento:r.nome_personalizzato for r in db.query(SiteProgressGridName).filter_by(site_id=site.id,tipologia_scavo='paratia')}
-    fiches={r.numero_pannello:r for r in db.query(Fiche).filter_by(site_id=site.id,tipologia_scavo='paratia')}
+    from services.site_pours import panel_fiches
+    fiches=panel_fiches(db,site.id)
     assignments={r.numero_elemento:r.coupe for r in db.query(SiteCoupeAssignment).filter_by(site_id=site.id,tipologia_scavo='paratia')}
     equipment={r.numero_elemento:r for r in db.query(SiteSpecialEquipmentConfig).filter_by(site_id=site.id,tipologia_scavo='paratia')}
     numbers=set(range(1,min(int(total or 0),5000)+1))|set(fiches)|set(assignments)

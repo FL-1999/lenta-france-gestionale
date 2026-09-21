@@ -12,6 +12,11 @@ def approved_panels(db, site_id):
 
 
 def panel_details(db, site_id, number, kind='paratia'):
+    if kind == 'paratia':
+        from models import SitePourPanel
+        member = db.query(SitePourPanel).filter_by(site_id=site_id,number=number).first()
+        if member and member.pour.kind == 'angle':
+            return {'label':member.pour.label,'width_m':sum(json.loads(m.snapshot)['width'] for m in member.pour.members)}
     label = db.query(SiteProgressGridName).filter_by(
         site_id=site_id, tipologia_scavo=kind, numero_elemento=number).first()
     panel = next((p for p in approved_panels(db, site_id) if p.get('element') == number), None) if kind == 'paratia' else None

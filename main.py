@@ -1262,7 +1262,8 @@ def _render_fiche_create_form(
                 raise HTTPException(400, "Tipologia non valida")
             values = {"cantiere_id": selected_site_id, "tipologia_scavo": kind}
             if number > 0:
-                existing = db.query(Fiche).filter_by(site_id=selected_site_id, tipologia_scavo=kind, numero_pannello=number).first()
+                from services.site_pours import panel_fiches
+                existing = panel_fiches(db, selected_site_id).get(number) if kind == "paratia" else db.query(Fiche).filter_by(site_id=selected_site_id, tipologia_scavo=kind, numero_pannello=number).first()
                 if existing and has_perm(current_user, "manager.access"):
                     return RedirectResponse(f"/manager/fiches/{existing.id}", status_code=303)
                 details = panel_details(db, selected_site_id, number, kind)
@@ -1272,7 +1273,7 @@ def _render_fiche_create_form(
         panel_catalog = {}
         for available_site in sites:
             panel_catalog[str(available_site.id)] = [
-                {"number": p['element'], "label": p['label'], "width_m": p.get('width_m')}
+                {"number": p['element'], **panel_details(db, available_site.id, p['element'])}
                 for p in approved_panels(db, available_site.id) if p.get('element')]
         capocantieri = (
             db.query(User)
@@ -1291,6 +1292,19 @@ def _render_fiche_create_form(
             .all()
             if site_ids else []
         )
+        from models import SitePour, SitePourPanel
+        from types import SimpleNamespace
+        for group in db.query(SitePour).filter(SitePour.site_id.in_(site_ids), SitePour.kind == 'angle'):
+            nums={m.number for m in group.members}
+            flags=[e for e in equipment_configs if e.site_id==group.site_id and e.tipologia_scavo=='paratia' and e.numero_elemento in nums]
+            equipment_configs=[e for e in equipment_configs if not(e.site_id==group.site_id and e.tipologia_scavo=='paratia' and e.numero_elemento in nums)]
+            for n in nums:
+                equipment_configs.append(SimpleNamespace(site_id=group.site_id,tipologia_scavo='paratia',numero_elemento=n,sonic_previsto=any(e.sonic_previsto for e in flags),inclinometre_previsto=any(e.inclinometre_previsto for e in flags)))
+        pour_context=None
+        if form_data and form_data.get('cantiere_id') and form_data.get('numero_pannello') and form_data.get('tipologia_scavo')=='paratia':
+            member=db.query(SitePourPanel).filter_by(site_id=int(form_data['cantiere_id']),number=int(form_data['numero_pannello'])).first()
+            if member:
+                pour_context={'label':member.pour.label,'kind':member.pour.kind}
     finally:
         db.close()
     context = {
@@ -1299,6 +1313,7 @@ def _render_fiche_create_form(
         "capocantieri": capocantieri,
         "coupes": coupes,
         "fiche_panel_catalog": panel_catalog,
+        "pour_context": pour_context,
         "equipment_configs": _serialize_site_special_equipment_configs(equipment_configs),
         "form_data": form_data or _build_fiche_form_data(),
         "error_message": error_message,
@@ -1468,6 +1483,14 @@ def _get_site_special_equipment_config(
     normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
     if not normalized_tipologia or numero_elemento is None:
         return None
+    if normalized_tipologia == 'paratia':
+        from services.site_pours import group_for_panel
+        from types import SimpleNamespace
+        member=group_for_panel(db,site_id,numero_elemento)
+        if member and member.pour.kind=='angle':
+            nums=[m.number for m in member.pour.members]
+            configs=db.query(SiteSpecialEquipmentConfig).filter_by(site_id=site_id,tipologia_scavo='paratia').filter(SiteSpecialEquipmentConfig.numero_elemento.in_(nums)).all()
+            return SimpleNamespace(sonic_previsto=any(c.sonic_previsto for c in configs),inclinometre_previsto=any(c.inclinometre_previsto for c in configs))
     return (
         db.query(SiteSpecialEquipmentConfig)
         .filter(SiteSpecialEquipmentConfig.site_id == site_id)
@@ -1967,6 +1990,8 @@ def _create_validated_fiche(
             courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
         )
 
+    from services.site_pours import before_fiche_save
+    before_fiche_save(db, fiche)
     db.add(fiche)
     db.flush()
 
@@ -2226,6 +2251,8 @@ def _update_validated_fiche(
             )
         )
 
+    from services.site_pours import before_fiche_save
+    before_fiche_save(db, fiche, updating=True)
     _sync_site_fiche_progress(db, site)
     if previous_site_id != site.id:
         previous_site = db.query(Site).filter(Site.id == previous_site_id).first()
@@ -4069,6 +4096,7 @@ async def manager_reset_password_post(
 def manager_cantieri(
     request: Request,
     page: int = 1,
+    stato: str = "in-corso",
     per_page: int = DEFAULT_PER_PAGE,
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -4106,6 +4134,12 @@ def manager_cantieri(
                 Site.name,
             )
         )
+        if stato not in ("in-corso", "terminati", "tutti"):
+            raise HTTPException(400, "Filtro cantiere non valido")
+        if stato == "terminati":
+            query = query.filter(Site.status == SiteStatusEnum.chiuso)
+        elif stato == "in-corso":
+            query = query.filter(or_(Site.status != SiteStatusEnum.chiuso, Site.status.is_(None)))
         total_count = query.count()
         query_started = time.monotonic()
         sites_list = query.offset((page - 1) * per_page).limit(per_page).all()
@@ -4133,6 +4167,7 @@ def manager_cantieri(
             request,
             current_user,
             sites=sites_list,
+            site_status_filter=stato,
             site_caposquadra_map=site_caposquadra_map,
             site_project_configured_map=site_project_configured_map,
             page=page,
@@ -4247,6 +4282,12 @@ def _ensure_unique_numero_pannello(
     exclude_fiche_id: int | None = None,
 ) -> None:
     normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
+    db.query(Site).filter_by(id=site_id).with_for_update().one()
+    if normalized_tipologia == "paratia":
+        from services.site_pours import panel_fiches
+        existing = panel_fiches(db, site_id).get(numero_pannello)
+        if existing and existing.id != exclude_fiche_id:
+            raise HTTPException(400, f"Paratia {numero_pannello} già registrata, singola o di angolo.")
     query = db.query(Fiche.id).filter(
         Fiche.site_id == site_id,
         func.lower(Fiche.tipologia_scavo) == normalized_tipologia,
@@ -4441,6 +4482,9 @@ def _build_site_fiches_map(
     fiches_map: dict[int, Fiche] = {}
     for fiche in fiches:
         fiches_map.setdefault(int(fiche.numero_pannello), fiche)
+    if tipologia.lower() == "paratia":
+        from services.site_pours import panel_fiches
+        fiches_map.update({n:f for n,f in panel_fiches(db, site_id).items() if 1 <= n <= total_elements})
     return fiches_map
 
 
@@ -4543,15 +4587,8 @@ def _update_progress_summary_for_fiche_grids(
 ) -> None:
     paratie_total = _site_paratie_total(site)
     pali_total = _site_pali_total(site)
-    paratie_done = len(
-        {
-            int(fiche.numero_pannello)
-            for fiche in fiches
-            if _fiche_schema_kind(fiche) == "paratia"
-            and fiche.numero_pannello
-            and 1 <= int(fiche.numero_pannello) <= paratie_total
-        }
-    )
+    from services.site_pours import completed_numbers
+    paratie_done = len(completed_numbers(fiches, paratie_total))
     pali_done = len(
         {
             int(fiche.numero_pannello)
@@ -4590,15 +4627,8 @@ def _update_progress_summary_for_fiche_grids(
 def _sync_site_fiche_progress(db: Session, site: Site) -> None:
     site_fiches = db.query(Fiche).filter(Fiche.site_id == site.id).all()
     paratie_total = _site_paratie_total(site)
-    paratie_scavate = len(
-        {
-            int(fiche.numero_pannello)
-            for fiche in site_fiches
-            if _fiche_schema_kind(fiche) == "paratia"
-            and fiche.numero_pannello
-            and 1 <= int(fiche.numero_pannello) <= paratie_total
-        }
-    )
+    from services.site_pours import completed_numbers
+    paratie_scavate = len(completed_numbers(site_fiches, paratie_total))
     site.paratie_done_panels = int(paratie_scavate)
     if site.totale_paratie_da_scavare is not None:
         site.paratie_total_panels = site.totale_paratie_da_scavare
@@ -6247,6 +6277,11 @@ def manager_site_detail(
         paratie_gabbie_ready = {n for (cat, n), c in _gab_celle.items() if cat == "paratia" and c.pronta}
         pali_gabbie_ready = {n for (cat, n), c in _gab_celle.items() if cat == "palo" and c.pronta}
         production_stats = compute_site_production(site, site_fiches)
+        from routes.site_plans import get_data as site_plan_data
+        workspace_plan = site_plan_data(site.id, db=db, user=current_user)
+        from services.site_pours import describe
+        from models import SitePour
+        workspace_pours = [describe(g) for g in db.query(SitePour).filter_by(site_id=site.id).all()]
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
         manager_users = (
             db.query(User)
@@ -6292,6 +6327,9 @@ def manager_site_detail(
             site_task_priority_values=SITE_TASK_PRIORITIES,
             manager_users=manager_users,
             production_stats=production_stats,
+            site_fiches=site_fiches,
+            workspace_plan=workspace_plan,
+            workspace_pours=workspace_pours,
         ),
     )
 
@@ -8589,6 +8627,8 @@ def manager_fiche_update_pdf_data(
         else:
             fiche.inclinometre_realizzato = None
         _validate_quota_testa_getto_not_above_tn(fiche.quota_testa_getto, quota_tn=fiche.quota_tn)
+        from services.site_pours import before_fiche_save
+        before_fiche_save(db, fiche, updating=True)
         db.commit()
     finally:
         db.close()
@@ -9097,3 +9137,6 @@ app.include_router(backup.router)
 app.include_router(trasporti.router)
 app.include_router(economics.router)
 app.include_router(manager_attrezzature.router)
+
+from routes import site_workspace
+app.include_router(site_workspace.router)

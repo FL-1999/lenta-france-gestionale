@@ -59,6 +59,11 @@
 </div>
 
 {% set sites_list = sites | default([]) %}
+<nav class="page-actions" aria-label="Stato cantieri" style="margin:16px 0 24px">
+  <a class="btn {{ 'btn-primary' if site_status_filter == 'in-corso' else 'btn-secondary' }}" href="/manager/cantieri?stato=in-corso">In esecuzione</a>
+  <a class="btn {{ 'btn-primary' if site_status_filter == 'terminati' else 'btn-secondary' }}" href="/manager/cantieri?stato=terminati">Terminati</a>
+  <a class="btn {{ 'btn-primary' if site_status_filter == 'tutti' else 'btn-secondary' }}" href="/manager/cantieri?stato=tutti">Tutti</a>
+</nav>
 
 <div class="list-search-sticky">
   <div class="list-search-inner">

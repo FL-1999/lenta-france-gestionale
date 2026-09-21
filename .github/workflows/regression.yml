@@ -44,6 +44,6 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python -m pytest -q tests/test_operations.py tests/test_workspace_repairs.py tests/test_logistics_workflows.py tests/test_purchasing_workflows.py tests/test_warehouse_a1.py tests/test_order_line_classification.py tests/test_supplier_workspace.py tests/test_article_suppliers.py tests/test_order_workspace.py tests/test_purchasing_navigation.py tests/test_warehouse_packaging.py tests/test_site_plans.py tests/test_plan_coupe_fiche_flow.py tests/test_site_deletion.py --disable-warnings --tb=short
+      - run: python -m pytest -q tests/test_operations.py tests/test_workspace_repairs.py tests/test_logistics_workflows.py tests/test_purchasing_workflows.py tests/test_warehouse_a1.py tests/test_order_line_classification.py tests/test_supplier_workspace.py tests/test_article_suppliers.py tests/test_order_workspace.py tests/test_purchasing_navigation.py tests/test_warehouse_packaging.py tests/test_site_plans.py tests/test_plan_coupe_fiche_flow.py tests/test_site_deletion.py tests/test_site_pours.py --disable-warnings --tb=short
         env:
           TEST_POSTGRES_URL: postgresql://postgres:local-ci-only@localhost:5432/lenta_operations_test

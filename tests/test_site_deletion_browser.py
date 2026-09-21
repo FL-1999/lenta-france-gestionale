@@ -26,6 +26,7 @@ def test_site_delete_confirmation_and_real_list_removal(live_operations):
         page.goto(origin+f"/manager/cantieri/{ids['site']}")
         assert page.locator('[name=conferma_nome]').count(), page.locator('body').inner_text()
         form=page.locator('form').filter(has=page.locator('[name=conferma_nome]'))
+        page.get_by_text('Eliminazione cantiere',exact=True).click()
         form.locator('[name=conferma_nome]').fill(name)
         page.once('dialog',lambda d:d.dismiss())
         form.locator('button[type=submit]').click()
