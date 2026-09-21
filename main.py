@@ -241,11 +241,14 @@ def _apply_access_token_cookie(
     set_current_role_cookie(response, active_role)
 
 
-def _mint_access_token_for_email(email: str) -> str | None:
+def _mint_access_token_for_email(email: str, refresh_token: str | None = None) -> str | None:
     """Genera un nuovo access token per l'utente (usato dal rinnovo automatico).
     Restituisce None se l'utente non esiste o è disattivato (revoca implicita)."""
     db = SessionLocal()
     try:
+        from auth import decode_refresh_token
+        if refresh_token is not None and decode_refresh_token(refresh_token, db=db) != email:
+            return None
         user = get_user_by_email(db, email=email)
         if user is None or (hasattr(user, "is_active") and user.is_active is False):
             return None
@@ -287,6 +290,9 @@ def create_initial_admin():
     try:
         if db.query(User.id).filter(User.email == ADMIN_EMAIL).first():
             return
+        from models import AccountRevocation
+        if db.get(AccountRevocation, ADMIN_EMAIL) is not None:
+            return  # An intentionally deleted bootstrap account must stay deleted.
         admin = User(
             email=ADMIN_EMAIL,
             full_name=ADMIN_EMAIL,
@@ -484,7 +490,7 @@ async def refresh_token_middleware(request: Request, call_next):
         if not access_token_is_valid(access):
             email = decode_refresh_token(jar.get("refresh_token"))
             if email:
-                minted_access = _mint_access_token_for_email(email)
+                minted_access = _mint_access_token_for_email(email, jar.get("refresh_token"))
                 if minted_access:
                     # Inietta il nuovo access token nell'header cookie della
                     # richiesta così le dipendenze di auth lo vedono subito.
@@ -9140,3 +9146,6 @@ app.include_router(manager_attrezzature.router)
 
 from routes import site_workspace
 app.include_router(site_workspace.router)
+
+from routes import user_deletion
+app.include_router(user_deletion.router)

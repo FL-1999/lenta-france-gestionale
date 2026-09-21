@@ -1,0 +1,22 @@
+{% extends 'shared/base.html' %}
+{% set lang=request.cookies.get('lang','it') %}
+{% block title %}{{ 'Supprimer le profil' if lang=='fr' else 'Elimina profilo' }}{% endblock %}
+{% block content %}
+<div class="page-header"><div><p class="page-eyebrow">{{ 'Gestion des comptes' if lang=='fr' else 'Gestione account' }}</p><h1>{{ 'Supprimer le profil' if lang=='fr' else 'Elimina profilo' }}</h1></div><a class="btn btn-secondary" href="/manager/utenti">{{ 'Retour aux utilisateurs' if lang=='fr' else 'Torna agli utenti' }}</a></div>
+<section class="card"><div class="card-body">
+<h2>{{ target.full_name or target.email }}</h2><p>{{ target.email }}</p>
+{% if error %}<p role="alert" class="text-danger">{{ error }}</p>{% endif %}
+{% if target.id==user.id %}<p>{{ 'Vous ne pouvez pas supprimer le compte actuellement utilisé.' if lang=='fr' else 'Non puoi eliminare il profilo con cui sei collegato.' }}</p>
+{% elif linked %}
+<p>{{ 'Ce profil possède des données de travail. Désactivez-le pour conserver leur historique.' if lang=='fr' else 'Questo profilo ha dati di lavoro collegati. Puoi disattivarlo per conservare lo storico.' }}</p>
+<ul>{% for item in linked %}<li>{{ item.label }}: {{ item.count }}</li>{% endfor %}</ul>
+<a class="btn btn-secondary" href="/manager/utenti/{{ target.id }}/modifica">{{ 'Modifier le profil' if lang=='fr' else 'Modifica profilo' }}</a>
+{% else %}
+<p>{{ 'Suppression définitive du compte, de ses accès et notifications personnelles. Les journaux de contrôle sont conservés. Cette action est irréversible.' if lang=='fr' else 'Eliminazione definitiva del profilo, dei suoi accessi e delle notifiche personali. Il registro delle operazioni viene conservato. Questa azione non è annullabile.' }}</p>
+<form method="post" style="display:grid;gap:16px;max-width:640px">
+<label for="conferma-email">{{ 'Saisissez l’adresse email pour confirmer' if lang=='fr' else 'Scrivi l’email del profilo per confermare' }}</label>
+<input id="conferma-email" class="form-control" type="email" name="conferma_email" required autocomplete="off" placeholder="{{ target.email }}">
+<div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn btn-secondary" href="/manager/utenti">{{ 'Annuler' if lang=='fr' else 'Annulla' }}</a><button class="btn btn-danger" type="submit">{{ 'Supprimer définitivement' if lang=='fr' else 'Elimina definitivamente' }}</button></div>
+</form>{% endif %}
+</div></section>
+{% endblock %}

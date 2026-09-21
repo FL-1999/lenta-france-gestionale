@@ -39,6 +39,7 @@
     </div>
 </div>
 
+{% if request.query_params.get('eliminato') == '1' %}<p role="status">{{ 'Profil supprimé.' if lang=='fr' else 'Profilo eliminato con successo.' }}</p>{% endif %}
 <div class="card table-card">
     <div class="card-header">
         <div class="card-title">
@@ -120,6 +121,9 @@
                             </button>
                             {% endif %}
                         </form>
+                        {% endif %}
+                        {% if has_perm(user, 'users.delete') and u.id != user.id %}
+                        <a class="btn btn-danger btn-sm" href="/manager/utenti/{{ u.id }}/elimina">{{ 'Supprimer le profil' if lang=='fr' else 'Elimina profilo' }}</a>
                         {% endif %}
                     </td>
                 </tr>
