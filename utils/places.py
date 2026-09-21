@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from models import Depot, Site
 
 LocationKind = Literal["site", "depot"]
-DEFAULT_DEPOT_NAMES = {"montauroux", "st. jeannet", "st jeannet", "sommariva", "cantieri"}
 
 
 @dataclass(frozen=True)
@@ -70,11 +69,7 @@ def get_selectable_places(
         depot_query = depot_query.filter(Depot.is_active.is_(True))
 
     sites = site_query.order_by(Site.name.asc()).all()
-    depots = [
-        depot
-        for depot in depot_query.order_by(Depot.name.asc()).all()
-        if (depot.name or "").strip().lower() not in DEFAULT_DEPOT_NAMES
-    ]
+    depots = depot_query.order_by(Depot.name.asc()).all()
 
     places = [
         SelectablePlace(
@@ -132,8 +127,6 @@ def get_place_by_value(
 
     record = db.query(Depot).filter(Depot.id == record_id).first()
     if not record or (not include_inactive and not record.is_active):
-        return None
-    if (record.name or "").strip().lower() in DEFAULT_DEPOT_NAMES:
         return None
     return SelectablePlace(
         kind="depot",

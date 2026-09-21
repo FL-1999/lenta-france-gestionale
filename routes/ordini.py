@@ -36,7 +36,6 @@ from models import (
 from permissions import has_perm
 from audit_utils import log_audit_event
 from template_context import register_manager_badges, render_template
-from utils.places import DEFAULT_DEPOT_NAMES
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
@@ -560,7 +559,7 @@ def _load_order_form_dependencies(db: Session) -> tuple[list[MagazzinoItem], lis
     )
     macros = db.query(MagazzinoMacro).order_by(MagazzinoMacro.ordine.asc(), MagazzinoMacro.name.asc()).all()
     suppliers = db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name.asc(), Supplier.id.asc()).all()
-    depots = db.query(Depot).filter(Depot.is_active.is_(True)).filter(func.lower(func.trim(Depot.name)).notin_(DEFAULT_DEPOT_NAMES)).order_by(Depot.name.asc()).all()
+    depots = db.query(Depot).filter(Depot.is_active.is_(True)).order_by(Depot.name.asc()).all()
     return magazzino_items, sites, warehouse_categories, requesters, macros, suppliers, depots
 
 
@@ -2023,7 +2022,7 @@ def manager_ordini_email(
         return RedirectResponse(url=url, status_code=303)
 
     sites = db.query(Site).filter(Site.is_active.is_(True)).order_by(Site.name.asc()).all()
-    depots = db.query(Depot).filter(Depot.is_active.is_(True)).filter(func.lower(func.trim(Depot.name)).notin_(DEFAULT_DEPOT_NAMES)).order_by(Depot.name.asc()).all()
+    depots = db.query(Depot).filter(Depot.is_active.is_(True)).order_by(Depot.name.asc()).all()
     depots_json = [
         {
             'id': depot.id,

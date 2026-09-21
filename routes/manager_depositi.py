@@ -3,7 +3,7 @@ import math
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
+from sqlalchemy import func, or_, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -11,6 +11,7 @@ from auth import get_current_active_user_html
 from database import get_db
 from models import Attrezzatura, Depot, Machine, MachineSiteAssignment, MagazzinoMovimento, User
 from permissions import can_access_depots, can_manage_depots
+from routes.site_plans import same_origin
 from template_context import register_manager_badges, render_template
 
 router = APIRouter(tags=["manager-depositi"])
@@ -61,7 +62,11 @@ def _parse_coordinate(value: str | None, field_label: str) -> float | None:
     if value in (None, ""):
         return None
     try:
-        return float(value)
+        number = float(value)
+        limit = 90 if field_label == 'Latitudine' else 180
+        if not math.isfinite(number) or abs(number) > limit:
+            raise ValueError()
+        return number
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=f"{field_label} non valida") from exc
 
@@ -113,7 +118,7 @@ def _extract_depot_form_payload(
         "note": note or "",
         "lat": lat or "",
         "lng": lng or "",
-        "is_active": bool(is_active == "on"),
+        "is_active": bool(is_active in ("on", "true", "1")),
     }
 
 
@@ -127,6 +132,8 @@ def _apply_depot_payload(depot: Depot, payload: dict) -> None:
     depot.notes = _clean_optional(payload.get("note"))
     depot.lat = _parse_coordinate(payload.get("lat"), "Latitudine")
     depot.lng = _parse_coordinate(payload.get("lng"), "Longitudine")
+    if (depot.lat is None) != (depot.lng is None):
+        raise HTTPException(400, 'Inserisci entrambe le coordinate oppure lasciale entrambe vuote.')
     depot.is_active = bool(payload.get("is_active"))
 
 
@@ -135,22 +142,25 @@ def manager_depositi_list(
     request: Request,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
+    q: str = "",
+    stato: str = "tutti",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_depots_read(current_user)
     page, per_page = _normalize_pagination(page, per_page)
 
-    total_count = _real_depots_query(db).with_entities(func.count(Depot.id)).scalar() or 0
-    depots = (
-        _real_depots_query(db)
-        .order_by(Depot.name.asc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
-    print("depots count:", total_count)
-    print("nomi depositi trovati:", [depot.name for depot in depots])
+    if stato not in ('tutti','attivi','inattivi'):
+        raise HTTPException(400, 'Filtro deposito non valido')
+    query = _real_depots_query(db)
+    counts = {'tutti':query.count(), 'attivi':query.filter(Depot.is_active.is_(True)).count(), 'inattivi':query.filter(Depot.is_active.is_(False)).count()}
+    if stato != 'tutti': query=query.filter(Depot.is_active.is_(stato=='attivi'))
+    q=q.strip()[:200]
+    if q:
+        query=query.filter(or_(*(func.lower(c).contains(q.lower(),autoescape=True) for c in [Depot.name,Depot.city,Depot.address])))
+    total_count=query.count()
+    total_pages=max(1,math.ceil(total_count/per_page));page=min(page,total_pages)
+    depots=query.order_by(Depot.name.asc()).offset((page-1)*per_page).limit(per_page).all()
 
     return render_template(
         templates,
@@ -161,7 +171,8 @@ def manager_depositi_list(
             "depositi": depots,
             "page": page,
             "per_page": per_page,
-            "total_pages": max(1, math.ceil(total_count / per_page)),
+            "total_pages": total_pages, "total_count":total_count, "counts":counts, "q":q, "stato":stato,
+            "can_manage":can_manage_depots(current_user),
         },
         db,
         current_user,
@@ -209,8 +220,8 @@ def manager_depositi_create(
     _ensure_depots_manage(current_user)
 
     payload = _extract_depot_form_payload(name, address, city, zip_code, legacy_zip, province, country, note, lat, lng, is_active)
-    payload["is_active"] = True
-    print("creating depot:", payload.get("name"))
+    payload["is_active"] = is_active != "off"
+    same_origin(request)
     depot = Depot()
     try:
         _apply_depot_payload(depot, payload)
@@ -296,33 +307,13 @@ def manager_depositi_detail(
     )
     attrezzature = (
         db.query(Attrezzatura)
-        .filter(func.lower(func.trim(Attrezzatura.posizione_attuale)) == depot.name.strip().lower())
+        .filter(func.lower(func.trim(Attrezzatura.posizione_attuale)).in_([depot.name.strip().lower(),depot_label.lower()]))
         .order_by(Attrezzatura.nome.asc())
         .all()
     )
-    materiali = (
-        db.query(
-            MagazzinoMovimento.item_id,
-            func.sum(MagazzinoMovimento.quantita).label("quantita"),
-        )
-        .filter(MagazzinoMovimento.deposito_id == depot.id)
-        .group_by(MagazzinoMovimento.item_id)
-        .all()
-    )
-    material_rows = []
-    for row in materiali:
-        movimento = (
-            db.query(MagazzinoMovimento)
-            .options(joinedload(MagazzinoMovimento.item))
-            .filter(
-                MagazzinoMovimento.deposito_id == depot.id,
-                MagazzinoMovimento.item_id == row.item_id,
-            )
-            .order_by(MagazzinoMovimento.created_at.desc())
-            .first()
-        )
-        if movimento and movimento.item:
-            material_rows.append({"item": movimento.item, "quantita": row.quantita})
+    movements=(db.query(MagazzinoMovimento).options(joinedload(MagazzinoMovimento.item))
+        .filter(MagazzinoMovimento.deposito_id==depot.id)
+        .order_by(MagazzinoMovimento.created_at.desc(),MagazzinoMovimento.id.desc()).limit(50).all())
 
     return render_template(
         templates,
@@ -333,7 +324,7 @@ def manager_depositi_detail(
             "depot_address": _depot_address(depot),
             "machine_assignments": machine_assignments,
             "attrezzature": attrezzature,
-            "material_rows": material_rows,
+            "movements": movements, "can_manage":can_manage_depots(current_user),
         },
         db,
         current_user,
@@ -386,14 +377,17 @@ def manager_depositi_update(
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_depots_manage(current_user)
+    same_origin(request)
     depot = _real_depots_query(db).filter(Depot.id == depot_id).first()
     if not depot:
         raise HTTPException(status_code=404, detail="Deposito non trovato")
 
+    previous_name = depot.name
     payload = _extract_depot_form_payload(name, address, city, zip_code, legacy_zip, province, country, note, lat, lng, is_active)
     try:
         _apply_depot_payload(depot, payload)
     except HTTPException as exc:
+        db.rollback()
         return render_template(
             templates,
             request,
@@ -411,6 +405,7 @@ def manager_depositi_update(
         )
 
     if _find_depot_by_name(db, depot.name, exclude_id=depot.id):
+        db.rollback()
         return render_template(
             templates,
             request,
@@ -427,8 +422,14 @@ def manager_depositi_update(
             status_code=400,
         )
 
-    db.add(depot)
     try:
+        if previous_name != depot.name:
+            # Current text-based locations follow the rename; historical movements keep their snapshots.
+            old_label=f'[Deposito] {previous_name}'
+            db.execute(update(MachineSiteAssignment).where(MachineSiteAssignment.unassigned_at.is_(None), MachineSiteAssignment.location_label==old_label).values(location_label=_format_depot_label(depot)))
+            for old,new in [(previous_name,depot.name),(old_label,_format_depot_label(depot))]:
+                db.execute(update(Attrezzatura).where(func.lower(func.trim(Attrezzatura.posizione_attuale))==old.strip().lower()).values(posizione_attuale=new))
+        db.add(depot)
         db.commit()
     except IntegrityError:
         db.rollback()

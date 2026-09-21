@@ -1,82 +1,13 @@
 {% extends "shared/base.html" %}
-{% set lang = request.cookies.get('lang', 'it') %}
-{% block title %}{{ depot.name }} – {% if lang == 'fr' %}Dépôt{% else %}Deposito{% endif %}{% endblock %}
-{% block content %}
-<div class="page-header">
-  <div class="page-header-main">
-    <p class="page-eyebrow">{% if lang == 'fr' %}Détail dépôt{% else %}Dettaglio deposito{% endif %}</p>
-    <h1 class="page-title">📦 {{ depot.name }}</h1>
-    <p class="page-subtitle">{{ depot_address }}</p>
-    {% if depot.notes %}<p class="page-subtitle">{{ depot.notes }}</p>{% endif %}
-  </div>
-  <div class="page-actions">
-    <a href="{{ url_for('manager_depositi_list') }}" class="btn btn-secondary">← {% if lang == 'fr' %}Liste{% else %}Elenco{% endif %}</a>
-    <a href="{{ url_for('manager_depositi_edit', depot_id=depot.id) }}" class="btn btn-primary">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</a>
-  </div>
-</div>
-
-<div class="card" style="margin-bottom: 1.5rem;">
-  <div class="card-header"><div class="card-title">{% if lang == 'fr' %}Informations{% else %}Informazioni deposito{% endif %}</div></div>
-  <div class="card-body">
-    <div class="form-grid">
-      <div><strong>{% if lang == 'fr' %}Adresse/localité{% else %}Indirizzo/località{% endif %}</strong><br>{{ depot_address }}</div>
-      <div><strong>{% if lang == 'fr' %}Statut{% else %}Stato{% endif %}</strong><br>{{ 'Attivo' if depot.is_active else 'Non attivo' }}</div>
-      <div><strong>GPS</strong><br>{% if depot.lat is not none and depot.lng is not none %}{{ depot.lat }}, {{ depot.lng }}{% else %}—{% endif %}</div>
-      <div><strong>{% if lang == 'fr' %}Notes{% else %}Note{% endif %}</strong><br>{{ depot.notes or '—' }}</div>
-    </div>
-  </div>
-</div>
-
-<div class="card table-card" style="margin-bottom: 1.5rem;">
-  <div class="card-header"><div class="card-title">🚜 {% if lang == 'fr' %}Machines présentes{% else %}Macchinari presenti{% endif %}</div></div>
-  <div class="card-body list-table">
-    <table class="data-table">
-      <thead><tr><th>Codice</th><th>Nome</th><th>Stato</th><th>{% if lang == 'fr' %}Depuis{% else %}Dal{% endif %}</th></tr></thead>
-      <tbody>
-      {% for assignment in machine_assignments %}
-        <tr>
-          <td>{{ assignment.machine.code or '—' }}</td>
-          <td>{{ assignment.machine.name if assignment.machine else '—' }}</td>
-          <td>{{ assignment.machine.status if assignment.machine else '—' }}</td>
-          <td>{{ assignment.assigned_at.strftime('%d/%m/%Y %H:%M') if assignment.assigned_at else '—' }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="4" class="table-empty">{% if lang == 'fr' %}Aucune machine présente.{% else %}Nessun macchinario presente.{% endif %}</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="card table-card" style="margin-bottom: 1.5rem;">
-  <div class="card-header"><div class="card-title">🧰 {% if lang == 'fr' %}Équipements présents{% else %}Attrezzature presenti{% endif %}</div></div>
-  <div class="card-body list-table">
-    <table class="data-table">
-      <thead><tr><th>Codice</th><th>Nome</th><th>Tipo</th><th>Stato</th></tr></thead>
-      <tbody>
-      {% for item in attrezzature %}
-        <tr><td>{{ item.codice }}</td><td>{{ item.nome }}</td><td>{{ item.tipo }}</td><td>{{ item.stato.value if item.stato and item.stato.value is defined else item.stato }}</td></tr>
-      {% else %}
-        <tr><td colspan="4" class="table-empty">{% if lang == 'fr' %}Aucun équipement présent.{% else %}Nessuna attrezzatura presente.{% endif %}</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="card table-card">
-  <div class="card-header"><div class="card-title">📦 {% if lang == 'fr' %}Matériaux présents{% else %}Materiali presenti{% endif %}</div></div>
-  <div class="card-body list-table">
-    <table class="data-table">
-      <thead><tr><th>Codice</th><th>Materiale</th><th>{% if lang == 'fr' %}Quantité{% else %}Quantità{% endif %}</th><th>UM</th></tr></thead>
-      <tbody>
-      {% for row in material_rows %}
-        <tr><td>{{ row.item.codice or '—' }}</td><td>{{ row.item.nome }}</td><td>{{ row.quantita }}</td><td>{{ row.item.unita_misura }}</td></tr>
-      {% else %}
-        <tr><td colspan="4" class="table-empty">{% if lang == 'fr' %}Aucun matériau enregistré.{% else %}Nessun materiale registrato.{% endif %}</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endblock %}
+{% set lang=request.cookies.get('lang','it') %}
+{% macro t(it,fr) %}{{ fr if lang=='fr' else it }}{% endmacro %}
+{% block title %}{{ depot.name }} – {{ t('Deposito','Dépôt') }}{% endblock %}
+{% block content %}<link rel="stylesheet" href="/static/css/depot-workspace.css?v=20260921a"><div class="depot-page">
+<a href="{{ url_for('manager_depositi_list') }}">{{ t('Depositi','Dépôts') }} / {{ depot.name }}</a>
+<header class="page-header"><div><p class="page-eyebrow">{{ t('LOGISTICA E RISORSE','LOGISTIQUE ET RESSOURCES') }}</p><h1>{{ depot.name }}</h1><span class="badge {{ 'badge-success' if depot.is_active else 'badge-danger' }}">{{ t('Attivo','Actif') if depot.is_active else t('Disattivato','Désactivé') }}</span></div><div class="depot-actions">{% if can_manage %}<a class="btn btn-primary" href="{{ url_for('manager_depositi_edit',depot_id=depot.id) }}">{{ t('Modifica deposito','Modifier le dépôt') }}</a>{% endif %}{% if depot.lat is not none and depot.lng is not none %}<a class="btn btn-secondary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination={{ depot.lat }},{{ depot.lng }}">{{ t('Indicazioni stradali','Itinéraire') }}</a>{% endif %}</div></header>
+<nav class="depot-filters" aria-label="{{ t('Contenuto deposito','Contenu du dépôt') }}"><a class="depot-filter" href="#depot-machines">{{ t('Macchinari','Machines') }} <strong>{{ machine_assignments|length }}</strong></a><a class="depot-filter" href="#depot-equipment">{{ t('Attrezzature','Équipements') }} <strong>{{ attrezzature|length }}</strong></a><a class="depot-filter" href="#depot-movements">{{ t('Movimenti recenti','Mouvements récents') }}</a></nav>
+<section class="card"><div class="card-body"><h2>{{ t('Informazioni deposito','Informations du dépôt') }}</h2><dl class="depot-facts"><div><dt>{{ t('Indirizzo','Adresse') }}</dt><dd>{{ depot_address }}</dd></div><div><dt>{{ t('Coordinate','Coordonnées') }}</dt><dd>{{ (depot.lat|string ~ ', ' ~ depot.lng|string) if depot.lat is not none and depot.lng is not none else t('Da completare','À compléter') }}</dd></div><div><dt>{{ t('Note','Notes') }}</dt><dd>{{ depot.notes or '—' }}</dd></div></dl>{% if not depot.is_active %}<p>{{ t('Deposito escluso dalle nuove selezioni operative. Lo storico rimane consultabile.','Dépôt exclu des nouvelles sélections opérationnelles. L’historique reste disponible.') }}</p>{% endif %}</div></section>
+<section class="card" id="depot-machines"><div class="card-body"><h2>{{ t('Macchinari presenti','Machines présentes') }}</h2>{% for assignment in machine_assignments %}<div class="depot-resource"><div><strong>{{ assignment.machine.name }}</strong><p class="text-muted">{{ assignment.machine.code or '—' }}</p></div><span>{{ t('Dal','Depuis le') }} {{ assignment.assigned_at.strftime('%d/%m/%Y') if assignment.assigned_at else '—' }}</span></div>{% else %}<p class="text-muted">{{ t('Nessun macchinario assegnato.','Aucune machine affectée.') }}</p>{% endfor %}</div></section>
+<section class="card" id="depot-equipment"><div class="card-body"><h2>{{ t('Attrezzature presenti','Équipements présents') }}</h2>{% for item in attrezzature %}<div class="depot-resource"><div><strong>{{ item.nome }}</strong><p class="text-muted">{{ item.codice }} · {{ item.tipo }}</p></div><span>{{ item.stato.value if item.stato and item.stato.value is defined else item.stato }}</span></div>{% else %}<p class="text-muted">{{ t('Nessuna attrezzatura registrata in questo deposito.','Aucun équipement enregistré dans ce dépôt.') }}</p>{% endfor %}</div></section>
+<section class="card" id="depot-movements"><div class="card-body"><div class="depot-heading"><h2>{{ t('Movimenti dei materiali','Mouvements des matériaux') }}</h2>{% if has_perm(user,'inventory.movements.read') or has_perm(user,'manager.access') %}<a class="btn btn-secondary" href="/manager/magazzino/movimenti?location_id=depot:{{ depot.id }}">{{ t('Storico completo','Historique complet') }}</a>{% endif %}</div><p class="text-muted">{{ t('Ultimi 50 movimenti collegati al deposito. Le quantità sono quelle dei singoli movimenti, non una giacenza.','50 derniers mouvements liés au dépôt. Les quantités correspondent à chaque mouvement, pas à un stock.') }}</p>{% for movement in movements %}<div class="depot-resource"><div><strong>{{ movement.item.nome if movement.item else '—' }}</strong><p class="text-muted">{{ movement.created_at.strftime('%d/%m/%Y') if movement.created_at else '—' }} · {{ movement.tipo.value if movement.tipo else '—' }} · {{ movement.item.codice or '—' if movement.item else '—' }}</p></div><strong>{{ movement.quantita }} {{ movement.item.unita_misura if movement.item else '' }}</strong></div>{% else %}<p>{{ t('Nessun movimento registrato.','Aucun mouvement enregistré.') }}</p>{% endfor %}</div></section>
+</div>{% endblock %}
