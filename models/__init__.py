@@ -7,3 +7,5 @@ from .veicoli import Veicolo
 from .operations import ReportDraft, ReportReview, ReportReviewEvent, ResourcePlan, DocumentVersion
 from .site_plan import SitePlan
 from .site_pour import SitePour, SitePourPanel
+
+from .account_revocation import AccountRevocation

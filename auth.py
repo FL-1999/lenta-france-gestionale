@@ -223,7 +223,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "type": "access", "iat": datetime.now(timezone.utc).timestamp()})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -235,13 +235,22 @@ def create_refresh_token(email: str) -> str:
     """Token a lunga durata (solo per rinnovare l'access token)."""
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     return jwt.encode(
-        {"sub": email, "type": "refresh", "exp": expire},
+        {"sub": email, "type": "refresh", "exp": expire, "iat": datetime.now(timezone.utc).timestamp()},
         SECRET_KEY,
         algorithm=ALGORITHM,
     )
 
 
-def decode_refresh_token(token: str | None) -> Optional[str]:
+def token_is_revoked(db, payload):
+    from models import AccountRevocation
+    cutoff = db.get(AccountRevocation, payload.get('sub'))
+    if cutoff is None:
+        return False
+    issued = payload.get('iat')
+    return not isinstance(issued, (int, float)) or issued <= cutoff.revoked_at
+
+
+def decode_refresh_token(token: str | None, db: Session | None = None) -> Optional[str]:
     """Restituisce l'email se il refresh token è valido e non scaduto, altrimenti None."""
     if not token:
         return None
@@ -250,6 +259,8 @@ def decode_refresh_token(token: str | None) -> Optional[str]:
     except JWTError:
         return None
     if payload.get("type") != "refresh":
+        return None
+    if db is not None and token_is_revoked(db, payload):
         return None
     return payload.get("sub")
 
@@ -305,7 +316,7 @@ async def get_current_user(
         raise credentials_exception
 
     user = get_user_by_email(db, email=email)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or token_is_revoked(db, payload):
         raise credentials_exception
 
     requested_role = get_current_role_from_request(request) or normalize_role(token_role)
@@ -354,7 +365,7 @@ async def get_current_user_html(
         raise redirect_exception
 
     user = get_user_by_email(db, email=email)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or token_is_revoked(db, payload):
         raise redirect_exception
     if token_role and not user_has_role(user, token_role):
         raise redirect_exception
@@ -414,7 +425,7 @@ async def get_current_user_api(
         raise unauthorized_exception
 
     user = get_user_by_email(db, email=email)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or token_is_revoked(db, payload):
         raise unauthorized_exception
     if token_role and not user_has_role(user, token_role):
         raise unauthorized_exception
