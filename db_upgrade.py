@@ -117,6 +117,7 @@ FICHES_COLUMNS: tuple[str, ...] = (
 )
 
 SITE_COUPES_COLUMNS: tuple[str, ...] = (
+    "tipologia_scavo VARCHAR(20)",
     "type_beton TEXT",
     "type_coulage TEXT NOT NULL DEFAULT 'Gravitaire'",
     "base_paroi_mecanique FLOAT",

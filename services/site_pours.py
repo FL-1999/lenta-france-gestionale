@@ -41,11 +41,11 @@ def panel_fiches(db, site_id):
     return result
 
 
-def create_group(db, site, numbers, kind, confirm_net):
+def create_group(db, site, numbers, kind, confirm_net, panels=None):
     db.query(Site).filter_by(id=site.id).with_for_update().one()
     if kind not in ('angle', 'joint') or len(numbers) < 2 or len(numbers) > 20 or len(set(numbers)) != len(numbers):
         raise HTTPException(400, 'Seleziona da 2 a 20 pannelli distinti e il tipo di getto.')
-    panels = {p['element']: p for p in approved_panels(db, site.id)}
+    panels = {p['element']: p for p in (panels if panels is not None else approved_panels(db, site.id))}
     fiches = panel_fiches(db, site.id)
     members = []
     for n in sorted(numbers):
@@ -91,6 +91,11 @@ def before_fiche_save(db, fiche, updating=False):
     if existing and (not member or member.pour_id != existing[0].pour_id):
         raise HTTPException(409, 'Sciogli il raggruppamento prima di cambiare cantiere o pannello della fiche.')
     if not member:
+        if fiche.tipologia_scavo == 'paratia':
+            from services.plan_corners import groups
+            if any(any(p.get('element') == fiche.numero_pannello for p in pair)
+                   for pair in groups(approved_panels(db, fiche.site_id)).values()):
+                raise HTTPException(400, 'Completa e salva la stessa coupe per i due bracci dell’angolo prima di creare la fiche unica.')
         return
     group = member.pour
     db.query(Site).filter_by(id=fiche.site_id).with_for_update().one()

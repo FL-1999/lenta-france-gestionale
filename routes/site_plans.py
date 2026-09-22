@@ -137,6 +137,8 @@ class PanelInput(BaseModel):
     element:int|None=Field(default=None,gt=0)
     reviewed:bool=False
     extent_confirmed:bool=False
+    corner_group:str|None=Field(default=None,pattern=r'^[a-zA-Z0-9_-]{1,64}$')
+    corner_net_confirmed:bool=False
 
 
 class LayoutInput(BaseModel):
@@ -183,6 +185,8 @@ def validate_layout(body,source,allowed,approve):
         panel['recognition']=original.get(p.key,{}).get('recognition','manual')
         panel['warnings']=original.get(p.key,{}).get('warnings',[])
         panels.append(panel)
+    from services.plan_corners import validate_corners
+    validate_corners(panels, scale, approve)
     return {**source,'panels':panels,'scale_ppm':scale}
 
 
@@ -196,7 +200,13 @@ def save(site_id:int,plan_id:int,request:Request,body:LayoutInput,
     layout=validate_layout(body,json.loads(row.draft),{e['number'] for e in elements(db,site,user)},approve)
     if row.revision!=body.revision: raise HTTPException(409,'La pianta è cambiata. Ricarica prima di salvare.')
     if approve:
-        confirm_project_panels(db,site,layout,json.loads(row.approved) if row.approved else None)
+        try:
+            confirm_project_panels(db,site,layout,json.loads(row.approved) if row.approved else None)
+            from services.plan_corners import reconcile_groups
+            reconcile_groups(db, site, layout, json.loads(row.approved) if row.approved else None)
+        except Exception:
+            db.rollback()
+            raise
     new_revision=row.revision+1
     values={'draft':json.dumps(layout),'revision':new_revision,'updated_by_id':user.id}
     if approve: values.update(approved=json.dumps(layout),approved_revision=new_revision,approved_at=datetime.utcnow())

@@ -794,6 +794,16 @@ class SiteCoupe(Base, TimestampMixin):
     site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, index=True)
     site = relationship("Site", back_populates="coupes")
     nome = Column(String(100), nullable=False)
+    tipologia_scavo = Column(String(20), nullable=True)
+
+    @property
+    def work_kind(self):
+        if self.tipologia_scavo:
+            return self.tipologia_scavo
+        kinds = {a.tipologia_scavo for a in self.assignments} | {f.tipologia_scavo for f in self.fiches}
+        if len(kinds) > 1:
+            return 'mixed'
+        return next(iter(kinds), 'palo' if self.diametro and not self.spessore else 'paratia')
     descrizione_zona = Column(Text, nullable=True)
     armatura = Column(Text, nullable=True)
     quota_reference_label = Column(String(30), nullable=True)

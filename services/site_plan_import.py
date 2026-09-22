@@ -186,6 +186,8 @@ def import_pdf(data: bytes, page_number: int = 1):
                     if abs(math.dist(*p['points'][:2])/target-1)>.15:
                         p['warnings'].append('Possibile sbordo: controllare gli estremi rispetto al PDF')
                     p['points']=scaled_points(points,target)
+            from services.plan_corners import suggest_corners
+            suggest_corners(panels)
             pages=len(pdf.pages)
         with _PDF_RENDER_LOCK, pdfium.PdfDocument(data) as doc:
             page=doc[page_number-1]

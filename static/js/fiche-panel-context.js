@@ -9,7 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     picker.replaceChildren(new Option('Seleziona dalla pianta',''));
     panels.forEach(p=>picker.add(new Option(`${p.label} · ${p.width_m} m`,p.number)));
     picker.value=number.value;picker.hidden=!panels.length;
-    const label=panels.find(p=>String(p.number)===number.value)?.label;
+    const selected=panels.find(p=>String(p.number)===number.value),label=selected?.label;
+    const width=document.getElementById('larghezza_pannello');
+    if(width&&document.querySelector('[data-fiche-form]').dataset.edit!=='true'){
+      width.readOnly=!!selected?.width_m;
+      if(selected?.width_m){width.value=selected.width_m;width.dataset.fromPlan='1';}
+      else if(width.dataset.fromPlan){width.value='';delete width.dataset.fromPlan;}
+    }
     const summary=document.querySelector('[data-summary-number]');if(summary&&label)summary.textContent=label;
   }
   picker.onchange=()=>{
@@ -27,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const width=document.getElementById('larghezza_pannello');if(width&&p?.width_m)width.value=p.width_m;
     number.dispatchEvent(new Event('input',{bubbles:true}));coupe?.dispatchEvent(new Event('change',{bubbles:true}));update();
   };
+  number.addEventListener('input',update);
   [site,number,type].forEach(el=>el?.addEventListener('change',update));
   function datum(){const saved=document.getElementById('fiche-panel-catalog').dataset;const ref=(saved.coupe===coupe?.value&&saved.datum)||coupe?.selectedOptions?.[0]?.dataset.datum||'NGF';document.querySelectorAll('label').forEach(label=>{if(!label.dataset.datumOriginal&&label.textContent.includes('NGF'))label.dataset.datumOriginal=label.textContent;if(label.dataset.datumOriginal)label.textContent=label.dataset.datumOriginal.replaceAll('NGF',ref);});}
   coupe?.addEventListener('change',datum);update();datum();
