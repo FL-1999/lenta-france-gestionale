@@ -49,7 +49,7 @@ def test_french_coupe_errors_soil_and_plan_actions(live_operations):
         expect(card.locator('[name=coupe_paratie]')).to_have_value('2')
         expect(card.locator('[name=coupe_profondita_teorica]')).to_have_attribute('aria-invalid','true')
         expect(card.locator('[data-theoretical-layer]')).to_have_count(2)
-        output=Path('.venv/coupe-qa');output.mkdir(exist_ok=True)
+        output=Path('.venv/coupe-qa');output.mkdir(parents=True,exist_ok=True)
         page.screenshot(path=str(output/'validation-fr.png'),full_page=True)
         card.locator('[name=coupe_profondita_teorica]').fill('15')
         page.get_by_role('button',name='Enregistrer la configuration du projet',exact=True).click()
