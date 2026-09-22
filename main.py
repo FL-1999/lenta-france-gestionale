@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+import posixpath
 import functools
 import time
 import re
@@ -514,7 +515,8 @@ async def refresh_token_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def add_static_cache_headers(request: Request, call_next):
-    if request.url.path.startswith('/static/uploads/invoices/'):
+    static_path = posixpath.normpath(request.url.path.replace('\\', '/')).casefold()
+    if static_path.startswith('/static/uploads/invoices/'):
         # Old attachments now use the authenticated order download endpoint.
         return Response(status_code=404)
     response = await call_next(request)

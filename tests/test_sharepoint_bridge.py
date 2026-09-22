@@ -10,6 +10,7 @@ import shutil
 import sqlite3
 import subprocess
 import zipfile
+import uuid
 
 import httpx
 import pytest
@@ -215,6 +216,20 @@ def test_invoice_upload_is_durable_private_and_keeps_revisions(operations, monke
     o["actor"][0] = o["capo"]
     assert c.get(url + "/allegato").status_code == 403
     assert c.get("/static/uploads/invoices/old.pdf").status_code == 404
+
+
+def test_legacy_invoice_static_download_is_blocked_after_path_normalization(operations):
+    directory = Path("static/uploads/invoices")
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"cloud-test-{uuid.uuid4().hex}.pdf"
+    with path.open("xb") as output:
+        output.write(b"private invoice")
+    try:
+        for prefix in ["/static/uploads/invoices/", "/static/uploads//invoices/", "/static/uploads/%2e/invoices/", "/static/uploads/invoices%2F"]:
+            response = operations["client"].get(prefix + path.name)
+            assert response.status_code == 404 and b"private invoice" not in response.content
+    finally:
+        path.unlink()
 
 
 def test_native_backup_restores_sqlite_documents_and_order_links(operations, tmp_path):
