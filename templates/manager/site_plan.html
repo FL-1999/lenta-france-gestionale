@@ -31,6 +31,7 @@
       <button type="button" class="btn btn-secondary" data-zoom>Zoom selezionato</button>
       <label class="sp-inline">Pannello<select data-select aria-label="Seleziona pannello"></select></label>
       <button type="button" class="btn btn-secondary" data-add hidden>Aggiungi pannello</button>
+      <button type="button" class="btn btn-secondary" data-review-all-top hidden>Conferma tutti i pannelli</button>
     </div>
     <div class="sp-workspace">
       <section class="card sp-board" data-original><div class="sp-board-title"><strong>Originale</strong><span data-page></span></div><svg data-original-svg aria-label="PDF originale con pannelli selezionabili"><image data-preview></image><g data-original-shapes></g></svg></section>
@@ -44,6 +45,7 @@
           <p class="text-muted" data-scale-info></p>
           <details><summary>Scala del disegno</summary><p>Le larghezze sono in metri: una quota di 250 cm va inserita come 2,50 m. Per calibrare, scegli una sagoma corretta e inserisci la sua larghezza reale.</p><button type="button" class="btn btn-secondary" data-calibrate>Usa questo pannello come riferimento</button><button type="button" class="btn btn-secondary" data-scale-all>Proporziona tutti i pannelli</button></details>
           <label class="sp-check" data-extent hidden><input name="extent_confirmed" type="checkbox">Ho controllato gli estremi sul PDF: lo sbordo è previsto</label>
+          <details class="sp-snap"><summary>Accosta i bordi</summary><p>Sposta questo pannello fino al bordo del pannello scelto, mantenendo larghezza e scala.</p><label>Pannello vicino<select data-snap-target></select></label><button type="button" class="btn btn-secondary" data-snap>Accosta al pannello</button><button type="button" class="btn btn-secondary" data-undo-snap hidden>Annulla accostamento</button></details>
           <label>Elemento del gestionale<select name="element"><option value="">Da collegare</option></select></label>
           <a href="{{ url_for('manager_site_project_config_get', site_id=site.id) }}" target="_blank" rel="noopener">Configura coupe e pannelli</a>
           <details><summary>Posizione e dimensioni della sagoma</summary><div class="sp-fields">
@@ -60,9 +62,9 @@
     </div>
     <section class="card sp-save" data-save-section hidden>
       <div><strong data-pending></strong><p class="text-muted">La convalida crea i pannelli del progetto. Poi crei le coupe e assegni a ciascuna il suo gruppo di pannelli. Le fiches e i getti non vengono modificati.</p></div>
-      <div class="sp-actions"><button type="button" class="btn btn-secondary" data-review-all>Segna tutti come verificati</button><button type="button" class="btn btn-secondary" data-save>Salva bozza</button><button type="button" class="btn btn-primary" data-approve>Convalida disegno</button></div>
+      <div class="sp-actions"><button type="button" class="btn btn-secondary" data-review-all>Conferma tutti i pannelli</button><button type="button" class="btn btn-secondary" data-save>Salva bozza</button><button type="button" class="btn btn-primary" data-approve>Convalida disegno</button></div>
     </section>
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/js/site-plan.js?v=3" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260922" defer></script><script src="/static/js/site-plan.js?v=20260922" defer></script>{% endblock %}

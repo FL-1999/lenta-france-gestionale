@@ -1,6 +1,7 @@
 from datetime import datetime
 import json
 import math
+import re
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -46,14 +47,15 @@ def find_plan(db, site_id, plan_id):
 
 
 def elements(db, site, user):
-    total=next((getattr(site,k) for k in ['numero_totale_paratie','totale_paratie_da_scavare','paratie_total_panels']
-                if getattr(site,k) is not None),0)
+    total=max((getattr(site,k) or 0 for k in ['numero_totale_paratie','totale_paratie_da_scavare','paratie_total_panels']),default=0)
     labels={r.numero_elemento:r.nome_personalizzato for r in db.query(SiteProgressGridName).filter_by(site_id=site.id,tipologia_scavo='paratia')}
     from services.site_pours import panel_fiches
     fiches=panel_fiches(db,site.id)
     assignments={r.numero_elemento:r.coupe for r in db.query(SiteCoupeAssignment).filter_by(site_id=site.id,tipologia_scavo='paratia')}
     equipment={r.numero_elemento:r for r in db.query(SiteSpecialEquipmentConfig).filter_by(site_id=site.id,tipologia_scavo='paratia')}
-    numbers=set(range(1,min(int(total or 0),5000)+1))|set(fiches)|set(assignments)
+    from services.site_plan_project import approved_panels
+    mapped={p['element'] for p in approved_panels(db,site.id) if p.get('element')}
+    numbers=set(range(1,min(int(total or 0),5000)+1))|set(labels)|set(fiches)|set(assignments)|set(equipment)|mapped
     result=[]
     for n in sorted(numbers):
         f,c,e=fiches.get(n),assignments.get(n),equipment.get(n)
@@ -68,7 +70,9 @@ def elements(db, site, user):
             'coupe':c.nome if c else None,'armatura':c.armatura if c else None,'planned_depth_m':c.profondita_teorica if c else None,
             'sonic':bool(e.sonic_previsto) if e else bool(f and f.sonic_previsto),
             'inclinometer':bool(e.inclinometre_previsto) if e else bool(f and f.inclinometre_previsto)})
-    return result
+    def natural(row):
+        return tuple((0,int(part)) if part.isdigit() else (1,part.casefold()) for part in re.split(r'(\d+)',row['label']))
+    return sorted(result,key=lambda row:(natural(row),row['number']))
 
 
 @router.get('',name='manager_site_plan')

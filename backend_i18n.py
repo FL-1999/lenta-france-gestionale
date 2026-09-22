@@ -17,6 +17,7 @@ import re
 
 # sorgente -> (italiano, francese)
 _MESSAGES: dict[str, tuple[str, str]] = {
+    "Correggi i campi segnalati. I dati inseriti sono stati conservati.": ("Correggi i campi segnalati. I dati inseriti sono stati conservati.", "Corrigez les champs signalés. Vos saisies ont été conservées."),
     "La profondità totale deve essere maggiore di zero.": (
         "La profondità totale deve essere maggiore di zero.",
         "La profondeur totale doit être supérieure à zéro.",
@@ -318,6 +319,21 @@ def translate_message(message: object, lang: str) -> object:
     if not isinstance(message, str):
         return message
     idx = 0 if lang != "fr" else 1
+
+    if lang == "fr":
+        from ui_i18n import CATALOG
+        if message in CATALOG:
+            return CATALOG[message]
+
+    if lang == "fr":
+        for pattern, translation in [
+            (r"^Verifica sagoma e larghezza di (.+)\.$", "Vérifiez la forme et la largeur de {}."),
+            (r"^(.+): sagoma fuori scala\. Applica la larghezza alla scala comune\.$", "{} : forme hors échelle. Appliquez la largeur à l’échelle commune."),
+            (r"^(.+): possibile sbordo\. Controlla e conferma gli estremi sul PDF\.$", "{} : débordement possible. Vérifiez et confirmez les extrémités sur le PDF."),
+        ]:
+            match = re.fullmatch(pattern, message)
+            if match:
+                return translation.format(match[1])
 
     entry = _MESSAGES.get(message)
     if entry is not None:

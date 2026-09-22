@@ -55,7 +55,7 @@ def test_visual_coupe_selection_fiche_creation_and_real_pdf_routes(live_operatio
         with Session(engine) as db:
             assert db.query(SiteCoupe).count()==2
         first=page.locator('[data-coupe-card]').first
-        first.locator('summary').click()
+        first.locator('.coupe-editor > summary').click()
         expect(first.locator('[name=coupe_profondita_teorica]')).to_have_value('12.0')
         for theme in ['dark','light']:
             page.evaluate('(t)=>document.documentElement.dataset.theme=t',theme)

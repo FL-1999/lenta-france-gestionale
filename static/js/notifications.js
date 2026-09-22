@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
         text.href = linkUrl;
         text.className = "notifications-panel__link";
       }
-      text.textContent = notification.message || "Notifica";
+      text.textContent = notification.message || window.LentaText("Notifica");
 
       text.addEventListener("click", async (event) => {
         if (!linkUrl) event.preventDefault();

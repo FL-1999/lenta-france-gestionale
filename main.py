@@ -5772,6 +5772,9 @@ def manager_site_project_config_post(
     if not has_perm(current_user, "sites.update"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
 
+    from services.coupe_form import submitted_rows, validate_rows
+    submitted = {k: v for k, v in locals().copy().items() if k.startswith(('coupe_', 'equipment_')) or k == 'delete_coupe_id'}
+    field_errors = validate_rows(submitted, _parse_coupe_element_numbers)
     db = SessionLocal()
     try:
         site = (
@@ -5783,6 +5786,8 @@ def manager_site_project_config_post(
         if not site:
             raise HTTPException(status_code=404, detail="Cantiere non trovato")
         try:
+            if field_errors:
+                raise HTTPException(400, "Correggi i campi segnalati. I dati inseriti sono stati conservati.")
             _sync_site_coupes_from_form(
                 db,
                 site,
@@ -5846,6 +5851,9 @@ def manager_site_project_config_post(
                     format_coupe_assignments=_format_coupe_assignments,
                     is_coupe_configured=_site_coupe_configuration_complete,
                     equipment_rows=_build_site_special_equipment_rows(site) if site else [],
+                    submitted_coupes=submitted_rows(submitted),
+                    submitted_equipment=submitted,
+                    field_errors=field_errors,
                     error_message=translate_message(exc.detail, get_lang_from_request(request)),
                 ),
                 status_code=exc.status_code or 400,

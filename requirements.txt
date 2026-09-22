@@ -7,7 +7,8 @@ python-jose[cryptography]
 passlib
 jinja2
 python-multipart
-sqlmodel
+# Keep the validated datetime storage behavior; newer releases require a dedicated migration.
+sqlmodel==0.0.42
 pytest
 
 httpx>=0.28.0

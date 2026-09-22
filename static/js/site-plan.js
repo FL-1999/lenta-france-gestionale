@@ -5,6 +5,10 @@
   if (!root) return;
   const q = s => root.querySelector(s), all = s => [...root.querySelectorAll(s)];
   const base = `/manager/cantieri/${root.dataset.site}/pianta`, ns = 'http://www.w3.org/2000/svg';
+  const fr = document.documentElement.lang === 'fr';
+  const t = (it, french) => fr ? french : it;
+  const tr = text => window.LentaText(text);
+  let snapUndo=null;
   const form = q('[data-editor]');
   let data, plan, selected, editing = false, dirty = false, busy = false, showOriginal = true, box, drag, addMode = false;
   function commonScale() {
@@ -29,33 +33,33 @@
   function markDirty() { dirty = true; renderFooter(); }
   function panel() { return plan?.layout.panels.find(p => p.key === selected); }
   function element(p) { return data?.elements.find(e => e.number === p?.element); }
-  function num(v, unit = '') { return v == null ? '—' : `${Number(v).toLocaleString('it-IT', {maximumFractionDigits: 2})}${unit}`; }
+  function num(v, unit = '') { return v == null ? '—' : `${Number(v).toLocaleString(fr?'fr-FR':'it-IT', {maximumFractionDigits: 2})}${unit}`; }
   function svgEl(tag, attrs = {}, text) { const n = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v)); if (text != null) n.textContent = text; return n; }
   async function api(url, options = {}) {
     const res = await fetch(url, {credentials: 'same-origin', ...options});
-    if (!res.headers.get('content-type')?.includes('application/json')) throw new Error('Sessione scaduta: accedi di nuovo prima di salvare.');
+    if (!res.headers.get('content-type')?.includes('application/json')) throw new Error(tr("Sessione scaduta: accedi di nuovo prima di salvare."));
     const payload = await res.json();
-    if (!res.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'Dati non validi. Controlla misure e campi.');
+    if (!res.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : tr("Dati non validi. Controlla misure e campi."));
     return payload;
   }
-  function guard() { return !dirty || confirm('Ci sono modifiche non salvate. Vuoi abbandonarle?'); }
+  function guard() { return !dirty || confirm(tr("Ci sono modifiche non salvate. Vuoi abbandonarle?")); }
   async function load(id, draft = false) {
     try {
       data = await api(base + '/data' + (id ? `?plan_id=${id}&draft=${draft}` : ''));
-      plan = data.plan; editing = !!plan?.editing; dirty = false; addMode = false;
+      snapUndo=null; plan = data.plan; editing = !!plan?.editing; dirty = false; addMode = false;
       const versions = q('[data-version]'); versions.replaceChildren();
-      data.versions.forEach(v => versions.add(new Option(`#${v.id} · ${v.filename} · ${v.approved ? 'convalidata' : 'bozza'}${v.approved && v.has_draft ? ' + modifiche in bozza' : ''}`, v.id)));
+      data.versions.forEach(v => versions.add(new Option(`#${v.id} · ${v.filename} · ${v.approved ? t('convalidata','validé') : t('bozza','brouillon')}${v.approved && v.has_draft ? t(' + modifiche in bozza',' + modifications en brouillon') : ''}`, v.id)));
       q('[data-empty]').hidden = !!plan; q('[data-workspace]').hidden = !plan;
-      if (!plan) { message('Carica un PDF per preparare la pianta del cantiere.'); if (q('[data-upload]')) q('[data-upload]').hidden = false; return; }
+      if (!plan) { message(tr("Carica un PDF per preparare la pianta del cantiere.")); if (q('[data-upload]')) q('[data-upload]').hidden = false; return; }
       versions.value = plan.id; selected = plan.layout.panels[0]?.key; showOriginal = editing;
-      q('[data-pdf]').href = plan.original_url; q('[data-page]').textContent = `Pagina ${plan.page_number}`;
+      q('[data-pdf]').href = plan.original_url; q('[data-page]').textContent = `${t('Pagina','Page')} ${plan.page_number}`;
       const image = q('[data-preview]'); image.setAttribute('href', plan.preview_url); image.setAttribute('width', plan.layout.width); image.setAttribute('height', plan.layout.height);
-      const links = form.elements.element; links.replaceChildren(new Option('Crea pannello alla convalida', ''));
-      data.elements.forEach(e => links.add(new Option(`${e.label} · elemento ${e.number}${e.fiche_id ? ' · fiche presente' : ''}`, e.number)));
+      const links = form.elements.element; links.replaceChildren(new Option(tr("Crea pannello alla convalida"), ''));
+      data.elements.forEach(e => links.add(new Option(`${e.label} · ${t('elemento','élément')} ${e.number}${e.fiche_id ? t(' · fiche presente',' · fiche disponible') : ''}`, e.number)));
       plan.layout.panels.forEach(p => {p.reference_points ||= p.points.map(v=>[...v]);});
       plan.layout.scale_ppm=commonScale();
       fit(); render();
-      message(editing ? plan.layout.notice : 'Disegno convalidato. Avanzamento e dati provengono dalle fiches collegate.');
+      message(editing ? tr(plan.layout.notice) : tr("Disegno convalidato. Avanzamento e dati provengono dalle fiches collegate."));
     } catch (error) { message(error.message, true); }
   }
   function fit() {
@@ -96,35 +100,40 @@
         if (active && editing) p.points.forEach((v,j)=>{group.append(svgEl('circle',{cx:v[0],cy:v[1],r:Math.max(4,box[2]/130),class:'sp-handle','data-key':p.key,'data-corner':j}));group.append(svgEl('text',{x:v[0],y:v[1]-5,'font-size':Math.max(7,box[2]/90),fill:'currentColor','pointer-events':'none'},j+1));});
       });
     });
-    q('[data-counter]').textContent = `${plan.layout.panels.length} pannelli`;
+    q('[data-counter]').textContent = `${plan.layout.panels.length} ${t('pannelli','panneaux')}`;
   }
   function choose(key) { selected = key; renderDetail(); renderMaps(); q('[data-select]').value = key || ''; }
   function renderDetail() {
-    const p = panel(), e = element(p); form.hidden = !editing || !p;
-    q('[data-label]').textContent = p?.label || 'Seleziona un pannello';
-    q('[data-warnings]').textContent = !p ? '' : editing ? [...(p.warnings || []),offScale(p)?'Sagoma fuori scala: applica la larghezza alla scala comune.':'',extent(p)?'Possibile sbordo rispetto alla sagoma riconosciuta o al foglio. Controlla sul PDF e conferma.':''].filter(Boolean).join(' · ') : '';
+    const p = panel(), e = element(p);
+    const snapPicker=q('[data-snap-target]'),oldTarget=snapPicker.value;snapPicker.replaceChildren();
+    plan.layout.panels.filter(v=>v.key!==selected).sort((a,b)=>a.label.localeCompare(b.label,fr?'fr':'it',{numeric:true})).forEach(v=>snapPicker.add(new Option(v.label,v.key)));
+    if([...snapPicker.options].some(o=>o.value===oldTarget))snapPicker.value=oldTarget;
+    q('[data-undo-snap]').hidden=!snapUndo;
+    form.hidden = !editing || !p;
+    q('[data-label]').textContent = p?.label || tr("Seleziona un pannello");
+    q('[data-warnings]').textContent = !p ? '' : editing ? [...((p.warnings || []).map(tr)),offScale(p)?tr("Sagoma fuori scala: applica la larghezza alla scala comune."):'',extent(p)?tr("Possibile sbordo rispetto alla sagoma riconosciuta o al foglio. Controlla sul PDF e conferma."):''].filter(Boolean).join(' · ') : '';
     if (p) {
-      form.elements.label.value = p.label; form.elements.width_m.value = p.width_m ?? ''; form.elements.element.value = p.element ?? ''; form.elements.reviewed.checked = p.reviewed; form.elements.extent_confirmed.checked=!!p.extent_confirmed; q('[data-extent]').hidden=!extent(p); q('[data-scale-info]').textContent=commonScale()?`Scala comune: ${num(commonScale())} punti del foglio per metro`:'Scala da calibrare';
+      form.elements.label.value = p.label; form.elements.width_m.value = p.width_m ?? ''; form.elements.element.value = p.element ?? ''; form.elements.reviewed.checked = p.reviewed; form.elements.extent_confirmed.checked=!!p.extent_confirmed; q('[data-extent]').hidden=!extent(p); q('[data-scale-info]').textContent=commonScale()?t(`Scala comune: ${num(commonScale())} punti del foglio per metro`,`Échelle commune : ${num(commonScale())} points de la feuille par mètre`):tr("Scala da calibrare");
       const g = geometry(p); Object.entries({cx:g.cx,cy:g.cy,shape_length:g.len,shape_depth:g.depth,angle:g.angle}).forEach(([k,v])=>form.elements[k].value=+v.toFixed(2));
     }
     const dl = q('[data-details]'); dl.replaceChildren();
-    const rows = p ? [['Larghezza pianta',num(p.width_m,' m')],['Collegamento', e ? `${e.label} · #${e.number}` : 'Da associare'],['Stato', !e ? 'Non collegato' : {cast:'Getto registrato',fiche:'Fiche presente',planned:'Da eseguire'}[e.status]],['Coupe', e?.coupe || '—'],['Armatura',e?.armatura || '—'],['Profondità prevista',num(e?.planned_depth_m,' m')],['Profondità effettiva',num(e?.depth_m,' m')],['Calcestruzzo gettato',num(e?.concrete_m3,' m³')],['Data getto',e?.cast_date || '—'],['Controlli previsti',[e?.sonic?'Sonico':'',e?.inclinometer?'Inclinometro':''].filter(Boolean).join(' + ') || '—']] : [];
+    const rows = p ? [[tr("Larghezza pianta"),num(p.width_m,' m')],[tr("Collegamento"), e ? `${e.label} · #${e.number}` : tr("Da associare")],[tr("Stato"), !e ? tr("Non collegato") : {cast:tr("Getto registrato"),fiche:tr("Fiche presente"),planned:tr("Da eseguire")}[e.status]],['Coupe', e?.coupe || '—'],[tr("Armatura"),e?.armatura || '—'],[tr("Profondità prevista"),num(e?.planned_depth_m,' m')],[tr("Profondità effettiva"),num(e?.depth_m,' m')],[tr("Calcestruzzo gettato"),num(e?.concrete_m3,' m³')],[tr("Data getto"),e?.cast_date || '—'],[tr("Controlli previsti"),[e?.sonic?tr("Sonico"):'',e?.inclinometer?tr("Inclinometro"):''].filter(Boolean).join(' + ') || '—']] : [];
     rows.forEach(([k,v])=>{const row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;row.append(dt,dd);dl.append(row);});
     const action = q('[data-fiche]'), target = e?.fiche_url || (!editing && e?.create_url);
     action.hidden = !target; if (target) action.href = target;
-    action.textContent = e?.fiche_url ? 'Apri fiche' : 'Crea fiche';
+    action.textContent = e?.fiche_url ? tr("Apri fiche") : tr("Crea fiche");
   }
   function renderFooter() {
     if (!plan) return;
     const pending = plan.layout.panels.filter(p=>!p.reviewed||!p.width_m||offScale(p)||(extent(p)&&!p.extent_confirmed)).length, unlinked = plan.layout.panels.filter(p=>!p.element).length;
-    q('[data-pending]').textContent = `${pending} da verificare · ${unlinked} pannelli da creare alla convalida${dirty ? ' · Modifiche non salvate' : ''}`;
-    q('[data-state]').textContent = editing ? 'Bozza da convalidare' : 'Disegno convalidato';
+    q('[data-pending]').textContent = `${pending} ${t('da verificare','à vérifier')} · ${unlinked} ${t('pannelli da creare alla convalida','panneaux à créer à la validation')}${dirty ? t(' · Modifiche non salvate',' · Modifications non enregistrées') : ''}`;
+    q('[data-state]').textContent = editing ? tr("Bozza da convalidare") : tr("Disegno convalidato");
   }
   function render() {
     root.dataset.original = showOriginal; q('[data-original]').hidden = !showOriginal; q('[data-original-toggle]').setAttribute('aria-pressed',showOriginal);
-    q('[data-edit]').hidden = !data.can_edit || editing; q('[data-add]').hidden = !editing; q('[data-save-section]').hidden = !editing;
+    q('[data-edit]').hidden = !data.can_edit || editing; q('[data-review-all-top]').hidden = q('[data-add]').hidden = !editing; q('[data-save-section]').hidden = !editing;
     const picker = q('[data-select]'); picker.replaceChildren();
-    plan.layout.panels.forEach((p,i)=>picker.add(new Option(`${p.label} · zona ${i+1}${p.reviewed?'':' · da verificare'}`,p.key)));
+    plan.layout.panels.forEach((p,i)=>picker.add(new Option(`${p.label} · ${t('zona','zone')} ${i+1}${p.reviewed?'':t(' · da verificare',' · à vérifier')}`,p.key)));
     picker.value = selected || ''; renderDetail(); renderMaps(); renderFooter();
   }
   q('[data-select]').onchange = e => choose(e.target.value);
@@ -146,23 +155,23 @@
     const p=panel(); if (!editing||!p) return;
     const input=e.target,name=input.name;
     if (name==='label') p.label=input.value.trim() || p.label;
-    else if(name==='width_m') { if(input.value && (!input.validity.valid||!Number.isFinite(+input.value))){message('Larghezza non valida.',true);return;}p.width_m=input.value ? +input.value : null; }
-    else if(name==='element') {const value=input.value?+input.value:null;if(value&&plan.layout.panels.some(v=>v.key!==p.key&&v.element===value)){message('Questo elemento è già associato a un’altra zona.',true);input.value=p.element||'';return;}p.element=value;}
+    else if(name==='width_m') { if(input.value && (!input.validity.valid||!Number.isFinite(+input.value))){message(tr("Larghezza non valida."),true);return;}p.width_m=input.value ? +input.value : null; }
+    else if(name==='element') {const value=input.value?+input.value:null;if(value&&plan.layout.panels.some(v=>v.key!==p.key&&v.element===value)){message(tr("Questo elemento è già associato a un’altra zona."),true);input.value=p.element||'';return;}p.element=value;}
     else if(name==='reviewed') p.reviewed=input.checked;
     else if(name==='extent_confirmed') p.extent_confirmed=input.checked;
     else if(name==='anchor') return;
     else {
       const v=n=>+form.elements[n].value;
       const g={cx:v('cx'),cy:v('cy'),len:v('shape_length'),depth:v('shape_depth'),angle:v('angle')};
-      if (!(g.len>1&&g.depth>1)||!updatePoints(p,rectangle(g))){message('Dimensioni non valide o sagoma fuori dal foglio.',true);renderDetail();return;}
+      if (!(g.len>1&&g.depth>1)||!updatePoints(p,rectangle(g))){message(tr("Dimensioni non valide o sagoma fuori dal foglio."),true);renderDetail();return;}
     }
     if(!['reviewed','extent_confirmed'].includes(name))p.reviewed=false;markDirty();render();
   });
-  q('[data-scale]').onclick = () => {const p=panel();if(!p||!resize(p,form.elements.anchor.value)){message('Imposta una larghezza in metri e calibra la scala su un pannello noto.',true);return;}render();};
-  q('[data-calibrate]').onclick=()=>{const p=panel();if(!p?.width_m){message('Inserisci la larghezza reale in metri del pannello scelto.',true);return;}if(!confirm(`Usare la sagoma di ${p.label} (${num(p.width_m,' m')}) come riferimento per tutta la pianta?`))return;plan.layout.scale_ppm=geometry(p).len/p.width_m;plan.layout.panels.forEach(v=>{v.reviewed=false;v.extent_confirmed=false;});markDirty();render();};
-  q('[data-scale-all]').onclick=()=>{if(!commonScale()){message('Calibra prima la scala su un pannello di larghezza nota.',true);return;}if(!confirm('Proporzionare tutte le sagome alle larghezze in metri, mantenendo i loro centri? Controlla poi gli estremi sul PDF.'))return;plan.layout.scale_ppm=commonScale();plan.layout.panels.forEach(p=>resize(p));markDirty();fit();render();};
-  q('[data-remove]').onclick = () => {const p=panel();if(!p||!confirm(`Rimuovere ${p.label} dalla pianta? Le sue fiches restano nel gestionale.`))return;plan.layout.panels=plan.layout.panels.filter(v=>v.key!==p.key);selected=plan.layout.panels[0]?.key;markDirty();render();};
-  q('[data-add]').onclick = () => {addMode=!addMode;message(addMode?'Trascina sul disegno per creare una sagoma rettangolare.':'Inserimento annullato.');q('[data-add]').textContent=addMode?'Annulla inserimento':'Aggiungi pannello';};
+  q('[data-scale]').onclick = () => {const p=panel();if(!p||!resize(p,form.elements.anchor.value)){message(tr("Imposta una larghezza in metri e calibra la scala su un pannello noto."),true);return;}render();};
+  q('[data-calibrate]').onclick=()=>{const p=panel();if(!p?.width_m){message(tr("Inserisci la larghezza reale in metri del pannello scelto."),true);return;}if(!confirm(t(`Usare la sagoma di ${p.label} (${num(p.width_m,' m')}) come riferimento per tutta la pianta?`,`Utiliser la forme de ${p.label} (${num(p.width_m,' m')}) comme référence pour tout le plan ?`)))return;plan.layout.scale_ppm=geometry(p).len/p.width_m;plan.layout.panels.forEach(v=>{v.reviewed=false;v.extent_confirmed=false;});markDirty();render();};
+  q('[data-scale-all]').onclick=()=>{if(!commonScale()){message(tr("Calibra prima la scala su un pannello di larghezza nota."),true);return;}if(!confirm(tr("Proporzionare tutte le sagome alle larghezze in metri, mantenendo i loro centri? Controlla poi gli estremi sul PDF.")))return;plan.layout.scale_ppm=commonScale();plan.layout.panels.forEach(p=>resize(p));markDirty();fit();render();};
+  q('[data-remove]').onclick = () => {const p=panel();if(!p||!confirm(t(`Rimuovere ${p.label} dalla pianta? Le sue fiches restano nel gestionale.`,`Retirer ${p.label} du plan ? Ses fiches sont conservées.`)))return;plan.layout.panels=plan.layout.panels.filter(v=>v.key!==p.key);selected=plan.layout.panels[0]?.key;markDirty();render();};
+  q('[data-add]').onclick = () => {addMode=!addMode;message(addMode?tr("Trascina sul disegno per creare una sagoma rettangolare."):tr("Inserimento annullato."));q('[data-add]').textContent=addMode?tr("Annulla inserimento"):tr("Aggiungi pannello");};
   function coordinate(svg,event) {const pt=svg.createSVGPoint();pt.x=event.clientX;pt.y=event.clientY;const p=pt.matrixTransform(svg.getScreenCTM().inverse());return [p.x,p.y];}
   all('.sp-board svg').forEach(svg=>{
     svg.addEventListener('pointerdown',event=>{
@@ -186,28 +195,53 @@
       if(drag.add&&event.type!=='pointercancel'){
         const end=coordinate(svg,event),x=Math.min(end[0],drag.start[0]),y=Math.min(end[1],drag.start[1]),w=Math.abs(end[0]-drag.start[0]),h=Math.abs(end[1]-drag.start[1]);
         const pts=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
-        if(w>3&&h>3&&inBounds(pts)){const p={key:crypto.randomUUID().replaceAll('-',''),label:`P${plan.layout.panels.length+1}`,points:pts,width_m:null,element:null,reviewed:false,warnings:['Pannello inserito manualmente']};plan.layout.panels.push(p);selected=p.key;markDirty();}
-        addMode=false;q('[data-add]').textContent='Aggiungi pannello';
+        if(w>3&&h>3&&inBounds(pts)){const p={key:crypto.randomUUID().replaceAll('-',''),label:`P${plan.layout.panels.length+1}`,points:pts,width_m:null,element:null,reviewed:false,warnings:[tr("Pannello inserito manualmente")]};plan.layout.panels.push(p);selected=p.key;markDirty();}
+        addMode=false;q('[data-add]').textContent=tr("Aggiungi pannello");
       }
       svg.querySelector('.sp-ghost')?.remove();drag=null;render();
     };
     svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);
   });
-  q('[data-review-all]').onclick = () => {if(!confirm('Hai controllato sigle, larghezze e sagome di tutti i pannelli rispetto al PDF originale?'))return;plan.layout.panels.forEach(p=>{if(p.width_m)p.reviewed=true;});markDirty();render();};
+  q('[data-snap]').onclick=()=>{
+    const p=panel(),target=plan.layout.panels.find(v=>v.key===q('[data-snap-target]').value);
+    if(!editing||!p||!target)return;
+    const result=window.PlanGeometry.snap(p.points,target.points);
+    if(!result){message(t('Non ci sono bordi paralleli da accostare. Regola la rotazione o gli angoli.','Aucun bord parallèle à raccorder. Ajustez la rotation ou les angles.'),true);return;}
+    if(!confirm(t(`Accostare ${p.label} a ${target.label}? Il pannello verrà spostato senza cambiare le dimensioni.`,`Raccorder ${p.label} à ${target.label} ? Le panneau sera déplacé sans modifier ses dimensions.`)))return;
+    snapUndo={key:p.key,points:p.points.map(v=>[...v]),reviewed:p.reviewed,extent_confirmed:p.extent_confirmed};
+    if(!updatePoints(p,result.points)){snapUndo=null;message(t('Spostamento fuori dallo spazio di lavoro.','Déplacement hors de la zone de travail.'),true);return;}
+    render();message(t('Bordi accostati. Controlla il risultato sul PDF.','Bords raccordés. Vérifiez le résultat sur le PDF.'));
+  };
+  q('[data-undo-snap]').onclick=()=>{
+    if(!snapUndo)return;const p=plan.layout.panels.find(v=>v.key===snapUndo.key);
+    if(p){Object.assign(p,snapUndo);markDirty();}snapUndo=null;render();
+  };
+  q('[data-review-all-top]').onclick=()=>q('[data-review-all]').click();
+  q('[data-review-all]').onclick=()=>{
+    const valid=plan.layout.panels.filter(p=>p.label.trim()&&p.width_m&&!offScale(p));
+    const extents=valid.filter(extent);
+    const text=t(`Hai controllato i ${valid.length} pannelli rispetto al PDF?`, `Avez-vous vérifié les ${valid.length} panneaux par rapport au PDF ?`);
+    if(!valid.length){message(t('Completa prima larghezze e scala.','Complétez d’abord les largeurs et l’échelle.'),true);return;}
+    if(!confirm(text))return;
+    let confirmExtents=false;
+    if(extents.length)confirmExtents=confirm(t(`Sono previsti gli sbordi di questi pannelli? ${extents.map(p=>p.label).join(', ')}. Annulla per lasciarli da controllare.`,`Les débordements de ces panneaux sont-ils prévus ? ${extents.map(p=>p.label).join(', ')}. Annulez pour les laisser à vérifier.`));
+    valid.forEach(p=>{p.reviewed=true;if(confirmExtents&&extent(p))p.extent_confirmed=true;});markDirty();render();
+    message(t(`${valid.length} pannelli verificati. Premi Convalida disegno per salvare.`,`${valid.length} panneaux vérifiés. Cliquez sur Valider le plan pour enregistrer.`));
+  };
   function lock(value) {busy=value;all('button').forEach(b=>b.disabled=value);all('input,select').forEach(b=>b.disabled=value);}
   async function save(approve) {
     if(busy)return;
-    if(approve){const missing=plan.layout.panels.filter(p=>!p.reviewed||!p.width_m||offScale(p)||(extent(p)&&!p.extent_confirmed));if(!plan.layout.panels.length||missing.length){message(`Controlla scala, larghezze e conferme di sbordo dei pannelli (${missing.length} ancora da verificare).`,true);return;}
+    if(approve){const missing=plan.layout.panels.filter(p=>!p.reviewed||!p.width_m||offScale(p)||(extent(p)&&!p.extent_confirmed));if(!plan.layout.panels.length||missing.length){message(t(`Controlla scala, larghezze e conferme di sbordo dei pannelli (${missing.length} ancora da verificare).`,`Vérifiez l’échelle, les largeurs et les débordements (${missing.length} panneaux à vérifier).`),true);return;}
       const unlinked=plan.layout.panels.filter(p=>!p.element).length;
-      if(!confirm(`Convalidare il disegno?${unlinked?` ${unlinked} pannelli verranno creati nel progetto con queste sigle. Potrai poi assegnarli alle coupe.`:''}`))return;
+      if(!confirm(t(`Convalidare il disegno? ${unlinked} pannelli nuovi potranno essere assegnati alle coupe.`,`Valider le plan ? ${unlinked} nouveaux panneaux pourront être affectés aux coupes.`)))return;
     }
     const id=plan.id;lock(true);
-    try{await api(`${base}/${id}/${approve?'convalida':'bozza'}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:plan.revision,panels:plan.layout.panels,scale_ppm:commonScale(),confirm:approve})});dirty=false;await load(id,!approve);message(approve?'Disegno convalidato.':'Bozza salvata. Il disegno convalidato resta invariato.');}catch(e){message(e.message,true);}finally{lock(false);}
+    try{await api(`${base}/${id}/${approve?'convalida':'bozza'}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:plan.revision,panels:plan.layout.panels,scale_ppm:commonScale(),confirm:approve})});dirty=false;await load(id,!approve);message(approve?tr("Disegno convalidato."):tr("Bozza salvata. Il disegno convalidato resta invariato."));}catch(e){message(e.message,true);}finally{lock(false);}
   }
   q('[data-save]').onclick=()=>save(false);q('[data-approve]').onclick=()=>save(true);
   q('[data-upload-toggle]')?.addEventListener('click',()=>{q('[data-upload]').hidden=!q('[data-upload]').hidden;});
   q('[data-upload]')?.addEventListener('submit',async event=>{
-    event.preventDefault();if(busy||!guard())return;const payload=new FormData(event.currentTarget);lock(true);message('Analisi del PDF in corso…');
+    event.preventDefault();if(busy||!guard())return;const payload=new FormData(event.currentTarget);lock(true);message(tr("Analisi del PDF in corso…"));
     try{const uploaded=await api(base+'/importa',{method:'POST',body:payload});dirty=false;q('[data-upload]').hidden=true;await load(uploaded.id,true);}catch(e){message(e.message,true);}finally{lock(false);}
   });
   window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});

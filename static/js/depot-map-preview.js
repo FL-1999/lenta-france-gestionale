@@ -38,7 +38,7 @@
 
     const drawMap = (depots) => {
       if (!window.google || !window.google.maps) {
-        message.textContent = "Mappa non disponibile";
+        message.textContent = window.LentaText("Mappa non disponibile");
         message.style.display = "block";
         mapEl.style.display = "none";
         return;
@@ -77,7 +77,7 @@
       const depots = loadDepots();
       openModal();
       if (depots.length === 0) {
-        message.textContent = "Nessun deposito con coordinate disponibili";
+        message.textContent = window.LentaText("Nessun deposito con coordinate disponibili");
         message.style.display = "block";
         mapEl.style.display = "none";
         return;

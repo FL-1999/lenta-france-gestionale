@@ -60,7 +60,7 @@
   };
 
   const updateStatusUI = (elements, hasCoordinates, shouldWarnMissingCoordinates) => {
-    const label = hasCoordinates ? "Verificato ✅" : "Non verificato ⚠️";
+    const label = hasCoordinates ? window.LentaText("Verificato ✅") : window.LentaText("Non verificato ⚠️");
     const statusClass = hasCoordinates ? "badge-success" : "badge-danger";
 
     if (elements.statusBadge) {
@@ -71,8 +71,8 @@
 
     if (elements.statusText) {
       elements.statusText.textContent = hasCoordinates
-        ? "Posizione verificata sulla mappa."
-        : "Seleziona un indirizzo dai suggerimenti o clicca sulla mappa.";
+        ? window.LentaText("Posizione verificata sulla mappa.")
+        : window.LentaText("Seleziona un indirizzo dai suggerimenti o clicca sulla mappa.");
     }
 
     if (elements.alert) {
