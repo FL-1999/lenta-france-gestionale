@@ -62,7 +62,7 @@ Il titolare configurato deve essere anche admin del gestionale. L'archivio docum
 ## 3. Primo avvio e documenti precedenti
 
 1. Al primo avvio viene eseguita un'acquisizione iniziale in background, anche senza credenziali Microsoft. Nel gestionale: **Generali → SharePoint → Prepara documenti esistenti** permette di ripeterla: lo stesso documento non si duplica.
-2. Controllare gli allegati mancanti. Le vecchie fatture erano su `static/uploads/invoices`: se il file è già scomparso dal disco Render, serve recuperarlo da un'altra copia. Non viene segnalato come trasferito. Fare la prima acquisizione prima di qualsiasi pulizia dei vecchi dischi.
+2. Controllare gli allegati non acquisiti. Le vecchie fatture erano su `static/uploads/invoices`: se il file è già scomparso dal disco Render, serve recuperarlo da un'altra copia. I vecchi allegati superiori a 64 MB richiedono una migrazione dedicata per non saturare la memoria del servizio. Non vengono segnalati come trasferiti. Fare la prima acquisizione prima di qualsiasi pulizia dei vecchi dischi.
 3. Configurare gli accessi sul server, mantenendo la sincronizzazione disattivata. **Verifica collegamento** controlla sito e raccolta in lettura; non prova ancora la scrittura.
 4. Impostare `SHAREPOINT_SYNC_ENABLED=true` e riavviare il servizio. Il worker del servizio web esamina la coda ogni 60 secondi, al massimo 3 file per ciclo. I file nuovi vengono acquisiti anche prima dell'attivazione.
 5. Controllare una prima copia con stato **Verificata**. Il file remoto viene riletto e confrontato byte per byte tramite SHA-256 e dimensione. Permessi insufficienti, quota, rete o contenuto difforme producono un errore e un nuovo tentativo; la copia locale rimane.

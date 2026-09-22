@@ -70,7 +70,7 @@ def legacy_invoice_path(value, root=None):
 def prepare_existing(db, invoice_root=None):
     """Idempotent inventory. Originals stay untouched; legacy invoice pointers become durable."""
     result = {"documents": 0, "plans": 0, "invoices": 0, "missing": [], "missing_count": 0}
-    for doc in db.query(SiteDocument).yield_per(25):
+    for doc in db.query(SiteDocument).yield_per(1):
         if doc.data:
             enqueue(db, "document", doc.id, doc.filename, doc.data, doc.content_type or "application/octet-stream", doc.site_id)
             result["documents"] += 1
@@ -78,7 +78,7 @@ def prepare_existing(db, invoice_root=None):
             result["missing_count"] += 1
             if len(result["missing"]) < 100:
                 result["missing"].append(f"document:{doc.id}")
-    for plan in db.query(SitePlan).yield_per(10):
+    for plan in db.query(SitePlan).yield_per(1):
         _plan_saved(None, db.connection(), plan)
         result["plans"] += 1
     for order in db.query(PurchaseOrder).filter(PurchaseOrder.file_invoice.isnot(None)).yield_per(25):
@@ -92,6 +92,8 @@ def prepare_existing(db, invoice_root=None):
             continue
         try:
             path = legacy_invoice_path(order.file_invoice, invoice_root)
+            if path.stat().st_size > 64 * 1024 * 1024:
+                raise CloudError("legacy_file_too_large")
             content = path.read_bytes()
             if not content:
                 raise CloudError("empty_file")
@@ -112,7 +114,10 @@ def remote_location(asset):
     parts = ["Gestionale", "Cantieri", f"cantiere-{asset.site_id}"] if asset.site_id else ["Gestionale", "Acquisti"]
     parts.append({"document": "Documenti", "plan": "Piante-originali", "plan_preview": "Piante-anteprime",
         "fiche_pdf": "Fiches", "dossier_pdf": "Dossier", "invoice": "Fatture"}.get(asset.kind, "Esportazioni"))
-    name = re.sub(r"[^a-zA-Z0-9._-]+", "-", Path(asset.filename).name).strip(".-")[:70] or "documento"
+    original = Path(asset.filename.replace("\\", "/")).name
+    extension = re.sub(r"[^a-zA-Z0-9.]", "", Path(original).suffix)[:12]
+    stem = re.sub(r"[^a-zA-Z0-9._-]+", "-", Path(original).stem).strip(".-")[:58] or "documento"
+    name = stem + extension
     return parts, f"{asset.source_id}-{asset.sha256}-{name}"
 
 
