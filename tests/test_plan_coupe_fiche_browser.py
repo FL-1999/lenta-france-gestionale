@@ -43,7 +43,7 @@ def test_visual_coupe_selection_fiche_creation_and_real_pdf_routes(live_operatio
         values={'coupe_nome':'Coupe 1','coupe_quota_reference_label':'NGM','coupe_quota_tn':'10.5',
                 'coupe_quota_testa':'10.5','coupe_quota_fondo_teorica':'-1.5',
                 'coupe_base_paroi_mecanique':'-1.38','coupe_quota_testa_getto_prevista':'10.5',
-                'coupe_spessore':'.42','coupe_larghezza':'5.2'}
+                'coupe_spessore':'.42'}
         for key,value in values.items():first.locator(f'[name="{key}"]').fill(value)
         page.locator('[data-add-coupe-card]').first.click()
         second=page.locator('[data-coupe-card]').nth(1)

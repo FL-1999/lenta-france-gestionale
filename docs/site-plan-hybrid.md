@@ -33,6 +33,28 @@ Test: `tests/test_site_plans.py` copre PDF vettoriali reali sintetici, testi ruo
 
 ## Coupe e produzione
 
+### Coupe paratie e coupe pali
+
+Le due sezioni hanno coupe distinte, identificate da `site_coupes.tipologia_scavo` (colonna nullable aggiunta dal bootstrap). Le coupe paratie definiscono spessore, quote, profondità prevista, stratigrafia e armatura; non definiscono una larghezza comune. La larghezza delle nuove fiches viene dal singolo pannello convalidato (oppure dallo sviluppo netto dell’angolo A/B). Senza pianta, la larghezza va inserita nella singola fiche. Il vecchio campo `larghezza` rimane conservato per compatibilità storica ma non è più un valore proposto o modificabile nella coupe.
+
+Nelle nuove fiches il server rifiuta una larghezza diversa dal pannello convalidato o uno spessore diverso dalla coupe. I campi corrispondenti vengono compilati automaticamente e resi di sola lettura nel modulo di creazione. Quote e profondità effettiva della produzione mantengono i controlli preesistenti. Le fiches storiche e i relativi snapshot non vengono riscritti.
+
+Le coupe pali hanno diametro e associazioni ai pali, senza campo larghezza o spessore paratia. Il server impedisce associazioni miste e cambi di tipo incompatibili con fiches già salvate. Per i record precedenti senza tipo esplicito, il tipo viene dedotto dalle associazioni/fiches (poi dalle dimensioni se non ci sono associazioni). Le vecchie coupe miste rimangono consultabili in `Da separare`: i dati storici non vengono redistribuiti automaticamente.
+
+`test_coupe_dimensions.py` verifica pannelli da 6,40 e 3,50 m nella stessa coupe, volumi, controlli server e tipi separati; `test_coupe_dimensions_browser.py` verifica schede dedicate e passaggio fra pannelli nel modulo fiche.
+
+### Modifica guidata e angoli A/B
+
+Il riquadro geometria è separato dalle informazioni e conferme del pannello. I lati interi si trascinano o si spostano di 1, 5 o 10 cm: con larghezza bloccata le due testate traslano insieme, sbloccandola una testata varia la larghezza in metri alla scala comune. I lati collegati rimangono paralleli. Per muovere liberamente i vertici occorre disattivare entrambi i blocchi. La vista trasparente e l’opacità dei vicini aiutano il confronto con il PDF; le modifiche geometriche si possono annullare.
+
+L’importazione propone coppie A/B solo con numero univoco, vicinanza e direzioni trasversali. `Riconosci angoli A/B` applica lo stesso criterio alle bozze già esistenti. Le misure restano quelle dei singoli bracci e richiedono controllo: una quota riconosciuta male non diventa corretta con il raggruppamento. `Raccorda angolo` accosta bordi paralleli con una traslazione rigida, senza deformare le sagome; le direzioni incompatibili richiedono correzione manuale. Il trascinamento del corpo sposta entrambi i bracci, le maniglie modificano solo quello selezionato.
+
+Prima della convalida il server richiede un contatto tra i bordi, assenza di sovrapposizione e conferma delle larghezze nette (intersezione conteggiata una sola volta). I due pannelli conservano identità e sigle proprie. Dopo l’assegnazione alla stessa coupe completa, il salvataggio crea il gruppo `P3 A/B` per una fiche unica; prima di tale assegnazione non si possono creare fiche individuali per quei bracci. Non vengono create automaticamente fiche di produzione. Le quote della coupe aggiornano il gruppo ancora privo di fiche; una fiche esistente conserva i propri dati storici.
+
+`Separa angolo` rimuove il raggruppamento in bozza lasciando ferme entrambe le sagome. Alla convalida può sciogliere un gruppo senza fiche; se il gruppo ha produzione, richiede prima la gestione esplicita dalla pagina cantiere e annulla l’intera operazione. Anche la rimozione di un’associazione coupe necessaria a una fiche viene bloccata. Nessuna fiche viene cancellata dalla pianta.
+
+Verifiche: `test_plan_corners.py` copre importazione proposta, raccordi invalidi, convalida, creazione coupe, fiche unica, conservazione e separazione; `test_plan_corner_editor_browser.py` prova i comandi reali, trascinamenti, scala, persistenza e viste IT/FR, desktop e mobile.
+
 La navigazione Pianta → Coupe → Fiches mantiene il contesto del cantiere. Le coupe non vengono create automaticamente: il responsabile crea ciascun gruppo con nome, quote, dimensioni e descrizione dell’armatura/riferimento tavola. Il campo armatura è descrittivo, non calcola ferri o gabbie. Viene conservato nello snapshot della fiche e riportato nel rapporto. Le coupe hanno pannelli selezionabili sulla pianta o tramite pulsanti, ricerca e selezione multipla. Un pannello assegnato a un'altra coupe è disabilitato; il server rifiuta duplicazioni anche per richieste manuali e annulla l'intero salvataggio. Controlli sonici/inclinometri rimangono indipendenti dalle coupe.
 
 Da un pannello convalidato senza fiche si apre il modulo esistente con cantiere, numero interno, sigla, coupe e larghezza. Il modulo offre anche un selettore della pianta nella normale creazione. La fiche resta unica per cantiere/tipo/identità; nomi duplicati non confondono i collegamenti.

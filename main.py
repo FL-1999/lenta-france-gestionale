@@ -1638,6 +1638,8 @@ def _find_site_coupe_for_fiche(
         if not coupe:
             raise HTTPException(status_code=400, detail="Coupe di progetto non valida")
         normalized_tipologia = _normalize_fiche_tipologia(tipologia_scavo)
+        if coupe.work_kind not in (normalized_tipologia, "mixed"):
+            raise HTTPException(400, "La coupe selezionata non corrisponde al tipo di lavorazione.")
         if normalized_tipologia and numero_elemento is not None:
             is_assigned = (
                 db.query(SiteCoupeAssignment.id)
@@ -1667,6 +1669,8 @@ def _find_site_coupe_for_fiche(
         .filter(SiteCoupeAssignment.numero_elemento == numero_elemento)
         .first()
     )
+    if assignment and assignment.coupe.work_kind not in (normalized_tipologia, "mixed"):
+        raise HTTPException(400, "La coupe selezionata non corrisponde al tipo di lavorazione.")
     return assignment.coupe if assignment else None
 
 
@@ -1695,7 +1699,7 @@ def _apply_coupe_defaults_to_fiche_values(
         quota_testa_getto_value = quota_testa_getto_value if quota_testa_getto_value is not None else coupe.quota_testa_getto_prevista
         quota_ngf_testa_value = quota_ngf_testa_value if quota_ngf_testa_value is not None else coupe.quota_testa
         profondita_value = profondita_value if profondita_value is not None else coupe.profondita_teorica
-        larghezza_value = larghezza_value if larghezza_value is not None else coupe.larghezza
+        # Width belongs to the individual panel, never to the shared coupe.
         diametro_value_cm = diametro_value_cm if diametro_value_cm is not None else (coupe.diametro * 100 if coupe.diametro is not None else None)
         altezza_value = altezza_value if altezza_value is not None else coupe.spessore
 
@@ -1878,8 +1882,15 @@ def _create_validated_fiche(
         numero_elemento=parsed_numero_pannello,
     )
     plan_panel = panel_details(db, site.id, parsed_numero_pannello, normalized_tipologia)
-    if larghezza_value is None and normalized_tipologia == "paratia":
-        larghezza_value = plan_panel['width_m']
+    if normalized_tipologia == "paratia":
+        if plan_panel['width_m'] is not None:
+            if larghezza_value is not None and abs(larghezza_value - plan_panel['width_m']) > .0001:
+                raise HTTPException(400, "La larghezza deve corrispondere al pannello della pianta convalidata.")
+            larghezza_value = plan_panel['width_m']
+        if coupe and coupe.spessore is not None:
+            if altezza_value is not None and abs(altezza_value - coupe.spessore) > .0001:
+                raise HTTPException(400, "Lo spessore deve corrispondere alla coupe del pannello.")
+            altezza_value = coupe.spessore
     coupe_values = _apply_coupe_defaults_to_fiche_values(
         coupe,
         scavo_da_tn=scavo_da_tn,
@@ -5279,6 +5290,7 @@ def _sync_site_coupes_from_form(
     coupe_pali: list[str] | None,
     coupe_armatura: list[str] | None = None,
     coupe_quota_reference_label: list[str] | None = None,
+    coupe_tipologia_scavo: list[str] | None = None,
     delete_coupe_id: list[str] | None = None,
 ) -> None:
     requested_delete_ids = {str(value).strip() for value in (delete_coupe_id or []) if str(value).strip()}
@@ -5325,6 +5337,14 @@ def _sync_site_coupes_from_form(
         if coupe is None:
             coupe = SiteCoupe(site_id=site.id, nome=name)
             db.add(coupe)
+        kind = value(coupe_tipologia_scavo, index).strip() or (
+            "palo" if value(coupe_pali, index).strip() and not value(coupe_paratie, index).strip()
+            else coupe.work_kind if row_id and coupe.tipologia_scavo else "paratia")
+        if kind not in ("paratia", "palo") or (kind == "paratia" and value(coupe_pali, index).strip()) or (kind == "palo" and value(coupe_paratie, index).strip()):
+            raise HTTPException(400, "Separa paratie e pali in coupe distinte.")
+        if any(f.tipologia_scavo != kind for f in coupe.fiches):
+            raise HTTPException(400, "Questa coupe ha fiches di un altro tipo: crea una coupe separata.")
+        coupe.tipologia_scavo = kind
         coupe.nome = name
         datum = value(coupe_quota_reference_label, index).strip() or coupe.quota_reference_label or "NGF"
         if len(datum) > 30 or any(ord(c) < 32 for c in datum):
@@ -5354,9 +5374,9 @@ def _sync_site_coupes_from_form(
         _validate_quota_testa_getto_not_above_tn(coupe.quota_testa_getto_prevista, quota_tn=coupe.quota_tn)
         coupe.type_beton = value(coupe_type_beton, index).strip() or None
         coupe.type_coulage = value(coupe_type_coulage, index).strip() or "Gravitaire"
-        coupe.spessore = _optional_float_from_form(value(coupe_spessore, index))
-        coupe.larghezza = _optional_float_from_form(value(coupe_larghezza, index))
-        coupe.diametro = _optional_float_from_form(value(coupe_diametro, index))
+        coupe.spessore = _optional_float_from_form(value(coupe_spessore, index)) if kind == "paratia" else None
+        # Retain historical width for old snapshots only; it is no longer a default.
+        coupe.diametro = _optional_float_from_form(value(coupe_diametro, index)) if kind == "palo" else None
         for dimension in (coupe.profondita_teorica, coupe.spessore, coupe.larghezza, coupe.diametro):
             if dimension is not None and dimension <= 0:
                 raise HTTPException(400, "Le dimensioni della coupe devono essere maggiori di zero.")
@@ -5398,11 +5418,8 @@ def _site_coupe_configuration_complete(coupe: SiteCoupe) -> bool:
         and coupe.profondita_teorica is not None
         and coupe.quota_testa_getto_prevista is not None
     )
-    has_geometry = (
-        coupe.spessore is not None
-        or coupe.larghezza is not None
-        or coupe.diametro is not None
-    )
+    has_geometry = (coupe.spessore is not None if coupe.work_kind == "paratia"
+                    else coupe.diametro is not None if coupe.work_kind == "palo" else False)
     has_assignment = bool(coupe.assignments)
     return bool(has_main_quotes and has_geometry and has_assignment)
 
@@ -5769,6 +5786,7 @@ def manager_site_project_config_post(
     coupe_type_beton: List[str] = Form(default_factory=list),
     coupe_type_coulage: List[str] = Form(default_factory=list),
     coupe_spessore: List[str] = Form(default_factory=list),
+    coupe_tipologia_scavo: List[str] = Form(default_factory=list),
     coupe_larghezza: List[str] = Form(default_factory=list),
     coupe_diametro: List[str] = Form(default_factory=list),
     coupe_terreno_teorico: List[str] = Form(default_factory=list),
@@ -5819,6 +5837,7 @@ def manager_site_project_config_post(
                 coupe_type_beton=coupe_type_beton,
                 coupe_type_coulage=coupe_type_coulage,
                 coupe_spessore=coupe_spessore,
+                coupe_tipologia_scavo=coupe_tipologia_scavo,
                 coupe_larghezza=coupe_larghezza,
                 coupe_diametro=coupe_diametro,
                 coupe_terreno_teorico=coupe_terreno_teorico,
@@ -5836,6 +5855,10 @@ def manager_site_project_config_post(
                 equipment_numero=equipment_numero,
                 equipment_mode=equipment_mode,
             )
+            from services.plan_corners import reconcile_groups
+            from services.site_plan_project import approved_panels
+            db.flush()
+            reconcile_groups(db, site, {'panels': approved_panels(db, site.id)})
             _sync_site_fiche_progress(db, site)
             log_audit_event(
                 db,

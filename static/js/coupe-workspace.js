@@ -8,6 +8,25 @@
   let elements = [], layout = null;
   const cards = () => [...form.querySelectorAll('[data-coupe-card]')];
   const input = card => card.querySelector('[name="coupe_paratie"]');
+  const kind = card => card.querySelector('[name="coupe_tipologia_scavo"]').value;
+  form.dataset.kind = 'paratia';
+  function showKinds() {
+    cards().forEach(card=>{
+      card.hidden=kind(card)!==form.dataset.kind || (card.classList.contains('project-coupe-card--new')&&!card.dataset.started);
+      card.querySelectorAll('[data-only-kind]').forEach(e=>e.hidden=kind(card)!=='mixed'&&e.dataset.onlyKind!==kind(card));
+      const wallInput=input(card),pileInput=card.querySelector('[name=coupe_pali]');
+      if(kind(card)==='paratia'&&elements.length&&!wallInput.hasAttribute('aria-invalid'))wallInput.closest('.project-field').hidden=true;
+      if(kind(card)==='palo'&&wallInput.value.trim())wallInput.closest('.project-field').hidden=false;
+      if(kind(card)==='paratia'&&pileInput.value.trim())pileInput.closest('.project-field').hidden=false;
+      card.querySelector('.coupe-picker')?.toggleAttribute('hidden',kind(card)==='palo');
+      card.querySelector('[data-association-heading]').textContent=kind(card)==='palo'?t('Pali di questa coupe','Pieux de cette coupe'):t('Pannelli di questa coupe','Panneaux de cette coupe');
+    });
+    document.querySelectorAll('[data-coupe-kind]').forEach(b=>{
+      b.setAttribute('aria-pressed',String(b.dataset.coupeKind===form.dataset.kind));
+      if(b.dataset.coupeKind==='mixed')b.hidden=!cards().some(c=>kind(c)==='mixed');
+    });
+  }
+  document.querySelectorAll('[data-coupe-kind]').forEach(b=>b.onclick=()=>{form.dataset.kind=b.dataset.coupeKind;showKinds();});
   function numbers(value) {
     const result = new Set();
     value.split(/[,;\s]+/).filter(Boolean).forEach(token => {
@@ -28,7 +47,7 @@
   function refresh() {
     cards().forEach(card => {
       const selected = numbers(input(card).value);
-      card.querySelector('[data-selection-summary]').textContent = `${selected.size} ${selected.size === 1 ? t('pannello','panneau') : t('pannelli','panneaux')}`;
+      card.querySelector('[data-selection-summary]').textContent = kind(card)==='palo'?`${numbers(card.querySelector('[name=coupe_pali]').value).size} ${t('pali','pieux')}`:`${selected.size} ${selected.size === 1 ? t('pannello','panneau') : t('pannelli','panneaux')}`;
       card.querySelectorAll('[data-panel-number]').forEach(button => {
         const n = +button.dataset.panelNumber, other = owner(card,n), active = selected.has(n);
         button.classList.toggle('selected', active);
@@ -70,12 +89,21 @@
     search.oninput=()=>grid.querySelectorAll('button').forEach(b=>b.hidden=!b.textContent.toLocaleLowerCase().includes(search.value.toLocaleLowerCase()));
     select.onclick=()=>{const chosen=numbers(input(card).value);grid.querySelectorAll('button:not([hidden])').forEach(b=>{if(!owner(card,+b.dataset.panelNumber))chosen.add(+b.dataset.panelNumber);});input(card).value=[...chosen].sort((a,b)=>a-b).join(',');refresh();};
     clear.onclick=()=>{input(card).value='';refresh();};
-    refresh();
+    refresh(); showKinds();
   }
-  form.addEventListener('input',refresh);
+  form.addEventListener('input',e=>{const card=e.target.closest('[data-coupe-card]');if(card)card.dataset.started='1';refresh();});
+  form.addEventListener('change',e=>{
+    if(e.target.name!=='coupe_tipologia_scavo')return;
+    const card=e.target.closest('[data-coupe-card]');form.dataset.kind=kind(card);
+    // Keep entered assignments visible until the user explicitly clears them.
+    showKinds();refresh();
+    const wrong=card.querySelector(kind(card)==='palo'?'[name=coupe_paratie]':'[name=coupe_pali]');
+    if(wrong.value.trim())wrong.closest('.project-field').hidden=false;
+  });
   form.addEventListener('invalid',e=>{const details=e.target.closest('.coupe-editor');if(details)details.open=true;},true);
   document.addEventListener('coupe-added',e=>build(e.detail));
   const errors=JSON.parse(document.getElementById('coupe-field-errors')?.textContent||'[]');
+  if(errors.length&&cards()[errors[0].row])form.dataset.kind=kind(cards()[errors[0].row]);
   errors.forEach(error=>{
     const card=cards()[error.row], field=card?.querySelector(`[name="${error.field}"]`);
     if(!field)return;
@@ -91,6 +119,8 @@
     if(i>=0)row.querySelector('[name="equipment_mode"]').value=equipment.equipment_mode[i];
   });
   document.getElementById('coupe-errors')?.focus();
+  cards().forEach(card=>{if(!card.hidden)card.dataset.started='1';});
+  showKinds();
   fetch(`/manager/cantieri/${form.dataset.site}/pianta/data`,{credentials:'same-origin'}).then(r=>{if(!r.ok)throw Error();return r.json();}).then(data=>{
     elements=data.elements.sort((a,b)=>a.label.localeCompare(b.label,fr?'fr':'it',{numeric:true,sensitivity:'base'})||a.number-b.number);layout=data.plan&&!data.plan.editing?data.plan.layout:null;
     cards().forEach(build);

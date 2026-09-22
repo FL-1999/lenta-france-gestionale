@@ -327,6 +327,10 @@ def translate_message(message: object, lang: str) -> object:
 
     if lang == "fr":
         for pattern, translation in [
+            (r"^(.+): i bracci si sovrappongono\. Correggi il raccordo prima della convalida\.$", "{} : les branches se chevauchent. Corrigez le raccord avant de valider."),
+            (r"^(.+): accosta i bordi dei due bracci prima della convalida\.$", "{} : raccordez les bords des deux branches avant de valider."),
+            (r"^(.+): conferma le larghezze nette dei due bracci\.$", "{} : confirmez les largeurs nettes des deux branches."),
+            (r"^(.+): assegna i due bracci alla stessa coupe per la fiche unica\.$", "{} : affectez les deux branches à la même coupe pour la fiche unique."),
             (r"^Verifica sagoma e larghezza di (.+)\.$", "Vérifiez la forme et la largeur de {}."),
             (r"^(.+): sagoma fuori scala\. Applica la larghezza alla scala comune\.$", "{} : forme hors échelle. Appliquez la largeur à l’échelle commune."),
             (r"^(.+): possibile sbordo\. Controlla e conferma gli estremi sul PDF\.$", "{} : débordement possible. Vérifiez et confirmez les extrémités sur le PDF."),

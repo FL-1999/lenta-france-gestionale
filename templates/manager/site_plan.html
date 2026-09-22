@@ -1,7 +1,7 @@
 {% extends 'shared/base.html' %}
 {% block title %}{{ site.name }} · Pianta e pannelli{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/site-plan.css?v=1">
+<link rel="stylesheet" href="/static/css/site-plan.css?v=20260923">
 <div id="site-plan-app" data-site="{{ site.id }}">
   <header class="page-header">
     <div><p class="page-eyebrow">Cantieri / {{ site.name }}</p><h1 class="page-title">Pianta e pannelli</h1></div>
@@ -32,33 +32,55 @@
       <label class="sp-inline">Pannello<select data-select aria-label="Seleziona pannello"></select></label>
       <button type="button" class="btn btn-secondary" data-add hidden>Aggiungi pannello</button>
       <button type="button" class="btn btn-secondary" data-review-all-top hidden>Conferma tutti i pannelli</button>
+      <button type="button" class="btn btn-secondary" data-find-corners hidden>Riconosci angoli A/B</button>
     </div>
     <div class="sp-workspace">
       <section class="card sp-board" data-original><div class="sp-board-title"><strong>Originale</strong><span data-page></span></div><svg data-original-svg aria-label="PDF originale con pannelli selezionabili"><image data-preview></image><g data-original-shapes></g></svg></section>
       <section class="card sp-board"><div class="sp-board-title"><strong>Pianta pulita</strong><span data-counter></span></div><svg data-clean-svg aria-label="Pianta pulita con pannelli, sigle e larghezze"><g data-clean-shapes></g></svg><div class="sp-legend"><span class="sp-dot planned"></span>Da eseguire <span class="sp-dot fiche"></span>Fiche presente <span class="sp-dot cast"></span>Getto registrato <span>S · Sonico / I · Inclinometro</span></div></section>
       <aside class="card sp-detail">
         <h2 data-label>Seleziona un pannello</h2><p class="text-muted" data-warnings></p>
-        <form data-editor hidden>
+        <form id="sp-panel-editor" data-editor hidden>
           <div class="sp-fields"><label>Sigla<input name="label" maxlength="80" required></label><label>Larghezza (m)<input name="width_m" type="number" step="0.01" min="0.01" max="100"></label></div>
-          <label>Estremità da mantenere ferma<select name="anchor"><option value="center">Centro</option><option value="start">Inizio (angoli 1–4)</option><option value="end">Fine (angoli 2–3)</option></select></label>
-          <button type="button" class="btn btn-secondary sp-scale" data-scale>Applica larghezza in scala</button>
-          <p class="text-muted" data-scale-info></p>
-          <details><summary>Scala del disegno</summary><p>Le larghezze sono in metri: una quota di 250 cm va inserita come 2,50 m. Per calibrare, scegli una sagoma corretta e inserisci la sua larghezza reale.</p><button type="button" class="btn btn-secondary" data-calibrate>Usa questo pannello come riferimento</button><button type="button" class="btn btn-secondary" data-scale-all>Proporziona tutti i pannelli</button></details>
           <label class="sp-check" data-extent hidden><input name="extent_confirmed" type="checkbox">Ho controllato gli estremi sul PDF: lo sbordo è previsto</label>
-          <details class="sp-snap"><summary>Accosta i bordi</summary><p>Sposta questo pannello fino al bordo del pannello scelto, mantenendo larghezza e scala.</p><label>Pannello vicino<select data-snap-target></select></label><button type="button" class="btn btn-secondary" data-snap>Accosta al pannello</button><button type="button" class="btn btn-secondary" data-undo-snap hidden>Annulla accostamento</button></details>
+          <section data-corner-info hidden class="sp-corner-info"><strong data-corner-label></strong><p data-corner-widths></p><p>Fiche unica dopo l’assegnazione dei due bracci alla stessa coupe.</p><label class="sp-check"><input name="corner_net_confirmed" type="checkbox">Larghezze nette verificate sul PDF, senza contare due volte l’intersezione</label></section>
           <label>Elemento del gestionale<select name="element"><option value="">Da collegare</option></select></label>
           <a href="{{ url_for('manager_site_project_config_get', site_id=site.id) }}" target="_blank" rel="noopener">Configura coupe e pannelli</a>
-          <details><summary>Posizione e dimensioni della sagoma</summary><div class="sp-fields">
-            <label>Centro X (foglio)<input name="cx" type="number" step="0.1"></label><label>Centro Y (foglio)<input name="cy" type="number" step="0.1"></label>
-            <label>Lunghezza grafica<input name="shape_length" type="number" step="0.1" min="1"></label><label>Spessore grafico<input name="shape_depth" type="number" step="0.1" min="1"></label>
-            <label>Rotazione (°)<input name="angle" type="number" step="0.1"></label>
-          </div><p class="text-muted">Le dimensioni grafiche sono in coordinate del foglio. La convalida verifica la proporzione delle larghezze; gli sbordi non vengono tagliati. Puoi anche trascinare la sagoma e i suoi angoli.</p></details>
           <label class="sp-check"><input name="reviewed" type="checkbox">Sigla, sagoma e larghezza verificate</label>
           <button type="button" class="btn btn-secondary" data-remove>Rimuovi dalla pianta</button>
         </form>
         <dl data-details class="sp-data"></dl>
         <a class="btn btn-primary" data-fiche hidden>Apri fiche</a>
       </aside>
+      <section class="card sp-edit-tools" data-geometry-tools hidden aria-label="Modifica geometria">
+        <h2>Modifica geometria</h2>
+        <div class="sp-edit-columns">
+          <div>
+            <label class="sp-check"><input type="checkbox" data-lock-width checked>Mantieni larghezza</label>
+            <label class="sp-check"><input type="checkbox" data-lock-direction checked>Blocca direzione</label>
+            <label class="sp-check"><input type="checkbox" data-transparent checked>Vista trasparente</label>
+            <label>Visibilità pannelli vicini<input type="range" data-neighbour-opacity min="10" max="100" value="35" step="5"></label>
+            <p class="text-muted" data-edit-hint></p>
+          </div>
+          <div>
+            <label>Lato da spostare<select data-edge><option value="end">Testata finale (2–3)</option><option value="start">Testata iniziale (1–4)</option><option value="top">Bordo superiore (1–2)</option><option value="bottom">Bordo inferiore (4–3)</option></select></label>
+            <div class="sp-fields"><label>Passo<select data-step><option value="0.01">1 cm</option><option value="0.05" selected>5 cm</option><option value="0.1">10 cm</option></select></label><div class="sp-actions"><button type="button" class="btn btn-secondary" data-nudge="-1" aria-label="Sposta lato indietro">−</button><button type="button" class="btn btn-secondary" data-nudge="1" aria-label="Sposta lato avanti">+</button></div></div>
+            <details class="sp-snap"><summary>Accosta i bordi</summary><label>Pannello vicino<select data-snap-target></select></label><button type="button" class="btn btn-secondary" data-snap>Accosta al pannello</button><button type="button" class="btn btn-secondary" data-undo-snap hidden>Annulla accostamento</button></details>
+            <div class="sp-actions" data-corner-tools hidden><button type="button" class="btn btn-secondary" data-join-corner>Raccorda angolo</button><button type="button" class="btn btn-secondary" data-split-corner>Separa angolo</button></div>
+            <button type="button" class="btn btn-secondary" data-undo-edit disabled>Annulla modifica</button>
+          </div>
+          <div>
+            <label>Estremità da mantenere ferma<select name="anchor" form="sp-panel-editor"><option value="center">Centro</option><option value="start">Inizio (angoli 1–4)</option><option value="end">Fine (angoli 2–3)</option></select></label>
+            <button type="button" class="btn btn-secondary sp-scale" data-scale>Applica larghezza in scala</button>
+            <p class="text-muted" data-scale-info></p>
+            <details><summary>Scala del disegno</summary><p>Le larghezze sono in metri: una quota di 250 cm va inserita come 2,50 m. Per calibrare, scegli una sagoma corretta e inserisci la sua larghezza reale.</p><button type="button" class="btn btn-secondary" data-calibrate>Usa questo pannello come riferimento</button><button type="button" class="btn btn-secondary" data-scale-all>Proporziona tutti i pannelli</button></details>
+            <details><summary>Posizione e dimensioni della sagoma</summary><div class="sp-fields">
+              <label>Centro X (foglio)<input name="cx" form="sp-panel-editor" type="number" step="0.1"></label><label>Centro Y (foglio)<input name="cy" form="sp-panel-editor" type="number" step="0.1"></label>
+              <label>Lunghezza grafica<input name="shape_length" form="sp-panel-editor" type="number" step="0.1" min="1"></label><label>Spessore grafico<input name="shape_depth" form="sp-panel-editor" type="number" step="0.1" min="1"></label>
+              <label>Rotazione (°)<input name="angle" form="sp-panel-editor" type="number" step="0.1"></label>
+            </div></details>
+          </div>
+        </div>
+      </section>
     </div>
     <section class="card sp-save" data-save-section hidden>
       <div><strong data-pending></strong><p class="text-muted">La convalida crea i pannelli del progetto. Poi crei le coupe e assegni a ciascuna il suo gruppo di pannelli. Le fiches e i getti non vengono modificati.</p></div>
@@ -67,4 +89,4 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260922" defer></script><script src="/static/js/site-plan.js?v=20260922" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260923" defer></script><script src="/static/js/site-plan.js?v=20260923" defer></script>{% endblock %}

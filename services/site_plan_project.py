@@ -20,6 +20,11 @@ def panel_details(db, site_id, number, kind='paratia'):
     label = db.query(SiteProgressGridName).filter_by(
         site_id=site_id, tipologia_scavo=kind, numero_elemento=number).first()
     panel = next((p for p in approved_panels(db, site_id) if p.get('element') == number), None) if kind == 'paratia' else None
+    if panel and panel.get('corner_group'):
+        from services.plan_corners import corner_name
+        pair = [p for p in approved_panels(db, site_id) if p.get('corner_group') == panel['corner_group']]
+        if corner_name(pair):
+            return {'label': corner_name(pair), 'width_m': sum(p['width_m'] for p in pair)}
     return {'label': label.nome_personalizzato if label else str(number),
             'width_m': panel.get('width_m') if panel else None}
 

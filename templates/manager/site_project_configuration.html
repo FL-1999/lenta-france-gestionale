@@ -7,6 +7,7 @@
 {%- endmacro %}
 
 {% macro render_coupe_card(coupe=None, index=1, is_new=false, site_id=None, can_delete=false) %}
+  {% set kind = (coupe.tipologia_scavo or ('palo' if coupe.form_pali and not coupe.form_paratie else 'paratia')) if coupe and coupe.submitted|default(false) else (coupe.work_kind if coupe else 'paratia') %}
   {% set complete = false if is_new or submitted_coupes is defined else is_coupe_configured(coupe) %}
   <article class="project-coupe-card{% if is_new %} project-coupe-card--new{% endif %}" data-coupe-card {% if is_new and (submitted_coupes|default(site.coupes)) %}hidden{% endif %}>
     <div class="project-coupe-card__header">
@@ -35,10 +36,11 @@
 
     <details class="coupe-editor" {% if is_new or submitted_coupes is defined %}open{% endif %}><summary>Quote, dimensioni e pannelli <span data-selection-summary></span></summary><div class="project-section-grid">
       <section class="project-block project-block--wide coupe-associations">
-        <h4>Pannelli di questa coupe</h4>
+        <div class="project-field"><label class="form-label">Tipo di coupe</label><select name="coupe_tipologia_scavo" class="form-select"><option value="paratia" {% if kind == 'paratia' %}selected{% endif %}>Paratie</option><option value="palo" {% if kind == 'palo' %}selected{% endif %}>Pali</option>{% if kind == 'mixed' %}<option value="mixed" selected>Da separare: paratie e pali</option>{% endif %}</select></div>
+        <h4 data-association-heading>{{ ui_text('Pali di questa coupe') if kind == 'palo' else ui_text('Pannelli di questa coupe') }}</h4>
         <div class="form-grid">
-          <div class="project-field"><label class="form-label">Paratie associate</label><input class="form-control" name="coupe_paratie" placeholder="es. 1,2,3,4 oppure 1-8" value="{{ (coupe.form_paratie if coupe.submitted|default(false) else format_coupe_assignments(coupe, 'paratia')) if coupe else '' }}"></div>
-          <div class="project-field"><label class="form-label">Pali associati</label><input class="form-control" name="coupe_pali" placeholder="es. 1,2,5-10" value="{{ (coupe.form_pali if coupe.submitted|default(false) else format_coupe_assignments(coupe, 'palo')) if coupe else '' }}"></div>
+          <div class="project-field" data-only-kind="paratia"><label class="form-label">Paratie associate</label><input class="form-control" name="coupe_paratie" placeholder="es. 1,2,3,4 oppure 1-8" value="{{ (coupe.form_paratie if coupe.submitted|default(false) else format_coupe_assignments(coupe, 'paratia')) if coupe else '' }}"></div>
+          <div class="project-field" data-only-kind="palo"><label class="form-label">Pali associati</label><input class="form-control" name="coupe_pali" placeholder="es. 1,2,5-10" value="{{ (coupe.form_pali if coupe.submitted|default(false) else format_coupe_assignments(coupe, 'palo')) if coupe else '' }}"></div>
         </div>
       </section>
       <section class="project-block project-block--wide">
@@ -60,7 +62,7 @@
         <div class="project-field coupe-datum"><label class="form-label">Riferimento quote</label><input class="form-control" name="coupe_quota_reference_label" maxlength="30" value="{{ coupe.quota_reference_label or 'NGF' if coupe else 'NGF' }}" placeholder="NGF"><small>Etichetta delle quote in metri; non converte le altitudini.</small></div>
         <div class="form-grid form-grid--four">
           <div class="project-field"><label class="form-label">Quota TN</label><input class="form-control" type="number" step="0.01" name="coupe_quota_tn" value="{{ coupe_value(coupe.quota_tn) if coupe else '' }}" placeholder="es. 24.50"></div>
-          <div class="project-field"><label class="form-label">Quota testa paratia/palo</label><input class="form-control" type="number" step="0.01" name="coupe_quota_testa" value="{{ coupe_value(coupe.quota_testa) if coupe else '' }}" placeholder="es. 23.80"></div>
+          <div class="project-field"><label class="form-label">Quota testa</label><input class="form-control" type="number" step="0.01" name="coupe_quota_testa" value="{{ coupe_value(coupe.quota_testa) if coupe else '' }}" placeholder="es. 23.80"></div>
           <div class="project-field"><label class="form-label">Quota fondo scavo / base hydraulique</label><input class="form-control" type="number" step="0.01" name="coupe_quota_fondo_teorica" value="{{ coupe_value(coupe.quota_fondo_teorica) if coupe else '' }}" placeholder="es. 11.30"><small class="form-text text-muted">La base paroi hydraulique du PDF reprend cette cote.</small></div>
           <div class="project-field"><label class="form-label">Base paroi mécanique (m)</label><input class="form-control" type="number" step="0.01" name="coupe_base_paroi_mecanique" value="{{ coupe_value(coupe.base_paroi_mecanique) if coupe else '' }}" placeholder="NGF"></div>
           <div class="project-field"><label class="form-label">Profondità teorica</label><input class="form-control" type="number" step="0.01" name="coupe_profondita_teorica" value="{{ coupe_value(coupe.profondita_teorica) if coupe else '' }}" placeholder="m"></div>
@@ -87,9 +89,9 @@
       <section class="project-block">
         <h4>Dimensioni in metri</h4>
         <div class="form-grid">
-          <div class="project-field"><label class="form-label">Spessore</label><input class="form-control" type="number" step="0.01" name="coupe_spessore" value="{{ coupe_value(coupe.spessore) if coupe else '' }}" placeholder="m"></div>
-          <div class="project-field"><label class="form-label">Larghezza paratia</label><input class="form-control" type="number" step="0.01" name="coupe_larghezza" value="{{ coupe_value(coupe.larghezza) if coupe else '' }}" placeholder="m"></div>
-          <div class="project-field"><label class="form-label">Diametro palo</label><input class="form-control" type="number" step="0.01" name="coupe_diametro" value="{{ coupe_value(coupe.diametro) if coupe else '' }}" placeholder="m"></div>
+          <div class="project-field" data-only-kind="paratia"><label class="form-label">Spessore paratia (m)</label><input class="form-control" type="number" step="0.01" name="coupe_spessore" value="{{ coupe_value(coupe.spessore) if coupe else '' }}" placeholder="m"></div>
+          <p data-only-kind="paratia" class="text-muted">La larghezza appartiene a ogni pannello della pianta. Nella stessa coupe può variare.</p>
+          <div class="project-field" data-only-kind="palo"><label class="form-label">Diametro palo</label><input class="form-control" type="number" step="0.01" name="coupe_diametro" value="{{ coupe_value(coupe.diametro) if coupe else '' }}" placeholder="m"></div>
         </div>
       </section>
 
@@ -179,6 +181,7 @@
       <button type="button" class="btn btn-primary" data-add-coupe-card>+ Aggiungi coupe</button>
     </div>
 
+    <nav class="coupe-kind-tabs" aria-label="Tipi di coupe"><button type="button" class="btn btn-secondary" data-coupe-kind="paratia" aria-pressed="true">Coupe paratie</button><button type="button" class="btn btn-secondary" data-coupe-kind="palo" aria-pressed="false">Coupe pali</button><button type="button" class="btn btn-secondary" data-coupe-kind="mixed" hidden>Da separare</button></nav>
     <div class="project-coupe-list">
       {% for coupe in coupe_rows %}
         {{ render_coupe_card(coupe, loop.index, false, site.id, has_perm(user, 'sites.delete')) }}
@@ -401,7 +404,10 @@
     document.querySelectorAll('[data-coupe-card]').forEach(bindFocusButton);
     document.querySelectorAll('[data-add-coupe-card]').forEach((button) => {
       button.addEventListener('click', () => {
-        if (templateCard.hidden) {
+        if (templateCard.hidden && !templateCard.dataset.started) {
+          templateCard.dataset.started = '1';
+          templateCard.querySelector('[name="coupe_tipologia_scavo"]').value = document.querySelector('.project-config-form').dataset.kind === 'palo' ? 'palo' : 'paratia';
+          document.dispatchEvent(new CustomEvent('coupe-added', {detail: templateCard}));
           templateCard.hidden = false;
           templateCard.querySelector('.coupe-editor').open = true;
           templateCard.querySelector('[name="coupe_nome"]').focus();
@@ -409,9 +415,11 @@
           return;
         }
         const clone = templateCard.cloneNode(true);
+        clone.dataset.started = '1';
         clone.hidden = false;
         clone.querySelectorAll('input, textarea, select').forEach((field) => {
           if (field.type === 'checkbox') field.checked = false;
+          else if (field.name === 'coupe_tipologia_scavo') field.value = document.querySelector('.project-config-form').dataset.kind === 'palo' ? 'palo' : 'paratia';
           else if (field.name === 'coupe_scavo_da_tn') field.value = '1';
           else if (field.name === 'coupe_quota_reference_label') field.value = 'NGF';
           else if (field.name === 'coupe_type_coulage') field.value = 'Gravitaire';
@@ -431,5 +439,5 @@
     });
   });
 </script>
-<link rel="stylesheet" href="/static/css/coupe-workspace.css?v=20260922"><script src="/static/js/coupe-workspace.js?v=20260922" defer></script>
+<link rel="stylesheet" href="/static/css/coupe-workspace.css?v=20260924"><script src="/static/js/coupe-workspace.js?v=20260924" defer></script>
 {% endblock %}

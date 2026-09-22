@@ -58,7 +58,7 @@
               {% endif %}
             {% endif %}
 
-            <form method="post" class="form-grid form-grid--single" data-fiche-form>
+            <form method="post" class="form-grid form-grid--single" data-fiche-form data-edit="{{ 'true' if is_edit else 'false' }}">
                 <section class="fiche-creation-summary" aria-label="Résumé fiche">
                     <div class="fiche-summary-grid">
                         <div class="fiche-summary-item">
@@ -133,7 +133,7 @@
                         <select id="coupe_id" name="coupe_id" class="form-select" data-selected-coupe="{{ selected_coupe }}">
                             <option value="">Nessuna coupe</option>
                             {% for coupe in coupes or [] %}
-                                <option value="{{ coupe.id }}" data-site-id="{{ coupe.site_id }}" data-datum="{{ coupe.quota_reference_label or 'NGF' }}" data-scavo="{{ '1' if coupe.scavo_da_tn else '0' }}" data-partenza="{{ coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not none else (coupe.quota_testa if coupe.quota_testa is not none else '') }}" data-label="{{ coupe.nome }}{% if coupe.quota_tn is not none %} – TN {{ coupe.quota_tn }}{% endif %}" data-assignments="{% for assignment in coupe.assignments %}{{ assignment.tipologia_scavo }}:{{ assignment.numero_elemento }}{% if not loop.last %},{% endif %}{% endfor %}" data-quota-tn="{{ coupe.quota_tn if coupe.quota_tn is not none else '' }}" data-quota-testa="{{ coupe.quota_testa if coupe.quota_testa is not none else '' }}" data-quota-fondo="{{ coupe.quota_fondo_teorica if coupe.quota_fondo_teorica is not none else '' }}" data-profondita="{{ coupe.profondita_teorica if coupe.profondita_teorica is not none else '' }}" data-getto="{{ coupe.quota_testa_getto_prevista if coupe.quota_testa_getto_prevista is not none else '' }}" data-larghezza="{{ coupe.larghezza if coupe.larghezza is not none else '' }}" data-diametro-cm="{{ (coupe.diametro * 100)|round(1) if coupe.diametro is not none else '' }}" data-spessore="{{ coupe.spessore if coupe.spessore is not none else '' }}" data-type-beton="{{ coupe.type_beton if coupe.type_beton else '' }}" data-type-coulage="{{ coupe.type_coulage if coupe.type_coulage else 'Gravitaire' }}" data-terreno-teorico="{{ coupe.terreno_teorico if coupe.terreno_teorico else '' }}" {% if selected_coupe == coupe.id|string %}selected{% endif %}>
+                                <option value="{{ coupe.id }}" data-site-id="{{ coupe.site_id }}" data-datum="{{ coupe.quota_reference_label or 'NGF' }}" data-scavo="{{ '1' if coupe.scavo_da_tn else '0' }}" data-partenza="{{ coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not none else (coupe.quota_testa if coupe.quota_testa is not none else '') }}" data-label="{{ coupe.nome }}{% if coupe.quota_tn is not none %} – TN {{ coupe.quota_tn }}{% endif %}" data-assignments="{% for assignment in coupe.assignments %}{{ assignment.tipologia_scavo }}:{{ assignment.numero_elemento }}{% if not loop.last %},{% endif %}{% endfor %}" data-quota-tn="{{ coupe.quota_tn if coupe.quota_tn is not none else '' }}" data-quota-testa="{{ coupe.quota_testa if coupe.quota_testa is not none else '' }}" data-quota-fondo="{{ coupe.quota_fondo_teorica if coupe.quota_fondo_teorica is not none else '' }}" data-profondita="{{ coupe.profondita_teorica if coupe.profondita_teorica is not none else '' }}" data-getto="{{ coupe.quota_testa_getto_prevista if coupe.quota_testa_getto_prevista is not none else '' }}" data-diametro-cm="{{ (coupe.diametro * 100)|round(1) if coupe.diametro is not none else '' }}" data-spessore="{{ coupe.spessore if coupe.spessore is not none else '' }}" data-type-beton="{{ coupe.type_beton if coupe.type_beton else '' }}" data-type-coulage="{{ coupe.type_coulage if coupe.type_coulage else 'Gravitaire' }}" data-terreno-teorico="{{ coupe.terreno_teorico if coupe.terreno_teorico else '' }}" {% if selected_coupe == coupe.id|string %}selected{% endif %}>
                                     {{ coupe.nome }}{% if coupe.quota_tn is not none %} – TN {{ coupe.quota_tn }}{% endif %}
                                 </option>
                             {% endfor %}
@@ -938,18 +938,24 @@ document.addEventListener("DOMContentLoaded", function () {
     function applyCoupeDefaults() {
         if (!coupeSelect) return;
         const option = coupeSelect.selectedOptions && coupeSelect.selectedOptions[0];
+        if (spessoreInput) spessoreInput.readOnly = false;
+        if (diametroInput) diametroInput.readOnly = false;
         if (!option || !option.value) { renderSoilPreview(""); validateCoupeAssociation(); return; }
         fillIfEmpty("quota_ngf_testa", option.dataset.quotaTesta);
         fillIfEmpty("profondita_totale", option.dataset.profondita);
         fillIfEmpty("quota_testa_getto", option.dataset.getto);
         const tipo = typeSelect?.value;
         if (tipo === "palo") {
-            fillIfEmpty("diametro_palo_cm", option.dataset.diametroCm);
+            if (form.dataset.edit !== 'true' && option.dataset.diametroCm) {
+                diametroInput.value = option.dataset.diametroCm; diametroInput.readOnly = true;
+            } else fillIfEmpty("diametro_palo_cm", option.dataset.diametroCm);
             if (larghezzaInput) larghezzaInput.value = "";
             if (spessoreInput) spessoreInput.value = "";
         } else if (tipo === "paratia") {
-            fillIfEmpty("larghezza_pannello", option.dataset.larghezza);
-            fillIfEmpty("altezza_pannello", option.dataset.spessore);
+            // Each panel supplies its own width; a coupe never supplies a width.
+            if (form.dataset.edit !== 'true' && option.dataset.spessore) {
+                spessoreInput.value = option.dataset.spessore; spessoreInput.readOnly = true;
+            } else fillIfEmpty("altezza_pannello", option.dataset.spessore);
             if (diametroInput) diametroInput.value = "";
         }
         if (!quotaFondoInput?.value && option.dataset.quotaFondo) quotaFondoInput.value = option.dataset.quotaFondo;
@@ -1430,5 +1436,5 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <script type="application/json" id="fiche-panel-catalog" data-datum="{{ form_data.get('quota_reference_label', '') if is_edit else '' }}" data-coupe="{{ selected_coupe }}">{{ (fiche_panel_catalog|default({}))|tojson }}</script>
-<script src="/static/js/fiche-panel-context.js?v=1" defer></script>
+<script src="/static/js/fiche-panel-context.js?v=20260924" defer></script>
 {% endblock %}

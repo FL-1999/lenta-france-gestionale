@@ -4,7 +4,7 @@ import re
 from types import SimpleNamespace
 from fastapi import HTTPException
 
-FIELDS = ('nome descrizione_zona quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica scavo_da_tn quota_partenza_scavo quota_testa_getto_prevista type_beton type_coulage spessore larghezza diametro terreno_teorico note paratie pali armatura quota_reference_label').split()
+FIELDS = ('nome tipologia_scavo descrizione_zona quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica scavo_da_tn quota_partenza_scavo quota_testa_getto_prevista type_beton type_coulage spessore larghezza diametro terreno_teorico note paratie pali armatura quota_reference_label').split()
 NUMBERS = ('quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica quota_partenza_scavo quota_testa_getto_prevista spessore larghezza diametro').split()
 
 
@@ -22,12 +22,18 @@ def validate_rows(payload, parse_numbers):
     errors=[]; owners={}
     for index,row in enumerate(submitted_rows(payload)):
         if row.delete_requested: continue
-        significant=[f for f in FIELDS if f not in ('quota_reference_label','scavo_da_tn','type_coulage')]
+        significant=[f for f in FIELDS if f not in ('tipologia_scavo','quota_reference_label','scavo_da_tn','type_coulage')]
         if not any(getattr(row,f).strip() for f in significant): continue
         name=row.nome or f'Coupe {index+1}'
         def error(field,it,fr): errors.append({'row':index,'field':'coupe_'+field,'name':name,'it':it,'fr':fr})
+        kind=row.tipologia_scavo or ('palo' if row.pali.strip() and not row.paratie.strip() else 'paratia')
+        if kind not in ('paratia','palo') or (kind=='paratia' and row.pali.strip()) or (kind=='palo' and row.paratie.strip()):
+            error('tipologia_scavo','Separa paratie e pali in coupe distinte.','Séparez les parois et les pieux dans des coupes distinctes.')
         values={}
         for field in NUMBERS:
+            if field == 'larghezza' or (field == 'diametro' and kind == 'paratia') or (field == 'spessore' and kind == 'palo'):
+                values[field]=None
+                continue
             raw=getattr(row,field).strip()
             if not raw: values[field]=None; continue
             try:
