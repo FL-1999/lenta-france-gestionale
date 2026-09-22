@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import hashlib
 import io
 import json
+import logging
 from pathlib import Path
 import re
 import uuid
@@ -173,12 +174,20 @@ async def background_sync(factory):
         with factory() as db:
             if not db.query(CloudRun.id).filter_by(kind="inventory", status="complete").first():
                 prepare_existing(db)
+    def record_error(kind, code):
+        try:
+            with factory() as db:
+                last = db.query(CloudRun).filter_by(kind=kind).order_by(CloudRun.id.desc()).first()
+                if not last or last.details != code or last.created_at < datetime.utcnow() - timedelta(hours=1):
+                    db.add(CloudRun(kind=kind, status="error", details=code, finished_at=datetime.utcnow()))
+                    db.commit()
+        except Exception:
+            # A temporary database outage must not terminate the retry loop.
+            logging.getLogger(__name__).warning("SharePoint worker: database temporarily unavailable")
     try:
         await asyncio.to_thread(initial_inventory)
     except Exception:
-        with factory() as db:
-            db.add(CloudRun(kind="inventory", status="error", details='{"error":"inventory_failed"}', finished_at=datetime.utcnow()))
-            db.commit()
+        await asyncio.to_thread(record_error, "inventory", "inventory_failed")
     while True:
         config = SharePointConfig.from_env()
         if config.enabled:
@@ -187,9 +196,5 @@ async def background_sync(factory):
             except Exception as exc:
                 # Persist only a safe code, never an HTTP response or credentials.
                 code = exc.code if isinstance(exc, CloudError) else "unexpected_error"
-                with factory() as db:
-                    last = db.query(CloudRun).filter_by(kind="sync").order_by(CloudRun.id.desc()).first()
-                    if not last or last.details != code or last.created_at < datetime.utcnow() - timedelta(hours=1):
-                        db.add(CloudRun(kind="sync", status="error", details=code, finished_at=datetime.utcnow()))
-                        db.commit()
+                await asyncio.to_thread(record_error, "sync", code)
         await asyncio.sleep(60)

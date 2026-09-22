@@ -11,6 +11,8 @@ import sqlite3
 import subprocess
 import zipfile
 import uuid
+import asyncio
+from contextlib import suppress
 
 import httpx
 import pytest
@@ -388,3 +390,30 @@ def test_temporary_sharepoint_urls_are_not_written_to_http_logs(caplog):
             http.get("https://example.com/public")
     assert "private-link-token" not in caplog.text
     assert "https://example.com/public" in caplog.text
+
+
+def test_background_worker_survives_database_outage(monkeypatch):
+    from services import cloud_archive
+    monkeypatch.setenv("SHAREPOINT_SYNC_ENABLED", "true")
+    original_sleep = asyncio.sleep
+    async def scenario():
+        cycles = 0
+        retried = asyncio.Event()
+        async def quick_sleep(seconds):
+            nonlocal cycles
+            cycles += 1
+            if cycles >= 2:
+                retried.set()
+            await original_sleep(.001)
+        def unavailable():
+            raise RuntimeError("database unavailable")
+        monkeypatch.setattr(cloud_archive.asyncio, "sleep", quick_sleep)
+        task = asyncio.create_task(cloud_archive.background_sync(unavailable))
+        try:
+            await asyncio.wait_for(retried.wait(), timeout=3)
+            assert not task.done()
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+    asyncio.run(scenario())
