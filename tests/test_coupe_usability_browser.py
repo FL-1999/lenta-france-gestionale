@@ -56,6 +56,11 @@ def test_french_coupe_errors_soil_and_plan_actions(live_operations):
         expect(page.get_by_role('status')).to_contain_text('enregistrée')
         page.goto(origin+f'/manager/cantieri/{ids["site"]}/pianta')
         expect(page.locator('[data-snap-target]')).to_have_count(1)
+        corner=page.evaluate('''() => PlanGeometry.snap(
+            [[0,0],[100,0],[100,20],[0,20]],
+            [[104,0],[124,0],[124,120],[104,120]])''')
+        assert corner['distance']==pytest.approx(4)
+        assert corner['points']==[[4,0],[104,0],[104,20],[4,20]]
         page.on('dialog',lambda dialog:dialog.accept())
         page.locator('.sp-snap summary').click();page.locator('[data-snap-target]').select_option('neighbour')
         page.locator('[data-snap]').click();expect(page.locator('[data-message]')).to_contain_text('Bords raccordés')
