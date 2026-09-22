@@ -46,11 +46,16 @@
 {% else %}
 <section class="card" style="margin-bottom: var(--space-4);">
     <p class="text-muted" style="margin:0;">
-        ℹ️ {% if lang == 'fr' %}La base de données en ligne (PostgreSQL) est sauvegardée automatiquement par l'hébergeur (Neon). Utilisez l'export JSON ci-dessus pour une copie manuelle.{% else %}Il database online (PostgreSQL) è salvato automaticamente dal provider (Neon). Usa l'export JSON qui sopra per una copia manuale.{% endif %}
+        {% if lang == 'fr' %}Les sauvegardes automatiques et leur durée de conservation doivent être vérifiées auprès de votre hébergeur. Un export JSON ne remplace pas une sauvegarde native avec un test de restauration.{% else %}I backup automatici e la durata di conservazione devono essere verificati presso il provider. Un export JSON non sostituisce un backup nativo con una prova di ripristino.{% endif %}
     </p>
 </section>
 {% endif %}
 
+<section class="card" style="margin-bottom: var(--space-4);">
+    <h2>SharePoint</h2>
+    <p>{{ t('Prepara le copie dei documenti e verifica la configurazione del cloud aziendale.', 'Préparez les copies des documents et vérifiez la configuration du cloud de l’entreprise.') }}</p>
+    <a class="btn btn-primary" href="{{ url_for('admin_sharepoint') }}">{{ t('Apri collegamento SharePoint', 'Ouvrir la connexion SharePoint') }}</a>
+</section>
 <section class="card">
     <h2 style="margin-top: 0;">
         {% if lang == 'fr' %}Backups disponibles{% else %}Backup disponibili{% endif %}

@@ -37,7 +37,7 @@
                     {% if order.file_invoice %}
                     <small>
                         {% if lang == 'fr' %}Fichier déjà chargé{% else %}File già caricato{% endif %}:
-                        <a href="/static/{{ order.file_invoice }}" target="_blank" rel="noopener">
+                        <a href="{{ url_for('manager_ordini_invoice_download', order_id=order.id) }}" target="_blank" rel="noopener">
                             {% if lang == 'fr' %}Voir/Télécharger{% else %}Visualizza/Scarica{% endif %}
                         </a>
                     </small>

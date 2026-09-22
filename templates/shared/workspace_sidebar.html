@@ -50,6 +50,7 @@
         {{ item(audit_path, 'Audit', 'report', '/audit' in current_path) }}
         {% if can_manage_users %}{{ item('/manager/utenti', t('Utenti','Utilisateurs'), 'users', current_path.startswith('/manager/utenti')) }}{% endif %}
         {% if show_backup %}{{ item(url_for('admin_backup_export'), 'Backup & Export', 'file') }}{% endif %}
+        {% if show_backup %}{{ item(url_for('admin_sharepoint'), 'SharePoint', 'file', current_path.startswith('/admin/sharepoint')) }}{% endif %}
         {% if show_api_docs %}{{ item('/docs', 'API Docs', 'file') }}{% endif %}
       </details>
     {% endif %}

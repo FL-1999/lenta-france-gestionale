@@ -111,6 +111,8 @@ from notifications import (
     notify_site_status_change,
 )
 from services.personale_profiles import ensure_user_personale_profile
+from services.cloud_archive import install_capture_hooks, background_sync, enqueue as archive_document
+install_capture_hooks()
 from audit_utils import log_audit_event
 from logging_config import configure_logging
 
@@ -445,10 +447,14 @@ async def lifespan(app: FastAPI):
     initialize_application()
     post_startup_task = asyncio.create_task(asyncio.to_thread(run_post_startup_tasks))
     app.state.post_startup_task = post_startup_task
+    cloud_task = asyncio.create_task(background_sync(SessionLocal))
     logger.info("Startup applicazione completato (task pesanti deferiti in background).")
     try:
         yield
     finally:
+        cloud_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cloud_task
         task = getattr(app.state, "post_startup_task", None)
         if task and not task.done():
             task.cancel()
@@ -508,6 +514,9 @@ async def refresh_token_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def add_static_cache_headers(request: Request, call_next):
+    if request.url.path.startswith('/static/uploads/invoices/'):
+        # Old attachments now use the authenticated order download endpoint.
+        return Response(status_code=404)
     response = await call_next(request)
     if request.url.path.startswith("/static/"):
         if request.url.path == "/static/css/style.css":
@@ -2742,6 +2751,9 @@ def manager_production_report_pdf(
     pdf_bytes = _html_to_pdf(html)
     scope = (selected_site.code or str(site_id)) if selected_site else "generale"
     filename = f"report_produzione_{scope}_{start.isoformat()}_{end.isoformat()}.pdf"
+    with SessionLocal() as archive_db:
+        archive_document(archive_db, "production_pdf", f"{site_id or 0}-{start}-{end}", filename, pdf_bytes, "application/pdf", site_id)
+        archive_db.commit()
     from starlette.responses import Response as RawResponse
     return RawResponse(
         content=pdf_bytes,
@@ -8993,6 +9005,8 @@ def manager_fiche_pdf(
         date_str = fiche.date.strftime("%Y%m%d") if fiche.date else "nodate"
         site_code = (fiche.site.code or "site") if fiche.site else "site"
         filename = f"{site_code}_{tipo}_{num}_{date_str}.pdf"
+        archive_document(db, "fiche_pdf", fiche.id, filename, pdf_bytes, "application/pdf", fiche.site_id)
+        db.commit()
     finally:
         db.close()
 
@@ -9104,6 +9118,8 @@ def manager_site_fiches_pdf(
 
         site_code = site.code or "chantier"
         filename = f"{site_code}_{tipo}_fiches.pdf"
+        archive_document(db, "dossier_pdf", f"{site.id}-{tipo}", filename, pdf_bytes, "application/pdf", site.id)
+        db.commit()
     finally:
         db.close()
 
@@ -9144,6 +9160,8 @@ app.include_router(purchasing_catalog.router)
 app.include_router(audit.router)
 app.include_router(reportistica.router)
 app.include_router(backup.router)
+from routes import sharepoint
+app.include_router(sharepoint.router)
 app.include_router(trasporti.router)
 app.include_router(economics.router)
 app.include_router(manager_attrezzature.router)

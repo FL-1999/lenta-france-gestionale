@@ -9,6 +9,9 @@ os.environ["SECRET_KEY"] = "isolated-tests-only-not-for-deployment"
 os.environ["APP_ENV"] = "test"
 os.environ.pop("ADMIN_EMAIL", None)
 os.environ.pop("ADMIN_PASSWORD", None)
+for _key in list(os.environ):
+    if _key.startswith("SHAREPOINT_") or _key == "CLOUD_ARCHIVE_OWNER_EMAIL":
+        os.environ.pop(_key, None)
 
 
 def pytest_sessionfinish(session, exitstatus):
