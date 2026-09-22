@@ -1,6 +1,9 @@
 """App-only Microsoft Graph bridge. No credentials or Graph bodies in exceptions."""
 from dataclasses import dataclass, field
+from contextlib import contextmanager
+from contextvars import ContextVar
 import hashlib
+import logging
 import os
 import re
 import time
@@ -10,6 +13,27 @@ import httpx
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 CHUNK = 10 * 320 * 1024
+_PRIVATE_HTTP = ContextVar("sharepoint_private_http", default=False)
+
+
+class _PrivateHttpFilter(logging.Filter):
+    def filter(self, record):
+        return not _PRIVATE_HTTP.get()
+
+
+# HTTPX logs full request URLs at INFO, including preauthenticated query strings.
+# Keep unrelated HTTP logs, but suppress transport details inside this adapter.
+for _logger_name in ("httpx", "httpcore.connection", "httpcore.http11", "httpcore.http2", "httpcore.proxy", "httpcore.socks"):
+    logging.getLogger(_logger_name).addFilter(_PrivateHttpFilter())
+
+
+@contextmanager
+def private_http():
+    token = _PRIVATE_HTTP.set(True)
+    try:
+        yield
+    finally:
+        _PRIVATE_HTTP.reset(token)
 
 
 class CloudError(Exception):
@@ -84,7 +108,8 @@ class GraphClient:
 
     def request(self, method, url, **kwargs):
         try:
-            return self.http.request(method, url, **kwargs)
+            with private_http():
+                return self.http.request(method, url, **kwargs)
         except httpx.HTTPError:
             raise CloudError("network_error") from None
 
@@ -159,7 +184,7 @@ class GraphClient:
         if response.status_code in (302, 303, 307):
             url = self.safe_transfer_url(response.headers.get("location", ""))
             try:
-                with self.http.stream("GET", url) as stream:
+                with private_http(), self.http.stream("GET", url) as stream:
                     self.checked(stream)
                     for chunk in stream.iter_bytes():
                         count += len(chunk)

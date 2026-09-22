@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import hashlib
 import io
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -362,3 +363,13 @@ def test_folder_creation_recovers_a_concurrent_create():
     with httpx.Client(transport=httpx.MockTransport(handle)) as http:
         graph = GraphClient(config(), http)
         assert graph.folder("docs", ["Gestionale"]) == "/drives/docs/items/folder"
+
+
+def test_temporary_sharepoint_urls_are_not_written_to_http_logs(caplog):
+    with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200))) as http:
+        graph = GraphClient(config(), http)
+        with caplog.at_level(logging.INFO, logger="httpx"):
+            graph.request("GET", "https://lentafrance.sharepoint.com/upload?secret=private-link-token")
+            http.get("https://example.com/public")
+    assert "private-link-token" not in caplog.text
+    assert "https://example.com/public" in caplog.text
