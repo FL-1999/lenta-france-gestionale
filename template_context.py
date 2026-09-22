@@ -346,6 +346,8 @@ def invalidate_manager_badges_cache() -> None:
 
 
 def register_manager_badges(templates) -> None:
+    from ui_i18n import InterfaceTranslation
+    templates.env.add_extension(InterfaceTranslation)
     templates.env.globals.setdefault("manager_badge_counts", manager_badge_counts)
 
 

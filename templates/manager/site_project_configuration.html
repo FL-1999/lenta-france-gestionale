@@ -7,12 +7,12 @@
 {%- endmacro %}
 
 {% macro render_coupe_card(coupe=None, index=1, is_new=false, site_id=None, can_delete=false) %}
-  {% set complete = false if is_new else is_coupe_configured(coupe) %}
-  <article class="project-coupe-card{% if is_new %} project-coupe-card--new{% endif %}" data-coupe-card {% if is_new and site.coupes %}hidden{% endif %}>
+  {% set complete = false if is_new or submitted_coupes is defined else is_coupe_configured(coupe) %}
+  <article class="project-coupe-card{% if is_new %} project-coupe-card--new{% endif %}" data-coupe-card {% if is_new and (submitted_coupes|default(site.coupes)) %}hidden{% endif %}>
     <div class="project-coupe-card__header">
       <div>
         <p class="project-coupe-card__eyebrow">Coupe {{ index }}</p>
-        <h3>{{ 'Nuova coupe' if is_new else (coupe.nome or ('Coupe ' ~ index)) }}</h3>
+        <h3>{{ ui_text('Nuova coupe') if is_new else (coupe.nome or ('Coupe ' ~ index)) }}</h3>
       </div>
       <div class="project-coupe-card__actions">
         {% if complete %}
@@ -21,9 +21,9 @@
           <span class="badge badge-danger">incompleta</span>
         {% endif %}
         <button type="button" class="btn btn-secondary btn-sm" data-focus-coupe>Modifica</button>
-        {% if not is_new %}
+        {% if not is_new and coupe.id %}
           <label class="btn btn-danger btn-sm project-delete-toggle">
-            <input type="checkbox" name="delete_coupe_id" value="{{ coupe.id }}">
+            <input type="checkbox" name="delete_coupe_id" value="{{ coupe.id }}" {% if coupe.delete_requested|default(false) %}checked{% endif %}>
             Elimina
           </label>
 
@@ -33,12 +33,12 @@
 
     <input type="hidden" name="coupe_id" value="{{ coupe.id if coupe else '' }}">
 
-    <details class="coupe-editor" {% if is_new %}open{% endif %}><summary>Quote, dimensioni e pannelli <span data-selection-summary></span></summary><div class="project-section-grid">
+    <details class="coupe-editor" {% if is_new or submitted_coupes is defined %}open{% endif %}><summary>Quote, dimensioni e pannelli <span data-selection-summary></span></summary><div class="project-section-grid">
       <section class="project-block project-block--wide coupe-associations">
         <h4>Pannelli di questa coupe</h4>
         <div class="form-grid">
-          <div class="project-field"><label class="form-label">Paratie associate</label><input class="form-control" name="coupe_paratie" placeholder="es. 1,2,3,4 oppure 1-8" value="{{ format_coupe_assignments(coupe, 'paratia') if coupe else '' }}"></div>
-          <div class="project-field"><label class="form-label">Pali associati</label><input class="form-control" name="coupe_pali" placeholder="es. 1,2,5-10" value="{{ format_coupe_assignments(coupe, 'palo') if coupe else '' }}"></div>
+          <div class="project-field"><label class="form-label">Paratie associate</label><input class="form-control" name="coupe_paratie" placeholder="es. 1,2,3,4 oppure 1-8" value="{{ (coupe.form_paratie if coupe.submitted|default(false) else format_coupe_assignments(coupe, 'paratia')) if coupe else '' }}"></div>
+          <div class="project-field"><label class="form-label">Pali associati</label><input class="form-control" name="coupe_pali" placeholder="es. 1,2,5-10" value="{{ (coupe.form_pali if coupe.submitted|default(false) else format_coupe_assignments(coupe, 'palo')) if coupe else '' }}"></div>
         </div>
       </section>
       <section class="project-block project-block--wide">
@@ -73,8 +73,8 @@
           <div class="project-field">
             <label class="form-label">Scavo da TN</label>
             <select class="form-select" name="coupe_scavo_da_tn">
-              <option value="1" {% if not coupe or coupe.scavo_da_tn %}selected{% endif %}>Sì</option>
-              <option value="0" {% if coupe and not coupe.scavo_da_tn %}selected{% endif %}>No</option>
+              <option value="1" {% if not coupe or coupe.scavo_da_tn not in (false, "0") %}selected{% endif %}>Sì</option>
+              <option value="0" {% if coupe and coupe.scavo_da_tn in (false, "0") %}selected{% endif %}>No</option>
             </select>
           </div>
           <div class="project-field"><label class="form-label">Quota partenza se diversa da TN</label><input class="form-control" type="number" step="0.01" name="coupe_quota_partenza_scavo" value="{{ coupe_value(coupe.quota_partenza_scavo) if coupe else '' }}" placeholder="NGF"></div>
@@ -100,8 +100,8 @@
         <div class="form-grid">
           <div class="project-field project-field--theoretical-soil" data-theoretical-soil>
             <label class="form-label">Terreno teorico</label>
-            <textarea class="form-textarea" name="coupe_terreno_teorico" rows="4" placeholder="0.00-1.20 m: Limo sabbioso
-1.20-4.50 m: Argilla" data-theoretical-soil-text>{{ coupe.terreno_teorico if coupe and coupe.terreno_teorico else '' }}</textarea>
+            <details class="soil-text-editor"><summary>Testo stratigrafia (facoltativo)</summary><textarea class="form-textarea" name="coupe_terreno_teorico" rows="4" placeholder="0.00-1.20 m: Limo sabbioso
+1.20-4.50 m: Argilla" data-theoretical-soil-text>{{ coupe.terreno_teorico if coupe and coupe.terreno_teorico else '' }}</textarea></details><p>Profondità dalla quota di partenza scavo, in metri. Scegli un terreno per ogni intervallo.</p>
             <div class="theoretical-soil-preview" data-theoretical-soil-preview></div>
             <div class="soil-legend soil-legend--compact" data-theoretical-soil-legend></div>
             <div class="theoretical-soil-builder" aria-label="Stratigrafia teorica strutturata">
@@ -120,7 +120,7 @@
 {% endmacro %}
 
 {% block content %}
-{% set coupe_rows = site.coupes if site and site.coupes else [] %}
+{% set coupe_rows = submitted_coupes if submitted_coupes is defined else (site.coupes if site and site.coupes else []) %}
 {% set total_paratie = site.numero_totale_paratie if site.numero_totale_paratie is not none else (site.totale_paratie_da_scavare if site.totale_paratie_da_scavare is not none else (site.paratie_total_panels if site.paratie_total_panels is not none else 0)) %}
 {% set total_pali = site.numero_totale_pali if site.numero_totale_pali is not none else 0 %}
 <div class="page-header project-config-header">
@@ -139,7 +139,7 @@
   <div class="alert alert-success" role="status">Configurazione progetto salvata.</div>
 {% endif %}
 {% if error_message %}
-  <div class="alert alert-danger" role="alert">{{ error_message }}</div>
+  <div class="alert alert-danger" role="alert" tabindex="-1" id="coupe-errors">{{ error_message }}{% if field_errors %}<ul>{% for error in field_errors %}<li><a href="#coupe-field-{{ error.row }}-{{ error.field }}">{{ error.name }}: {{ error.fr if lang == 'fr' else error.it }}</a></li>{% endfor %}</ul>{% endif %}</div>
 {% endif %}
 
 <section class="project-summary-grid" aria-label="Riepilogo configurazione progetto">
@@ -167,6 +167,8 @@
 
 <nav class="project-flow" aria-label="Progetto cantiere"><a href="/manager/cantieri/{{ site.id }}/pianta">01 · Pianta</a><strong aria-current="page">02 · Coupe</strong><a href="/manager/fiches?site_id={{ site.id }}">03 · Fiches</a></nav>
 
+<script type="application/json" id="coupe-field-errors">{{ (field_errors or [])|tojson }}</script>
+<script type="application/json" id="coupe-equipment-values">{{ (submitted_equipment or {})|tojson }}</script>
 <form method="post" class="project-config-form" data-site="{{ site.id }}">
   <section class="project-coupes-section">
     <div class="project-section-heading">
@@ -265,6 +267,8 @@
 </style>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    const fr = document.documentElement.lang === 'fr';
+    const t = (it, french) => fr ? french : it;
     const list = document.querySelector('.project-coupe-list');
     const templateCard = document.querySelector('.project-coupe-card--new');
     if (!list || !templateCard) return;
@@ -339,24 +343,31 @@
         const da = row.querySelector('[data-layer-da]')?.value.trim();
         const a = row.querySelector('[data-layer-a]')?.value.trim();
         const materiale = row.querySelector('[data-layer-materiale]')?.value.trim();
-        return da || a || materiale ? `${da || '0'}-${a || da || '0'} m: ${materiale || 'Terreno'}` : '';
+        return da || a || materiale ? `${da}-${a} m: ${materiale}` : '';
       }).filter(Boolean);
       textarea.value = lines.join('\n');
     }
 
+    const soils=[['Remblai','Riporto',['riporto','remblai','remblais']],['Sable','Sabbia',['sable','sabbia']],['Limon','Limo',['limon','limo']],['Argile','Argilla',['argile','argilla']],['Gravier','Ghiaia',['gravier','ghiaia']],['Marne','Marna',['marne','marna']],['Calcaire','Calcare',['calcaire','calcare']],['Roche','Roccia',['roche','roccia']],['Sable limoneux','Sabbia limosa',['sable limoneux','sabbia limosa']],['Limon sableux','Limo sabbioso',['limon sableux','limo sabbioso']],['Argile sableuse','Argilla sabbiosa',['argile sableuse','argilla sabbiosa']]];
     function addTheoreticalLayer(builder, layer = {}) {
-      const container = builder.querySelector('[data-theoretical-soil-rows]');
-      const row = document.createElement('div');
-      row.className = 'theoretical-soil-row';
-      row.dataset.theoreticalLayer = '1';
-      row.innerHTML = `
-        <input class="form-control" type="number" step="0.01" data-layer-da placeholder="0.00" value="${layer.da || ''}">
-        <input class="form-control" type="number" step="0.01" data-layer-a placeholder="1.20" value="${layer.a || ''}">
-        <input class="form-control" data-layer-materiale placeholder="Tipo terreno" value="${(layer.materiale || '').replace(/"/g, '&quot;')}">
-        <button type="button" class="btn btn-secondary btn-sm" data-remove-theoretical-layer>×</button>`;
-      row.querySelectorAll('input').forEach((input) => input.addEventListener('input', () => syncTheoreticalText(builder)));
-      row.querySelector('[data-remove-theoretical-layer]').addEventListener('click', () => { row.remove(); syncTheoreticalText(builder); });
-      container.appendChild(row);
+      const container=builder.querySelector('[data-theoretical-soil-rows]');
+      const row=document.createElement('div');row.className='theoretical-soil-row';row.dataset.theoreticalLayer='1';
+      for(const [key,label] of [['da',t('Da (m)','De (m)')],['a',t('A (m)','À (m)')]]){
+        const input=document.createElement('input');input.className='form-control';input.type='number';input.step='0.01';input.min='0';input.dataset[key==='da'?'layerDa':'layerA']='';input.setAttribute('aria-label',label);input.placeholder=key==='da'?'0.00':'1.20';input.value=String(layer[key]??'').replace(',','.');row.append(input);
+      }
+      const cell=document.createElement('div');cell.className='soil-choice';
+      const choice=document.createElement('select');choice.className='form-select';choice.setAttribute('aria-label',t('Tipo terreno','Type de sol'));choice.add(new Option(t('Seleziona terreno','Choisir le sol'),''));
+      soils.forEach(([f,it])=>choice.add(new Option(fr?`${f} / ${it}`:`${it} / ${f}`,f)));
+      choice.add(new Option(t('Altro terreno','Autre sol'),'other'));
+      const custom=document.createElement('input');custom.className='form-control';custom.placeholder=t('Descrivi il terreno','Décrivez le sol');custom.setAttribute('aria-label',custom.placeholder);
+      const hidden=document.createElement('input');hidden.type='hidden';hidden.dataset.layerMateriale='';hidden.value=layer.materiale||'';
+      const known=soils.find(v=>v[2].includes((layer.materiale||'').toLowerCase().trim()));
+      choice.value=known?known[0]:layer.materiale?'other':'';custom.value=known?'':layer.materiale||'';custom.hidden=choice.value!=='other';
+      cell.append(choice,custom,hidden);row.append(cell);
+      const remove=document.createElement('button');remove.type='button';remove.className='btn btn-secondary btn-sm';remove.textContent='×';remove.setAttribute('aria-label',t('Rimuovi strato','Supprimer la couche'));row.append(remove);
+      const sync=()=>{custom.hidden=choice.value!=='other';hidden.value=choice.value==='other'?custom.value:choice.value;syncTheoreticalText(builder);renderTheoreticalPreview(builder);};
+      row.querySelectorAll('input,select').forEach(input=>input.addEventListener('input',sync));
+      remove.onclick=()=>{row.remove();syncTheoreticalText(builder);renderTheoreticalPreview(builder);};container.append(row);
     }
 
     function bindTheoreticalSoil(card) {
@@ -364,8 +375,8 @@
         const textarea = builder.querySelector('[data-theoretical-soil-text]');
         const parsed = parseTheoreticalText(textarea.value);
         (parsed.length ? parsed : [{}]).forEach((layer) => addTheoreticalLayer(builder, layer));
-        textarea.addEventListener('input', () => renderTheoreticalPreview(builder));
-        builder.querySelector('[data-add-theoretical-layer]')?.addEventListener('click', () => addTheoreticalLayer(builder));
+        textarea.addEventListener('input', () => { builder.querySelector('[data-theoretical-soil-rows]').replaceChildren(); parseTheoreticalText(textarea.value).forEach(layer=>addTheoreticalLayer(builder,layer));renderTheoreticalPreview(builder); });
+        builder.querySelector('[data-add-theoretical-layer]')?.addEventListener('click', () => {const last=builder.querySelector('[data-theoretical-layer]:last-child [data-layer-a]');addTheoreticalLayer(builder,{da:last?.value||'0'});});
         renderTheoreticalPreview(builder);
       });
     }
@@ -409,7 +420,7 @@
         clone.querySelectorAll('[data-theoretical-layer]').forEach((row) => row.remove());
         const index = list.querySelectorAll('[data-coupe-card]').length + 1;
         clone.querySelector('.project-coupe-card__eyebrow').textContent = `Coupe ${index}`;
-        clone.querySelector('h3').textContent = 'Nuova coupe';
+        clone.querySelector('h3').textContent = t('Nuova coupe','Nouvelle coupe');
         bindFocusButton(clone);
         list.appendChild(clone);
         clone.querySelector('.coupe-editor').open = true;
@@ -420,5 +431,5 @@
     });
   });
 </script>
-<link rel="stylesheet" href="/static/css/coupe-workspace.css?v=1"><script src="/static/js/coupe-workspace.js?v=1" defer></script>
+<link rel="stylesheet" href="/static/css/coupe-workspace.css?v=20260922"><script src="/static/js/coupe-workspace.js?v=20260922" defer></script>
 {% endblock %}

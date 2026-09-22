@@ -39,7 +39,7 @@
     };
 
     const showMessage = (text) => {
-      message.textContent = text;
+      message.textContent = window.LentaText(text);
       message.style.display = "block";
     };
 
@@ -80,7 +80,7 @@
     };
 
     const openPreview = (button) => {
-      const siteName = button.getAttribute("data-site-name") || "Cantiere";
+      const siteName = button.getAttribute("data-site-name") || window.LentaText("Cantiere");
       const lat = parseCoordinate(button.getAttribute("data-lat"));
       const lng = parseCoordinate(button.getAttribute("data-lng"));
       const hasCoordinates = lat !== null && lng !== null;
