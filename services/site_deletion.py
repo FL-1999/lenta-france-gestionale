@@ -9,6 +9,13 @@ from models import (Site, Report, ReportWorker, ReportDraft, ReportReview, Repor
 def delete_site_records(db, site):
     """Caller owns the transaction and audit; never commit or suppress errors here."""
     sid=site.id
+    # Capture older originals too, before the bulk delete bypasses mapper events.
+    from services.cloud_archive import _document_saved, _plan_saved
+    from models import SitePlan
+    for document in db.query(SiteDocument).filter_by(site_id=sid):
+        _document_saved(None, db.connection(), document)
+    for plan in db.query(SitePlan).filter_by(site_id=sid):
+        _plan_saved(None, db.connection(), plan)
     report_ids=select(Report.id).where(Report.site_id==sid)
     document_ids=select(SiteDocument.id).where(SiteDocument.site_id==sid)
     db.execute(update(ReportDraft).where(ReportDraft.submitted_report_id.in_(report_ids)).values(submitted_report_id=None))

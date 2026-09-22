@@ -1,0 +1,57 @@
+{% extends 'shared/base.html' %}
+{% block title %}SharePoint · Lenta France{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/sharepoint.css') }}">
+<div class="cloud-workspace">
+  <header class="cloud-heading">
+    <div><p class="cloud-eyebrow">{{ t('DOCUMENTI E CONTINUITÀ', 'DOCUMENTS ET CONTINUITÉ') }}</p><h1>SharePoint</h1>
+      <p>{{ t('Copie dei documenti e stato dei salvataggi.', 'Copies des documents et état des sauvegardes.') }}</p></div>
+    <a class="btn btn-secondary" href="{{ url_for('admin_sharepoint_guide') }}">{{ t('Guida per il tecnico', 'Guide du technicien') }}</a>
+  </header>
+  <nav class="cloud-tabs"><a href="{{ url_for('admin_backup_export') }}">{{ t('Backup ed esportazioni', 'Sauvegardes et exports') }}</a><a aria-current="page" href="{{ url_for('admin_sharepoint') }}">SharePoint</a></nav>
+  <section class="card cloud-status">
+    <div><span class="cloud-label">{{ t('COLLEGAMENTO', 'CONNEXION') }}</span>
+      <h2>{% if config_missing %}{{ t('In attesa del tecnico', 'En attente du technicien') }}{% elif connected %}{{ t('Accesso verificato', 'Accès vérifié') }}{% else %}{{ t('Da verificare', 'À vérifier') }}{% endif %}</h2>
+      <p>{% if config_missing %}{{ t('La predisposizione è pronta. Mancano le autorizzazioni Microsoft e la configurazione del server.', 'La préparation est prête. Les autorisations Microsoft et la configuration du serveur restent nécessaires.') }}{% elif connected %}{{ t('Accesso in lettura verificato. Ogni copia viene verificata anche dopo il trasferimento.', 'Accès en lecture vérifié. Chaque copie est également vérifiée après le transfert.') }}{% else %}{{ t('Verifica il collegamento dopo aver configurato gli accessi.', 'Vérifiez la connexion après avoir configuré les accès.') }}{% endif %}</p>
+    </div>
+    <form action="{{ url_for('admin_sharepoint_check') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-primary" {% if config_missing %}disabled{% endif %}>{{ t('Verifica collegamento', 'Vérifier la connexion') }}</button></form>
+  </section>
+  <div class="cloud-metrics">
+    {% for label_it,label_fr,value in [('In attesa','En attente',counts.get('pending',0)),('Copie verificate','Copies vérifiées',counts.get('verified',0)),('Da riprovare','À réessayer',counts.get('error',0)),('In trasferimento','En transfert',counts.get('sending',0))] %}<div class="card"><span>{{ t(label_it,label_fr) }}</span><strong>{{ value }}</strong></div>{% endfor %}
+  </div>
+  <div class="cloud-columns">
+    <section class="card"><h2>{{ t('Documenti del gestionale', 'Documents de gestion') }}</h2>
+      <p>{{ t('Piante originali, allegati dei cantieri, fatture e PDF delle fiches e dei dossier quando vengono esportati.', 'Plans originaux, pièces jointes des chantiers, factures et PDF des fiches et dossiers lors de leur export.') }}</p>
+      <p>{{ t('Gli originali restano conservati. Nessuna cancellazione automatica su SharePoint.', 'Les originaux sont conservés. Aucune suppression automatique sur SharePoint.') }}</p>
+      <p class="cloud-label">{{ t('Trasferimento automatico:', 'Transfert automatique :') }} <strong>{{ t('attivo','actif') if sync_enabled else t('non attivo','inactif') }}</strong></p>
+      <div class="cloud-actions"><form action="{{ url_for('admin_sharepoint_prepare') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-primary">{{ t('Prepara documenti esistenti', 'Préparer les documents existants') }}</button></form>
+      <form action="{{ url_for('admin_sharepoint_retry') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-secondary" {% if not counts.get('error') %}disabled{% endif %}>{{ t('Riprova gli errori', 'Réessayer les erreurs') }}</button></form></div>
+      {% if inventory %}<p>{{ t('Ultimo controllo:', 'Dernier contrôle :') }} {{ inventory.documents }} {{ t('documenti','documents') }}, {{ inventory.plans }} {{ t('piante','plans') }}, {{ inventory.invoices }} {{ t('fatture','factures') }}.</p>
+      {% if inventory.missing_count %}<p class="cloud-warning">{{ inventory.missing_count }} {{ t('allegati non acquisiti: verificare i file mancanti o superiori a 64 MB.', 'pièces jointes non acquises : vérifier les fichiers manquants ou supérieurs à 64 Mo.') }}</p><details><summary>{{ t('Vedi riferimenti', 'Voir les références') }}</summary>{{ inventory.missing|join(', ') }}</details>{% endif %}
+      {% else %}<p>{{ t('Esegui il controllo iniziale per includere gli allegati precedenti.', 'Lancez le contrôle initial pour inclure les anciennes pièces jointes.') }}</p>{% endif %}
+    </section>
+    <section class="card"><h2>{{ t('Dati e backup riservati', 'Données et sauvegardes privées') }}</h2>
+      <p>{{ t('Magazzino, quantità, ordini, coupe, fiches e collegamenti restano nel database. Il backup previsto include tutti questi dati.', 'Stocks, quantités, commandes, coupes, fiches et relations restent dans la base de données. La sauvegarde prévue inclut toutes ces données.') }}</p>
+      <p><strong>{{ t('Ultimo backup verificato:', 'Dernière sauvegarde vérifiée :') }}</strong> {{ last_backup.finished_at.strftime('%d/%m/%Y %H:%M') ~ ' UTC' if last_backup else t('ancora nessuno', 'aucune pour le moment') }}</p>
+      <ul class="cloud-checks">
+        <li>{{ t('Raccolta separata e permessi confermati', 'Bibliothèque distincte et autorisations confirmées') }} <strong>{{ t('pronta','prête') if backup_destination else t('da configurare','à configurer') }}</strong></li>
+        <li>{{ t('Strumento di backup del database', 'Outil de sauvegarde de la base') }} <strong>{{ t('disponibile','disponible') if backup_tool else t('da installare','à installer') }}</strong></li>
+        <li>{{ t('Accesso personale al recupero documenti', 'Accès personnel à la récupération des documents') }} <strong>{{ t('configurato','configuré') if owner_configured else t('da configurare','à configurer') }}</strong></li>
+      </ul>
+      <p>{{ t('Il tecnico deve attivare la pianificazione e provare un ripristino. Una copia verificata non equivale a un ripristino già collaudato.', 'Le technicien doit activer la planification et tester une restauration. Une copie vérifiée ne signifie pas que la restauration a été testée.') }}</p>
+    </section>
+  </div>
+  <section class="card"><div class="cloud-section-heading"><h2>{{ t('Archivio documenti', 'Archives des documents') }}</h2><span>{{ (archive_bytes / 1048576)|round(1) }} MB · {{ t('ultimi 40', '40 derniers') }}</span></div>
+    <p>{{ t('Le copie acquisite restano disponibili anche se il documento viene rimosso dal cantiere. Il recupero qui scarica il file; il ripristino completo dei dati e il cestino gestionale sono una funzione separata.', 'Les copies acquises restent disponibles même si le document est retiré du chantier. La récupération ici télécharge le fichier ; la restauration complète des données et la corbeille de gestion sont des fonctions distinctes.') }}</p>
+    <div class="table-responsive"><table class="table"><thead><tr><th>{{ t('Documento','Document') }}</th><th>{{ t('Stato copia','État de la copie') }}</th><th>{{ t('Verificato il','Vérifié le') }}</th><th>{{ t('Recupero','Récupération') }}</th></tr></thead><tbody>
+    {% for asset in assets %}<tr><td><strong>{{ asset.filename }}</strong><small>{{ asset.kind }} · #{{ asset.source_id }} · {{ (asset.size_bytes / 1024)|round(1) }} KB</small></td><td>{{ t('Verificata','Vérifiée') if asset.status == 'verified' else (t('Errore','Erreur') if asset.status == 'error' else (t('In trasferimento','En transfert') if asset.status == 'sending' else t('In attesa','En attente'))) }}{% if asset.error_code %}<small>{{ asset.error_code }}</small>{% endif %}</td><td>{{ asset.verified_at.strftime('%d/%m/%Y %H:%M') if asset.verified_at else '—' }}</td><td>{% if owner %}<a class="btn btn-secondary" href="{{ url_for('admin_cloud_asset_download',asset_id=asset.id) }}">{{ t('Scarica copia','Télécharger la copie') }}</a>{% else %}{{ t('Solo titolare','Titulaire uniquement') }}{% endif %}</td></tr>
+    {% else %}<tr><td colspan="4">{{ t('Nessun documento ancora acquisito. Prepara i documenti esistenti oppure carica un nuovo allegato.', 'Aucun document acquis. Préparez les documents existants ou ajoutez une pièce jointe.') }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+  <details class="card"><summary>{{ t('Configurazione e ultimi controlli', 'Configuration et derniers contrôles') }}</summary>
+    {% if config_missing %}<p>{{ t('Parametri mancanti sul server:', 'Paramètres manquants sur le serveur :') }}</p><ul>{% for name in config_missing %}<li><code>{{ name }}</code></li>{% endfor %}</ul>{% endif %}
+    <p>{{ t('Le credenziali si configurano sul server e non vengono mostrate qui.', 'Les identifiants sont configurés sur le serveur et ne sont pas affichés ici.') }}</p>
+    <ul>{% for run in runs %}<li>{{ run.created_at.strftime('%d/%m/%Y %H:%M') }} UTC · {{ run.kind }} · {{ run.status }}{% if run.status == 'error' %} · {{ run.details }}{% endif %}</li>{% else %}<li>{{ t('Nessun controllo eseguito.', 'Aucun contrôle effectué.') }}</li>{% endfor %}</ul>
+  </details>
+</div>
+{% endblock %}

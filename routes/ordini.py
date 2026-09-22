@@ -1,13 +1,11 @@
 import logging
 from math import isfinite
-import shutil
 from pathlib import Path
-from uuid import uuid4
 from datetime import date, datetime
 from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.exc import IntegrityError
@@ -32,7 +30,10 @@ from models import (
     Supplier,
     SupplierContact,
     User,
+    CloudAsset,
 )
+from services.cloud_archive import enqueue as archive_document, legacy_invoice_path
+from services.sharepoint_client import CloudError
 from permissions import has_perm
 from audit_utils import log_audit_event
 from template_context import register_manager_badges, render_template
@@ -2317,13 +2318,12 @@ def manager_ordini_fattura_save(
         )
 
     if invoice_file and invoice_file.filename:
-        INVOICE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-        extension = Path(invoice_file.filename).suffix
-        file_name = f"ordine-{order.id}-{uuid4().hex}{extension}"
-        destination = INVOICE_UPLOAD_DIR / file_name
-        with destination.open("wb") as output:
-            shutil.copyfileobj(invoice_file.file, output)
-        order.file_invoice = f"uploads/invoices/{file_name}"
+        content = invoice_file.file.read(25 * 1024 * 1024 + 1)
+        if not content or len(content) > 25 * 1024 * 1024:
+            raise HTTPException(400, "Allegato vuoto o superiore a 25 MB")
+        key = archive_document(db, "invoice", order.id, Path(invoice_file.filename).name, content,
+            invoice_file.content_type or "application/octet-stream", order.site_id)
+        order.file_invoice = "cloud:" + key
 
     order.invoice_number = invoice_number.strip() or None
     order.invoice_date = parsed_invoice_date
@@ -2334,6 +2334,29 @@ def manager_ordini_fattura_save(
         url=request.url_for("manager_ordini_detail", order_id=order.id),
         status_code=303,
     )
+
+
+@router.get("/manager/ordini/{order_id}/fattura/allegato", name="manager_ordini_invoice_download")
+def invoice_download(order_id: int, db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_active_user_html)):
+    _ensure_manager(current_user)
+    order = db.get(PurchaseOrder, order_id)
+    if not order or not order.file_invoice:
+        raise HTTPException(404, "Allegato non trovato")
+    if order.file_invoice.startswith("cloud:"):
+        asset = db.query(CloudAsset).filter_by(source_key=order.file_invoice[6:], kind="invoice", source_id=str(order.id)).first()
+        if not asset:
+            raise HTTPException(404, "Allegato non trovato")
+        content, filename = asset.payload, asset.filename
+    else:
+        try:
+            path = legacy_invoice_path(order.file_invoice, INVOICE_UPLOAD_DIR)
+            content, filename = path.read_bytes(), path.name
+        except (OSError, CloudError):
+            raise HTTPException(404, "Allegato non disponibile: verificare il backup") from None
+    return Response(content, media_type="application/octet-stream", headers={
+        "Content-Disposition": "attachment; filename*=UTF-8''" + quote(filename, safe=""),
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @router.get(

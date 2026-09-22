@@ -120,7 +120,7 @@
     <div class="card-body">
         <strong>{% if lang == 'fr' %}Fichier facture{% else %}File fattura{% endif %}:</strong>
         {% if order.file_invoice %}
-            <a href="/static/{{ order.file_invoice }}" target="_blank" rel="noopener">
+            <a href="{{ url_for('manager_ordini_invoice_download', order_id=order.id) }}" target="_blank" rel="noopener">
                 {% if lang == 'fr' %}Voir/Télécharger{% else %}Visualizza/Scarica{% endif %}
             </a>
         {% else %}
