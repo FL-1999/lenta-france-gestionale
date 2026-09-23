@@ -18,6 +18,7 @@ from models import (SitePlan, SiteProgressGridName, SiteCoupeAssignment,
                     SiteSpecialEquipmentConfig, Fiche, RoleEnum, User)
 from permissions import has_perm
 from services.site_plan_project import confirm_project_panels
+from services.plan_selection import current_plan
 from services.site_plan_import import import_pdf, MAX_PDF_BYTES, MAX_PANELS, layout_scale, needs_extent_review
 from template_context import register_manager_badges, render_template
 
@@ -91,8 +92,7 @@ def get_data(site_id:int,plan_id:int|None=None,draft:bool=False,
     if not editor: query=query.filter(SitePlan.approved.isnot(None))
     rows=query.order_by(SitePlan.id.desc()).all()
     # Ordinary readers keep seeing the last confirmed drawing during revisions.
-    row=next((r for r in rows if r.id==plan_id),None) if plan_id else max(
-        (r for r in rows if r.approved),key=lambda r:r.approved_at or datetime.min,default=rows[0] if rows else None)
+    row=next((r for r in rows if r.id==plan_id),None) if plan_id else current_plan(rows)
     if plan_id and row is None: raise HTTPException(404,'Pianta non trovata')
     plan=None
     if row:

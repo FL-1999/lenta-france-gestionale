@@ -1,13 +1,14 @@
 {% extends 'shared/base.html' %}
 {% block title %}{{ t('Conferma eliminazione', 'Confirmer la suppression') }} · SharePoint{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/sharepoint.css') }}?v=archive-lifecycle-1">
+{% from 'admin/_archive_identity.html' import identity with context %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/sharepoint.css') }}?v=archive-context-2">
 <div class="cloud-workspace cloud-purge">
   <section class="card">
     <p class="cloud-eyebrow">{{ t('ARCHIVIO RISERVATO', 'ARCHIVES PRIVÉES') }}</p>
     <h1>{{ t('Eliminare queste copie definitivamente?', 'Supprimer définitivement ces copies ?') }}</h1>
     <p>{{ t('Saranno eliminate la copia di recupero nel gestionale e la copia collegata su SharePoint, se presente. Questa operazione non può essere annullata.', 'La copie de récupération dans le logiciel et la copie liée sur SharePoint, si présente, seront supprimées. Cette opération est irréversible.') }}</p>
-    <ul>{% for asset in assets %}<li><strong>{{ asset.filename }}</strong> · {{ asset.kind }} #{{ asset.source_id }} · {{ (asset.size_bytes / 1024)|round(1) }} KB</li>{% endfor %}</ul>
+    <ul class="cloud-purge-files">{% for asset in assets %}<li>{{ identity(asset, asset_context[asset.id]) }}{% if asset_context[asset.id].state == 'current' %}<p class="cloud-warning">{{ t('Questa è una copia della pianta attualmente in uso: stai eliminando la sua copia di recupero. L’originale nel cantiere resta conservato.', 'Il s’agit d’une copie du plan actuellement utilisé : vous supprimez sa copie de récupération. L’original du chantier reste conservé.') }}</p>{% endif %}</li>{% endfor %}</ul>
     <p class="cloud-warning">{{ t('Gli originali ancora presenti nei cantieri, i backup precedenti e le copie scollegate o già nel cestino di SharePoint non vengono eliminati da questa operazione. Se SharePoint non conferma la rimozione, conserviamo la copia locale nel cestino e mostriamo l’errore.', 'Les originaux encore présents dans les chantiers, les anciennes sauvegardes et les copies non liées ou déjà dans la corbeille SharePoint ne sont pas supprimés par cette opération. Si SharePoint ne confirme pas la suppression, la copie locale reste dans la corbeille avec le détail de l’erreur.') }}</p>
     {% if invoice_blocked %}
     <p role="alert">{{ t('Una fattura selezionata è ancora usata da un ordine. Sostituisci o rimuovi prima l’allegato dall’ordine: questa copia è anche l’originale.', 'Une facture sélectionnée est encore utilisée par une commande. Remplacez ou retirez d’abord la pièce jointe de la commande : cette copie est également l’original.') }}</p>

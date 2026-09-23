@@ -24,6 +24,7 @@ from services.cloud_archive import enqueue, prepare_existing, sync_batch, legacy
 from services.cloud_backup import make_bundle, send_backup
 from services.sharepoint_client import CHUNK, CloudError, GraphClient, SharePointConfig
 from services.archive_lifecycle import change_state, purge_selected
+from services.archive_context import archive_context
 
 
 def config(**changes):
@@ -552,6 +553,7 @@ def test_archive_routes_owner_csrf_explicit_confirmation_and_pagination(operatio
     token = csrf(o)
     body = {"csrf": token, "action": "trash", "asset_ids": [row.id]}
     assert c.post(url, data=body).status_code == 403
+
     monkeypatch.setenv("CLOUD_ARCHIVE_OWNER_EMAIL", o["manager"].email)
     assert c.post(url, data={**body, "csrf": "wrong"}).status_code == 403
     assert c.post(url, data=body, headers={"Origin": "https://evil.example"}).status_code == 403
@@ -575,6 +577,76 @@ def test_archive_routes_owner_csrf_explicit_confirmation_and_pagination(operatio
     o["outsider"].role = RoleEnum.admin; db.commit(); o["actor"][0] = o["outsider"]
     assert c.get("/admin/sharepoint?view=trash").status_code == 403
     assert c.post(url, data=body).status_code == 403
+
+
+def test_archive_current_drawing_differs_from_latest_upload_and_matches_editor(operations):
+    o = operations; db = o["db"]; admin(o)
+    plans = []
+    for day, approved, removed in [(20, True, False), (21, False, False), (22, False, True)]:
+        plan = SitePlan(site_id=o["site"].id, filename="same-name.pdf", pdf_data=b"PDF", preview_data=b"PNG",
+                        draft='{"panels":[]}', created_at=datetime(2026, 9, day, 10),
+                        approved='{"panels":[]}' if approved else None,
+                        approved_at=datetime(2026, 9, day, 11) if approved else None,
+                        removed_at=datetime(2026, 9, day, 12) if removed else None)
+        db.add(plan); db.flush(); plans.append(plan)
+    db.commit()
+    assets = db.query(CloudAsset).all()
+    info = archive_context(db, assets)
+    for asset in assets:
+        item = info[asset.id]
+        assert item["site_name"] == o["site"].name and item["plan_filename"] == "same-name.pdf"
+        number = int(asset.source_id)
+        assert item["state"] == {plans[0].id: "current", plans[1].id: "draft", plans[2].id: "removed"}[number]
+        assert item["latest"] == (number == plans[2].id)
+        assert item["uploaded_at"] == db.get(SitePlan, number).created_at
+    url = f'/manager/cantieri/{o["site"].id}/pianta/data'
+    assert o["client"].get(url).json()["plan"]["id"] == plans[0].id
+    # Latest confirmation wins even when its upload ID is smaller.
+    plans[1].approved = '{"panels":[]}'
+    plans[1].approved_at = datetime(2026, 9, 25)
+    db.commit()
+    assert o["client"].get(url).json()["plan"]["id"] == plans[1].id
+    updated = archive_context(db, assets)
+    assert all(updated[a.id]["state"] == "current" for a in assets if a.source_id == str(plans[1].id))
+    plans[0].approved_at = datetime(2026, 9, 26); db.commit()
+    assert o["client"].get(url).json()["plan"]["id"] == plans[0].id
+    assert all(archive_context(db, assets)[a.id]["state"] == "current" for a in assets if a.source_id == str(plans[0].id))
+
+
+def test_archive_removed_sources_use_archive_date_without_claiming_current(operations):
+    from services.site_deletion import delete_site_records
+    o = operations; db = o["db"]
+    plan = SitePlan(site_id=o["site"].id, filename="removed.pdf", pdf_data=b"PDF", preview_data=b"PNG", draft="{}")
+    db.add(plan); db.commit()
+    delete_site_records(db, o["site"]); db.commit()
+    assets = db.query(CloudAsset).all()
+    info = archive_context(db, assets)
+    assert assets
+    assert all(info[a.id]["site_name"] is None and info[a.id]["state"] == "unavailable"
+               and info[a.id]["uploaded_at"] is None and not info[a.id]["latest"] for a in assets)
+
+
+def test_archive_identity_visible_in_french_and_delete_confirmation(operations, monkeypatch):
+    o = operations; db = o["db"]; admin(o)
+    monkeypatch.setenv("CLOUD_ARCHIVE_OWNER_EMAIL", o["manager"].email)
+    o["site"].name = "NISSA CAMPUS"
+    db.add(SitePlan(site_id=o["site"].id, filename="same.pdf", pdf_data=b"PDF", preview_data=b"PNG",
+                    draft="{}", created_at=datetime(2026, 9, 21, 8, 15)))
+    db.commit()
+    c = o["client"]
+    page = c.get("/admin/sharepoint").text
+    assert page.count('data-plan-state="current"') == 2
+    assert page.count("NISSA CAMPUS") >= 2 and "21/09/2026 08:15 UTC" in page
+    assert "Anteprima del PDF" in page and "Bozza da convalidare" in page
+    asset_ids = [a.id for a in db.query(CloudAsset)]
+    change_state(db, o["manager"], asset_ids, "trash")
+    result = c.post("/admin/sharepoint/archivio/azioni", data={
+        "csrf": csrf(o), "asset_ids": asset_ids, "action": "purge_review"})
+    assert result.status_code == 200 and "stai eliminando la sua copia di recupero" in result.text
+    assert result.text.count('data-plan-state="current"') == 2
+    c.cookies.set("lang", "fr")
+    page = c.get("/admin/sharepoint?view=trash").text
+    assert "Plan actuellement utilisé" in page and "Dernier PDF importé" in page and "Importé le" in page
 
 
 @pytest.mark.parametrize("case", ["ok", "denied", "folder", "changed", "missing", "unverified_missing"])
