@@ -199,6 +199,36 @@ class GraphClient:
         if count != size or digest.hexdigest() != expected_hash:
             raise CloudError("verification_failed")
 
+    def purge_archive_copy(self, drive, item_id, remote_path, sha256, size):
+        """Permanently remove only the exact archived file, never a folder.
+
+        Missing known IDs are ambiguous (the file may be in the remote recycle
+        bin). Preserve the local recovery copy and require investigation.
+        """
+        base = f"/drives/{quote(drive, safe='')}"
+        if item_id:
+            path = f"{base}/items/{quote(item_id, safe='')}"
+        elif remote_path and remote_path.startswith("Gestionale/"):
+            path = f"{base}/root:/{quote(remote_path, safe='/')}"
+        else:
+            raise CloudError("archive_destination_unknown")
+        response = self.graph("GET", path, allowed=(404,))
+        if response.status_code == 404:
+            if item_id:
+                raise CloudError("remote_copy_missing")
+            # No completed item was ever recorded at this attempted path.
+            return
+        item = response.json()
+        if "file" not in item or "folder" in item or not item.get("id") or not item.get("eTag"):
+            raise CloudError("archive_remote_conflict")
+        if item.get("size") != size:
+            raise CloudError("archive_remote_conflict")
+        self.verify(drive, item["id"], sha256, size)
+        response = self.graph("POST", f"{base}/items/{quote(item['id'], safe='')}/permanentDelete",
+                             headers={"If-Match": item["eTag"]})
+        if response.status_code != 204:
+            raise CloudError("remote_delete_unconfirmed")
+
     def upload(self, drive, parts, filename, fileobj, size, sha256):
         parent = self.folder(drive, parts)
         path = f"{parent}:/{quote(filename, safe='')}"

@@ -17,7 +17,7 @@ La raccolta visualizzata come «Documenti» può avere un nome interno diverso: 
 | Codice applicazione e loghi statici | Repository Git | Non inclusi nel backup del database |
 | Credenziali e configurazione Render | Variabili protette del server | Non inserite nei documenti né nei backup |
 
-La coda conserva copie indipendenti degli originali e delle revisioni acquisite. Non è un cestino completo dei record: scaricare un documento non ripristina automaticamente un cantiere o i suoi collegamenti. La gestione del cestino e della cancellazione definitiva rimane un intervento separato. Nessuna cancellazione remota, scadenza o pulizia automatica è attiva.
+La coda conserva copie indipendenti degli originali e delle revisioni acquisite. Il titolare può escluderle dal trasferimento, spostarle nel cestino privato, recuperarle o eliminarle definitivamente con conferma esplicita. Non è un cestino completo dei record: recuperare un documento non ripristina automaticamente un cantiere o i suoi collegamenti. Nessuna scadenza o pulizia automatica è attiva.
 
 ## 1. Attività dell'amministratore Microsoft
 
@@ -64,7 +64,7 @@ Il titolare configurato deve essere anche admin del gestionale. L'archivio docum
 1. Al primo avvio viene eseguita un'acquisizione iniziale in background, anche senza credenziali Microsoft. Nel gestionale: **Generali → SharePoint → Prepara documenti esistenti** permette di ripeterla: lo stesso documento non si duplica.
 2. Controllare gli allegati non acquisiti. Le vecchie fatture erano su `static/uploads/invoices`: se il file è già scomparso dal disco Render, serve recuperarlo da un'altra copia. I vecchi allegati superiori a 64 MB richiedono una migrazione dedicata per non saturare la memoria del servizio. Non vengono segnalati come trasferiti. Fare la prima acquisizione prima di qualsiasi pulizia dei vecchi dischi.
 3. Configurare gli accessi sul server, mantenendo la sincronizzazione disattivata. **Verifica collegamento** controlla sito e raccolta in lettura; non prova ancora la scrittura.
-4. Impostare `SHAREPOINT_SYNC_ENABLED=true` e riavviare il servizio. Il worker del servizio web esamina la coda ogni 60 secondi, al massimo 3 file per ciclo. I file nuovi vengono acquisiti anche prima dell'attivazione.
+4. Prima di attivare il trasferimento, il titolare seleziona i file di prova e usa **Escludi dal trasferimento** oppure **Sposta nel cestino**. PDF e anteprima sono copie distinte. Poi impostare `SHAREPOINT_SYNC_ENABLED=true` e riavviare il servizio. Il worker esamina solo la coda attiva ogni 60 secondi, al massimo 3 file per ciclo. I file nuovi vengono acquisiti anche prima dell'attivazione.
 5. Controllare una prima copia con stato **Verificata**. Il file remoto viene riletto e confrontato byte per byte tramite SHA-256 e dimensione. Permessi insufficienti, quota, rete o contenuto difforme producono un errore e un nuovo tentativo; la copia locale rimane.
 6. Verificare che un allegato si apra ancora nel gestionale durante un'interruzione del cloud. L'app continua a leggere la copia locale.
 
@@ -77,6 +77,20 @@ python -m scripts.sharepoint_sync --limit 100
 ```
 
 I file già verificati non vengono copiati di nuovo. Se si cambia raccolta dopo l'attivazione, le copie precedenti mantengono la destinazione registrata: pianificare una migrazione specifica, non assumere che il cambio di variabile sposti l'archivio.
+
+## Archivio, esclusioni e cestino privato
+
+Solo l'admin identificato da `CLOUD_ARCHIVE_OWNER_EMAIL` può modificare il ciclo di vita delle copie, aprire il cestino o scaricare copie di recupero. Gli altri admin mantengono i controlli di connessione e inventario.
+
+- **Escludi dal trasferimento** conserva la copia locale e sospende l'invio. Non rimuove una copia già trasferita. La nuova acquisizione degli stessi originali non annulla l'esclusione.
+- **Sposta nel cestino** nasconde la copia dalle viste ordinarie e la esclude dalla coda. Non cancella ancora nulla da SharePoint. Non esistono scadenze automatiche.
+- **Recupera tra gli esclusi** rende nuovamente disponibile il file senza avviare trasferimenti. **Includi nel trasferimento** lo rimette in coda, attiva solo se `SHAREPOINT_SYNC_ENABLED=true`. Il download recupera il file; non ricrea i dati applicativi.
+- **Elimina definitivamente…** è disponibile dal cestino, anche con sincronizzazione disattivata. Mostra i file selezionati e richiede di digitare `ELIMINA DEFINITIVAMENTE` (oppure `SUPPRIMER DÉFINITIVEMENT`). Prima elimina il file remoto collegato mediante Graph `permanentDelete`, dopo verifica del contenuto; solo se riesce rimuove il payload locale. Un fallimento conserva il payload e mostra l'errore nel cestino. Non viene eseguito un normale DELETE remoto, che sposterebbe soltanto il file nel cestino SharePoint.
+- Se un ID remoto già registrato non esiste più, la rimozione resta bloccata: potrebbe trovarsi nel cestino SharePoint. Se un upload mai verificato non ha prodotto un file nel percorso registrato, la copia locale può essere eliminata. Un vecchio tentativo senza destinazione registrata richiede verifica manuale.
+- Originali ancora nei cantieri, vecchi backup, versioni soggette a conservazione Microsoft e copie scollegate/già nel cestino remoto non vengono cancellati. Una fattura che usa la copia come originale è protetta finché resta collegata a un ordine. Gli archivi eliminati mantengono un identificatore/hash senza contenuto per impedire la ricreazione da inventario; un nuovo caricamento esplicito della stessa fattura può creare nuovamente la copia operativa.
+- Le azioni sono registrate nel registro audit. Un trasferimento in corso blocca le modifiche concorrenti; gli errori di eliminazione non vengono elaborati dal worker di upload. Se cambia raccolta, la rimozione è bloccata anziché cercare di eliminare nella destinazione nuova.
+
+Verificare con un file di prova la disponibilità effettiva di `permanentDelete` con i permessi e le politiche del tenant. Se Microsoft rifiuta, la copia resta recuperabile; il gestionale non amplia autonomamente i permessi dell'applicazione.
 
 ## 4. Backup del database
 
@@ -114,4 +128,5 @@ Non è possibile garantire perdita zero: database, allegati, frequenza dei backu
 - [Microsoft: autenticazione applicativa](https://learn.microsoft.com/en-us/graph/auth-v2-service)
 - [Microsoft: upload session e blocchi](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0)
 - [Microsoft: download e URL temporanei](https://learn.microsoft.com/en-us/graph/api/driveitem-get-content?view=graph-rest-1.0)
+- [Microsoft: eliminazione definitiva di un file](https://learn.microsoft.com/en-us/graph/api/driveitem-permanentdelete?view=graph-rest-1.0)
 - [Render: dischi persistenti](https://render.com/docs/disks)
