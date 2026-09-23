@@ -45,7 +45,7 @@
     g.len=p.width_m*scale;return updatePoints(p,rectangle(g));
   }
   function message(text, error = false) { q('[data-message]').textContent = text; q('[data-message]').dataset.error = error; }
-  function markDirty() { dirty = true; renderFooter(); }
+  function markDirty() { dirty = true; if(!drag)renderFooter(); }
   function panel() { return plan?.layout.panels.find(p => p.key === selected); }
   function element(p) { return data?.elements.find(e => e.number === p?.element); }
   function num(v, unit = '') { return v == null ? '—' : `${Number(v).toLocaleString(fr?'fr-FR':'it-IT', {maximumFractionDigits: 2})}${unit}`; }
@@ -239,20 +239,25 @@
   function coordinate(svg,event) {const pt=svg.createSVGPoint();pt.x=event.clientX;pt.y=event.clientY;const p=pt.matrixTransform(svg.getScreenCTM().inverse());return [p.x,p.y];}
   all('.sp-board svg').forEach(svg=>{
     svg.addEventListener('pointerdown',event=>{
-      if(event.button!==0||busy)return;
+      if(event.button!==0||busy||drag)return;
       const key=event.target.dataset.key,corner=event.target.dataset.corner,edge=event.target.dataset.edgeHandle;
-      if(key)choose(key);
-      if(!editing||(!addMode&&!key))return;
+      if(!editing||(!addMode&&!key)){if(key)choose(key);return;}
+      // Keep the inspector (and therefore the drawing's layout) stable until release.
+      // Capture on the SVG itself: its shapes are replaced as the drawing updates.
       const start=coordinate(svg,event);svg.setPointerCapture(event.pointerId);
+      if(key)selected=key;
       if(edge)q('[data-edge]').value=edge;
-      checkpoint();drag={svg,id:event.pointerId,start,corner:corner===undefined?null:+corner,edge,key:selected,points:panel()?.points.map(v=>[...v]),pair:peers(panel()).map(v=>({key:v.key,points:v.points.map(p=>[...p])})),add:addMode,moved:false};event.preventDefault();
+      drag={svg,id:event.pointerId,start,corner:corner===undefined?null:+corner,edge,key:selected,points:panel()?.points.map(v=>[...v]),pair:peers(panel()).map(v=>({key:v.key,points:v.points.map(p=>[...p])})),add:addMode,moved:false};
+      root.dataset.dragging='true';renderMaps();event.preventDefault();
     });
-    svg.addEventListener('pointermove',event=>{
+    const move=event=>{
       if(!drag||drag.svg!==svg||drag.id!==event.pointerId)return;
       const now=coordinate(svg,event),dx=now[0]-drag.start[0],dy=now[1]-drag.start[1];
-      if(Math.hypot(dx,dy)<1)return;drag.moved=true;
+      // No document-unit dead zone: it grows with zoom and prevents fine alignment.
+      // Returning to the starting point must also restore the starting geometry.
+      if(!drag.moved){if(dx===0&&dy===0)return;checkpoint();drag.moved=true;}
       if(drag.add){let ghost=svg.querySelector('.sp-ghost');if(!ghost){ghost=svgEl('rect',{class:'sp-ghost',fill:'#d5224730',stroke:'#d52247','pointer-events':'none'});svg.append(ghost);}Object.entries({x:Math.min(now[0],drag.start[0]),y:Math.min(now[1],drag.start[1]),width:Math.abs(dx),height:Math.abs(dy)}).forEach(([k,v])=>ghost.setAttribute(k,v));return;}
-      const p=panel();if(!p)return;
+      const p=plan.layout.panels.find(v=>v.key===drag.key);if(!p)return;
       let pts;
       if(drag.edge){const a=geometry({points:drag.points}).angle*Math.PI/180,delta=['start','end'].includes(drag.edge)?dx*Math.cos(a)+dy*Math.sin(a):-dx*Math.sin(a)+dy*Math.cos(a);pts=window.PlanGeometry.moveEdge(drag.points,drag.edge,delta,widthLocked());}
       else pts=drag.points.map((v,i)=>drag.corner===null||drag.corner===i?[v[0]+dx,v[1]+dy]:[...v]);
@@ -261,19 +266,23 @@
         if(!moved.every(v=>inBounds(v.points)))return;
         moved.filter(v=>v.p.key!==p.key).forEach(v=>updatePoints(v.p,v.points));
       }
-      if(updatePoints(p,pts)){if(!widthLocked()&&commonScale())p.width_m=geometry(p).len/commonScale();renderMaps();renderDetail();}
-    });
+      if(updatePoints(p,pts)){if(!widthLocked()&&commonScale())p.width_m=geometry(p).len/commonScale();renderMaps();}
+    };
+    svg.addEventListener('pointermove',move);
     const finish=event=>{
       if(!drag||drag.svg!==svg||drag.id!==event.pointerId)return;
-      if(drag.add&&event.type!=='pointercancel'){
+      if(event.type==='pointerup')move(event);
+      if(drag.add&&event.type==='pointerup'){
         const end=coordinate(svg,event),x=Math.min(end[0],drag.start[0]),y=Math.min(end[1],drag.start[1]),w=Math.abs(end[0]-drag.start[0]),h=Math.abs(end[1]-drag.start[1]);
         const pts=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
         if(w>3&&h>3&&inBounds(pts)){const p={key:crypto.randomUUID().replaceAll('-',''),label:`P${plan.layout.panels.length+1}`,points:pts,width_m:null,element:null,reviewed:false,warnings:[tr("Pannello inserito manualmente")]};plan.layout.panels.push(p);selected=p.key;markDirty();}
         addMode=false;q('[data-add]').textContent=tr("Aggiungi pannello");
       }
-      svg.querySelector('.sp-ghost')?.remove();drag=null;render();
+      svg.querySelector('.sp-ghost')?.remove();drag=null;delete root.dataset.dragging;
+      if(svg.hasPointerCapture(event.pointerId))svg.releasePointerCapture(event.pointerId);
+      render();
     };
-    svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);
+    svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);svg.addEventListener('lostpointercapture',finish);
   });
   q('[data-snap]').onclick=()=>{
     const p=panel(),target=plan.layout.panels.find(v=>v.key===q('[data-snap-target]').value);
