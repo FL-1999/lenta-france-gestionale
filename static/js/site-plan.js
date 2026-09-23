@@ -20,6 +20,8 @@
   const widthLocked=()=>q('[data-lock-width]').checked;
   const directionLocked=()=>q('[data-lock-direction]').checked;
   const peers=p=>p?.corner_group?plan.layout.panels.filter(v=>v.corner_group===p.corner_group):p?[p]:[];
+  const units=()=>window.PlanGeometry.units(plan.layout.panels);
+  const unitFor=p=>units().find(u=>u.members.some(v=>v.key===p?.key));
   function checkpoint(){editUndo.push(JSON.stringify(plan.layout));if(editUndo.length>25)editUndo.shift();}
   function invalidate(p){p.reviewed=false;p.extent_confirmed=false;peers(p).forEach(v=>{v.corner_net_confirmed=false;v.reviewed=false;});}
   const form = q('[data-editor]');
@@ -105,10 +107,17 @@
     if (!plan) return;
     all('.sp-board svg').forEach(svg=>svg.setAttribute('viewBox', box.join(' ')));
     const groups = [q('[data-original-shapes]'),q('[data-clean-shapes]')]; groups.forEach(g=>g.replaceChildren());
+    const displayUnits=units(),drawn=new Set();
     [...plan.layout.panels].sort((a,b)=>Number(a.key===selected)-Number(b.key===selected)).forEach(p => {
+      const unit=displayUnits.find(u=>u.members.includes(p)),corner=unit.members.length===2,merged=corner&&unit.outline;
       const e = element(p), active = p.key === selected,related=!active&&panel()?.corner_group&&p.corner_group===panel().corner_group;
       groups.forEach((group,i) => {
-        const path = svgEl('polygon', {points:p.points.map(v=>v.join(',')).join(' '),class:`sp-panel ${e?.status || 'planned'} ${active ? 'selected' : ''} ${related?'corner-peer':''}`, 'data-key':p.key,opacity:editing&&!active&&!related?+q('[data-neighbour-opacity]').value/100:1});
+        if(merged&&!drawn.has(unit)){
+          const selectedUnit=unit.members.some(v=>v.key===selected);
+          const outline=svgEl('path',{d:'M'+unit.outline.map(v=>v.join(',')).join('L')+'Z',class:`sp-panel sp-unified ${e?.status||'planned'} ${selectedUnit?'selected':''}`,'data-key':selectedUnit?selected:unit.members[0].key,'data-angle':p.corner_group,opacity:editing&&!selectedUnit?+q('[data-neighbour-opacity]').value/100:1});
+          outline.append(svgEl('title',{},unit.label));group.append(outline);
+        }
+        const path = svgEl('polygon', {points:p.points.map(v=>v.join(',')).join(' '),class:merged?'sp-hit':`sp-panel ${e?.status || 'planned'} ${active ? 'selected' : ''} ${related?'corner-peer':''}`, 'data-key':p.key,opacity:editing&&!active&&!related?+q('[data-neighbour-opacity]').value/100:1});
         path.append(svgEl('title',{},`${p.label} · ${num(p.width_m,' m')}`)); group.append(path);
         if (i === 1) {
           const g = geometry(p); let angle = g.angle;
@@ -116,24 +125,26 @@
           const scale = Math.max(box[2]/Math.max(250,q('[data-clean-svg]').clientWidth),box[3]/q('[data-clean-svg]').clientHeight);
           const font = Math.max(9,11*scale);
           const label = svgEl('text',{x:g.cx,y:g.cy,class:'sp-panel-label',transform:`rotate(${angle} ${g.cx} ${g.cy})`,'font-size':font});
-          label.append(svgEl('tspan',{x:g.cx,dy:-font*.1},p.label));
-          label.append(svgEl('tspan',{x:g.cx,dy:font*1.15,'font-size':font*.9},`${num(p.width_m,' m')}${e?.sonic ? ' · S' : ''}${e?.inclinometer ? ' · I' : ''}`));group.append(label);
+          const anchor=corner?[...unit.members].sort((a,b)=>Math.abs(Math.sin(geometry(a).angle*Math.PI/180))-Math.abs(Math.sin(geometry(b).angle*Math.PI/180)))[0]:p;
+          if(p===anchor)label.append(svgEl('tspan',{x:g.cx,dy:-font*.55,'data-unit-label':''},unit.label));
+          label.append(svgEl('tspan',{x:g.cx,dy:p===anchor?font*1.1:0,'font-size':font*.9},`${corner?p.label.slice(-1).toUpperCase()+' · ':''}${num(p.width_m,' m')}${e?.sonic ? ' · S' : ''}${e?.inclinometer ? ' · I' : ''}`));group.append(label);
         }
         if (active && editing) {
           const visualScale=Math.max(box[2]/Math.max(1,group.ownerSVGElement.clientWidth),box[3]/Math.max(1,group.ownerSVGElement.clientHeight));
           if(widthLocked()||directionLocked()){
             Object.entries({start:[0,3],end:[1,2],top:[0,1],bottom:[3,2]}).forEach(([edge,ids])=>{
               const [a,b]=ids.map(j=>p.points[j]);
-              if(edge===q('[data-edge]').value)group.append(svgEl('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],class:'sp-edit-edge'}));
+              if(!merged&&edge===q('[data-edge]').value)group.append(svgEl('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],class:'sp-edit-edge'}));
               group.append(svgEl('circle',{cx:(a[0]+b[0])/2,cy:(a[1]+b[1])/2,r:7*visualScale,class:'sp-handle sp-edge-handle','data-key':p.key,'data-edge-handle':edge}));
             });
           }else p.points.forEach((v,j)=>{group.append(svgEl('circle',{cx:v[0],cy:v[1],r:7*visualScale,class:'sp-handle','data-key':p.key,'data-corner':j}));});
         }
       });
+      drawn.add(unit);
     });
-    q('[data-counter]').textContent = `${plan.layout.panels.length} ${t('pannelli','panneaux')}`;
+    q('[data-counter]').textContent = `${displayUnits.length} ${displayUnits.length===1?t('pannello','panneau'):t('pannelli','panneaux')}`;
   }
-  function choose(key) { selected = key; renderDetail(); renderMaps(); q('[data-select]').value = key || ''; }
+  function choose(key) { selected = key; renderDetail(); renderMaps(); q('[data-select]').value = unitFor(panel())?.members[0].key || ''; }
   function renderDetail() {
     const p = panel(), e = element(p);
     const snapPicker=q('[data-snap-target]'),oldTarget=snapPicker.value;snapPicker.replaceChildren();
@@ -147,16 +158,20 @@
     form.elements.shape_length.disabled=busy||widthLocked();form.elements.angle.disabled=busy||directionLocked();
     q('[data-edit-hint]').textContent=widthLocked()?t('Larghezza bloccata nei trascinamenti. Le testate si spostano insieme.','Largeur verrouillée pendant le déplacement. Les extrémités se déplacent ensemble.'):t('Sposta un lato intero: i due lati collegati si allungano insieme.','Déplacez un côté entier : les deux côtés adjacents s’allongent ensemble.');
     const pair=peers(p),corner=pair.length===2&&!!p?.corner_group;
+    q('[data-arm-choice]').hidden=!corner||!editing;
+    q('[data-label-caption]').textContent=corner?t('Sigla braccio','Repère de la branche'):tr('Sigla');
+    q('[data-width-caption]').textContent=corner?t('Larghezza braccio (m)','Largeur de la branche (m)'):tr('Larghezza (m)');
+    const arms=q('[data-arm]');arms.replaceChildren();pair.forEach(v=>arms.add(new Option(v.label,v.key)));arms.value=p?.key||'';
     q('[data-corner-info]').hidden=!corner;q('[data-corner-tools]').hidden=!corner;
     if(corner){q('[data-corner-label]').textContent=p.label.replace(/[ab]$/i,'')+' A/B';q('[data-corner-widths]').textContent=pair.map(v=>`${v.label}: ${num(v.width_m,' m')}`).join(' + ');form.elements.corner_net_confirmed.checked=pair.every(v=>v.corner_net_confirmed);}
-    q('[data-label]').textContent = p?.label || tr("Seleziona un pannello");
+    q('[data-label]').textContent = unitFor(p)?.label || tr("Seleziona un pannello");
     q('[data-warnings]').textContent = !p ? '' : editing ? [...((p.warnings || []).map(tr)),offScale(p)?tr("Sagoma fuori scala: applica la larghezza alla scala comune."):'',extent(p)?tr("Possibile sbordo rispetto alla sagoma riconosciuta o al foglio. Controlla sul PDF e conferma."):''].filter(Boolean).join(' · ') : '';
     if (p) {
       form.elements.label.value = p.label; form.elements.width_m.value = p.width_m ?? ''; form.elements.element.value = p.element ?? ''; form.elements.reviewed.checked = p.reviewed; form.elements.extent_confirmed.checked=!!p.extent_confirmed; q('[data-extent]').hidden=!extent(p); q('[data-scale-info]').textContent=commonScale()?t(`Scala comune: ${num(commonScale())} punti del foglio per metro`,`Échelle commune : ${num(commonScale())} points de la feuille par mètre`):tr("Scala da calibrare");
       const g = geometry(p); Object.entries({cx:g.cx,cy:g.cy,shape_length:g.len,shape_depth:g.depth,angle:g.angle}).forEach(([k,v])=>form.elements[k].value=+v.toFixed(2));
     }
     const dl = q('[data-details]'); dl.replaceChildren();
-    const rows = p ? [[tr("Larghezza pianta"),num(p.width_m,' m')],[tr("Collegamento"), e ? `${e.label} · #${e.number}` : tr("Da associare")],[tr("Stato"), !e ? tr("Non collegato") : {cast:tr("Getto registrato"),fiche:tr("Fiche presente"),planned:tr("Da eseguire")}[e.status]],['Coupe', e?.coupe || '—'],[tr("Armatura"),e?.armatura || '—'],[tr("Profondità prevista"),num(e?.planned_depth_m,' m')],[tr("Profondità effettiva"),num(e?.depth_m,' m')],[tr("Calcestruzzo gettato"),num(e?.concrete_m3,' m³')],[tr("Data getto"),e?.cast_date || '—'],[tr("Controlli previsti"),[e?.sonic?tr("Sonico"):'',e?.inclinometer?tr("Inclinometro"):''].filter(Boolean).join(' + ') || '—']] : [];
+    const rows = p ? [[corner?t('Sviluppo angolo','Développé de l’angle'):tr("Larghezza pianta"),num(corner?pair.reduce((sum,v)=>sum+(v.width_m||0),0):p.width_m,' m')],[tr("Collegamento"), e ? `${e.label} · #${e.number}` : tr("Da associare")],[tr("Stato"), !e ? tr("Non collegato") : {cast:tr("Getto registrato"),fiche:tr("Fiche presente"),planned:tr("Da eseguire")}[e.status]],['Coupe', e?.coupe || '—'],[tr("Armatura"),e?.armatura || '—'],[tr("Profondità prevista"),num(e?.planned_depth_m,' m')],[tr("Profondità effettiva"),num(e?.depth_m,' m')],[tr("Calcestruzzo gettato"),num(e?.concrete_m3,' m³')],[tr("Data getto"),e?.cast_date || '—'],[tr("Controlli previsti"),[e?.sonic?tr("Sonico"):'',e?.inclinometer?tr("Inclinometro"):''].filter(Boolean).join(' + ') || '—']] : [];
     rows.forEach(([k,v])=>{const row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;row.append(dt,dd);dl.append(row);});
     const action = q('[data-fiche]'), target = e?.fiche_url || (!editing && e?.create_url);
     action.hidden = !target; if (target) action.href = target;
@@ -164,7 +179,7 @@
   }
   function renderFooter() {
     if (!plan) return;
-    const pending = plan.layout.panels.filter(p=>!p.reviewed||!p.width_m||offScale(p)||(extent(p)&&!p.extent_confirmed)||(p.corner_group&&!p.corner_net_confirmed)).length, unlinked = plan.layout.panels.filter(p=>!p.element).length;
+    const display=units(),pending=display.filter(u=>u.members.some(p=>!p.reviewed||!p.width_m||offScale(p)||(extent(p)&&!p.extent_confirmed)||(p.corner_group&&!p.corner_net_confirmed))).length,unlinked=display.filter(u=>u.members.some(p=>!p.element)).length;
     q('[data-pending]').textContent = `${pending} ${t('da verificare','à vérifier')} · ${unlinked} ${t('pannelli da creare alla convalida','panneaux à créer à la validation')}${dirty ? t(' · Modifiche non salvate',' · Modifications non enregistrées') : ''}`;
     q('[data-state]').textContent = editing ? tr("Bozza da convalidare") : tr("Disegno convalidato");
   }
@@ -175,10 +190,11 @@
     q('[data-find-corners]').hidden=!editing;
     q('[data-replace]').hidden=!data.can_edit;q('[data-remove-draft]').hidden=!plan.can_remove;
     const picker = q('[data-select]'); picker.replaceChildren();
-    plan.layout.panels.forEach((p,i)=>picker.add(new Option(`${p.label} · ${t('zona','zone')} ${i+1}${p.reviewed?'':t(' · da verificare',' · à vérifier')}`,p.key)));
-    picker.value = selected || ''; renderDetail(); renderMaps(); renderFooter();
+    units().forEach((u,i)=>picker.add(new Option(`${u.label} · ${t('zona','zone')} ${i+1}${u.members.every(p=>p.reviewed)?'':t(' · da verificare',' · à vérifier')}`,u.members[0].key)));
+    picker.value = unitFor(panel())?.members[0].key || ''; renderDetail(); renderMaps(); renderFooter();
   }
   q('[data-select]').onchange = e => choose(e.target.value);
+  q('[data-arm]').onchange=e=>choose(e.target.value);
   q('[data-version]').onchange = async e => { const id=+e.target.value;if (await guard()) load(id); else e.target.value = plan.id; };
   q('[data-edit]').onclick = async () => { if (await guard()) load(plan.id,true); };
   q('[data-original-toggle]').onclick = () => { showOriginal=!showOriginal; render(); };
@@ -218,7 +234,7 @@
   q('[data-scale]').onclick = () => {const p=panel();checkpoint();if(!p||!resize(p,form.elements.anchor.value)){message(tr("Imposta una larghezza in metri e calibra la scala su un pannello noto."),true);return;}render();};
   q('[data-calibrate]').onclick=()=>{const p=panel();if(!p?.width_m){message(tr("Inserisci la larghezza reale in metri del pannello scelto."),true);return;}if(!confirm(t(`Usare la sagoma di ${p.label} (${num(p.width_m,' m')}) come riferimento per tutta la pianta?`,`Utiliser la forme de ${p.label} (${num(p.width_m,' m')}) comme référence pour tout le plan ?`)))return;plan.layout.scale_ppm=geometry(p).len/p.width_m;plan.layout.panels.forEach(v=>{v.reviewed=false;v.extent_confirmed=false;});markDirty();render();};
   q('[data-scale-all]').onclick=()=>{if(!commonScale()){message(tr("Calibra prima la scala su un pannello di larghezza nota."),true);return;}if(!confirm(tr("Proporzionare tutte le sagome alle larghezze in metri, mantenendo i loro centri? Controlla poi gli estremi sul PDF.")))return;plan.layout.scale_ppm=commonScale();plan.layout.panels.forEach(p=>resize(p));markDirty();fit();render();};
-  q('[data-remove]').onclick = async () => {const p=panel();if(!p||!await ask(t(`Rimuovere ${p.label}?`,`Retirer ${p.label} ?`),t('Viene rimossa solo la sagoma dalla bozza. Le fiche restano nel gestionale. Puoi usare Annulla modifica prima di salvare.','Seule la forme du brouillon sera retirée. Les fiches sont conservées. Vous pouvez annuler la modification avant d’enregistrer.'),t('Rimuovi pannello','Retirer le panneau')))return;checkpoint();peers(p).forEach(v=>{v.corner_group=null;v.corner_net_confirmed=false;});plan.layout.panels=plan.layout.panels.filter(v=>v.key!==p.key);selected=plan.layout.panels[0]?.key;markDirty();render();};
+  q('[data-remove]').onclick = async () => {const p=panel(),unit=unitFor(p);if(!p||!await ask(t(`Rimuovere ${unit.label}?`,`Retirer ${unit.label} ?`),t('Viene rimossa solo la sagoma dalla bozza. Le fiche restano nel gestionale. Puoi usare Annulla modifica prima di salvare.','Seule la forme du brouillon sera retirée. Les fiches sont conservées. Vous pouvez annuler la modification avant d’enregistrer.'),t('Rimuovi pannello','Retirer le panneau')))return;checkpoint();const keys=new Set(unit.members.map(v=>v.key));plan.layout.panels=plan.layout.panels.filter(v=>!keys.has(v.key));selected=plan.layout.panels[0]?.key;markDirty();render();};
   q('[data-add]').onclick = () => {addMode=!addMode;message(addMode?tr("Trascina sul disegno per creare una sagoma rettangolare."):tr("Inserimento annullato."));q('[data-add]').textContent=addMode?tr("Annulla inserimento"):tr("Aggiungi pannello");};
   function coordinate(svg,event) {const pt=svg.createSVGPoint();pt.x=event.clientX;pt.y=event.clientY;const p=pt.matrixTransform(svg.getScreenCTM().inverse());return [p.x,p.y];}
   all('.sp-board svg').forEach(svg=>{
@@ -305,13 +321,13 @@
   q('[data-review-all]').onclick=()=>{
     const valid=plan.layout.panels.filter(p=>p.label.trim()&&p.width_m&&!offScale(p));
     const extents=valid.filter(extent);
-    const text=t(`Hai controllato i ${valid.length} pannelli rispetto al PDF?`, `Avez-vous vérifié les ${valid.length} panneaux par rapport au PDF ?`);
+    const text=t('Confermare tutti i pannelli completi dopo il confronto con il PDF?','Confirmer tous les panneaux complets après vérification sur le PDF ?');
     if(!valid.length){message(t('Completa prima larghezze e scala.','Complétez d’abord les largeurs et l’échelle.'),true);return;}
     if(!confirm(text))return;
     let confirmExtents=false;
     if(extents.length)confirmExtents=confirm(t(`Sono previsti gli sbordi di questi pannelli? ${extents.map(p=>p.label).join(', ')}. Annulla per lasciarli da controllare.`,`Les débordements de ces panneaux sont-ils prévus ? ${extents.map(p=>p.label).join(', ')}. Annulez pour les laisser à vérifier.`));
     valid.forEach(p=>{p.reviewed=true;if(confirmExtents&&extent(p))p.extent_confirmed=true;});markDirty();render();
-    message(t(`${valid.length} pannelli verificati. Premi Convalida disegno per salvare.`,`${valid.length} panneaux vérifiés. Cliquez sur Valider le plan pour enregistrer.`));
+    message(t('Verifica completata. Premi Convalida disegno per salvare.','Vérification terminée. Cliquez sur Valider le plan pour enregistrer.'));
   };
   function lock(value) {busy=value;all('button').forEach(b=>b.disabled=value);all('input,select').forEach(b=>b.disabled=value);if(!value&&plan)renderDetail();}
   async function save(approve) {
@@ -321,7 +337,7 @@
       message(t('Verifica e conferma le larghezze nette dei bracci dell’angolo selezionato.','Vérifiez et confirmez les largeurs nettes des branches de l’angle sélectionné.'),true);return;
     }
     if(approve){const missing=plan.layout.panels.filter(p=>!p.reviewed||!p.width_m||offScale(p)||(extent(p)&&!p.extent_confirmed));if(!plan.layout.panels.length||missing.length){message(t(`Controlla scala, larghezze e conferme di sbordo dei pannelli (${missing.length} ancora da verificare).`,`Vérifiez l’échelle, les largeurs et les débordements (${missing.length} panneaux à vérifier).`),true);return;}
-      const unlinked=plan.layout.panels.filter(p=>!p.element).length;
+      const unlinked=units().filter(u=>u.members.some(p=>!p.element)).length;
       if(!confirm(t(`Convalidare il disegno? ${unlinked} pannelli nuovi potranno essere assegnati alle coupe.`,`Valider le plan ? ${unlinked} nouveaux panneaux pourront être affectés aux coupes.`)))return;
     }
     const id=plan.id;lock(true);

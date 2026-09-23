@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from datetime import date
 import pytest
@@ -39,7 +40,7 @@ def test_site_workspace_angle_pdf_and_status(live_operations):
         page.locator('[data-make-group=angle]').click()
         expect(page.locator('#sw-message')).to_have_text('Gruppo salvato.')
         page.locator('#sw-editor-body').get_by_role('link',name='Crea fiche').first.click()
-        expect(page.locator('#larghezza_pannello')).to_have_value('8.0')
+        expect(page.locator('#larghezza_pannello')).to_have_value(re.compile(r'^8(?:\.0+)?$'))
         expect(page.locator('[data-summary-number]')).to_have_text('P7 A/B')
         page.locator('#data_scavo').fill('2026-09-21');page.locator('#operatore').fill('Squadra prova')
         page.locator('#data_getto').fill('2026-09-21');page.locator('#metri_cubi_gettati').fill('42')

@@ -21,5 +21,5 @@
 <details class="card"><summary class="card-header">Note operative</summary><div class="card-body">{% include 'manager/_site_workspace_tasks.html' %}</div></details>
 {% if has_perm(user,'sites.delete') %}<details class="card workspace-danger"><summary class="card-header">Eliminazione cantiere</summary><div class="card-body"><p>Eliminazione definitiva di fiches, CUP, pianta e documenti. Il cestino recuperabile non è ancora attivo. Ordini, movimenti, presenze e macchinari vengono conservati e scollegati.</p><form class="sw-row" method="post" action="{{ url_for('manager_cantiere_elimina',site_id=site.id) }}" onsubmit="return confirm('Eliminare definitivamente il cantiere e i suoi documenti? Azione irreversibile.');"><input class="form-control" name="conferma_nome" required placeholder="Digita {{ site.name }} per confermare"><button class="btn btn-danger" type="submit">Elimina cantiere</button></form></div></details>{% endif %}
 <script id="sw-plan-data" type="application/json">{{ workspace_plan|tojson }}</script><script id="sw-pours-data" type="application/json">{{ workspace_pours|tojson }}</script>
-</div><script src="/static/js/site-workspace.js?v=20260922" defer></script>
+</div><script src="/static/js/plan-geometry.js?v=20260926" defer></script><script src="/static/js/site-workspace.js?v=20260926" defer></script>
 {% endblock %}
