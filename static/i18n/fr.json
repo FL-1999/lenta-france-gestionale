@@ -1388,5 +1388,12 @@
   "Questa coupe ha fiches di un altro tipo: crea una coupe separata.": "Cette coupe possède des fiches d’un autre type : créez une coupe distincte.",
   "La coupe selezionata non corrisponde al tipo di lavorazione.": "La coupe sélectionnée ne correspond pas au type de travaux.",
   "La larghezza deve corrispondere al pannello della pianta convalidata.": "La largeur doit correspondre au panneau du plan validé.",
-  "Lo spessore deve corrispondere alla coupe del pannello.": "L’épaisseur doit correspondre à la coupe du panneau."
+  "Lo spessore deve corrispondere alla coupe del pannello.": "L’épaisseur doit correspondre à la coupe du panneau.",
+  "Sostituisci PDF": "Remplacer le PDF",
+  "Rimuovi bozza": "Retirer le brouillon",
+  "PDF rimossi · recupero amministratore": "PDF retirés · restauration administrateur",
+  "Il disegno è convalidato. Carica una nuova versione per conservare i collegamenti.": "Le plan est validé. Importez une nouvelle version pour conserver les liens.",
+  "La pianta è cambiata. Ricarica prima di rimuoverla.": "Le plan a changé. Rechargez-le avant de le retirer.",
+  "Ripristino riservato agli amministratori": "Restauration réservée aux administrateurs",
+  "Bozza non disponibile per il ripristino. Ricarica la pagina.": "Brouillon indisponible pour la restauration. Rechargez la page."
 }

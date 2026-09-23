@@ -10,6 +10,13 @@
   const tr = text => window.LentaText(text);
   let snapUndo=null;
   let editUndo=[];
+  let replacement=null;
+  function ask(title,text,action=tr('Conferma')) {
+    const dialog=q('[data-confirm-dialog]');
+    q('#sp-confirm-title').textContent=title;q('#sp-confirm-text').textContent=text;
+    q('[data-confirm-action]').textContent=action;dialog.returnValue='';
+    return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='confirm'),{once:true});dialog.showModal();});
+  }
   const widthLocked=()=>q('[data-lock-width]').checked;
   const directionLocked=()=>q('[data-lock-direction]').checked;
   const peers=p=>p?.corner_group?plan.layout.panels.filter(v=>v.corner_group===p.corner_group):p?[p]:[];
@@ -45,14 +52,23 @@
     const res = await fetch(url, {credentials: 'same-origin', ...options});
     if (!res.headers.get('content-type')?.includes('application/json')) throw new Error(tr("Sessione scaduta: accedi di nuovo prima di salvare."));
     const payload = await res.json();
-    if (!res.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : tr("Dati non validi. Controlla misure e campi."));
+    if (!res.ok) throw new Error(typeof payload.detail === 'string' ? tr(payload.detail) : tr("Dati non validi. Controlla misure e campi."));
     return payload;
   }
-  function guard() { return !dirty || confirm(tr("Ci sono modifiche non salvate. Vuoi abbandonarle?")); }
+  async function guard() { return !dirty || await ask(t('Modifiche non salvate','Modifications non enregistrées'),tr("Ci sono modifiche non salvate. Vuoi abbandonarle?")); }
   async function load(id, draft = false) {
     try {
       data = await api(base + '/data' + (id ? `?plan_id=${id}&draft=${draft}` : ''));
       snapUndo=null; editUndo=[]; plan = data.plan; editing = !!plan?.editing; dirty = false; addMode = false;
+      replacement=null;if(q('[data-replace-notice]'))q('[data-replace-notice]').hidden=true;
+      q('[data-removed]').hidden=!data.removed?.length;
+      const removedList=q('[data-removed-list]');removedList.replaceChildren();
+      (data.removed||[]).forEach(v=>{
+        const row=document.createElement('div'),name=document.createElement('span'),button=document.createElement('button');
+        row.className='sp-removed-row';name.textContent=v.filename;button.type='button';button.className='btn btn-secondary';button.textContent=t('Ripristina','Restaurer');
+        button.onclick=async()=>{if(busy||!await guard())return;lock(true);try{await api(`${base}/${v.id}/ripristina`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:v.revision})});await load(v.id,true);}catch(e){message(tr(e.message),true);}finally{lock(false);}};
+        row.append(name,button);removedList.append(row);
+      });
       const versions = q('[data-version]'); versions.replaceChildren();
       data.versions.forEach(v => versions.add(new Option(`#${v.id} · ${v.filename} · ${v.approved ? t('convalidata','validé') : t('bozza','brouillon')}${v.approved && v.has_draft ? t(' + modifiche in bozza',' + modifications en brouillon') : ''}`, v.id)));
       q('[data-empty]').hidden = !!plan; q('[data-workspace]').hidden = !plan;
@@ -127,6 +143,7 @@
     form.hidden = !editing || !p;
     q('[data-geometry-tools]').hidden=!editing||!p;
     q('[data-undo-edit]').disabled=busy||!editUndo.length;
+    q('[data-undo-removal]').hidden=!editing||!!p||!editUndo.length;
     form.elements.shape_length.disabled=busy||widthLocked();form.elements.angle.disabled=busy||directionLocked();
     q('[data-edit-hint]').textContent=widthLocked()?t('Larghezza bloccata nei trascinamenti. Le testate si spostano insieme.','Largeur verrouillée pendant le déplacement. Les extrémités se déplacent ensemble.'):t('Sposta un lato intero: i due lati collegati si allungano insieme.','Déplacez un côté entier : les deux côtés adjacents s’allongent ensemble.');
     const pair=peers(p),corner=pair.length===2&&!!p?.corner_group;
@@ -156,13 +173,14 @@
     root.dataset.original = showOriginal; q('[data-original]').hidden = !showOriginal; q('[data-original-toggle]').setAttribute('aria-pressed',showOriginal);
     q('[data-edit]').hidden = !data.can_edit || editing; q('[data-review-all-top]').hidden = q('[data-add]').hidden = !editing; q('[data-save-section]').hidden = !editing;
     q('[data-find-corners]').hidden=!editing;
+    q('[data-replace]').hidden=!data.can_edit;q('[data-remove-draft]').hidden=!plan.can_remove;
     const picker = q('[data-select]'); picker.replaceChildren();
     plan.layout.panels.forEach((p,i)=>picker.add(new Option(`${p.label} · ${t('zona','zone')} ${i+1}${p.reviewed?'':t(' · da verificare',' · à vérifier')}`,p.key)));
     picker.value = selected || ''; renderDetail(); renderMaps(); renderFooter();
   }
   q('[data-select]').onchange = e => choose(e.target.value);
-  q('[data-version]').onchange = e => { if (guard()) load(+e.target.value); else e.target.value = plan.id; };
-  q('[data-edit]').onclick = () => { if (guard()) load(plan.id,true); };
+  q('[data-version]').onchange = async e => { const id=+e.target.value;if (await guard()) load(id); else e.target.value = plan.id; };
+  q('[data-edit]').onclick = async () => { if (await guard()) load(plan.id,true); };
   q('[data-original-toggle]').onclick = () => { showOriginal=!showOriginal; render(); };
   q('[data-fit]').onclick = () => { fit(); renderMaps(); };
   q('[data-zoom]').onclick = () => { const p=panel(); if(!p)return;const pts=peers(p).flatMap(v=>v.points),xs=pts.map(v=>v[0]),ys=pts.map(v=>v[1]),x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y;box=[x-25,y-25,w+50,h+50];renderMaps(); };
@@ -200,7 +218,7 @@
   q('[data-scale]').onclick = () => {const p=panel();checkpoint();if(!p||!resize(p,form.elements.anchor.value)){message(tr("Imposta una larghezza in metri e calibra la scala su un pannello noto."),true);return;}render();};
   q('[data-calibrate]').onclick=()=>{const p=panel();if(!p?.width_m){message(tr("Inserisci la larghezza reale in metri del pannello scelto."),true);return;}if(!confirm(t(`Usare la sagoma di ${p.label} (${num(p.width_m,' m')}) come riferimento per tutta la pianta?`,`Utiliser la forme de ${p.label} (${num(p.width_m,' m')}) comme référence pour tout le plan ?`)))return;plan.layout.scale_ppm=geometry(p).len/p.width_m;plan.layout.panels.forEach(v=>{v.reviewed=false;v.extent_confirmed=false;});markDirty();render();};
   q('[data-scale-all]').onclick=()=>{if(!commonScale()){message(tr("Calibra prima la scala su un pannello di larghezza nota."),true);return;}if(!confirm(tr("Proporzionare tutte le sagome alle larghezze in metri, mantenendo i loro centri? Controlla poi gli estremi sul PDF.")))return;plan.layout.scale_ppm=commonScale();plan.layout.panels.forEach(p=>resize(p));markDirty();fit();render();};
-  q('[data-remove]').onclick = () => {const p=panel();if(!p||!confirm(t(`Rimuovere ${p.label} dalla pianta? Le sue fiches restano nel gestionale.`,`Retirer ${p.label} du plan ? Ses fiches sont conservées.`)))return;checkpoint();peers(p).forEach(v=>{v.corner_group=null;v.corner_net_confirmed=false;});plan.layout.panels=plan.layout.panels.filter(v=>v.key!==p.key);selected=plan.layout.panels[0]?.key;markDirty();render();};
+  q('[data-remove]').onclick = async () => {const p=panel();if(!p||!await ask(t(`Rimuovere ${p.label}?`,`Retirer ${p.label} ?`),t('Viene rimossa solo la sagoma dalla bozza. Le fiche restano nel gestionale. Puoi usare Annulla modifica prima di salvare.','Seule la forme du brouillon sera retirée. Les fiches sont conservées. Vous pouvez annuler la modification avant d’enregistrer.'),t('Rimuovi pannello','Retirer le panneau')))return;checkpoint();peers(p).forEach(v=>{v.corner_group=null;v.corner_net_confirmed=false;});plan.layout.panels=plan.layout.panels.filter(v=>v.key!==p.key);selected=plan.layout.panels[0]?.key;markDirty();render();};
   q('[data-add]').onclick = () => {addMode=!addMode;message(addMode?tr("Trascina sul disegno per creare una sagoma rettangolare."):tr("Inserimento annullato."));q('[data-add]').textContent=addMode?tr("Annulla inserimento"):tr("Aggiungi pannello");};
   function coordinate(svg,event) {const pt=svg.createSVGPoint();pt.x=event.clientX;pt.y=event.clientY;const p=pt.matrixTransform(svg.getScreenCTM().inverse());return [p.x,p.y];}
   all('.sp-board svg').forEach(svg=>{
@@ -265,6 +283,7 @@
     if(updatePoints(p,pts)){if(!widthLocked())p.width_m=geometry(p).len/scale;render();}
   });
   q('[data-undo-edit]').onclick=()=>{if(!editUndo.length)return;plan.layout=JSON.parse(editUndo.pop());if(!panel())selected=plan.layout.panels[0]?.key;snapUndo=null;markDirty();render();};
+  q('[data-undo-removal]').onclick=()=>q('[data-undo-edit]').click();
   q('[data-find-corners]').onclick=()=>{
     const pairs=window.PlanGeometry.cornerPairs(plan.layout.panels);
     if(!pairs.length){message(t('Nessun nuovo angolo A/B vicino e univoco riconosciuto.','Aucun nouvel angle A/B voisin et non ambigu reconnu.'));return;}
@@ -309,10 +328,20 @@
     try{await api(`${base}/${id}/${approve?'convalida':'bozza'}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:plan.revision,panels:plan.layout.panels,scale_ppm:commonScale(),confirm:approve})});dirty=false;await load(id,!approve);message(approve?tr("Disegno convalidato."):tr("Bozza salvata. Il disegno convalidato resta invariato."));}catch(e){message(e.message,true);}finally{lock(false);}
   }
   q('[data-save]').onclick=()=>save(false);q('[data-approve]').onclick=()=>save(true);
-  q('[data-upload-toggle]')?.addEventListener('click',()=>{q('[data-upload]').hidden=!q('[data-upload]').hidden;});
+  function showUpload(replace=false){replacement=replace&&plan?.can_remove?{id:plan.id,revision:plan.revision}:null;const note=q('[data-replace-notice]');note.hidden=!replace;note.textContent=replacement?t('Il nuovo PDF sostituirà questa bozza solo dopo un’analisi riuscita. La bozza rimossa resterà recuperabile dall’amministratore.','Le nouveau PDF remplacera ce brouillon uniquement après une analyse réussie. L’administrateur pourra restaurer le brouillon retiré.'):t('Il disegno convalidato resta disponibile. Il nuovo PDF verrà caricato come versione in bozza.','Le plan validé reste disponible. Le nouveau PDF sera importé comme nouvelle version en brouillon.');q('[data-upload]').hidden=false;q('[data-upload]').scrollIntoView({behavior:'smooth',block:'center'});}
+  q('[data-upload-toggle]')?.addEventListener('click',()=>showUpload());
+  q('[data-replace]').onclick=()=>showUpload(true);
+  q('[data-upload-cancel]')?.addEventListener('click',()=>{replacement=null;q('[data-upload]').hidden=true;});
+  q('[data-remove-draft]').onclick=async()=>{
+    if(busy||!plan?.can_remove)return;
+    if(!await ask(t('Rimuovere questa bozza?','Retirer ce brouillon ?'),t('Il PDF e i pannelli di questa bozza verranno rimossi dalla pianta. Il cantiere resta invariato. Le modifiche non salvate saranno scartate; il PDF e l’ultima bozza salvata resteranno recuperabili dall’amministratore.','Le PDF et les panneaux de ce brouillon seront retirés du plan. Le chantier reste inchangé. Les modifications non enregistrées seront abandonnées ; l’administrateur pourra restaurer le PDF et le dernier brouillon enregistré.'),t('Rimuovi bozza','Retirer le brouillon')))return;
+    lock(true);try{await api(`${base}/${plan.id}/rimuovi`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:plan.revision})});await load();message(t('Bozza rimossa. Puoi caricare un altro PDF nello stesso cantiere.','Brouillon retiré. Vous pouvez importer un autre PDF dans le même chantier.'));}catch(e){message(tr(e.message),true);}finally{lock(false);}
+  };
   q('[data-upload]')?.addEventListener('submit',async event=>{
-    event.preventDefault();if(busy||!guard())return;const payload=new FormData(event.currentTarget);lock(true);message(tr("Analisi del PDF in corso…"));
-    try{const uploaded=await api(base+'/importa',{method:'POST',body:payload});dirty=false;q('[data-upload]').hidden=true;await load(uploaded.id,true);}catch(e){message(e.message,true);}finally{lock(false);}
+    event.preventDefault();if(busy)return;const payload=new FormData(event.currentTarget);
+    if(replacement){if(!await ask(t('Sostituire il PDF?','Remplacer le PDF ?'),t('La bozza corrente verrà rimossa solo se il nuovo PDF è valido. Le modifiche non salvate saranno scartate.','Le brouillon actuel sera retiré uniquement si le nouveau PDF est valide. Les modifications non enregistrées seront abandonnées.'),t('Sostituisci PDF','Remplacer le PDF')))return;payload.set('replace_id',replacement.id);payload.set('replace_revision',replacement.revision);}else if(!await guard())return;
+    lock(true);message(tr("Analisi del PDF in corso…"));
+    try{const uploaded=await api(base+'/importa',{method:'POST',body:payload});dirty=false;q('[data-upload]').hidden=true;q('[data-upload]').reset();await load(uploaded.id,true);}catch(e){message(tr(e.message),true);}finally{lock(false);}
   });
   window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
   load();

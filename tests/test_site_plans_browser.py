@@ -73,8 +73,70 @@ def test_import_edit_confirm_and_reload(live_operations):
             page.locator('#site-plan-app').screenshot(path=str(output/f'site-plan-{theme}.png'))
         page.locator('[data-edit]').click();expect(page.locator('[data-save-section]')).to_be_visible()
         page.locator('[data-select]').select_option(p7['value']);page.locator('[data-remove]').click()
+        page.locator('[data-confirm-action]').click()
         page.locator('[data-save]').click();expect(page.locator('[data-message]')).to_contain_text('Bozza salvata')
         page.reload();expect(page.locator('[data-state]')).to_have_text('Disegno convalidato')
         assert page.locator('[data-select] option').count()==len(options)
+        assert not errors,errors
+        browser.close()
+
+
+def test_replace_remove_and_restore_pdf_and_internal_panel_confirmation(live_operations):
+    from models import User, RoleEnum, Role, UserRole
+    origin,engine,ids,password,artifacts=live_operations
+    with Session(engine) as db:
+        user=db.query(User).filter_by(email='smoke-manager@example.com').one()
+        user.role=RoleEnum.admin
+        admin_role=db.query(Role).filter_by(name=RoleEnum.admin).first()
+        if admin_role is None:
+            admin_role=Role(name=RoleEnum.admin);db.add(admin_role);db.flush()
+        user.user_roles=[UserRole(role=admin_role)]
+        db.commit()
+    with sync_playwright() as pw:
+        browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        page=browser.new_page(viewport={'width':1440,'height':1000})
+        errors=[];dialogs=[]
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        page.on('dialog',lambda dialog:(dialogs.append(dialog.type),dialog.dismiss()))
+        page.route('**/*',lambda route:route.continue_() if route.request.url.startswith(origin+'/') else route.abort())
+        page.goto(origin+'/login');page.locator('#email').fill('smoke-manager@example.com');page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
+        page.goto(origin+f'/manager/cantieri/{ids["site"]}/pianta')
+        def upload(name,content):
+            page.locator('input[name=file]').set_input_files({'name':name,'mimeType':'application/pdf','buffer':content})
+            page.locator('[data-upload] button[type=submit]').click()
+        upload('first.pdf',vector_pdf());expect(page.locator('[data-workspace]')).to_be_visible()
+        page.locator('[data-remove]').click()
+        expect(page.locator('[data-confirm-dialog]')).to_be_visible()
+        page.locator('[data-confirm-dialog] [value=cancel]').click()
+        expect(page.locator('[data-counter]')).to_have_text('1 pannelli')
+        page.locator('[data-remove]').click();page.locator('[data-confirm-action]').click()
+        expect(page.locator('[data-counter]')).to_have_text('0 pannelli')
+        page.locator('[data-undo-removal]').click();expect(page.locator('[data-counter]')).to_have_text('1 pannelli')
+        page.locator('[data-save]').click();expect(page.locator('[data-message]')).to_contain_text('Bozza salvata')
+        page.locator('[data-replace]').click();upload('invalid.pdf',b'not pdf');page.locator('[data-confirm-action]').click()
+        expect(page.locator('[data-message]')).to_have_attribute('data-error','true')
+        expect(page.locator('[data-version] option')).to_contain_text('first.pdf')
+        upload('second.pdf',vector_pdf());page.locator('[data-confirm-action]').click()
+        expect(page.locator('[data-version] option')).to_contain_text('second.pdf')
+        expect(page.locator('[data-version] option')).to_have_count(1)
+        page.locator('[data-remove-draft]').click()
+        page.set_viewport_size({'width':390,'height':900})
+        expect(page.locator('[data-confirm-dialog]')).to_be_visible()
+        assert page.locator('[data-confirm-dialog]').evaluate('(e)=>e.scrollWidth<=e.clientWidth+1')
+        assert page.locator('#sp-confirm-text').evaluate('(e)=>getComputedStyle(e).color')=='rgb(22, 43, 65)'
+        page.screenshot(path=str(artifacts/'draft-removal-mobile.png'))
+        page.locator('[data-confirm-action]').click()
+        expect(page.locator('[data-workspace]')).to_be_hidden();expect(page.locator('[data-upload]')).to_be_visible()
+        page.locator('[data-removed] summary').click()
+        page.locator('.sp-removed-row').filter(has_text='first.pdf').get_by_role('button').click()
+        expect(page.locator('[data-version] option')).to_contain_text('first.pdf')
+        page.reload();expect(page.locator('[data-version] option')).to_contain_text('first.pdf')
+        page.goto(origin+'/set-language/fr');page.goto(origin+f'/manager/cantieri/{ids["site"]}/pianta')
+        expect(page.locator('[data-replace]')).to_have_text('Remplacer le PDF')
+        page.locator('[data-remove-draft]').click()
+        expect(page.locator('#sp-confirm-title')).to_have_text('Retirer ce brouillon ?')
+        page.locator('[data-confirm-dialog] [value=cancel]').click()
+        assert not dialogs,dialogs
         assert not errors,errors
         browser.close()
