@@ -87,7 +87,10 @@ def test_replace_remove_and_restore_pdf_and_internal_panel_confirmation(live_ope
     with Session(engine) as db:
         user=db.query(User).filter_by(email='smoke-manager@example.com').one()
         user.role=RoleEnum.admin
-        user.user_roles=[UserRole(role=db.query(Role).filter_by(name=RoleEnum.admin).one())]
+        admin_role=db.query(Role).filter_by(name=RoleEnum.admin).first()
+        if admin_role is None:
+            admin_role=Role(name=RoleEnum.admin);db.add(admin_role);db.flush()
+        user.user_roles=[UserRole(role=admin_role)]
         db.commit()
     with sync_playwright() as pw:
         browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
