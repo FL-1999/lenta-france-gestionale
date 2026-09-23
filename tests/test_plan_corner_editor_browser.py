@@ -45,6 +45,19 @@ def test_corner_editor_constraints_join_split_and_reload(live_operations):
         assert geometry['locked']==[[4,3],[84,63],[72,79],[-8,19]]
         assert geometry['resized']==[[0,0],[84,63],[72,79],[-12,16]]
         assert geometry['invalid'] is None
+        outlines=page.evaluate('''()=>{
+          const a=[[100,130],[200,130],[200,150],[100,150]],b=[[100,50],[100,150],[80,150],[80,50]];
+          const area=p=>Math.abs(p.reduce((s,v,i)=>s+v[0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*v[1],0))/2;
+          const rotate=p=>p.map(([x,y])=>[.8*x-.6*y,.6*x+.8*y]);
+          const mirror=p=>p.map(([x,y])=>[-x,y]);
+          return {plain:PlanGeometry.unionOutline(a,b),areas:[area(PlanGeometry.unionOutline(a,b)),area(PlanGeometry.unionOutline(rotate(a),rotate(b))),area(PlanGeometry.unionOutline(mirror(a),mirror(b)))],
+          gap:PlanGeometry.unionOutline(a.map(([x,y])=>[x+2,y]),b),
+          overlap:area(PlanGeometry.unionOutline(a.map(([x,y])=>[x-10,y]),b))};
+        }''')
+        assert len(outlines['plain'])==6
+        assert outlines['areas']==pytest.approx([4000,4000,4000])
+        assert outlines['gap'] is None
+        assert outlines['overlap']==pytest.approx(3800)
         page.locator('[data-original-toggle]').click()
         page.locator('[data-find-corners]').click()
         expect(page.locator('[data-corner-label]')).to_have_text('P3 A/B')
@@ -72,6 +85,14 @@ def test_corner_editor_constraints_join_split_and_reload(live_operations):
         page.locator('[data-undo-edit]').click()
         page.locator('[data-join-corner]').click()
         assert points()[0][0]==pytest.approx(100)
+        expect(page.locator('[data-clean-shapes] .sp-unified')).to_have_count(1)
+        expect(page.locator('[data-clean-shapes] .sp-panel')).to_have_count(1)
+        expect(page.locator('[data-clean-shapes] [data-unit-label]')).to_have_text('P3 A/B')
+        expect(page.locator('[data-select] option')).to_have_count(1)
+        expect(page.locator('[data-counter]')).to_have_text('1 pannello')
+        page.locator('[data-arm]').select_option('b')
+        expect(page.locator('[data-label]')).to_have_text('P3 A/B')
+        page.locator('[data-arm]').select_option('a')
         expect(page.locator('[name=width_m]')).to_have_value('2.5')
         # Lower geometry box and separate information inspector.
         tools=page.locator('[data-geometry-tools]').bounding_box();board=svg.bounding_box()
@@ -82,11 +103,30 @@ def test_corner_editor_constraints_join_split_and_reload(live_operations):
         expect(page.locator('[data-state]')).to_have_text('Disegno convalidato')
         saved=page.request.get(url+'/data').json()['plan']['layout']['panels']
         assert all(p['corner_group']=='a' for p in saved)
+        expect(page.locator('[data-clean-shapes] .sp-unified')).to_have_count(1)
+        page.goto(origin+f'/manager/cantieri/{ids["site"]}/configurazione-progetto')
+        card=page.locator('[data-coupe-card]').first
+        expect(card.locator('.coupe-panel-grid button')).to_have_text(['P3 A/B'])
+        expect(card.locator('.coupe-plan polygon')).to_have_count(1)
+        card.locator('.coupe-panel-grid button').click()
+        expect(card.locator('[name=coupe_paratie]')).to_have_value(','.join(str(p['element']) for p in saved))
+        expect(card.locator('[data-selection-summary]')).to_have_text('1 pannello')
+        page.goto(origin+f'/manager/cantieri/{ids["site"]}')
+        expect(page.locator('.sw-panel-list button')).to_have_text(['P3 A/B'])
+        expect(page.locator('#sw-plan .sw-panel')).to_have_count(1)
+        page.locator('.sw-panel-list button').click()
+        expect(page.locator('#sw-panel-detail strong')).to_have_text('P3 A/B')
+        page.goto(url)
         page.reload();page.locator('[data-edit]').click()
         expect(page.locator('[data-corner-info]')).to_be_visible()
+        page.locator('[data-remove]').click();page.locator('[data-confirm-action]').click()
+        expect(page.locator('[data-counter]')).to_have_text('0 pannelli')
+        page.locator('[data-undo-removal]').click()
+        expect(page.locator('[data-select] option')).to_have_count(1)
         page.locator('[data-original-toggle]').click()
         page.evaluate("document.documentElement.dataset.theme='dark'")
         page.locator('#site-plan-app').screenshot(path=str(artifacts/'corner-editor-it.png'))
+        page.locator('.sp-board').filter(has=page.locator('[data-clean-svg]')).screenshot(path=str(artifacts/'corner-unified.png'))
         # French interface and responsive editor, including all editing controls.
         page.context.add_cookies([{'name':'lang','value':'fr','url':origin}]);page.reload();page.locator('[data-edit]').click()
         expect(page.locator('[data-join-corner]')).to_have_text('Raccorder l’angle')
@@ -100,6 +140,8 @@ def test_corner_editor_constraints_join_split_and_reload(live_operations):
             page.locator('#site-plan-app').screenshot(path=str(artifacts/f'corner-editor-{theme}.png'))
         page.locator('[data-split-corner]').click()
         expect(page.locator('[data-corner-info]')).to_be_hidden()
+        expect(page.locator('[data-clean-shapes] .sp-unified')).to_have_count(0)
+        expect(page.locator('[data-select] option')).to_have_count(2)
         page.locator('[data-review-all]').click();page.locator('[data-approve]').click()
         expect(page.locator('[data-state]')).to_have_text('Plan validé')
         split=page.request.get(url+'/data').json()['plan']['layout']['panels']

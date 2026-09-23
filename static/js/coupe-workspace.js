@@ -5,7 +5,9 @@
   const fr = document.documentElement.lang === 'fr';
   const t = (it, french) => fr ? french : it;
   const ns = 'http://www.w3.org/2000/svg';
-  let elements = [], layout = null;
+  let elements = [], layout = null, displayUnits=[];
+  const units=()=>displayUnits;
+  const members=n=>units().find(u=>u.members.some(p=>p.element===n))?.members.map(p=>p.element).filter(Boolean)||[n];
   const cards = () => [...form.querySelectorAll('[data-coupe-card]')];
   const input = card => card.querySelector('[name="coupe_paratie"]');
   const kind = card => card.querySelector('[name="coupe_tipologia_scavo"]').value;
@@ -38,18 +40,19 @@
   }
   const owner = (card, n) => cards().find(c => c !== card && !c.querySelector('[name="delete_coupe_id"]')?.checked && numbers(input(c).value).has(n));
   function toggle(card, n) {
-    if (owner(card,n)) return;
+    const group=members(n);if (group.some(v=>owner(card,v))) return;
     const selected = numbers(input(card).value);
-    if (selected.has(n)) selected.delete(n); else selected.add(n);
+    const remove=group.every(v=>selected.has(v));group.forEach(v=>remove?selected.delete(v):selected.add(v));
     input(card).value = [...selected].sort((a,b)=>a-b).join(',');
     refresh();
   }
   function refresh() {
     cards().forEach(card => {
       const selected = numbers(input(card).value);
-      card.querySelector('[data-selection-summary]').textContent = kind(card)==='palo'?`${numbers(card.querySelector('[name=coupe_pali]').value).size} ${t('pali','pieux')}`:`${selected.size} ${selected.size === 1 ? t('pannello','panneau') : t('pannelli','panneaux')}`;
+      const count=new Set([...selected].map(n=>members(n)[0])).size;
+      card.querySelector('[data-selection-summary]').textContent = kind(card)==='palo'?`${numbers(card.querySelector('[name=coupe_pali]').value).size} ${t('pali','pieux')}`:`${count} ${count === 1 ? t('pannello','panneau') : t('pannelli','panneaux')}`;
       card.querySelectorAll('[data-panel-number]').forEach(button => {
-        const n = +button.dataset.panelNumber, other = owner(card,n), active = selected.has(n);
+        const n = +button.dataset.panelNumber, group=members(n), other = group.map(v=>owner(card,v)).find(Boolean), active = group.every(v=>selected.has(v));
         button.classList.toggle('selected', active);
         button.classList.toggle('occupied', !!other);
         button.setAttribute('aria-pressed', String(active));
@@ -73,21 +76,22 @@
       const points=layout.panels.flatMap(p=>p.points), xs=points.map(p=>p[0]), ys=points.map(p=>p[1]);
       const x=Math.min(...xs)-20,y=Math.min(...ys)-20,w=Math.max(...xs)-x+20,h=Math.max(...ys)-y+20;
       const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`${x} ${y} ${w} ${h}`);svg.classList.add('coupe-plan');svg.setAttribute('aria-label',t('Selezione pannelli dalla pianta','Sélection des panneaux sur le plan'));
-      layout.panels.forEach(p=>{
+      units().forEach(unit=>{
+        const p=unit.members[0];
         if(!p.element)return;
-        const g=document.createElementNS(ns,'g');g.dataset.panelNumber=p.element;g.dataset.label=p.label;g.setAttribute('role','button');g.setAttribute('tabindex','0');
-        const polygon=document.createElementNS(ns,'polygon');polygon.setAttribute('points',p.points.map(v=>v.join(',')).join(' '));g.append(polygon);
-        const text=document.createElementNS(ns,'text');text.setAttribute('x',p.points.reduce((s,v)=>s+v[0],0)/4);text.setAttribute('y',p.points.reduce((s,v)=>s+v[1],0)/4);text.setAttribute('font-size',Math.max(7,w/90));text.textContent=p.label;g.append(text);
+        const g=document.createElementNS(ns,'g');g.dataset.panelNumber=p.element;g.dataset.label=unit.label;g.setAttribute('role','button');g.setAttribute('tabindex','0');
+        (unit.outline?[unit.outline]:unit.members.map(v=>v.points)).forEach(points=>{const polygon=document.createElementNS(ns,'polygon');polygon.setAttribute('points',points.map(v=>v.join(',')).join(' '));g.append(polygon);});
+        const text=document.createElementNS(ns,'text');text.setAttribute('x',p.points.reduce((s,v)=>s+v[0],0)/4);text.setAttribute('y',p.points.reduce((s,v)=>s+v[1],0)/4);text.setAttribute('font-size',Math.max(7,w/90));text.textContent=unit.label;g.append(text);
         g.onclick=()=>toggle(card,p.element);g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(card,p.element);}};svg.append(g);
       });picker.append(svg);
     }
     const grid=document.createElement('div');grid.className='coupe-panel-grid';
-    elements.forEach(e=>{const button=document.createElement('button');button.type='button';button.dataset.panelNumber=e.number;button.dataset.label=e.label;button.textContent=e.label;button.onclick=()=>toggle(card,e.number);grid.append(button);});picker.append(grid);
+    const shown=new Set();elements.forEach(e=>{const group=members(e.number);if(shown.has(e.number))return;group.forEach(n=>shown.add(n));const label=units().find(u=>u.members.some(p=>p.element===e.number))?.label||e.label;const button=document.createElement('button');button.type='button';button.dataset.panelNumber=e.number;button.dataset.label=label;button.textContent=label;button.onclick=()=>toggle(card,e.number);grid.append(button);});picker.append(grid);
     const note=document.createElement('small');note.textContent=t('Selezionati in rosso. I pannelli assegnati ad altre coupe sono disabilitati.','Sélection en rouge. Les panneaux affectés à une autre coupe sont désactivés.');picker.append(note);
     section.insertBefore(picker,section.querySelector('.form-grid'));
     input(card).closest('.project-field').hidden=elements.length>0&&!input(card).hasAttribute('aria-invalid');
     search.oninput=()=>grid.querySelectorAll('button').forEach(b=>b.hidden=!b.textContent.toLocaleLowerCase().includes(search.value.toLocaleLowerCase()));
-    select.onclick=()=>{const chosen=numbers(input(card).value);grid.querySelectorAll('button:not([hidden])').forEach(b=>{if(!owner(card,+b.dataset.panelNumber))chosen.add(+b.dataset.panelNumber);});input(card).value=[...chosen].sort((a,b)=>a-b).join(',');refresh();};
+    select.onclick=()=>{const chosen=numbers(input(card).value);grid.querySelectorAll('button:not([hidden])').forEach(b=>{const group=members(+b.dataset.panelNumber);if(!group.some(n=>owner(card,n)))group.forEach(n=>chosen.add(n));});input(card).value=[...chosen].sort((a,b)=>a-b).join(',');refresh();};
     clear.onclick=()=>{input(card).value='';refresh();};
     refresh(); showKinds();
   }
@@ -123,6 +127,7 @@
   showKinds();
   fetch(`/manager/cantieri/${form.dataset.site}/pianta/data`,{credentials:'same-origin'}).then(r=>{if(!r.ok)throw Error();return r.json();}).then(data=>{
     elements=data.elements.sort((a,b)=>a.label.localeCompare(b.label,fr?'fr':'it',{numeric:true,sensitivity:'base'})||a.number-b.number);layout=data.plan&&!data.plan.editing?data.plan.layout:null;
+    displayUnits=window.PlanGeometry.units(layout?.panels||[]);
     cards().forEach(build);
     form.querySelectorAll('.project-equipment-row:not(.project-equipment-row--head)').forEach(row=>{if(row.querySelector('[name="equipment_tipologia"]').value==='paratia'){const n=+row.querySelector('[name="equipment_numero"]').value;row.querySelector('span').textContent=elements.find(e=>e.number===n)?.label||n;}});
   }).catch(()=>{cards().forEach(card=>card.querySelector('[data-selection-summary]').textContent=t('Inserisci i numeri nei campi associazione','Saisissez les numéros dans les champs d’affectation'));});

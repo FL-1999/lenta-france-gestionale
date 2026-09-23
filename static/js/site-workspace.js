@@ -12,6 +12,8 @@
   const message = s => { q('#sw-message').textContent = s; };
   const elements = new Map(data.elements.map(e => [e.number,e]));
   const panels = data.plan?.approved_at && !data.plan.editing ? data.plan.layout.panels : [];
+  const units=window.PlanGeometry.units(panels);
+  const unitFor=n=>units.find(u=>u.members.some(p=>p.element===n));
   const editor = html => {q('#sw-editor-body').innerHTML=html;q('#sw-group-editor').hidden=false;q('#sw-group-editor').scrollIntoView({block:'nearest'});};
   async function api(path,method,body) {
     const response=await fetch(base+path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
@@ -20,14 +22,15 @@
     return result;
   }
   function selectPanel(n) {
-    if(q('#sw-multi')?.checked) { selected.has(n)?selected.delete(n):selected.add(n); }
-    else { selected.clear(); selected.add(n); }
+    const unit=unitFor(n),members=unit?.members.map(p=>p.element)||[n];
+    if(q('#sw-multi')?.checked) { const remove=members.every(v=>selected.has(v));members.forEach(v=>remove?selected.delete(v):selected.add(v)); }
+    else { selected.clear(); members.forEach(v=>selected.add(v)); }
     root.querySelectorAll('[data-panel]').forEach(node=>node.setAttribute('aria-pressed',selected.has(Number(node.dataset.panel))));
-    if(q('#sw-selected')) q('#sw-selected').textContent=[...selected].map(i=>elements.get(i)?.label||i).join(' + ');
+    if(q('#sw-selected')) q('#sw-selected').textContent=units.filter(u=>u.members.some(p=>selected.has(p.element))).map(u=>u.label).join(' + ');
     const e=elements.get(n); if(!e)return;
     const g=groups.find(g=>g.members.some(m=>m.number===n));
     const shared=g?.kind==='angle';
-    q('#sw-panel-detail').innerHTML=`<div class="sw-row"><div><strong>${esc(e.label)}</strong><div class="sw-muted">${esc(e.coupe||tr("CUP da assegnare"))} · ${e.status==='cast'?tr("Gettato"):e.fiche_id?tr("Fiche presente"):tr("Da eseguire")}${e.concrete_m3==null?'':` · ${number(e.concrete_m3)} m³${shared?tr(" · totale angolo"):''}`}</div></div>${e.fiche_url?`<a class="btn btn-secondary" href="${esc(e.fiche_url)}">${tr("Apri fiche")}${shared?tr(" unica"):''}</a>`:e.create_url?`<a class="btn btn-primary" href="${esc(e.create_url)}">${tr("Crea fiche")}${shared?tr(" unica"):''}</a>`:''}</div>`;
+    q('#sw-panel-detail').innerHTML=`<div class="sw-row"><div><strong>${esc(unit?.label||e.label)}</strong><div class="sw-muted">${esc(e.coupe||tr("CUP da assegnare"))} · ${e.status==='cast'?tr("Gettato"):e.fiche_id?tr("Fiche presente"):tr("Da eseguire")}${e.concrete_m3==null?'':` · ${number(e.concrete_m3)} m³${shared?tr(" · totale angolo"):''}`}</div></div>${e.fiche_url?`<a class="btn btn-secondary" href="${esc(e.fiche_url)}">${tr("Apri fiche")}${shared?tr(" unica"):''}</a>`:e.create_url?`<a class="btn btn-primary" href="${esc(e.create_url)}">${tr("Crea fiche")}${shared?tr(" unica"):''}</a>`:''}</div>`;
   }
   function draw() {
     if(!panels.length){q('#sw-plan').innerHTML=`<p style="padding:20px">${tr("Nessuna pianta convalidata.")} <a href="${base}/pianta">${tr("Carica o controlla il PDF")}</a>.</p>`;return;}
@@ -35,9 +38,15 @@
     const x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y,pad=Math.max(w,h)*.05;
     const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
     svg.setAttribute('viewBox',`${x-pad} ${y-pad} ${w+2*pad} ${h+2*pad}`);svg.setAttribute('aria-label',tr("Pianta convalidata: seleziona un pannello"));
-    panels.forEach(p=>{const e=elements.get(p.element);if(!e)return;const polygon=document.createElementNS(ns,'polygon');polygon.setAttribute('points',p.points.map(v=>v.join(',')).join(' '));polygon.classList.add('sw-panel');polygon.dataset.panel=p.element;polygon.dataset.status=e.status;polygon.setAttribute('role','button');polygon.setAttribute('tabindex','0');polygon.setAttribute('aria-label',p.label);polygon.setAttribute('aria-pressed','false');svg.append(polygon);const text=document.createElementNS(ns,'text');text.classList.add('sw-plan-label');text.setAttribute('x',p.points.reduce((s,v)=>s+v[0],0)/4);text.setAttribute('y',p.points.reduce((s,v)=>s+v[1],0)/4);text.setAttribute('text-anchor','middle');text.setAttribute('dominant-baseline','central');text.setAttribute('font-size',Math.max(w,h)*.018);text.textContent=p.label;svg.append(text);});
+    units.forEach(unit=>{
+      const p=unit.members[0],e=elements.get(p.element);if(!e)return;
+      (unit.outline?[unit.outline]:unit.members.map(v=>v.points)).forEach(points=>{
+        const polygon=document.createElementNS(ns,'polygon');polygon.setAttribute('points',points.map(v=>v.join(',')).join(' '));polygon.classList.add('sw-panel');polygon.dataset.panel=p.element;polygon.dataset.status=e.status;polygon.setAttribute('role','button');polygon.setAttribute('tabindex','0');polygon.setAttribute('aria-label',unit.label);polygon.setAttribute('aria-pressed','false');svg.append(polygon);
+      });
+      const text=document.createElementNS(ns,'text');text.classList.add('sw-plan-label');text.setAttribute('x',p.points.reduce((s,v)=>s+v[0],0)/4);text.setAttribute('y',p.points.reduce((s,v)=>s+v[1],0)/4);text.setAttribute('text-anchor','middle');text.setAttribute('dominant-baseline','central');text.setAttribute('font-size',Math.max(w,h)*.018);text.textContent=unit.label;svg.append(text);
+    });
     q('#sw-plan').replaceChildren(svg);
-    const list=document.createElement('div');list.className='sw-panel-list';list.setAttribute('aria-label',tr("Selezione pannelli"));list.innerHTML=panels.map(p=>`<button type="button" class="btn btn-secondary btn-sm" data-panel="${p.element}" aria-pressed="false">${esc(p.label)}</button>`).join('');q('#sw-plan').append(list);
+    const list=document.createElement('div');list.className='sw-panel-list';list.setAttribute('aria-label',tr("Selezione pannelli"));list.innerHTML=units.map(u=>`<button type="button" class="btn btn-secondary btn-sm" data-panel="${u.members[0].element}" aria-pressed="false">${esc(u.label)}</button>`).join('');q('#sw-plan').append(list);
     q('#sw-original').href=data.plan.original_url;q('#sw-original').hidden=false;
   }
   function renderGroups() {

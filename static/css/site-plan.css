@@ -26,6 +26,7 @@ html[data-theme=light] #site-plan-app .sp-panel-label{fill:#17374b;stroke:#e5ede
 #site-plan-app .sp-edit-tools input:disabled{opacity:.5}
 #site-plan-app .sp-corner-info{border-left:3px solid var(--ws-accent,#d52247);padding:10px 12px;margin:15px 0;background:var(--ws-input,#152b3d)}
 #site-plan-app .sp-panel.corner-peer{stroke:#ff7690;stroke-width:2}
+#site-plan-app .sp-hit{fill:transparent;stroke:none;pointer-events:all;cursor:move}
 #site-plan-app[data-transparent=true] .sp-panel{fill-opacity:.07}
 #site-plan-app[data-transparent=true] .sp-panel.selected,#site-plan-app[data-transparent=true] .sp-panel.corner-peer{fill-opacity:.02}
 #site-plan-app .sp-edit-edge{stroke:#ff466c;stroke-width:4;vector-effect:non-scaling-stroke;pointer-events:none}

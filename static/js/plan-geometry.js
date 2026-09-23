@@ -1,5 +1,59 @@
 /* Rigid edge alignment: measured widths and shape are never stretched. */
 window.PlanGeometry={
+  units(panels) {
+    const used=new Set();
+    return panels.flatMap(p=>{
+      if(used.has(p.key))return [];
+      const pair=p.corner_group?panels.filter(v=>v.corner_group===p.corner_group):[p];
+      const members=pair.length===2?pair:[p];members.forEach(v=>used.add(v.key));
+      const label=members.length===2?p.label.replace(/\s*[ab]$/i,'')+' A/B':p.label;
+      // Keep both measured arms for editing, identities, coupes and existing fiches.
+      return [{members,label,outline:members.length===2?this.unionOutline(...members.map(v=>v.points)):p.points}];
+    });
+  },
+  unionOutline(first,second) {
+    // Split edges at intersections, then retain only the exterior union boundary.
+    // No convex hull: it would fill the empty inside of an L or bridge a real gap.
+    const cross=(a,b)=>a[0]*b[1]-a[1]*b[0],sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],dist=(a,b)=>Math.hypot(...sub(a,b));
+    const polygons=[first,second].map(poly=>{
+      const area=poly.reduce((s,a,i)=>s+cross(a,poly[(i+1)%poly.length]),0);
+      return area<0?[...poly].reverse():poly;
+    });
+    const scale=Math.max(1,...polygons.flatMap(poly=>poly.map((p,i)=>dist(p,poly[(i+1)%poly.length])))),eps=scale*1e-7;
+    const inside=(p,poly)=>poly.every((a,i)=>cross(sub(poly[(i+1)%poly.length],a),sub(p,a))>=0);
+    const inUnion=p=>polygons.some(poly=>inside(p,poly)),edges=[];
+    polygons.forEach((poly,index)=>poly.forEach((a,i)=>{
+      const b=poly[(i+1)%poly.length],u=sub(b,a),len=dist(a,b),cuts=[0,1];
+      if(len<=eps)return;
+      const other=polygons[1-index];
+      other.forEach((c,j)=>{
+        const d=other[(j+1)%other.length],v=sub(d,c),den=cross(u,v);
+        if(Math.abs(den)>eps*eps){
+          const t=cross(sub(c,a),v)/den,s=cross(sub(c,a),u)/den;
+          if(t>=0&&t<=1&&s>=0&&s<=1)cuts.push(t);
+        }else if(Math.abs(cross(sub(c,a),u))<=eps*len){
+          [c,d].forEach(p=>{const t=((p[0]-a[0])*u[0]+(p[1]-a[1])*u[1])/(len*len);if(t>0&&t<1)cuts.push(t);});
+        }
+      });
+      cuts.sort((x,y)=>x-y);
+      for(let j=1;j<cuts.length;j++){
+        const at=t=>[a[0]+u[0]*t,a[1]+u[1]*t],start=at(cuts[j-1]),end=at(cuts[j]);
+        if(dist(start,end)<=eps)continue;
+        const mid=at((cuts[j-1]+cuts[j])/2),normal=[-u[1]/len*eps,u[0]/len*eps];
+        if(!inUnion([mid[0]+normal[0],mid[1]+normal[1]])||inUnion([mid[0]-normal[0],mid[1]-normal[1]]))continue;
+        if(!edges.some(e=>dist(e[0],start)<eps&&dist(e[1],end)<eps))edges.push([start,end]);
+      }
+    }));
+    if(!edges.length)return null;
+    const edge=edges.shift(),outline=[edge[0],edge[1]];
+    while(dist(outline[0],outline.at(-1))>eps*4){
+      const next=edges.findIndex(e=>dist(e[0],outline.at(-1))<=eps*4);
+      if(next<0)return null;outline.push(edges.splice(next,1)[0][1]);
+    }
+    if(edges.length)return null; // Disconnected shapes or ambiguous point contact.
+    outline.pop();
+    return outline.filter((p,i,all)=>Math.abs(cross(sub(p,all[(i+all.length-1)%all.length]),sub(all[(i+1)%all.length],p)))>eps*eps);
+  },
   moveEdge(points, edge, delta, lockWidth) {
     // Move a complete edge; preserve direction and parallel connected sides.
     const out=points.map(p=>[...p]),u=[points[1][0]-points[0][0],points[1][1]-points[0][1]],len=Math.hypot(...u);
