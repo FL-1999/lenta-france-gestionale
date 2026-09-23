@@ -41,7 +41,7 @@ def same_origin(request):
 
 
 def find_plan(db, site_id, plan_id):
-    row=db.query(SitePlan).filter_by(site_id=site_id,id=plan_id).first()
+    row=db.query(SitePlan).filter_by(site_id=site_id,id=plan_id,removed_at=None).first()
     if not row: raise HTTPException(404,'Pianta non trovata')
     return row
 
@@ -87,7 +87,7 @@ def get_data(site_id:int,plan_id:int|None=None,draft:bool=False,
              db:Session=Depends(get_db),user:User=Depends(get_current_active_user_html)):
     site=access(db,user,site_id)
     editor=has_perm(user,'sites.update')
-    query=db.query(SitePlan).filter_by(site_id=site_id)
+    query=db.query(SitePlan).filter_by(site_id=site_id,removed_at=None)
     if not editor: query=query.filter(SitePlan.approved.isnot(None))
     rows=query.order_by(SitePlan.id.desc()).all()
     # Ordinary readers keep seeing the last confirmed drawing during revisions.
@@ -98,23 +98,32 @@ def get_data(site_id:int,plan_id:int|None=None,draft:bool=False,
     if row:
         use_draft=editor and (draft or not row.approved)
         plan={'id':row.id,'filename':row.filename,'page_number':row.page_number,
+            'can_remove':editor and row.approved is None,
             'revision':row.revision,'approved_revision':row.approved_revision,'editing':use_draft,
             'approved_at':row.approved_at.isoformat() if row.approved_at else None,
             'layout':json.loads(row.draft if use_draft else row.approved),
             'original_url':f'/manager/cantieri/{site_id}/pianta/{row.id}/originale',
             'preview_url':f'/manager/cantieri/{site_id}/pianta/{row.id}/anteprima'}
-    return {'plan':plan,'elements':elements(db,site,user),'can_edit':editor,
+    removed=[]
+    if has_perm(user,'admin.access'):
+        removed=[{'id':r.id,'filename':r.filename,'revision':r.revision}
+                 for r in db.query(SitePlan).filter(SitePlan.site_id==site_id,SitePlan.removed_at.isnot(None))
+                 .order_by(SitePlan.removed_at.desc()).all()]
+    return {'plan':plan,'elements':elements(db,site,user),'can_edit':editor,'removed':removed,
         'versions':[{'id':r.id,'filename':r.filename,'approved':bool(r.approved),
                      'has_draft':r.revision!=r.approved_revision} for r in rows]}
 
 
 @router.post('/importa')
 def upload(site_id:int,request:Request,file:UploadFile=File(...),page_number:int=Form(1),
+           replace_id:int|None=Form(None),replace_revision:int|None=Form(None),
            db:Session=Depends(get_db),user:User=Depends(get_current_active_user_html)):
     site=access(db,user,site_id,True);same_origin(request)
     data=file.file.read(MAX_PDF_BYTES+1)
     try: layout,preview=import_pdf(data,page_number)
     except ValueError as e: raise HTTPException(400,str(e)) from e
+    if replace_id is not None:
+        discard_draft(db,site_id,replace_id,replace_revision,user)
     # Match only unambiguous existing names, never guess from PDF reading order.
     choices=elements(db,site,user)
     for p in layout['panels']:
@@ -127,6 +136,46 @@ def upload(site_id:int,request:Request,file:UploadFile=File(...),page_number:int
     log_audit_event(db,user,'SITE_PLAN_IMPORTED','site_plan',row.id,{'site_id':site_id,'panels':len(layout['panels'])})
     db.commit()
     return {'id':row.id,'revision':row.revision}
+
+
+def discard_draft(db,site_id,plan_id,revision,user):
+    row=find_plan(db,site_id,plan_id)
+    if row.approved is not None:
+        raise HTTPException(409,'Il disegno è convalidato. Carica una nuova versione per conservare i collegamenti.')
+    changed=db.query(SitePlan).filter_by(id=plan_id,site_id=site_id,revision=revision,
+        approved=None,removed_at=None).update({'removed_at':datetime.utcnow(),
+        'revision':SitePlan.revision+1,'updated_by_id':user.id},synchronize_session=False)
+    if changed!=1:
+        db.rollback()
+        raise HTTPException(409,'La pianta è cambiata. Ricarica prima di rimuoverla.')
+    log_audit_event(db,user,'SITE_PLAN_DRAFT_REMOVED','site_plan',plan_id,{'site_id':site_id})
+
+
+class DraftAction(BaseModel):
+    revision:int=Field(ge=1)
+
+
+@router.post('/{plan_id}/rimuovi')
+def remove_draft(site_id:int,plan_id:int,request:Request,body:DraftAction,
+                 db:Session=Depends(get_db),user:User=Depends(get_current_active_user_html)):
+    access(db,user,site_id,True);same_origin(request)
+    discard_draft(db,site_id,plan_id,body.revision,user)
+    db.commit()
+    return {'removed':True}
+
+
+@router.post('/{plan_id}/ripristina')
+def restore_draft(site_id:int,plan_id:int,request:Request,body:DraftAction,
+                  db:Session=Depends(get_db),user:User=Depends(get_current_active_user_html)):
+    access(db,user,site_id,True);same_origin(request)
+    if not has_perm(user,'admin.access'): raise HTTPException(403,'Ripristino riservato agli amministratori')
+    changed=db.query(SitePlan).filter(SitePlan.id==plan_id,SitePlan.site_id==site_id,
+        SitePlan.revision==body.revision,SitePlan.approved.is_(None),SitePlan.removed_at.isnot(None))\
+        .update({'removed_at':None,'revision':SitePlan.revision+1,'updated_by_id':user.id},synchronize_session=False)
+    if changed!=1: raise HTTPException(409,'Bozza non disponibile per il ripristino. Ricarica la pagina.')
+    log_audit_event(db,user,'SITE_PLAN_DRAFT_RESTORED','site_plan',plan_id,{'site_id':site_id})
+    db.commit()
+    return {'id':plan_id}
 
 
 class PanelInput(BaseModel):
@@ -210,7 +259,7 @@ def save(site_id:int,plan_id:int,request:Request,body:LayoutInput,
     new_revision=row.revision+1
     values={'draft':json.dumps(layout),'revision':new_revision,'updated_by_id':user.id}
     if approve: values.update(approved=json.dumps(layout),approved_revision=new_revision,approved_at=datetime.utcnow())
-    changed=db.query(SitePlan).filter_by(id=plan_id,site_id=site_id,revision=body.revision).update(values,synchronize_session=False)
+    changed=db.query(SitePlan).filter_by(id=plan_id,site_id=site_id,revision=body.revision,removed_at=None).update(values,synchronize_session=False)
     if changed!=1:
         db.rollback();raise HTTPException(409,'La pianta è stata modificata da un altro utente.')
     log_audit_event(db,user,'SITE_PLAN_APPROVED' if approve else 'SITE_PLAN_DRAFT_SAVED','site_plan',plan_id,

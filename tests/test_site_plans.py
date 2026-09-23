@@ -177,3 +177,69 @@ def test_scale_and_extent_confirmation_are_independent(operations):
     assert approved['scale_ppm']==pytest.approx(140/2.9)
     assert min(x for x,y in approved['panels'][0]['points'])==-50
     assert approved['panels'][0]['extent_confirmed']
+
+
+def test_remove_draft_preserves_site_pdf_and_admin_can_restore(operations):
+    from models import RoleEnum, Site
+    o=operations;c,url,pid,plan=setup(o)
+    before=c.get(url+'/data').json()['elements']
+    assert c.post(url+f'/{pid}/rimuovi',json={'revision':999}).status_code==409
+    assert c.post(url+f'/{pid}/rimuovi',json={'revision':1}).status_code==200
+    state=c.get(url+'/data').json()
+    assert state['plan'] is None and state['versions']==[] and state['removed']==[]
+    assert state['elements']==before
+    o['db'].expire_all()
+    assert o['db'].get(Site,o['site'].id) is not None
+    assert o['db'].get(SitePlan,pid).pdf_data==vector_pdf()
+    for path in [f'/data?plan_id={pid}',f'/{pid}/originale',f'/{pid}/anteprima']:
+        assert c.get(url+path).status_code==404
+    assert c.put(url+f'/{pid}/bozza',json=payload(plan)).status_code==404
+    assert c.post(url+f'/{pid}/ripristina',json={'revision':2}).status_code==403
+    o['manager'].role=RoleEnum.admin;o['db'].commit()
+    assert c.get(url+'/data').json()['removed'][0]['id']==pid
+    assert c.post(url+f'/{pid}/ripristina',json={'revision':1}).status_code==409
+    assert c.post(url+f'/{pid}/ripristina',json={'revision':2}).status_code==200
+    restored=c.get(url+'/data').json()['plan']
+    assert restored['id']==pid and restored['revision']==3
+    assert restored['layout']==plan['layout']
+
+
+def test_replace_draft_is_atomic_and_never_removes_approved_plan(operations):
+    o=operations;c,url,pid,plan=setup(o)
+    assert c.post(url+'/importa',data={'replace_id':pid,'replace_revision':1},
+                  files={'file':('bad.pdf',b'invalid')}).status_code==400
+    assert c.get(url+'/data').json()['plan']['id']==pid
+    assert c.post(url+'/importa',data={'replace_id':pid,'replace_revision':99},
+                  files={'file':('next.pdf',vector_pdf())}).status_code==409
+    assert len(c.get(url+'/data').json()['versions'])==1
+    result=c.post(url+'/importa',data={'replace_id':pid,'replace_revision':1},
+                  files={'file':('next.pdf',vector_pdf())})
+    assert result.status_code==200,result.text
+    new_id=result.json()['id'];state=c.get(url+'/data').json()
+    assert [r['id'] for r in state['versions']]==[new_id]
+    assert c.put(url+f'/{new_id}/convalida',json=payload(state['plan'])).status_code==200
+    assert c.post(url+f'/{new_id}/rimuovi',json={'revision':2}).status_code==409
+    assert c.post(url+'/importa',data={'replace_id':new_id,'replace_revision':2},
+                  files={'file':('next.pdf',vector_pdf())}).status_code==409
+    assert c.get(url+'/data').json()['plan']['id']==new_id
+    # A separate new version may be discarded without changing the approved plan.
+    draft_id=c.post(url+'/importa',files={'file':('revision.pdf',vector_pdf())}).json()['id']
+    before=c.get(url+'/data').json()['elements']
+    assert c.post(url+f'/{draft_id}/rimuovi',json={'revision':1}).status_code==200
+    assert c.get(url+'/data').json()['elements']==before
+    assert c.get(url+'/data').json()['plan']['id']==new_id
+
+
+def test_remove_and_replace_drafts_enforce_permissions_origin_and_site(operations):
+    o=operations;c,url,pid,plan=setup(o)
+    o['actor'][0]=o['capo']
+    assert c.post(url+f'/{pid}/rimuovi',json={'revision':1}).status_code==403
+    assert c.post(url+'/importa',data={'replace_id':pid,'replace_revision':1},
+                  files={'file':('next.pdf',vector_pdf())}).status_code==403
+    o['actor'][0]=o['manager']
+    assert c.post(url+f'/{pid}/rimuovi',json={'revision':1},headers={'Origin':'https://other.example'}).status_code==403
+    other=f'/manager/cantieri/{o["other"].id}/pianta'
+    assert c.post(other+f'/{pid}/rimuovi',json={'revision':1}).status_code==404
+    assert c.post(other+'/importa',data={'replace_id':pid,'replace_revision':1},
+                  files={'file':('next.pdf',vector_pdf())}).status_code==404
+    assert c.get(url+'/data').json()['plan']['id']==pid

@@ -18,6 +18,7 @@ class SitePlan(Base):
     revision = Column(Integer, nullable=False, default=1)
     approved_revision = Column(Integer, nullable=True)
     approved_at = Column(DateTime, nullable=True)
+    removed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_by_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     site = relationship('Site', backref=backref('plans', cascade='all, delete-orphan'))

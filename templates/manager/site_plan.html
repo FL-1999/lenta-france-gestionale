@@ -1,7 +1,7 @@
 {% extends 'shared/base.html' %}
 {% block title %}{{ site.name }} · Pianta e pannelli{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/site-plan.css?v=20260923">
+<link rel="stylesheet" href="/static/css/site-plan.css?v=20260925">
 <div id="site-plan-app" data-site="{{ site.id }}">
   <header class="page-header">
     <div><p class="page-eyebrow">Cantieri / {{ site.name }}</p><h1 class="page-title">Pianta e pannelli</h1></div>
@@ -12,18 +12,24 @@
   <div role="status" aria-live="polite" class="sp-message" data-message>Caricamento pianta…</div>
   {% if plan_can_edit %}
   <form class="card sp-upload" data-upload hidden>
+    <p data-replace-notice hidden></p>
     <h2>Importa una pianta</h2><div class="sp-fields">
       <label>PDF originale<input type="file" name="file" accept="application/pdf,.pdf" required></label>
       <label>Pagina da analizzare<input type="number" name="page_number" value="1" min="1" required></label>
     </div><p class="text-muted">PDF fino a 15 MB. I pannelli riconosciuti restano in bozza finché non confermi il disegno.</p>
-    <button class="btn btn-primary" type="submit">Analizza PDF</button>
+    <div class="sp-actions"><button class="btn btn-primary" type="submit">Analizza PDF</button><button class="btn btn-secondary" type="button" data-upload-cancel>Annulla</button></div>
   </form>
   {% endif %}
+  <details class="card" data-removed hidden><summary>PDF rimossi · recupero amministratore</summary><div data-removed-list></div></details>
+  <dialog class="sp-dialog" data-confirm-dialog aria-labelledby="sp-confirm-title" aria-describedby="sp-confirm-text">
+    <h2 id="sp-confirm-title"></h2><p id="sp-confirm-text"></p>
+    <form method="dialog" class="sp-actions"><button class="btn btn-secondary" value="cancel" autofocus>Annulla</button><button class="btn btn-primary" value="confirm" data-confirm-action>Conferma</button></form>
+  </dialog>
   <section class="card sp-empty" data-empty hidden><h2>Nessuna pianta convalidata</h2><p>La pianta permette di consultare i pannelli e le fiches direttamente sul disegno.</p></section>
   <div data-workspace hidden>
     <section class="sp-topbar">
       <label>Disegno<select data-version aria-label="Versione del disegno"></select></label>
-      <div class="sp-actions"><span class="sp-state" data-state></span><button type="button" class="btn btn-secondary" data-edit hidden>Modifica bozza</button><a class="btn btn-secondary" data-pdf target="_blank" rel="noopener">Apri PDF originale</a></div>
+      <div class="sp-actions"><span class="sp-state" data-state></span><button type="button" class="btn btn-secondary" data-edit hidden>Modifica bozza</button><a class="btn btn-secondary" data-pdf target="_blank" rel="noopener">Apri PDF originale</a><button type="button" class="btn btn-secondary" data-replace hidden>Sostituisci PDF</button><button type="button" class="btn btn-secondary" data-remove-draft hidden>Rimuovi bozza</button></div>
     </section>
     <div class="sp-actions sp-tools">
       <button type="button" class="btn btn-secondary" data-original-toggle aria-pressed="true">PDF affiancato</button>
@@ -33,6 +39,7 @@
       <button type="button" class="btn btn-secondary" data-add hidden>Aggiungi pannello</button>
       <button type="button" class="btn btn-secondary" data-review-all-top hidden>Conferma tutti i pannelli</button>
       <button type="button" class="btn btn-secondary" data-find-corners hidden>Riconosci angoli A/B</button>
+      <button type="button" class="btn btn-secondary" data-undo-removal hidden>Annulla modifica</button>
     </div>
     <div class="sp-workspace">
       <section class="card sp-board" data-original><div class="sp-board-title"><strong>Originale</strong><span data-page></span></div><svg data-original-svg aria-label="PDF originale con pannelli selezionabili"><image data-preview></image><g data-original-shapes></g></svg></section>
@@ -89,4 +96,4 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260923" defer></script><script src="/static/js/site-plan.js?v=20260923" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260923" defer></script><script src="/static/js/site-plan.js?v=20260925" defer></script>{% endblock %}
