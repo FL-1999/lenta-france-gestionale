@@ -5,6 +5,7 @@ from datetime import datetime
 
 import pytest
 from playwright.sync_api import expect, sync_playwright
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
 from models import CloudAsset, Role, RoleEnum, User, UserRole, SitePlan
@@ -20,12 +21,21 @@ def archive_owner(monkeypatch):
     monkeypatch.setenv('SHAREPOINT_SYNC_ENABLED', 'false')
 
 
+def make_archive_owner(db):
+    # The server's background bootstrap may still be populating roles when the
+    # login page first responds. Seed this test identity atomically ourselves.
+    db.execute(insert(Role).values(name=RoleEnum.admin).on_conflict_do_nothing(index_elements=['name']))
+    user = db.query(User).filter_by(email='smoke-manager@example.com').one()
+    user.role = RoleEnum.admin
+    role_id = db.query(Role).filter_by(name=RoleEnum.admin).one().id
+    db.execute(insert(UserRole).values(user_id=user.id, role_id=role_id)
+               .on_conflict_do_nothing(index_elements=['user_id', 'role_id']))
+
+
 def test_owner_can_exclude_restore_and_explicitly_delete(live_operations):
     origin, engine, ids, password, artifacts = live_operations
     with Session(engine) as db:
-        user = db.query(User).filter_by(email='smoke-manager@example.com').one()
-        user.role = RoleEnum.admin
-        db.add(UserRole(user_id=user.id, role_id=db.query(Role).filter_by(name=RoleEnum.admin).one().id))
+        make_archive_owner(db)
         enqueue(db, 'plan', 900, 'prova.pdf', b'trial-pdf')
         enqueue(db, 'plan_preview', 900, 'preview.png', b'trial-preview')
         db.commit()
@@ -85,9 +95,7 @@ def test_current_and_latest_pdf_are_distinct_and_open_the_exact_drawing(live_ope
     pdf = vector_pdf()
     layout, preview = import_pdf(pdf)
     with Session(engine) as db:
-        user = db.query(User).filter_by(email='smoke-manager@example.com').one()
-        user.role = RoleEnum.admin
-        db.add(UserRole(user_id=user.id, role_id=db.query(Role).filter_by(name=RoleEnum.admin).one().id))
+        make_archive_owner(db)
         old = SitePlan(site_id=ids['site'], filename='same.pdf', pdf_data=pdf, preview_data=preview,
                        draft=json.dumps(layout), approved=json.dumps(layout),
                        created_at=datetime(2026,9,20,8,15), approved_at=datetime(2026,9,20,9))
