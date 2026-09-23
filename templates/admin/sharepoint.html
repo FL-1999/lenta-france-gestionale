@@ -1,7 +1,7 @@
 {% extends 'shared/base.html' %}
 {% block title %}SharePoint · Lenta France{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/sharepoint.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/sharepoint.css') }}?v=archive-lifecycle-1">
 <div class="cloud-workspace">
   <header class="cloud-heading">
     <div><p class="cloud-eyebrow">{{ t('DOCUMENTI E CONTINUITÀ', 'DOCUMENTS ET CONTINUITÉ') }}</p><h1>SharePoint</h1>
@@ -41,17 +41,12 @@
       <p>{{ t('Il tecnico deve attivare la pianificazione e provare un ripristino. Una copia verificata non equivale a un ripristino già collaudato.', 'Le technicien doit activer la planification et tester une restauration. Une copie vérifiée ne signifie pas que la restauration a été testée.') }}</p>
     </section>
   </div>
-  <section class="card"><div class="cloud-section-heading"><h2>{{ t('Archivio documenti', 'Archives des documents') }}</h2><span>{{ (archive_bytes / 1048576)|round(1) }} MB · {{ t('ultimi 40', '40 derniers') }}</span></div>
-    <p>{{ t('Le copie acquisite restano disponibili anche se il documento viene rimosso dal cantiere. Il recupero qui scarica il file; il ripristino completo dei dati e il cestino gestionale sono una funzione separata.', 'Les copies acquises restent disponibles même si le document est retiré du chantier. La récupération ici télécharge le fichier ; la restauration complète des données et la corbeille de gestion sont des fonctions distinctes.') }}</p>
-    <div class="table-responsive"><table class="table"><thead><tr><th>{{ t('Documento','Document') }}</th><th>{{ t('Stato copia','État de la copie') }}</th><th>{{ t('Verificato il','Vérifié le') }}</th><th>{{ t('Recupero','Récupération') }}</th></tr></thead><tbody>
-    {% for asset in assets %}<tr><td><strong>{{ asset.filename }}</strong><small>{{ asset.kind }} · #{{ asset.source_id }} · {{ (asset.size_bytes / 1024)|round(1) }} KB</small></td><td>{{ t('Verificata','Vérifiée') if asset.status == 'verified' else (t('Errore','Erreur') if asset.status == 'error' else (t('In trasferimento','En transfert') if asset.status == 'sending' else t('In attesa','En attente'))) }}{% if asset.error_code %}<small>{{ asset.error_code }}</small>{% endif %}</td><td>{{ asset.verified_at.strftime('%d/%m/%Y %H:%M') if asset.verified_at else '—' }}</td><td>{% if owner %}<a class="btn btn-secondary" href="{{ url_for('admin_cloud_asset_download',asset_id=asset.id) }}">{{ t('Scarica copia','Télécharger la copie') }}</a>{% else %}{{ t('Solo titolare','Titulaire uniquement') }}{% endif %}</td></tr>
-    {% else %}<tr><td colspan="4">{{ t('Nessun documento ancora acquisito. Prepara i documenti esistenti oppure carica un nuovo allegato.', 'Aucun document acquis. Préparez les documents existants ou ajoutez une pièce jointe.') }}</td></tr>{% endfor %}
-    </tbody></table></div>
-  </section>
+  {% include 'admin/sharepoint_archive.html' %}
   <details class="card"><summary>{{ t('Configurazione e ultimi controlli', 'Configuration et derniers contrôles') }}</summary>
     {% if config_missing %}<p>{{ t('Parametri mancanti sul server:', 'Paramètres manquants sur le serveur :') }}</p><ul>{% for name in config_missing %}<li><code>{{ name }}</code></li>{% endfor %}</ul>{% endif %}
     <p>{{ t('Le credenziali si configurano sul server e non vengono mostrate qui.', 'Les identifiants sont configurés sur le serveur et ne sont pas affichés ici.') }}</p>
     <ul>{% for run in runs %}<li>{{ run.created_at.strftime('%d/%m/%Y %H:%M') }} UTC · {{ run.kind }} · {{ run.status }}{% if run.status == 'error' %} · {{ run.details }}{% endif %}</li>{% else %}<li>{{ t('Nessun controllo eseguito.', 'Aucun contrôle effectué.') }}</li>{% endfor %}</ul>
   </details>
 </div>
+<script src="{{ url_for('static', path='js/sharepoint-archive.js') }}?v=1" defer></script>
 {% endblock %}

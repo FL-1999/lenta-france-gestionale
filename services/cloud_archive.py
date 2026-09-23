@@ -133,7 +133,7 @@ def sync_batch(factory, config=None, client=None, limit=3):
         for _ in range(limit):
             now = datetime.utcnow()
             token = uuid.uuid4().hex
-            eligible = ((CloudAsset.status != "verified") &
+            eligible = (CloudAsset.status.in_(["pending", "error", "sending"]) &
                 or_(CloudAsset.next_attempt.is_(None), CloudAsset.next_attempt <= now) &
                 or_(CloudAsset.lease_until.is_(None), CloudAsset.lease_until < now))
             with factory() as db:
@@ -150,6 +150,13 @@ def sync_batch(factory, config=None, client=None, limit=3):
                 try:
                     if hashlib.sha256(asset.payload).hexdigest() != asset.sha256:
                         raise CloudError("local_integrity_failed")
+                    if asset.drive_id and asset.drive_id != drive:
+                        raise CloudError("destination_mismatch")
+                    # Remember the attempted destination even if verification fails.
+                    # Lifecycle actions must be able to locate an incomplete copy.
+                    asset.drive_id = drive
+                    asset.remote_path = "/".join(parts + [filename])
+                    db.commit()
                     item_id = graph.upload(drive, parts, filename, io.BytesIO(asset.payload), asset.size_bytes, asset.sha256)
                     values = dict(status="verified", drive_id=drive, item_id=item_id, remote_path="/".join(parts + [filename]),
                                   verified_at=datetime.utcnow(), error_code=None, next_attempt=None)

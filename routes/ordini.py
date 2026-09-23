@@ -2323,6 +2323,16 @@ def manager_ordini_fattura_save(
             raise HTTPException(400, "Allegato vuoto o superiore a 25 MB")
         key = archive_document(db, "invoice", order.id, Path(invoice_file.filename).name, content,
             invoice_file.content_type or "application/octet-stream", order.site_id)
+        archived = db.query(CloudAsset).filter_by(source_key=key).with_for_update().one()
+        if archived.status == "purging":
+            raise HTTPException(409, "Copia in eliminazione: riprovare il caricamento al termine")
+        if archived.status == "deleted":
+            # A deliberate new upload is distinct from automatic inventory.
+            archived.payload = content
+            archived.size_bytes = len(content)
+            archived.status = "pending"
+            archived.attempts = 0
+            archived.error_code = None
         order.file_invoice = "cloud:" + key
 
     order.invoice_number = invoice_number.strip() or None
@@ -2345,7 +2355,7 @@ def invoice_download(order_id: int, db: Session = Depends(get_db),
         raise HTTPException(404, "Allegato non trovato")
     if order.file_invoice.startswith("cloud:"):
         asset = db.query(CloudAsset).filter_by(source_key=order.file_invoice[6:], kind="invoice", source_id=str(order.id)).first()
-        if not asset:
+        if not asset or asset.status == "deleted":
             raise HTTPException(404, "Allegato non trovato")
         content, filename = asset.payload, asset.filename
     else:

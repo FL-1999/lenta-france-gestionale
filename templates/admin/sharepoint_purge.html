@@ -1,0 +1,26 @@
+{% extends 'shared/base.html' %}
+{% block title %}{{ t('Conferma eliminazione', 'Confirmer la suppression') }} · SharePoint{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/sharepoint.css') }}?v=archive-lifecycle-1">
+<div class="cloud-workspace cloud-purge">
+  <section class="card">
+    <p class="cloud-eyebrow">{{ t('ARCHIVIO RISERVATO', 'ARCHIVES PRIVÉES') }}</p>
+    <h1>{{ t('Eliminare queste copie definitivamente?', 'Supprimer définitivement ces copies ?') }}</h1>
+    <p>{{ t('Saranno eliminate la copia di recupero nel gestionale e la copia collegata su SharePoint, se presente. Questa operazione non può essere annullata.', 'La copie de récupération dans le logiciel et la copie liée sur SharePoint, si présente, seront supprimées. Cette opération est irréversible.') }}</p>
+    <ul>{% for asset in assets %}<li><strong>{{ asset.filename }}</strong> · {{ asset.kind }} #{{ asset.source_id }} · {{ (asset.size_bytes / 1024)|round(1) }} KB</li>{% endfor %}</ul>
+    <p class="cloud-warning">{{ t('Gli originali ancora presenti nei cantieri, i backup precedenti e le copie scollegate o già nel cestino di SharePoint non vengono eliminati da questa operazione. Se SharePoint non conferma la rimozione, conserviamo la copia locale nel cestino e mostriamo l’errore.', 'Les originaux encore présents dans les chantiers, les anciennes sauvegardes et les copies non liées ou déjà dans la corbeille SharePoint ne sont pas supprimés par cette opération. Si SharePoint ne confirme pas la suppression, la copie locale reste dans la corbeille avec le détail de l’erreur.') }}</p>
+    {% if invoice_blocked %}
+    <p role="alert">{{ t('Una fattura selezionata è ancora usata da un ordine. Sostituisci o rimuovi prima l’allegato dall’ordine: questa copia è anche l’originale.', 'Une facture sélectionnée est encore utilisée par une commande. Remplacez ou retirez d’abord la pièce jointe de la commande : cette copie est également l’original.') }}</p>
+    {% else %}
+    <form method="post" action="{{ url_for('admin_cloud_asset_action') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="purge"><input type="hidden" name="view" value="trash">
+      {% for asset in assets %}<input type="hidden" name="asset_ids" value="{{ asset.id }}">{% endfor %}
+      <label for="purge-confirmation">{{ t('Per confermare scrivi', 'Pour confirmer, saisissez') }} <strong>{{ t('ELIMINA DEFINITIVAMENTE', 'SUPPRIMER DÉFINITIVEMENT') }}</strong></label>
+      <input id="purge-confirmation" class="form-control" name="confirmation" required autocomplete="off" pattern="{{ t('ELIMINA DEFINITIVAMENTE', 'SUPPRIMER DÉFINITIVEMENT') }}">
+      <div class="cloud-actions"><button class="btn btn-primary" type="submit">{{ t('Elimina definitivamente le copie selezionate', 'Supprimer définitivement les copies sélectionnées') }}</button></div>
+    </form>
+    {% endif %}
+    <a class="btn btn-secondary" href="{{ url_for('admin_sharepoint') }}?view=trash#archive">{{ t('Annulla e torna al cestino', 'Annuler et retourner à la corbeille') }}</a>
+  </section>
+</div>
+{% endblock %}

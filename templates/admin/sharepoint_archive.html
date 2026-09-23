@@ -1,0 +1,55 @@
+{% set notices = {
+ 'exclude': ('Copie escluse dal trasferimento. Le eventuali copie già su SharePoint restano al loro posto.', 'Copies exclues du transfert. Les copies déjà sur SharePoint restent en place.'),
+ 'include': ('Copie reincluse. Saranno trasferite quando il trasferimento automatico sarà attivo.', 'Copies réintégrées. Elles seront transférées lorsque le transfert automatique sera actif.'),
+ 'trash': ('Copie spostate nel cestino privato. Nessun file è stato cancellato su SharePoint.', 'Copies déplacées dans la corbeille privée. Aucun fichier supprimé sur SharePoint.'),
+ 'restore': ('Copie recuperate tra gli esclusi. Puoi scaricarle oppure reincluderle nel trasferimento.', 'Copies récupérées parmi les exclusions. Vous pouvez les télécharger ou les réintégrer au transfert.'),
+ 'purged': ('Copie selezionate eliminate definitivamente dall’archivio e, se presenti, dalla destinazione SharePoint collegata.', 'Copies sélectionnées supprimées définitivement des archives et, si présentes, de la destination SharePoint liée.'),
+ 'purge_partial': ('Eliminazione non completata per tutte le copie. Quelle non eliminate restano nel cestino: controlla gli errori prima di riprovare.', 'La suppression n’a pas abouti pour toutes les copies. Les copies non supprimées restent dans la corbeille : vérifiez les erreurs avant de réessayer.')
+} %}
+{% set errors = {
+ 'invalid_selection': ('Seleziona da 1 a 40 copie.', 'Sélectionnez entre 1 et 40 copies.'),
+ 'selection_changed': ('La selezione è cambiata. Ricarica la pagina e seleziona nuovamente i file.', 'La sélection a changé. Actualisez la page et sélectionnez à nouveau les fichiers.'),
+ 'selection_busy_or_changed': ('Una copia è in trasferimento, in eliminazione o ha cambiato stato. Controlla lo stato aggiornato e riprova.', 'Une copie est en transfert, en suppression ou a changé d’état. Vérifiez l’état actualisé et réessayez.'),
+ 'confirmation_required': ('La frase di conferma non corrisponde. Nessuna copia eliminata.', 'La phrase de confirmation ne correspond pas. Aucune copie supprimée.'),
+ 'invoice_still_in_use': ('Una fattura è ancora collegata a un ordine. Rimuovi o sostituisci prima quell’allegato.', 'Une facture est encore liée à une commande. Retirez ou remplacez d’abord cette pièce jointe.'),
+ 'permission_denied': ('SharePoint ha rifiutato la rimozione. La copia locale è conservata: fai verificare i permessi al tecnico.', 'SharePoint a refusé la suppression. La copie locale est conservée : faites vérifier les autorisations par le technicien.'),
+ 'remote_copy_missing': ('La copia collegata non è più trovata su SharePoint. Verifica anche il cestino SharePoint: la copia locale è conservata.', 'La copie liée est introuvable sur SharePoint. Vérifiez aussi la corbeille SharePoint : la copie locale est conservée.'),
+ 'archive_destination_unknown': ('Un vecchio trasferimento non ha registrato la destinazione. La copia locale è conservata: serve verificare il file remoto.', 'Un ancien transfert n’a pas enregistré la destination. La copie locale est conservée : vérifiez le fichier distant.'),
+ 'archive_remote_conflict': ('Il file remoto non corrisponde alla copia di archivio. Nessun file remoto eliminato.', 'Le fichier distant ne correspond pas à la copie archivée. Aucun fichier distant supprimé.'),
+ 'verification_failed': ('Il contenuto su SharePoint è diverso dalla copia. La rimozione è stata interrotta.', 'Le contenu sur SharePoint diffère de la copie. La suppression a été interrompue.'),
+ 'destination_mismatch': ('La destinazione configurata è cambiata. Verificala prima di riprovare.', 'La destination configurée a changé. Vérifiez-la avant de réessayer.')
+} %}
+<section class="card" id="archive">
+  <div class="cloud-section-heading"><h2>{{ t('Archivio documenti', 'Archives des documents') }}</h2><span>{{ (archive_bytes / 1048576)|round(1) }} MB · {{ total }} {{ t('copie in questa vista', 'copies dans cette vue') }}</span></div>
+  <p>{{ t('Qui gestisci le copie di recupero dei documenti. Gli originali nei cantieri e i vecchi backup restano separati. PDF e anteprima sono due file distinti: selezionali entrambi per gestire tutta la prova.', 'Gérez ici les copies de récupération des documents. Les originaux des chantiers et les anciennes sauvegardes restent distincts. Le PDF et son aperçu sont deux fichiers : sélectionnez-les ensemble pour gérer tout l’essai.') }}</p>
+  <nav class="cloud-tabs" aria-label="{{ t('Viste archivio', 'Vues des archives') }}">
+    <a href="?view=active#archive" {% if view == 'active' %}aria-current="page"{% endif %}>{{ t('Da conservare', 'À conserver') }} ({{ counts.get('pending',0) + counts.get('verified',0) + counts.get('error',0) + counts.get('sending',0) }})</a>
+    <a href="?view=excluded#archive" {% if view == 'excluded' %}aria-current="page"{% endif %}>{{ t('Esclusi', 'Exclus') }} ({{ counts.get('excluded',0) }})</a>
+    {% if owner %}<a href="?view=trash#archive" {% if view == 'trash' %}aria-current="page"{% endif %}>{{ t('Cestino privato', 'Corbeille privée') }} ({{ counts.get('trashed',0) + counts.get('purge_error',0) + counts.get('purging',0) }})</a>{% endif %}
+  </nav>
+  {% if notice in notices %}<p class="cloud-feedback" role="status">{{ t(*notices[notice]) }}</p>{% endif %}
+  {% if error %}<p class="cloud-warning" role="alert">{{ t(*errors[error]) if error in errors else t('Operazione non riuscita. Ricarica la pagina e riprova.', 'L’opération a échoué. Actualisez la page et réessayez.') }}</p>{% endif %}
+  {% if view == 'excluded' %}<p>{{ t('Queste copie restano recuperabili ma non vengono trasferite. Escludere non elimina i file già presenti su SharePoint.', 'Ces copies restent récupérables mais ne sont pas transférées. Exclure ne supprime pas les fichiers déjà présents sur SharePoint.') }}</p>
+  {% elif view == 'trash' %}<p>{{ t('Visibile solo a te. Nessuna scadenza automatica. Recupera le copie tra gli esclusi oppure richiedi l’eliminazione definitiva. Il cestino qui riguarda i file, non ricrea cantieri o fiches.', 'Visible uniquement par vous. Aucune expiration automatique. Récupérez les copies parmi les exclusions ou demandez leur suppression définitive. Cette corbeille concerne les fichiers ; elle ne recrée pas les chantiers ou fiches.') }}</p>{% endif %}
+  <form action="{{ url_for('admin_cloud_asset_action') }}" method="post" id="archive-actions">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="view" value="{{ view }}">
+    {% if owner %}<div class="cloud-actions">
+      <label class="cloud-select-all"><input type="checkbox" id="archive-select-all"> {{ t('Seleziona questa pagina', 'Sélectionner cette page') }}</label>
+      {% if view == 'active' %}<button class="btn btn-secondary" name="action" value="exclude">{{ t('Escludi dal trasferimento', 'Exclure du transfert') }}</button>{% endif %}
+      {% if view == 'excluded' %}<button class="btn btn-secondary" name="action" value="include">{{ t('Includi nel trasferimento', 'Inclure dans le transfert') }}</button>{% endif %}
+      {% if view != 'trash' %}<button class="btn btn-secondary" name="action" value="trash">{{ t('Sposta nel cestino', 'Déplacer dans la corbeille') }}</button>
+      {% else %}<button class="btn btn-secondary" name="action" value="restore">{{ t('Recupera tra gli esclusi', 'Récupérer parmi les exclus') }}</button><button class="btn btn-primary" name="action" value="purge_review">{{ t('Elimina definitivamente…', 'Supprimer définitivement…') }}</button>{% endif %}
+    </div>{% endif %}
+    <div class="table-responsive"><table class="table"><thead><tr>{% if owner %}<th>{{ t('Seleziona','Sélection') }}</th>{% endif %}<th>{{ t('Documento','Document') }}</th><th>{{ t('Stato copia','État de la copie') }}</th><th>{{ t('SharePoint','SharePoint') }}</th><th>{{ t('Recupero','Récupération') }}</th></tr></thead><tbody>
+    {% set labels = {'pending':('In attesa','En attente'),'verified':('Verificata','Vérifiée'),'error':('Errore di trasferimento','Erreur de transfert'),'sending':('In trasferimento','En transfert'),'excluded':('Esclusa','Exclue'),'trashed':('Nel cestino','Dans la corbeille'),'purging':('Eliminazione in corso','Suppression en cours'),'purge_error':('Eliminazione da riprovare','Suppression à réessayer')} %}
+    {% for asset in assets %}<tr>
+      {% if owner %}<td><input type="checkbox" name="asset_ids" value="{{ asset.id }}" aria-label="{{ t('Seleziona', 'Sélectionner') }} {{ asset.filename }} #{{ asset.id }}" {% if asset.lease_token and asset.status != 'purging' %}disabled{% endif %}></td>{% endif %}
+      <td><strong>{{ asset.filename }}</strong><small>{{ asset.kind }} · #{{ asset.source_id }} · {{ (asset.size_bytes / 1024)|round(1) }} KB{% if asset.site_id %} · {{ t('cantiere','chantier') }} #{{ asset.site_id }}{% endif %}</small></td>
+      <td>{{ t(*labels[asset.status]) }}{% if asset.error_code %}<small class="cloud-warning">{{ t(*errors[asset.error_code]) if asset.error_code in errors else t('Operazione non riuscita; copia locale conservata.', 'Échec de l’opération ; copie locale conservée.') }} <code>{{ asset.error_code }}</code></small>{% endif %}</td>
+      <td>{% if asset.verified_at %}{{ t('Verificata il','Vérifiée le') }} {{ asset.verified_at.strftime('%d/%m/%Y %H:%M') }} UTC{% elif asset.attempts %}{{ t('Trasferimento non verificato','Transfert non vérifié') }}{% else %}{{ t('Mai trasferita','Jamais transférée') }}{% endif %}</td>
+      <td>{% if owner %}<a class="btn btn-secondary" href="{{ url_for('admin_cloud_asset_download',asset_id=asset.id) }}">{{ t('Scarica copia','Télécharger la copie') }}</a>{% else %}{{ t('Solo titolare','Titulaire uniquement') }}{% endif %}</td>
+    </tr>{% else %}<tr><td colspan="5">{{ t('Nessuna copia in questa sezione.', 'Aucune copie dans cette section.') }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </form>
+  <div class="cloud-actions">{% if page_number > 1 %}<a class="btn btn-secondary" href="?view={{ view }}&page={{ page_number - 1 }}#archive">{{ t('Precedenti', 'Précédents') }}</a>{% endif %}<span>{{ t('Pagina', 'Page') }} {{ page_number }}</span>{% if has_next %}<a class="btn btn-secondary" href="?view={{ view }}&page={{ page_number + 1 }}#archive">{{ t('Successivi', 'Suivants') }}</a>{% endif %}</div>
+</section>

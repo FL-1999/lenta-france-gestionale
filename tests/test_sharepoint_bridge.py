@@ -23,6 +23,7 @@ from models import CloudAsset, CloudRun, PurchaseOrder, SiteDocument, SitePlan, 
 from services.cloud_archive import enqueue, prepare_existing, sync_batch, legacy_invoice_path
 from services.cloud_backup import make_bundle, send_backup
 from services.sharepoint_client import CHUNK, CloudError, GraphClient, SharePointConfig
+from services.archive_lifecycle import change_state, purge_selected
 
 
 def config(**changes):
@@ -417,3 +418,188 @@ def test_background_worker_survives_database_outage(monkeypatch):
             with suppress(asyncio.CancelledError):
                 await task
     asyncio.run(scenario())
+
+
+def test_archive_exclusions_trash_restore_and_tombstones_never_auto_upload(operations):
+    o = operations; db = o["db"]
+    doc = SiteDocument(site_id=o["site"].id, filename="trial.pdf", data=b"trial", size_bytes=5)
+    db.add(doc); db.commit()
+    row = db.query(CloudAsset).one()
+    change_state(db, o["manager"], [row.id], "exclude")
+    prepare_existing(db)
+    assert sync_batch(factory(o), config(), ArchiveStub())["verified"] == 0
+    change_state(db, o["manager"], [row.id], "trash")
+    assert sync_batch(factory(o), config(), ArchiveStub())["verified"] == 0
+    change_state(db, o["manager"], [row.id], "restore")
+    db.refresh(row)
+    assert row.status == "excluded" and row.payload == b"trial"
+    change_state(db, o["manager"], [row.id], "include")
+    change_state(db, o["manager"], [row.id], "trash")
+    assert purge_selected(db, o["manager"], [row.id], config(enabled=False)) == {"deleted": 1, "failed": 0}
+    prepare_existing(db)
+    db.delete(doc); db.commit()  # Before-delete capture must also respect tombstones.
+    db.refresh(row)
+    assert row.status == "deleted" and row.payload == b"" and row.size_bytes == 0
+    assert db.query(CloudAsset).count() == 1
+    assert sync_batch(factory(o), config(), ArchiveStub())["verified"] == 0
+
+
+def test_archive_bulk_actions_are_atomic_and_block_upload_leases(operations):
+    o = operations; db = o["db"]
+    for i in range(2):
+        enqueue(db, "document", i, "trial.pdf", b"trial")
+    db.commit(); rows = db.query(CloudAsset).order_by(CloudAsset.id).all()
+    rows[1].lease_token = "upload"; rows[1].lease_until = datetime.utcnow() - timedelta(minutes=1)
+    db.commit()
+    with pytest.raises(CloudError, match="selection_busy_or_changed"):
+        change_state(db, o["manager"], [r.id for r in rows], "trash")
+    db.expire_all()
+    assert all(r.status == "pending" for r in db.query(CloudAsset))
+
+
+class PurgeStub(ArchiveStub):
+    def purge_archive_copy(self, *args):
+        if self.error:
+            raise CloudError(self.error)
+        self.uploads.append(args)
+
+
+def test_remote_purge_failure_retains_payload_and_retry_uses_recorded_destination(operations):
+    o = operations; db = o["db"]
+    enqueue(db, "document", 42, "trial.pdf", b"trial"); db.commit()
+    assert sync_batch(factory(o), config(), ArchiveStub())["verified"] == 1
+    db.expire_all(); row = db.query(CloudAsset).one()
+    change_state(db, o["manager"], [row.id], "trash")
+    failed = purge_selected(db, o["manager"], [row.id], config(enabled=False), PurgeStub("permission_denied"))
+    db.refresh(row)
+    assert failed == {"deleted": 0, "failed": 1}
+    assert row.status == "purge_error" and row.payload == b"trial" and row.item_id == "remote-id"
+    assert sync_batch(factory(o), config(), ArchiveStub())["verified"] == 0
+    good = PurgeStub()
+    assert purge_selected(db, o["manager"], [row.id], config(enabled=False), good)["deleted"] == 1
+    assert good.uploads[0][:2] == ("docs", "remote-id")
+    db.refresh(row)
+    assert row.payload == b"" and row.status == "deleted"
+
+
+def test_failed_upload_records_path_and_old_unknown_destination_blocks_purge(operations):
+    o = operations; db = o["db"]
+    enqueue(db, "document", 1, "trial.pdf", b"trial"); db.commit()
+    sync_batch(factory(o), config(), ArchiveStub("network_error"))
+    db.expire_all(); row = db.query(CloudAsset).one()
+    assert row.drive_id == "docs" and row.remote_path.startswith("Gestionale/") and not row.item_id
+    change_state(db, o["manager"], [row.id], "trash")
+    row.drive_id = None; row.remote_path = None; db.commit()
+    assert purge_selected(db, o["manager"], [row.id], config(), PurgeStub())["failed"] == 1
+    db.refresh(row)
+    assert row.payload == b"trial" and row.error_code == "archive_destination_unknown"
+
+
+def test_purge_blocks_live_invoice_and_does_not_change_business_originals(operations):
+    o = operations; db = o["db"]
+    key = enqueue(db, "invoice", 1, "i.pdf", b"invoice")
+    db.add(PurchaseOrder(order_number="protected", file_invoice="cloud:" + key)); db.commit()
+    row = db.query(CloudAsset).one()
+    change_state(db, o["manager"], [row.id], "trash")
+    with pytest.raises(CloudError, match="invoice_still_in_use"):
+        purge_selected(db, o["manager"], [row.id], config())
+    assert row.payload == b"invoice"
+
+
+def test_deliberate_invoice_reupload_can_recreate_purged_revision(operations):
+    o = operations; db = o["db"]; c = o["client"]; admin(o)
+    order = PurchaseOrder(order_number="reupload"); db.add(order); db.commit()
+    url = f"/manager/ordini/{order.id}/fattura"
+    for data in (b"old", b"new"):
+        assert c.post(url, files={"invoice_file": ("i.pdf", data, "application/pdf")}, follow_redirects=False).status_code == 303
+    old = db.query(CloudAsset).filter_by(sha256=hashlib.sha256(b"old").hexdigest()).one()
+    change_state(db, o["manager"], [old.id], "trash")
+    assert purge_selected(db, o["manager"], [old.id], config())["deleted"] == 1
+    db.refresh(old); assert old.payload == b""
+    assert c.post(url, files={"invoice_file": ("i.pdf", b"old", "application/pdf")}, follow_redirects=False).status_code == 303
+    assert c.get(url + "/allegato").content == b"old"
+    db.refresh(old); assert old.status == "pending" and old.attempts == 0
+
+
+def test_changed_destination_and_competing_actions_cannot_purge_wrong_copy(operations):
+    o = operations; db = o["db"]
+    enqueue(db, "document", 1, "test.pdf", b"trial"); db.commit()
+    sync_batch(factory(o), config(), ArchiveStub())
+    db.expire_all(); row = db.query(CloudAsset).one()
+    change_state(db, o["manager"], [row.id], "trash")
+    changed = PurgeStub()
+    changed.check_destination = lambda: "different-drive"
+    assert purge_selected(db, o["manager"], [row.id], config(), changed)["failed"] == 1
+    assert not changed.uploads
+    class Competing(PurgeStub):
+        def purge_archive_copy(self, *args):
+            with factory(o)() as second:
+                with pytest.raises(CloudError, match="selection_busy_or_changed"):
+                    change_state(second, o["manager"], [row.id], "restore")
+                with pytest.raises(CloudError, match="selection_busy_or_changed"):
+                    purge_selected(second, o["manager"], [row.id], config(), PurgeStub())
+            return super().purge_archive_copy(*args)
+    assert purge_selected(db, o["manager"], [row.id], config(), Competing())["deleted"] == 1
+
+
+def test_archive_routes_owner_csrf_explicit_confirmation_and_pagination(operations, monkeypatch):
+    o = operations; db = o["db"]; c = o["client"]; admin(o)
+    for i in range(42):
+        enqueue(db, "document", i, f"trial-{i}.pdf", b"trial")
+    db.commit()
+    row = db.query(CloudAsset).order_by(CloudAsset.id).first()
+    url = "/admin/sharepoint/archivio/azioni"
+    token = csrf(o)
+    body = {"csrf": token, "action": "trash", "asset_ids": [row.id]}
+    assert c.post(url, data=body).status_code == 403
+    monkeypatch.setenv("CLOUD_ARCHIVE_OWNER_EMAIL", o["manager"].email)
+    assert c.post(url, data={**body, "csrf": "wrong"}).status_code == 403
+    assert c.post(url, data=body, headers={"Origin": "https://evil.example"}).status_code == 403
+    assert "trial-0.pdf" not in c.get("/admin/sharepoint").text
+    assert "trial-0.pdf" in c.get("/admin/sharepoint?page=2").text
+    assert c.post(url, data=body, follow_redirects=False).status_code == 303
+    assert "trial-0.pdf" not in c.get("/admin/sharepoint").text
+    assert "trial-0.pdf" in c.get("/admin/sharepoint?view=trash").text
+    review = c.post(url, data={**body, "action": "purge_review"})
+    assert review.status_code == 200 and 'name="confirmation"' in review.text and "trial-0.pdf" in review.text
+    bad = c.post(url, data={**body, "action": "purge", "view": "trash"})
+    assert "La frase di conferma non corrisponde" in bad.text
+    db.refresh(row); assert row.payload == b"trial"
+    c.cookies.set("lang", "fr")
+    review = c.post(url, data={**body, "action": "purge_review"})
+    assert "SUPPRIMER DÉFINITIVEMENT" in review.text
+    result = c.post(url, data={**body, "action": "purge", "confirmation": "SUPPRIMER DÉFINITIVEMENT"})
+    assert result.status_code == 200
+    db.refresh(row); assert row.status == "deleted" and row.payload == b""
+    assert c.get(f"/admin/sharepoint/archivio/{row.id}").status_code == 410
+    o["outsider"].role = RoleEnum.admin; db.commit(); o["actor"][0] = o["outsider"]
+    assert c.get("/admin/sharepoint?view=trash").status_code == 403
+    assert c.post(url, data=body).status_code == 403
+
+
+@pytest.mark.parametrize("case", ["ok", "denied", "folder", "changed", "missing", "unverified_missing"])
+def test_graph_purge_verifies_exact_file_and_requires_remote_confirmation(case):
+    deleted = []
+    def handle(request):
+        if "oauth2" in str(request.url):
+            return httpx.Response(200, json={"access_token": "t"})
+        if request.url.path.endswith("/permanentDelete"):
+            deleted.append(request)
+            assert request.method == "POST" and request.headers["If-Match"] == '"v1"'
+            return httpx.Response(403 if case == "denied" else 204)
+        if request.url.path.endswith("/content"):
+            return httpx.Response(200, content=b"other" if case == "changed" else b"trial")
+        if case in ("missing", "unverified_missing"):
+            return httpx.Response(404)
+        return httpx.Response(200, json={"id": "remote", "size": 5, "eTag": '"v1"',
+                                        "folder" if case == "folder" else "file": {}})
+    with httpx.Client(transport=httpx.MockTransport(handle)) as http:
+        graph = GraphClient(config(), http)
+        args = ("docs", None if case == "unverified_missing" else "remote", "Gestionale/trial.pdf",
+                hashlib.sha256(b"trial").hexdigest(), 5)
+        if case in ("ok", "unverified_missing"):
+            graph.purge_archive_copy(*args)
+        else:
+            with pytest.raises(CloudError):
+                graph.purge_archive_copy(*args)
+    assert bool(deleted) == (case in ("ok", "denied"))

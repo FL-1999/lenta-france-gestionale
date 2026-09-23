@@ -21,6 +21,7 @@ from database import get_db
 from models import CloudAsset, CloudRun, User
 from permissions import has_perm
 from services.cloud_archive import prepare_existing
+from services.archive_lifecycle import ACTIVE, TRASH, change_state, selected_assets, purge_selected, invoice_in_use
 from services.sharepoint_client import SharePointConfig, GraphClient, CloudError
 from template_context import register_manager_badges, render_template
 
@@ -76,10 +77,27 @@ def page(request: Request, db: Session = Depends(get_db), user: User = Depends(g
     inventory_data = json.loads(inventory.details) if inventory and inventory.details else None
     owner_configured = bool(os.getenv("CLOUD_ARCHIVE_OWNER_EMAIL", "").strip())
     last_backup = db.query(CloudRun).filter_by(kind="backup", status="verified").order_by(CloudRun.id.desc()).first()
+    view = request.query_params.get("view", "active")
+    if view not in ("active", "excluded", "trash"):
+        view = "active"
+    if view == "trash" and not is_owner(user):
+        raise HTTPException(403, "Cestino riservato al titolare configurato")
+    try:
+        page_number = max(1, int(request.query_params.get("page", "1")))
+    except ValueError:
+        page_number = 1
+    query = db.query(CloudAsset).filter(CloudAsset.status.in_(
+        ACTIVE if view == "active" else TRASH if view == "trash" else ("excluded",)))
+    total = query.count()
+    page_number = min(page_number, max(1, (total + 39) // 40))
     return render_template(templates, request, "admin/sharepoint.html", {
         "config_missing": config.missing(), "sync_enabled": config.enabled,
         "connected": connected, "counts": counts, "runs": runs,
-        "assets": db.query(CloudAsset).order_by(CloudAsset.id.desc()).limit(40).all(),
+        "assets": query.order_by(CloudAsset.id.desc()).offset((page_number - 1) * 40).limit(40).all(),
+        "view": view, "page_number": page_number, "total": total,
+        "has_next": page_number * 40 < total,
+        "notice": request.query_params.get("notice", ""),
+        "error": request.query_params.get("error", ""),
         "inventory": inventory_data, "csrf": csrf_token(user), "owner": is_owner(user),
         "owner_configured": owner_configured,
         "last_backup": last_backup,
@@ -88,6 +106,39 @@ def page(request: Request, db: Session = Depends(get_db), user: User = Depends(g
         "backup_tool": db.get_bind().dialect.name == "sqlite" or bool(shutil.which("pg_dump")),
         "archive_bytes": db.query(func.coalesce(func.sum(CloudAsset.size_bytes), 0)).scalar(),
     }, db, user)
+
+
+@router.post("/archivio/azioni", name="admin_cloud_asset_action")
+def archive_action(request: Request, csrf: str = Form(""), action: str = Form(""),
+                   asset_ids: list[int] = Form([]), confirmation: str = Form(""),
+                   view: str = Form("active"), db: Session = Depends(get_db),
+                   user: User = Depends(get_current_active_user_html)):
+    validate_post(request, user, csrf)
+    if not is_owner(user):
+        raise HTTPException(403, "Archivio riservato al titolare configurato")
+    view = view if view in ("active", "excluded", "trash") else "active"
+    try:
+        if action == "purge_review":
+            assets = selected_assets(db, asset_ids)
+            if any(a.status not in TRASH for a in assets):
+                raise CloudError("selection_changed")
+            return render_template(templates, request, "admin/sharepoint_purge.html", {
+                "assets": assets, "csrf": csrf_token(user),
+                "invoice_blocked": any(invoice_in_use(db, a) for a in assets),
+            }, db, user)
+        if action == "purge":
+            if confirmation.strip() not in ("ELIMINA DEFINITIVAMENTE", "SUPPRIMER DÉFINITIVEMENT"):
+                raise CloudError("confirmation_required")
+            result = purge_selected(db, user, asset_ids)
+            notice = "purge_partial" if result["failed"] else "purged"
+            view = "trash"
+        else:
+            change_state(db, user, asset_ids, action)
+            notice = action
+        return RedirectResponse(f"/admin/sharepoint?view={view}&notice={notice}#archive", 303)
+    except CloudError as exc:
+        db.rollback()
+        return RedirectResponse(f"/admin/sharepoint?view={view}&error={quote(exc.code, safe='')}#archive", 303)
 
 
 @router.post("/prepara", name="admin_sharepoint_prepare")
@@ -146,6 +197,8 @@ def download(asset_id: int, db: Session = Depends(get_db), user: User = Depends(
     asset = db.get(CloudAsset, asset_id)
     if not asset:
         raise HTTPException(404, "Documento non trovato")
+    if asset.status == "deleted":
+        raise HTTPException(410, "Copia eliminata definitivamente")
     if hashlib.sha256(asset.payload).hexdigest() != asset.sha256:
         raise HTTPException(409, "Verifica integrità non riuscita")
     log_audit_event(db, user, "CLOUD_ARCHIVE_DOWNLOAD", "cloud_asset", asset.id)
