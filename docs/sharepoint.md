@@ -82,6 +82,8 @@ I file già verificati non vengono copiati di nuovo. Se si cambia raccolta dopo 
 
 Solo l'admin identificato da `CLOUD_ARCHIVE_OWNER_EMAIL` può modificare il ciclo di vita delle copie, aprire il cestino o scaricare copie di recupero. Gli altri admin mantengono i controlli di connessione e inventario.
 
+Le copie mostrano nome e numero del cantiere, data di caricamento dell'originale (UTC), numero del disegno e collegamento per aprire esattamente quella pianta. PDF e anteprima condividono numero ed etichette. **Pianta attualmente in uso** segue la scelta predefinita del cantiere: ultima pianta convalidata, oppure ultima bozza se non esistono piante convalidate. **Ultimo PDF caricato** identifica invece l'importazione più recente, anche se ancora in bozza o successivamente rimossa. Le due indicazioni possono quindi riguardare disegni diversi. Se cantiere/originale non esistono più, la pagina lo segnala; quando la data originale non è più disponibile mostra **Archiviato il**, senza dedurre una data di caricamento. Le medesime informazioni e un avviso per la pianta in uso compaiono nel riepilogo di eliminazione definitiva.
+
 - **Escludi dal trasferimento** conserva la copia locale e sospende l'invio. Non rimuove una copia già trasferita. La nuova acquisizione degli stessi originali non annulla l'esclusione.
 - **Sposta nel cestino** nasconde la copia dalle viste ordinarie e la esclude dalla coda. Non cancella ancora nulla da SharePoint. Non esistono scadenze automatiche.
 - **Recupera tra gli esclusi** rende nuovamente disponibile il file senza avviare trasferimenti. **Includi nel trasferimento** lo rimette in coda, attiva solo se `SHAREPOINT_SYNC_ENABLED=true`. Il download recupera il file; non ricrea i dati applicativi.

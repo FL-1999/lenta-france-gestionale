@@ -1,3 +1,4 @@
+{% from 'admin/_archive_identity.html' import identity with context %}
 {% set notices = {
  'exclude': ('Copie escluse dal trasferimento. Le eventuali copie già su SharePoint restano al loro posto.', 'Copies exclues du transfert. Les copies déjà sur SharePoint restent en place.'),
  'include': ('Copie reincluse. Saranno trasferite quando il trasferimento automatico sarà attivo.', 'Copies réintégrées. Elles seront transférées lorsque le transfert automatique sera actif.'),
@@ -22,6 +23,7 @@
 <section class="card" id="archive">
   <div class="cloud-section-heading"><h2>{{ t('Archivio documenti', 'Archives des documents') }}</h2><span>{{ (archive_bytes / 1048576)|round(1) }} MB · {{ total }} {{ t('copie in questa vista', 'copies dans cette vue') }}</span></div>
   <p>{{ t('Qui gestisci le copie di recupero dei documenti. Gli originali nei cantieri e i vecchi backup restano separati. PDF e anteprima sono due file distinti: selezionali entrambi per gestire tutta la prova.', 'Gérez ici les copies de récupération des documents. Les originaux des chantiers et les anciennes sauvegardes restent distincts. Le PDF et son aperçu sont deux fichiers : sélectionnez-les ensemble pour gérer tout l’essai.') }}</p>
+  <p class="cloud-plan-help">{{ t('“Pianta attualmente in uso” indica il disegno aperto normalmente dal cantiere. L’ultimo PDF caricato può essere una bozza diversa: controlla le etichette prima di escludere o eliminare. PDF e anteprima dello stesso disegno hanno lo stesso numero.', '« Plan actuellement utilisé » indique le plan ouvert par défaut dans le chantier. Le dernier PDF importé peut être un autre brouillon : vérifiez les étiquettes avant d’exclure ou de supprimer. Le PDF et l’aperçu d’un même plan portent le même numéro.') }}</p>
   <nav class="cloud-tabs" aria-label="{{ t('Viste archivio', 'Vues des archives') }}">
     <a href="?view=active#archive" {% if view == 'active' %}aria-current="page"{% endif %}>{{ t('Da conservare', 'À conserver') }} ({{ counts.get('pending',0) + counts.get('verified',0) + counts.get('error',0) + counts.get('sending',0) }})</a>
     <a href="?view=excluded#archive" {% if view == 'excluded' %}aria-current="page"{% endif %}>{{ t('Esclusi', 'Exclus') }} ({{ counts.get('excluded',0) }})</a>
@@ -44,7 +46,7 @@
     {% set labels = {'pending':('In attesa','En attente'),'verified':('Verificata','Vérifiée'),'error':('Errore di trasferimento','Erreur de transfert'),'sending':('In trasferimento','En transfert'),'excluded':('Esclusa','Exclue'),'trashed':('Nel cestino','Dans la corbeille'),'purging':('Eliminazione in corso','Suppression en cours'),'purge_error':('Eliminazione da riprovare','Suppression à réessayer')} %}
     {% for asset in assets %}<tr>
       {% if owner %}<td><input type="checkbox" name="asset_ids" value="{{ asset.id }}" aria-label="{{ t('Seleziona', 'Sélectionner') }} {{ asset.filename }} #{{ asset.id }}" {% if asset.lease_token and asset.status != 'purging' %}disabled{% endif %}></td>{% endif %}
-      <td><strong>{{ asset.filename }}</strong><small>{{ asset.kind }} · #{{ asset.source_id }} · {{ (asset.size_bytes / 1024)|round(1) }} KB{% if asset.site_id %} · {{ t('cantiere','chantier') }} #{{ asset.site_id }}{% endif %}</small></td>
+      <td>{{ identity(asset, asset_context[asset.id]) }}</td>
       <td>{{ t(*labels[asset.status]) }}{% if asset.error_code %}<small class="cloud-warning">{{ t(*errors[asset.error_code]) if asset.error_code in errors else t('Operazione non riuscita; copia locale conservata.', 'Échec de l’opération ; copie locale conservée.') }} <code>{{ asset.error_code }}</code></small>{% endif %}</td>
       <td>{% if asset.verified_at %}{{ t('Verificata il','Vérifiée le') }} {{ asset.verified_at.strftime('%d/%m/%Y %H:%M') }} UTC{% elif asset.attempts %}{{ t('Trasferimento non verificato','Transfert non vérifié') }}{% else %}{{ t('Mai trasferita','Jamais transférée') }}{% endif %}</td>
       <td>{% if owner %}<a class="btn btn-secondary" href="{{ url_for('admin_cloud_asset_download',asset_id=asset.id) }}">{{ t('Scarica copia','Télécharger la copie') }}</a>{% else %}{{ t('Solo titolare','Titulaire uniquement') }}{% endif %}</td>

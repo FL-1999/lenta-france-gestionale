@@ -21,6 +21,7 @@ from database import get_db
 from models import CloudAsset, CloudRun, User
 from permissions import has_perm
 from services.cloud_archive import prepare_existing
+from services.archive_context import archive_context
 from services.archive_lifecycle import ACTIVE, TRASH, change_state, selected_assets, purge_selected, invoice_in_use
 from services.sharepoint_client import SharePointConfig, GraphClient, CloudError
 from template_context import register_manager_badges, render_template
@@ -90,10 +91,11 @@ def page(request: Request, db: Session = Depends(get_db), user: User = Depends(g
         ACTIVE if view == "active" else TRASH if view == "trash" else ("excluded",)))
     total = query.count()
     page_number = min(page_number, max(1, (total + 39) // 40))
+    assets = query.order_by(CloudAsset.id.desc()).offset((page_number - 1) * 40).limit(40).all()
     return render_template(templates, request, "admin/sharepoint.html", {
         "config_missing": config.missing(), "sync_enabled": config.enabled,
         "connected": connected, "counts": counts, "runs": runs,
-        "assets": query.order_by(CloudAsset.id.desc()).offset((page_number - 1) * 40).limit(40).all(),
+        "assets": assets, "asset_context": archive_context(db, assets),
         "view": view, "page_number": page_number, "total": total,
         "has_next": page_number * 40 < total,
         "notice": request.query_params.get("notice", ""),
@@ -123,7 +125,7 @@ def archive_action(request: Request, csrf: str = Form(""), action: str = Form(""
             if any(a.status not in TRASH for a in assets):
                 raise CloudError("selection_changed")
             return render_template(templates, request, "admin/sharepoint_purge.html", {
-                "assets": assets, "csrf": csrf_token(user),
+                "assets": assets, "csrf": csrf_token(user), "asset_context": archive_context(db, assets),
                 "invoice_blocked": any(invoice_in_use(db, a) for a in assets),
             }, db, user)
         if action == "purge":

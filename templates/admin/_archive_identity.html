@@ -1,0 +1,22 @@
+{% macro identity(asset, info) %}
+<div class="cloud-file-identity" data-plan-id="{{ info.plan_id or '' }}">
+  <strong>{{ asset.filename }}</strong>
+  <small class="cloud-file-site">{% if info.site_name %}{{ info.site_name }} · {{ t('cantiere','chantier') }} #{{ asset.site_id }}{% elif asset.site_id %}{{ t('Cantiere non più presente','Chantier supprimé') }} #{{ asset.site_id }}{% else %}{{ t('Senza cantiere associato','Sans chantier associé') }}{% endif %}</small>
+  {% if info.plan_id %}
+    <small>{{ t('Disegno','Plan') }} #{{ info.plan_id }} · {{ t('PDF originale','PDF original') if asset.kind == 'plan' else t('Anteprima del PDF','Aperçu du PDF') }}</small>
+    {% if asset.kind == 'plan_preview' and info.plan_filename %}<small>{{ info.plan_filename }}</small>{% endif %}
+    <div class="cloud-plan-badges">
+      {% if info.state == 'current' %}<span class="cloud-plan-badge cloud-plan-current" data-plan-state="current">{{ t('Pianta attualmente in uso','Plan actuellement utilisé') }}</span>
+      {% elif info.state == 'removed' %}<span class="cloud-plan-badge" data-plan-state="removed">{{ t('Bozza rimossa dal cantiere','Brouillon retiré du chantier') }}</span>
+      {% elif info.state == 'draft' %}<span class="cloud-plan-badge" data-plan-state="draft">{{ t('Altra bozza · non in uso','Autre brouillon · non utilisé') }}</span>
+      {% elif info.state == 'previous' %}<span class="cloud-plan-badge" data-plan-state="previous">{{ t('Pianta precedente','Ancien plan') }}</span>
+      {% else %}<span class="cloud-plan-badge" data-plan-state="unavailable">{{ t('Originale non più presente','Original supprimé') }}</span>{% endif %}
+      {% if info.latest %}<span class="cloud-plan-badge cloud-plan-latest" data-latest-upload>{{ t('Ultimo PDF caricato','Dernier PDF importé') }}</span>{% endif %}
+    </div>
+    {% if info.state in ['current', 'draft', 'previous'] %}<small>{{ t('Convalidata','Validé') if info.confirmed else t('Bozza da convalidare','Brouillon à valider') }}</small>{% endif %}
+  {% else %}<small>{{ asset.kind }} · #{{ asset.source_id }}</small>{% endif %}
+  {% if info.uploaded_at %}<small>{{ t('Caricato il','Importé le') }} {{ info.uploaded_at.strftime('%d/%m/%Y %H:%M') }} UTC</small>
+  {% else %}<small>{{ t('Archiviato il','Archivé le') }} {{ info.archived_at.strftime('%d/%m/%Y %H:%M') }} UTC</small><small>{{ t('Data di caricamento originale non disponibile','Date d’import initiale indisponible') }}</small>{% endif %}
+  <small>{{ (asset.size_bytes / 1024)|round(1) }} KB{% if info.plan_url %} · <a href="{{ info.plan_url }}" target="_blank" rel="noopener">{{ t('Apri questo disegno','Ouvrir ce plan') }}</a>{% endif %}</small>
+</div>
+{% endmacro %}

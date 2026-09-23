@@ -369,5 +369,6 @@
     try{const uploaded=await api(base+'/importa',{method:'POST',body:payload});dirty=false;q('[data-upload]').hidden=true;q('[data-upload]').reset();await load(uploaded.id,true);}catch(e){message(tr(e.message),true);}finally{lock(false);}
   });
   window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
-  load();
+  const requestedPlan = new URL(window.location.href).searchParams.get('plan_id');
+  load(requestedPlan && /^[1-9]\d*$/.test(requestedPlan) ? requestedPlan : undefined);
 })();
