@@ -8,10 +8,14 @@ from sqlalchemy import or_, update
 from models import CloudAsset, CloudRun
 from services.archive_layout import legacy_filter, readable_location
 from services.sharepoint_client import CloudError, GraphClient, SharePointConfig
+from services.plan_publications import reconcile_plan_archives, transfer_allowed
 
 
 def reorganize_batch(factory, config=None, client=None, limit=3):
     config = config or SharePointConfig.from_env()
+    with factory() as db:
+        reconcile_plan_archives(db)
+        db.commit()
     result = {"moved": 0, "failed": 0, "paused": not config.enabled}
     if not config.enabled:
         return result
@@ -20,7 +24,7 @@ def reorganize_batch(factory, config=None, client=None, limit=3):
         for _ in range(limit):
             now = datetime.utcnow()
             token = uuid.uuid4().hex
-            eligible = (CloudAsset.status == "verified") & legacy_filter() & or_(
+            eligible = (CloudAsset.status == "verified") & legacy_filter() & transfer_allowed() & or_(
                 CloudAsset.next_attempt.is_(None), CloudAsset.next_attempt <= now) & or_(
                 CloudAsset.lease_token.is_(None), CloudAsset.lease_until < now)
             with factory() as db:

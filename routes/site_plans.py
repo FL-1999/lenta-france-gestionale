@@ -19,6 +19,8 @@ from models import (SitePlan, SiteProgressGridName, SiteCoupeAssignment,
 from permissions import has_perm
 from services.site_plan_project import confirm_project_panels
 from services.plan_selection import current_plan
+from services.plan_publications import reconcile_plan_archives
+from models import CloudPlanPublication
 from services.site_plan_import import import_pdf, MAX_PDF_BYTES, MAX_PANELS, layout_scale, needs_extent_review
 from template_context import register_manager_badges, render_template
 
@@ -109,8 +111,10 @@ def get_data(site_id:int,plan_id:int|None=None,draft:bool=False,
         removed=[{'id':r.id,'filename':r.filename,'revision':r.revision}
                  for r in db.query(SitePlan).filter(SitePlan.site_id==site_id,SitePlan.removed_at.isnot(None))
                  .order_by(SitePlan.removed_at.desc()).all()]
+    publications = dict(db.query(CloudPlanPublication.plan_id, CloudPlanPublication.number).filter_by(site_id=site_id).all())
     return {'plan':plan,'elements':elements(db,site,user),'can_edit':editor,'removed':removed,
         'versions':[{'id':r.id,'filename':r.filename,'approved':bool(r.approved),
+                     'number':publications.get(r.id),
                      'has_draft':r.revision!=r.approved_revision} for r in rows]}
 
 
@@ -262,6 +266,8 @@ def save(site_id:int,plan_id:int,request:Request,body:LayoutInput,
     changed=db.query(SitePlan).filter_by(id=plan_id,site_id=site_id,revision=body.revision,removed_at=None).update(values,synchronize_session=False)
     if changed!=1:
         db.rollback();raise HTTPException(409,'La pianta è stata modificata da un altro utente.')
+    if approve:
+        reconcile_plan_archives(db, site_id)
     log_audit_event(db,user,'SITE_PLAN_APPROVED' if approve else 'SITE_PLAN_DRAFT_SAVED','site_plan',plan_id,
                    {'site_id':site_id,'revision':new_revision,'panels':len(layout['panels'])})
     db.commit()

@@ -72,7 +72,7 @@
         row.append(name,button);removedList.append(row);
       });
       const versions = q('[data-version]'); versions.replaceChildren();
-      data.versions.forEach(v => versions.add(new Option(`#${v.id} · ${v.filename} · ${v.approved ? t('convalidata','validé') : t('bozza','brouillon')}${v.approved && v.has_draft ? t(' + modifiche in bozza',' + modifications en brouillon') : ''}`, v.id)));
+      data.versions.forEach(v => versions.add(new Option(`${v.approved ? t('Pianta','Plan') + (v.number ? ' ' + String(v.number).padStart(2,'0') : '') : t('Bozza','Brouillon')} · ${v.filename} · ${v.approved ? t('convalidata','validé') : t('da convalidare','à valider')}${v.approved && v.has_draft ? t(' + modifiche in bozza',' + modifications en brouillon') : ''}`, v.id)));
       q('[data-empty]').hidden = !!plan; q('[data-workspace]').hidden = !plan;
       if (!plan) { message(tr("Carica un PDF per preparare la pianta del cantiere.")); if (q('[data-upload]')) q('[data-upload]').hidden = false; return; }
       versions.value = plan.id; selected = plan.layout.panels[0]?.key; showOriginal = editing;

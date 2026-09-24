@@ -1,6 +1,6 @@
 """Independent copies: deliberately no cascading references to business records."""
 from datetime import datetime
-from sqlalchemy import Column, DateTime, Integer, LargeBinary, String, Text
+from sqlalchemy import Column, DateTime, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import deferred
 from .base import Base
 
@@ -38,3 +38,17 @@ class CloudRun(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     finished_at = Column(DateTime, nullable=True)
     details = Column(Text, nullable=True)
+
+
+class CloudPlanPublication(Base):
+    """Stable per-site numbering; trials never consume a publication number.
+
+    No cascading FK: archived approved files retain their identity after removal
+    of the original site. Reconfirming a layout keeps the same publication.
+    """
+    __tablename__ = "cloud_plan_publications"
+    __table_args__ = (UniqueConstraint("site_id", "number", name="uq_cloud_plan_site_number"),)
+    plan_id = Column(Integer, primary_key=True, autoincrement=False)
+    site_id = Column(Integer, nullable=False, index=True)
+    number = Column(Integer, nullable=False)
+    confirmed_at = Column(DateTime, nullable=False)

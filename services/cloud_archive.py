@@ -14,6 +14,7 @@ from sqlalchemy import event, or_, update
 from models import CloudAsset, CloudRun, SiteDocument, SitePlan, PurchaseOrder
 from services.sharepoint_client import CloudError, GraphClient, SharePointConfig
 from services.archive_layout import readable_location
+from services.plan_publications import reconcile_plan_archives, transfer_allowed
 
 
 def enqueue_connection(connection, kind, source_id, filename, data, content_type="application/octet-stream", site_id=None):
@@ -23,7 +24,8 @@ def enqueue_connection(connection, kind, source_id, filename, data, content_type
     key = f"{kind}:{source_id}:{digest}"
     values = dict(source_key=key, kind=kind, source_id=str(source_id), site_id=site_id,
         filename=str(filename)[:300], content_type=content_type[:150], sha256=digest,
-        size_bytes=len(data), payload=data, created_at=datetime.utcnow(), status="pending", attempts=0)
+        size_bytes=len(data), payload=data, created_at=datetime.utcnow(),
+        status="local" if kind in ("plan", "plan_preview") else "pending", attempts=0)
     if connection.dialect.name == "postgresql":
         from sqlalchemy.dialects.postgresql import insert
     else:
@@ -125,6 +127,9 @@ def remote_location(asset):
 
 def sync_batch(factory, config=None, client=None, limit=3):
     config = config or SharePointConfig.from_env()
+    with factory() as db:
+        reconcile_plan_archives(db)
+        db.commit()
     if not config.enabled:
         return {"verified": 0, "failed": 0, "paused": True}
     graph = client or GraphClient(config)
@@ -134,7 +139,7 @@ def sync_batch(factory, config=None, client=None, limit=3):
         for _ in range(limit):
             now = datetime.utcnow()
             token = uuid.uuid4().hex
-            eligible = (CloudAsset.status.in_(["pending", "error", "sending"]) &
+            eligible = (CloudAsset.status.in_(["pending", "error", "sending"]) & transfer_allowed() &
                 or_(CloudAsset.next_attempt.is_(None), CloudAsset.next_attempt <= now) &
                 or_(CloudAsset.lease_until.is_(None), CloudAsset.lease_until < now))
             with factory() as db:
@@ -207,13 +212,13 @@ async def background_sync(factory):
         await asyncio.to_thread(record_error, "inventory", "inventory_failed")
     while True:
         config = SharePointConfig.from_env()
-        if config.enabled:
-            try:
-                await asyncio.to_thread(sync_batch, factory, config)
+        try:
+            await asyncio.to_thread(sync_batch, factory, config)
+            if config.enabled:
                 from services.archive_reorganization import reorganize_batch
                 await asyncio.to_thread(reorganize_batch, factory, config)
-            except Exception as exc:
-                # Persist only a safe code, never an HTTP response or credentials.
-                code = exc.code if isinstance(exc, CloudError) else "unexpected_error"
-                await asyncio.to_thread(record_error, "sync", code)
+        except Exception as exc:
+            # Persist only a safe code, never an HTTP response or credentials.
+            code = exc.code if isinstance(exc, CloudError) else "unexpected_error"
+            await asyncio.to_thread(record_error, "sync", code)
         await asyncio.sleep(60)

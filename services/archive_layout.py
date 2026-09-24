@@ -3,7 +3,9 @@ from pathlib import PurePosixPath
 import re
 import unicodedata
 
-from models import CloudAsset, Site
+from sqlalchemy import or_
+from models import CloudAsset, Site, CloudPlanPublication
+from services.sharepoint_client import CloudError
 
 
 def safe_name(value, limit=100):
@@ -17,7 +19,8 @@ def safe_name(value, limit=100):
 
 def legacy_filter():
     # Previous layout embeds the complete content hash in the filename.
-    return CloudAsset.remote_path.contains("-" + CloudAsset.sha256 + "-")
+    return or_(CloudAsset.remote_path.contains("-" + CloudAsset.sha256 + "-"),
+               (CloudAsset.kind == "plan") & CloudAsset.remote_path.contains("/Piante/Disegno "))
 
 
 def readable_location(db, asset):
@@ -29,7 +32,8 @@ def readable_location(db, asset):
         # Once chosen, reuse a site's recorded folder even if its name changes.
         prior = db.query(CloudAsset.remote_path).filter(
             CloudAsset.site_id == asset.site_id, CloudAsset.remote_path.isnot(None),
-            ~legacy_filter(), CloudAsset.status != "deleted",
+            CloudAsset.status != "deleted",
+            CloudAsset.remote_path.contains(f" [C{asset.site_id}]/"),
         ).order_by(CloudAsset.id).first()
         if prior:
             components = prior.remote_path.split("/")
@@ -38,15 +42,17 @@ def readable_location(db, asset):
         parts = ["Gestionale", "Cantieri", folder]
     else:
         parts = ["Gestionale", "Acquisti"]
-    reference = safe_name(asset.source_id, 25)
     if asset.kind == "plan":
-        parts += ["Piante", f"Disegno {reference}"]
+        publication = db.get(CloudPlanPublication, int(asset.source_id)) if asset.source_id.isdigit() else None
+        if not publication or publication.site_id != asset.site_id:
+            raise CloudError("only_approved_plans")
+        parts += ["Piante", f"Pianta {publication.number:02d}"]
     elif asset.kind == "plan_preview":
-        parts += ["Supporto gestionale", "Anteprime", f"Disegno {reference}"]
+        raise CloudError("only_approved_plans")
     else:
         parts += [{"document": "Documenti", "fiche_pdf": "Fiches", "dossier_pdf": "Dossier finali",
                    "invoice": "Fatture"}.get(asset.kind, "Esportazioni")]
     original = PurePosixPath(asset.filename.replace("\\", "/")).name
     suffix = re.sub(r"[^a-zA-Z0-9.]", "", PurePosixPath(original).suffix)[:12]
-    stem = "Anteprima" if asset.kind == "plan_preview" else safe_name(PurePosixPath(original).stem, 100)
-    return parts, f"{stem} - copia {asset.id}{suffix}"
+    stem = safe_name(PurePosixPath(original).stem, 100)
+    return parts, f"{stem}{suffix}" if asset.kind == "plan" else f"{stem} - copia {asset.id}{suffix}"

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from models import CloudAsset, Role, RoleEnum, User, UserRole, SitePlan
 from services.cloud_archive import enqueue
+from services.plan_publications import reconcile_plan_archives
 from test_operations_live import live_operations
 
 pytestmark = pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS') != '1', reason='Browser checks opt-in')
@@ -50,7 +51,7 @@ def test_owner_can_exclude_restore_and_explicitly_delete(live_operations):
         page.locator('#password').fill(password)
         page.locator('#login-form button[type=submit]').click()
         page.wait_for_url('**/manager/dashboard')
-        page.goto(origin + '/admin/sharepoint#archive')
+        page.goto(origin + '/admin/sharepoint?view=local#archive')
         expect(page.locator('button[value=exclude]')).to_be_disabled()
         page.locator('#archive-select-all').check()
         page.locator('button[value=exclude]').click()
@@ -79,7 +80,8 @@ def test_owner_can_exclude_restore_and_explicitly_delete(live_operations):
         page.locator('button[type=submit]').click()
         expect(page.get_by_role('status')).to_contain_text('eliminate definitivamente')
         with Session(engine) as db:
-            assert all(row.status == 'deleted' and row.payload == b'' for row in db.query(CloudAsset))
+            assert all(row.status == 'deleted' and row.payload == b'' for row in db.query(CloudAsset).filter_by(source_id='900'))
+            assert db.query(CloudAsset).filter_by(kind='document', status='pending').count() == 1
         page.set_viewport_size({'width': 390, 'height': 844})
         page.goto(origin + '/admin/sharepoint?view=trash#archive')
         expect(page.locator('#archive')).to_be_visible()
@@ -102,6 +104,7 @@ def test_current_and_latest_pdf_are_distinct_and_open_the_exact_drawing(live_ope
         new = SitePlan(site_id=ids['site'], filename='same.pdf', pdf_data=pdf, preview_data=preview,
                        draft=json.dumps(layout), created_at=datetime(2026,9,21,8,30))
         db.add_all([old, new]); db.commit()
+        reconcile_plan_archives(db); db.commit()
         old_id, new_id = old.id, new.id
         from services.cloud_archive import remote_location
         saved_pdf = db.query(CloudAsset).filter_by(kind='plan', source_id=str(old_id)).one()
@@ -122,7 +125,10 @@ def test_current_and_latest_pdf_are_distinct_and_open_the_exact_drawing(live_ope
         page.locator('#login-form button[type=submit]').click()
         page.wait_for_url('**/manager/dashboard')
         page.goto(origin + '/admin/sharepoint#archive')
-        expect(page.locator('[data-plan-state=current]')).to_have_count(2)
+        expect(page.locator('[data-plan-state=current]')).to_have_count(1)
+        expect(page.locator(f'.cloud-file-identity[data-plan-id="{old_id}"]')).to_contain_text('Pianta 01')
+        page.goto(origin + '/admin/sharepoint?view=local#archive')
+        expect(page.locator('[data-plan-state=current]')).to_have_count(1)
         expect(page.locator('[data-latest-upload]')).to_have_count(2)
         latest = page.locator(f'.cloud-file-identity[data-plan-id="{new_id}"]')
         current = page.locator(f'.cloud-file-identity[data-plan-id="{old_id}"]')
