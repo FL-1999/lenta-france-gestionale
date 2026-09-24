@@ -231,6 +231,7 @@ def _serialize_economic_entry(entry: SiteEconomicEntry) -> dict[str, Any]:
         "category_label": _label_for_category(entry.category),
         "amount": round(float(entry.amount or 0), 2),
         "description": entry.description or "",
+        "managed_register": bool(entry.cost_delivery or entry.cost_allocation),
         "notes": entry.notes or "",
         "created_at": entry.created_at,
         "created_by_name": (entry.created_by.full_name or entry.created_by.email) if entry.created_by else "Sistema",
@@ -411,10 +412,14 @@ def _compute_auto_material_costs(
     if unit_price <= 0:
         return [], {}, 0.0
 
-    manual_days = {entry.entry_date for entry in manual_material_entries}
+    manual_days = {entry.entry_date for entry in manual_material_entries if not entry.cost_delivery}
+    from services.site_costs import covered_fiches
+    covered = covered_fiches(site)
     rows: list[dict[str, Any]] = []
     totals_by_day: dict[date, float] = defaultdict(float)
     for fiche in (site.fiches or []):
+        if fiche.id in covered:
+            continue
         if not fiche.date or fiche.date < start_date or fiche.date > end_date:
             continue
         qty = round(float(fiche.metri_cubi_gettati or 0.0), 2)
@@ -1215,6 +1220,9 @@ def manager_site_economics_entry_update(
     if not entry:
         raise HTTPException(status_code=404, detail="Movimento economico non trovato")
 
+    if entry.cost_delivery or entry.cost_allocation:
+        raise HTTPException(409, "Modifica questo costo da Costi e consegne / Modifiez ce coût depuis Coûts et livraisons")
+
     if entry.entry_type == SiteEconomicEntryTypeEnum.revenue and not can_view_site_margin(current_user):
         raise HTTPException(status_code=403, detail="Solo admin possono modificare i ricavi")
 
@@ -1259,6 +1267,9 @@ def manager_site_economics_entry_delete(
     )
     if not entry:
         raise HTTPException(status_code=404, detail="Movimento economico non trovato")
+
+    if entry.cost_delivery or entry.cost_allocation:
+        raise HTTPException(409, "Modifica questo costo da Costi e consegne / Modifiez ce coût depuis Coûts et livraisons")
 
     if entry.entry_type == SiteEconomicEntryTypeEnum.revenue and not can_view_site_margin(current_user):
         raise HTTPException(status_code=403, detail="Solo admin possono eliminare i ricavi")

@@ -1,0 +1,18 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ t('Costi e consegne','Coûts et livraisons') }} · {{ site.name }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/site-costs.css?v=20260924a">
+<main id="cost-workspace" data-site="{{ site.id }}" data-csrf="{{ csrf }}" data-edit="{{ 'yes' if can_edit else 'no' }}" data-lang="{{ request.cookies.get('lang','it') }}">
+  <header class="cost-header"><div><p class="cost-eyebrow">{{ site.name }} · {{ site.code or '' }}</p><h1>{{ t('Costi e consegne','Coûts et livraisons') }}</h1><p>{{ t('Dalla fiche ai buoni, fino alla fattura. Un controllo alla volta.','De la fiche aux bons, jusqu’à la facture. Un contrôle à la fois.') }}</p></div><div class="cost-actions"><a class="btn btn-secondary" href="{{ url_for('manager_site_detail',site_id=site.id) }}">{{ t('Cantiere','Chantier') }}</a><a class="btn btn-secondary" href="{{ url_for('manager_site_economics_detail',site_id=site.id) }}">{{ t('Bilancio completo','Bilan complet') }}</a></div></header>
+  <nav class="cost-tabs" aria-label="{{ t('Gestione costi','Gestion des coûts') }}">
+    <button type="button" data-tab="overview">{{ t('Riepilogo','Vue d’ensemble') }}</button>
+    <button type="button" data-tab="deliveries">{{ t('Consegne e getti','Livraisons et bétonnages') }}</button>
+    <button type="button" data-tab="contracts">{{ t('Contratti','Contrats') }}</button>
+    <button type="button" data-tab="invoices">{{ t('Fattura mensile','Facture mensuelle') }}</button>
+    <button type="button" data-tab="shared">{{ t('Spese comuni','Dépenses communes') }}</button>
+  </nav>
+  <div id="cost-message" role="status" aria-live="polite"></div>
+  <div id="cost-view"><p>{{ t('Caricamento…','Chargement…') }}</p></div>
+</main>
+<script src="/static/js/site-costs.js?v=20260924a" defer></script>
+{% endblock %}
