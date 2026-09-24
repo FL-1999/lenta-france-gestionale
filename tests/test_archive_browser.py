@@ -103,6 +103,13 @@ def test_current_and_latest_pdf_are_distinct_and_open_the_exact_drawing(live_ope
                        draft=json.dumps(layout), created_at=datetime(2026,9,21,8,30))
         db.add_all([old, new]); db.commit()
         old_id, new_id = old.id, new.id
+        from services.cloud_archive import remote_location
+        saved_pdf = db.query(CloudAsset).filter_by(kind='plan', source_id=str(old_id)).one()
+        parts, filename = remote_location(saved_pdf)
+        saved_pdf.remote_path = '/'.join(parts + [filename])
+        saved_pdf.drive_id = 'docs'; saved_pdf.item_id = 'existing-file'
+        saved_pdf.status = 'verified'; saved_pdf.verified_at = datetime(2026,9,20,10)
+        db.commit()
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
         page = browser.new_page(viewport={'width':1440,'height':1100})

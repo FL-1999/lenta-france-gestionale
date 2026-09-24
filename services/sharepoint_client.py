@@ -7,7 +7,7 @@ import logging
 import os
 import re
 import time
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 import httpx
 
@@ -228,6 +228,39 @@ class GraphClient:
                              headers={"If-Match": item["eTag"]})
         if response.status_code != 204:
             raise CloudError("remote_delete_unconfirmed")
+
+    def move_archive_copy(self, drive, item_id, parts, filename, sha256, size):
+        """Move the recorded file in the same library, without copying/overwriting.
+
+        Retries locate the original ID even if a previous PATCH succeeded but its
+        response (or the subsequent database commit) was lost.
+        """
+        if not item_id:
+            raise CloudError("archive_destination_unknown")
+        path = f"/drives/{quote(drive, safe='')}/items/{quote(item_id, safe='')}"
+        response = self.graph("GET", path, allowed=(404,))
+        if response.status_code == 404:
+            raise CloudError("remote_copy_missing")
+        item = response.json()
+        if (item.get("id") != item_id or "file" not in item or "folder" in item
+                or item.get("size") != size or not item.get("eTag")):
+            raise CloudError("archive_remote_conflict")
+        self.verify(drive, item_id, sha256, size)
+        parent = self.folder(drive, parts)
+        parent_id = unquote(parent.rsplit("/", 1)[-1])
+        if item.get("name") != filename or item.get("parentReference", {}).get("id") != parent_id:
+            existing = self.graph("GET", f"{parent}:/{quote(filename, safe='')}", allowed=(404,))
+            if existing.status_code != 404 and existing.json().get("id") != item_id:
+                raise CloudError("destination_conflict")
+            moved = self.graph("PATCH", path, headers={"If-Match": item["eTag"]}, json={
+                "parentReference": {"id": parent_id}, "name": filename,
+                "@microsoft.graph.conflictBehavior": "fail",
+            }).json()
+            if (moved.get("id") != item_id or moved.get("name") != filename
+                    or moved.get("parentReference", {}).get("id") != parent_id):
+                raise CloudError("remote_move_unconfirmed")
+        self.verify(drive, item_id, sha256, size)
+        return item_id
 
     def upload(self, drive, parts, filename, fileobj, size, sha256):
         parent = self.folder(drive, parts)

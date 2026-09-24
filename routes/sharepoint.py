@@ -22,6 +22,7 @@ from models import CloudAsset, CloudRun, User
 from permissions import has_perm
 from services.cloud_archive import prepare_existing
 from services.archive_context import archive_context
+from services.archive_layout import legacy_filter
 from services.archive_lifecycle import ACTIVE, TRASH, change_state, selected_assets, purge_selected, invoice_in_use
 from services.sharepoint_client import SharePointConfig, GraphClient, CloudError
 from template_context import register_manager_badges, render_template
@@ -95,6 +96,9 @@ def page(request: Request, db: Session = Depends(get_db), user: User = Depends(g
     return render_template(templates, request, "admin/sharepoint.html", {
         "config_missing": config.missing(), "sync_enabled": config.enabled,
         "connected": connected, "counts": counts, "runs": runs,
+        "reorder_pending": db.query(CloudAsset.id).filter(CloudAsset.status == "verified", legacy_filter()).count(),
+        "reorder_failed": db.query(CloudAsset.id).filter(CloudAsset.status == "verified", legacy_filter(),
+                                                       CloudAsset.error_code.startswith("reorder_")).count(),
         "assets": assets, "asset_context": archive_context(db, assets),
         "view": view, "page_number": page_number, "total": total,
         "has_next": page_number * 40 < total,
@@ -179,6 +183,8 @@ def retry(request: Request, csrf: str = Form(""), db: Session = Depends(get_db),
           user: User = Depends(get_current_active_user_html)):
     validate_post(request, user, csrf)
     count = db.query(CloudAsset).filter_by(status="error").update({CloudAsset.next_attempt: None, CloudAsset.status: "pending"})
+    count += db.query(CloudAsset).filter(CloudAsset.status == "verified", legacy_filter(),
+        CloudAsset.error_code.startswith("reorder_"), CloudAsset.lease_token.is_(None)).update({CloudAsset.next_attempt: None})
     log_audit_event(db, user, "CLOUD_RETRY", "cloud", extra_data={"count": count})
     db.commit()
     return RedirectResponse("/admin/sharepoint", 303)

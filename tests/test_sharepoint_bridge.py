@@ -25,6 +25,9 @@ from services.cloud_backup import make_bundle, send_backup
 from services.sharepoint_client import CHUNK, CloudError, GraphClient, SharePointConfig
 from services.archive_lifecycle import change_state, purge_selected
 from services.archive_context import archive_context
+from services.archive_layout import readable_location
+from services.archive_reorganization import reorganize_batch
+from services.cloud_archive import remote_location
 
 
 def config(**changes):
@@ -57,6 +60,9 @@ class ArchiveStub:
 
     def check_destination(self, backup=False):
         return "private" if backup else "docs"
+
+    def verify(self, drive, item_id, sha, size):
+        assert drive == "docs" and item_id and sha and size
 
     def upload(self, drive, parts, filename, stream, size, sha):
         self.uploads.append((drive, parts, filename, stream.read(), size, sha))
@@ -146,6 +152,159 @@ def test_disabled_sync_never_contacts_microsoft(operations):
     stub = ArchiveStub()
     assert sync_batch(factory(operations), config(enabled=False), stub)["paused"]
     assert not stub.uploads
+
+
+def test_readable_layout_separates_preview_and_preserves_names_and_revisions(operations):
+    o = operations; db = o["db"]
+    o["site"].name = "NISSA CAMPUS"; o["site"].code = "26-340"
+    db.add(SitePlan(site_id=o["site"].id, filename="NISSA CAMPUS-LENTA-PAN_Ind2.pdf",
+                    pdf_data=b"pdf", preview_data=b"png", draft="{}"))
+    db.commit()
+    pdf = db.query(CloudAsset).filter_by(kind="plan").one()
+    preview = db.query(CloudAsset).filter_by(kind="plan_preview").one()
+    pdf_parts, pdf_name = readable_location(db, pdf)
+    preview_parts, preview_name = readable_location(db, preview)
+    assert pdf_parts[:3] == ["Gestionale", "Cantieri", f"26-340 - NISSA CAMPUS [C{o['site'].id}]"]
+    assert pdf_parts[-2:] == ["Piante", f"Disegno {pdf.source_id}"]
+    assert preview_parts[-3:] == ["Supporto gestionale", "Anteprime", f"Disegno {pdf.source_id}"]
+    assert pdf_name == f"NISSA CAMPUS-LENTA-PAN_Ind2 - copia {pdf.id}.pdf"
+    assert preview_name == f"Anteprima - copia {preview.id}.png"
+    pdf.remote_path = "/".join(pdf_parts + [pdf_name]); db.commit()
+    o["site"].name = "New name"; db.commit()
+    assert readable_location(db, preview)[0][:3] == pdf_parts[:3]
+    enqueue(db, "plan", pdf.source_id, pdf.filename, b"changed", site_id=pdf.site_id); db.commit()
+    revision = db.query(CloudAsset).filter_by(sha256=hashlib.sha256(b"changed").hexdigest()).one()
+    assert readable_location(db, revision)[1] != pdf_name
+
+
+def test_legacy_attempt_resumes_original_path_and_known_ids_are_not_uploaded_again(operations):
+    o = operations; db = o["db"]
+    enqueue(db, "document", 1, "original.pdf", b"original", site_id=o["site"].id); db.commit()
+    row = db.query(CloudAsset).one()
+    parts, filename = remote_location(row)
+    row.remote_path = "/".join(parts + [filename]); row.drive_id = "docs"
+    row.status = "error"; row.attempts = 1; db.commit()
+    stub = ArchiveStub()
+    assert sync_batch(factory(o), config(), stub)["verified"] == 1
+    assert stub.uploads[0][1:3] == (parts, filename)
+    db.refresh(row); row.status = "pending"; db.commit()
+    assert sync_batch(factory(o), config(), stub)["verified"] == 1
+    assert len(stub.uploads) == 1
+
+
+def legacy_asset(db, site_id, source, status="verified"):
+    enqueue(db, "plan", source, "original.pdf", b"original", site_id=site_id); db.commit()
+    row = db.query(CloudAsset).filter_by(source_id=str(source)).one()
+    parts, name = remote_location(row)
+    row.remote_path = "/".join(parts + [name]); row.drive_id = "docs"
+    row.item_id = f"remote-{source}"; row.status = status
+    row.verified_at = datetime.utcnow(); db.commit()
+    return row
+
+
+def test_reorganization_moves_same_ids_and_skips_excluded_trash_and_busy_copies(operations):
+    o = operations; db = o["db"]
+    active = legacy_asset(db, o["site"].id, 1)
+    excluded = legacy_asset(db, o["site"].id, 2, "excluded")
+    trash = legacy_asset(db, o["site"].id, 3, "trashed")
+    busy = legacy_asset(db, o["site"].id, 4)
+    busy.lease_token = "another-worker"; busy.lease_until = datetime.utcnow() + timedelta(minutes=5); db.commit()
+    untouched = {a.id: (a.status, a.remote_path) for a in (excluded, trash, busy)}
+    class Mover(ArchiveStub):
+        def move_archive_copy(self, drive, item_id, parts, filename, sha, size):
+            assert item_id == "remote-1"
+            assert reorganize_batch(factory(o), config(), ArchiveStub())["moved"] == 0
+            with pytest.raises(CloudError, match="selection_busy_or_changed"):
+                change_state(db, o["manager"], [active.id], "trash")
+            return item_id
+    assert reorganize_batch(factory(o), config(), Mover()) == {"moved": 1, "failed": 0, "paused": False}
+    db.expire_all()
+    assert active.item_id == "remote-1" and active.status == "verified" and active.payload == b"original"
+    assert active.sha256 not in active.remote_path and "Piante/Disegno 1" in active.remote_path
+    assert {a.id: (a.status, a.remote_path) for a in (excluded, trash, busy)} == untouched
+    assert reorganize_batch(factory(o), config(), Mover())["moved"] == 0
+    assert db.query(CloudRun).filter_by(kind="reorganization", status="complete").count() == 1
+
+
+def test_reorganization_recovers_lost_response_without_reupload_and_can_retry(operations, monkeypatch):
+    o = operations; db = o["db"]; admin(o)
+    row = legacy_asset(db, o["site"].id, 1)
+    old_path = row.remote_path
+    class LostResponse(ArchiveStub):
+        moved_ids = []
+        def move_archive_copy(self, drive, item_id, parts, filename, sha, size):
+            self.moved_ids.append(item_id)
+            if len(self.moved_ids) == 1:
+                raise CloudError("network_error")
+            return item_id
+    stub = LostResponse()
+    assert reorganize_batch(factory(o), config(), stub)["failed"] == 1
+    db.refresh(row)
+    assert row.remote_path == old_path and row.item_id == "remote-1"
+    assert row.error_code == "reorder_network_error" and row.payload == b"original"
+    assert reorganize_batch(factory(o), config(), stub)["moved"] == 0
+    page = o["client"].get("/admin/sharepoint")
+    assert "Copie da riordinare:" in page.text and "Riordino da riprovare:" in page.text
+    assert "Percorso registrato" in page.text
+    token = csrf(o)
+    o["client"].post("/admin/sharepoint/riprova", data={"csrf": token})
+    assert reorganize_batch(factory(o), config(), stub)["moved"] == 1
+    assert stub.moved_ids == ["remote-1", "remote-1"] and not stub.uploads
+    db.refresh(row)
+    assert row.remote_path != old_path and not row.error_code
+    o["client"].cookies.set("lang", "fr")
+    assert "Organisation des fichiers" in o["client"].get("/admin/sharepoint").text
+
+
+def test_reorganization_disabled_or_changed_destination_never_moves(operations):
+    o = operations; db = o["db"]
+    row = legacy_asset(db, o["site"].id, 1)
+    assert reorganize_batch(factory(o), config(enabled=False), ArchiveStub())["paused"]
+    row.drive_id = "other-library"; db.commit()
+    assert reorganize_batch(factory(o), config(), ArchiveStub())["failed"] == 1
+    db.refresh(row)
+    assert row.error_code == "reorder_destination_mismatch" and row.payload == b"original"
+
+
+@pytest.mark.parametrize("case", ["ok", "already_moved", "missing", "changed", "folder", "conflict", "denied", "stale"])
+def test_graph_moves_existing_item_with_integrity_and_conflict_checks(case, monkeypatch):
+    patches = []; uploads = []
+    parent = "new-parent" if case == "already_moved" else "old-parent"
+    name = "readable.pdf" if case == "already_moved" else "old.pdf"
+    def handle(request):
+        path = request.url.path
+        if "oauth2" in path:
+            return httpx.Response(200, json={"access_token": "t"})
+        if request.method in ("POST", "PUT", "DELETE"):
+            uploads.append(request.method)
+            raise AssertionError("Moving must not upload or delete files")
+        if request.method == "PATCH":
+            patches.append(request)
+            assert request.headers["If-Match"] == '"v1"'
+            assert json.loads(request.content) == {"name": "readable.pdf", "parentReference": {"id": "new-parent"},
+                "@microsoft.graph.conflictBehavior": "fail"}
+            if case in ("denied", "stale"):
+                return httpx.Response(403 if case == "denied" else 412)
+            return httpx.Response(200, json={"id": "same-id", "name": "readable.pdf", "parentReference": {"id": "new-parent"}})
+        if path.endswith("/content"):
+            return httpx.Response(200, content=b"altered" if case == "changed" else b"original")
+        if "new-parent:" in path:
+            return httpx.Response(200, json={"id": "unrelated"}) if case == "conflict" else httpx.Response(404)
+        if case == "missing":
+            return httpx.Response(404)
+        return httpx.Response(200, json={"id": "same-id", "name": name, "parentReference": {"id": parent},
+            "eTag": '"v1"', "size": 8, "folder" if case == "folder" else "file": {}})
+    with httpx.Client(transport=httpx.MockTransport(handle)) as http:
+        graph = GraphClient(config(), http)
+        monkeypatch.setattr(graph, "folder", lambda *a: "/drives/docs/items/new-parent")
+        args = ("docs", "same-id", ["Gestionale", "Piante"], "readable.pdf", hashlib.sha256(b"original").hexdigest(), 8)
+        if case in ("ok", "already_moved"):
+            assert graph.move_archive_copy(*args) == "same-id"
+        else:
+            with pytest.raises(CloudError):
+                graph.move_archive_copy(*args)
+    assert len(patches) == (1 if case in ("ok", "denied", "stale") else 0)
+    assert not uploads
 
 
 def test_second_worker_cannot_upload_a_claimed_document(operations):

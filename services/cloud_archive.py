@@ -13,6 +13,7 @@ from sqlalchemy import event, or_, update
 
 from models import CloudAsset, CloudRun, SiteDocument, SitePlan, PurchaseOrder
 from services.sharepoint_client import CloudError, GraphClient, SharePointConfig
+from services.archive_layout import readable_location
 
 
 def enqueue_connection(connection, kind, source_id, filename, data, content_type="application/octet-stream", site_id=None):
@@ -146,18 +147,27 @@ def sync_batch(factory, config=None, client=None, limit=3):
                 if not claimed.rowcount:
                     continue
                 asset = db.get(CloudAsset, candidate.id)
-                parts, filename = remote_location(asset)
                 try:
                     if hashlib.sha256(asset.payload).hexdigest() != asset.sha256:
                         raise CloudError("local_integrity_failed")
                     if asset.drive_id and asset.drive_id != drive:
                         raise CloudError("destination_mismatch")
+                    if asset.remote_path:
+                        # Resume at the original attempted destination. A timeout
+                        # may already have created the remote file there.
+                        *parts, filename = asset.remote_path.split("/")
+                    else:
+                        parts, filename = readable_location(db, asset)
                     # Remember the attempted destination even if verification fails.
                     # Lifecycle actions must be able to locate an incomplete copy.
                     asset.drive_id = drive
                     asset.remote_path = "/".join(parts + [filename])
                     db.commit()
-                    item_id = graph.upload(drive, parts, filename, io.BytesIO(asset.payload), asset.size_bytes, asset.sha256)
+                    if asset.item_id:
+                        graph.verify(drive, asset.item_id, asset.sha256, asset.size_bytes)
+                        item_id = asset.item_id
+                    else:
+                        item_id = graph.upload(drive, parts, filename, io.BytesIO(asset.payload), asset.size_bytes, asset.sha256)
                     values = dict(status="verified", drive_id=drive, item_id=item_id, remote_path="/".join(parts + [filename]),
                                   verified_at=datetime.utcnow(), error_code=None, next_attempt=None)
                     result["verified"] += 1
@@ -200,6 +210,8 @@ async def background_sync(factory):
         if config.enabled:
             try:
                 await asyncio.to_thread(sync_batch, factory, config)
+                from services.archive_reorganization import reorganize_batch
+                await asyncio.to_thread(reorganize_batch, factory, config)
             except Exception as exc:
                 # Persist only a safe code, never an HTTP response or credentials.
                 code = exc.code if isinstance(exc, CloudError) else "unexpected_error"

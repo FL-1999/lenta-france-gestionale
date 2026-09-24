@@ -68,7 +68,15 @@ Il titolare configurato deve essere anche admin del gestionale. L'archivio docum
 5. Controllare una prima copia con stato **Verificata**. Il file remoto viene riletto e confrontato byte per byte tramite SHA-256 e dimensione. Permessi insufficienti, quota, rete o contenuto difforme producono un errore e un nuovo tentativo; la copia locale rimane.
 6. Verificare che un allegato si apra ancora nel gestionale durante un'interruzione del cloud. L'app continua a leggere la copia locale.
 
-Cartelle create automaticamente: `Gestionale/Cantieri/cantiere-ID/Documenti`, `Piante-originali`, `Piante-anteprime`, `Fiches`, `Dossier`; fatture senza cantiere in `Gestionale/Acquisti/Fatture`. I nomi file includono ID e hash per evitare sovrascritture. Le modifiche apportate direttamente in SharePoint NON riscrivono i dati nel gestionale.
+Cartelle create automaticamente: `Gestionale/Cantieri/CODICE - NOME [CID]/Piante/Disegno ID`, `Supporto gestionale/Anteprime/Disegno ID`, `Documenti`, `Fiches`, `Dossier finali`, `Fatture`; fatture senza cantiere in `Gestionale/Acquisti/Fatture`. Esempio: `26-340 - NISSA CAMPUS [C3]`. I PDF mantengono un nome leggibile con il solo suffisso ` - copia ID`, che distingue versioni e omonimi. Gli hash restano nel database per verificare l'integrità. Le cartelle si creano solo quando servono; il primo percorso registrato del cantiere viene riutilizzato anche se il nome del cantiere cambia. Le modifiche apportate direttamente in SharePoint NON riscrivono i dati nel gestionale.
+
+### Riordino dei file già trasferiti
+
+Con sincronizzazione attiva, dopo l'invio dei documenti il worker riordina fino a 3 copie verificate per ciclo che hanno ancora un nome con hash. Usa il medesimo ID SharePoint per spostare e rinominare il file nella stessa raccolta, controllando contenuto prima e dopo, conflitti di destinazione ed eTag. Non ricarica né elimina file; lascia le vecchie cartelle vuote. Esclusi, cestino e copie eliminate non partecipano. Le copie senza più cantiere ricevono una cartella `Cantiere rimosso [CID]`.
+
+Il percorso nel database si aggiorna dopo la verifica. Se il processo si interrompe dopo lo spostamento, il tentativo successivo ritrova lo stesso ID e completa l'aggiornamento. Le copie in corso sono protette da lease persistenti contro azioni concorrenti. Un errore conserva la copia locale e il riferimento remoto; la pagina mostra **Riordino da riprovare** e permette di usare **Riprova gli errori**. **Percorso registrato** mostra l'ultima destinazione registrata, che durante un errore può essere in attesa di riconciliazione. I tentativi di upload precedenti ripartono dal loro percorso già registrato; non generano una copia nel nuovo layout prima di avere recuperato l'esito precedente.
+
+Il riordino è registrato in `cloud_runs` (tipo `reorganization`). Un cambio di raccolta, un file mancante, modificato o una destinazione occupata bloccano quel file senza sovrascrivere nulla. Nessun ampliamento automatico dei permessi Microsoft. Riferimento API: https://learn.microsoft.com/en-us/graph/api/driveitem-move?view=graph-rest-1.0
 
 Per elaborare un arretrato dal server, con le stesse variabili e lo stesso database:
 
