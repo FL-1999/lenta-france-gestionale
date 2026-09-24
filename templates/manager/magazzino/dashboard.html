@@ -1,116 +1,45 @@
 {% extends "shared/base.html" %}
-{% set lang = request.cookies.get('lang', 'it') %}
-
-{% block title %}
-    {% if lang == 'fr' %}Tableau de bord Magazzino{% else %}Dashboard Magazzino{% endif %}
-{% endblock %}
-
+{% from 'shared/workspace_icons.html' import icon %}
+{% block title %}{{ t('Magazzino · Panoramica','Magasin · Vue d’ensemble') }}{% endblock %}
 {% block content %}
-<div class="page-header">
-    <div class="page-header-main">
-        <h1 class="page-title">📦 {% if lang == 'fr' %}Tableau de bord Magazzino{% else %}Dashboard Magazzino{% endif %}</h1>
-        <p class="page-subtitle">
-            {% if lang == 'fr' %}
-                Vue synthétique des stocks et des consommations.
-            {% else %}
-                Vista sintetica di stock e consumi.
-            {% endif %}
-        </p>
-    </div>
+<link rel="stylesheet" href="/static/css/warehouse-overview.css?v=1">
+<div class="wh-overview">
+<header class="page-header wh-hero"><div><p class="page-eyebrow">{{ t('LOGISTICA QUOTIDIANA','LOGISTIQUE QUOTIDIENNE') }} · {{ today.strftime('%d/%m/%Y') }}</p><h1 class="page-title">{{ t('Il tuo magazzino','Votre magasin') }}</h1><p class="page-subtitle">{{ t('Richieste, scorte e carichi: tutto quello che serve per organizzare la giornata.','Demandes, stocks et chargements : tout pour organiser la journée.') }}</p></div><a class="btn btn-primary" href="/manager/magazzino?view=all">{{ icon('box') }} {{ t('Apri inventario','Ouvrir le stock') }}</a></header>
+<div class="wh-metrics">
+{% for it,fr,value,href,kind,detail_it,detail_fr in [
+('Da valutare','À examiner',waiting_count,'/manager/magazzino/richieste?stato=IN_ATTESA','warning','Richieste in attesa','Demandes en attente'),
+('Da preparare','À préparer',preparing_count,'/manager/magazzino/richieste?stato=da_preparare','info','Approvate o parzialmente evase','Approuvées ou partiellement servies'),
+('Sotto soglia','Sous seuil',low_count,'/manager/magazzino?stock_status=sotto_soglia','warning','Inclusi gli esauriti con soglia','Épuisés avec seuil inclus'),
+('Esauriti','Épuisés',empty_count,'/manager/magazzino?stock_status=esauriti','danger','Articoli senza disponibilità','Articles sans disponibilité')]
+%}<a class="wh-metric wh-{{ kind }}" href="{{ href }}"><span>{{ t(it,fr) }}</span><strong>{{ value }}</strong><small>{{ t(detail_it,detail_fr) }}</small></a>{% endfor %}
 </div>
-
-<section class="workspace-context" aria-labelledby="warehouse-summary">
-<div class="workspace-context-heading"><span class="workspace-context-number" aria-hidden="true">01</span><div><h2 id="warehouse-summary">{{ t('Scorte e richieste','Stocks et demandes') }}</h2><p>{{ t('Disponibilità, valore e richieste da gestire.','Disponibilité, valeur et demandes à traiter.') }}</p></div></div>
-<div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-    <div class="card" style="flex: 1 1 220px;">
-        <div class="card-body">
-            <p class="muted" style="margin: 0 0 0.35rem 0;">
-                💶 {% if lang == 'fr' %}Valeur du stock{% else %}Valore magazzino{% endif %}
-            </p>
-            <div style="font-size: 2rem; font-weight: 700;">
-                € {{ "%.2f"|format(valore_magazzino|default(0)) }}
-            </div>
-            <p class="muted" style="margin: 0.35rem 0 0 0; font-size: .8rem;">
-                {% if lang == 'fr' %}{{ articoli_con_prezzo|default(0) }} article(s) valorisé(s) sur {{ articoli_totali|default(0) }}{% else %}{{ articoli_con_prezzo|default(0) }} articoli valorizzati su {{ articoli_totali|default(0) }}{% endif %}
-            </p>
-        </div>
-    </div>
-    <div class="card" style="flex: 1 1 220px;">
-        <div class="card-body">
-            <p class="muted" style="margin: 0 0 0.35rem 0;">
-                {% if lang == 'fr' %}Articles sous seuil{% else %}Articoli sotto soglia{% endif %}
-            </p>
-            <div style="font-size: 2rem; font-weight: 700;">
-                {{ sotto_soglia_count }}
-            </div>
-        </div>
-    </div>
-    <div class="card" style="flex: 1 1 220px;">
-        <div class="card-body">
-            <p class="muted" style="margin: 0 0 0.35rem 0;">
-                {% if lang == 'fr' %}Articles épuisés{% else %}Articoli esauriti{% endif %}
-            </p>
-            <div style="font-size: 2rem; font-weight: 700;">
-                {{ esauriti_count }}
-            </div>
-        </div>
-    </div>
-    <div class="card" style="flex: 1 1 220px;">
-        <div class="card-body">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <p class="muted" style="margin: 0;">
-                    {% if lang == 'fr' %}Demandes en attente{% else %}Richieste in attesa{% endif %}
-                </p>
-                {% if richieste_nuove_count > 0 %}
-                    <span style="background: #ef4444; color: #fff; border-radius: 999px; padding: 0.1rem 0.5rem; font-size: 0.75rem;">
-                        {{ richieste_nuove_count }}
-                    </span>
-                {% endif %}
-            </div>
-            <div style="font-size: 2rem; font-weight: 700;">
-                {{ richieste_nuove_count }}
-            </div>
-        </div>
-    </div>
-</div>
-
+<nav class="wh-shortcuts" aria-label="{{ t('Azioni magazzino','Actions magasin') }}">
+{% for it,fr,description_it,description_fr,href,symbol in [
+('Articoli','Articles','Cerca, carica e preleva','Rechercher, entrer et sortir','/manager/magazzino','box'),
+('Richieste','Demandes','Valuta e prepara materiali','Examiner et préparer les matériaux','/manager/magazzino/richieste','today'),
+('Trasporti e carichi','Transports et chargements','Prepara i viaggi pianificati','Préparer les trajets planifiés','/manager/trasporti','truck'),
+('Movimenti','Mouvements','Controlla entrate e uscite','Consulter les entrées et sorties','/manager/magazzino/movimenti','chart'),
+('Depositi','Dépôts','Consulta luoghi e disponibilità','Consulter les lieux et disponibilités','/manager/depositi','site')]
+%}<a href="{{ href }}">{{ icon(symbol) }}<strong>{{ t(it,fr) }}</strong><small>{{ t(description_it,description_fr) }}</small></a>{% endfor %}
+</nav>
+<div class="wh-columns">
+<section class="card wh-section"><div class="wh-heading"><div><p class="page-eyebrow">{{ t('LE PRIORITÀ','LES PRIORITÉS') }}</p><h2>{{ t('Richieste da seguire','Demandes à suivre') }}</h2></div><a href="/manager/magazzino/richieste?stato=tutte">{{ t('Vedi tutte','Tout voir') }} →</a></div>
+<p class="wh-muted">{{ t('Prima le richieste urgenti, poi quelle con la scadenza più vicina.','Les demandes urgentes d’abord, puis les échéances les plus proches.') }}</p>
+{% for row in request_queue %}<a class="wh-task" href="{{ url_for('manager_magazzino_richiesta_detail',richiesta_id=row.id) }}"><div><strong>{{ row.cantiere.name if row.cantiere else t('Richiesta generale','Demande générale') }}</strong><small>{{ t('Richiesta','Demande') }} #{{ row.id }}{% if row.data_necessaria %} · {{ t('Entro il','Pour le') }} {{ row.data_necessaria.strftime('%d/%m/%Y') }}{% endif %}</small><div class="wh-badges">{% if row.priorita.value == 'HIGH' %}<span class="wh-badge wh-danger">{{ t('Urgente','Urgent') }}</span>{% endif %}{% if row.data_necessaria and row.data_necessaria < today %}<span class="wh-badge wh-warning">{{ t('Scadenza superata','Échéance dépassée') }}</span>{% endif %}</div></div><span class="wh-badge">{{ t('Da valutare','À examiner') if row.stato.value == 'IN_ATTESA' else (t('Parzialmente evasa','Partiellement servie') if row.stato.value == 'PARZIALE' else t('Da preparare','À préparer')) }}</span></a>
+{% else %}<div class="wh-empty">{{ icon('today') }}<h3>{{ t('Nessuna richiesta aperta','Aucune demande ouverte') }}</h3><p>{{ t('Le nuove richieste dei cantieri compariranno qui. Puoi già controllare scorte e movimenti.','Les nouvelles demandes des chantiers apparaîtront ici. Vous pouvez déjà vérifier les stocks et mouvements.') }}</p></div>{% endfor %}
 </section>
-<div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-header">
-        <div class="card-title">
-            <span>{% if lang == 'fr' %}Top 10 sorties (30 derniers jours){% else %}Top 10 scarichi (ultimi 30 giorni){% endif %}</span>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-                        <th>{% if lang == 'fr' %}Quantité{% else %}Totale scaricato{% endif %}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if top_consumi %}
-                        {% for item in top_consumi %}
-                            <tr>
-                                <td>{{ item.codice or '—' }}</td>
-                                <td>{{ item.nome }}</td>
-                                <td>{{ item.totale }}</td>
-                            </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="3" class="muted">
-                                {% if lang == 'fr' %}Aucune donnée.{% else %}Nessun dato.{% endif %}
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+<section class="card wh-section wh-value"><p class="page-eyebrow">{{ t('SCORTE VALORIZZATE','VALORISATION DES STOCKS') }}</p><h2>{{ t('Valore magazzino','Valeur du stock') }}</h2><strong class="wh-value-total" data-stock-value>€ {{ '%.2f'|format(valuation.value) }}</strong><p>{{ t('Somma di quantità disponibile × costo unitario degli articoli attivi.','Somme des quantités disponibles × coût unitaire des articles actifs.') }}</p>
+<div class="wh-coverage"><span>{{ valuation.priced }} / {{ valuation.total }} {{ t('articoli con costo','articles avec coût') }}</span><strong>{{ valuation.coverage }}%</strong></div><progress value="{{ valuation.priced }}" max="{{ valuation.total or 1 }}" aria-label="{{ t('Articoli con costo unitario','Articles avec coût unitaire') }}"></progress>
+{% if valuation.missing %}<p class="wh-price-warning"><strong>{{ valuation.missing }} {{ t('costo da completare','coût à compléter') if valuation.missing == 1 else t('costi da completare','coûts à compléter') }}</strong><br>{{ valuation.missing_stock }} {{ t('articolo ha scorte ma nessun costo: il totale è parziale.','article a du stock mais aucun coût : le total est partiel.') if valuation.missing_stock == 1 else t('articoli hanno scorte ma nessun costo: il totale è parziale.','articles ont du stock mais aucun coût : le total est partiel.') }}</p>{% else %}<p class="wh-muted">{{ t('Tutti gli articoli attivi hanno un costo registrato.','Tous les articles actifs ont un coût enregistré.') if valuation.total else t('Aggiungi gli articoli per iniziare la valorizzazione.','Ajoutez des articles pour commencer la valorisation.') }}</p>{% endif %}
+<a class="btn btn-primary" href="{{ url_for('warehouse_prices') }}">{{ t('Prezzi e valorizzazione','Prix et valorisation') }} {{ icon('arrow') }}</a><details class="wh-explanation"><summary>{{ t('Come si calcola?','Comment est-ce calculé ?') }}</summary><p>{{ t('Esempio: 100 kg × 0,20 €/kg = 20 €. Il costo si riferisce all’unità dell’articolo, non al bancale o alla confezione.','Exemple : 100 kg × 0,20 €/kg = 20 €. Le coût correspond à l’unité de l’article, pas à la palette ou au conditionnement.') }}</p><p>{{ t('È una stima ai costi registrati: non il prezzo di vendita, né una media automatica delle fatture. Un campo vuoto significa costo mancante; zero è un costo pari a zero.','Il s’agit d’une estimation aux coûts enregistrés : ni un prix de vente, ni une moyenne automatique des factures. Un champ vide signifie un coût manquant ; zéro est un coût nul.') }}</p></details>
+</section>
+<section class="card wh-section"><div class="wh-heading"><h2>{{ t('Scorte da controllare','Stocks à vérifier') }}</h2><a href="/manager/magazzino?stock_status=sotto_soglia">{{ t('Sotto soglia','Sous seuil') }} →</a></div>
+{% for item in stock_attention %}<a class="wh-task" href="{{ url_for('warehouse_item_card',item_id=item.id) }}"><div><strong>{{ item.nome }}</strong><small>{{ item.codice or '—' }} · {{ t('Soglia','Seuil') }}: {{ item.soglia_minima if item.soglia_minima is not none else '—' }} {{ item.unita_misura }}</small></div><span class="wh-stock {{ 'wh-danger' if item.quantita_disponibile <= 0 else 'wh-warning' }}"><strong>{{ '%g'|format(item.quantita_disponibile) }} {{ item.unita_misura }}</strong><small>{{ t('Disponibili','Disponibles') }}</small></span></a>{% else %}<div class="wh-empty"><h3>{{ t('Nessuna scorta da segnalare','Aucun stock à signaler') }}</h3><p>{{ t('Le soglie impostate sugli articoli aiutano a individuare quando riordinare.','Les seuils définis sur les articles permettent de repérer les besoins de réapprovisionnement.') }}</p></div>{% endfor %}
+</section>
+<section class="card wh-section"><div class="wh-heading"><h2>{{ t('Ultimi movimenti','Derniers mouvements') }}</h2><span class="wh-badge">{{ today_movements }} {{ t('oggi','aujourd’hui') }}</span></div>
+{% for row in recent_movements %}<a class="wh-task" href="{{ url_for('warehouse_item_card',item_id=row.item_id) }}"><div><strong>{{ row.item.nome if row.item else t('Articolo','Article') }}</strong><small>{{ row.created_at.strftime('%d/%m %H:%M') }}</small></div><span class="wh-stock"><strong>{{ '+' if row.tipo.value == 'carico' else ('−' if row.tipo.value == 'scarico' else '') }}{{ '%g'|format(row.quantita) }} {{ row.item.unita_misura if row.item else '' }}</strong><small>{{ t('Carico','Entrée') if row.tipo.value == 'carico' else (t('Scarico','Sortie') if row.tipo.value == 'scarico' else t('Rettifica','Ajustement')) }}</small></span></a>{% else %}<div class="wh-empty"><h3>{{ t('Nessun movimento registrato','Aucun mouvement enregistré') }}</h3><p>{{ t('Apri la scheda di un articolo per registrare un carico o un prelievo.','Ouvrez la fiche d’un article pour enregistrer une entrée ou une sortie.') }}</p></div>{% endfor %}<a class="wh-footer-link" href="/manager/magazzino/movimenti">{{ t('Apri registro movimenti','Ouvrir le registre des mouvements') }} →</a>
+</section>
 </div>
-
+<details class="card wh-section wh-consumption"><summary>{{ t('Articoli più scaricati · ultimi 30 giorni','Articles les plus sortis · 30 derniers jours') }}</summary><p class="wh-muted">{{ t('Quantità espresse nell’unità di ciascun articolo.','Quantités exprimées dans l’unité de chaque article.') }}</p>{% for row in top_consumption %}<a class="wh-task" href="{{ url_for('warehouse_item_card',item_id=row.id) }}"><strong>{{ row.nome }}</strong><span>{{ '%g'|format(row.total) }} {{ row.unita_misura }}</span></a>{% else %}<p>{{ t('Non ci sono ancora scarichi in questo periodo.','Aucune sortie sur cette période.') }}</p>{% endfor %}</details>
+</div>
 {% endblock %}

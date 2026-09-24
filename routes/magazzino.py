@@ -885,87 +885,9 @@ def manager_magazzino_dashboard(
 ):
     ensure_magazzino_access(current_user)
 
-    sotto_soglia_count = (
-        db.query(func.count(MagazzinoItem.id))
-        .filter(
-            MagazzinoItem.attivo.is_(True),
-            MagazzinoItem.soglia_minima.isnot(None),
-            MagazzinoItem.quantita_disponibile <= MagazzinoItem.soglia_minima,
-        )
-        .scalar()
-        or 0
-    )
-    esauriti_count = (
-        db.query(func.count(MagazzinoItem.id))
-        .filter(
-            MagazzinoItem.attivo.is_(True),
-            MagazzinoItem.quantita_disponibile <= 0,
-        )
-        .scalar()
-        or 0
-    )
-    richieste_nuove_count = (
-        db.query(func.count(MagazzinoRichiesta.id))
-        .filter(MagazzinoRichiesta.stato == MagazzinoRichiestaStatusEnum.in_attesa)
-        .scalar()
-        or 0
-    )
-    since_date = datetime.now() - timedelta(days=30)
-    top_consumi_rows = (
-        db.query(
-            MagazzinoItem.codice,
-            MagazzinoItem.nome,
-            func.coalesce(func.sum(MagazzinoMovimento.quantita), 0.0).label("totale"),
-        )
-        .join(MagazzinoMovimento, MagazzinoMovimento.item_id == MagazzinoItem.id)
-        .filter(
-            MagazzinoMovimento.tipo == MagazzinoMovimentoTipoEnum.scarico,
-            MagazzinoMovimento.created_at >= since_date,
-        )
-        .group_by(MagazzinoItem.id)
-        .order_by(func.sum(MagazzinoMovimento.quantita).desc(), MagazzinoItem.nome.asc())
-        .limit(10)
-        .all()
-    )
-    top_consumi = [
-        SimpleNamespace(codice=codice, nome=nome, totale=totale)
-        for codice, nome, totale in top_consumi_rows
-    ]
-    # Valorizzazione economica del magazzino
-    valore_magazzino = (
-        db.query(func.coalesce(func.sum(MagazzinoItem.quantita_disponibile * MagazzinoItem.costo_unitario), 0.0))
-        .filter(MagazzinoItem.attivo.is_(True), MagazzinoItem.costo_unitario.isnot(None))
-        .scalar()
-        or 0.0
-    )
-    articoli_con_prezzo = (
-        db.query(func.count(MagazzinoItem.id))
-        .filter(MagazzinoItem.attivo.is_(True), MagazzinoItem.costo_unitario.isnot(None))
-        .scalar()
-        or 0
-    )
-    articoli_totali = (
-        db.query(func.count(MagazzinoItem.id)).filter(MagazzinoItem.attivo.is_(True)).scalar() or 0
-    )
-
-    badges = build_magazzino_badges(db, current_user)
-    return render_template(
-        templates,
-        request,
-        "manager/magazzino/dashboard.html",
-        {
-            "valore_magazzino": round(valore_magazzino, 2),
-            "articoli_con_prezzo": articoli_con_prezzo,
-            "articoli_totali": articoli_totali,
-            "sotto_soglia_count": sotto_soglia_count,
-            "esauriti_count": esauriti_count,
-            "richieste_nuove_count": richieste_nuove_count,
-            "top_consumi": top_consumi,
-            **badges,
-        },
-        db,
-        current_user,
-    )
+    from services.warehouse_overview import overview
+    return render_template(templates, request, "manager/magazzino/dashboard.html",
+                           {**overview(db), **build_magazzino_badges(db, current_user)}, db, current_user)
 
 
 @router.get(
@@ -3161,6 +3083,11 @@ def manager_magazzino_update(
         if nuova_quantita is None or nuova_quantita < 0:
             raise ValueError(_magazzino_error_message(lang, "quantita_insufficiente"))
 
+        for value in (soglia_minima, costo_unitario):
+            if value not in (None, "") and (_parse_float(value) is None or _parse_float(value) < 0):
+                raise ValueError("Le seuil et le coût doivent être des nombres supérieurs ou égaux à zéro." if lang == "fr"
+                                 else "Soglia e costo devono essere numeri maggiori o uguali a zero.")
+
         bags, weight, rolls, length = item.sacchi_per_bancale, item.kg_per_sacco, item.rotoli_per_bancale, item.metri_per_rotolo
         if packaging_form:
             bags, weight, rolls, length = validate_article_packaging(packaging_enabled, item.unita_misura, packaging_kind, sacchi_per_bancale, kg_per_sacco, rotoli_per_bancale, metri_per_rotolo)
@@ -4032,7 +3959,10 @@ def manager_magazzino_richieste(
 
     page, per_page = _normalize_pagination(page, per_page)
     stato_filtro = None
-    if stato and stato.lower() != "tutte":
+    preparing_filter = stato == "da_preparare"
+    if preparing_filter:
+        stato_filtro = None
+    elif stato and stato.lower() != "tutte":
         stato_filtro = _parse_status(stato) or MagazzinoRichiestaStatusEnum.in_attesa
     elif not stato:
         stato_filtro = MagazzinoRichiestaStatusEnum.in_attesa
@@ -4042,6 +3972,8 @@ def manager_magazzino_richieste(
         joinedload(MagazzinoRichiesta.richiesto_da),
         joinedload(MagazzinoRichiesta.cantiere),
     )
+    if preparing_filter:
+        query = query.filter(MagazzinoRichiesta.stato.in_((MagazzinoRichiestaStatusEnum.approvata, MagazzinoRichiestaStatusEnum.parziale)))
     if stato_filtro:
         query = query.filter(MagazzinoRichiesta.stato == stato_filtro)
 
@@ -4062,6 +3994,7 @@ def manager_magazzino_richieste(
         {
             "richieste": richieste,
             "stato_filtro": stato_filtro,
+            "preparing_filter": preparing_filter,
             "stati": list(MagazzinoRichiestaStatusEnum),
             "oggi": date.today(),
             "page": page,

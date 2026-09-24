@@ -1,53 +1,34 @@
-# Ruoli aggiuntivi: utenti fittizi e accesso atteso
+# Accessi effettivi del gestionale
 
-## Utenti fittizi (da creare in ambiente di test)
+Verifica del codice: 24 settembre 2026. Le autorizzazioni ordinarie seguono il ruolo attivo, non la somma dei ruoli assegnati.
 
-| Email | Ruolo | Note |
-| --- | --- | --- |
-| magazzino.test@lenta.local | MAGAZZINO | Solo accesso magazzino (lettura/gestione). |
-| contabilita.test@lenta.local | CONTABILITA | Solo report economici in lettura. |
-| hr.test@lenta.local | HR | Solo liste personale in lettura. |
-| manager.test@lenta.local | MANAGER | Accesso manager completo. |
-| admin.test@lenta.local | ADMIN | Accesso completo + amministrazione. |
-| capo.test@lenta.local | CAPOSQUADRA | Accesso capo squadra (rapportini, magazzino capo). |
+| Funzione | Admin | Manager | Magazzino |
+| --- | --- | --- | --- |
+| Cantieri, piante, coupe, fiches, rapportini, personale | Gestisce | Gestisce | Non accede |
+| Articoli, scorte, richieste e movimenti | Gestisce | Gestisce | Consulta articoli; gestisce carichi, prelievi, richieste e posizioni |
+| Creazione e modifica catalogo, categorie, fornitori e ordini d'acquisto | Gestisce | Gestisce | Non gestisce |
+| Costi unitari degli articoli | Modifica | Modifica | Consulta |
+| Preparazione carichi per viaggi esistenti | Gestisce | Gestisce | Gestisce |
+| Creazione viaggi, assegnazione autisti | Gestisce | Gestisce | Non gestisce |
+| Depositi | Gestisce | Gestisce | Consulta |
+| Utenti, ruoli, disattivazione/eliminazione profili | Gestisce | Non accede | Non accede |
+| Impostazioni, backup e SharePoint | Gestisce | Non accede | Non accede |
+| Eliminazioni protette da sites.delete o records.delete | Consentite | Non consentite | Non consentite |
+| Costi economici dei cantieri | Gestisce | Gestisce | Non accede |
+| Ricavi e margini dei cantieri | Accede | Non accede se ha solo il ruolo manager | Non accede |
 
-## Cosa devono vedere (e non vedere)
+Il cestino privato e il recupero copie SharePoint richiedono anche la corrispondenza con `CLOUD_ARCHIVE_OWNER_EMAIL`: essere admin da solo non basta.
 
-- **MAGAZZINO**
-  - ✅ Navigazione: Magazzino + Home magazzino.
-  - ❌ Nessun accesso a report economici, personale, cantieri, fiches.
-  - ✅ Accesso diretto alle pagine `/manager/magazzino/*`.
-  - ❌ Accesso diretto a `/manager/rapportini`, `/manager/personale`, `/manager/cantieri`, `/manager/fiches` → 403.
+Eccezione già presente: `can_view_site_margin` verifica anche il ruolo admin assegnato. Un account admin che passa alla vista manager può continuare a vedere margini/ricavi; per collaudare un manager puro usare un account senza ruolo admin assegnato. Questa revisione non modifica tale regola.
 
-- **CONTABILITA**
-  - ✅ Navigazione: Report economici.
-  - ❌ Nessun accesso a magazzino, personale, cantieri, fiches.
-  - ✅ Accesso diretto a `/manager/rapportini` e dettaglio `/manager/rapportini/{id}`.
-  - ❌ Accesso diretto a `/manager/magazzino/*`, `/manager/personale` → 403.
+Il permesso nominale `equipment.read` del magazzino non apre il catalogo amministrativo `/manager/attrezzature`, che oggi richiede `manager.access`. Il magazziniere accede alle attrezzature e ai carichi tramite i trasporti. Non mostrare scorciatoie verso pagine amministrative non autorizzate.
 
-- **HR**
-  - ✅ Navigazione: Personale (solo lettura).
-  - ❌ Nessun accesso a magazzino, report economici, cantieri, fiches.
-  - ✅ Accesso diretto a `/manager/personale`.
-  - ❌ Accesso diretto a `/manager/personale/new`, `/manager/personale/{id}/modifica` → 403.
+## Prezzi e valore delle scorte
 
-- **MANAGER**
-  - ✅ Navigazione: Dashboard manager, cantieri, magazzino, report, personale, fiches.
-  - ✅ Accesso diretto alle pagine manager.
+Da **Dashboard magazzino → Prezzi e valorizzazione**, oppure **Acquisti e magazzino → Prezzi**, cercare un articolo e salvare il costo unitario. La stessa pagina è raggiungibile dalla scheda articolo. Admin e manager modificano; magazzino consulta.
 
-- **ADMIN**
-  - ✅ Tutto (inclusa gestione utenti e impostazioni).
+Il totale è la somma di `quantita_disponibile × costo_unitario` degli articoli attivi con costo. Un costo assente non contribuisce al totale ed è segnalato come mancante; il valore zero è invece un costo registrato. Si tratta del costo di riferimento inserito manualmente, non di FIFO, costo medio ponderato o prezzo di vendita. Il costo non viene aggiornato automaticamente da fatture o ordini.
 
-- **CAPOSQUADRA**
-  - ✅ Dashboard capo squadra, rapportini capo, magazzino capo.
-  - ❌ Nessun accesso a pagine manager.
+L'unità è quella dell'articolo: per un articolo in kg, il costo è €/kg anche se le entrate vengono registrate in sacchi o bancali tramite le conversioni disponibili. Esempio: 100 kg × 0,20 €/kg = 20 €. Cambiare costo rivalorizza la giacenza attuale senza creare movimenti, modificare quantità o riscrivere prezzi di ordini precedenti.
 
-## Verifica accesso diretto (403)
-
-Esempi di URL da verificare con ruoli non autorizzati:
-
-- `/manager/magazzino`
-- `/manager/rapportini`
-- `/manager/personale`
-- `/manager/cantieri`
-- `/manager/fiches`
+La pagina segnala dati non validi senza svuotare il valore inserito e rileva modifiche concorrenti. Le variazioni sono registrate nell'audit. I campi costo/soglia nell'editor completo rifiutano valori negativi o non finiti.

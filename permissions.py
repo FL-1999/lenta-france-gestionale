@@ -203,3 +203,7 @@ def can_view_site_margin(user: User | None) -> bool:
 
 def can_manage_trip_loads(user: User | None) -> bool:
     return has_any_perm(user, "manager.access", "trasporti.loads.manage", "warehouse.loads.prepare")
+
+
+def can_manage_warehouse_prices(user: User | None) -> bool:
+    return has_any_perm(user, "manager.access", "inventory.prices.manage")

@@ -9179,6 +9179,8 @@ app.include_router(manager_personale.router)
 app.include_router(manager_veicoli.router)
 app.include_router(manager_depositi.router)
 app.include_router(magazzino.router)
+from routes import warehouse_pricing
+app.include_router(warehouse_pricing.router)
 app.include_router(ordini.router)
 from routes import purchasing_catalog
 app.include_router(purchasing_catalog.router)
