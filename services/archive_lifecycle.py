@@ -7,13 +7,15 @@ from sqlalchemy import or_, update
 from audit_utils import log_audit_event
 from models import CloudAsset, PurchaseOrder
 from services.sharepoint_client import CloudError, GraphClient, SharePointConfig
+from services.plan_publications import transfer_allowed
 
 ACTIVE = ("pending", "error", "sending", "verified")
+LOCAL = ("local",)
 TRASH = ("trashed", "purge_error", "purging")
 TRANSITIONS = {
-    "exclude": (ACTIVE, "excluded"),
+    "exclude": (ACTIVE + LOCAL, "excluded"),
     "include": (("excluded",), "pending"),
-    "trash": (ACTIVE + ("excluded",), "trashed"),
+    "trash": (ACTIVE + LOCAL + ("excluded",), "trashed"),
     # Restoring never starts a transfer. The owner explicitly includes it later.
     "restore": (("trashed", "purge_error"), "excluded"),
 }
@@ -35,6 +37,9 @@ def change_state(db, user, ids, action):
     rows = selected_assets(db, ids)
     allowed, target = TRANSITIONS[action]
     for asset in rows:
+        if action == "include" and not db.query(CloudAsset.id).filter(CloudAsset.id == asset.id, transfer_allowed()).first():
+            db.rollback()
+            raise CloudError("only_approved_plans")
         # Also block expired upload leases: let the sync worker reconcile them.
         result = db.execute(update(CloudAsset).where(
             CloudAsset.id == asset.id, CloudAsset.status.in_(allowed),

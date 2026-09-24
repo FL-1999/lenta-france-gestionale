@@ -19,12 +19,13 @@ import pytest
 from sqlalchemy.orm import sessionmaker
 
 from test_operations import operations
-from models import CloudAsset, CloudRun, PurchaseOrder, SiteDocument, SitePlan, RoleEnum
+from models import CloudAsset, CloudRun, PurchaseOrder, SiteDocument, SitePlan, RoleEnum, CloudPlanPublication, Site
 from services.cloud_archive import enqueue, prepare_existing, sync_batch, legacy_invoice_path
 from services.cloud_backup import make_bundle, send_backup
 from services.sharepoint_client import CHUNK, CloudError, GraphClient, SharePointConfig
 from services.archive_lifecycle import change_state, purge_selected
 from services.archive_context import archive_context
+from services.plan_publications import reconcile_plan_archives
 from services.archive_layout import readable_location
 from services.archive_reorganization import reorganize_batch
 from services.cloud_archive import remote_location
@@ -154,27 +155,96 @@ def test_disabled_sync_never_contacts_microsoft(operations):
     assert not stub.uploads
 
 
-def test_readable_layout_separates_preview_and_preserves_names_and_revisions(operations):
+def test_trials_do_not_consume_numbers_and_only_approved_pdf_is_uploaded(operations):
     o = operations; db = o["db"]
-    o["site"].name = "NISSA CAMPUS"; o["site"].code = "26-340"
-    db.add(SitePlan(site_id=o["site"].id, filename="NISSA CAMPUS-LENTA-PAN_Ind2.pdf",
-                    pdf_data=b"pdf", preview_data=b"png", draft="{}"))
-    db.commit()
+    trials = [SitePlan(site_id=o["site"].id, filename="trial.pdf", pdf_data=b"trial",
+                      preview_data=b"png", draft="{}", removed_at=datetime.utcnow()) for _ in range(3)]
+    real = SitePlan(site_id=o["site"].id, filename="real.pdf", pdf_data=b"real",
+                    preview_data=b"preview", draft="{}")
+    db.add_all(trials + [real]); db.commit()
+    stub = ArchiveStub()
+    assert sync_batch(factory(o), config(), stub)["verified"] == 0
+    assert db.query(CloudPlanPublication).count() == 0 and not stub.uploads
+    real.approved = "{}"; real.approved_at = datetime.utcnow(); db.commit()
+    assert sync_batch(factory(o), config(), stub)["verified"] == 1
+    db.expire_all()
+    assert real.id > 3 and db.get(CloudPlanPublication, real.id).number == 1
+    assert stub.uploads[0][1][-2:] == ["Piante", "Pianta 01"]
+    assert stub.uploads[0][2:4] == ("real.pdf", b"real")
+    assert db.query(CloudAsset).filter_by(status="local").count() == 7
+    real.approved_at = datetime.utcnow(); db.commit()
+    assert sync_batch(factory(o), config(), stub)["verified"] == 0
+    assert db.get(CloudPlanPublication, real.id).number == 1 and len(stub.uploads) == 1
+    second = SitePlan(site_id=o["site"].id, filename="revision.pdf", pdf_data=b"v2", preview_data=b"png2", draft="{}", approved="{}")
+    other_site = Site(name="Other", code="other-publication")
+    db.add_all([second, other_site]); db.flush()
+    other = SitePlan(site_id=other_site.id, filename="other.pdf", pdf_data=b"other", preview_data=b"png-other", draft="{}", approved="{}")
+    db.add(other); db.flush(); reconcile_plan_archives(db); db.commit()
+    assert db.get(CloudPlanPublication, second.id).number == 2
+    assert db.get(CloudPlanPublication, other.id).number == 1
+    # Archive identity survives removal of the source.
+    db.delete(real); db.commit()
+    assert db.get(CloudPlanPublication, real.id).number == 1
+
+
+def test_policy_preserves_existing_remote_copies_and_owner_choices(operations):
+    o = operations; db = o["db"]
+    plan = SitePlan(site_id=o["site"].id, filename="trial.pdf", pdf_data=b"pdf", preview_data=b"png", draft="{}")
+    db.add(plan); db.commit()
     pdf = db.query(CloudAsset).filter_by(kind="plan").one()
     preview = db.query(CloudAsset).filter_by(kind="plan_preview").one()
+    for row in (pdf, preview):
+        parts, name = remote_location(row)
+        row.remote_path = "/".join(parts + [name]); row.drive_id = "docs"
+        row.item_id = f"old-{row.id}"; row.status = "verified"; row.verified_at = datetime.utcnow()
+    db.commit()
+    originals = {a.id: (a.item_id, a.remote_path, a.payload, a.verified_at) for a in (pdf, preview)}
+    assert sync_batch(factory(o), config(enabled=False), ArchiveStub())["paused"]
+    db.expire_all()
+    assert all(a.status == "local" for a in (pdf, preview))
+    assert {a.id: (a.item_id, a.remote_path, a.payload, a.verified_at) for a in (pdf, preview)} == originals
+    change_state(db, o["manager"], [preview.id], "exclude")
+    with pytest.raises(CloudError, match="only_approved_plans"):
+        change_state(db, o["manager"], [preview.id], "include")
+    change_state(db, o["manager"], [pdf.id], "trash")
+    plan.approved = "{}"; db.flush(); reconcile_plan_archives(db); db.commit()
+    assert pdf.status == "trashed" and preview.status == "excluded"
+    change_state(db, o["manager"], [pdf.id], "restore")
+    change_state(db, o["manager"], [pdf.id], "include")
+    class Existing(ArchiveStub):
+        def move_archive_copy(self, drive, item_id, parts, filename, sha, size):
+            assert item_id == originals[pdf.id][0] and parts[-1] == "Pianta 01"
+            return item_id
+    stub = Existing()
+    assert sync_batch(factory(o), config(), stub)["verified"] == 1
+    assert reorganize_batch(factory(o), config(), stub)["moved"] == 1
+    assert not stub.uploads
+    db.refresh(pdf); db.refresh(preview)
+    assert pdf.item_id == originals[pdf.id][0]
+    assert "Piante/Pianta 01/trial.pdf" in pdf.remote_path
+    assert preview.remote_path == originals[preview.id][1] and preview.payload == b"png"
+
+
+def test_readable_layout_only_publishes_approved_originals(operations):
+    o = operations; db = o["db"]
+    o["site"].name = "NISSA CAMPUS"; o["site"].code = "26-340"
+    plan = SitePlan(site_id=o["site"].id, filename="NISSA CAMPUS-LENTA-PAN_Ind2.pdf",
+                    pdf_data=b"pdf", preview_data=b"png", draft="{}")
+    db.add(plan); db.commit()
+    pdf = db.query(CloudAsset).filter_by(kind="plan").one()
+    preview = db.query(CloudAsset).filter_by(kind="plan_preview").one()
+    for asset in (pdf, preview):
+        with pytest.raises(CloudError, match="only_approved_plans"):
+            readable_location(db, asset)
+    plan.approved = "{}"; db.flush(); reconcile_plan_archives(db); db.commit()
     pdf_parts, pdf_name = readable_location(db, pdf)
-    preview_parts, preview_name = readable_location(db, preview)
     assert pdf_parts[:3] == ["Gestionale", "Cantieri", f"26-340 - NISSA CAMPUS [C{o['site'].id}]"]
-    assert pdf_parts[-2:] == ["Piante", f"Disegno {pdf.source_id}"]
-    assert preview_parts[-3:] == ["Supporto gestionale", "Anteprime", f"Disegno {pdf.source_id}"]
-    assert pdf_name == f"NISSA CAMPUS-LENTA-PAN_Ind2 - copia {pdf.id}.pdf"
-    assert preview_name == f"Anteprima - copia {preview.id}.png"
+    assert pdf_parts[-2:] == ["Piante", "Pianta 01"]
+    assert pdf_name == "NISSA CAMPUS-LENTA-PAN_Ind2.pdf"
+    assert preview.status == "local"
     pdf.remote_path = "/".join(pdf_parts + [pdf_name]); db.commit()
     o["site"].name = "New name"; db.commit()
-    assert readable_location(db, preview)[0][:3] == pdf_parts[:3]
-    enqueue(db, "plan", pdf.source_id, pdf.filename, b"changed", site_id=pdf.site_id); db.commit()
-    revision = db.query(CloudAsset).filter_by(sha256=hashlib.sha256(b"changed").hexdigest()).one()
-    assert readable_location(db, revision)[1] != pdf_name
+    assert readable_location(db, pdf)[0][:3] == pdf_parts[:3]
 
 
 def test_legacy_attempt_resumes_original_path_and_known_ids_are_not_uploaded_again(operations):
@@ -193,6 +263,7 @@ def test_legacy_attempt_resumes_original_path_and_known_ids_are_not_uploaded_aga
 
 
 def legacy_asset(db, site_id, source, status="verified"):
+    db.add(CloudPlanPublication(plan_id=source, site_id=site_id, number=source, confirmed_at=datetime.utcnow()))
     enqueue(db, "plan", source, "original.pdf", b"original", site_id=site_id); db.commit()
     row = db.query(CloudAsset).filter_by(source_id=str(source)).one()
     parts, name = remote_location(row)
@@ -202,9 +273,13 @@ def legacy_asset(db, site_id, source, status="verified"):
     return row
 
 
-def test_reorganization_moves_same_ids_and_skips_excluded_trash_and_busy_copies(operations):
+@pytest.mark.parametrize("previous_layout", ["hash", "readable"])
+def test_reorganization_moves_same_ids_and_skips_excluded_trash_and_busy_copies(operations, previous_layout):
     o = operations; db = o["db"]
     active = legacy_asset(db, o["site"].id, 1)
+    if previous_layout == "readable":
+        active.remote_path = f"Gestionale/Cantieri/Old name [C{o['site'].id}]/Piante/Disegno 1/original - copia 1.pdf"
+        db.commit()
     excluded = legacy_asset(db, o["site"].id, 2, "excluded")
     trash = legacy_asset(db, o["site"].id, 3, "trashed")
     busy = legacy_asset(db, o["site"].id, 4)
@@ -220,7 +295,7 @@ def test_reorganization_moves_same_ids_and_skips_excluded_trash_and_busy_copies(
     assert reorganize_batch(factory(o), config(), Mover()) == {"moved": 1, "failed": 0, "paused": False}
     db.expire_all()
     assert active.item_id == "remote-1" and active.status == "verified" and active.payload == b"original"
-    assert active.sha256 not in active.remote_path and "Piante/Disegno 1" in active.remote_path
+    assert active.sha256 not in active.remote_path and "Piante/Pianta 01" in active.remote_path
     assert {a.id: (a.status, a.remote_path) for a in (excluded, trash, busy)} == untouched
     assert reorganize_batch(factory(o), config(), Mover())["moved"] == 0
     assert db.query(CloudRun).filter_by(kind="reorganization", status="complete").count() == 1
@@ -793,7 +868,7 @@ def test_archive_identity_visible_in_french_and_delete_confirmation(operations, 
                     draft="{}", created_at=datetime(2026, 9, 21, 8, 15)))
     db.commit()
     c = o["client"]
-    page = c.get("/admin/sharepoint").text
+    page = c.get("/admin/sharepoint?view=local").text
     assert page.count('data-plan-state="current"') == 2
     assert page.count("NISSA CAMPUS") >= 2 and "21/09/2026 08:15 UTC" in page
     assert "Anteprima del PDF" in page and "Bozza da convalidare" in page

@@ -23,7 +23,8 @@ from permissions import has_perm
 from services.cloud_archive import prepare_existing
 from services.archive_context import archive_context
 from services.archive_layout import legacy_filter
-from services.archive_lifecycle import ACTIVE, TRASH, change_state, selected_assets, purge_selected, invoice_in_use
+from services.plan_publications import transfer_allowed, reconcile_plan_archives
+from services.archive_lifecycle import ACTIVE, LOCAL, TRASH, change_state, selected_assets, purge_selected, invoice_in_use
 from services.sharepoint_client import SharePointConfig, GraphClient, CloudError
 from template_context import register_manager_badges, render_template
 
@@ -80,7 +81,7 @@ def page(request: Request, db: Session = Depends(get_db), user: User = Depends(g
     owner_configured = bool(os.getenv("CLOUD_ARCHIVE_OWNER_EMAIL", "").strip())
     last_backup = db.query(CloudRun).filter_by(kind="backup", status="verified").order_by(CloudRun.id.desc()).first()
     view = request.query_params.get("view", "active")
-    if view not in ("active", "excluded", "trash"):
+    if view not in ("active", "excluded", "trash", "local"):
         view = "active"
     if view == "trash" and not is_owner(user):
         raise HTTPException(403, "Cestino riservato al titolare configurato")
@@ -89,15 +90,15 @@ def page(request: Request, db: Session = Depends(get_db), user: User = Depends(g
     except ValueError:
         page_number = 1
     query = db.query(CloudAsset).filter(CloudAsset.status.in_(
-        ACTIVE if view == "active" else TRASH if view == "trash" else ("excluded",)))
+        ACTIVE if view == "active" else TRASH if view == "trash" else LOCAL if view == "local" else ("excluded",)))
     total = query.count()
     page_number = min(page_number, max(1, (total + 39) // 40))
     assets = query.order_by(CloudAsset.id.desc()).offset((page_number - 1) * 40).limit(40).all()
     return render_template(templates, request, "admin/sharepoint.html", {
         "config_missing": config.missing(), "sync_enabled": config.enabled,
         "connected": connected, "counts": counts, "runs": runs,
-        "reorder_pending": db.query(CloudAsset.id).filter(CloudAsset.status == "verified", legacy_filter()).count(),
-        "reorder_failed": db.query(CloudAsset.id).filter(CloudAsset.status == "verified", legacy_filter(),
+        "reorder_pending": db.query(CloudAsset.id).filter(CloudAsset.status == "verified", transfer_allowed(), legacy_filter()).count(),
+        "reorder_failed": db.query(CloudAsset.id).filter(CloudAsset.status == "verified", transfer_allowed(), legacy_filter(),
                                                        CloudAsset.error_code.startswith("reorder_")).count(),
         "assets": assets, "asset_context": archive_context(db, assets),
         "view": view, "page_number": page_number, "total": total,
@@ -122,7 +123,7 @@ def archive_action(request: Request, csrf: str = Form(""), action: str = Form(""
     validate_post(request, user, csrf)
     if not is_owner(user):
         raise HTTPException(403, "Archivio riservato al titolare configurato")
-    view = view if view in ("active", "excluded", "trash") else "active"
+    view = view if view in ("active", "excluded", "trash", "local") else "active"
     try:
         if action == "purge_review":
             assets = selected_assets(db, asset_ids)
@@ -152,6 +153,7 @@ def prepare(request: Request, csrf: str = Form(""), db: Session = Depends(get_db
             user: User = Depends(get_current_active_user_html)):
     validate_post(request, user, csrf)
     result = prepare_existing(db)
+    reconcile_plan_archives(db)
     log_audit_event(db, user, "CLOUD_INVENTORY", "cloud", extra_data={"missing_count": result["missing_count"]})
     db.commit()
     return RedirectResponse("/admin/sharepoint", 303)
@@ -183,7 +185,7 @@ def retry(request: Request, csrf: str = Form(""), db: Session = Depends(get_db),
           user: User = Depends(get_current_active_user_html)):
     validate_post(request, user, csrf)
     count = db.query(CloudAsset).filter_by(status="error").update({CloudAsset.next_attempt: None, CloudAsset.status: "pending"})
-    count += db.query(CloudAsset).filter(CloudAsset.status == "verified", legacy_filter(),
+    count += db.query(CloudAsset).filter(CloudAsset.status == "verified", transfer_allowed(), legacy_filter(),
         CloudAsset.error_code.startswith("reorder_"), CloudAsset.lease_token.is_(None)).update({CloudAsset.next_attempt: None})
     log_audit_event(db, user, "CLOUD_RETRY", "cloud", extra_data={"count": count})
     db.commit()

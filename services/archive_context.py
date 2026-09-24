@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import and_, case, or_
 
-from models import Site, SiteDocument, SitePlan
+from models import Site, SiteDocument, SitePlan, CloudPlanPublication
 from services.plan_selection import current_plan
 
 
@@ -21,6 +21,7 @@ def archive_context(db, assets):
                           else_=False).label("approved")).filter(
         or_(SitePlan.site_id.in_(site_ids), SitePlan.id.in_(plan_ids))).all()
     plans_by_id = {row.id: row for row in plans}
+    publications = {row.plan_id: row for row in db.query(CloudPlanPublication).filter(CloudPlanPublication.plan_id.in_(plan_ids))}
     current, latest = {}, {}
     for site_id in sites:
         rows = [row for row in plans if row.site_id == site_id]
@@ -33,10 +34,13 @@ def archive_context(db, assets):
     result = {}
     for asset in assets:
         info = dict(site_name=sites.get(asset.site_id), uploaded_at=None, archived_at=asset.created_at,
-                    plan_id=None, plan_filename=None, state=None, latest=False, confirmed=False, plan_url=None)
+                    plan_id=None, plan_filename=None, state=None, latest=False, confirmed=False, plan_url=None, publication_number=None)
         if asset.kind in ("plan", "plan_preview"):
             plan = plans_by_id.get(int(asset.source_id)) if asset.source_id.isdigit() else None
             info["plan_id"] = asset.source_id
+            publication = publications.get(int(asset.source_id)) if asset.source_id.isdigit() else None
+            if publication and publication.site_id == asset.site_id:
+                info["publication_number"] = publication.number
             if plan and plan.site_id == asset.site_id:
                 info.update(uploaded_at=plan.created_at, plan_filename=plan.filename,
                             confirmed=bool(plan.approved), latest=latest.get(asset.site_id) == plan.id)

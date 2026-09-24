@@ -4,7 +4,7 @@ from io import BytesIO
 
 import pytest
 import pypdfium2 as pdfium
-from models import SitePlan, Fiche, FicheTypeEnum, SiteProgressGridName
+from models import CloudAsset, CloudPlanPublication, SitePlan, Fiche, FicheTypeEnum, SiteProgressGridName
 from services.site_plan_import import import_pdf
 from test_operations import operations
 
@@ -68,6 +68,9 @@ def test_draft_approval_freeze_original_and_live_fiche_data(operations):
     assert c.get(plan['preview_url']).headers['content-type']=='image/png'
     body=payload(plan)
     assert c.put(url+f'/{pid}/convalida',json=body).status_code==200
+    assert o['db'].get(CloudPlanPublication, pid).number == 1
+    assert o['db'].query(CloudAsset).filter_by(kind='plan', source_id=str(pid)).one().status == 'pending'
+    assert c.get(url+'/data').json()['versions'][0]['number'] == 1
     body['revision']+=1;body['panels'][0]['label']='P7A-modificato'
     assert c.put(url+f'/{pid}/bozza',json=body).status_code==200
     assert c.get(url+'/data').json()['plan']['layout']['panels'][0]['label']=='P7a'
