@@ -9,6 +9,7 @@ def purchasing_navigation(request, user, context):
     path = request.url.path.rstrip('/')
     roots = {
         'items': ('/manager/magazzino', 'Articoli', 'Articles'),
+        'prices': ('/manager/magazzino/prezzi', 'Prezzi', 'Prix'),
         'orders': ('/manager/ordini', 'Ordini', 'Commandes'),
         'suppliers': ('/manager/fornitori', 'Fornitori', 'Fournisseurs'),
         'movements': ('/manager/magazzino/movimenti', 'Movimenti', 'Mouvements'),
@@ -24,7 +25,7 @@ def purchasing_navigation(request, user, context):
         section = 'suppliers'
     elif path == '/manager/magazzino' or path.startswith('/manager/magazzino/'):
         suffix = path.removeprefix('/manager/magazzino').strip('/').split('/')[0]
-        section = {'movimenti':'movements','report-consumi':'movements','richieste':'requests',
+        section = {'prezzi':'prices','movimenti':'movements','report-consumi':'movements','richieste':'requests',
                    'categorie':'categories','macro':'macros','macros':'macros',
                    'archiviati':'archived','sotto-soglia':'low_stock'}.get(suffix, 'items')
     else:

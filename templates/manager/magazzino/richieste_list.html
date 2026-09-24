@@ -61,9 +61,10 @@
                 <div class="form-field">
                     <label>{% if lang == 'fr' %}Filtrer par statut{% else %}Filtra per stato{% endif %}</label>
                     <select name="stato">
-                        <option value="tutte" {% if not stato_filtro %}selected{% endif %}>
+                        <option value="tutte" {% if not stato_filtro and not preparing_filter %}selected{% endif %}>
                             {% if lang == 'fr' %}Toutes{% else %}Tutte{% endif %}
                         </option>
+                        <option value="da_preparare" {% if preparing_filter %}selected{% endif %}>{{ t('Da preparare · approvate e parziali','À préparer · approuvées et partielles') }}</option>
                         {% for stato in stati %}
                             <option value="{{ stato.value }}" {% if stato_filtro == stato %}selected{% endif %}>
                                 {{ stato.value }}
