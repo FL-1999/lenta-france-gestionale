@@ -15,6 +15,7 @@
     </p>
   </div>
   <div class="page-actions">
+    <a class="btn btn-primary" href="{{ url_for('site_cost_workspace',site_id=site.id) }}">{{ t('Costi e consegne', 'Coûts et livraisons') }}</a>
     <a class="btn btn-secondary" href="{{ url_for('manager_site_detail', site_id=site.id) }}">{{ t('Torna al cantiere', 'Retour au chantier') }}</a>
     <a class="btn btn-secondary" href="{{ url_for('manager_economics_dashboard') }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">{{ t('Dashboard economica', 'Tableau économique') }}</a>
     <a class="btn btn-secondary" href="{{ url_for('manager_site_economics_trend_data', site_id=site.id) }}?timeframe={{ timeframe }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}">{{ t('Serie trend JSON', 'Série de tendance JSON') }}</a>
@@ -433,7 +434,9 @@
                   </small>
                 </td>
                 <td>
-                  {% if can_manage %}
+                  {% if row.managed_register %}
+                    <a class="btn btn-secondary btn-sm" href="{{ url_for('site_cost_workspace',site_id=site.id) }}">{{ t('Apri registro', 'Ouvrir le registre') }}</a>
+                  {% elif can_manage %}
                     <div class="table-actions">
                       <button
                         class="btn btn-secondary btn-sm js-entry-edit-btn"

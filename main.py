@@ -9181,6 +9181,8 @@ app.include_router(manager_depositi.router)
 app.include_router(magazzino.router)
 from routes import warehouse_pricing
 app.include_router(warehouse_pricing.router)
+from routes import site_costs
+app.include_router(site_costs.router)
 app.include_router(ordini.router)
 from routes import purchasing_catalog
 app.include_router(purchasing_catalog.router)

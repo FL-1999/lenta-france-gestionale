@@ -30,7 +30,9 @@ def delete_site_records(db, site):
     db.execute(update(attendance).where(attendance.c.report_id.in_(report_ids)).values(report_id=None))
     db.execute(update(attendance).where(attendance.c.site_id==sid).values(site_id=None))
     # Use model columns, not guessed SQL names (stops have just site_id).
+    from models import CostContract, CostDelivery, CostAllocation
     references=(
+        (CostContract,('site_id',)), (CostDelivery,('site_id',)), (CostAllocation,('site_id',)),
         (PurchaseOrder,('site_id','delivery_site_id')),
         (PurchaseDelivery,('delivery_site_id',)),
         (MagazzinoRichiesta,('cantiere_id',)),(MagazzinoMovimento,('cantiere_id',)),
