@@ -1,6 +1,7 @@
 {% extends "shared/base.html" %}
 
-{% block title %}{{ t('Documenti', 'Documents') }} — {{ site.name or site.code }}{% endblock %}
+{% set creating = request.query_params.get('new') == '1' or error %}
+{% block title %}{{ t('Nuovo documento', 'Nouveau document') if creating else t('Documenti', 'Documents') }} — {{ site.name or site.code }}{% endblock %}
 
 {% set cat_labels = {
   'foto': t('Foto', 'Photos'),
@@ -19,11 +20,16 @@
 <div class="page-header">
     <div class="page-header-main">
         <p class="page-eyebrow">{{ site.code or '' }}{% if site.city %} · {{ site.city }}{% endif %}</p>
-        <h1 class="page-title">📁 {{ t('Archivio documentale', 'Archives documentaires') }}</h1>
+        <h1 class="page-title">📁 {{ t('Nuovo documento', 'Nouveau document') if creating else t('Archivio documentale', 'Archives documentaires') }}</h1>
         <p class="page-subtitle">{{ site.name or '—' }} · {{ documents_count }} {{ t('documenti', 'documents') }}</p>
     </div>
     <div class="page-actions">
+        {% if creating %}
+        <a href="{{ url_for('manager_site_documents', site_id=site.id) }}" class="btn btn-secondary">← {{ t('Documenti', 'Documents') }}</a>
+        {% else %}
+        <a href="{{ url_for('manager_site_documents', site_id=site.id) }}?new=1" class="btn btn-primary">＋ {{ t('Nuovo documento', 'Nouveau document') }}</a>
         <a href="{{ url_for('manager_site_detail', site_id=site.id) }}" class="btn btn-secondary">← {{ t('Cantiere', 'Chantier') }}</a>
+        {% endif %}
     </div>
 </div>
 
@@ -41,40 +47,42 @@
 {% endif %}
 
 {# ── Upload ── #}
+{% if creating %}
 <section class="card fiche-section">
     <div class="card-header"><div class="card-title">⬆️ {{ t('Carica un documento', 'Téléverser un document') }}</div></div>
     <div class="card-body">
         <form method="post" action="{{ url_for('manager_site_documents_upload', site_id=site.id) }}" enctype="multipart/form-data">
             <div class="form-grid">
                 <div class="form-group" style="grid-column: 1 / -1;">
-                    <label class="form-label">{{ t('File', 'Fichier') }} *</label>
-                    <input type="file" name="file" class="form-control" required>
+                    <label class="form-label" for="document-file">{{ t('File', 'Fichier') }} *</label>
+                    <input type="file" id="document-file" name="file" class="form-control" required>
                     <small class="form-text text-muted">{{ t('Dimensione massima', 'Taille maximale') }}: {{ max_size_mb }} MB</small>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">{{ t('Categoria', 'Catégorie') }}</label>
-                    <select name="category" class="form-select">
+                    <label class="form-label" for="document-category">{{ t('Categoria', 'Catégorie') }}</label>
+                    <select id="document-category" name="category" class="form-select">
                         {% for c in categories %}
                         <option value="{{ c.value }}" {% if c.value == 'documento' %}selected{% endif %}>{{ cat_icons.get(c.value, '📎') }} {{ cat_labels.get(c.value, c.value) }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">{{ t('Descrizione', 'Description') }}</label>
-                    <input type="text" name="description" class="form-control" placeholder="{{ t('Es. Rapport de sondage SC1', 'Ex. Rapport de sondage SC1') }}">
+                    <label class="form-label" for="document-description">{{ t('Descrizione', 'Description') }}</label>
+                    <input type="text" id="document-description" name="description" class="form-control" placeholder="{{ t('Es. Rapport de sondage SC1', 'Ex. Rapport de sondage SC1') }}">
                 </div>
             </div>
             <div class="form-actions">
+                <a href="{{ url_for('manager_site_documents', site_id=site.id) }}" class="btn btn-secondary">{{ t('Annulla', 'Annuler') }}</a>
                 <button type="submit" class="btn btn-primary">⬆️ {{ t('Carica', 'Téléverser') }}</button>
             </div>
         </form>
     </div>
 </section>
-
+{% else %}
 {# ── Lista documenti ── #}
 <section class="card fiche-section">
     <div class="card-header"><div class="card-title">📚 {{ t('Documenti archiviati', 'Documents archivés') }}</div></div>
-    <div class="card-body list-table">
+    <div class="card-body{% if documents %} list-table{% endif %}">
         {% if documents %}
         <table class="data-table">
             <thead>
@@ -145,5 +153,6 @@
     </article>
     {% endfor %}
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}
