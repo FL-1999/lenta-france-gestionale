@@ -1,7 +1,7 @@
 {% extends 'shared/base.html' %}
 {% block title %}SharePoint · Lenta France{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/sharepoint.css') }}?v=archive-context-2">
+<link rel="stylesheet" href="{{ url_for('static', path='css/sharepoint.css') }}?v=archive-layout-3">
 <div class="cloud-workspace">
   <header class="cloud-heading">
     <div><p class="cloud-eyebrow">{{ t('DOCUMENTI E CONTINUITÀ', 'DOCUMENTS ET CONTINUITÉ') }}</p><h1>SharePoint</h1>
@@ -25,7 +25,7 @@
       <p>{{ t('Gli originali restano conservati. Nessuna cancellazione automatica su SharePoint.', 'Les originaux sont conservés. Aucune suppression automatique sur SharePoint.') }}</p>
       <p class="cloud-label">{{ t('Trasferimento automatico:', 'Transfert automatique :') }} <strong>{{ t('attivo','actif') if sync_enabled else t('non attivo','inactif') }}</strong></p>
       <div class="cloud-actions"><form action="{{ url_for('admin_sharepoint_prepare') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-primary">{{ t('Prepara documenti esistenti', 'Préparer les documents existants') }}</button></form>
-      <form action="{{ url_for('admin_sharepoint_retry') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-secondary" {% if not counts.get('error') %}disabled{% endif %}>{{ t('Riprova gli errori', 'Réessayer les erreurs') }}</button></form></div>
+      <form action="{{ url_for('admin_sharepoint_retry') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-secondary" {% if not counts.get('error') and not reorder_failed %}disabled{% endif %}>{{ t('Riprova gli errori', 'Réessayer les erreurs') }}</button></form></div>
       {% if inventory %}<p>{{ t('Ultimo controllo:', 'Dernier contrôle :') }} {{ inventory.documents }} {{ t('documenti','documents') }}, {{ inventory.plans }} {{ t('piante','plans') }}, {{ inventory.invoices }} {{ t('fatture','factures') }}.</p>
       {% if inventory.missing_count %}<p class="cloud-warning">{{ inventory.missing_count }} {{ t('allegati non acquisiti: verificare i file mancanti o superiori a 64 MB.', 'pièces jointes non acquises : vérifier les fichiers manquants ou supérieurs à 64 Mo.') }}</p><details><summary>{{ t('Vedi riferimenti', 'Voir les références') }}</summary>{{ inventory.missing|join(', ') }}</details>{% endif %}
       {% else %}<p>{{ t('Esegui il controllo iniziale per includere gli allegati precedenti.', 'Lancez le contrôle initial pour inclure les anciennes pièces jointes.') }}</p>{% endif %}
@@ -41,6 +41,16 @@
       <p>{{ t('Il tecnico deve attivare la pianificazione e provare un ripristino. Una copia verificata non equivale a un ripristino già collaudato.', 'Le technicien doit activer la planification et tester une restauration. Une copie vérifiée ne signifie pas que la restauration a été testée.') }}</p>
     </section>
   </div>
+  <section class="card cloud-layout-info">
+    <h2>{{ t('Come sono organizzati i file', 'Organisation des fichiers') }}</h2>
+    <p>{{ t('Ogni cantiere ha una cartella con codice e nome. Il riferimento breve [C…] distingue i cantieri omonimi; «copia» distingue le versioni senza lunghe sequenze nel nome.', 'Chaque chantier possède un dossier avec son code et son nom. La référence courte [C…] distingue les chantiers homonymes ; «copia» distingue les versions sans longues suites de caractères.') }}</p>
+    <ul><li><strong>Piante → Disegno</strong>: {{ t('PDF originali caricati.', 'PDF originaux importés.') }}</li>
+      <li><strong>Supporto gestionale → Anteprime</strong>: {{ t('immagini dei PDF usate dal gestionale, non nuovi disegni.', 'images des PDF utilisées par le logiciel, pas de nouveaux plans.') }}</li>
+      <li><strong>Fiches · Dossier finali · Documenti · Fatture</strong>: {{ t('file separati per categoria, quando presenti.', 'fichiers classés par catégorie, lorsqu’ils sont présents.') }}</li></ul>
+    <p>{{ t('I file già trasferiti con i vecchi nomi vengono riordinati automaticamente quando il trasferimento è attivo. Si spostano gli stessi file, senza ricaricarli. Esclusi e cestino restano invariati; le vecchie cartelle vuote non vengono eliminate.', 'Les fichiers déjà transférés avec les anciens noms sont réorganisés automatiquement lorsque le transfert est actif. Les mêmes fichiers sont déplacés sans nouvel envoi. Les exclusions et la corbeille restent inchangées ; les anciens dossiers vides ne sont pas supprimés.') }}</p>
+    {% if reorder_pending %}<p class="cloud-feedback">{{ t('Copie da riordinare:', 'Copies à réorganiser :') }} <strong>{{ reorder_pending }}</strong>{% if not sync_enabled %} · {{ t('in attesa di attivare il trasferimento', 'en attente de l’activation du transfert') }}{% endif %}</p>{% endif %}
+    {% if reorder_failed %}<p class="cloud-warning">{{ t('Riordino da riprovare:', 'Réorganisation à réessayer :') }} {{ reorder_failed }}. {{ t('Le copie sono conservate. Controlla il dettaglio nell’archivio e usa «Riprova gli errori».', 'Les copies sont conservées. Consultez le détail dans les archives et utilisez «Réessayer les erreurs».') }}</p>{% endif %}
+  </section>
   {% include 'admin/sharepoint_archive.html' %}
   <details class="card"><summary>{{ t('Configurazione e ultimi controlli', 'Configuration et derniers contrôles') }}</summary>
     {% if config_missing %}<p>{{ t('Parametri mancanti sul server:', 'Paramètres manquants sur le serveur :') }}</p><ul>{% for name in config_missing %}<li><code>{{ name }}</code></li>{% endfor %}</ul>{% endif %}
