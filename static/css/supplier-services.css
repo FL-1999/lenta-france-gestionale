@@ -1,0 +1,9 @@
+#service-workspace .service-actions,.fleet-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+#service-workspace .service-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+#service-workspace label{display:block;font-size:.85rem}#service-workspace label input:not([type=checkbox]),#service-workspace label select,#service-workspace textarea{display:block;width:100%;margin-top:.35rem}
+#service-workspace .service-fields .wide{grid-column:1/-1}#service-workspace .service-check{display:flex;gap:.6rem;align-items:center;margin:1rem 0}
+#service-workspace .service-total{display:flex;justify-content:space-between;align-items:center;margin:1.2rem 0;padding-top:1rem;border-top:1px solid var(--border-color,#42576b)}#service-workspace .service-total strong{font-size:1.5rem;font-variant-numeric:tabular-nums}
+#service-workspace .service-heading{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+#service-workspace .service-filters{display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0}#service-workspace [aria-invalid=true]{outline:2px solid #dc3545}
+.fleet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}.fleet-grid .card{margin:0}.fleet-data{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}.fleet-data dt{font-size:.8rem;opacity:.8}.fleet-data dd{margin:.25rem 0 0}.fleet-top{display:flex;align-items:center;justify-content:space-between;gap:1rem}.fleet-plate{font-size:1.2rem;font-weight:650}.fleet-overdue{color:var(--danger,#ed7089)}.fleet-history{margin-top:1.4rem}
+@media(max-width:600px){#service-workspace .service-fields,.fleet-data,.fleet-grid{grid-template-columns:1fr}#service-workspace .service-fields .wide{grid-column:auto}}

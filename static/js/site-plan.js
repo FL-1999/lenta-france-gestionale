@@ -109,12 +109,12 @@
     const groups = [q('[data-original-shapes]'),q('[data-clean-shapes]')]; groups.forEach(g=>g.replaceChildren());
     const displayUnits=units(),drawn=new Set();
     [...plan.layout.panels].sort((a,b)=>Number(a.key===selected)-Number(b.key===selected)).forEach(p => {
-      const unit=displayUnits.find(u=>u.members.includes(p)),corner=unit.members.length===2,merged=corner&&unit.outline;
+      const unit=displayUnits.find(u=>u.members.includes(p)),corner=unit.members.length===2,merged=corner;
       const e = element(p), active = p.key === selected,related=!active&&panel()?.corner_group&&p.corner_group===panel().corner_group;
       groups.forEach((group,i) => {
         if(merged&&!drawn.has(unit)){
           const selectedUnit=unit.members.some(v=>v.key===selected);
-          const outline=svgEl('path',{d:'M'+unit.outline.map(v=>v.join(',')).join('L')+'Z',class:`sp-panel sp-unified ${e?.status||'planned'} ${selectedUnit?'selected':''}`,'data-key':selectedUnit?selected:unit.members[0].key,'data-angle':p.corner_group,opacity:editing&&!selectedUnit?+q('[data-neighbour-opacity]').value/100:1});
+          const outline=svgEl('path',{d:(unit.outline?[unit.outline]:unit.members.map(v=>v.points)).map(points=>'M'+points.map(v=>v.join(',')).join('L')+'Z').join(' '),class:`sp-panel sp-unified ${e?.status||'planned'} ${selectedUnit?'selected':''}`,'data-key':selectedUnit?selected:unit.members[0].key,'data-angle':p.corner_group,opacity:editing&&!selectedUnit?+q('[data-neighbour-opacity]').value/100:1});
           outline.append(svgEl('title',{},unit.label));group.append(outline);
         }
         const path = svgEl('polygon', {points:p.points.map(v=>v.join(',')).join(' '),class:merged?'sp-hit':`sp-panel ${e?.status || 'planned'} ${active ? 'selected' : ''} ${related?'corner-peer':''}`, 'data-key':p.key,opacity:editing&&!active&&!related?+q('[data-neighbour-opacity]').value/100:1});
@@ -162,6 +162,12 @@
     q('[data-label-caption]').textContent=corner?t('Sigla braccio','Repère de la branche'):tr('Sigla');
     q('[data-width-caption]').textContent=corner?t('Larghezza braccio (m)','Largeur de la branche (m)'):tr('Larghezza (m)');
     const arms=q('[data-arm]');arms.replaceChildren();pair.forEach(v=>arms.add(new Option(v.label,v.key)));arms.value=p?.key||'';
+    const targetSelect=q('[data-corner-target]'),targetValue=targetSelect.value;
+    targetSelect.replaceChildren();
+    plan.layout.panels.filter(v=>p&&v.key!==p.key&&!v.corner_group).forEach(v=>{const o=document.createElement('option');o.value=v.key;o.textContent=v.label;targetSelect.append(o);});
+    if([...targetSelect.options].some(o=>o.value===targetValue))targetSelect.value=targetValue;
+    q('[data-manual-corner]').hidden=corner||!editing||!p;
+    q('[data-link-corner]').disabled=!targetSelect.options.length;
     q('[data-corner-info]').hidden=!corner;q('[data-corner-tools]').hidden=!corner;
     if(corner){q('[data-corner-label]').textContent=p.label.replace(/[ab]$/i,'')+' A/B';q('[data-corner-widths]').textContent=pair.map(v=>`${v.label}: ${num(v.width_m,' m')}`).join(' + ');form.elements.corner_net_confirmed.checked=pair.every(v=>v.corner_net_confirmed);}
     q('[data-label]').textContent = unitFor(p)?.label || tr("Seleziona un pannello");
@@ -315,6 +321,16 @@
     checkpoint();pairs.forEach(pair=>pair.forEach(p=>{p.corner_group=pair.map(v=>v.key).sort()[0];p.corner_net_confirmed=false;p.reviewed=false;}));
     markDirty();render();message(t(`${pairs.length} angoli proposti: controlla misure e raccordi sul PDF.`,`${pairs.length} angles proposés : vérifiez les cotes et raccords sur le PDF.`));
   };
+  q('[data-link-corner]').onclick=()=>{
+    const p=panel(),other=plan.layout.panels.find(v=>v.key===q('[data-corner-target]').value);
+    if(!editing||!p||!other||p.corner_group||other.corner_group)return;
+    const names=[p,other].map(v=>v.label.trim().match(/^(P\s*\d+)\s*([ab])$/i));
+    if(names.some(v=>!v)||names[0][1].replace(/\s/g,'').toLowerCase()!==names[1][1].replace(/\s/g,'').toLowerCase()||names[0][2].toLowerCase()===names[1][2].toLowerCase()){
+      message(t('Scegli i bracci A e B dello stesso numero, ad esempio P7a e P7b.','Choisissez les branches A et B du même numéro, par exemple P7a et P7b.'),true);return;
+    }
+    checkpoint();[p,other].forEach(v=>{v.corner_group=[p.key,other.key].sort()[0];v.corner_manual=true;v.corner_net_confirmed=false;v.reviewed=false;});
+    markDirty();render();message(t('Pannello unico collegato. Sagome invariate: verifica e conferma le larghezze nette sul PDF.','Panneau unique relié. Formes inchangées : vérifiez et confirmez les largeurs nettes sur le PDF.'));
+  };
   q('[data-join-corner]').onclick=()=>{
     const p=panel(),pair=peers(p);if(pair.length!==2)return;
     const target=pair.find(v=>v.key!==p.key),result=window.PlanGeometry.snap(p.points,target.points);
@@ -324,7 +340,7 @@
   q('[data-split-corner]').onclick=()=>{
     const pair=peers(panel());if(pair.length!==2)return;
     if(!confirm(t('Separare i due bracci? Le sagome restano ferme. Una fiche già compilata non verrà cancellata.','Séparer les deux branches ? Les formes restent en place. Aucune fiche existante ne sera supprimée.')))return;
-    checkpoint();pair.forEach(p=>{p.corner_group=null;p.corner_net_confirmed=false;p.reviewed=false;});markDirty();render();
+    checkpoint();pair.forEach(p=>{p.corner_group=null;p.corner_manual=false;p.corner_net_confirmed=false;p.reviewed=false;});markDirty();render();
   };
   q('[data-review-all-top]').onclick=()=>q('[data-review-all]').click();
   q('[data-review-all]').onclick=()=>{

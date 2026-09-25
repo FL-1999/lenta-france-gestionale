@@ -960,7 +960,7 @@ def manager_trasporti_viaggi_new(
                 "data_arrivo_prevista": "",
                 "arrivo_stimato_manuale": "",
                 "autista_id": "",
-                "mezzo_id": "",
+                "mezzo_id": request.query_params.get("mezzo_id", "") if any(str(m.id) == request.query_params.get("mezzo_id") for m in mezzi) else "",
                 "origine_place": "",
                 "destinazione_place": "",
                 "materiali_attrezzature": "",

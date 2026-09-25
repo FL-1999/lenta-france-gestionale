@@ -84,22 +84,10 @@
       back.textContent = '← ' + context.dataset.backLabel + ' ' + trail[trail.length - 1].title;
       back.hidden = false;
     }
-    const savedLists = read(':lists');
-    const remembered = savedLists && typeof savedLists === 'object' && !Array.isArray(savedLists) ? savedLists : {};
-    if (context.dataset.list === 'true' && lists.has(location.pathname)) {
-      remembered[context.dataset.section] = currentURL();
-      write(':lists', remembered);
-    }
     roots.forEach(link => {
-      const candidate = safe(remembered[link.dataset.purchaseSection]);
-      // Only a list in the matching section can replace a section's default URL.
       const original = new URL(link.dataset.purchaseDefault || link.href, location.origin);
       link.dataset.purchaseDefault = original.pathname;
-      link.href = original.pathname;
-      const sameSection = candidate && (candidate.pathname === original.pathname ||
-        (link.dataset.purchaseSection === 'orders' && candidate.pathname === '/manager/ordini/chiusi') ||
-        (link.dataset.purchaseSection === 'items' && candidate.pathname === '/manager/magazzino/items'));
-      if (sameSection && lists.has(candidate.pathname)) link.href = candidate.pathname + candidate.search;
+      link.href = original.pathname; // Section tabs always open the unfiltered root.
     });
   }
   function pendingNavigation(target, nextTrail, post = false, restoreY = null) {

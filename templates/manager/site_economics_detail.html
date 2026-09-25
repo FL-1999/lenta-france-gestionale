@@ -435,7 +435,7 @@
                 </td>
                 <td>
                   {% if row.managed_register %}
-                    <a class="btn btn-secondary btn-sm" href="{{ url_for('site_cost_workspace',site_id=site.id) }}">{{ t('Apri registro', 'Ouvrir le registre') }}</a>
+                    <a class="btn btn-secondary btn-sm" href="{{ '/manager/servizi' if row.managed_service else url_for('site_cost_workspace',site_id=site.id) }}">{{ t('Apri registro', 'Ouvrir le registre') }}</a>
                   {% elif can_manage %}
                     <div class="table-actions">
                       <button

@@ -1100,6 +1100,8 @@ def manager_machine_detail(
     machine = _get_machine_or_404(db, machine_id)
     now = datetime.utcnow()
     assignment_rows = _build_assignment_rows(machine.assignments or [], now)
+    from services.supplier_services import history
+    service_history = history(db, machine_id=machine.id)
 
     return templates.TemplateResponse(
         request,
@@ -1109,6 +1111,7 @@ def manager_machine_detail(
             current_user,
             macchinario=machine,
             assignment_rows=assignment_rows,
+            service_history=service_history,
             current_user=current_user,
         ),
     )

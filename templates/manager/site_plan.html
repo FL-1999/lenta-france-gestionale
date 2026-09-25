@@ -73,6 +73,7 @@
             <label>Lato da spostare<select data-edge><option value="end">Testata finale (2–3)</option><option value="start">Testata iniziale (1–4)</option><option value="top">Bordo superiore (1–2)</option><option value="bottom">Bordo inferiore (4–3)</option></select></label>
             <div class="sp-fields"><label>Passo<select data-step><option value="0.01">1 cm</option><option value="0.05" selected>5 cm</option><option value="0.1">10 cm</option></select></label><div class="sp-actions"><button type="button" class="btn btn-secondary" data-nudge="-1" aria-label="Sposta lato indietro">−</button><button type="button" class="btn btn-secondary" data-nudge="1" aria-label="Sposta lato avanti">+</button></div></div>
             <details class="sp-snap"><summary>Accosta i bordi</summary><label>Pannello vicino<select data-snap-target></select></label><button type="button" class="btn btn-secondary" data-snap>Accosta al pannello</button><button type="button" class="btn btn-secondary" data-undo-snap hidden>Annulla accostamento</button></details>
+            <details data-manual-corner><summary>{{ t('Collega angolo manualmente','Relier un angle manuellement') }}</summary><label>{{ t('Secondo braccio A/B','Deuxième branche A/B') }}<select data-corner-target></select></label><p>{{ t('Crea un pannello unico A/B senza spostare le sagome. Verifica sul PDF le larghezze nette, escludendo l’intersezione, prima di convalidare.','Crée un panneau unique A/B sans déplacer les formes. Vérifiez les largeurs nettes sur le PDF, hors intersection, avant de valider.') }}</p><button type="button" class="btn btn-secondary" data-link-corner>{{ t('Collega come pannello unico','Relier en un seul panneau') }}</button></details>
             <div class="sp-actions" data-corner-tools hidden><button type="button" class="btn btn-secondary" data-join-corner>Raccorda angolo</button><button type="button" class="btn btn-secondary" data-split-corner>Separa angolo</button></div>
             <button type="button" class="btn btn-secondary" data-undo-edit disabled>Annulla modifica</button>
           </div>
@@ -97,4 +98,4 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260926" defer></script><script src="/static/js/site-plan.js?v=approved-plans-1" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260926" defer></script><script src="/static/js/site-plan.js?v=20260925a" defer></script>{% endblock %}

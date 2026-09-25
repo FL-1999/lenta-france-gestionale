@@ -92,13 +92,14 @@ def suggest_corners(panels):
 def validate_corners(panels, scale, approve):
     for pair in groups(panels).values():
         label = corner_name(pair)
-        if not label or axes_angle(*pair) > .97:
+        manual = len(pair) == 2 and all(p.get('corner_manual') for p in pair)
+        if not label or (not manual and axes_angle(*pair) > .97):
             raise HTTPException(400, 'Un angolo richiede due bracci A/B dello stesso numero e direzioni distinte.')
         if approve:
             tolerance = max(.02, (scale or 1)*.005)
-            if overlap_area(pair[0]['points'], pair[1]['points']) > tolerance*tolerance:
+            if not manual and overlap_area(pair[0]['points'], pair[1]['points']) > tolerance*tolerance:
                 raise HTTPException(400, f'{label}: i bracci si sovrappongono. Correggi il raccordo prima della convalida.')
-            if not touching(pair[0]['points'], pair[1]['points'], tolerance):
+            if not manual and not touching(pair[0]['points'], pair[1]['points'], tolerance):
                 raise HTTPException(400, f'{label}: accosta i bordi dei due bracci prima della convalida.')
             if not all(p.get('corner_net_confirmed') for p in pair):
                 raise HTTPException(400, f'{label}: conferma le larghezze nette dei due bracci.')

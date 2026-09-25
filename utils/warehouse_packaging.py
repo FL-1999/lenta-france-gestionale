@@ -2,7 +2,7 @@
 from decimal import Decimal, InvalidOperation
 import math
 
-ARTICLE_UNITS = {'pz', 'kg', 'm', 'm2', 'm3', 'l', 'sacco', 'bancale', 'rotolo'}
+ARTICLE_UNITS = {'pz', 'unita', 'kg', 'm', 'm2', 'm3', 'l', 'sacco', 'bancale', 'rotolo'}
 PACKAGING_UNITS = ('bancale', 'sacco', 'kg')
 ROLL_UNITS = ('bancale', 'rotolo', 'm')
 
