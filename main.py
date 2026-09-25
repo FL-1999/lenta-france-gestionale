@@ -9183,6 +9183,8 @@ from routes import warehouse_pricing
 app.include_router(warehouse_pricing.router)
 from routes import site_costs
 app.include_router(site_costs.router)
+from routes import supplier_services
+app.include_router(supplier_services.router)
 app.include_router(ordini.router)
 from routes import purchasing_catalog
 app.include_router(purchasing_catalog.router)

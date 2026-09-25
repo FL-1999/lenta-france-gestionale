@@ -1,0 +1,9 @@
+{% extends 'shared/base.html' %}
+{% block title %}{{ t('Servizi e noleggi','Services et locations') }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/supplier-services.css?v=20260925a">
+<div id="service-workspace" data-csrf="{{ csrf }}" data-lang="{{ request.cookies.get('lang','it') }}">
+<header class="page-header"><div><p class="page-eyebrow">{{ t('Acquisti e magazzino','Achats et magasin') }}</p><h1 class="page-title">{{ t('Servizi e noleggi','Services et locations') }}</h1><p>{{ t('Fornitori, prestazioni e mezzi collegati.','Fournisseurs, prestations et équipements associés.') }}</p></div><div class="service-actions"><button class="btn btn-primary" type="button" data-new-record>{{ t('Nuova registrazione','Nouvel enregistrement') }}</button><button class="btn btn-secondary" type="button" data-new-catalogue>{{ t('Nuovo servizio a catalogo','Nouvelle prestation au catalogue') }}</button></div></header>
+<div id="service-feedback" role="status" aria-live="polite"></div><div id="service-view">{{ t('Caricamento…','Chargement…') }}</div>
+</div><script src="/static/js/supplier-services.js?v=20260925a" defer></script>
+{% endblock %}

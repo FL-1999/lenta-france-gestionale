@@ -11,3 +11,4 @@ from .site_pour import SitePour, SitePourPanel
 from .account_revocation import AccountRevocation
 from .cloud_archive import CloudAsset, CloudRun, CloudPlanPublication
 from .site_cost import CostContract, CostDelivery, CostDeliveryLine, CostInvoice, CostSharedExpense, CostAllocation
+from .supplier_service import SupplierService, ServiceRecord

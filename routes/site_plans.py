@@ -192,6 +192,7 @@ class PanelInput(BaseModel):
     extent_confirmed:bool=False
     corner_group:str|None=Field(default=None,pattern=r'^[a-zA-Z0-9_-]{1,64}$')
     corner_net_confirmed:bool=False
+    corner_manual:bool=False
 
 
 class LayoutInput(BaseModel):

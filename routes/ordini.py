@@ -1176,6 +1176,7 @@ def manager_fornitori_edit(
     order_count = orders.count()
     order_pages = max(1, (order_count + 19) // 20)
     order_page = max(1, min(order_page, order_pages))
+    from models import SupplierService, ServiceRecord
     supplier_orders = orders.options(*_order_list_options()).order_by(PurchaseOrder.id.desc()).offset((order_page-1)*20).limit(20).all()
     return render_template(
         templates,
@@ -1184,6 +1185,8 @@ def manager_fornitori_edit(
         {
             "supplier": supplier,
             "supplier_orders": supplier_orders,
+            "service_offerings": db.query(SupplierService).filter_by(supplier_id=supplier.id).all(),
+            "service_records": db.query(ServiceRecord).filter_by(supplier_id=supplier.id).order_by(ServiceRecord.service_date.desc()).limit(20).all(),
             "purchased_materials": supplier_purchase_materials(db, supplier.id),
             **_order_list_details(db, supplier_orders),
             "order_count": order_count, "order_page": order_page, "order_pages": order_pages,
@@ -1275,6 +1278,10 @@ def manager_fornitori_delete(
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Fornitore non trovato")
+    from models import ServiceRecord, SupplierService
+    db.query(Supplier).filter_by(id=supplier_id).with_for_update().one()
+    if db.query(ServiceRecord.id).filter_by(supplier_id=supplier_id).first() or db.query(SupplierService.id).filter_by(supplier_id=supplier_id).first():
+        return RedirectResponse(str(request.url_for('manager_fornitori_list'))+'?'+urlencode({'err':'Fornitore con servizi: disattivalo per conservare lo storico. / Fournisseur avec services : désactivez-le pour conserver l’historique.'}),303)
     orders = db.query(PurchaseOrder).filter(PurchaseOrder.supplier_id == supplier_id).order_by(PurchaseOrder.id).with_for_update().all()
     if any(d.confirmed for o in orders for d in o.deliveries) or (orders and db.query(MagazzinoMovimento.id).filter(MagazzinoMovimento.purchase_order_id.in_([o.id for o in orders])).first()):
         return RedirectResponse(str(request.url_for('manager_fornitori_list'))+'?'+urlencode({'err':'Fornitore con consegne registrate: disattivalo per conservare lo storico.'}),303)

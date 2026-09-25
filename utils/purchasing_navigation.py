@@ -10,6 +10,7 @@ def purchasing_navigation(request, user, context):
     roots = {
         'items': ('/manager/magazzino', 'Articoli', 'Articles'),
         'prices': ('/manager/magazzino/prezzi', 'Prezzi', 'Prix'),
+        'services': ('/manager/servizi', 'Servizi e noleggi', 'Services et locations'),
         'orders': ('/manager/ordini', 'Ordini', 'Commandes'),
         'suppliers': ('/manager/fornitori', 'Fornitori', 'Fournisseurs'),
         'movements': ('/manager/magazzino/movimenti', 'Movimenti', 'Mouvements'),
@@ -21,6 +22,8 @@ def purchasing_navigation(request, user, context):
     }
     if path == '/manager/ordini' or path.startswith('/manager/ordini/'):
         section = 'orders'
+    elif path == '/manager/servizi' or path.startswith('/manager/servizi/'):
+        section = 'services'
     elif path == '/manager/fornitori' or path.startswith('/manager/fornitori/'):
         section = 'suppliers'
     elif path == '/manager/magazzino' or path.startswith('/manager/magazzino/'):

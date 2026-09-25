@@ -5,7 +5,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from auth import get_current_active_user_html
@@ -62,6 +62,7 @@ def manager_veicoli_list(
     request: Request,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
+    q: str = '',
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -70,10 +71,14 @@ def manager_veicoli_list(
     """
     _ensure_manager(current_user)
     page, per_page = _normalize_pagination(page, per_page)
-    total_count = db.query(func.count(Veicolo.id)).scalar() or 0
+    query = db.query(Veicolo)
+    if q.strip():
+        term = '%'+q.strip()[:120]+'%'
+        query = query.filter(or_(Veicolo.targa.ilike(term), Veicolo.marca.ilike(term), Veicolo.modello.ilike(term)))
+    total_count = query.count()
     query_started = time.monotonic()
     veicoli = (
-        db.query(Veicolo)
+        query
         .order_by(Veicolo.marca.asc(), Veicolo.modello.asc(), Veicolo.targa.asc())
         .offset((page - 1) * per_page)
         .limit(per_page)
@@ -90,9 +95,10 @@ def manager_veicoli_list(
     return render_template(
         templates,
         request,
-        "manager/veicoli/veicoli_list.html",
+        "manager/veicoli/fleet.html",
         {
             "veicoli": veicoli,
+            "total_count": total_count, "search": q, "today": date.today(),
             "vehicle_assignees": {p.id: p for p in db.query(Personale).filter(
                 Personale.id.in_([v.assegnato_a_id for v in veicoli if v.assegnato_a_id])
             ).all()},
@@ -311,6 +317,9 @@ def manager_veicoli_delete(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     veicolo = db.query(Veicolo).filter(Veicolo.id == veicolo_id).first()
     if veicolo:
+        from models import ServiceRecord
+        if db.query(ServiceRecord.id).filter_by(vehicle_id=veicolo_id).first():
+            raise HTTPException(409, 'Veicolo con storico servizi: conservarlo per mantenere i collegamenti. / Véhicule avec historique de services : conservez-le pour maintenir les associations.')
         db.delete(veicolo)
         db.commit()
 
@@ -318,3 +327,18 @@ def manager_veicoli_delete(
         url=request.url_for("manager_veicoli_list"),
         status_code=303,
     )
+
+
+@router.get('/manager/veicoli/{veicolo_id}', name='manager_vehicle_detail')
+def vehicle_detail(veicolo_id: int, request: Request, db: Session = Depends(get_db),
+                   current_user: User = Depends(get_current_active_user_html)):
+    _ensure_manager(current_user)
+    vehicle = db.get(Veicolo, veicolo_id)
+    if not vehicle:
+        raise HTTPException(404)
+    from services.supplier_services import history
+    return render_template(templates, request, 'manager/veicoli/detail.html', {
+        'vehicle': vehicle, 'today': date.today(),
+        'person': db.get(Personale, vehicle.assegnato_a_id) if vehicle.assegnato_a_id else None,
+        'service_history': history(db, vehicle_id=veicolo_id),
+    }, db, current_user)

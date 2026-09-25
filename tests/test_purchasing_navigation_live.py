@@ -37,8 +37,8 @@ def test_navigation_b_preserves_context_filters_and_role_boundaries(live_operati
         expect(page.locator('[data-purchase-menu]')).not_to_have_attribute('open','')
         page.locator('[data-purchase-menu] > summary').press('Enter')
         expect(page.locator('[data-purchase-menu]')).to_have_attribute('open','')
-        expect(page.locator('.purchase-tabs [data-purchase-section=orders]')).to_have_attribute('href',listing.replace(origin,''))
-        expect(page.locator('#workspace-sidebar [data-purchase-section=orders]')).to_have_attribute('href',listing.replace(origin,''))
+        expect(page.locator('.purchase-tabs [data-purchase-section=orders]')).to_have_attribute('href','/manager/ordini')
+        expect(page.locator('#workspace-sidebar [data-purchase-section=orders]')).to_have_attribute('href','/manager/ordini')
         page.locator('.order-open').click()
         expect(page.locator('[data-purchase-return]')).to_have_attribute('href',listing.replace(origin,''))
         page.locator(f'main a[href$="/manager/fornitori/{supplier_id}"]').click()
@@ -57,7 +57,7 @@ def test_navigation_b_preserves_context_filters_and_role_boundaries(live_operati
         page.go_back();page.wait_for_url(listing,wait_until='load')
         page.go_forward();page.wait_for_url(f'**/ordini/{order_id}',wait_until='load');page.reload()
         expect(page.locator('[data-purchase-return]')).to_have_attribute('href',listing.replace(origin,''))
-        # Main sections keep their last list filters without mixing detail histories.
+        # Back preserves local filters; section tabs reset to their general lists.
         page.locator('.purchase-tabs [data-purchase-section=items]').click()
         page.get_by_label('Cerca articolo o codice',exact=True).fill('Gancio')
         page.get_by_role('button',name='Cerca',exact=True).click();page.wait_for_load_state('load');article_list=page.url
@@ -70,8 +70,8 @@ def test_navigation_b_preserves_context_filters_and_role_boundaries(live_operati
         page.get_by_role('link',name='Annulla',exact=True).click();page.wait_for_url(f'**/items/{item_id}/scheda')
         expect(page.locator('[data-purchase-return]')).to_have_attribute('href',article_list.replace(origin,''))
         page.locator('[data-purchase-return]').click()
-        page.locator('.purchase-tabs [data-purchase-section=orders]').click();page.wait_for_url(listing)
-        page.locator('.purchase-tabs [data-purchase-section=items]').click();page.wait_for_url(article_list)
+        page.locator('.purchase-tabs [data-purchase-section=orders]').click();page.wait_for_url(origin+'/manager/ordini')
+        page.locator('.purchase-tabs [data-purchase-section=items]').click();page.wait_for_url(origin+'/manager/magazzino')
         for theme in ['light','dark']:
             if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme-toggle').click()
             for path,label in [(listing,'orders'),(origin+f'/manager/fornitori/{supplier_id}','supplier'),(article_list,'articles')]:

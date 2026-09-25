@@ -231,7 +231,8 @@ def _serialize_economic_entry(entry: SiteEconomicEntry) -> dict[str, Any]:
         "category_label": _label_for_category(entry.category),
         "amount": round(float(entry.amount or 0), 2),
         "description": entry.description or "",
-        "managed_register": bool(entry.cost_delivery or entry.cost_allocation),
+        "managed_register": bool(entry.cost_delivery or entry.cost_allocation or entry.service_record),
+        "managed_service": bool(entry.service_record),
         "notes": entry.notes or "",
         "created_at": entry.created_at,
         "created_by_name": (entry.created_by.full_name or entry.created_by.email) if entry.created_by else "Sistema",
@@ -1220,8 +1221,8 @@ def manager_site_economics_entry_update(
     if not entry:
         raise HTTPException(status_code=404, detail="Movimento economico non trovato")
 
-    if entry.cost_delivery or entry.cost_allocation:
-        raise HTTPException(409, "Modifica questo costo da Costi e consegne / Modifiez ce coût depuis Coûts et livraisons")
+    if entry.cost_delivery or entry.cost_allocation or entry.service_record:
+        raise HTTPException(409, "Modifica questo costo da Servizi e noleggi / Modifiez ce coût depuis Services et locations" if entry.service_record else "Modifica questo costo da Costi e consegne / Modifiez ce coût depuis Coûts et livraisons")
 
     if entry.entry_type == SiteEconomicEntryTypeEnum.revenue and not can_view_site_margin(current_user):
         raise HTTPException(status_code=403, detail="Solo admin possono modificare i ricavi")
@@ -1268,8 +1269,8 @@ def manager_site_economics_entry_delete(
     if not entry:
         raise HTTPException(status_code=404, detail="Movimento economico non trovato")
 
-    if entry.cost_delivery or entry.cost_allocation:
-        raise HTTPException(409, "Modifica questo costo da Costi e consegne / Modifiez ce coût depuis Coûts et livraisons")
+    if entry.cost_delivery or entry.cost_allocation or entry.service_record:
+        raise HTTPException(409, "Modifica questo costo da Servizi e noleggi / Modifiez ce coût depuis Services et locations" if entry.service_record else "Modifica questo costo da Costi e consegne / Modifiez ce coût depuis Coûts et livraisons")
 
     if entry.entry_type == SiteEconomicEntryTypeEnum.revenue and not can_view_site_margin(current_user):
         raise HTTPException(status_code=403, detail="Solo admin possono eliminare i ricavi")
