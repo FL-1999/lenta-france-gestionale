@@ -9,6 +9,13 @@ from models import (Site, Report, ReportWorker, ReportDraft, ReportReview, Repor
 def delete_site_records(db, site):
     """Caller owns the transaction and audit; never commit or suppress errors here."""
     sid=site.id
+    # Keep the latest project name/status in the business directory's history.
+    from models import ProjectPartnerSite
+    from services.project_directory import site_snapshot
+    for link in db.query(ProjectPartnerSite).filter_by(site_id=sid):
+        link.snapshot = site_snapshot(site)
+        link.site_id = None
+    db.flush()
     # Capture older originals too, before the bulk delete bypasses mapper events.
     from services.cloud_archive import _document_saved, _plan_saved
     from models import SitePlan

@@ -68,6 +68,22 @@ def test_catalogue_shared_supplier_and_history_protect_delete(operations):
     assert o['db'].get(Supplier,s.id)
 
 
+def test_rental_can_be_assigned_to_site_without_asset_and_corrected(operations):
+    o=operations;s,v,b=setup(o);db=o['db']
+    b.update(kind='rental',title='Baracca cantiere',category='Container',unit='mese',
+             price='180',quantity='3',start=str(date.today()),end=str(date.today()+timedelta(days=90)))
+    r=save(o,b);assert r.status_code==200,r.text
+    row=db.query(ServiceRecord).one()
+    assert row.site_id==o['site'].id and row.vehicle_id is None and row.machine_id is None
+    assert db.query(SiteEconomicEntry).count()==0
+    b.update(r.json(),status='executed');r=save(o,b);assert r.status_code==200,r.text
+    entry=db.query(SiteEconomicEntry).one();assert entry.site_id==o['site'].id and entry.amount==540
+    b.update(r.json(),site_id=o['other'].id);r=save(o,b);assert r.status_code==200
+    db.refresh(entry);assert entry.site_id==o['other'].id and db.query(SiteEconomicEntry).count()==1
+    b.update(r.json(),site_id=None);assert save(o,b).status_code==200
+    assert db.query(SiteEconomicEntry).count()==0 and db.query(ServiceRecord).count()==1
+
+
 @pytest.mark.parametrize('change',[
     {'kind':'rental','start':'2026-10-01','end':'2026-09-01'},
     {'price':'NaN'}, {'quantity':0}, {'price':-1}, {'title':'  '},

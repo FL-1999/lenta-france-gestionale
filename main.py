@@ -6329,6 +6329,8 @@ def manager_site_detail(
         from services.site_pours import describe
         from models import SitePour
         workspace_pours = [describe(g) for g in db.query(SitePour).filter_by(site_id=site.id).all()]
+        from services.project_directory import for_site, CATEGORIES
+        project_partners = for_site(db, site.id) if has_perm(current_user, 'manager.access') else []
         site_tasks, open_tasks, completed_tasks = _load_site_tasks_for_site_detail(db, site_id)
         manager_users = (
             db.query(User)
@@ -6377,6 +6379,8 @@ def manager_site_detail(
             site_fiches=site_fiches,
             workspace_plan=workspace_plan,
             workspace_pours=workspace_pours,
+            project_partners=project_partners,
+            partner_categories=CATEGORIES,
         ),
     )
 
@@ -9185,6 +9189,8 @@ from routes import site_costs
 app.include_router(site_costs.router)
 from routes import supplier_services
 app.include_router(supplier_services.router)
+from routes import project_directory
+app.include_router(project_directory.router)
 app.include_router(ordini.router)
 from routes import purchasing_catalog
 app.include_router(purchasing_catalog.router)

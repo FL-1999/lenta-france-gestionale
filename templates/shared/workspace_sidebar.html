@@ -15,6 +15,7 @@
     {% if is_manager or is_capo %}
       <p class="workspace-nav-label">{{ t('Cantieri e lavoro','Chantiers et travail') }}</p>
       {% if is_manager %}{{ item('/manager/cantieri', t('Cantieri','Chantiers'), 'site', is_cantieri_active) }}{% endif %}
+      {% if is_manager %}{{ item('/manager/rubrica', t('Rubrica cantieri','Annuaire chantiers'), 'users', current_path.startswith('/manager/rubrica')) }}{% endif %}
       {{ item('/manager/rapportini' if is_manager else '/capo/rapportini', t('Rapportini','Rapports journaliers'), 'report', current_path.startswith('/manager/rapportini') or current_path.startswith('/capo/rapportini') or current_path.startswith('/operazioni/rapportini')) }}
       {{ item('/manager/fiches' if is_manager else '/capo/fiches', 'Fiches', 'file', '/fiches' in current_path or '/fiche' in current_path) }}
     {% endif %}
