@@ -193,6 +193,7 @@ class PanelInput(BaseModel):
     corner_group:str|None=Field(default=None,pattern=r'^[a-zA-Z0-9_-]{1,64}$')
     corner_net_confirmed:bool=False
     corner_manual:bool=False
+    corner_fitted:bool=False
 
 
 class LayoutInput(BaseModel):
@@ -209,6 +210,8 @@ def validate_layout(body,source,allowed,approve):
     if approve and not scale: raise HTTPException(400,'Calibra la scala usando un pannello di larghezza nota.')
     keys=set();links=set();panels=[]
     original={p['key']:p for p in source['panels']}
+    from services.plan_corners import fitted_keys
+    fitted = fitted_keys([p.model_dump() for p in body.panels])
     for p in body.panels:
         if p.key in keys: raise HTTPException(400,'Identificativo pannello ripetuto')
         keys.add(p.key)
@@ -228,9 +231,11 @@ def validate_layout(body,source,allowed,approve):
             raise HTTPException(400,'Sagoma non valida: controlla gli angoli del pannello')
         if approve and (p.width_m is None or not p.reviewed):
             raise HTTPException(400,f'Verifica sagoma e larghezza di {p.label}.')
+        if approve and p.corner_fitted and p.key not in fitted:
+            raise HTTPException(400,f'{p.label}: raccordo inclinato da rifare / raccord oblique à refaire.')
         reference=original.get(p.key,{}).get('reference_points') or original.get(p.key,{}).get('points')
         extent=needs_extent_review(p.points,reference,source['width'],source['height'])
-        if approve and any(abs(math.dist(p.points[i],p.points[j])/(p.width_m*scale)-1)>.02 for i,j in ((0,1),(3,2))):
+        if approve and p.key not in fitted and any(abs(math.dist(p.points[i],p.points[j])/(p.width_m*scale)-1)>.02 for i,j in ((0,1),(3,2))):
             raise HTTPException(400,f'{p.label}: sagoma fuori scala. Applica la larghezza alla scala comune.')
         if approve and extent and not p.extent_confirmed:
             raise HTTPException(400,f'{p.label}: possibile sbordo. Controlla e conferma gli estremi sul PDF.')

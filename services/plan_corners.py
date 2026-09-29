@@ -30,6 +30,25 @@ def axes_angle(a, b):
     return abs(sum(x*y for x, y in zip(u, v)) / max(math.hypot(*u)*math.hypot(*v), 1e-9))
 
 
+def fitted_keys(panels):
+    """A bevel has unequal side lengths: only a valid shared head can use reviewed net quotes."""
+    result = set()
+    for pair in groups(panels).values():
+        if len(pair) != 2 or not corner_name(pair) or not all(p.get('corner_fitted') for p in pair):
+            continue
+        a,b = [p['points'] for p in pair]
+        parallel = True
+        for points in (a,b):
+            u=[points[1][i]-points[0][i] for i in (0,1)]
+            v=[points[2][i]-points[3][i] for i in (0,1)]
+            parallel &= abs(u[0]*v[1]-u[1]*v[0]) / max(math.hypot(*u)*math.hypot(*v),1e-9) < 1e-4
+        shared = any(max(math.dist(a[i],b[k]),math.dist(a[j],b[l]))<1e-4
+                     for i,j in ((0,3),(1,2)) for k,l in ((0,3),(3,0),(1,2),(2,1)))
+        if parallel and shared and overlap_area(a,b)<1e-4:
+            result.update(p['key'] for p in pair)
+    return result
+
+
 def overlap_area(subject, clip):
     """Convex polygon intersection; do not silently double-count the corner joint."""
     result = list(subject)

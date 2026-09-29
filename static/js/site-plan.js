@@ -37,7 +37,7 @@
     const area=ref.reduce((sum,a,i)=>sum+a[0]*ref[(i+1)%4][1]-ref[(i+1)%4][0]*a[1],0),sign=area>=0?1:-1;
     return p.points.some(([x,y])=>ref.some((a,i)=>{const b=ref[(i+1)%4],len=Math.hypot(b[0]-a[0],b[1]-a[1]);return len&&sign*((b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0])) < -2*len;}));
   }
-  function offScale(p) {const scale=commonScale();return !scale||!p.width_m||[[0,1],[3,2]].some(([i,j])=>Math.abs(Math.hypot(p.points[j][0]-p.points[i][0],p.points[j][1]-p.points[i][1])/(scale*p.width_m)-1)>.02);}
+  function offScale(p) {if(p.corner_fitted&&peers(p).length===2)return false;const scale=commonScale();return !scale||!p.width_m||[[0,1],[3,2]].some(([i,j])=>Math.abs(Math.hypot(p.points[j][0]-p.points[i][0],p.points[j][1]-p.points[i][1])/(scale*p.width_m)-1)>.02);}
   function resize(p,anchor='center') {
     const scale=commonScale();if(!scale||!p.width_m)return false;
     const g=geometry(p),change=p.width_m*scale-g.len,a=g.angle*Math.PI/180;
@@ -102,7 +102,7 @@
     return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>[g.cx+u*g.len/2*ux-v*g.depth/2*uy,g.cy+u*g.len/2*uy+v*g.depth/2*ux]);
   }
   function inBounds(points) { return points.every(([x,y]) => Number.isFinite(x)&&Number.isFinite(y)&&x>=-plan.layout.width&&y>=-plan.layout.height&&x<=2*plan.layout.width&&y<=2*plan.layout.height); }
-  function updatePoints(p, points) { if (!points||!inBounds(points)) return false; p.points = points; invalidate(p); markDirty(); return true; }
+  function updatePoints(p, points) { if (!points||!inBounds(points)) return false; peers(p).forEach(v=>v.corner_fitted=false); p.points = points; invalidate(p); markDirty(); return true; }
   function renderMaps() {
     if (!plan) return;
     all('.sp-board svg').forEach(svg=>svg.setAttribute('viewBox', box.join(' ')));
@@ -228,12 +228,12 @@
     else if(name==='corner_net_confirmed') peers(p).forEach(v=>v.corner_net_confirmed=input.checked);
     else if(name==='anchor') return;
     else {
-      const v=n=>+form.elements[n].value;
+      const fitted=p.corner_fitted;const v=n=>+form.elements[n].value;
       const g={cx:v('cx'),cy:v('cy'),len:v('shape_length'),depth:v('shape_depth'),angle:v('angle')};
       if(widthLocked())g.len=geometry(p).len;if(directionLocked())g.angle=geometry(p).angle;
       checkpoint();
       if (!(g.len>1&&g.depth>1)||!updatePoints(p,rectangle(g))){message(tr("Dimensioni non valide o sagoma fuori dal foglio."),true);renderDetail();return;}
-      if(!widthLocked()&&commonScale())p.width_m=g.len/commonScale();
+      if(!fitted&&!widthLocked()&&commonScale())p.width_m=g.len/commonScale();
     }
     if(!['reviewed','extent_confirmed','corner_net_confirmed'].includes(name))invalidate(p);markDirty();render();
   });
@@ -253,7 +253,7 @@
       const start=coordinate(svg,event);svg.setPointerCapture(event.pointerId);
       if(key)selected=key;
       if(edge)q('[data-edge]').value=edge;
-      drag={svg,id:event.pointerId,start,corner:corner===undefined?null:+corner,edge,key:selected,points:panel()?.points.map(v=>[...v]),pair:peers(panel()).map(v=>({key:v.key,points:v.points.map(p=>[...p])})),add:addMode,moved:false};
+      drag={svg,id:event.pointerId,start,corner:corner===undefined?null:+corner,edge,key:selected,points:panel()?.points.map(v=>[...v]),pair:peers(panel()).map(v=>({key:v.key,points:v.points.map(p=>[...p]),corner_fitted:!!v.corner_fitted})),add:addMode,moved:false};
       root.dataset.dragging='true';renderMaps();event.preventDefault();
     });
     const move=event=>{
@@ -272,7 +272,7 @@
         if(!moved.every(v=>inBounds(v.points)))return;
         moved.filter(v=>v.p.key!==p.key).forEach(v=>updatePoints(v.p,v.points));
       }
-      if(updatePoints(p,pts)){if(!widthLocked()&&commonScale())p.width_m=geometry(p).len/commonScale();renderMaps();}
+      if(updatePoints(p,pts)){if(!drag.edge&&drag.corner===null&&drag.pair.length===2&&drag.pair.every(v=>v.corner_fitted))peers(p).forEach(v=>v.corner_fitted=true);if((drag.edge||drag.corner!==null)&&!drag.pair.find(v=>v.key===p.key)?.corner_fitted&&!widthLocked()&&commonScale())p.width_m=geometry(p).len/commonScale();renderMaps();}
     };
     svg.addEventListener('pointermove',move);
     const finish=event=>{
@@ -310,8 +310,8 @@
   all('[data-nudge]').forEach(button=>button.onclick=()=>{
     const p=panel(),scale=commonScale();if(!p||!editing)return;
     if(!scale){message(t('Calibra prima la scala.','Calibrez d’abord l’échelle.'),true);return;}
-    checkpoint();const pts=window.PlanGeometry.moveEdge(p.points,q('[data-edge]').value,+button.dataset.nudge*(+q('[data-step]').value)*scale,widthLocked());
-    if(updatePoints(p,pts)){if(!widthLocked())p.width_m=geometry(p).len/scale;render();}
+    const fitted=p.corner_fitted;checkpoint();const pts=window.PlanGeometry.moveEdge(p.points,q('[data-edge]').value,+button.dataset.nudge*(+q('[data-step]').value)*scale,widthLocked());
+    if(updatePoints(p,pts)){if(!fitted&&!widthLocked())p.width_m=geometry(p).len/scale;render();}
   });
   q('[data-undo-edit]').onclick=()=>{if(!editUndo.length)return;plan.layout=JSON.parse(editUndo.pop());if(!panel())selected=plan.layout.panels[0]?.key;snapUndo=null;markDirty();render();};
   q('[data-undo-removal]').onclick=()=>q('[data-undo-edit]').click();
@@ -337,10 +337,19 @@
     if(!result){message(t('Controlla le direzioni dei due bracci prima di raccordarli.','Vérifiez les directions des deux branches avant de les raccorder.'),true);return;}
     checkpoint();if(updatePoints(p,result.points)){render();message(t('Angolo raccordato senza cambiare le larghezze. Verifica le quote nette sul PDF.','Angle raccordé sans modifier les largeurs. Vérifiez les cotes nettes sur le PDF.'));}
   };
+  q('[data-fit-corner]').onclick=async()=>{
+    const p=panel(),pair=peers(p);if(!editing||pair.length!==2)return;
+    const other=pair.find(v=>v.key!==p.key),result=window.PlanGeometry.fitCorner(p.points,other.points);
+    if(!result||!inBounds(result.first)||!inBounds(result.second)){message(t('Avvicina le testate e controlla che i lati di ciascun braccio siano paralleli. Il raccordo non è stato modificato.','Rapprochez les extrémités et vérifiez que les côtés de chaque branche sont parallèles. Le raccord n’a pas été modifié.'),true);return;}
+    if(!await ask(t('Raccordare questo angolo inclinato?','Raccorder cet angle oblique ?'),t('Vengono rifinite solo le testate della giunzione. Le estremità esterne e le direzioni restano ferme; le quote inserite non cambiano. Controlla sul PDF le lunghezze nette prima di convalidare.','Seules les extrémités de la jonction seront ajustées. Les extrémités extérieures et les directions restent fixes ; les cotes saisies ne changent pas. Vérifiez les longueurs nettes sur le PDF avant validation.'),t('Raccorda inclinato','Raccorder l’angle oblique')))return;
+    checkpoint();updatePoints(p,result.first);updatePoints(other,result.second);
+    pair.forEach(v=>{v.corner_fitted=true;v.corner_manual=true;});render();
+    message(t('Giunzione rifinita. Conferma le quote nette A/B e gli eventuali sbordi sul PDF. Puoi usare Annulla modifica.','Jonction ajustée. Confirmez les cotes nettes A/B et les éventuels débords sur le PDF. Vous pouvez annuler la modification.'));
+  };
   q('[data-split-corner]').onclick=()=>{
     const pair=peers(panel());if(pair.length!==2)return;
     if(!confirm(t('Separare i due bracci? Le sagome restano ferme. Una fiche già compilata non verrà cancellata.','Séparer les deux branches ? Les formes restent en place. Aucune fiche existante ne sera supprimée.')))return;
-    checkpoint();pair.forEach(p=>{p.corner_group=null;p.corner_manual=false;p.corner_net_confirmed=false;p.reviewed=false;});markDirty();render();
+    checkpoint();pair.forEach(p=>{p.corner_group=null;p.corner_fitted=false;p.corner_manual=false;p.corner_net_confirmed=false;p.reviewed=false;});markDirty();render();
   };
   q('[data-review-all-top]').onclick=()=>q('[data-review-all]').click();
   q('[data-review-all]').onclick=()=>{
