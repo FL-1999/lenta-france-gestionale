@@ -32,6 +32,37 @@ def setup(o):
     return url,row,body
 
 
+def test_mitered_corner_accepts_reviewed_net_quotes_and_preserves_them(operations):
+    o=operations;url,row,body=setup(o)
+    a,b=body['panels']
+    a['points']=[[70,30],[98.5,125],[82.7,145],[50,36]]
+    b['points']=[[98.5,125],[218,125],[218,145],[82.7,145]]
+    a['width_m']=2.5;b['width_m']=3.2
+    for p in (a,b):p.update(corner_fitted=True,corner_manual=True,extent_confirmed=True,corner_net_confirmed=False)
+    assert o['client'].put(url+f'/{row.id}/convalida',json=body).status_code==400
+    for p in (a,b):p['corner_net_confirmed']=True
+    r=o['client'].put(url+f'/{row.id}/convalida',json=body);assert r.status_code==200,r.text
+    saved=o['client'].get(url+'/data').json()['plan']['layout']['panels']
+    assert [p['width_m'] for p in saved]==[2.5,3.2]
+    assert all(p['corner_fitted'] for p in saved)
+    assert saved[0]['points']==a['points']
+
+
+@pytest.mark.parametrize('problem',['gap','overlap','single','unfitted'])
+def test_miter_flag_does_not_bypass_unrelated_geometry_checks(operations,problem):
+    o=operations;url,row,body=setup(o);a,b=body['panels']
+    a['points']=[[70,30],[98.5,125],[82.7,145],[50,36]]
+    b['points']=[[98.5,125],[218,125],[218,145],[82.7,145]]
+    for p in (a,b):p.update(corner_fitted=True,corner_manual=True,extent_confirmed=True)
+    if problem in ('gap','overlap'):
+        b['points']=[[x+(3 if problem=='gap' else -3),y] for x,y in b['points']]
+    if problem=='single':b['corner_fitted']=False
+    if problem=='unfitted':
+        for p in (a,b):p['corner_fitted']=False
+    r=o['client'].put(url+f'/{row.id}/convalida',json=body)
+    assert r.status_code==400,r.text
+
+
 def test_unique_adjacent_ab_only_and_no_guessed_net_confirmation():
     data=layout();panels=data['panels']
     for p in panels:p.pop('corner_group');p.pop('corner_net_confirmed')

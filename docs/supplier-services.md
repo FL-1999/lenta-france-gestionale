@@ -18,6 +18,8 @@ Automatic recognition stays conservative. In geometry tools the operator may exp
 
 ## Verification
 
+Oblique junctions can be explicitly mitered with `Raccorda inclinato`. Only the nearest heads are trimmed/extended along each arm's existing parallel sides; outer heads, measured net quotes and element identities stay fixed. Nearly parallel axes, distant heads, crossed polygons and overlapping results are rejected. Both arms carry a fitted-junction marker; approval accepts unequal graphic side lengths only when the server verifies a shared head, parallel longitudinal sides and zero overlap, and the operator confirms net quotes and any extent changes. Other panels retain the normal scale check. Shape edits invalidate the marker; a rigid translation of the whole pair preserves it. Undo restores the prior layout. No existing drawing is changed on deployment.
+
 `test_supplier_services.py`: cost lifecycle and duplicate requests, optimistic locking, permissions/CSRF, reference validation, vehicle and machine histories, supplier/site retention, manual oblique corner approval.
 
 `test_supplier_services_live.py`: actual browser form submission, invalid rental dates preserving input, vehicle history, trip preselection, mobile fleet and manual corner save/reload.

@@ -66,6 +66,37 @@ window.PlanGeometry={
     const oldSign=(points[1][0]-points[0][0])*(points[2][1]-points[1][1])-(points[1][1]-points[0][1])*(points[2][0]-points[1][0]);
     return signs.every(v=>v*oldSign>0&&Math.abs(v)>.1)?out:null;
   },
+  fitCorner(first,second) {
+    // Miter the nearest heads along the existing longitudinal edges. Far heads stay fixed.
+    const sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],cross=(a,b)=>a[0]*b[1]-a[1]*b[0],dist=(a,b)=>Math.hypot(...sub(a,b));
+    const lines=p=>[[p[0],p[1]],[p[3],p[2]]];
+    const intersect=(a,b,c,d)=>{const u=sub(b,a),v=sub(d,c),den=cross(u,v);if(Math.abs(den)/(Math.hypot(...u)*Math.hypot(...v))<.12)return null;const t=cross(sub(c,a),v)/den;return [a[0]+t*u[0],a[1]+t*u[1]];};
+    const convex=p=>{const signs=p.map((a,i)=>cross(sub(p[(i+1)%4],a),sub(p[(i+2)%4],p[(i+1)%4])));return signs.every(v=>v>.1)||signs.every(v=>v<-.1);};
+    const area=p=>Math.abs(p.reduce((s,a,i)=>s+cross(a,p[(i+1)%p.length]),0))/2;
+    const parallel=p=>Math.abs(cross(sub(p[1],p[0]),sub(p[2],p[3])))/(dist(p[0],p[1])*dist(p[3],p[2]))<1e-4;
+    if(!convex(first)||!convex(second)||!parallel(first)||!parallel(second))return null;
+    const heads=[[0,3],[1,2]],mid=(p,h)=>h.map(i=>p[i]).reduce((a,b)=>[a[0]+b[0]/2,a[1]+b[1]/2],[0,0]);
+    let nearest=null;
+    for(const a of heads)for(const b of heads){const d=dist(mid(first,a),mid(second,b));if(!nearest||d<nearest.d)nearest={a,b,d};}
+    const depth=p=>Math.abs(cross(sub(p[1],p[0]),sub(p[3],p[0])))/dist(p[0],p[1]);
+    const limit=Math.max(depth(first),depth(second))*4;
+    if(nearest.d>limit)return null;
+    let best=null;
+    for(const order of [[0,1],[1,0]]){
+      const a=first.map(p=>[...p]),b=second.map(p=>[...p]),la=lines(first),lb=lines(second);
+      const joint=la.map((line,i)=>intersect(...line,...lb[order[i]]));
+      if(joint.some(p=>!p||!p.every(Number.isFinite)))continue;
+      joint.forEach((p,i)=>{a[nearest.a[i]]=[...p];b[nearest.b[order[i]]]=[...p];});
+      if(!convex(a)||!convex(b))continue;
+      const moves=joint.flatMap((p,i)=>[dist(p,first[nearest.a[i]]),dist(p,second[nearest.b[order[i]]])]);
+      if(Math.max(...moves)>limit)continue;
+      const outline=this.unionOutline(a,b);
+      if(!outline||Math.abs(area(outline)-area(a)-area(b))>1e-4)continue;
+      const score=moves.reduce((s,v)=>s+v,0);
+      if(!best||score<best.score)best={first:a,second:b,score};
+    }
+    return best;
+  },
   cornerPairs(panels) {
     const candidates=new Map(),result=[];
     for(const p of panels){const match=p.label.trim().match(/^(P\s*\d+)\s*([ab])$/i);if(match){const key=match[1].replace(/\s/g,'').toUpperCase();if(!candidates.has(key))candidates.set(key,[]);candidates.get(key).push(p);}}
