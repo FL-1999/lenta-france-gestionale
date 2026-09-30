@@ -12,7 +12,7 @@
   const message = s => { q('#sw-message').textContent = s; };
   const elements = new Map(data.elements.map(e => [e.number,e]));
   const panels = data.plan?.approved_at && !data.plan.editing ? data.plan.layout.panels : [];
-  const units=window.PlanGeometry.units(panels);
+  const units=window.PlanGeometry.units(panels).sort((a,b)=>a.label.localeCompare(b.label,'it',{numeric:true,sensitivity:'base'}));
   const unitFor=n=>units.find(u=>u.members.some(p=>p.element===n));
   const editor = html => {q('#sw-editor-body').innerHTML=html;q('#sw-group-editor').hidden=false;q('#sw-group-editor').scrollIntoView({block:'nearest'});};
   async function api(path,method,body) {
@@ -30,7 +30,7 @@
     const e=elements.get(n); if(!e)return;
     const g=groups.find(g=>g.members.some(m=>m.number===n));
     const shared=g?.kind==='angle';
-    q('#sw-panel-detail').innerHTML=`<div class="sw-row"><div><strong>${esc(unit?.label||e.label)}</strong><div class="sw-muted">${esc(e.coupe||tr("CUP da assegnare"))} · ${e.status==='cast'?tr("Gettato"):e.fiche_id?tr("Fiche presente"):tr("Da eseguire")}${e.concrete_m3==null?'':` · ${number(e.concrete_m3)} m³${shared?tr(" · totale angolo"):''}`}</div></div>${e.fiche_url?`<a class="btn btn-secondary" href="${esc(e.fiche_url)}">${tr("Apri fiche")}${shared?tr(" unica"):''}</a>`:e.create_url?`<a class="btn btn-primary" href="${esc(e.create_url)}">${tr("Crea fiche")}${shared?tr(" unica"):''}</a>`:''}</div>`;
+    q('#sw-panel-detail').innerHTML=`<div class="sw-row"><div><strong>${esc(unit?.label||e.label)}</strong><div class="sw-muted">${esc(e.coupe||tr("Coupe da assegnare"))} · ${e.status==='cast'?tr("Gettato"):e.fiche_id?tr("Fiche presente"):tr("Da eseguire")}${e.concrete_m3==null?'':` · ${number(e.concrete_m3)} m³${shared?tr(" · totale angolo"):''}`}</div></div>${e.fiche_url?`<a class="btn btn-secondary" href="${esc(e.fiche_url)}">${tr("Apri fiche")}${shared?tr(" unica"):''}</a>`:e.create_url?`<a class="btn btn-primary" href="${esc(e.create_url)}">${tr("Crea fiche")}${shared?tr(" unica"):''}</a>`:''}</div>`;
   }
   function draw() {
     if(!panels.length){q('#sw-plan').innerHTML=`<p style="padding:20px">${tr("Nessuna pianta convalidata.")} <a href="${base}/pianta">${tr("Carica o controlla il PDF")}</a>.</p>`;return;}
