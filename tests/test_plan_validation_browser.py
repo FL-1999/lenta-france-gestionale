@@ -13,7 +13,8 @@ from test_plan_preflight import multiple_corners
 pytestmark=pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS')!='1',reason='Browser opt-in')
 
 
-def test_all_corner_errors_visible_before_approval_and_preserve_work(live_operations):
+@pytest.mark.parametrize('validation_delay',[0,0.3])
+def test_all_corner_errors_visible_before_approval_and_preserve_work(live_operations,validation_delay):
     origin,engine,ids,password,artifacts=live_operations
     data=multiple_corners()
     with Session(engine) as db:
@@ -24,7 +25,19 @@ def test_all_corner_errors_visible_before_approval_and_preserve_work(live_operat
         browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
         page=browser.new_page(viewport={'width':1440,'height':1100});errors=[]
         page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept())
-        page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(origin+'/') else r.abort())
+        requests=[]
+        def route_request(route):
+            if not route.request.url.startswith(origin+'/'):
+                return route.abort()
+            if route.request.url.endswith('/verifica'):
+                requests.append(route.request.post_data_json)
+                response=route.fetch()
+                if validation_delay:
+                    import time
+                    time.sleep(validation_delay)
+                return route.fulfill(response=response)
+            route.continue_()
+        page.route('**/*',route_request)
         page.goto(origin+'/login');page.locator('#email').fill('smoke-manager@example.com');page.locator('#password').fill(password)
         page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
         url=origin+f'/manager/cantieri/{ids["site"]}/pianta';page.goto(url)
@@ -52,6 +65,7 @@ def test_all_corner_errors_visible_before_approval_and_preserve_work(live_operat
             if group=='12':page.locator('[data-validation-list] button').filter(has_text='P12 A/B').click()
             page.locator('[data-fit-corner]').click()
             page.locator('[data-confirm-action]').click()
+            expect(page.locator('[data-message]')).to_contain_text('Giunzione rifinita')
             page.locator('[name=corner_net_confirmed]').check()
             # Explicitly confirm the changed geometry, including both arms.
             for arm in ('a','b'):
@@ -60,7 +74,11 @@ def test_all_corner_errors_visible_before_approval_and_preserve_work(live_operat
                 page.locator('[name=reviewed]').check()
             page.locator('[data-verify]').click()
             expect(page.locator('[data-verify]')).to_be_enabled()
-        expect(page.locator('[data-validation-summary]')).to_be_hidden()
+        try:
+            expect(page.locator('[data-validation-summary]')).to_be_hidden()
+        except AssertionError:
+            pytest.fail(json.dumps({'list':page.locator('[data-validation-list]').inner_text(),
+                                    'last_check':requests[-1], 'errors':errors},ensure_ascii=False))
         with page.expect_response(lambda r:r.request.method=='PUT' and r.url.endswith('/convalida')) as saved:
             page.locator('[data-approve]').click()
         assert saved.value.status==200,saved.value.text()
