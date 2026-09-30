@@ -1287,6 +1287,15 @@ def _render_fiche_create_form(
                 assigned = next((c for c in coupes if c.site_id == selected_site_id and any(a.tipologia_scavo == kind and a.numero_elemento == number for a in c.assignments)), None)
                 values.update(numero_pannello=number, coupe_id=assigned.id if assigned else None, larghezza_pannello=details['width_m'], scavo_da_tn=assigned.scavo_da_tn if assigned else True)
             form_data = _build_fiche_form_data(**values)
+        if request.path_params.get("fiche_id") and extra_context and extra_context.get("is_edit"):
+            from types import SimpleNamespace
+            stored = db.get(Fiche, request.path_params["fiche_id"])
+            if stored and stored.coupe_snapshot:
+                coupes = [SimpleNamespace(**{**json.loads(stored.coupe_snapshot), "id": c.id, "site_id": c.site_id, "assignments": c.assignments}) if c.id == stored.coupe_id else c for c in coupes]
+                if form_data is not None:
+                    form_data.setdefault("quota_reference_label", stored.quota_reference_label or "NGF")
+                    form_data["saved_terreno_teorico"] = stored.terreno_teorico or ""
+                    form_data["saved_soil_origin"] = stored.quota_partenza
         panel_catalog = {}
         for available_site in sites:
             panel_catalog[str(available_site.id)] = [
@@ -1678,6 +1687,7 @@ def _apply_coupe_defaults_to_fiche_values(
     coupe: SiteCoupe | None,
     *,
     scavo_da_tn: bool | str | None,
+    quota_partenza_value: float | None = None,
     quota_tn_value: float | None,
     quota_testa_getto_value: float | None,
     quota_ngf_testa_value: float | None,
@@ -1688,13 +1698,13 @@ def _apply_coupe_defaults_to_fiche_values(
     altezza_value: float | None,
 ) -> dict[str, float | bool | None]:
     scavo_da_tn_value = True if scavo_da_tn is None else scavo_da_tn in (True, "1", "true", "on", "si", "SI")
-    quota_partenza_value = None
+    explicit_origin = quota_partenza_value
     if coupe:
         scavo_da_tn_value = coupe.scavo_da_tn if scavo_da_tn is None else scavo_da_tn_value
         quota_tn_value = quota_tn_value if quota_tn_value is not None else coupe.quota_tn
         if scavo_da_tn_value:
-            quota_partenza_value = coupe.quota_tn
-        else:
+            quota_partenza_value = quota_tn_value
+        elif quota_partenza_value is None:
             quota_partenza_value = coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not None else coupe.quota_testa
         quota_testa_getto_value = quota_testa_getto_value if quota_testa_getto_value is not None else coupe.quota_testa_getto_prevista
         quota_ngf_testa_value = quota_ngf_testa_value if quota_ngf_testa_value is not None else coupe.quota_testa
@@ -1707,10 +1717,18 @@ def _apply_coupe_defaults_to_fiche_values(
         quota_testa_getto_value,
         quota_tn=coupe.quota_tn if coupe and coupe.quota_tn is not None else quota_ngf_testa_value,
     )
+    if not coupe and scavo_da_tn_value:
+        quota_partenza_value = quota_tn_value if quota_tn_value is not None else quota_ngf_testa_value
+    if not scavo_da_tn_value and quota_partenza_value is None:
+        raise HTTPException(400, "Indica la quota di partenza dello scavo. / Indiquez la cote de départ du forage.")
     origin = quota_partenza_value if quota_partenza_value is not None else quota_ngf_testa_value
     if quota_ngf_fondo_value is None and origin is not None and profondita_value is not None:
         quota_ngf_fondo_value = round(origin - profondita_value, 6)
 
+    if explicit_origin is not None and origin is not None and profondita_value is not None and quota_ngf_fondo_value is not None:
+        import math
+        if not all(math.isfinite(v) for v in (origin, profondita_value, quota_ngf_fondo_value)) or abs(origin-profondita_value-quota_ngf_fondo_value) > .02:
+            raise HTTPException(400, "Partenza, profondità e fondo non coincidono: fondo = partenza − profondità. / Cotes incohérentes : fond = départ − profondeur.")
     return {
         "scavo_da_tn_value": scavo_da_tn_value,
         "quota_tn_value": quota_tn_value,
@@ -1808,7 +1826,8 @@ def _create_validated_fiche(
     quota_ngf_fondo: str | float | None = None,
     quota_ngf_note: str | None = None,
     coupe_id: str | int | None = None,
-    scavo_da_tn: bool | str | None = True,
+    scavo_da_tn: bool | str | None = None,
+    quota_partenza: str | float | None = None,
     quota_testa_getto: str | float | None = None,
     sonic_realizzato: str | bool | None = None,
     inclinometre_realizzato: str | bool | None = None,
@@ -1857,7 +1876,8 @@ def _create_validated_fiche(
             detail="Il campo Operatore / squadra è obbligatorio.",
         )
 
-    _validate_metri_cubi_gettati(metri_cubi_value)
+    if data_getto is not None or metri_cubi_value is not None:
+        _validate_metri_cubi_gettati(metri_cubi_value)
 
     site = db.query(Site).filter(Site.id == cantiere_id).first()
     if not site:
@@ -1894,6 +1914,7 @@ def _create_validated_fiche(
     coupe_values = _apply_coupe_defaults_to_fiche_values(
         coupe,
         scavo_da_tn=scavo_da_tn,
+        quota_partenza_value=_parse_decimal_comma_float(quota_partenza, "Quota partenza scavo"),
         quota_tn_value=None,
         quota_testa_getto_value=_parse_decimal_comma_float(quota_testa_getto, "quota testa getto"),
         quota_ngf_testa_value=quota_ngf_testa_value,
@@ -2020,6 +2041,9 @@ def _create_validated_fiche(
 
     from services.site_pours import before_fiche_save
     before_fiche_save(db, fiche)
+    if coupe:
+        from services.soil_levels import rebase_soil
+        fiche.terreno_teorico = rebase_soil(fiche.terreno_teorico, coupe.quota_tn if coupe.scavo_da_tn else (coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not None else coupe.quota_testa), quota_partenza_value)
     db.add(fiche)
     db.flush()
 
@@ -2071,7 +2095,8 @@ def _update_validated_fiche(
     quota_ngf_fondo: str | float | None,
     quota_ngf_note: str | None,
     coupe_id: str | int | None = None,
-    scavo_da_tn: bool | str | None = True,
+    scavo_da_tn: bool | str | None = None,
+    quota_partenza: str | float | None = None,
     quota_testa_getto: str | float | None = None,
     sonic_realizzato: str | bool | None = None,
     inclinometre_realizzato: str | bool | None = None,
@@ -2079,7 +2104,7 @@ def _update_validated_fiche(
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
     strato_materiale_altro: list[str] | None = None,
-    courbe_beton_active: str | bool | None = False,
+    courbe_beton_active: str | bool | None = None,
     courbe_realisee_volume: list[str | float | None] | None = None,
     courbe_realisee_hauteur: list[str | float | None] | None = None,
     courbe_tube_volume: list[str | float | None] | None = None,
@@ -2119,7 +2144,8 @@ def _update_validated_fiche(
             detail="Il campo Operatore / squadra è obbligatorio.",
         )
 
-    _validate_metri_cubi_gettati(metri_cubi_value)
+    if data_getto is not None or metri_cubi_value is not None:
+        _validate_metri_cubi_gettati(metri_cubi_value)
 
     site = db.query(Site).filter(Site.id == cantiere_id).first()
     if not site:
@@ -2143,8 +2169,9 @@ def _update_validated_fiche(
     )
     coupe_values = _apply_coupe_defaults_to_fiche_values(
         fiche.report_coupe if coupe and fiche.coupe_id == coupe.id and fiche.coupe_snapshot else coupe,
-        scavo_da_tn=scavo_da_tn,
-        quota_tn_value=fiche.quota_tn,
+        scavo_da_tn=fiche.scavo_da_tn if scavo_da_tn is None and fiche.coupe_id == (coupe.id if coupe else None) else scavo_da_tn,
+        quota_partenza_value=_parse_decimal_comma_float(quota_partenza, "Quota partenza scavo") if quota_partenza is not None else (fiche.quota_partenza if coupe and fiche.coupe_id == coupe.id and scavo_da_tn in (None, "0", False) else None),
+        quota_tn_value=fiche.quota_tn if fiche.coupe_id == (coupe.id if coupe else None) else None,
         quota_testa_getto_value=_parse_decimal_comma_float(quota_testa_getto, "quota testa getto"),
         quota_ngf_testa_value=quota_ngf_testa_value,
         quota_ngf_fondo_value=quota_ngf_fondo_value,
@@ -2210,6 +2237,8 @@ def _update_validated_fiche(
             raise HTTPException(status_code=400, detail="Macchinario non trovato")
     _validate_capocantiere(db, parsed_capocantiere_id)
 
+    from services.soil_levels import rebase_soil
+    previous_origin = fiche.quota_partenza
     previous_site_id = fiche.site_id
     diametro_value_m = diametro_value_cm / 100 if diametro_value_cm is not None else None
     coupe_changed = fiche.coupe_id != (coupe.id if coupe else None)
@@ -2241,12 +2270,16 @@ def _update_validated_fiche(
     fiche.quota_ngf_fondo = quota_ngf_fondo_value
     fiche.quota_ngf_note = (quota_ngf_note or "").strip() or None
     fiche.quota_tn = quota_tn_value
-    if coupe and (coupe_changed or not fiche.terreno_teorico):
+    if coupe and (coupe_changed or fiche.terreno_teorico is None):
         fiche.type_beton = coupe.type_beton or fiche.materiale
         fiche.type_coulage = coupe.type_coulage or "Gravitaire"
         fiche.terreno_teorico = coupe.terreno_teorico
     elif not fiche.type_coulage:
         fiche.type_coulage = "Gravitaire"
+    if not coupe_changed:
+        fiche.terreno_teorico = rebase_soil(fiche.terreno_teorico, previous_origin, quota_partenza_value)
+    elif coupe:
+        fiche.terreno_teorico = rebase_soil(coupe.terreno_teorico, coupe.quota_tn if coupe.scavo_da_tn else (coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not None else coupe.quota_testa), quota_partenza_value)
     fiche.scavo_da_tn = scavo_da_tn_value
     fiche.quota_partenza = quota_partenza_value
     fiche.quota_testa_getto = quota_testa_getto_value
@@ -2254,7 +2287,7 @@ def _update_validated_fiche(
     fiche.sonic_realizzato = sonic_realizzato_value
     fiche.inclinometre_previsto = inclinometre_previsto
     fiche.inclinometre_realizzato = inclinometre_realizzato_value
-    if current_user.role in {RoleEnum.admin, RoleEnum.manager}:
+    if current_user.role in {RoleEnum.admin, RoleEnum.manager} and courbe_beton_active is not None:
         _apply_courbe_beton_fields(
             fiche,
             courbe_beton_active=courbe_beton_active,
@@ -3336,6 +3369,7 @@ async def manager_fiche_create(
     capocantiere_id: str | None = Form(None),
     coupe_id: str | None = Form(None),
     scavo_da_tn: str | None = Form(None),
+    quota_partenza: str | None = Form(None),
     quota_testa_getto: str | None = Form(None),
     sonic_realizzato: str | None = Form(None),
     inclinometre_realizzato: str | None = Form(None),
@@ -3383,6 +3417,7 @@ async def manager_fiche_create(
                 capocantiere_id=capocantiere_id,
                 coupe_id=coupe_id,
                 scavo_da_tn=scavo_da_tn,
+                quota_partenza=quota_partenza,
                 quota_testa_getto=quota_testa_getto,
                 data_scavo=data_scavo,
                 data_getto=data_getto,
@@ -3425,6 +3460,7 @@ async def manager_fiche_create(
             capocantiere_id=capocantiere_id,
             coupe_id=coupe_id,
             scavo_da_tn=scavo_da_tn,
+            quota_partenza=quota_partenza,
             quota_testa_getto=quota_testa_getto,
             sonic_realizzato=sonic_realizzato,
             inclinometre_realizzato=inclinometre_realizzato,
@@ -8012,6 +8048,7 @@ async def capo_fiche_nuova_post(
     macchinario_id: str | None = Form(None),
     coupe_id: str | None = Form(None),
     scavo_da_tn: str | None = Form(None),
+    quota_partenza: str | None = Form(None),
     quota_testa_getto: str | None = Form(None),
     sonic_realizzato: str | None = Form(None),
     inclinometre_realizzato: str | None = Form(None),
@@ -8047,6 +8084,7 @@ async def capo_fiche_nuova_post(
                 macchinario_id=macchinario_id,
                 coupe_id=coupe_id,
                 scavo_da_tn=scavo_da_tn,
+                quota_partenza=quota_partenza,
                 quota_testa_getto=None,
                 data_scavo=data_scavo,
                 data_getto=data_getto,
@@ -8078,6 +8116,7 @@ async def capo_fiche_nuova_post(
             macchinario_id=macchinario_id,
             coupe_id=coupe_id,
             scavo_da_tn=scavo_da_tn,
+            quota_partenza=quota_partenza,
             quota_testa_getto=quota_testa_getto,
             sonic_realizzato=sonic_realizzato,
             inclinometre_realizzato=inclinometre_realizzato,
@@ -8454,6 +8493,7 @@ async def manager_fiche_update(
     capocantiere_id: str | None = Form(None),
     coupe_id: str | None = Form(None),
     scavo_da_tn: str | None = Form(None),
+    quota_partenza: str | None = Form(None),
     quota_testa_getto: str | None = Form(None),
     sonic_realizzato: str | None = Form(None),
     inclinometre_realizzato: str | None = Form(None),
@@ -8507,6 +8547,7 @@ async def manager_fiche_update(
                 capocantiere_id=capocantiere_id,
                 coupe_id=coupe_id,
                 scavo_da_tn=scavo_da_tn,
+                quota_partenza=quota_partenza,
                 quota_testa_getto=quota_testa_getto,
                 data_scavo=data_scavo,
                 data_getto=data_getto,
@@ -8549,6 +8590,7 @@ async def manager_fiche_update(
             capocantiere_id=capocantiere_id,
             coupe_id=coupe_id,
             scavo_da_tn=scavo_da_tn,
+            quota_partenza=quota_partenza,
             quota_testa_getto=quota_testa_getto,
             sonic_realizzato=sonic_realizzato,
             inclinometre_realizzato=inclinometre_realizzato,
@@ -8742,7 +8784,7 @@ def manager_fiche_dettaglio(
             volume_teorico=_calculate_fiche_volume_teorico(fiche),
             stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
             theoretical_soil_layers=_parse_theoretical_soil_layers(
-                fiche.terreno_teorico or (fiche.report_coupe.terreno_teorico if fiche.report_coupe else None),
+                fiche.terreno_teorico if fiche.terreno_teorico is not None else (fiche.report_coupe.terreno_teorico if fiche.report_coupe else None),
                 fiche.profondita_totale,
             ),
             technical_fr=_translate_fiche_technical_text,
@@ -8996,7 +9038,7 @@ def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) ->
         volume_teorico=_calculate_fiche_volume_teorico(fiche),
         stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
         theoretical_soil_layers=_parse_theoretical_soil_layers(
-            fiche.terreno_teorico or (fiche.report_coupe.terreno_teorico if fiche.report_coupe else None),
+            fiche.terreno_teorico if fiche.terreno_teorico is not None else (fiche.report_coupe.terreno_teorico if fiche.report_coupe else None),
             fiche.profondita_totale,
         ),
         technical_fr=_translate_fiche_technical_text,
