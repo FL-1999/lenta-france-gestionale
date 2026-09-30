@@ -4,7 +4,7 @@ import re
 from types import SimpleNamespace
 from fastapi import HTTPException
 
-FIELDS = ('nome tipologia_scavo descrizione_zona quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica scavo_da_tn quota_partenza_scavo quota_testa_getto_prevista type_beton type_coulage spessore larghezza diametro terreno_teorico note paratie pali armatura quota_reference_label drawing_info').split()
+FIELDS = ('nome tipologia_scavo descrizione_zona quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica scavo_da_tn quota_partenza_scavo quota_testa_getto_prevista type_beton type_coulage spessore larghezza diametro terreno_teorico terreno_riferimento note paratie pali armatura quota_reference_label drawing_info').split()
 NUMBERS = ('quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica quota_partenza_scavo quota_testa_getto_prevista spessore larghezza diametro').split()
 
 
@@ -22,7 +22,7 @@ def validate_rows(payload, parse_numbers):
     errors=[]; owners={}
     for index,row in enumerate(submitted_rows(payload)):
         if row.delete_requested: continue
-        significant=[f for f in FIELDS if f not in ('tipologia_scavo','quota_reference_label','scavo_da_tn','type_coulage')]
+        significant=[f for f in FIELDS if f not in ('tipologia_scavo','quota_reference_label','scavo_da_tn','type_coulage','terreno_riferimento')]
         if not any(getattr(row,f).strip() for f in significant): continue
         name=row.nome or f'Coupe {index+1}'
         def error(field,it,fr): errors.append({'row':index,'field':'coupe_'+field,'name':name,'it':it,'fr':fr})
@@ -82,6 +82,12 @@ def validate_rows(payload, parse_numbers):
                 if key in owners:
                     error(field,f'Elemento {number} già selezionato in {owners[key]}.',f'Élément {number} déjà sélectionné dans {owners[key]}.')
                 owners[key]=name
+        if row.terreno_riferimento not in ('', 'tn', 'scavo'):
+            error('terreno_riferimento', 'Scegli TN o partenza scavo.', 'Choisissez TN ou départ du forage.')
+        if row.terreno_teorico.strip() and row.terreno_riferimento:
+            soil_origin = values['quota_tn'] if row.terreno_riferimento == 'tn' else origin
+            if soil_origin is None:
+                error('terreno_riferimento', 'Completa la quota del riferimento del terreno teorico.', 'Complétez la cote de référence du terrain théorique.')
         previous=0
         for layer,line in enumerate(row.terreno_teorico.splitlines(),1):
             if not line.strip(): continue

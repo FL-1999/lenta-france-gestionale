@@ -1294,8 +1294,10 @@ def _render_fiche_create_form(
                 coupes = [SimpleNamespace(**{**json.loads(stored.coupe_snapshot), "id": c.id, "site_id": c.site_id, "assignments": c.assignments}) if c.id == stored.coupe_id else c for c in coupes]
                 if form_data is not None:
                     form_data.setdefault("quota_reference_label", stored.quota_reference_label or "NGF")
-                    form_data["saved_terreno_teorico"] = stored.terreno_teorico or ""
-                    form_data["saved_soil_origin"] = stored.quota_partenza
+                    from services.soil_levels import fiche_theory_source
+                    soil_text, soil_origin = fiche_theory_source(stored)
+                    form_data["saved_terreno_teorico"] = soil_text or ""
+                    form_data["saved_soil_origin"] = soil_origin
         panel_catalog = {}
         for available_site in sites:
             panel_catalog[str(available_site.id)] = [
@@ -1795,10 +1797,10 @@ def _validate_required_fiche_stratigrafia(
 def _fiche_coupe_snapshot(coupe):
     if not coupe:
         return None
-    return json.dumps({key: getattr(coupe, key) for key in (
+    return json.dumps({key: getattr(coupe, key, None) for key in (
         "id", "nome", "armatura", "quota_reference_label", "quota_tn", "quota_testa", "quota_fondo_teorica",
         "base_paroi_mecanique", "profondita_teorica", "scavo_da_tn", "quota_partenza_scavo",
-        "quota_testa_getto_prevista", "larghezza", "spessore", "diametro", "terreno_teorico")})
+        "quota_testa_getto_prevista", "larghezza", "spessore", "diametro", "terreno_teorico", "terreno_riferimento")})
 
 
 def _create_validated_fiche(
@@ -2042,8 +2044,8 @@ def _create_validated_fiche(
     from services.site_pours import before_fiche_save
     before_fiche_save(db, fiche)
     if coupe:
-        from services.soil_levels import rebase_soil
-        fiche.terreno_teorico = rebase_soil(fiche.terreno_teorico, coupe.quota_tn if coupe.scavo_da_tn else (coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not None else coupe.quota_testa), quota_partenza_value)
+        from services.soil_levels import rebase_soil, theoretical_origin
+        fiche.terreno_teorico = rebase_soil(fiche.terreno_teorico, theoretical_origin(coupe), quota_partenza_value)
     db.add(fiche)
     db.flush()
 
@@ -2237,8 +2239,8 @@ def _update_validated_fiche(
             raise HTTPException(status_code=400, detail="Macchinario non trovato")
     _validate_capocantiere(db, parsed_capocantiere_id)
 
-    from services.soil_levels import rebase_soil
-    previous_origin = fiche.quota_partenza
+    from services.soil_levels import rebase_soil, theoretical_origin, fiche_theory_source
+    previous_soil, previous_origin = fiche_theory_source(fiche)
     previous_site_id = fiche.site_id
     diametro_value_m = diametro_value_cm / 100 if diametro_value_cm is not None else None
     coupe_changed = fiche.coupe_id != (coupe.id if coupe else None)
@@ -2270,16 +2272,17 @@ def _update_validated_fiche(
     fiche.quota_ngf_fondo = quota_ngf_fondo_value
     fiche.quota_ngf_note = (quota_ngf_note or "").strip() or None
     fiche.quota_tn = quota_tn_value
-    if coupe and (coupe_changed or fiche.terreno_teorico is None):
+    reset_theory = coupe and (coupe_changed or fiche.terreno_teorico is None)
+    if reset_theory:
         fiche.type_beton = coupe.type_beton or fiche.materiale
         fiche.type_coulage = coupe.type_coulage or "Gravitaire"
         fiche.terreno_teorico = coupe.terreno_teorico
     elif not fiche.type_coulage:
         fiche.type_coulage = "Gravitaire"
-    if not coupe_changed:
-        fiche.terreno_teorico = rebase_soil(fiche.terreno_teorico, previous_origin, quota_partenza_value)
+    if not reset_theory:
+        fiche.terreno_teorico = rebase_soil(previous_soil, previous_origin, quota_partenza_value)
     elif coupe:
-        fiche.terreno_teorico = rebase_soil(coupe.terreno_teorico, coupe.quota_tn if coupe.scavo_da_tn else (coupe.quota_partenza_scavo if coupe.quota_partenza_scavo is not None else coupe.quota_testa), quota_partenza_value)
+        fiche.terreno_teorico = rebase_soil(coupe.terreno_teorico, theoretical_origin(coupe), quota_partenza_value)
     fiche.scavo_da_tn = scavo_da_tn_value
     fiche.quota_partenza = quota_partenza_value
     fiche.quota_testa_getto = quota_testa_getto_value
@@ -5328,6 +5331,7 @@ def _sync_site_coupes_from_form(
     coupe_quota_reference_label: list[str] | None = None,
     coupe_tipologia_scavo: list[str] | None = None,
     coupe_drawing_info: list[str] | None = None,
+    coupe_terreno_riferimento: list[str] | None = None,
     delete_coupe_id: list[str] | None = None,
 ) -> None:
     requested_delete_ids = {str(value).strip() for value in (delete_coupe_id or []) if str(value).strip()}
@@ -5424,6 +5428,11 @@ def _sync_site_coupes_from_form(
             if dimension is not None and dimension <= 0:
                 raise HTTPException(400, "Le dimensioni della coupe devono essere maggiori di zero.")
         coupe.terreno_teorico = value(coupe_terreno_teorico, index).strip() or None
+        if coupe_terreno_riferimento is not None:
+            reference = value(coupe_terreno_riferimento, index).strip()
+            if reference not in ('', 'tn', 'scavo'):
+                raise HTTPException(400, 'Scegli TN o partenza scavo per il terreno teorico.')
+            coupe.terreno_riferimento = reference or coupe.terreno_riferimento
         coupe.note = value(coupe_note, index).strip() or None
         if coupe_armatura:
             coupe.armatura = value(coupe_armatura, index).strip() or None
@@ -5839,6 +5848,7 @@ def manager_site_project_config_post(
     coupe_pali: List[str] = Form(default_factory=list),
     coupe_quota_reference_label: List[str] = Form(default_factory=list),
     coupe_drawing_info: List[str] = Form(default_factory=list),
+    coupe_terreno_riferimento: List[str] = Form(default_factory=list),
     delete_coupe_id: List[str] = Form(default_factory=list),
     equipment_tipologia: List[str] = Form(default_factory=list),
     equipment_numero: List[str] = Form(default_factory=list),
@@ -5891,6 +5901,7 @@ def manager_site_project_config_post(
                 coupe_pali=coupe_pali,
                 coupe_quota_reference_label=coupe_quota_reference_label,
                 coupe_drawing_info=coupe_drawing_info or None,
+                coupe_terreno_riferimento=coupe_terreno_riferimento or None,
                 delete_coupe_id=delete_coupe_id,
             )
             _sync_site_special_equipment_from_form(
