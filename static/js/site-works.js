@@ -186,7 +186,7 @@
   function placement(){
     $('wm-placement').innerHTML=mode?`${mode.kind==='well'?'Tocca il punto dove posizionare il pozzo.':`Tocca il pannello di appoggio ${mode.points.length?'B':'A'} nella posizione desiderata.`} <button class="btn btn-secondary" id="wm-cancel-placement">Annulla</button>`:'';
     $('wm-cancel-placement')?.addEventListener('click',()=>{mode=null;placement();draw();});
-    if(mode)$('wm-map').scrollIntoView({block:'center',behavior:'smooth'});
+    if(mode)$('wm-map').scrollIntoView({block:'center',behavior:'instant'});
   }
   function point(event,svg){const p=new DOMPoint(event.clientX,event.clientY).matrixTransform(svg.getScreenCTM().inverse());return [p.x,p.y];}
   function closest(p){let best=null;for(const q of panels())for(let i=0;i<q.points.length;i++){
@@ -277,7 +277,7 @@
     const b=e.target.closest('button');if(!b)return;
     const i=Number(b.dataset.viewRow??b.dataset.editRow??b.dataset.placeRow);proposalIndex=i;
     if(b.dataset.editRow!=null)editStrut(copy(reader.rows[i].value),reader.rows[i]);
-    if(b.dataset.placeRow!=null){reposition=[];$('wm-target').scrollIntoView({block:'center',behavior:'smooth'});}
+    if(b.dataset.placeRow!=null){reposition=[];$('wm-target').scrollIntoView({block:'center',behavior:'instant'});}
     readerTable();readerMaps();
   });
   $('wm-pdf').addEventListener('pointerdown',e=>{

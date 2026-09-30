@@ -16,6 +16,7 @@ pytestmark=pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS')!='1',reason='Browse
 
 
 def click_point(page,selector,p):
+    page.locator(selector).scroll_into_view_if_needed()
     xy=page.locator(selector).evaluate('(svg,p)=>{const q=new DOMPoint(...p).matrixTransform(svg.getScreenCTM());return [q.x,q.y]}',p)
     page.mouse.click(*xy)
 
