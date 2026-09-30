@@ -10,7 +10,7 @@
   </header>
   {% if plan_can_edit %}<nav class="sp-project-flow" aria-label="Progetto cantiere"><strong aria-current="page">01 · Pianta</strong><a href="/manager/cantieri/{{ site.id }}/configurazione-progetto">02 · Coupe</a><a href="/manager/fiches?site_id={{ site.id }}">03 · Fiches</a></nav>{% endif %}
   <div role="status" aria-live="polite" class="sp-message" data-message>Caricamento pianta…</div>
-  <section class="card sp-validation-summary" data-validation-summary hidden><h2>{{ t('Controlli da completare','Contrôles à terminer') }}</h2><p>{{ t('Il PDF è già caricato. Seleziona una riga per aprire il pannello o il braccio da verificare. Puoi sempre salvare la bozza.','Le PDF est déjà importé. Sélectionnez une ligne pour ouvrir le panneau ou la branche à vérifier. Vous pouvez toujours enregistrer le brouillon.') }}</p><ul data-validation-list></ul></section>
+  <section class="card sp-validation-summary" data-validation-summary hidden><h2>{{ t('Controlli da completare','Contrôles à terminer') }}</h2><p>{{ t('Il PDF è già caricato. Qui trovi insieme i controlli dei pannelli e dei raccordi A/B. Seleziona una riga per aprire il punto da correggere; le conferme degli altri pannelli restano conservate.','Le PDF est déjà importé. Tous les contrôles des panneaux et des raccords A/B sont réunis ici. Sélectionnez une ligne pour ouvrir le point à corriger ; les confirmations des autres panneaux sont conservées.') }}</p><p role="status" data-validation-status></p><ul data-validation-list></ul></section>
   {% if plan_can_edit %}
   <form class="card sp-upload" data-upload hidden>
     <p data-replace-notice hidden></p>
@@ -39,6 +39,7 @@
       <label class="sp-inline">Pannello<select data-select aria-label="Seleziona pannello"></select></label>
       <button type="button" class="btn btn-secondary" data-add hidden>Aggiungi pannello</button>
       <button type="button" class="btn btn-secondary" data-review-all-top hidden>Conferma tutti i pannelli</button>
+      <button type="button" class="btn btn-secondary" data-verify hidden>{{ t('Verifica disegno','Vérifier le plan') }}</button>
       <button type="button" class="btn btn-secondary" data-find-corners hidden>Riconosci angoli A/B</button>
       <button type="button" class="btn btn-secondary" data-undo-removal hidden>Annulla modifica</button>
     </div>
@@ -99,4 +100,4 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260929a" defer></script><script src="/static/js/site-plan.js?v=20260930b" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/plan-geometry.js?v=20260929a" defer></script><script src="/static/js/site-plan.js?v=20260930c" defer></script>{% endblock %}

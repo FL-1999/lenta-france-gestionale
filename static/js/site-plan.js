@@ -12,6 +12,7 @@
   let editUndo=[];
   let replacement=null;
   let validationShown=false;
+  let serverIssues=[],validationStale=true,validationTimer,validationVersion=0;
   function ask(title,text,action=tr('Conferma')) {
     const dialog=q('[data-confirm-dialog]');
     q('#sp-confirm-title').textContent=title;q('#sp-confirm-text').textContent=text;
@@ -40,7 +41,7 @@
   }
   function offScale(p) {if(p.corner_fitted&&peers(p).length===2)return false;const scale=commonScale();return !scale||!p.width_m||[[0,1],[3,2]].some(([i,j])=>Math.abs(Math.hypot(p.points[j][0]-p.points[i][0],p.points[j][1]-p.points[i][1])/(scale*p.width_m)-1)>.02);}
   function pendingChecks(p) {
-    const checks=[];
+    const checks=serverIssues.filter(v=>v.keys.includes(p.key)&&!['label','width_m','scale','reviewed','extent_confirmed','corner_net_confirmed'].includes(v.field)).map(v=>({field:v.field,text:fr?v.french:v.message}));
     if(!p.label.trim())checks.push({field:'label',text:t('inserisci la sigla','saisissez le repère')});
     if(!Number.isFinite(p.width_m)||p.width_m<=0)checks.push({field:'width_m',text:t('inserisci la larghezza in metri','saisissez la largeur en mètres')});
     else if(offScale(p))checks.push({field:'scale',text:commonScale()?t('sagoma fuori scala: controlla la larghezza e applicala alla scala comune','forme hors échelle : vérifiez la largeur et appliquez l’échelle commune'):t('calibra la scala del disegno','calibrez l’échelle du plan')});
@@ -49,9 +50,10 @@
     if(!p.reviewed)checks.push({field:'reviewed',text:t('conferma sigla, sagoma e larghezza','confirmez le repère, la forme et la largeur')});
     return checks;
   }
-  function goToCheck(p) {
-    choose(p.key);q('[data-zoom]').click();
-    const first=pendingChecks(p)[0],target=first?.field==='scale'?q(commonScale()?'[data-scale]':'[data-calibrate]'):form.elements[first?.field];
+  function goToCheck(p,field) {
+    choose(p.key);zoomSelected();
+    field ||= pendingChecks(p)[0]?.field;
+    const target=field==='scale'?q(commonScale()?'[data-scale]':'[data-calibrate]'):field==='corner'?q('[data-fit-corner]'):field==='geometry'?q('[data-geometry-tools]'):field==='project'?form.querySelector('a'):form.elements[field];
     const details=target?.closest('details');if(details)details.open=true;
     (target||form).scrollIntoView({behavior:'smooth',block:'center'});target?.focus({preventScroll:true});
   }
@@ -59,17 +61,38 @@
     const section=q('[data-validation-summary]'),list=q('[data-validation-list]');
     if(!section)return;
     const missing=editing&&plan?plan.layout.panels.filter(p=>pendingChecks(p).length):[];
-    section.hidden=!validationShown||!missing.length;list.replaceChildren();
-    if(validationShown&&editing&&!missing.length&&plan?.layout.panels.length){validationShown=false;message(t('Controlli completati. Premi Convalida disegno per salvare.','Contrôles terminés. Cliquez sur Valider le plan pour enregistrer.'));}
+    const general=serverIssues.filter(v=>!v.keys.some(key=>plan.layout.panels.some(p=>p.key===key)));
+    section.hidden=!validationShown||(!missing.length&&!general.length&&!validationStale);list.replaceChildren();
+    q('[data-validation-status]').textContent=validationStale?t('Aggiornamento dei controlli…','Actualisation des contrôles…'):t('Controllo completo: geometria, conferme e collegamenti.','Contrôle complet : géométrie, confirmations et liens.');
+    if(validationShown&&editing&&!missing.length&&!general.length&&!validationStale&&plan?.layout.panels.length){message(t('Controlli completati. Premi Convalida disegno per salvare.','Contrôles terminés. Cliquez sur Valider le plan pour enregistrer.'));}
     if(section.hidden)return;
-    missing.forEach(p=>{const li=document.createElement('li'),button=document.createElement('button');button.type='button';button.className='btn btn-secondary';button.textContent=`${p.label}: ${pendingChecks(p).map(v=>v.text).join('; ')}`;button.onclick=()=>goToCheck(p);li.append(button);list.append(li);});
+    units().forEach(unit=>{const affected=unit.members.filter(p=>pendingChecks(p).length);if(!affected.length)return;const li=document.createElement('li'),button=document.createElement('button');button.type='button';button.className='btn btn-secondary';button.dataset.validationKeys=affected.map(p=>p.key).join(',');const reasons=[...new Set(affected.flatMap(p=>pendingChecks(p).map(v=>['corner','project'].includes(v.field)?v.text:`${p.label}: ${v.text}`)))];button.textContent=reasons.join('; ');button.onclick=()=>goToCheck(affected[0]);li.append(button);list.append(li);});
+    general.forEach(v=>{const li=document.createElement('li');li.textContent=fr?v.french:v.message;list.append(li);});
   }
   function showPending() {
     const missing=plan.layout.panels.filter(p=>pendingChecks(p).length);
-    if(!missing.length)return false;
+    if(!missing.length)return serverIssues.length>0;
     validationShown=true;renderValidation();goToCheck(missing[0]);
     message(t(`Convalida non completata. ${missing[0].label}: ${pendingChecks(missing[0]).map(v=>v.text).join('; ')}.`,`Validation incomplète. ${missing[0].label} : ${pendingChecks(missing[0]).map(v=>v.text).join('; ')}.`),true);
     return true;
+  }
+  function validationBody() {return {revision:plan.revision,panels:plan.layout.panels,scale_ppm:commonScale(),confirm:true};}
+  async function checkPlan(focus=false) {
+    if(!editing||!plan)return true;
+    clearTimeout(validationTimer);
+    const version=++validationVersion,id=plan.id;
+    validationStale=true;renderValidation();
+    try {
+      const result=await api(`${base}/${id}/verifica`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(validationBody())});
+      if(version!==validationVersion||id!==plan?.id)return false;
+      serverIssues=result.issues;validationStale=false;validationShown=true;renderFooter();
+      if(!drag&&!form.contains(document.activeElement)&&document.activeElement?.form!==form)renderDetail();
+      if(focus&&showPending())return false;
+      return !serverIssues.length&&!plan.layout.panels.some(p=>pendingChecks(p).length);
+    } catch(e) {
+      if(version===validationVersion){validationStale=true;q('[data-validation-status]').textContent=t('Controllo non completato. Riprova con Verifica disegno.','Contrôle non terminé. Réessayez avec Vérifier le plan.');message(e.message,true);}
+      return false;
+    }
   }
   function resize(p,anchor='center') {
     const scale=commonScale();if(!scale||!p.width_m)return false;
@@ -78,7 +101,7 @@
     g.len=p.width_m*scale;return updatePoints(p,rectangle(g));
   }
   function message(text, error = false) { q('[data-message]').textContent = text; q('[data-message]').dataset.error = error; }
-  function markDirty() { dirty = true; if(!drag)renderFooter(); }
+  function markDirty() { dirty = true;validationStale=true;validationVersion++;clearTimeout(validationTimer);validationTimer=setTimeout(()=>{if(!drag&&!busy)checkPlan();},400);if(!drag)renderFooter(); }
   function panel() { return plan?.layout.panels.find(p => p.key === selected); }
   function element(p) { return data?.elements.find(e => e.number === p?.element); }
   function num(v, unit = '') { return v == null ? '—' : `${Number(v).toLocaleString(fr?'fr-FR':'it-IT', {maximumFractionDigits: 2})}${unit}`; }
@@ -87,14 +110,16 @@
     const res = await fetch(url, {credentials: 'same-origin', ...options});
     if (!res.headers.get('content-type')?.includes('application/json')) throw new Error(tr("Sessione scaduta: accedi di nuovo prima di salvare."));
     const payload = await res.json();
-    if (!res.ok) throw new Error(typeof payload.detail === 'string' ? tr(payload.detail) : tr("Dati non validi. Controlla misure e campi."));
+    if (!res.ok) {const error=new Error(typeof payload.detail === 'string' ? tr(payload.detail) : tr("Dati non validi. Controlla misure e campi."));error.issues=payload.issues;throw error;}
     return payload;
   }
   async function guard() { return !dirty || await ask(t('Modifiche non salvate','Modifications non enregistrées'),tr("Ci sono modifiche non salvate. Vuoi abbandonarle?")); }
-  async function load(id, draft = false) {
+  async function load(id, draft = false, preserve = false) {
+    const view=preserve&&plan?.id===id?{selected,box:[...box],showOriginal,scroll:window.scrollY}:null;
+    clearTimeout(validationTimer);validationVersion++;
     try {
       data = await api(base + '/data' + (id ? `?plan_id=${id}&draft=${draft}` : ''));
-      snapUndo=null; editUndo=[]; validationShown=false; plan = data.plan; editing = !!plan?.editing; dirty = false; addMode = false;
+      snapUndo=null; editUndo=[]; validationShown=false;serverIssues=[];validationStale=true; plan = data.plan; editing = !!plan?.editing; dirty = false; addMode = false;
       q('[data-validation-summary]').hidden=true;
       replacement=null;if(q('[data-replace-notice]'))q('[data-replace-notice]').hidden=true;
       q('[data-removed]').hidden=!data.removed?.length;
@@ -116,8 +141,10 @@
       data.elements.forEach(e => links.add(new Option(`${e.label} · ${t('elemento','élément')} ${e.number}${e.fiche_id ? t(' · fiche presente',' · fiche disponible') : ''}`, e.number)));
       plan.layout.panels.forEach(p => {p.reference_points ||= p.points.map(v=>[...v]);});
       plan.layout.scale_ppm=commonScale();
-      fit(); render();
+      fit();if(view){selected=plan.layout.panels.some(p=>p.key===view.selected)?view.selected:selected;box=view.box;showOriginal=view.showOriginal;}render();
       message(editing ? tr(plan.layout.notice) : tr("Disegno convalidato. Avanzamento e dati provengono dalle fiches collegate."));
+      if(editing)await checkPlan();
+      if(view)window.scrollTo({top:view.scroll,behavior:'instant'});
     } catch (error) { message(error.message, true); }
   }
   function fit() {
@@ -208,7 +235,7 @@
     if(corner&&editing)pair.forEach(v=>{const button=document.createElement('button');button.type='button';button.className='btn btn-secondary';button.dataset.checkArm=v.key;button.setAttribute('aria-pressed',String(v.key===p.key));const checks=pendingChecks(v);button.textContent=`${v.label} · ${checks.length?checks.map(c=>c.text).join('; '):t('controlli completati','contrôles terminés')}`;button.onclick=()=>goToCheck(v);armChecks.append(button);});
     q('[data-reviewed-caption]').textContent=corner?`${p.label}: ${t('sigla, sagoma e larghezza verificate','repère, forme et largeur vérifiés')}`:tr('Sigla, sagoma e larghezza verificate');
     q('[data-label]').textContent = unitFor(p)?.label || tr("Seleziona un pannello");
-    q('[data-warnings]').textContent = !p ? '' : editing ? [...((p.warnings || []).filter(w=>!w.startsWith('Possibile sbordo')).map(tr)),...pendingChecks(p).filter(c=>['scale','extent_confirmed'].includes(c.field)).map(c=>`${p.label}: ${c.text}`)].filter(Boolean).join(' · ') : '';
+    q('[data-warnings]').textContent = !p ? '' : editing ? [...((p.warnings || []).filter(w=>!w.startsWith('Possibile sbordo')).map(tr)),...pendingChecks(p).filter(c=>['scale','extent_confirmed','corner','geometry','project'].includes(c.field)).map(c=>`${p.label}: ${c.text}`)].filter(Boolean).join(' · ') : '';
     if (p) {
       form.elements.label.value = p.label; form.elements.width_m.value = p.width_m ?? ''; form.elements.element.value = p.element ?? ''; form.elements.reviewed.checked = p.reviewed; form.elements.extent_confirmed.checked=!!p.extent_confirmed; q('[data-extent]').hidden=!extent(p); q('[data-scale-info]').textContent=commonScale()?t(`Scala comune: ${num(commonScale())} punti del foglio per metro`,`Échelle commune : ${num(commonScale())} points de la feuille par mètre`):tr("Scala da calibrare");
       const g = geometry(p); Object.entries({cx:g.cx,cy:g.cy,shape_length:g.len,shape_depth:g.depth,angle:g.angle}).forEach(([k,v])=>form.elements[k].value=+v.toFixed(2));
@@ -231,7 +258,7 @@
     root.dataset.transparent=editing&&q('[data-transparent]').checked;
     root.dataset.original = showOriginal; q('[data-original]').hidden = !showOriginal; q('[data-original-toggle]').setAttribute('aria-pressed',showOriginal);
     q('[data-edit]').hidden = !data.can_edit || editing; q('[data-review-all-top]').hidden = q('[data-add]').hidden = !editing; q('[data-save-section]').hidden = !editing;
-    q('[data-find-corners]').hidden=!editing;
+    q('[data-find-corners]').hidden=q('[data-verify]').hidden=!editing;
     q('[data-replace]').hidden=!data.can_edit;q('[data-remove-draft]').hidden=!plan.can_remove;
     const picker = q('[data-select]'); picker.replaceChildren();
     units().forEach((u,i)=>picker.add(new Option(`${u.label} · ${t('zona','zone')} ${i+1}${u.members.every(p=>!pendingChecks(p).length)?'':t(' · da verificare',' · à vérifier')}`,u.members[0].key)));
@@ -243,7 +270,8 @@
   q('[data-edit]').onclick = async () => { if (await guard()) load(plan.id,true); };
   q('[data-original-toggle]').onclick = () => { showOriginal=!showOriginal; render(); };
   q('[data-fit]').onclick = () => { fit(); renderMaps(); };
-  q('[data-zoom]').onclick = () => { const p=panel(); if(!p)return;const pts=peers(p).flatMap(v=>v.points),xs=pts.map(v=>v[0]),ys=pts.map(v=>v[1]),x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y;box=[x-25,y-25,w+50,h+50];renderMaps(); };
+  function zoomSelected() { const p=panel(); if(!p)return;const pts=peers(p).flatMap(v=>v.points),xs=pts.map(v=>v[0]),ys=pts.map(v=>v[1]),x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y;box=[x-25,y-25,w+50,h+50];renderMaps(); }
+  q('[data-zoom]').onclick = zoomSelected;
   form.addEventListener('submit',e=>e.preventDefault());
   // Keep typed values before another control redraws the inspector (also mobile).
   root.addEventListener('input',e=>{
@@ -325,6 +353,7 @@
       svg.querySelector('.sp-ghost')?.remove();drag=null;delete root.dataset.dragging;
       if(svg.hasPointerCapture(event.pointerId))svg.releasePointerCapture(event.pointerId);
       render();
+      if(editing&&dirty)checkPlan();
     };
     svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);svg.addEventListener('lostpointercapture',finish);
   });
@@ -390,7 +419,8 @@
     checkpoint();pair.forEach(p=>{p.corner_group=null;p.corner_fitted=false;p.corner_manual=false;p.corner_net_confirmed=false;p.reviewed=false;});markDirty();render();
   };
   q('[data-review-all-top]').onclick=()=>q('[data-review-all]').click();
-  q('[data-review-all]').onclick=()=>{
+  q('[data-review-all]').onclick=async()=>{
+    if(busy)return;
     const valid=plan.layout.panels.filter(p=>p.label.trim()&&p.width_m&&!offScale(p));
     const extents=valid.filter(extent);
     const text=t('Confermare tutti i pannelli completi dopo il confronto con il PDF?','Confirmer tous les panneaux complets après vérification sur le PDF ?');
@@ -399,19 +429,21 @@
     let confirmExtents=false;
     if(extents.length)confirmExtents=confirm(t(`Sono previsti gli sbordi di questi pannelli? ${extents.map(p=>p.label).join(', ')}. Annulla per lasciarli da controllare.`,`Les débordements de ces panneaux sont-ils prévus ? ${extents.map(p=>p.label).join(', ')}. Annulez pour les laisser à vérifier.`));
     valid.forEach(p=>{p.reviewed=true;if(confirmExtents&&extent(p))p.extent_confirmed=true;});markDirty();render();
-    if(showPending())return;
+    lock(true);const ready=await checkPlan(true);lock(false);if(!ready)return;
     message(t('Verifica completata. Premi Convalida disegno per salvare.','Vérification terminée. Cliquez sur Valider le plan pour enregistrer.'));
   };
   function lock(value) {busy=value;all('button').forEach(b=>b.disabled=value);all('input,select').forEach(b=>b.disabled=value);if(!value&&plan)renderDetail();}
   async function save(approve) {
     if(busy)return;
-    if(approve){if(!plan.layout.panels.length){message(t('Aggiungi almeno un pannello alla pianta.','Ajoutez au moins un panneau au plan.'),true);return;}if(showPending())return;
+    if(approve){if(!plan.layout.panels.length){message(t('Aggiungi almeno un pannello alla pianta.','Ajoutez au moins un panneau au plan.'),true);return;}
+      lock(true);const ready=await checkPlan(true);lock(false);if(!ready)return;
       const unlinked=units().filter(u=>u.members.some(p=>!p.element)).length;
       if(!confirm(t(`Convalidare il disegno? ${unlinked} pannelli nuovi potranno essere assegnati alle coupe.`,`Valider le plan ? ${unlinked} nouveaux panneaux pourront être affectés aux coupes.`)))return;
     }
     const id=plan.id;lock(true);
-    try{await api(`${base}/${id}/${approve?'convalida':'bozza'}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:plan.revision,panels:plan.layout.panels,scale_ppm:commonScale(),confirm:approve})});dirty=false;await load(id,!approve);message(approve?tr("Disegno convalidato."):tr("Bozza salvata. Il disegno convalidato resta invariato."));}catch(e){message(e.message,true);}finally{lock(false);}
+    try{await api(`${base}/${id}/${approve?'convalida':'bozza'}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...validationBody(),confirm:approve})});dirty=false;await load(id,!approve,true);message(approve?tr("Disegno convalidato."):tr("Bozza salvata. Il disegno convalidato resta invariato."));}catch(e){if(e.issues){serverIssues=e.issues;validationStale=false;validationShown=true;renderFooter();showPending();}else message(e.message,true);}finally{lock(false);}
   }
+  q('[data-verify]').onclick=async()=>{if(busy)return;lock(true);await checkPlan(true);lock(false);};
   q('[data-save]').onclick=()=>save(false);q('[data-approve]').onclick=()=>save(true);
   function showUpload(replace=false){replacement=replace&&plan?.can_remove?{id:plan.id,revision:plan.revision}:null;const note=q('[data-replace-notice]');note.hidden=!replace;note.textContent=replacement?t('Il nuovo PDF sostituirà questa bozza solo dopo un’analisi riuscita. La bozza rimossa resterà recuperabile dall’amministratore.','Le nouveau PDF remplacera ce brouillon uniquement après une analyse réussie. L’administrateur pourra restaurer le brouillon retiré.'):t('Il disegno convalidato resta disponibile. Il nuovo PDF verrà caricato come versione in bozza.','Le plan validé reste disponible. Le nouveau PDF sera importé comme nouvelle version en brouillon.');q('[data-upload]').hidden=false;q('[data-upload]').scrollIntoView({behavior:'smooth',block:'center'});}
   q('[data-upload-toggle]')?.addEventListener('click',()=>showUpload());

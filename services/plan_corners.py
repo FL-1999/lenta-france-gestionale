@@ -108,20 +108,34 @@ def suggest_corners(panels):
             p['corner_net_confirmed'] = False
 
 
-def validate_corners(panels, scale, approve):
+def corner_issues(panels, scale, approve):
+    from services.plan_validation import issue
+    problems = []
     for pair in groups(panels).values():
         label = corner_name(pair)
         manual = len(pair) == 2 and all(p.get('corner_manual') for p in pair)
         if not label or (not manual and axes_angle(*pair) > .97):
-            raise HTTPException(400, 'Un angolo richiede due bracci A/B dello stesso numero e direzioni distinte.')
+            problems.append(issue(pair, 'corner', 'Un angolo richiede due bracci A/B dello stesso numero e direzioni distinte.',
+                                  'Un angle nécessite deux branches A/B du même numéro avec des directions distinctes.'))
+            continue
         if approve:
             tolerance = max(.02, (scale or 1)*.005)
             if not manual and overlap_area(pair[0]['points'], pair[1]['points']) > tolerance*tolerance:
-                raise HTTPException(400, f'{label}: i bracci si sovrappongono. Correggi il raccordo prima della convalida.')
-            if not manual and not touching(pair[0]['points'], pair[1]['points'], tolerance):
-                raise HTTPException(400, f'{label}: accosta i bordi dei due bracci prima della convalida.')
+                problems.append(issue(pair, 'corner', f'{label}: i bracci si sovrappongono. Usa Raccorda inclinato e controlla il risultato sul PDF.',
+                                      f'{label} : les branches se chevauchent. Utilisez Raccorder l’angle oblique et vérifiez le résultat sur le PDF.'))
+            elif not manual and not touching(pair[0]['points'], pair[1]['points'], tolerance):
+                problems.append(issue(pair, 'corner', f'{label}: i bordi dei due bracci non coincidono. Controlla il raccordo sul PDF.',
+                                      f'{label} : les bords des branches ne coïncident pas. Vérifiez le raccord sur le PDF.'))
             if not all(p.get('corner_net_confirmed') for p in pair):
-                raise HTTPException(400, f'{label}: conferma le larghezze nette dei due bracci.')
+                problems.append(issue(pair, 'corner_net_confirmed', f'{label}: conferma le larghezze nette dei due bracci.',
+                                      f'{label} : confirmez les largeurs nettes des deux branches.'))
+    return problems
+
+
+def validate_corners(panels, scale, approve):
+    problems = corner_issues(panels, scale, approve)
+    if problems:
+        raise HTTPException(400, problems[0]['message'])
 
 
 def reconcile_groups(db, site, layout, previous=None):

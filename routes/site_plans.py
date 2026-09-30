@@ -184,7 +184,7 @@ def restore_draft(site_id:int,plan_id:int,request:Request,body:DraftAction,
 
 class PanelInput(BaseModel):
     key:str=Field(pattern=r'^[a-zA-Z0-9_-]{1,64}$')
-    label:str=Field(min_length=1,max_length=80)
+    label:str=Field(max_length=80)
     points:list[tuple[FiniteFloat,FiniteFloat]]=Field(min_length=4,max_length=4)
     width_m:FiniteFloat|None=Field(default=None,gt=0,le=100)
     element:int|None=Field(default=None,gt=0)
@@ -203,50 +203,77 @@ class LayoutInput(BaseModel):
     scale_ppm:FiniteFloat|None=Field(default=None,gt=0,le=10000)
 
 
-def validate_layout(body,source,allowed,approve):
+def validate_layout(body,source,allowed,approve,issues=None):
+    from services.plan_validation import issue
+    from services.plan_corners import fitted_keys, corner_issues
+    problems = []
+    def add(p, field, message, french):
+        problems.append(issue([p.model_dump()] if p else [], field, message, french))
     if approve and (not body.confirm or not body.panels):
-        raise HTTPException(400,'Controlla la pianta e conferma la convalida.')
+        add(None,'plan','Controlla la pianta e conferma la convalida.','Vérifiez le plan et confirmez la validation.')
     scale=body.scale_ppm or layout_scale(source)
-    if approve and not scale: raise HTTPException(400,'Calibra la scala usando un pannello di larghezza nota.')
+    if approve and not scale: add(None,'scale','Calibra la scala usando un pannello di larghezza nota.','Calibrez l’échelle à partir d’un panneau de largeur connue.')
     keys=set();links=set();panels=[]
     original={p['key']:p for p in source['panels']}
-    from services.plan_corners import fitted_keys
     fitted = fitted_keys([p.model_dump() for p in body.panels])
     for p in body.panels:
-        if p.key in keys: raise HTTPException(400,'Identificativo pannello ripetuto')
+        if p.key in keys: add(p,'geometry','Identificativo pannello ripetuto','Identifiant de panneau répété')
         keys.add(p.key)
-        if not p.label.strip(): raise HTTPException(400,'Inserisci una sigla per ogni pannello')
+        if not p.label.strip(): add(p,'label','Inserisci una sigla per ogni pannello','Saisissez un repère pour chaque panneau')
         if p.element is not None:
-            if p.element not in allowed: raise HTTPException(400,'Elemento non presente nel cantiere')
-            if p.element in links: raise HTTPException(400,'Due zone non possono collegarsi allo stesso elemento')
+            if p.element not in allowed: add(p,'element','Elemento non presente nel cantiere','Élément absent du chantier')
+            if p.element in links: add(p,'element','Due zone non possono collegarsi allo stesso elemento','Deux zones ne peuvent pas être liées au même élément')
             links.add(p.element)
         if any(not -source['width']<=x<=2*source['width'] or not -source['height']<=y<=2*source['height'] for x,y in p.points):
-            raise HTTPException(400,'La sagoma supera lo spazio di lavoro disponibile')
+            add(p,'geometry','La sagoma supera lo spazio di lavoro disponibile','La forme dépasse la zone de travail disponible')
         # Require a non-degenerate convex quadrilateral (no crossed corners).
         cross=[]
         for i in range(4):
             a,b,c=p.points[i],p.points[(i+1)%4],p.points[(i+2)%4]
             cross.append((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))
         if not (all(v>.1 for v in cross) or all(v<-.1 for v in cross)):
-            raise HTTPException(400,'Sagoma non valida: controlla gli angoli del pannello')
-        if approve and (p.width_m is None or not p.reviewed):
-            raise HTTPException(400,f'Verifica sagoma e larghezza di {p.label}.')
+            add(p,'geometry','Sagoma non valida: controlla gli angoli del pannello','Forme non valide : vérifiez les angles du panneau')
+        if approve and p.width_m is None:
+            add(p,'width_m',f'{p.label}: inserisci la larghezza in metri.',f'{p.label} : saisissez la largeur en mètres.')
+        if approve and not p.reviewed:
+            add(p,'reviewed',f'Verifica sagoma e larghezza di {p.label}.',f'Vérifiez la forme et la largeur de {p.label}.')
         if approve and p.corner_fitted and p.key not in fitted:
-            raise HTTPException(400,f'{p.label}: raccordo inclinato da rifare / raccord oblique à refaire.')
+            add(p,'corner',f'{p.label}: raccordo inclinato da rifare. Controlla la giunzione sul PDF.',f'{p.label} : raccord oblique à refaire. Vérifiez la jonction sur le PDF.')
         reference=original.get(p.key,{}).get('reference_points') or original.get(p.key,{}).get('points')
         extent=needs_extent_review(p.points,reference,source['width'],source['height'])
-        if approve and p.key not in fitted and any(abs(math.dist(p.points[i],p.points[j])/(p.width_m*scale)-1)>.02 for i,j in ((0,1),(3,2))):
-            raise HTTPException(400,f'{p.label}: sagoma fuori scala. Applica la larghezza alla scala comune.')
+        if approve and p.key not in fitted and not p.corner_fitted and p.width_m and scale and any(abs(math.dist(p.points[i],p.points[j])/(p.width_m*scale)-1)>.02 for i,j in ((0,1),(3,2))):
+            add(p,'scale',f'{p.label}: sagoma fuori scala. Applica la larghezza alla scala comune.',f'{p.label} : forme hors échelle. Appliquez la largeur à l’échelle commune.')
         if approve and extent and not p.extent_confirmed:
-            raise HTTPException(400,f'{p.label}: possibile sbordo. Controlla e conferma gli estremi sul PDF.')
+            add(p,'extent_confirmed',f'{p.label}: possibile sbordo. Controlla e conferma gli estremi sul PDF.',f'{p.label} : débord possible. Vérifiez et confirmez les extrémités sur le PDF.')
         panel=p.model_dump();panel['label']=p.label.strip()
         panel['reference_points']=reference or p.points
         panel['recognition']=original.get(p.key,{}).get('recognition','manual')
         panel['warnings']=original.get(p.key,{}).get('warnings',[])
         panels.append(panel)
-    from services.plan_corners import validate_corners
-    validate_corners(panels, scale, approve)
+    problems.extend(corner_issues(panels, scale, approve))
+    if issues is not None:
+        issues.extend(problems)
+    elif problems:
+        raise HTTPException(400, problems[0]['message'])
     return {**source,'panels':panels,'scale_ppm':scale}
+
+
+def approval_review(db,site,row,user,body):
+    from services.plan_validation import project_issues
+    problems=[]
+    layout=validate_layout(body,json.loads(row.draft),{e['number'] for e in elements(db,site,user)},True,problems)
+    problems.extend(project_issues(db,site,layout,json.loads(row.approved) if row.approved else None))
+    return layout,problems
+
+
+@router.post('/{plan_id}/verifica')
+def preflight(site_id:int,plan_id:int,request:Request,body:LayoutInput,
+              db:Session=Depends(get_db),user:User=Depends(get_current_active_user_html)):
+    site=access(db,user,site_id,True);same_origin(request)
+    row=find_plan(db,site_id,plan_id)
+    if row.revision!=body.revision: raise HTTPException(409,'La pianta è cambiata. Ricarica prima di salvare.')
+    _,problems=approval_review(db,site,row,user,body)
+    return {'issues':problems,'revision':row.revision}
 
 
 @router.put('/{plan_id}/bozza')
@@ -256,9 +283,13 @@ def save(site_id:int,plan_id:int,request:Request,body:LayoutInput,
     site=access(db,user,site_id,True);same_origin(request)
     row=find_plan(db,site_id,plan_id)
     approve=request.url.path.endswith('/convalida')
-    layout=validate_layout(body,json.loads(row.draft),{e['number'] for e in elements(db,site,user)},approve)
     if row.revision!=body.revision: raise HTTPException(409,'La pianta è cambiata. Ricarica prima di salvare.')
     if approve:
+        layout,problems=approval_review(db,site,row,user,body)
+        if problems:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=max(p['status'] for p in problems),content={
+                'detail':'\n'.join(p['message'] for p in problems),'issues':problems})
         try:
             confirm_project_panels(db,site,layout,json.loads(row.approved) if row.approved else None)
             from services.plan_corners import reconcile_groups
@@ -266,6 +297,8 @@ def save(site_id:int,plan_id:int,request:Request,body:LayoutInput,
         except Exception:
             db.rollback()
             raise
+    else:
+        layout=validate_layout(body,json.loads(row.draft),{e['number'] for e in elements(db,site,user)},False)
     new_revision=row.revision+1
     values={'draft':json.dumps(layout),'revision':new_revision,'updated_by_id':user.id}
     if approve: values.update(approved=json.dumps(layout),approved_revision=new_revision,approved_at=datetime.utcnow())
