@@ -60,10 +60,10 @@ def create_group(db, site, numbers, kind, confirm_net, panels=None):
         a = db.query(SiteCoupeAssignment).filter_by(site_id=site.id, tipologia_scavo='paratia', numero_elemento=n).first()
         c = a.coupe if a else None
         if not c:
-            raise HTTPException(400, f'Assegna prima una CUP a {p["label"]}.')
+            raise HTTPException(400, f'Assegna prima una Coupe a {p["label"]}.')
         snap = {'width': positive(f.larghezza_pannello if f else p.get('width_m'), 'la larghezza'),
-                'depth': positive(f.profondita_totale if f else c.profondita_teorica, 'la profondità nella CUP'),
-                'thickness': positive(f.altezza_pannello if f else c.spessore, 'lo spessore nella CUP'),
+                'depth': positive(f.profondita_totale if f else c.profondita_teorica, 'la profondità nella Coupe'),
+                'thickness': positive(f.altezza_pannello if f else c.spessore, 'lo spessore nella Coupe'),
                 'coupe_id': c.id, 'coupe': c.nome,
                 'old_volume': f.metri_cubi_gettati if f else None,
                 'old_date': f.data_getto.isoformat() if f and f.data_getto else None}
@@ -77,7 +77,7 @@ def create_group(db, site, numbers, kind, confirm_net, panels=None):
             raise HTTPException(400, 'Conferma che le larghezze dei due bracci non contino due volte l’intersezione.')
         snapshots = [json.loads(m.snapshot) for m in members]
         if len({s['coupe_id'] for s in snapshots}) != 1:
-            raise HTTPException(400, 'Per la fiche unica assegna ai due bracci la stessa CUP; le larghezze restano distinte.')
+            raise HTTPException(400, 'Per la fiche unica assegna ai due bracci la stessa Coupe; le larghezze restano distinte.')
         label = names[0][1].strip() + ' A/B'
     group = SitePour(site_id=site.id, kind=kind, label=label, members=members)
     db.add(group); db.flush()
@@ -106,7 +106,7 @@ def before_fiche_save(db, fiche, updating=False):
         snaps = [json.loads(m.snapshot) for m in group.members]
         # The one fiche represents the developed, net width of both arms.
         if fiche.coupe_id != snaps[0]['coupe_id']:
-            raise HTTPException(400, 'La fiche dell’angolo deve usare la CUP dei due bracci.')
+            raise HTTPException(400, 'La fiche dell’angolo deve usare la Coupe dei due bracci.')
         fiche.panel_name = group.label
         fiche.larghezza_pannello = sum(s['width'] for s in snaps)
         group.total_m3 = fiche.metri_cubi_gettati
