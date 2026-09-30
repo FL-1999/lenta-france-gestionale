@@ -44,7 +44,8 @@ def test_read_review_correct_and_save_coupe(live_operations):
         card.locator('[data-strut-row] input').last.fill('8.5')
         card.locator('[data-coupe-reviewed]').check()
         card.locator('[name=coupe_note]').fill('Note conservée')
-        card.locator('[name=coupe_profondita_teorica]').fill('10.7')
+        # Bypass live depth/bottom conversion to exercise invalid server input.
+        card.locator('[name=coupe_profondita_teorica]').evaluate('(el)=>el.value=10.7')
         with page.expect_response(lambda r:r.request.method=='POST' and 'configurazione-progetto' in r.url) as response:
             page.locator('.project-sticky-actions button[type=submit]').click()
         assert response.value.status==400
