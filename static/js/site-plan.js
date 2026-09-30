@@ -11,6 +11,7 @@
   let snapUndo=null;
   let editUndo=[];
   let replacement=null;
+  let validationShown=false;
   function ask(title,text,action=tr('Conferma')) {
     const dialog=q('[data-confirm-dialog]');
     q('#sp-confirm-title').textContent=title;q('#sp-confirm-text').textContent=text;
@@ -38,6 +39,38 @@
     return p.points.some(([x,y])=>ref.some((a,i)=>{const b=ref[(i+1)%4],len=Math.hypot(b[0]-a[0],b[1]-a[1]);return len&&sign*((b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0])) < -2*len;}));
   }
   function offScale(p) {if(p.corner_fitted&&peers(p).length===2)return false;const scale=commonScale();return !scale||!p.width_m||[[0,1],[3,2]].some(([i,j])=>Math.abs(Math.hypot(p.points[j][0]-p.points[i][0],p.points[j][1]-p.points[i][1])/(scale*p.width_m)-1)>.02);}
+  function pendingChecks(p) {
+    const checks=[];
+    if(!p.label.trim())checks.push({field:'label',text:t('inserisci la sigla','saisissez le repère')});
+    if(!Number.isFinite(p.width_m)||p.width_m<=0)checks.push({field:'width_m',text:t('inserisci la larghezza in metri','saisissez la largeur en mètres')});
+    else if(offScale(p))checks.push({field:'scale',text:commonScale()?t('sagoma fuori scala: controlla la larghezza e applicala alla scala comune','forme hors échelle : vérifiez la largeur et appliquez l’échelle commune'):t('calibra la scala del disegno','calibrez l’échelle du plan')});
+    if(p.corner_group&&!p.corner_net_confirmed)checks.push({field:'corner_net_confirmed',text:t('conferma le larghezze nette A/B','confirmez les largeurs nettes A/B')});
+    if(extent(p)&&!p.extent_confirmed)checks.push({field:'extent_confirmed',text:t('controlla e conferma gli estremi sul PDF','vérifiez et confirmez les extrémités sur le PDF')});
+    if(!p.reviewed)checks.push({field:'reviewed',text:t('conferma sigla, sagoma e larghezza','confirmez le repère, la forme et la largeur')});
+    return checks;
+  }
+  function goToCheck(p) {
+    choose(p.key);q('[data-zoom]').click();
+    const first=pendingChecks(p)[0],target=first?.field==='scale'?q(commonScale()?'[data-scale]':'[data-calibrate]'):form.elements[first?.field];
+    const details=target?.closest('details');if(details)details.open=true;
+    (target||form).scrollIntoView({behavior:'smooth',block:'center'});target?.focus({preventScroll:true});
+  }
+  function renderValidation() {
+    const section=q('[data-validation-summary]'),list=q('[data-validation-list]');
+    if(!section)return;
+    const missing=editing&&plan?plan.layout.panels.filter(p=>pendingChecks(p).length):[];
+    section.hidden=!validationShown||!missing.length;list.replaceChildren();
+    if(validationShown&&editing&&!missing.length&&plan?.layout.panels.length){validationShown=false;message(t('Controlli completati. Premi Convalida disegno per salvare.','Contrôles terminés. Cliquez sur Valider le plan pour enregistrer.'));}
+    if(section.hidden)return;
+    missing.forEach(p=>{const li=document.createElement('li'),button=document.createElement('button');button.type='button';button.className='btn btn-secondary';button.textContent=`${p.label}: ${pendingChecks(p).map(v=>v.text).join('; ')}`;button.onclick=()=>goToCheck(p);li.append(button);list.append(li);});
+  }
+  function showPending() {
+    const missing=plan.layout.panels.filter(p=>pendingChecks(p).length);
+    if(!missing.length)return false;
+    validationShown=true;renderValidation();goToCheck(missing[0]);
+    message(t(`Convalida non completata. ${missing[0].label}: ${pendingChecks(missing[0]).map(v=>v.text).join('; ')}.`,`Validation incomplète. ${missing[0].label} : ${pendingChecks(missing[0]).map(v=>v.text).join('; ')}.`),true);
+    return true;
+  }
   function resize(p,anchor='center') {
     const scale=commonScale();if(!scale||!p.width_m)return false;
     const g=geometry(p),change=p.width_m*scale-g.len,a=g.angle*Math.PI/180;
@@ -61,7 +94,8 @@
   async function load(id, draft = false) {
     try {
       data = await api(base + '/data' + (id ? `?plan_id=${id}&draft=${draft}` : ''));
-      snapUndo=null; editUndo=[]; plan = data.plan; editing = !!plan?.editing; dirty = false; addMode = false;
+      snapUndo=null; editUndo=[]; validationShown=false; plan = data.plan; editing = !!plan?.editing; dirty = false; addMode = false;
+      q('[data-validation-summary]').hidden=true;
       replacement=null;if(q('[data-replace-notice]'))q('[data-replace-notice]').hidden=true;
       q('[data-removed]').hidden=!data.removed?.length;
       const removedList=q('[data-removed-list]');removedList.replaceChildren();
@@ -170,8 +204,11 @@
     q('[data-link-corner]').disabled=!targetSelect.options.length;
     q('[data-corner-info]').hidden=!corner;q('[data-corner-tools]').hidden=!corner;
     if(corner){q('[data-corner-label]').textContent=p.label.replace(/[ab]$/i,'')+' A/B';q('[data-corner-widths]').textContent=pair.map(v=>`${v.label}: ${num(v.width_m,' m')}`).join(' + ');form.elements.corner_net_confirmed.checked=pair.every(v=>v.corner_net_confirmed);}
+    const armChecks=q('[data-arm-checks]');armChecks.replaceChildren();
+    if(corner&&editing)pair.forEach(v=>{const button=document.createElement('button');button.type='button';button.className='btn btn-secondary';button.dataset.checkArm=v.key;button.setAttribute('aria-pressed',String(v.key===p.key));const checks=pendingChecks(v);button.textContent=`${v.label} · ${checks.length?checks.map(c=>c.text).join('; '):t('controlli completati','contrôles terminés')}`;button.onclick=()=>goToCheck(v);armChecks.append(button);});
+    q('[data-reviewed-caption]').textContent=corner?`${p.label}: ${t('sigla, sagoma e larghezza verificate','repère, forme et largeur vérifiés')}`:tr('Sigla, sagoma e larghezza verificate');
     q('[data-label]').textContent = unitFor(p)?.label || tr("Seleziona un pannello");
-    q('[data-warnings]').textContent = !p ? '' : editing ? [...((p.warnings || []).map(tr)),offScale(p)?tr("Sagoma fuori scala: applica la larghezza alla scala comune."):'',extent(p)?tr("Possibile sbordo rispetto alla sagoma riconosciuta o al foglio. Controlla sul PDF e conferma."):''].filter(Boolean).join(' · ') : '';
+    q('[data-warnings]').textContent = !p ? '' : editing ? [...((p.warnings || []).filter(w=>!w.startsWith('Possibile sbordo')).map(tr)),...pendingChecks(p).filter(c=>['scale','extent_confirmed'].includes(c.field)).map(c=>`${p.label}: ${c.text}`)].filter(Boolean).join(' · ') : '';
     if (p) {
       form.elements.label.value = p.label; form.elements.width_m.value = p.width_m ?? ''; form.elements.element.value = p.element ?? ''; form.elements.reviewed.checked = p.reviewed; form.elements.extent_confirmed.checked=!!p.extent_confirmed; q('[data-extent]').hidden=!extent(p); q('[data-scale-info]').textContent=commonScale()?t(`Scala comune: ${num(commonScale())} punti del foglio per metro`,`Échelle commune : ${num(commonScale())} points de la feuille par mètre`):tr("Scala da calibrare");
       const g = geometry(p); Object.entries({cx:g.cx,cy:g.cy,shape_length:g.len,shape_depth:g.depth,angle:g.angle}).forEach(([k,v])=>form.elements[k].value=+v.toFixed(2));
@@ -185,9 +222,10 @@
   }
   function renderFooter() {
     if (!plan) return;
-    const display=units(),pending=display.filter(u=>u.members.some(p=>!p.reviewed||!p.width_m||offScale(p)||(extent(p)&&!p.extent_confirmed)||(p.corner_group&&!p.corner_net_confirmed))).length,unlinked=display.filter(u=>u.members.some(p=>!p.element)).length;
+    const display=units(),pending=display.filter(u=>u.members.some(p=>pendingChecks(p).length)).length,unlinked=display.filter(u=>u.members.some(p=>!p.element)).length;
     q('[data-pending]').textContent = `${pending} ${t('da verificare','à vérifier')} · ${unlinked} ${t('pannelli da creare alla convalida','panneaux à créer à la validation')}${dirty ? t(' · Modifiche non salvate',' · Modifications non enregistrées') : ''}`;
     q('[data-state]').textContent = editing ? tr("Bozza da convalidare") : tr("Disegno convalidato");
+    renderValidation();
   }
   function render() {
     root.dataset.transparent=editing&&q('[data-transparent]').checked;
@@ -196,7 +234,7 @@
     q('[data-find-corners]').hidden=!editing;
     q('[data-replace]').hidden=!data.can_edit;q('[data-remove-draft]').hidden=!plan.can_remove;
     const picker = q('[data-select]'); picker.replaceChildren();
-    units().forEach((u,i)=>picker.add(new Option(`${u.label} · ${t('zona','zone')} ${i+1}${u.members.every(p=>p.reviewed)?'':t(' · da verificare',' · à vérifier')}`,u.members[0].key)));
+    units().forEach((u,i)=>picker.add(new Option(`${u.label} · ${t('zona','zone')} ${i+1}${u.members.every(p=>!pendingChecks(p).length)?'':t(' · da verificare',' · à vérifier')}`,u.members[0].key)));
     picker.value = unitFor(panel())?.members[0].key || ''; renderDetail(); renderMaps(); renderFooter();
   }
   q('[data-select]').onchange = e => choose(e.target.value);
@@ -356,21 +394,18 @@
     const valid=plan.layout.panels.filter(p=>p.label.trim()&&p.width_m&&!offScale(p));
     const extents=valid.filter(extent);
     const text=t('Confermare tutti i pannelli completi dopo il confronto con il PDF?','Confirmer tous les panneaux complets après vérification sur le PDF ?');
-    if(!valid.length){message(t('Completa prima larghezze e scala.','Complétez d’abord les largeurs et l’échelle.'),true);return;}
+    if(!valid.length){if(showPending())return;message(t('Completa prima larghezze e scala.','Complétez d’abord les largeurs et l’échelle.'),true);return;}
     if(!confirm(text))return;
     let confirmExtents=false;
     if(extents.length)confirmExtents=confirm(t(`Sono previsti gli sbordi di questi pannelli? ${extents.map(p=>p.label).join(', ')}. Annulla per lasciarli da controllare.`,`Les débordements de ces panneaux sont-ils prévus ? ${extents.map(p=>p.label).join(', ')}. Annulez pour les laisser à vérifier.`));
     valid.forEach(p=>{p.reviewed=true;if(confirmExtents&&extent(p))p.extent_confirmed=true;});markDirty();render();
+    if(showPending())return;
     message(t('Verifica completata. Premi Convalida disegno per salvare.','Vérification terminée. Cliquez sur Valider le plan pour enregistrer.'));
   };
   function lock(value) {busy=value;all('button').forEach(b=>b.disabled=value);all('input,select').forEach(b=>b.disabled=value);if(!value&&plan)renderDetail();}
   async function save(approve) {
     if(busy)return;
-    if(approve&&plan.layout.panels.some(p=>p.corner_group&&!p.corner_net_confirmed)){
-      const p=plan.layout.panels.find(p=>p.corner_group&&!p.corner_net_confirmed);choose(p.key);
-      message(t('Verifica e conferma le larghezze nette dei bracci dell’angolo selezionato.','Vérifiez et confirmez les largeurs nettes des branches de l’angle sélectionné.'),true);return;
-    }
-    if(approve){const missing=plan.layout.panels.filter(p=>!p.reviewed||!p.width_m||offScale(p)||(extent(p)&&!p.extent_confirmed));if(!plan.layout.panels.length||missing.length){message(t(`Controlla scala, larghezze e conferme di sbordo dei pannelli (${missing.length} ancora da verificare).`,`Vérifiez l’échelle, les largeurs et les débordements (${missing.length} panneaux à vérifier).`),true);return;}
+    if(approve){if(!plan.layout.panels.length){message(t('Aggiungi almeno un pannello alla pianta.','Ajoutez au moins un panneau au plan.'),true);return;}if(showPending())return;
       const unlinked=units().filter(u=>u.members.some(p=>!p.element)).length;
       if(!confirm(t(`Convalidare il disegno? ${unlinked} pannelli nuovi potranno essere assegnati alle coupe.`,`Valider le plan ? ${unlinked} nouveaux panneaux pourront être affectés aux coupes.`)))return;
     }
