@@ -1,0 +1,25 @@
+<dialog id="coupe-pdf-reader" aria-labelledby="coupe-reader-title">
+  <div class="reader-heading"><h2 id="coupe-reader-title">{{ 'Lire une coupe PDF' if lang == 'fr' else 'Leggi una coupe PDF' }}</h2><button type="button" class="btn btn-secondary" data-reader-close>{{ 'Fermer' if lang == 'fr' else 'Chiudi' }}</button></div>
+  <p>{{ 'Le PDF sert à préparer la saisie. Pour conserver l’original, ajoutez-le aussi aux documents du chantier.' if lang == 'fr' else 'Il PDF serve a preparare la compilazione. Per conservare l’originale, aggiungilo anche ai documenti del cantiere.' }}</p>
+  <div class="reader-controls">
+    <label>PDF (max. 15 MB)<input type="file" accept="application/pdf,.pdf" data-reader-file class="form-control"></label>
+    <label>{{ 'Page' if lang == 'fr' else 'Pagina' }}<input type="number" value="1" min="1" step="1" data-reader-page class="form-control"></label>
+    <button type="button" class="btn btn-primary" data-reader-load>{{ 'Lire la page' if lang == 'fr' else 'Leggi pagina' }}</button>
+  </div>
+  <p data-reader-message role="status" aria-live="polite"></p>
+  <div class="reader-body" hidden>
+    <div>
+      <p>{{ 'Tracez un rectangle autour d’une seule coupe, titre et cotes compris, puis relisez la sélection.' if lang == 'fr' else 'Traccia un rettangolo intorno a una sola coupe, includendo titolo e quote, poi rileggi la selezione.' }}</p>
+      <div class="reader-preview"><img data-reader-image alt="PDF"><div data-reader-selection hidden></div></div>
+      <div class="reader-controls"><button type="button" class="btn btn-secondary" data-reader-crop>{{ 'Lire la sélection' if lang == 'fr' else 'Leggi selezione' }}</button><button type="button" class="btn btn-secondary" data-reader-reset>{{ 'Page entière' if lang == 'fr' else 'Pagina intera' }}</button></div>
+    </div>
+    <div>
+      <h3>{{ 'Valeurs proposées' if lang == 'fr' else 'Valori proposti' }}</h3>
+      <dl data-reader-values></dl>
+      <ul data-reader-warnings></ul>
+      <details><summary>{{ 'Textes reconnus' if lang == 'fr' else 'Testi riconosciuti' }}</summary><ul data-reader-evidence></ul></details>
+      <p>{{ 'Insérer remplace les champs reconnus de cette coupe. Vérifiez et complétez ensuite avant d’enregistrer.' if lang == 'fr' else 'Inserisci sostituisce i campi riconosciuti di questa coupe. Controlla e completa i dati prima di salvare.' }}</p>
+      <button type="button" class="btn btn-primary" data-reader-apply disabled>{{ 'Insérer dans la coupe' if lang == 'fr' else 'Inserisci nella coupe' }}</button>
+    </div>
+  </div>
+</dialog>

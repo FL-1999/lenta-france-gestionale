@@ -5291,6 +5291,7 @@ def _sync_site_coupes_from_form(
     coupe_armatura: list[str] | None = None,
     coupe_quota_reference_label: list[str] | None = None,
     coupe_tipologia_scavo: list[str] | None = None,
+    coupe_drawing_info: list[str] | None = None,
     delete_coupe_id: list[str] | None = None,
 ) -> None:
     requested_delete_ids = {str(value).strip() for value in (delete_coupe_id or []) if str(value).strip()}
@@ -5323,7 +5324,7 @@ def _sync_site_coupes_from_form(
                 coupe_descrizione_zona, coupe_quota_tn, coupe_quota_testa, coupe_quota_fondo_teorica,
                 coupe_base_paroi_mecanique, coupe_profondita_teorica, coupe_quota_partenza_scavo, coupe_quota_testa_getto_prevista,
                 coupe_type_beton, coupe_spessore, coupe_larghezza, coupe_diametro, coupe_terreno_teorico, coupe_note, coupe_armatura,
-                coupe_paratie, coupe_pali,
+                coupe_paratie, coupe_pali, coupe_drawing_info,
             )
         )
         row_id = value(coupe_id, index).strip()
@@ -5346,6 +5347,12 @@ def _sync_site_coupes_from_form(
             raise HTTPException(400, "Questa coupe ha fiches di un altro tipo: crea una coupe separata.")
         coupe.tipologia_scavo = kind
         coupe.nome = name
+        if coupe_drawing_info is not None and index < len(coupe_drawing_info):
+            from services.coupe_drawing import validate_info
+            try:
+                coupe.drawing_info = validate_info(value(coupe_drawing_info, index))
+            except ValueError as exc:
+                raise HTTPException(400, str(exc) or 'Controlla puntoni e trattamento / Vérifiez les butons et le traitement.') from exc
         datum = value(coupe_quota_reference_label, index).strip() or coupe.quota_reference_label or "NGF"
         if len(datum) > 30 or any(ord(c) < 32 for c in datum):
             raise HTTPException(400, "Il riferimento quote deve contenere al massimo 30 caratteri.")
@@ -5795,6 +5802,7 @@ def manager_site_project_config_post(
     coupe_paratie: List[str] = Form(default_factory=list),
     coupe_pali: List[str] = Form(default_factory=list),
     coupe_quota_reference_label: List[str] = Form(default_factory=list),
+    coupe_drawing_info: List[str] = Form(default_factory=list),
     delete_coupe_id: List[str] = Form(default_factory=list),
     equipment_tipologia: List[str] = Form(default_factory=list),
     equipment_numero: List[str] = Form(default_factory=list),
@@ -5846,6 +5854,7 @@ def manager_site_project_config_post(
                 coupe_paratie=coupe_paratie,
                 coupe_pali=coupe_pali,
                 coupe_quota_reference_label=coupe_quota_reference_label,
+                coupe_drawing_info=coupe_drawing_info or None,
                 delete_coupe_id=delete_coupe_id,
             )
             _sync_site_special_equipment_from_form(
@@ -9191,6 +9200,8 @@ from routes import supplier_services
 app.include_router(supplier_services.router)
 from routes import project_directory
 app.include_router(project_directory.router)
+from routes import coupe_drawing
+app.include_router(coupe_drawing.router)
 app.include_router(ordini.router)
 from routes import purchasing_catalog
 app.include_router(purchasing_catalog.router)

@@ -4,7 +4,7 @@ import re
 from types import SimpleNamespace
 from fastapi import HTTPException
 
-FIELDS = ('nome tipologia_scavo descrizione_zona quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica scavo_da_tn quota_partenza_scavo quota_testa_getto_prevista type_beton type_coulage spessore larghezza diametro terreno_teorico note paratie pali armatura quota_reference_label').split()
+FIELDS = ('nome tipologia_scavo descrizione_zona quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica scavo_da_tn quota_partenza_scavo quota_testa_getto_prevista type_beton type_coulage spessore larghezza diametro terreno_teorico note paratie pali armatura quota_reference_label drawing_info').split()
 NUMBERS = ('quota_tn quota_testa quota_fondo_teorica base_paroi_mecanique profondita_teorica quota_partenza_scavo quota_testa_getto_prevista spessore larghezza diametro').split()
 
 
@@ -26,6 +26,13 @@ def validate_rows(payload, parse_numbers):
         if not any(getattr(row,f).strip() for f in significant): continue
         name=row.nome or f'Coupe {index+1}'
         def error(field,it,fr): errors.append({'row':index,'field':'coupe_'+field,'name':name,'it':it,'fr':fr})
+        if row.drawing_info:
+            from services.coupe_drawing import validate_info
+            try:
+                validate_info(row.drawing_info)
+            except ValueError as exc:
+                message = str(exc) or 'Controlla puntoni e trattamento / Vérifiez les butons et le traitement.'
+                error('drawing_info', message, message)
         kind=row.tipologia_scavo or ('palo' if row.pali.strip() and not row.paratie.strip() else 'paratia')
         if kind not in ('paratia','palo') or (kind=='paratia' and row.pali.strip()) or (kind=='palo' and row.paratie.strip()):
             error('tipologia_scavo','Separa paratie e pali in coupe distinte.','Séparez les parois et les pieux dans des coupes distinctes.')
@@ -48,6 +55,12 @@ def validate_rows(payload, parse_numbers):
                 error(field,'Il valore deve essere maggiore di zero.','La valeur doit être supérieure à zéro.')
         origin=values['quota_tn'] if row.scavo_da_tn!='0' else (values['quota_partenza_scavo'] if values['quota_partenza_scavo'] is not None else values['quota_testa'])
         bottom,depth=values['quota_fondo_teorica'],values['profondita_teorica']
+        if row.drawing_info:
+            head, mechanical = values['quota_testa'], values['base_paroi_mecanique']
+            if head is not None and mechanical is not None and mechanical >= head:
+                error('base_paroi_mecanique','La base meccanica deve essere sotto la testa.','La base mécanique doit être sous la tête.')
+            if bottom is not None and mechanical is not None and bottom > mechanical:
+                error('quota_fondo_teorica','La base totale deve essere sotto o alla base meccanica.','La base totale doit être sous ou à la base mécanique.')
         if origin is not None and bottom is not None:
             expected=round(origin-bottom,6)
             if expected<=0:
