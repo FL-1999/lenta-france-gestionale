@@ -1,0 +1,16 @@
+{% for coupe in site.coupes if coupe.drawing_info %}
+{% set info = coupe.drawing_info %}
+<section class="coupe-site-info" style="margin:16px 0;padding:16px;border:1px solid #7c9bb2;border-radius:12px">
+  <h4>{{ coupe.nome }} · {{ 'Butons et traitement' if lang == 'fr' else 'Puntoni e trattamento' }}</h4>
+  <p>{{ info.struts|length }} {{ 'niveaux de butons renseignés dans la coupe' if lang == 'fr' else 'livelli di puntoni inseriti nella coupe' }}</p>
+  <ul>{% for quota in info.struts %}<li>{{ 'Niveau' if lang == 'fr' else 'Livello' }} −{{ loop.index }} · {{ 'Axe du buton' if lang == 'fr' else 'Asse puntone' }}: {{ '%+.2f'|format(quota) }} {{ coupe.quota_reference_label or 'NGF' }}</li>{% endfor %}</ul>
+  {% set treatment=info.treatment %}
+  <p>Traitement de perméabilité:
+    {% if treatment.state == 'present' %}{{ 'Présent (autre entreprise)' if lang == 'fr' else 'Presente (altra impresa)' }} · {{ '%+.2f'|format(treatment.top) }}{% if treatment.bottom is not none %} / {{ '%+.2f'|format(treatment.bottom) }}{% endif %} {{ coupe.quota_reference_label or 'NGF' }}
+    {% elif treatment.state == 'absent' %}{{ 'Absent' if lang == 'fr' else 'Assente' }}
+    {% else %}{{ 'À vérifier' if lang == 'fr' else 'Da verificare' }}{% endif %}
+  </p>
+  <small>{{ 'Informations de projet. Les quantités et la pose des butons restent dans le suivi des travaux.' if lang == 'fr' else 'Informazioni di progetto. Quantità e posa dei puntoni restano nel monitoraggio dei lavori.' }}</small>
+  {% if has_perm(user,'sites.update') %}<p><a href="/manager/cantieri/{{ site.id }}/configurazione-progetto">{{ 'Modifier les niveaux de la coupe' if lang == 'fr' else 'Modifica livelli della coupe' }}</a></p>{% endif %}
+</section>
+{% endfor %}

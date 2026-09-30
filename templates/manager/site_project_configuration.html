@@ -33,6 +33,7 @@
     </div>
 
     <input type="hidden" name="coupe_id" value="{{ coupe.id if coupe else '' }}">
+    <input type="hidden" name="coupe_drawing_info" value="{% if coupe and coupe.submitted|default(false) %}{{ coupe.drawing_info }}{% elif coupe and coupe.drawing_info %}{{ coupe.drawing_info|tojson|forceescape }}{% endif %}">
 
     <details class="coupe-editor" {% if is_new or submitted_coupes is defined %}open{% endif %}><summary>Quote, dimensioni e pannelli <span data-selection-summary></span></summary><div class="project-section-grid">
       <section class="project-block project-block--wide coupe-associations">
@@ -59,6 +60,8 @@
 
       <section class="project-block project-block--wide">
         <h4>Quote di progetto</h4>
+        <button type="button" class="btn btn-secondary" data-read-coupe-pdf data-only-kind="paratia">{{ 'Lire une coupe PDF' if lang == 'fr' else 'Leggi una coupe PDF' }}</button>
+        <p class="text-muted">{{ 'Choisissez une page et sélectionnez une seule coupe. Les valeurs proposées restent modifiables avant enregistrement.' if lang == 'fr' else 'Scegli una pagina e seleziona una sola coupe. I valori proposti restano modificabili prima del salvataggio.' }}</p>
         <div class="project-field coupe-datum"><label class="form-label">Riferimento quote</label><input class="form-control" name="coupe_quota_reference_label" maxlength="30" value="{{ coupe.quota_reference_label or 'NGF' if coupe else 'NGF' }}" placeholder="NGF"><small>Etichetta delle quote in metri; non converte le altitudini.</small></div>
         <div class="form-grid form-grid--four">
           <div class="project-field"><label class="form-label">Quota TN</label><input class="form-control" type="number" step="0.01" name="coupe_quota_tn" value="{{ coupe_value(coupe.quota_tn) if coupe else '' }}" placeholder="es. 24.50"></div>
@@ -88,6 +91,7 @@
 
       <section class="project-block">
         <h4>Dimensioni in metri</h4>
+        <p data-coupe-heights aria-live="polite"></p>
         <div class="form-grid">
           <div class="project-field" data-only-kind="paratia"><label class="form-label">Spessore paratia (m)</label><input class="form-control" type="number" step="0.01" name="coupe_spessore" value="{{ coupe_value(coupe.spessore) if coupe else '' }}" placeholder="m"></div>
           <p data-only-kind="paratia" class="text-muted">La larghezza appartiene a ogni pannello della pianta. Nella stessa coupe può variare.</p>
@@ -97,6 +101,23 @@
 
 
 
+      <section class="project-block project-block--wide" data-coupe-info>
+        <h4>{{ 'Butons et traitement de perméabilité' if lang == 'fr' else 'Puntoni e trattamento di permeabilità' }}</h4>
+        <p>{{ 'Cotes des axes en mètres, dans le même référentiel que la coupe. Niveau −1 en haut, puis −2, −3…' if lang == 'fr' else 'Quote degli assi in metri, nello stesso riferimento della coupe. Livello −1 in alto, poi −2, −3…' }}</p>
+        <div data-strut-rows></div>
+        <button type="button" class="btn btn-secondary" data-add-strut>{{ '+ Ajouter un niveau' if lang == 'fr' else '+ Aggiungi livello' }}</button>
+        <p data-strut-count></p>
+        <label class="form-label">{{ 'Traitement de perméabilité (autre entreprise)' if lang == 'fr' else 'Trattamento di permeabilità (altra impresa)' }}
+          <select class="form-select" data-treatment-state><option value="unknown">{{ 'À vérifier' if lang == 'fr' else 'Da verificare' }}</option><option value="present">{{ 'Présent' if lang == 'fr' else 'Presente' }}</option><option value="absent">{{ 'Absent' if lang == 'fr' else 'Assente' }}</option></select>
+        </label>
+        <div class="form-grid" data-treatment-quotes hidden>
+          <label>{{ 'Cote haute / cote unique (m)' if lang == 'fr' else 'Quota superiore / quota unica (m)' }}<input type="number" class="form-control" step="0.01" data-treatment-top></label>
+          <label>{{ 'Cote basse (facultative, m)' if lang == 'fr' else 'Quota inferiore (facoltativa, m)' }}<input type="number" class="form-control" step="0.01" data-treatment-bottom></label>
+        </div>
+        <small>{{ 'Information uniquement : aucune quantité, aucun coût ni avancement.' if lang == 'fr' else 'Solo informazione: nessuna quantità, costo o avanzamento.' }}</small>
+        <p data-coupe-source></p>
+        <label data-coupe-review hidden><input type="checkbox" data-coupe-reviewed> {{ 'J’ai vérifié les valeurs, les niveaux et le traitement sur le dessin.' if lang == 'fr' else 'Ho controllato valori, livelli e trattamento sul disegno.' }}</label>
+      </section>
       <section class="project-block project-block--wide">
         <h4>Terreno teorico</h4>
         <div class="form-grid">
@@ -229,6 +250,9 @@
     </div>
   </section>
 </form>
+{% include 'manager/_coupe_pdf_reader.html' %}
+<link rel="stylesheet" href="/static/css/coupe-reader.css?v=20260930a">
+<script src="/static/js/coupe-reader.js?v=20260930a" defer></script>
 
 <style>
   .project-config-header .page-actions{align-items:flex-start;}
