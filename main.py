@@ -8123,7 +8123,7 @@ FICHE_TECHNICAL_FR_TRANSLATIONS: tuple[tuple[str, str], ...] = (
     ("Palo", "Pieu"),
     ("Incontrato", "Rencontré"),
     ("Teorico", "Théorique"),
-    ("Riporto", "Remblai"),
+    ("Riporto", "Remblais"),
     ("Sabbia", "Sable"),
     ("Argilla", "Argile"),
     ("Ghiaia", "Gravier"),
