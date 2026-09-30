@@ -27,7 +27,7 @@ window.SoilCoordinates = (() => {
       mode.options[1].disabled = origin === null;
       if (origin === null) mode.value = 'depth';
       originText.textContent = origin === null ? t('Indica la quota di partenza per vedere le quote.', 'Indiquez la cote de départ pour afficher les cotes.') :
-        `${t('Zero scavo', 'Zéro de forage')} = ${format(origin)} ${datum}. ${t('La profondità aumenta scendendo.', 'La profondeur augmente en descendant.')}`;
+        `${options.originLabel?.() || t('Zero scavo', 'Zéro de forage')} = ${format(origin)} ${datum}. ${t('La profondità aumenta scendendo.', 'La profondeur augmente en descendant.')}`;
       const elevations = mode.value === 'elevation';
       root.querySelectorAll('[data-soil-heading]').forEach((el, i) => el.textContent = elevations ?
         `${i ? t('Quota a', 'Cote à') : t('Quota da', 'Cote de')} (${datum})` : `${i ? t('A', 'À') : t('Da', 'De')} (m)`);
@@ -42,7 +42,9 @@ window.SoilCoordinates = (() => {
             proxy.className = 'form-control'; proxy.dataset.soilElevation = i ? 'end' : 'start';
             input.after(proxy); input.soilProxy = proxy; bound.add(input);
             proxy.addEventListener('input', () => {
-              const level = number(proxy.value), zero = options.origin();
+              const level = number(proxy.value);
+              options.beforeElevationInput?.(row, i, level);
+              const zero = options.origin();
               input.value = level === null || zero === null ? '' : String(Math.round((zero - level) * 1e6) / 1e6);
               input.dispatchEvent(new Event('input', {bubbles:true}));
             });
@@ -55,7 +57,7 @@ window.SoilCoordinates = (() => {
           proxy.setAttribute('aria-label', title);
           const fieldLabel = input.closest('.form-group')?.querySelector('label');
           if (fieldLabel) fieldLabel.textContent = title;
-          proxy.setCustomValidity(depth !== null && depth < 0 ? t('La quota supera la partenza dello scavo.', 'La cote dépasse le départ du forage.') : '');
+          proxy.setCustomValidity(depth !== null && depth < 0 ? t('La quota supera lo zero selezionato.', 'La cote dépasse le zéro sélectionné.') : '');
         });
         const from = number(start.value), to = number(end.value);
         if (from !== null && to !== null) records.push([options.material(row) || '—',
@@ -65,7 +67,7 @@ window.SoilCoordinates = (() => {
       if (records.length) {
         const table = document.createElement('table'); table.className = 'data-table';
         const head = table.createTHead().insertRow();
-        [t('Terreno', 'Sol'), t('Profondità da partenza', 'Profondeur depuis le départ'), t('Quote', 'Cotes')].forEach(text => {
+        [t('Terreno', 'Sol'), options.depthLabel?.() || t('Profondità da partenza', 'Profondeur depuis le départ'), t('Quote', 'Cotes')].forEach(text => {
           const th = document.createElement('th'); th.textContent = text; head.append(th);
         });
         const body = table.createTBody(); records.forEach(record => {const row = body.insertRow(); record.forEach(text => row.insertCell().textContent = text);});

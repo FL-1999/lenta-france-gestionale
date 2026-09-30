@@ -418,7 +418,7 @@
                             {# G. Modèle géologique #}
                             <section class="technical-data-block">
                                 <h3>G. Modèle géologique</h3>
-                                <p>{{ technical_fr(fiche.terreno_teorico or (report_coupe.terreno_teorico if report_coupe and report_coupe.terreno_teorico else '—')) }}</p>
+                                <p>{{ technical_fr(fiche.terreno_teorico if fiche.terreno_teorico is not none else (report_coupe.terreno_teorico if report_coupe and report_coupe.terreno_teorico else '—')) }}</p>
                             </section>
                         </aside>
 
@@ -513,8 +513,8 @@
                                                         <span>{{ technical_fr(layer.materiale) }}</span>
                                                     </div>
                                                 {% endfor %}
-                                            {% elif fiche.terreno_teorico or (report_coupe and report_coupe.terreno_teorico) %}
-                                                <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ technical_fr(fiche.terreno_teorico or report_coupe.terreno_teorico) }}</span></div>
+                                            {% elif fiche.terreno_teorico or (fiche.terreno_teorico is none and report_coupe and report_coupe.terreno_teorico) %}
+                                                <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ technical_fr(fiche.terreno_teorico if fiche.terreno_teorico is not none else report_coupe.terreno_teorico) }}</span></div>
                                             {% else %}
                                                 <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
                                             {% endif %}
@@ -718,7 +718,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico or (report_coupe.terreno_teorico if report_coupe and report_coupe.terreno_teorico else '') }}</textarea></div>
+            <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Modèle géologique</label><textarea class="form-textarea" name="terreno_teorico" rows="3">{{ fiche.terreno_teorico if fiche.terreno_teorico is not none else (report_coupe.terreno_teorico if report_coupe and report_coupe.terreno_teorico else '') }}</textarea></div>
             {% if fiche.sonic_previsto %}
               <div class="form-group"><label class="form-label">Sonic réalisé ?</label><select class="form-select" name="sonic_realizzato" required><option value="" {% if fiche.sonic_realizzato is none %}selected{% endif %}>—</option><option value="1" {% if fiche.sonic_realizzato is sameas true %}selected{% endif %}>Oui</option><option value="0" {% if fiche.sonic_realizzato is sameas false %}selected{% endif %}>Non</option></select></div>
             {% endif %}

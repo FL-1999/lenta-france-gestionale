@@ -820,6 +820,8 @@ class SiteCoupe(Base, TimestampMixin):
     larghezza = Column(Float, nullable=True)
     diametro = Column(Float, nullable=True)
     terreno_teorico = Column(Text, nullable=True)
+    # NULL preserves the historical excavation-start reference.
+    terreno_riferimento = Column(String(10), nullable=True)
     type_beton = Column(String(100), nullable=True)
     type_coulage = Column(String(100), nullable=False, default="Gravitaire")
     note = Column(Text, nullable=True)

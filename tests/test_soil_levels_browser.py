@@ -90,3 +90,75 @@ def test_depth_and_elevation_roundtrip_and_partial_fiche(live_operations):
         page.locator('[data-fiche-level-summary]').screenshot(path=str(Path(artifacts)/'soil-levels.png'))
         assert not errors, errors
         browser.close()
+
+
+def test_auto_detect_tn_and_excavation_start_preserves_ngf(live_operations):
+    origin, engine, ids, password, artifacts = live_operations
+    with Session(engine) as db:
+        db.get(Site, ids['site']).numero_totale_paratie = 1
+        coupe = SiteCoupe(site_id=ids['site'], nome='Coupe TN', quota_tn=14.5, quota_testa=13.5,
+                          scavo_da_tn=False, quota_partenza_scavo=13.5, quota_fondo_teorica=2.8,
+                          profondita_teorica=10.7, spessore=.42, terreno_riferimento='scavo',
+                          terreno_teorico='0-1 m: Remblais\n1-10.7 m: Sable')
+        db.add(coupe); db.flush(); cid = coupe.id
+        db.add(SiteCoupeAssignment(site_id=ids['site'], coupe_id=cid, tipologia_scavo='paratia', numero_elemento=1))
+        db.commit()
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        page = browser.new_page(viewport={'width':1440, 'height':1000})
+        errors = []; page.on('pageerror', lambda error: errors.append(str(error)))
+        page.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin+'/') else route.abort())
+        page.goto(origin+'/login'); page.locator('#email').fill('smoke-manager@example.com'); page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click(); page.wait_for_url('**/manager/dashboard')
+        url = origin+f'/manager/cantieri/{ids["site"]}/configurazione-progetto'
+        page.goto(url)
+        card = page.locator('[data-coupe-card]').first
+        card.locator('.coupe-editor').evaluate('(el)=>el.open=true')
+        ref = card.locator('[name=coupe_terreno_riferimento]')
+        expect(ref).to_have_value('scavo')
+        card.locator('[data-soil-mode]').select_option('elevation')
+        first = card.locator('[data-theoretical-layer]').first
+        second = card.locator('[data-theoretical-layer]').nth(1)
+        # Explicit first TN elevation switches reference and preserves all lower NGF boundaries.
+        first.locator('[data-soil-elevation=start]').fill('14.5')
+        expect(ref).to_have_value('tn')
+        expect(first.locator('[data-soil-elevation=end]')).to_have_value('12.50')
+        expect(second.locator('[data-soil-elevation=end]')).to_have_value('2.80')
+        expect(first.locator('[data-layer-a]')).to_have_value('2')
+        expect(card.locator('[data-soil-reference-status]')).to_contain_text('TN')
+        first.locator('[data-soil-elevation=start]').fill('13.5')
+        expect(ref).to_have_value('scavo')
+        expect(first.locator('[data-layer-a]')).to_have_value('1')
+        first.locator('[data-soil-elevation=start]').fill('14.5')
+        # A nonmatching first elevation is reported, not silently assigned to TN or start.
+        first.locator('[data-soil-elevation=start]').fill('14')
+        expect(card.locator('[data-soil-reference-status]')).to_contain_text('non coincide')
+        first.locator('[data-soil-elevation=start]').fill('14.5')
+        first.locator('[data-soil-elevation=end]').fill('13')
+        second.locator('[data-soil-elevation=start]').fill('13')
+        card.locator('[data-soil-mode]').select_option('depth')
+        expect(first.locator('[data-layer-da]')).to_have_value('0')
+        expect(first.locator('[data-layer-a]')).to_have_value('1.5')
+        expect(card.locator('[data-soil-summary]')).to_contain_text('14.50 → 13.00 NGF')
+        # Actual excavation origin must not move a TN-referenced geology.
+        card.locator('[name=coupe_quota_partenza_scavo]').fill('12')
+        expect(card.locator('[data-soil-origin]')).to_contain_text('14.50 NGF')
+        card.locator('[name=coupe_quota_partenza_scavo]').fill('13.5')
+        for width in [390, 1440]:
+            page.set_viewport_size({'width':width,'height':1000})
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
+        card.locator('[data-theoretical-soil]').screenshot(path=str(Path(artifacts)/'soil-reference.png'))
+        page.locator('.project-config-form button[type=submit]').click(); page.wait_for_url('**/*saved*')
+        with Session(engine) as db:
+            stored = db.get(SiteCoupe, cid)
+            assert stored.terreno_riferimento == 'tn'
+            assert stored.terreno_teorico.replace('\r\n', '\n') == '0-1.5 m: Remblais\n1.5-11.7 m: Sable'
+        page.goto(url); card.locator('.coupe-editor').evaluate('(el)=>el.open=true')
+        expect(ref).to_have_value('tn')
+        page.goto(origin+f'/manager/fiches/nuova?cantiere_id={ids["site"]}&numero_pannello=1&tipologia_scavo=paratia')
+        preview = page.locator('[data-coupe-soil-preview]')
+        expect(preview).to_contain_text('0.00–0.50 m')
+        expect(preview).to_contain_text('13.50 → 13.00 NGF')
+        expect(preview).to_contain_text('0.50–10.70 m')
+        assert not errors, errors
+        browser.close()

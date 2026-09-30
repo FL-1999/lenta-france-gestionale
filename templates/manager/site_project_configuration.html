@@ -122,9 +122,18 @@
         <h4>Terreno teorico</h4>
         <div class="form-grid">
           <div class="project-field project-field--theoretical-soil" data-theoretical-soil>
-            <label class="form-label">Terreno teorico</label>
+            <label class="form-label">{{ 'Origine des couches théoriques' if lang == 'fr' else 'Zero degli strati teorici' }}
+              {% set soil_ref = coupe.terreno_riferimento|default('', true) if coupe else '' %}
+              {% if not soil_ref %}{% set soil_ref = 'scavo' if coupe and coupe.terreno_teorico else 'tn' %}{% endif %}
+              <select class="form-select" name="coupe_terreno_riferimento">
+                <option value="tn" {% if soil_ref == 'tn' %}selected{% endif %}>{{ 'Terrain naturel (TN)' if lang == 'fr' else 'Terreno naturale (TN)' }}</option>
+                <option value="scavo" {% if soil_ref == 'scavo' %}selected{% endif %}>{{ 'Départ du forage' if lang == 'fr' else 'Partenza scavo' }}</option>
+              </select>
+            </label>
+            <p>{{ 'En saisissant la première cote NGF, le système reconnaît le TN ou le départ du forage. Vous pouvez aussi choisir la référence ci-dessus. Les fiches excluent les couches déjà excavées.' if lang == 'fr' else 'Inserendo la prima quota NGF, il sistema riconosce il TN o la partenza scavo. Puoi anche scegliere il riferimento qui sopra. Le fiches escludono gli strati già scavati.' }}</p>
+            <p data-soil-reference-status role="status"></p>
             <details class="soil-text-editor"><summary>Testo stratigrafia (facoltativo)</summary><textarea class="form-textarea" name="coupe_terreno_teorico" rows="4" placeholder="0.00-1.20 m: Limo sabbioso
-1.20-4.50 m: Argilla" data-theoretical-soil-text>{{ coupe.terreno_teorico if coupe and coupe.terreno_teorico else '' }}</textarea></details><p>Profondità dalla quota di partenza scavo, in metri. Scegli un terreno per ogni intervallo.</p>
+1.20-4.50 m: Argilla" data-theoretical-soil-text>{{ coupe.terreno_teorico if coupe and coupe.terreno_teorico else '' }}</textarea></details><p>Profondità dallo zero selezionato, in metri. Scegli un terreno per ogni intervallo.</p>
             <div class="theoretical-soil-preview" data-theoretical-soil-preview></div>
             <div class="soil-legend soil-legend--compact" data-theoretical-soil-legend></div>
             <div class="theoretical-soil-builder" aria-label="Stratigrafia teorica strutturata">
@@ -292,7 +301,7 @@
   @media (max-width:1100px){.project-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.project-section-grid,.form-grid--four{grid-template-columns:1fr 1fr;}}
   @media (max-width:720px){.project-summary-grid,.project-section-grid,.form-grid--two,.form-grid--four{grid-template-columns:1fr;}.project-coupe-card__header,.project-section-heading{flex-direction:column;align-items:stretch;}.project-coupe-card__actions{justify-content:flex-start;}.project-sticky-actions{position:static;}.project-equipment-row{grid-template-columns:1fr;}}
 </style>
-<link rel="stylesheet" href="/static/css/soil-coordinates.css?v=20260930"><script src="/static/js/soil-coordinates.js?v=20260930"></script>
+<link rel="stylesheet" href="/static/css/soil-coordinates.css?v=20260930"><script src="/static/js/soil-coordinates.js?v=20260930b"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const fr = document.documentElement.lang === 'fr';
@@ -411,9 +420,36 @@
         textarea.addEventListener('input', () => { builder.querySelector('[data-theoretical-soil-rows]').replaceChildren(); parseTheoreticalText(textarea.value).forEach(layer=>addTheoreticalLayer(builder,layer));renderTheoreticalPreview(builder); });
         builder.querySelector('[data-add-theoretical-layer]')?.addEventListener('click', () => {const last=builder.querySelector('[data-theoretical-layer]:last-child [data-layer-a]');addTheoreticalLayer(builder,{da:last?.value||'0'});});
         renderTheoreticalPreview(builder);
+        const reference = builder.querySelector('[name="coupe_terreno_riferimento"]');
+        const status = builder.querySelector('[data-soil-reference-status]');
+        const origin = () => reference.value === 'tn' ? SoilCoordinates.number(card.querySelector('[name="coupe_quota_tn"]').value) : excavationOrigin(card);
+        reference.addEventListener('change', () => { status.textContent = ''; builder.soilCoordinates.refresh(); });
         SoilCoordinates.bind(builder, {
           rows: builder.querySelector('[data-theoretical-soil-rows]'), row: '[data-theoretical-layer]',
-          start: '[data-layer-da]', end: '[data-layer-a]', origin: () => excavationOrigin(card),
+          start: '[data-layer-da]', end: '[data-layer-a]', origin,
+          originLabel: () => reference.value === 'tn' ? t('Zero terreno teorico: TN', 'Zéro du terrain théorique : TN') : t('Zero terreno teorico: partenza scavo', 'Zéro du terrain théorique : départ du forage'),
+          depthLabel: () => reference.value === 'tn' ? t('Profondità dal TN', 'Profondeur depuis le TN') : t('Profondità da partenza scavo', 'Profondeur depuis le départ du forage'),
+          beforeElevationInput: (row, index, level) => {
+            if (index !== 0 || row !== builder.querySelector('[data-theoretical-layer]') || level === null) return;
+            const tn = SoilCoordinates.number(card.querySelector('[name="coupe_quota_tn"]').value);
+            const start = excavationOrigin(card);
+            const matches = [['tn', tn], ['scavo', start]].filter(([,value]) => value !== null && Math.abs(value-level) < .005);
+            if (!matches.length) {
+              status.textContent = t('La prima quota non coincide con TN o partenza scavo: controlla le quote di progetto o il riferimento scelto.', 'La première cote ne correspond ni au TN ni au départ du forage : vérifiez les cotes du projet ou la référence choisie.');
+              return;
+            }
+            const selected = matches.find(([key]) => key === reference.value) || matches[0];
+            // Retain the elevations of all the other boundaries when detecting a different origin.
+            const oldOrigin = origin();
+            reference.value = selected[0];
+            if (oldOrigin !== null && oldOrigin !== selected[1]) {
+              builder.querySelectorAll('[data-layer-da],[data-layer-a]').forEach(input => {
+                const depth = SoilCoordinates.number(input.value);
+                if (depth !== null) input.value = String(Math.round((depth+selected[1]-oldOrigin)*1e6)/1e6);
+              });
+            }
+            status.textContent = t('Riconosciuto: ', 'Reconnu : ') + reference.selectedOptions[0].textContent;
+          },
           datum: () => card.querySelector('[name="coupe_quota_reference_label"]').value,
           material: row => row.querySelector('[data-layer-materiale]').value,
         });
@@ -454,6 +490,7 @@
         clone.querySelectorAll('input, textarea, select').forEach((field) => {
           if (field.type === 'checkbox') field.checked = false;
           else if (field.name === 'coupe_tipologia_scavo') field.value = document.querySelector('.project-config-form').dataset.kind === 'palo' ? 'palo' : 'paratia';
+          else if (field.name === 'coupe_terreno_riferimento') field.value = 'tn';
           else if (field.name === 'coupe_scavo_da_tn') field.value = '1';
           else if (field.name === 'coupe_quota_reference_label') field.value = 'NGF';
           else if (field.name === 'coupe_type_coulage') field.value = 'Gravitaire';
