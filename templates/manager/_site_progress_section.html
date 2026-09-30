@@ -421,6 +421,8 @@
 
   {# --- DETTAGLIO PUNTONI --- #}
   <div class="progress-detail" id="progress-puntoni">
+    <p><a class="btn btn-primary" href="/manager/cantieri/{{ site.id }}/avanzamento">Apri puntoni, pozzi e rabotage sulla mappa</a></p>
+    {% if site.works_map %}<p>I singoli elementi della mappa aggiornano il riepilogo generale. I conteggi manuali qui sotto restano separati come riferimento precedente.</p>{% endif %}
     {% include 'manager/_coupe_site_info.html' %}
     <div class="progress-detail-header">
       <h3>

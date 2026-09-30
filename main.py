@@ -4852,6 +4852,27 @@ def _build_site_progress(
 
     progress_summary["puntoni"]["levels"] = strut_levels_view
 
+    # Individual mapped works supersede manual aggregates only when populated.
+    # Keep old aggregates intact as historical reference; never write fiche state.
+    if site.works_map:
+        import json as _works_json
+        from services.site_works import counts as _works_counts
+        works = _works_json.loads(site.works_map.payload)
+        counted = _works_counts(works)
+        replacements = {}
+        if counted['struts']:
+            replacements['puntoni'] = (counted['installed'], counted['struts'])
+        if counted['wells']:
+            replacements['pozzi_pompaggio'] = (counted['wells_done'], counted['wells'])
+        reference = _works_json.loads(site.works_map.reference)
+        mapped_panels = {p.get('element') for p in reference['layout']['panels']} - {None}
+        if mapped_panels:
+            replacements['rabotage'] = (counted['rabotage'], len(mapped_panels))
+        for key, (done, total) in replacements.items():
+            percent = _progress_percent(done, total)
+            progress_summary[key].update(done=done, total=total, percent=percent,
+                status=_progress_status(percent, lang), subtitle=f'{done} / {total} · mappa')
+
     return progress_summary, strut_levels_view, strut_levels_count
 
 
@@ -9233,6 +9254,8 @@ from routes import operations
 app.include_router(operations.router)
 from routes import site_plans
 app.include_router(site_plans.router)
+from routes import site_works
+app.include_router(site_works.router)
 
 app.include_router(auth_router)       # /auth/token, /auth/me
 app.include_router(users.router)      # /users

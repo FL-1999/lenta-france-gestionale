@@ -27,7 +27,8 @@ from routers.reports import ensure_capo_personale
 
 
 pytestmark = pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS') != '1', reason='Live browser checks opt-in')
-NEW_TABLES = {'report_drafts', 'report_reviews', 'report_review_events', 'resource_plans', 'document_versions'}
+NEW_TABLES = {'report_drafts', 'report_reviews', 'report_review_events', 'resource_plans', 'document_versions',
+              'site_works_maps', 'site_strut_drawings'}
 
 
 @pytest.fixture
