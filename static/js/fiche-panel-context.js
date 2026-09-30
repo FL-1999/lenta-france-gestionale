@@ -35,6 +35,16 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   number.addEventListener('input',update);
   [site,number,type].forEach(el=>el?.addEventListener('change',update));
-  function datum(){const saved=document.getElementById('fiche-panel-catalog').dataset;const ref=(saved.coupe===coupe?.value&&saved.datum)||coupe?.selectedOptions?.[0]?.dataset.datum||'NGF';document.querySelectorAll('label').forEach(label=>{if(!label.dataset.datumOriginal&&label.textContent.includes('NGF'))label.dataset.datumOriginal=label.textContent;if(label.dataset.datumOriginal)label.textContent=label.dataset.datumOriginal.replaceAll('NGF',ref);});}
+  function datum(){
+    const saved=document.getElementById('fiche-panel-catalog').dataset;
+    const ref=(saved.coupe===coupe?.value&&saved.datum)||coupe?.selectedOptions?.[0]?.dataset.datum||'NGF';
+    document.querySelectorAll('label').forEach(label => {
+      label.childNodes.forEach(node => {
+        if (node.nodeType !== Node.TEXT_NODE) return;
+        if (!node.datumOriginal && node.textContent.includes('NGF')) node.datumOriginal = node.textContent;
+        if (node.datumOriginal) node.textContent = node.datumOriginal.replaceAll('NGF', ref);
+      });
+    });
+  }
   coupe?.addEventListener('change',datum);update();datum();
 });

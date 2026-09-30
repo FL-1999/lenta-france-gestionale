@@ -53,7 +53,7 @@
     </div>
     <div class="page-actions">
         <a href="{{ url_for('manager_fiches_edit_form', fiche_id=fiche.id) }}" class="btn btn-primary">
-            {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}
+            {% if lang == 'fr' %}Mettre à jour la fiche{% else %}Aggiorna fiche{% endif %}
         </a>
         <a href="{{ url_for('manager_fiches_list') }}?site_id={{ fiche.site_id }}" class="btn btn-secondary">
             ← {% if lang == 'fr' %}Retour{% else %}Lista{% endif %}
@@ -62,6 +62,24 @@
 </div>
 
 <nav class="project-flow" aria-label="Cantiere"><a class="btn btn-secondary" href="/manager/cantieri/{{ fiche.site_id }}/pianta">Pianta</a> <a class="btn btn-secondary" href="/manager/cantieri/{{ fiche.site_id }}/configurazione-progetto">Coupe</a> <a class="btn btn-secondary" href="/manager/fiches?site_id={{ fiche.site_id }}">Fiches del cantiere</a></nav>
+<section class="card fiche-section" data-fiche-level-summary>
+  <div class="card-body">
+    <h3>{{ 'Référence des profondeurs' if lang == 'fr' else 'Riferimento delle profondità' }}</h3>
+    <p><strong>0 m = {{ "%.2f"|format(schema_quota_partenza) if schema_quota_partenza is not none else '—' }} {{ datum }}</strong>
+      · TN {{ "%.2f"|format(schema_quota_tn) if schema_quota_tn is not none else '—' }} {{ datum }}</p>
+    <p>{{ 'La fiche peut être mise à jour pendant les travaux avec le bouton ci-dessus. Les modifications de la coupe ne remplacent pas les données déjà enregistrées ici.' if lang == 'fr' else 'Puoi aggiornare la fiche durante i lavori con il pulsante in alto. Le modifiche alla coupe non sostituiscono i dati già registrati qui.' }}</p>
+    {% for heading, rows in [('Théorique' if lang == 'fr' else 'Teorico', theoretical_layers), ('Rencontré' if lang == 'fr' else 'Incontrato', visual_layers)] %}
+    {% if rows %}
+    <h4>{{ heading }}</h4><div class="fiche-strat-table-wrap"><table class="data-table"><thead><tr>
+      <th>{{ 'Sol' if lang == 'fr' else 'Terreno' }}</th><th>{{ 'Profondeur depuis le départ (m)' if lang == 'fr' else 'Profondità dalla partenza (m)' }}</th><th>{{ datum }} (m)</th>
+    </tr></thead><tbody>{% for layer in rows %}<tr>
+      <td>{{ technical_fr(layer.materiale) if lang == 'fr' else layer.materiale }}</td>
+      <td>{{ '%.2f'|format(layer.da) }} → {{ '%.2f'|format(layer.a) }}</td>
+      <td>{% if schema_quota_partenza is not none %}{{ '%.2f'|format(schema_quota_partenza-layer.da) }} → {{ '%.2f'|format(schema_quota_partenza-layer.a) }}{% else %}—{% endif %}</td>
+    </tr>{% endfor %}</tbody></table></div>{% endif %}{% endfor %}
+  </div>
+</section>
+
 {# ══════════════════════════════════════════════════════
    2. KPI CARDS
    ══════════════════════════════════════════════════════ #}
@@ -410,7 +428,7 @@
                                 <div class="technical-section-canvas technical-section-canvas--{{ 'pile' if is_palo else 'panel' }}">
                                     <div class="technical-top-levels" aria-hidden="true">
                                         <span>TN = {{ ("%.2f"|format(schema_quota_tn)).replace(".", ",") if schema_quota_tn is not none else "—" }} {{ datum }}</span>
-                                        <span>{{ 'ARASE SUPERIEURE PIEU' if is_palo else 'ARASE SUPERIEURE PANNEAU' }} = {{ (("%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto)).replace(".", ",") if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—") }} {{ datum }}</span>
+                                        <span>DÉPART FORAGE (0 m) = {{ (("%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto)).replace(".", ",") if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—") }} {{ datum }}</span>
                                     </div>
                                     {% if is_paratia %}
                                         <div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div>
@@ -445,14 +463,14 @@
                                     <div class="technical-level technical-level--bottom" style="--level-top: 100%;" aria-hidden="true"></div>
 
                                     {# Elevation reference scale #}
-                                    {% if schema_quota_tn is not none %}
+                                    {% if schema_quota_partenza is not none %}
                                     <div class="technical-ngf-scale" aria-hidden="true">
                                         <div class="technical-ngf-row">
                                             <span class="ngf-label">{{ datum }}</span>
                                             <span class="ngf-label">Prof.</span>
                                         </div>
                                         <div class="technical-ngf-row">
-                                            <span>{{ ("%.1f"|format(schema_quota_tn)).replace(".", ",") }}</span>
+                                            <span>{{ ("%.1f"|format(schema_quota_partenza)).replace(".", ",") }}</span>
                                             <span>0,0</span>
                                         </div>
                                     </div>

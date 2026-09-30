@@ -42,6 +42,8 @@ def test_french_coupe_errors_soil_and_plan_actions(live_operations):
         soil=card.locator('[data-theoretical-layer]').nth(1)
         expect(soil.locator('[data-layer-da]')).to_have_value('2')
         soil.locator('[data-layer-a]').fill('15');soil.locator('select').select_option('Argile')
+        # Bypass the new live conversion to exercise server-side validation/redisplay.
+        card.locator('[name=coupe_quota_fondo_teorica]').evaluate('(el)=>el.value=-5')
         page.get_by_role('button',name='Enregistrer la configuration du projet',exact=True).click()
         expect(page.locator('#coupe-errors')).to_contain_text('Cotes incohérentes')
         card=page.locator('[data-coupe-card]').first

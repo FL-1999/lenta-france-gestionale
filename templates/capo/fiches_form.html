@@ -155,6 +155,11 @@
                         </select>
                     </div>
 
+                    <div class="form-group">
+                        <label class="form-label" for="quota_partenza">{{ 'Cote de départ du forage' if lang == 'fr' else 'Quota effettiva di partenza scavo' }} (NGF)</label>
+                        <input class="form-control" type="number" step="0.01" id="quota_partenza" name="quota_partenza" value="{{ form_data.get('quota_partenza', '') }}">
+                        <small>{{ 'Cette cote correspond à 0 m de profondeur. Les couches rencontrées partent de ce niveau.' if lang == 'fr' else 'Questa quota corrisponde a 0 m di profondità. Gli strati incontrati partono da questo livello.' }}</small>
+                    </div>
                     {% endif %}
 
                     <div class="form-group">
@@ -232,9 +237,9 @@
                 <div class="form-group">
                     <label class="form-label" for="metri_cubi_gettati">
                         {% if lang == 'fr' %}
-                            Mètres cubes bétonnés*
+                            Mètres cubes bétonnés
                         {% else %}
-                            Metri cubi gettati*
+                            Metri cubi gettati
                         {% endif %}
                     </label>
                     <input id="metri_cubi_gettati"
@@ -244,7 +249,8 @@
                            min="0"
                            class="form-control"
                            value="{{ form_data.get('metri_cubi_gettati', '') }}"
-                           required />
+                            />
+                    <small>{{ 'À compléter lors du bétonnage. Pendant le forage, enregistrez la profondeur atteinte et les couches rencontrées, puis mettez à jour la fiche.' if lang == 'fr' else 'Da completare al getto. Durante lo scavo salva la profondità raggiunta e gli strati incontrati, poi aggiorna la fiche.' }}</small>
                 </div>
 
                 <h3 class="form-section-title">
@@ -315,7 +321,7 @@
                     {% endif %}
                 </p>
 
-                <div class="card fiche-sketch">
+                <div class="card fiche-sketch" data-fiche-soil>
                     <div class="card-body">
                         {% set strati = form_data.get('strati', []) %}
                         {% if not strati %}
@@ -884,7 +890,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const option = coupeSelect?.selectedOptions?.[0];
         const fromTN = document.getElementById('scavo_da_tn')?.value !== '0';
         const reference = fromTN ? option?.dataset.quotaTn : option?.dataset.partenza;
-        const testa = reference ? Number(reference) : numberFromInput(quotaTestaInput);
+        const testa = numberFromInput(document.getElementById("quota_partenza")) ?? (reference ? Number(reference) : numberFromInput(quotaTestaInput));
         const depth = numberFromInput(depthInput);
         if (testa === null || depth === null) return;
         if (force || !fondoManuallyEdited || !quotaFondoInput.value) {
@@ -912,7 +918,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     function renderSoilPreview(text) {
         if (!soilPreviewWrap || !soilPreview || !soilLegend) return;
-        const layers = parseTheoreticalText(text);
+        const saved = {{ {'coupe': form_data.get('coupe_id', ''), 'text': form_data.get('saved_terreno_teorico'), 'origin': form_data.get('saved_soil_origin')}|tojson }};
+        const savedSelected = form.dataset.edit === 'true' && saved.text !== null && String(saved.coupe) === coupeSelect?.value;
+        const option = coupeSelect?.selectedOptions?.[0];
+        const sourceOrigin = savedSelected ? saved.origin : Number(option?.dataset.scavo === '0' ? option?.dataset.partenza : option?.dataset.quotaTn);
+        const actualOrigin = numberFromInput(document.getElementById('quota_partenza'));
+        const delta = sourceOrigin !== null && Number.isFinite(sourceOrigin) && actualOrigin !== null ? actualOrigin-sourceOrigin : 0;
+        const layers = parseTheoreticalText(savedSelected ? saved.text : text).map(layer => ({...layer, da: Math.max(0, layer.da+delta), a: layer.a+delta})).filter(layer => layer.a > 0);
         soilPreview.innerHTML = "";
         soilLegend.innerHTML = "";
         if (!layers.length) { soilPreviewWrap.hidden = true; return; }
@@ -923,7 +935,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const cls = textureClass(layer.materiale);
             div.className = `soil-layer ${cls}`;
             div.style.height = `${totalDepth > 0 ? Math.max(((layer.a - layer.da) / totalDepth) * 100, 4) : 100}%`;
-            div.textContent = `${layer.materiale} · ${layer.da.toFixed(2)}–${layer.a.toFixed(2)} m`;
+            div.textContent = `${layer.materiale} · ${layer.da.toFixed(2)}–${layer.a.toFixed(2)} m` + (actualOrigin === null ? '' : ` · ${(actualOrigin-layer.da).toFixed(2)} → ${(actualOrigin-layer.a).toFixed(2)} ${option?.dataset.datum || 'NGF'}`);
             soilPreview.appendChild(div);
             if (!used.has(layer.materiale)) used.set(layer.materiale, cls);
         });
@@ -941,6 +953,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (spessoreInput) spessoreInput.readOnly = false;
         if (diametroInput) diametroInput.readOnly = false;
         if (!option || !option.value) { renderSoilPreview(""); validateCoupeAssociation(); return; }
+        const startInput = document.getElementById('quota_partenza');
+        const startMode = document.getElementById('scavo_da_tn');
+        if (form.dataset.edit !== 'true' && startMode && !startMode.dataset.userChanged) startMode.value = option.dataset.scavo || '1';
+        fillIfEmpty("quota_partenza", startMode?.value === '0' ? option.dataset.partenza : option.dataset.quotaTn);
         fillIfEmpty("quota_ngf_testa", option.dataset.quotaTesta);
         fillIfEmpty("profondita_totale", option.dataset.profondita);
         fillIfEmpty("quota_testa_getto", option.dataset.getto);
@@ -969,8 +985,14 @@ document.addEventListener("DOMContentLoaded", function () {
     typeSelect?.addEventListener("change", () => { applyCoupeDefaults(); filterCoupesBySite(); validateCoupeAssociation(); });
     quotaFondoInput?.addEventListener("input", () => { fondoManuallyEdited = true; });
     quotaTestaInput?.addEventListener("input", () => syncQuotaFondo());
-    document.getElementById("scavo_da_tn")?.addEventListener("change", () => syncQuotaFondo());
-    depthInput?.addEventListener("input", () => syncQuotaFondo());
+    document.getElementById("scavo_da_tn")?.addEventListener("change", event => {
+        event.target.dataset.userChanged = '1';
+        const option = coupeSelect?.selectedOptions?.[0], start = document.getElementById('quota_partenza');
+        if (start) start.value = event.target.value === '0' ? (option?.dataset.partenza || '') : (option?.dataset.quotaTn || '');
+        syncQuotaFondo(true);
+    });
+    document.getElementById('quota_partenza')?.addEventListener('input', () => { syncQuotaFondo(true); renderSoilPreview(coupeSelect?.selectedOptions?.[0]?.dataset.terrenoTeorico || ''); });
+    depthInput?.addEventListener("input", () => syncQuotaFondo(true));
     filterCoupesBySite();
     applyCoupeDefaults();
     validateCoupeAssociation();
@@ -1436,5 +1458,8 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <script type="application/json" id="fiche-panel-catalog" data-datum="{{ form_data.get('quota_reference_label', '') if is_edit else '' }}" data-coupe="{{ selected_coupe }}">{{ (fiche_panel_catalog|default({}))|tojson }}</script>
-<script src="/static/js/fiche-panel-context.js?v=20260924" defer></script>
+<script src="/static/js/fiche-panel-context.js?v=20260930" defer></script>
+<link rel="stylesheet" href="/static/css/soil-coordinates.css?v=20260930">
+<script src="/static/js/soil-coordinates.js?v=20260930"></script>
+<script src="/static/js/fiche-soil-coordinates.js?v=20260930"></script>
 {% endblock %}
