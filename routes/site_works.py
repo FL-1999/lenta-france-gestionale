@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
+from starlette.concurrency import run_in_threadpool
 from pydantic import Field, ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -145,7 +146,7 @@ async def upload(request:Request,site_id:int,file:UploadFile=File(...),page_numb
     access(db,user,site_id,True);same_origin(request)
     contents=await file.read(MAX_PDF_BYTES+1)
     try:
-        proposal,preview=read_pdf(contents,page_number)
+        proposal,preview=await run_in_threadpool(read_pdf,contents,page_number)
     except ValueError as exc:
         raise HTTPException(400,str(exc)) from exc
     row=SiteStrutDrawing(site_id=site_id,filename=(file.filename or 'puntoni.pdf')[:300],page_number=page_number,

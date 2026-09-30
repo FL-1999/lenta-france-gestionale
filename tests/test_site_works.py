@@ -154,3 +154,39 @@ def test_removed_strut_keeps_completed_placement_but_is_not_in_operation():
     value['levels'][0]['struts'][0]['status']='removed'
     totals=counts(value)
     assert totals['placed']==1 and totals['installed']==0 and totals['removed']==1
+
+
+def test_dense_cad_axis_work_is_bounded_and_pdf_still_allows_crop(monkeypatch):
+    import services.strut_drawing as reader
+    class Segments(list):
+        visits=0
+        def __iter__(self):
+            for item in super().__iter__():
+                self.visits+=1
+                yield item
+    segments=Segments([((0,y/100),(200,y/100)) for y in range(4000)])
+    budget=[20000]
+    with pytest.raises(reader.AxisWorkLimit):
+        reader.axis_proposal(dict(x=100,y=10,angle=0,size=10),segments,budget)
+    assert segments.visits<=20000
+    monkeypatch.setattr(reader,'MAX_AXIS_WORK',0)
+    pdf=vector_pdf().replace(b'(P7a)',b'(B12)')
+    result,preview=reader.read_pdf(pdf)
+    assert result['struts'][0]['label']=='B12'
+    assert result['struts'][0]['a'] is None
+    assert 'Disegno molto denso' in result['notice']
+    assert preview.startswith(b'\x89PNG')
+    assert reader.read_pdf(pdf,1,[0,0,.1,.1])[0]['struts']==[]
+
+
+def test_pdf_upload_extraction_runs_outside_event_loop(operations,monkeypatch):
+    import asyncio
+    import routes.site_works as routes
+    original=routes.read_pdf
+    def checked(*args):
+        with pytest.raises(RuntimeError):
+            asyncio.get_running_loop()
+        return original(*args)
+    monkeypatch.setattr(routes,'read_pdf',checked)
+    c,url,_=setup(operations)
+    assert c.post(url+'/leggi-pdf',files={'file':('b.pdf',vector_pdf())}).status_code==200

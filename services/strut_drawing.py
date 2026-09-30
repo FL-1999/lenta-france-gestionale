@@ -8,11 +8,25 @@ from uuid import uuid4
 from services.site_plan_import import MAX_PDF_BYTES, _PDF_RENDER_LOCK, _tokens, _segments, _dimension
 
 
-def axis_proposal(label, segments):
+MAX_AXIS_WORK = 2_000_000
+
+
+class AxisWorkLimit(Exception):
+    pass
+
+
+def axis_proposal(label, segments, budget=None):
+    # Shared by every label on a page; dense CAD hatching cannot multiply work
+    # by segments squared times the number of labels.
+    if budget is None:
+        budget = [MAX_AXIS_WORK]
     x,y = label['x'],label['y']
     u = (math.cos(label['angle']), math.sin(label['angle']))
     candidates = []
     for a,b in segments:
+        budget[0] -= 1
+        if budget[0] < 0:
+            raise AxisWorkLimit
         length = math.dist(a,b)
         if length < 12:
             continue
@@ -26,6 +40,9 @@ def axis_proposal(label, segments):
             continue
         # Join collinear CAD dashes, without assuming a specific drafting colour.
         ranges=[]
+        budget[0] -= len(segments)
+        if budget[0] < 0:
+            raise AxisWorkLimit
         for c,d in segments:
             if abs((c[0]-a[0])*-v[1]+(c[1]-a[1])*v[0])>1.2 or abs((d[0]-a[0])*-v[1]+(d[1]-a[1])*v[0])>1.2:
                 continue
@@ -75,8 +92,15 @@ def read_pdf(data, page_number=1, crop=None):
             dims=[t for t in tokens if re.fullmatch(r'\d{1,3}[,.]\d{1,3}',t['text'])]
             quoted_dims=[t for t in tokens if re.fullmatch(r'\d{1,3}(?:[,.]\d{1,3})?',t['text']) and float(t['text'].replace(',','.'))>0]
             rows=[]
+            axis_budget=[MAX_AXIS_WORK]
+            axis_limited=False
             for t,m in labels:
-                axis=axis_proposal(t,segments)
+                axis=None
+                if not axis_limited:
+                    try:
+                        axis=axis_proposal(t,segments,axis_budget)
+                    except AxisWorkLimit:
+                        axis_limited=True
                 rows.append(dict(id=uuid4().hex,label=re.sub(r'\s+','',m[1]).upper(),
                     a=axis[0] if axis else None,b=axis[1] if axis else None,
                     length_m=_dimension(t,dims), diameter_mm=float(m[2].replace(',','.')) if m[2] else None,
@@ -106,6 +130,8 @@ def read_pdf(data, page_number=1, crop=None):
             result=dict(width=w,height=h,page_count=len(pdf.pages),crop=crop,struts=rows,
                 evidence='\n'.join(t['text'] for t in tokens)[:20000],
                 notice='Verifica assi, misure, angoli e appoggi. Quote, fissaggi e tabelle raster vanno completati dal PDF. I colori non indicano lo stato dei lavori.')
+            if axis_limited:
+                result['notice'] += ' Disegno molto denso: alcuni assi non sono stati letti. Ritaglia una zona più piccola oppure posiziona manualmente gli appoggi.'
         with _PDF_RENDER_LOCK, pdfium.PdfDocument(data) as doc:
             page=doc[page_number-1]
             try:
