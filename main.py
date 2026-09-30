@@ -4861,7 +4861,7 @@ def _build_site_progress(
         counted = _works_counts(works)
         replacements = {}
         if counted['struts']:
-            replacements['puntoni'] = (counted['installed'], counted['struts'])
+            replacements['puntoni'] = (counted['placed'], counted['struts'])
         if counted['wells']:
             replacements['pozzi_pompaggio'] = (counted['wells_done'], counted['wells'])
         reference = _works_json.loads(site.works_map.reference)

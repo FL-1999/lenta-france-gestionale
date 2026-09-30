@@ -190,6 +190,7 @@ def merge_import(value, level_id, rows, source_id):
 def counts(value):
     struts = [s for l in value['levels'] for s in l['struts']]
     return {'struts': len(struts), 'installed': sum(s['status']=='installed' for s in struts),
+            'placed': sum(s['status']!='planned' for s in struts),
             'removed': sum(s['status']=='removed' for s in struts), 'wells': len(value['wells']),
             'wells_done': sum(w['status']!='planned' for w in value['wells']),
             'pumping': sum(w['status']=='pumping' for w in value['wells']), 'rabotage': len(value['rabotage'])}

@@ -45,7 +45,7 @@
     $('wm-phases').innerHTML=phase('Installazione',sum.installazione_cantiere.done,100,`${num(sum.installazione_cantiere.done)}% registrato`)+
       phase('Muretti guida',sum.cordoli.done,sum.cordoli.total,`${num(sum.cordoli.done)} / ${num(sum.cordoli.total)} m`)+
       phase('Paratie',cast,nums.size,`${cast} / ${nums.size} gettate · dalle fiches`)+
-      phase('Puntoni',placed,all.length,`${placed} / ${all.length} in opera · ${removed} rimossi`)+
+      phase('Posa puntoni',placed+removed,all.length,`${placed} in opera · ${removed} rimossi · ${all.length} previsti`)+
       phase('Pozzi',w.filter(x=>x.status!=='planned').length,w.length,`${w.length} pozzi · ${w.filter(x=>x.status==='pumping').length} pompe attive`)+
       phase('Rabotage',data.works.rabotage.length,nums.size,`${data.works.rabotage.length} / ${nums.size} pannelli`);
   }
@@ -55,7 +55,7 @@
     if(!data.reference)return;
     $('wm-level').innerHTML=data.works.levels.length?data.works.levels.map(l=>`<option value="${esc(l.id)}">${esc(l.name)}${l.axis_ngf!=null?' · asse '+num(l.axis_ngf)+' NGF':''}</option>`).join(''):'<option value="">Nessun livello configurato</option>';
     $('wm-level').value=levelId||'';
-    const l=level();$('wm-level-count').textContent=l?`${l.struts.filter(s=>s.status==='installed').length} / ${l.struts.length} posati in questo livello`:'';
+    const l=level();$('wm-level-count').textContent=l?`${l.struts.filter(s=>s.status!=='planned').length} / ${l.struts.length} posati · ${l.struts.filter(s=>s.status==='removed').length} rimossi`:'';
     for(const id of ['wm-edit-level','wm-add-strut','wm-read'])if($(id))$(id).disabled=!l;
     $('wm-sources').innerHTML=data.sources.map(s=>`<p><a href="${url}/pdf/${s.id}/originale" target="_blank" rel="noopener">${esc(s.filename)}</a> · pagina ${s.page} ${data.can_edit?`<button class="btn btn-secondary" data-reread="${s.id}">Riapri lettura</button>`:''}</p>`).join('')||'<p>Nessun PDF puntoni caricato.</p>';
     $('wm-legacy').innerHTML=data.legacy_levels.length?'<h3>Riepiloghi manuali precedenti</h3><p>Restano conservati. La mappa conta solo i singoli elementi qui confermati.</p>'+data.legacy_levels.map(l=>`<p>${esc(l.name)} · ${esc(l.quota||'Quota non indicata')} · ${l.done} / ${l.total}</p>`).join(''):'';

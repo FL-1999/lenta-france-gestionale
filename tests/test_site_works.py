@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 from models import SitePlan, SiteWorksMap, SiteStrutDrawing, Fiche
-from services.site_works import validate_works, empty_works
+from services.site_works import validate_works, empty_works, counts
 from services.strut_drawing import read_pdf
 from test_operations import operations
 from test_site_plans import vector_pdf
@@ -147,3 +147,10 @@ def test_coupe_axes_only_prefill_unambiguous_levels_without_progress():
     assert all(l['struts']==[] for l in value['levels'])
     site.coupes.append(SimpleNamespace(drawing_info={'reviewed':True,'struts':[5]}))
     assert empty_works(site)['levels']==[]
+
+
+def test_removed_strut_keeps_completed_placement_but_is_not_in_operation():
+    value=validate_works(works(),layout())
+    value['levels'][0]['struts'][0]['status']='removed'
+    totals=counts(value)
+    assert totals['placed']==1 and totals['installed']==0 and totals['removed']==1
