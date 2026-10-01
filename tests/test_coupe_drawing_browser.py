@@ -63,6 +63,9 @@ def test_read_review_correct_and_save_coupe(live_operations):
             assert row.drawing_info['struts']==[12,8.5]
             assert row.drawing_info['treatment']['bottom']==3.3
         page.goto(origin+f'/manager/cantieri/{ids["site"]}')
+        page.locator(f'a[href="/manager/cantieri/{ids["site"]}/avanzamento"]').first.click()
+        page.locator('#wm-coupe-info > summary').click()
+        expect(page.locator('.coupe-site-info')).to_be_visible()
         expect(page.locator('.coupe-site-info')).to_contain_text('Niveau −2')
         expect(page.locator('.coupe-site-info')).to_contain_text('+8.50')
         assert not errors,errors
