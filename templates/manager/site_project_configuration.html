@@ -163,9 +163,28 @@
   </div>
   <div class="page-actions">
     <button type="button" class="btn btn-primary" data-add-coupe-card>+ Aggiungi coupe</button>
+    <button type="button" class="btn btn-secondary" data-add-equipment="sonic">{{ '+ Ajouter sonique' if lang == 'fr' else '+ Aggiungi sonico' }}</button>
+    <button type="button" class="btn btn-secondary" data-add-equipment="inclinometre">{{ '+ Ajouter inclinomètre' if lang == 'fr' else '+ Aggiungi inclinometro' }}</button>
     <a href="{{ url_for('manager_site_detail', site_id=site.id) }}" class="btn btn-secondary">Torna al cantiere</a>
   </div>
 </div>
+
+<p data-equipment-feedback role="status" hidden></p>
+<dialog class="equipment-picker" aria-labelledby="equipment-picker-title">
+  <h2 id="equipment-picker-title"></h2>
+  <p>{{ 'Sélectionnez un ou plusieurs panneaux. Les autres équipements sont conservés.' if lang == 'fr' else 'Seleziona uno o più pannelli. Le altre dotazioni vengono mantenute.' }}</p>
+  <input type="search" class="form-control" data-equipment-search aria-label="{{ 'Rechercher un panneau' if lang == 'fr' else 'Cerca pannello' }}" placeholder="{{ 'Rechercher un panneau' if lang == 'fr' else 'Cerca pannello' }}">
+  <div class="equipment-picker-actions">
+    <button type="button" class="btn btn-secondary" data-equipment-all>{{ 'Tout sélectionner' if lang == 'fr' else 'Seleziona tutti' }}</button>
+    <button type="button" class="btn btn-secondary" data-equipment-clear>{{ 'Désélectionner' if lang == 'fr' else 'Deseleziona' }}</button>
+  </div>
+  <div data-equipment-options class="equipment-picker-options"></div>
+  <p data-equipment-count aria-live="polite"></p>
+  <div class="equipment-picker-actions">
+    <button type="button" class="btn btn-primary" data-equipment-apply>{{ 'Ajouter à la configuration' if lang == 'fr' else 'Aggiungi alla configurazione' }}</button>
+    <button type="button" class="btn btn-secondary" data-equipment-cancel>{{ 'Annuler' if lang == 'fr' else 'Annulla' }}</button>
+  </div>
+</dialog>
 
 {% if request.query_params.get('saved') %}
   <div class="alert alert-success" role="status">Configurazione progetto salvata.</div>
@@ -208,7 +227,11 @@
         <p class="page-eyebrow">Sezione coupe</p>
         <h2>Coupe di progetto</h2>
       </div>
-      <button type="button" class="btn btn-primary" data-add-coupe-card>+ Aggiungi coupe</button>
+      <div class="equipment-picker-actions">
+        <button type="button" class="btn btn-primary" data-add-coupe-card>+ Aggiungi coupe</button>
+        <button type="button" class="btn btn-secondary" data-add-equipment="sonic">{{ '+ Ajouter sonique' if lang == 'fr' else '+ Aggiungi sonico' }}</button>
+        <button type="button" class="btn btn-secondary" data-add-equipment="inclinometre">{{ '+ Ajouter inclinomètre' if lang == 'fr' else '+ Aggiungi inclinometro' }}</button>
+      </div>
     </div>
 
     <nav class="coupe-kind-tabs" aria-label="Tipi di coupe"><button type="button" class="btn btn-secondary" data-coupe-kind="paratia" aria-pressed="true">Coupe paratie</button><button type="button" class="btn btn-secondary" data-coupe-kind="palo" aria-pressed="false">Coupe pali</button><button type="button" class="btn btn-secondary" data-coupe-kind="mixed" hidden>Da separare</button></nav>
@@ -264,6 +287,15 @@
 <script src="/static/js/coupe-reader.js?v=20260930a" defer></script>
 
 <style>
+  .equipment-picker{width:min(620px,calc(100vw - 32px));max-height:85vh;overflow:auto;box-sizing:border-box;padding:1.5rem;border:1px solid var(--ws-line);border-radius:16px;background:var(--ws-section);color:var(--ws-ink);}
+  .equipment-picker::backdrop{background:rgba(0,0,0,.6);}
+  .equipment-picker .form-control{background:var(--ws-input);color:var(--ws-ink);}
+  .equipment-picker .form-control::placeholder{color:var(--ws-muted);}
+  .equipment-picker-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin:.75rem 0;}
+  .equipment-picker-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;max-height:40vh;overflow:auto;}
+  .equipment-picker-options label{display:flex;align-items:center;gap:.5rem;padding:.6rem;border:1px solid var(--ws-line);border-radius:8px;overflow-wrap:anywhere;}
+  .equipment-picker-options label[hidden]{display:none;}
+  .equipment-picker-options label:has(input:disabled){opacity:.65;}
   .project-config-header .page-actions{align-items:flex-start;}
   .project-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin:1rem 0 1.25rem;}
   .project-summary-card{border:1px solid rgba(148,163,184,.24);border-radius:18px;padding:1rem;background:linear-gradient(145deg,rgba(15,23,42,.92),rgba(30,41,59,.78));box-shadow:0 18px 45px rgba(2,6,23,.18);}
@@ -510,5 +542,5 @@
     });
   });
 </script>
-<link rel="stylesheet" href="/static/css/coupe-workspace.css?v=20260924"><script src="/static/js/plan-geometry.js?v=20260926" defer></script><script src="/static/js/coupe-workspace.js?v=20260926" defer></script>
+<link rel="stylesheet" href="/static/css/coupe-workspace.css?v=20260924"><script src="/static/js/plan-geometry.js?v=20260926" defer></script><script src="/static/js/coupe-workspace.js?v=20261001" defer></script>
 {% endblock %}
