@@ -110,7 +110,7 @@ def test_review_save_preserves_metadata_on_error_and_existing_production(operati
     coupe=db.query(SiteCoupe).one()
     assert coupe.drawing_info['struts']==[12,8]
     db.refresh(level);assert level.total_struts_level==8 and level.done_struts_level==3
-    response=c.get(f'/manager/cantieri/{o["site"].id}',cookies={'lang':'fr'})
+    response=c.get(f'/manager/cantieri/{o["site"].id}/avanzamento',cookies={'lang':'fr'})
     assert response.status_code==200 and 'Axe du buton' in response.text and '+12.00' in response.text
     data['coupe_id']=str(coupe.id);data.pop('coupe_drawing_info')
     assert c.post(url,data=data,follow_redirects=False).status_code==303
