@@ -122,6 +122,46 @@
     const i=(equipment.equipment_numero||[]).findIndex((n,index)=>n===row.querySelector('[name="equipment_numero"]').value&&equipment.equipment_tipologia[index]===row.querySelector('[name="equipment_tipologia"]').value);
     if(i>=0)row.querySelector('[name="equipment_mode"]').value=equipment.equipment_mode[i];
   });
+  const equipmentDialog=document.querySelector('.equipment-picker');
+  const equipmentOptions=equipmentDialog.querySelector('[data-equipment-options]');
+  const equipmentSearch=equipmentDialog.querySelector('[data-equipment-search]');
+  const equipmentApply=equipmentDialog.querySelector('[data-equipment-apply]');
+  let equipmentMode='', equipmentChoices=[];
+  const hasEquipment=(value,mode)=>value===mode||value==='sonic_inclinometre';
+  function updateEquipmentCount() {
+    const count=equipmentChoices.filter(c=>c.checkbox.checked).length;
+    equipmentDialog.querySelector('[data-equipment-count]').textContent=`${count} ${t('pannelli selezionati','panneaux sélectionnés')}`;
+    equipmentApply.disabled=!count;
+  }
+  document.querySelectorAll('[data-add-equipment]').forEach(button=>button.addEventListener('click',()=>{
+    equipmentMode=button.dataset.addEquipment;equipmentChoices=[];equipmentOptions.replaceChildren();equipmentSearch.value='';
+    equipmentDialog.querySelector('h2').textContent=equipmentMode==='sonic'?t('Aggiungi sonico','Ajouter sonique'):t('Aggiungi inclinometro','Ajouter inclinomètre');
+    const rows=[...form.querySelectorAll('.project-equipment-row:not(.project-equipment-row--head)')]
+      .filter(row=>row.querySelector('[name=equipment_tipologia]').value==='paratia')
+      .sort((a,b)=>a.querySelector('span').textContent.localeCompare(b.querySelector('span').textContent,fr?'fr':'it',{numeric:true}));
+    rows.forEach(row=>{
+      const field=row.querySelector('[name=equipment_mode]'),label=document.createElement('label'),checkbox=document.createElement('input'),text=document.createElement('span');
+      const name=row.querySelector('span').textContent;
+      checkbox.type='checkbox';checkbox.value=row.querySelector('[name=equipment_numero]').value;
+      checkbox.disabled=hasEquipment(field.value,equipmentMode);
+      text.textContent=name+(checkbox.disabled?` · ${t('già presente','déjà présent')}`:'');
+      label.append(checkbox,text);equipmentOptions.append(label);
+      equipmentChoices.push({checkbox,label,field,name});checkbox.addEventListener('change',updateEquipmentCount);
+    });
+    if(!rows.length)equipmentOptions.textContent=t('Definisci prima i pannelli del cantiere.','Définissez d’abord les panneaux du chantier.');
+    updateEquipmentCount();equipmentDialog.showModal();equipmentSearch.focus();
+  }));
+  equipmentSearch.addEventListener('input',()=>equipmentChoices.forEach(c=>c.label.hidden=!c.name.toLocaleLowerCase().includes(equipmentSearch.value.trim().toLocaleLowerCase())));
+  equipmentDialog.querySelector('[data-equipment-all]').addEventListener('click',()=>{equipmentChoices.forEach(c=>{if(!c.label.hidden&&!c.checkbox.disabled)c.checkbox.checked=true;});updateEquipmentCount();});
+  equipmentDialog.querySelector('[data-equipment-clear]').addEventListener('click',()=>{equipmentChoices.forEach(c=>c.checkbox.checked=false);updateEquipmentCount();});
+  equipmentDialog.querySelector('[data-equipment-cancel]').addEventListener('click',()=>equipmentDialog.close());
+  equipmentApply.addEventListener('click',()=>{
+    const selected=equipmentChoices.filter(c=>c.checkbox.checked&&!c.checkbox.disabled);
+    selected.forEach(({field})=>{field.value=field.value==='aucun'?equipmentMode:'sonic_inclinometre';field.dispatchEvent(new Event('change',{bubbles:true}));});
+    const feedback=document.querySelector('[data-equipment-feedback]');feedback.hidden=false;
+    feedback.textContent=`${equipmentMode==='sonic'?t('Sonico','Sonique'):t('Inclinometro','Inclinomètre')}: ${selected.map(c=>c.name).join(', ')}. ${t('Salva configurazione progetto per confermare.','Enregistrez la configuration du projet pour confirmer.')}`;
+    equipmentDialog.close();
+  });
   document.getElementById('coupe-errors')?.focus();
   cards().forEach(card=>{if(!card.hidden)card.dataset.started='1';});
   showKinds();
