@@ -21,6 +21,53 @@ def strut():
         length_m=16,diameter_mm=610,thickness_mm=10,status='installed',installed_on='2026-09-20',notes='Posa verificata')
 
 
+def corner_layout():
+    return dict(width=240,height=240,scale_ppm=10,panels=[
+        dict(key='top_a',label='P3a',corner_group='top',element=3,points=[[100,100],[110,90],[190,90],[190,100]]),
+        dict(key='top_b',label='P3b',corner_group='top',element=3,points=[[100,20],[110,20],[110,90],[100,100]]),
+        dict(key='bottom_a',label='P11a',corner_group='bottom',element=11,points=[[0,180],[20,180],[30,190],[0,190]]),
+        dict(key='bottom_b',label='P11b',corner_group='bottom',element=11,points=[[20,180],[30,190],[30,230],[20,230]])])
+
+
+@pytest.mark.parametrize('top_key', ['top_a', 'top_b'])
+@pytest.mark.parametrize('bottom_key', ['bottom_a', 'bottom_b'])
+def test_corner_support_keeps_shared_vertex_and_existing_arm_identity(top_key, bottom_key):
+    s={**strut(),'panel_a':bottom_key,'panel_b':top_key,'a':[20,180],'b':[100,100]}
+    value=dict(levels=[dict(id='l1',name='Livello 1',struts=[s])],wells=[],rabotage=[])
+    result=validate_works(value,corner_layout())
+    saved=result['levels'][0]['struts'][0]
+    assert saved['a']==[20,180] and saved['b']==[100,100]
+    assert saved['panel_a']==bottom_key and saved['panel_b']==top_key
+    assert validate_works(result,corner_layout())==result
+
+
+def test_corner_support_uses_first_face_of_either_arm_without_extending_through_wall():
+    p=corner_layout()
+    p['panels'].append(dict(key='left',label='P1',points=[[10,20],[20,20],[20,180],[10,180]]))
+    # The chosen identity is the horizontal arm, but the axis meets the vertical one.
+    s={**strut(),'panel_a':'left','panel_b':'top_a','a':[15,60],'b':[105,60]}
+    value=dict(levels=[dict(id='l1',name='Livello 1',struts=[s])],wells=[],rabotage=[])
+    saved=validate_works(value,p)['levels'][0]['struts'][0]
+    assert saved['a']==[20,60] and saved['b']==[100,60]
+    # Ungrouped panels must not be joined merely because their labels look related.
+    for panel in p['panels']:panel.pop('corner_group',None)
+    with pytest.raises(ValueError,match='non incontra'):
+        validate_works(value,p)
+
+
+def test_two_distinct_bearings_on_one_corner_and_third_wall_still_rejected():
+    p=corner_layout()
+    s={**strut(),'panel_a':'top_a','panel_b':'top_a','a':[105,50],'b':[150,95]}
+    value=dict(levels=[dict(id='l1',name='Livello 1',struts=[s])],wells=[],rabotage=[])
+    result=validate_works(value,p)
+    saved=result['levels'][0]['struts'][0]
+    assert saved['a']==[110,55] and saved['b']==[145,90]
+    assert validate_works(result,p)==result
+    p['panels'].append(dict(key='obstacle',label='P2',points=[[125,60],[130,60],[130,85],[125,85]]))
+    with pytest.raises(ValueError,match='attraversa il pannello P2'):
+        validate_works(value,p)
+
+
 def works():
     return dict(levels=[dict(id='level1',name='Livello -1',axis_ngf=6,struts=[strut()])],
         wells=[dict(id='well1',label='Pozzo 1',point=[80,120],status='pumping')],rabotage=[1])

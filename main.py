@@ -4728,7 +4728,8 @@ def _apply_extra_site_progress(
 def _build_site_progress(
     site: Site, lang: str
 ) -> tuple[dict[str, dict[str, object]], list[dict[str, int | str]], int]:
-    cordoli_total = float(site.cordoli_total_m or 0)
+    from services.site_works import guide_configuration, resolved_works, level_counts
+    cordoli_total = float(guide_configuration(site)['guide_total_m'])
     cordoli_done = float(site.cordoli_done_m or 0)
     paratie_total = _site_paratie_total(site)
     paratie_done = int(site.paratie_done_panels or 0)
@@ -4857,21 +4858,29 @@ def _build_site_progress(
     if site.works_map:
         import json as _works_json
         from services.site_works import counts as _works_counts
-        works = _works_json.loads(site.works_map.payload)
+        works = resolved_works(site)
         counted = _works_counts(works)
         replacements = {}
-        if counted['struts']:
-            replacements['puntoni'] = (counted['placed'], counted['struts'])
+        replacements['puntoni'] = (counted['placed'], counted['struts'])
         if counted['wells']:
             replacements['pozzi_pompaggio'] = (counted['wells_done'], counted['wells'])
         reference = _works_json.loads(site.works_map.reference)
-        mapped_panels = {p.get('element') for p in reference['layout']['panels']} - {None}
+        mapped_panels = ({p.get('element') for p in reference['layout']['panels']} - {None}) if reference else set()
         if mapped_panels:
             replacements['rabotage'] = (counted['rabotage'], len(mapped_panels))
         for key, (done, total) in replacements.items():
             percent = _progress_percent(done, total)
+            source = 'configurazione' if key=='puntoni' and not counted['mapped_struts'] else 'mappa'
             progress_summary[key].update(done=done, total=total, percent=percent,
-                status=_progress_status(percent, lang), subtitle=f'{done} / {total} · mappa')
+                status=_progress_status(percent, lang), subtitle=f'{done} / {total} · {source}')
+        strut_levels_view = []
+        for index,level in enumerate(works['levels'],1):
+            total,done=level_counts(level)
+            quota=f"{level['axis_ngf']:+.2f} NGF" if level['axis_ngf'] is not None else ''
+            strut_levels_view.append(dict(level_index=index,level_quota=quota,total=total,done=done,
+                                         percent=_progress_percent(done,total)))
+        progress_summary['puntoni']['levels']=strut_levels_view
+        strut_levels_count=len(strut_levels_view)
 
     return progress_summary, strut_levels_view, strut_levels_count
 
@@ -5167,7 +5176,7 @@ def manager_site_progress_cordoli(
         db.close()
 
     return RedirectResponse(
-        url=f"/manager/cantieri/{site_id}/modifica#progress-cordoli",
+        url=f"/manager/cantieri/{site_id}/avanzamento#phase-guides",
         status_code=303,
     )
 
@@ -5217,7 +5226,7 @@ def manager_site_progress_paratie(
         db.close()
 
     return RedirectResponse(
-        url=f"/manager/cantieri/{site_id}/modifica#progress-paratie",
+        url=f"/manager/cantieri/{site_id}/avanzamento#phase-walls",
         status_code=303,
     )
 
@@ -5296,7 +5305,7 @@ def manager_site_progress_puntoni(
         db.close()
 
     return RedirectResponse(
-        url=f"/manager/cantieri/{site_id}/modifica#progress-puntoni",
+        url=f"/manager/cantieri/{site_id}/avanzamento#configuration",
         status_code=303,
     )
 

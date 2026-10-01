@@ -5,7 +5,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, FiniteFloat
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,7 @@ from permissions import has_perm
 from routes.site_plans import access, same_origin, templates, elements
 from services.plan_selection import current_plan
 from services.site_plan_import import MAX_PDF_BYTES
-from services.site_works import Strict, Works, Strut, Key, empty_works, validate_works, object_ids, merge_import, counts
+from services.site_works import Strict, Works, Strut, Key, empty_works, resolved_works, guide_configuration, validate_works, object_ids, merge_import, counts
 from services.strut_drawing import read_pdf
 from template_context import render_template
 
@@ -32,7 +32,7 @@ def approved_reference(db,site_id):
 def snapshot(db,site):
     row=db.get(SiteWorksMap,site.id)
     if row:
-        return row.revision,json.loads(row.payload),json.loads(row.reference)
+        return row.revision,resolved_works(site),json.loads(row.reference) or approved_reference(db,site.id)
     return 0,empty_works(site),approved_reference(db,site.id)
 
 
@@ -44,19 +44,25 @@ def source(db,site_id,source_id):
 
 
 def persist(db,site,user,revision,value,reference,removed=None,action='WORKS_MAP_UPDATED'):
-    if not reference:
-        raise HTTPException(400,'Convalida prima una pianta delle paratie.')
     old_revision,old,old_reference=snapshot(db,site)
     if revision!=old_revision:
         raise HTTPException(409,'La mappa è cambiata in un’altra sessione. Ricarica prima di salvare.')
-    if not old_reference:
-        raise HTTPException(409,'La pianta convalidata non è più disponibile. Ricarica la mappa.')
     # On first save the caller must still be looking at the same approved plan.
-    if old_reference['plan_id']!=reference['plan_id'] or old_reference['revision']!=reference['revision']:
+    if old_reference and (old_reference['plan_id']!=reference['plan_id'] or old_reference['revision']!=reference['revision']):
         raise HTTPException(409,'La pianta di riferimento è cambiata. Ricarica la mappa.')
+    if not old_reference and (reference['plan_id'] is not None or reference['revision'] is not None):
+        raise HTTPException(409,'La pianta convalidata non è più disponibile. Ricarica la mappa.')
     reference=old_reference
     try:
-        value=validate_works(value,old_reference['layout'])
+        if reference:
+            value=validate_works(value,reference['layout'])
+        else:
+            value=Works.model_validate(value).model_dump(mode='json')
+            if value['wells'] or value['rabotage'] or any(l['struts'] for l in value['levels']):
+                raise ValueError('Convalida prima una pianta per posizionare le opere.')
+            ids=[l['id'] for l in value['levels']]
+            if len(ids)!=len(set(ids)):
+                raise ValueError('Identificativo ripetuto nella configurazione dei livelli.')
         lost=object_ids(old)-object_ids(value)
         if lost-set(removed or []):
             raise ValueError('Conferma esplicitamente l’eliminazione degli elementi rimossi.')
@@ -70,7 +76,7 @@ def persist(db,site,user,revision,value,reference,removed=None,action='WORKS_MAP
     try:
         if old_revision:
             changed=db.query(SiteWorksMap).filter_by(site_id=site.id,revision=revision).update(
-                dict(payload=payload,revision=revision+1,updated_at=datetime.utcnow()),synchronize_session=False)
+                dict(payload=payload,reference=json.dumps(reference),revision=revision+1,updated_at=datetime.utcnow()),synchronize_session=False)
             if changed!=1:
                 db.rollback()
                 raise HTTPException(409,'La mappa è stata aggiornata. Ricarica prima di salvare.')
@@ -87,8 +93,8 @@ def persist(db,site,user,revision,value,reference,removed=None,action='WORKS_MAP
 
 class Save(Strict):
     revision:int=Field(ge=0)
-    plan_id:int=Field(gt=0)
-    plan_revision:int=Field(ge=1)
+    plan_id:int|None=Field(default=None,gt=0)
+    plan_revision:int|None=Field(default=None,ge=1)
     works:Works
     confirm_remove:list[Key]=Field(default_factory=list,max_length=10000)
 
@@ -112,13 +118,40 @@ def data(site_id:int,db:Session=Depends(get_db),user:User=Depends(get_current_ac
     site=access(db,user,site_id)
     revision,value,reference=snapshot(db,site)
     current=approved_reference(db,site_id)
-    from main import _build_site_progress
+    from main import _build_site_progress, _update_progress_summary_for_fiche_grids
     summary,_,_=_build_site_progress(site,'it')
+    _update_progress_summary_for_fiche_grids(summary,site,site.fiches,'it')
     return dict(revision=revision,works=value,reference=reference,
         reference_changed=bool(reference and (not current or (current['plan_id'],current['revision'])!=(reference['plan_id'],reference['revision']))),
-        can_edit=has_perm(user,'sites.update'),elements=elements(db,site,user),summary=summary,
+        can_edit=has_perm(user,'sites.update'),elements=elements(db,site,user),summary=summary,configuration=guide_configuration(site),
         legacy_levels=[dict(name=f'Livello -{l.level_index}',quota=l.level_quota,total=l.total_struts_level,done=l.done_struts_level) for l in site.strut_levels],
         sources=[dict(id=s.id,filename=s.filename,page=s.page_number) for s in db.query(SiteStrutDrawing).filter_by(site_id=site_id).order_by(SiteStrutDrawing.id.desc()).all()])
+
+
+class ProgressUpdate(Strict):
+    installazione_cantiere_pct:int|None=Field(default=None,ge=0,le=100)
+    cordoli_total_m:FiniteFloat|None=Field(default=None,gt=0,le=1000000)
+    cordoli_done_m:FiniteFloat|None=Field(default=None,ge=0,le=1000000)
+    pozzi_pompaggio_pct:int|None=Field(default=None,ge=0,le=100)
+    rabotage_pct:int|None=Field(default=None,ge=0,le=100)
+
+
+@router.patch('/progress')
+def update_progress(request:Request,site_id:int,body:ProgressUpdate,db:Session=Depends(get_db),user:User=Depends(get_current_active_user_html)):
+    site=access(db,user,site_id,True);same_origin(request)
+    _,works,reference=snapshot(db,site)
+    if 'pozzi_pompaggio_pct' in body.model_fields_set and works['wells']:
+        raise HTTPException(400,'Aggiorna lo stato dei pozzi sulla mappa.')
+    if 'rabotage_pct' in body.model_fields_set and reference:
+        raise HTTPException(400,'Aggiorna il rabotage selezionando i pannelli sulla mappa.')
+    changes=body.model_dump(exclude_unset=True)
+    if any(v is None and k!='cordoli_total_m' for k,v in changes.items()):
+        raise HTTPException(400,'Inserisci un valore per l’avanzamento.')
+    for key,value in changes.items():
+        setattr(site,key,value)
+    log_audit_event(db,user,'SITE_PROGRESS_UPDATED','site',site.id,changes)
+    db.commit();db.expire_all()
+    return data(site_id,db,user)
 
 
 @router.put('/data')

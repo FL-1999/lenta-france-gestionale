@@ -53,6 +53,14 @@ class Level(Strict):
     name: Name
     axis_ngf: Annotated[FiniteFloat, Field(ge=-10000, le=10000)] | None = None
     struts: list[Strut] = Field(default_factory=list, max_length=300)
+    planned_count: int = Field(default=0, ge=0, le=10000)
+    completed_count: int = Field(default=0, ge=0, le=10000)
+
+    @model_validator(mode='after')
+    def quantities(self):
+        if self.completed_count > self.planned_count:
+            raise ValueError('I puntoni eseguiti non possono superare quelli previsti.')
+        return self
 
 
 class Well(Strict):
@@ -71,15 +79,61 @@ class Works(Strict):
 
 def empty_works(site):
     # Legacy aggregates remain visible, but never invent individual placed struts.
-    levels=[Level(id=f'level-{l.level_index}', name=f'Livello -{l.level_index}') for l in site.strut_levels]
+    levels=[Level(id=f'level-{l.level_index}', name=f'Livello -{l.level_index}',
+                  planned_count=max(l.total_struts_level or 0, l.done_struts_level or 0),
+                  completed_count=l.done_struts_level or 0) for l in site.strut_levels]
+    alternatives={tuple(sorted(set(c.drawing_info.get('struts',[])),reverse=True))
+                  for c in site.coupes if c.drawing_info and c.drawing_info.get('reviewed')}
+    axes=next(iter(alternatives)) if len(alternatives)==1 else ()
     if not levels:
-        alternatives={tuple(sorted(set(c.drawing_info.get('struts',[])),reverse=True))
-                      for c in site.coupes if c.drawing_info and c.drawing_info.get('reviewed')}
         # Different coupes can describe the same storey at different elevations.
         # Only prefill an unambiguous set; never invent extra site-wide levels.
-        axes=next(iter(alternatives)) if len(alternatives)==1 else ()
         levels=[Level(id=f'level-{i+1}',name=f'Livello -{i+1}',axis_ngf=axis) for i,axis in enumerate(axes)]
+    elif len(levels)==len(axes):
+        for level,axis in zip(levels,axes):
+            level.axis_ngf=axis
     return Works(levels=levels).model_dump(mode='json')
+
+
+def resolved_works(site):
+    """Expose existing configuration without inventing strut positions or duplicating levels."""
+    configured=empty_works(site)
+    if not site.works_map:
+        return configured
+    value=json.loads(site.works_map.payload)
+    if not value['levels']:
+        value['levels']=configured['levels']
+    defaults={level['id']:level for level in configured['levels']}
+    for level in value['levels']:
+        previous=defaults.get(level['id'])
+        if previous:
+            for key in ('planned_count','completed_count'):
+                level.setdefault(key,previous[key])
+            if level.get('axis_ngf') is None and not level['struts']:
+                level['axis_ngf']=previous['axis_ngf']
+    return Works.model_validate(value).model_dump(mode='json')
+
+
+def guide_configuration(site):
+    from sqlalchemy.orm import object_session
+    from models import SitePlan
+    from services.plan_selection import current_plan
+    db=object_session(site)
+    plan=current_plan(db.query(SitePlan).filter_by(site_id=site.id).all()) if db else None
+    panels=json.loads(plan.approved)['panels'] if plan and plan.approved else []
+    widths=[p.get('width_m') for p in panels]
+    # Net widths already include each arm once. Never use an image perimeter or a partial sum.
+    length=round(sum(widths),3) if widths and all(w is not None and w>0 for w in widths) else None
+    automatic=not site.cordoli_total_m or site.cordoli_total_m<=0
+    return dict(wall_length_m=length,guide_auto=automatic,
+                guide_total_m=(length or 0) if automatic else site.cordoli_total_m,
+                guide_done_m=site.cordoli_done_m or 0)
+
+
+def level_counts(level):
+    if level['struts']:
+        return len(level['struts']),sum(s['status']!='planned' for s in level['struts'])
+    return level.get('planned_count',0),level.get('completed_count',0)
 
 
 def cross(a, b):
@@ -108,6 +162,26 @@ def support_face(mid, toward, polygon):
     return min(hits, key=lambda h: h[0])[1]
 
 
+def support_members(key, panels):
+    """Keep the approved A/B corner as one support, with both original identities."""
+    panel = panels[key]
+    group = panel.get('corner_group')
+    members = [p for p in panels.values() if p.get('corner_group') == group] if group else [panel]
+    return members if len(members) == 2 else [panel]
+
+
+def corner_support_face(mid, toward, members):
+    hits = []
+    for panel in members:
+        try:
+            hits.append(support_face(mid, toward, panel['points']))
+        except ValueError:
+            continue
+    if not hits:
+        raise ValueError('L’asse non incontra il pannello di appoggio. Riposiziona l’estremità sulla mappa.')
+    return min(hits, key=lambda p: math.dist(mid, p))
+
+
 def validate_works(data, layout):
     value = Works.model_validate(data).model_dump(mode='json')
     panels = {p['key']: p for p in layout['panels']}
@@ -128,14 +202,17 @@ def validate_works(data, layout):
             if s['label'].casefold() in labels:
                 raise ValueError('Sigla puntone ripetuta nello stesso livello.')
             labels.add(s['label'].casefold())
-            if s['panel_a'] not in panels or s['panel_b'] not in panels or s['panel_a'] == s['panel_b']:
+            if s['panel_a'] not in panels or s['panel_b'] not in panels:
+                raise ValueError('Scegli due pannelli di appoggio distinti della pianta.')
+            supports = {end: support_members(s['panel_'+end], panels) for end in ('a', 'b')}
+            if s['panel_a'] == s['panel_b'] and len(supports['a']) == 1:
                 raise ValueError('Scegli due pannelli di appoggio distinti della pianta.')
             position(s['a']); position(s['b'])
             if math.dist(s['a'], s['b']) < 1:
                 raise ValueError('Gli appoggi del puntone coincidono.')
             mid = [(a+b)/2 for a,b in zip(s['a'], s['b'])]
-            s['a'] = support_face(mid, s['a'], panels[s['panel_a']]['points'])
-            s['b'] = support_face(mid, s['b'], panels[s['panel_b']]['points'])
+            s['a'] = corner_support_face(mid, s['a'], supports['a'])
+            s['b'] = corner_support_face(mid, s['b'], supports['b'])
             position(s['a']); position(s['b'])
             # A straight strut cannot pass through a third wall panel.
             for key,p in panels.items():
@@ -189,8 +266,9 @@ def merge_import(value, level_id, rows, source_id):
 
 def counts(value):
     struts = [s for l in value['levels'] for s in l['struts']]
-    return {'struts': len(struts), 'installed': sum(s['status']=='installed' for s in struts),
-            'placed': sum(s['status']!='planned' for s in struts),
+    totals=[level_counts(l) for l in value['levels']]
+    return {'struts': sum(t for t,d in totals), 'mapped_struts':len(struts), 'installed': sum(s['status']=='installed' for s in struts),
+            'placed': sum(d for t,d in totals),
             'removed': sum(s['status']=='removed' for s in struts), 'wells': len(value['wells']),
             'wells_done': sum(w['status']!='planned' for w in value['wells']),
             'pumping': sum(w['status']=='pumping' for w in value['wells']), 'rabotage': len(value['rabotage'])}

@@ -1,21 +1,28 @@
 {% extends 'shared/base.html' %}
 {% block title %}{{ site.name }} · Avanzamento e mappa{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/site-works.css?v=20260930">
+<link rel="stylesheet" href="/static/css/site-works.css?v=20261001-3">
 <div id="works-app" data-site="{{ site.id }}">
   <header class="page-header"><div><p class="page-eyebrow">{{ site.code or '' }} · {{ site.name }}</p><h1>Avanzamento e mappa</h1><p>Le fasi del cantiere, con i pannelli sempre come riferimento.</p></div><a class="btn btn-secondary" href="/manager/cantieri/{{ site.id }}">Torna al cantiere</a></header>
   <div id="wm-message" role="status" aria-live="polite">Caricamento…</div>
+  <details id="wm-config" class="card wm-card wm-config">
+    <summary>Dati di configurazione <span class="wm-muted">· quantità, livelli e progetto</span></summary>
+    <div id="wm-config-data"></div>
+    {% if can_edit %}<div class="wm-row wm-actions"><button type="button" class="btn btn-secondary" id="wm-config-guides">Configura muretti guida</button><button type="button" class="btn btn-secondary" id="wm-config-level">Nuovo livello puntoni</button><a class="btn btn-secondary" href="/manager/cantieri/{{ site.id }}/configurazione-progetto">Configurazione del progetto e coupe</a></div>{% endif %}
+    <a href="/manager/cantieri/{{ site.id }}/pianta">Configura pianta e pannelli delle paratie</a>
+    · <a href="{{ url_for('manager_site_progress_grids',site_id=site.id) }}">Dettaglio avanzamento paratie e pali</a>
+  </details>
   <section class="wm-phases" id="wm-phases" aria-label="Fasi di lavoro"></section>
-  <p><a href="/manager/cantieri/{{ site.id }}/pianta">Apri la pianta di scavo e getto delle paratie</a>{% if can_edit %} · <a href="/manager/cantieri/{{ site.id }}/modifica#progress-puntoni">Aggiorna installazione, muretti e riepiloghi manuali</a>{% endif %}</p>
-  {% include 'manager/_coupe_site_info.html' %}
+  <p class="wm-phase-help">Seleziona una fase per aggiornarla. Paratie e puntoni disegnati si aggiornano dalle fiches e dalla mappa.</p>
   <div id="wm-empty" class="card wm-card" hidden><h2>Serve una pianta convalidata</h2><p>Configura prima i pannelli delle paratie. Saranno la base per posizionare puntoni e pozzi.</p><a class="btn btn-primary" href="/manager/cantieri/{{ site.id }}/pianta">Apri pianta e pannelli</a></div>
   <div id="wm-workspace" hidden>
     <section class="card wm-card">
-      <div class="wm-row"><div><h2>Mappa generale</h2><p class="wm-muted">Paratie sempre visibili · seleziona un elemento per i dettagli sotto la mappa.</p></div><div class="wm-row"><button class="btn btn-secondary" id="wm-fit">Intera pianta</button><button class="btn btn-secondary" id="wm-zoom">Zoom selezionato</button><button class="btn btn-secondary" id="wm-zoom-a">Appoggio A</button><button class="btn btn-secondary" id="wm-zoom-b">Appoggio B</button></div></div>
+      <div class="wm-row"><div><h2>Mappa generale</h2></div><div class="wm-row"><button class="btn btn-secondary" id="wm-clear-selection">Deseleziona</button><button class="btn btn-secondary" id="wm-fit">Intera pianta</button><button class="btn btn-secondary" id="wm-zoom">Zoom selezionato</button><button class="btn btn-secondary" id="wm-zoom-a">Appoggio A</button><button class="btn btn-secondary" id="wm-zoom-b">Appoggio B</button></div></div>
       <div class="wm-toolbar"><label>Livello puntoni<select id="wm-level" aria-label="Livello puntoni"></select></label><label><input id="wm-struts" type="checkbox" checked> Puntoni</label><label><input id="wm-wells" type="checkbox" checked> Pozzi</label><label><input id="wm-rabotage" type="checkbox"> Rabotage</label><span id="wm-level-count"></span></div>
-      {% if can_edit %}<div class="wm-row wm-actions"><button class="btn btn-secondary" id="wm-add-level">Nuovo livello</button><button class="btn btn-secondary" id="wm-edit-level">Modifica livello</button><button class="btn btn-primary" id="wm-read">Leggi PDF puntoni</button><button class="btn btn-secondary" id="wm-add-strut">Aggiungi puntone</button><button class="btn btn-secondary" id="wm-add-well">Aggiungi pozzo</button></div>{% endif %}
       <p id="wm-placement" role="status"></p>
       <svg id="wm-map" role="img" aria-label="Mappa con pannelli, puntoni e pozzi"></svg>
+      {% if can_edit %}<div class="wm-row wm-actions"><button class="btn btn-secondary" id="wm-add-level">Nuovo livello</button><button class="btn btn-secondary" id="wm-edit-level">Modifica livello</button><button class="btn btn-primary" id="wm-read">Leggi PDF puntoni</button><button class="btn btn-secondary" id="wm-add-strut">Aggiungi puntone</button><button class="btn btn-secondary" id="wm-add-well">Aggiungi pozzo</button></div>{% endif %}
+      <p class="wm-muted wm-map-help">Seleziona un elemento per i dettagli. Riclicca o clicca nel vuoto per deselezionare.</p>
       <p class="wm-mobile-help">Tocca un elemento o scegli la sua sigla sotto. Usa «Zoom selezionato» o «Appoggio A / B» per leggere tutte le divisioni e le sigle vicine.</p>
       <div class="wm-legend"><span>Paratie: divisioni e sigle originali</span><span class="wm-blue">● Puntone previsto</span><span class="wm-green">● Posato</span><span>┄ Rimosso</span><span class="wm-cyan">● Pozzo</span><span class="wm-purple">● Rabotage completato</span></div>
       <div id="wm-selectors" class="wm-row"></div>
@@ -23,6 +30,7 @@
     <section id="wm-detail" class="card wm-card" aria-live="polite"><h2>Dettagli</h2><p>Seleziona un puntone, un pozzo o un pannello.</p></section>
     <details class="card wm-card"><summary>PDF dei puntoni e dati precedenti</summary><div id="wm-sources"></div><div id="wm-legacy"></div></details>
   </div>
+  <details class="card wm-card" id="wm-coupe-info"><summary>Riferimenti delle coupe · quote puntoni e trattamento</summary>{% include 'manager/_coupe_site_info.html' %}</details>
   <dialog id="wm-editor" class="wm-dialog"><form id="wm-form"><h2 id="wm-form-title"></h2><div id="wm-fields" class="wm-fields"></div><p id="wm-form-error" role="alert"></p><div class="wm-row"><button class="btn btn-primary" type="submit">Salva</button><button class="btn btn-secondary" type="button" data-close="wm-editor">Annulla</button></div></form></dialog>
   <dialog id="wm-reader" class="wm-dialog wm-wide">
     <div class="wm-row"><h2>Leggi e collega i puntoni</h2><button class="btn btn-secondary" data-close="wm-reader">Chiudi</button></div>
@@ -30,19 +38,25 @@
     <form id="wm-upload" class="wm-row"><label>PDF (massimo 15 MB)<input type="file" name="file" accept=".pdf,application/pdf" required></label><label>Pagina<input type="number" name="page_number" min="1" value="1" required></label><button class="btn btn-primary">Leggi pagina</button></form>
     <p id="wm-read-status" role="status"></p>
     <div id="wm-read-content" hidden>
+      <div class="wm-row wm-review-shortcut"><span>La selezione è un’anteprima. Per salvarla, verifica i puntoni nella tabella.</span><button type="button" class="btn btn-primary" id="wm-review-jump">Controlla e salva i puntoni ↓</button></div>
       <div class="wm-row"><label>Operazione<select id="wm-pdf-mode"><option value="crop">Rettangolo intorno alla pianta</option><option value="align">Allinea due punti con la mappa</option></select></label><button class="btn btn-secondary" id="wm-crop-read">Leggi selezione</button><button class="btn btn-secondary" id="wm-page-read">Pagina intera</button><a id="wm-original" target="_blank" rel="noopener">Apri PDF originale</a></div>
       <p id="wm-align-help">Trascina sul PDF per selezionare la sola pianta dei puntoni.</p>
       <div class="wm-reader-maps"><svg id="wm-pdf" aria-label="PDF: ritaglio o punti di allineamento"></svg><svg id="wm-target" aria-label="Pianta convalidata: punti corrispondenti"></svg></div>
       <div class="wm-row"><button class="btn btn-secondary" id="wm-align-reset">Ricomincia allineamento</button><span id="wm-align-state">Allineamento da verificare</span></div>
-      <p id="wm-reader-notice"></p><div class="wm-table-wrap"><table class="wm-table"><thead><tr><th>Importa</th><th>Puntone</th><th>Lunghezza m</th><th>Ø mm</th><th>Spessore mm</th><th>Appoggio A</th><th>Appoggio B</th><th>Controllo</th></tr></thead><tbody id="wm-proposals"></tbody></table></div>
+      <p id="wm-reader-notice"></p>
+      <h3 id="wm-review-heading" tabindex="-1">Verifica e salvataggio dei puntoni</h3>
+      <p>Controlla misure e appoggi, poi spunta «Verificato» su ogni riga da importare. Infine conferma il controllo e premi «Salva puntoni».</p>
+      <div class="wm-table-wrap"><table class="wm-table"><thead><tr><th>Importa</th><th>Puntone</th><th>Lunghezza m</th><th>Ø mm</th><th>Spessore mm</th><th>Appoggio A</th><th>Appoggio B</th><th>Controllo</th></tr></thead><tbody id="wm-proposals"></tbody></table></div>
       <p>Gli angoli, i fissaggi e la voce «Vériné» possono essere completati da “Dettagli”. Controlla sempre le tabelle del PDF: quelle in immagine non vengono trascritte automaticamente.</p>
       <details><summary>Testi riconosciuti</summary><pre id="wm-evidence"></pre></details>
       <label class="wm-check"><input type="checkbox" id="wm-import-reviewed"> Ho controllato allineamento, misure e appoggi dei puntoni selezionati.</label>
-      <button class="btn btn-primary" id="wm-import">Conferma nel livello selezionato</button>
+      <p id="wm-import-summary" role="status"></p>
+      <p id="wm-import-error" role="alert"></p>
+      <button type="button" class="btn btn-primary" id="wm-import">Salva puntoni</button>
     </div>
   </dialog>
   <dialog id="wm-confirm" class="wm-dialog"><h2>Conferma eliminazione</h2><p id="wm-confirm-text"></p><form method="dialog" class="wm-row"><button class="btn btn-secondary" value="cancel" autofocus>Annulla</button><button class="btn btn-danger" value="confirm">Elimina</button></form></dialog>
 </div>
 <script src="/static/js/plan-geometry.js?v=20260926" defer></script>
-<script src="/static/js/site-works.js?v=20260930" defer></script>
+<script src="/static/js/site-works.js?v=20261001-3" defer></script>
 {% endblock %}
