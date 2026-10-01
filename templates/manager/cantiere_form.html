@@ -365,7 +365,11 @@
 </div>
 
 {% if mode == "edit" %}
-  {% include "manager/_site_progress_section.html" %}
+  <section class="card" id="progress-section" style="padding:20px;margin:20px 0">
+    <h2>{{ 'Avancement et carte' if lang == 'fr' else 'Avanzamento e mappa' }}</h2>
+    <p>{{ 'Les quantités, les niveaux et le suivi des travaux sont réunis sur une seule page.' if lang == 'fr' else 'Quantità, livelli dei puntoni e avanzamento dei lavori sono riuniti in un’unica pagina.' }}</p>
+    <a class="btn btn-primary" href="/manager/cantieri/{{ site.id }}/avanzamento">{{ 'Ouvrir avancement et carte' if lang == 'fr' else 'Apri avanzamento e mappa' }}</a>
+  </section>
 {% endif %}
 
 {% if mode == "edit" %}

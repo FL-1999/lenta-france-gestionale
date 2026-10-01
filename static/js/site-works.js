@@ -13,8 +13,13 @@
   let reader=null,sourceAnchors=[],targetAnchors=[],crop=null,drag=null,proposalIndex=0,reposition=false;
   const panels=()=>data.reference?.layout.panels||[];
   const panel=key=>panels().find(p=>p.key===key);
+  const supportMembers=key=>{const p=panel(key),pair=p?.corner_group?panels().filter(q=>q.corner_group===p.corner_group):[];return pair.length===2?pair:p?[p]:[];};
+  const supportKey=key=>supportMembers(key)[0]?.key||key;
+  const supportLabel=key=>supportMembers(key).map(p=>p.label).join(' / ');
+  const jointPoints=members=>members.length===2?members[0].points.filter(p=>members[1].points.some(q=>dist(p,q)<1e-4)):[];
+  function supportPoint(key){const members=supportMembers(key),joint=jointPoints(members);return joint.length?center({points:joint}):center(panel(key));}
   const level=()=>data.works.levels.find(l=>l.id===levelId);
-  const strut=()=>selection?.kind==='strut'?level()?.struts.find(s=>s.id===selection.id):null;
+  const strut=()=>selection?.kind==='strut'&&$('wm-struts').checked?level()?.struts.find(s=>s.id===selection.id):null;
   function message(text){$('wm-message').textContent=text;}
   async function api(path,options={}){
     const response=await fetch(url+path,{credentials:'same-origin',...options});
@@ -23,7 +28,7 @@
     return result;
   }
   async function load(){data=await api('/data');levelId=data.works.levels.some(l=>l.id===levelId)?levelId:data.works.levels[0]?.id;render();}
-  function body(works){return {revision:data.revision,plan_id:data.reference.plan_id,plan_revision:data.reference.revision,works};}
+  function body(works){return {revision:data.revision,plan_id:data.reference?.plan_id??null,plan_revision:data.reference?.revision??null,works};}
   async function save(works,removed=[]){
     if(busy)throw Error('Attendi il salvataggio in corso.');busy=true;
     try{const result=await api('/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body(works),confirm_remove:removed})});data.works=result.works;data.revision=result.revision;render();message('Modifiche salvate.');}
@@ -37,25 +42,33 @@
   }
   function fullBox(){return bbox(panels().flatMap(p=>p.points),.12);}
   const pts=points=>points.map(p=>p.join(',')).join(' ');
-  function phase(label,done,total,caption){const percent=total?Math.round(done/total*100):0;return `<div class="wm-phase"><span>${esc(label)}</span><strong>${percent}%</strong><small>${esc(caption)}</small><progress max="100" value="${percent}"></progress></div>`;}
+  const levelTotals=l=>l.struts.length?[l.struts.length,l.struts.filter(s=>s.status!=='planned').length]:[l.planned_count||0,l.completed_count||0];
+  function phase(id,label,done,total,caption){const percent=total?Math.min(100,Math.round(done/total*100)):0;return `<button type="button" class="wm-phase" data-phase="${id}"><span>${esc(label)}</span><strong>${percent}%</strong><small>${esc(caption)}</small><progress max="100" value="${percent}"></progress></button>`;}
   function phases(){
     const all=data.works.levels.flatMap(l=>l.struts),w=data.works.wells,nums=new Set(panels().map(p=>p.element).filter(Boolean));
-    const cast=data.elements.filter(e=>nums.has(e.number)&&e.status==='cast').length;
-    const sum=data.summary,placed=all.filter(s=>s.status==='installed').length,removed=all.filter(s=>s.status==='removed').length;
-    $('wm-phases').innerHTML=phase('Installazione',sum.installazione_cantiere.done,100,`${num(sum.installazione_cantiere.done)}% registrato`)+
-      phase('Muretti guida',sum.cordoli.done,sum.cordoli.total,`${num(sum.cordoli.done)} / ${num(sum.cordoli.total)} m`)+
-      phase('Paratie',cast,nums.size,`${cast} / ${nums.size} gettate · dalle fiches`)+
-      phase('Posa puntoni',placed+removed,all.length,`${placed} in opera · ${removed} rimossi · ${all.length} previsti`)+
-      phase('Pozzi',w.filter(x=>x.status!=='planned').length,w.length,`${w.length} pozzi · ${w.filter(x=>x.status==='pumping').length} pompe attive`)+
-      phase('Rabotage',data.works.rabotage.length,nums.size,`${data.works.rabotage.length} / ${nums.size} pannelli`);
+    const cast=data.elements.filter(e=>(!data.reference||nums.has(e.number))&&e.status==='cast').length;
+    const sum=data.summary,totals=data.works.levels.map(levelTotals),planned=totals.reduce((n,l)=>n+l[0],0),done=totals.reduce((n,l)=>n+l[1],0),wallTotal=data.reference?nums.size:sum.paratie.total;
+    $('wm-phases').innerHTML=phase('installation','Installazione',sum.installazione_cantiere.done,100,`${num(sum.installazione_cantiere.done)}% · aggiornamento manuale`)+
+      phase('guides','Muretti guida',sum.cordoli.done,sum.cordoli.total,`${num(sum.cordoli.done)} / ${num(sum.cordoli.total)} m · aggiorna eseguiti`)+
+      phase('walls','Paratie',cast,wallTotal,`${cast} / ${wallTotal} gettate · dalle fiches`)+
+      phase('struts','Posa puntoni',done,planned,`${done} / ${planned} posati · ${all.length?`${all.length} sulla mappa`:'da posizionare'}`)+
+      phase('wells','Pozzi',w.length?w.filter(x=>x.status!=='planned').length:sum.pozzi_pompaggio.done,w.length||100,w.length?`${w.length} pozzi · dalla mappa`:'Manuale · apri per aggiornare')+
+      phase('rabotage','Rabotage',data.reference?data.works.rabotage.length:sum.rabotage.done,data.reference?nums.size:100,data.reference?`${data.works.rabotage.length} / ${nums.size} pannelli · dalla mappa`:'Avanzamento manuale');
+    if(sum.pali.total)$('wm-phases').insertAdjacentHTML('beforeend',phase('piles','Pali',sum.pali.done,sum.pali.total,`${sum.pali.done} / ${sum.pali.total} · dalle fiches`));
+  }
+  function configuration(){
+    const c=data.configuration;
+    $('wm-config-data').innerHTML=facts([['Paratie da eseguire',c.wall_length_m==null?'Metri disponibili dopo la convalida della pianta':num(c.wall_length_m)+' m lineari'],['Muretti guida previsti',num(c.guide_total_m)+' m · '+(c.guide_auto?'dalla pianta':'totale manuale')]])+
+      '<h3>Livelli dei puntoni</h3>'+data.works.levels.map(l=>{const [total,done]=levelTotals(l);return `<div class="wm-config-level"><span><strong>${esc(l.name)}</strong>${l.axis_ngf==null?'':` · ${num(l.axis_ngf)} NGF`} · ${done} / ${total} posati · ${l.struts.length?'conteggio dalla mappa':'da posizionare sulla mappa'}</span>${data.can_edit?`<button type="button" class="btn btn-secondary" data-config-level="${esc(l.id)}">${l.struts.length?'Dati del livello':'Configura quantità e livello'}</button>`:''}</div>`;}).join('')||'';
+    if(!data.works.levels.length)$('wm-config-data').insertAdjacentHTML('beforeend','<p>Nessun livello configurato. Puoi aggiungerlo o definirlo nelle coupe.</p>');
   }
   function render(){
-    phases();$('wm-empty').hidden=!!data.reference;$('wm-workspace').hidden=!data.reference;
+    phases();configuration();$('wm-empty').hidden=!!data.reference;$('wm-workspace').hidden=!data.reference;
     message(data.reference_changed?'La pianta delle paratie è cambiata. Questa mappa conserva la versione di riferimento per non spostare le opere già registrate. Controlla l’allineamento prima di nuove lavorazioni.':'');
     if(!data.reference)return;
     $('wm-level').innerHTML=data.works.levels.length?data.works.levels.map(l=>`<option value="${esc(l.id)}">${esc(l.name)}${l.axis_ngf!=null?' · asse '+num(l.axis_ngf)+' NGF':''}</option>`).join(''):'<option value="">Nessun livello configurato</option>';
     $('wm-level').value=levelId||'';
-    const l=level();$('wm-level-count').textContent=l?`${l.struts.filter(s=>s.status!=='planned').length} / ${l.struts.length} posati · ${l.struts.filter(s=>s.status==='removed').length} rimossi`:'';
+    const l=level(),totals=l?levelTotals(l):[0,0];$('wm-level-count').textContent=l?`${totals[1]} / ${totals[0]} posati · ${l.struts.length?`${l.struts.filter(s=>s.status==='removed').length} rimossi`:'puntoni da posizionare'}`:'';
     for(const id of ['wm-edit-level','wm-add-strut','wm-read'])if($(id))$(id).disabled=!l;
     $('wm-sources').innerHTML=data.sources.map(s=>`<p><a href="${url}/pdf/${s.id}/originale" target="_blank" rel="noopener">${esc(s.filename)}</a> · pagina ${s.page} ${data.can_edit?`<button class="btn btn-secondary" data-reread="${s.id}">Riapri lettura</button>`:''}</p>`).join('')||'<p>Nessun PDF puntoni caricato.</p>';
     $('wm-legacy').innerHTML=data.legacy_levels.length?'<h3>Riepiloghi manuali precedenti</h3><p>Restano conservati. La mappa conta solo i singoli elementi qui confermati.</p>'+data.legacy_levels.map(l=>`<p>${esc(l.name)} · ${esc(l.quota||'Quota non indicata')} · ${l.done} / ${l.total}</p>`).join(''):'';
@@ -85,18 +98,22 @@
     const dx=t.b[0]-t.a[0],dy=t.b[1]-t.a[1],length=Math.hypot(dx,dy),u=[dx/length,dy/length],n=[-u[1],u[0]];
     const cross=(a,b)=>a[0]*b[1]-a[1]*b[0],sub=(a,b)=>[a[0]-b[0],a[1]-b[1]];
     function endPoint(end,sign){
-      const origin=t[end],poly=panel(t['panel_'+end]).points,offset=[origin[0]+n[0]*width*.5*sign,origin[1]+n[1]*width*.5*sign];
-      const edges=poly.map((a,i)=>{const b=poly[(i+1)%poly.length],v=sub(b,a),len=Math.hypot(...v),projection=((origin[0]-a[0])*v[0]+(origin[1]-a[1])*v[1])/(len*len);return {a,v,d:Math.abs(cross(sub(origin,a),v))/len+(projection<-.001||projection>1.001?1e9:0)};}).sort((a,b)=>a.d-b.d);
-      const edge=edges[0],den=cross(u,edge.v);if(Math.abs(den)<1e-8)return offset;
-      const distance=cross(sub(edge.a,offset),edge.v)/den;return [offset[0]+distance*u[0],offset[1]+distance*u[1]];
+      const origin=[(t.a[0]+t.b[0])/2+n[0]*width*.5*sign,(t.a[1]+t.b[1])/2+n[1]*width*.5*sign],ray=u.map(v=>v*(end==='a'?-1:1));
+      let nearest=Infinity;
+      for(const p of supportMembers(t['panel_'+end]))for(let i=0;i<p.points.length;i++){
+        const a=p.points[i],edge=sub(p.points[(i+1)%p.points.length],a),den=cross(ray,edge);if(Math.abs(den)<1e-8)continue;
+        const d=cross(sub(a,origin),edge)/den,along=cross(sub(a,origin),ray)/den;
+        if(d>=0&&along>=-1e-6&&along<=1+1e-6)nearest=Math.min(nearest,d);
+      }
+      return Number.isFinite(nearest)?[origin[0]+nearest*ray[0],origin[1]+nearest*ray[1]]:[t[end][0]+n[0]*width*.5*sign,t[end][1]+n[1]*width*.5*sign];
     }
-    return [endPoint('a',1),endPoint('b',1),endPoint('b',-1),endPoint('a',-1)];
+    return [endPoint('a',1),endPoint('b',1),t.b,endPoint('b',-1),endPoint('a',-1),t.a];
   }
   function draw(){
     const box=view||fullBox(),scale=Math.min($('wm-map').clientWidth/box[2],$('wm-map').clientHeight/box[3]),font=(window.innerWidth<600?10:12)/Math.max(scale,.01),s=strut();
     $('wm-zoom-a').disabled=!s;$('wm-zoom-b').disabled=!s;
     $('wm-map').setAttribute('viewBox',box.join(' '));
-    const supports=s?[s.panel_a,s.panel_b]:selection?.kind==='panel'?[selection.id]:[];
+    const supports=(s?[s.panel_a,s.panel_b]:selection?.kind==='panel'?[selection.id]:[]).flatMap(key=>supportMembers(key).map(p=>p.key));
     // Subtract the wall faces from thick tubes, preserving oblique bearing edges.
     let html=`<defs><mask id="wm-interior" maskUnits="userSpaceOnUse" x="${box[0]}" y="${box[1]}" width="${box[2]}" height="${box[3]}"><rect x="${box[0]}" y="${box[1]}" width="${box[2]}" height="${box[3]}" fill="white"/>${panels().map(p=>`<polygon points="${pts(p.points)}" fill="black"/>`).join('')}</mask></defs>`;
     const compact=window.innerWidth<600&&!view;
@@ -125,7 +142,7 @@
     let html='';
     if(s){
       html=`<h2>${esc(s.label)} · ${esc(level().name)}</h2>`+facts([
-        ['Stato',labels[s.status]],['Asse puntone',level().axis_ngf==null?'Da indicare':num(level().axis_ngf)+' NGF'],['Appoggio A',panel(s.panel_a)?.label],['Appoggio B',panel(s.panel_b)?.label],['Lunghezza',num(s.length_m)+' m'],['Diametro esterno',num(s.diameter_mm)+' mm'],['Spessore tubo',num(s.thickness_mm)+' mm'],['Angoli in pianta A / B',num(s.angle_a)+'° / '+num(s.angle_b)+'°'],['Fissaggi A / B',(s.fixation_a||'—')+' / '+(s.fixation_b||'—')],['Vériné · dato del PDF',s.verine||'Da completare'],['Posa',s.installed_on||'—'],['Rimozione',s.removed_on||'—']]);
+        ['Stato',labels[s.status]],['Asse puntone',level().axis_ngf==null?'Da indicare':num(level().axis_ngf)+' NGF'],['Appoggio A',supportLabel(s.panel_a)],['Appoggio B',supportLabel(s.panel_b)],['Lunghezza',num(s.length_m)+' m'],['Diametro esterno',num(s.diameter_mm)+' mm'],['Spessore tubo',num(s.thickness_mm)+' mm'],['Angoli in pianta A / B',num(s.angle_a)+'° / '+num(s.angle_b)+'°'],['Fissaggi A / B',(s.fixation_a||'—')+' / '+(s.fixation_b||'—')],['Vériné · dato del PDF',s.verine||'Da completare'],['Posa',s.installed_on||'—'],['Rimozione',s.removed_on||'—']]);
       html+=`<p>${esc(s.notes)}</p>${s.source_id?`<p><a href="${url}/pdf/${s.source_id}/originale" target="_blank" rel="noopener">Apri PDF di riferimento</a></p>`:''}`;
     }else if(well){html=`<h2>${esc(well.label)}</h2>`+facts([['Stato',labels[well.status]],['Note',well.notes||'—']]);}
     else if(p){const e=data.elements.find(x=>x.number===p.element);html=`<h2>Pannello ${esc(p.label)}</h2>`+facts([['Paratia',e?.status==='cast'?'Getto registrato':e?.status==='fiche'?'Fiche presente':'Da eseguire'],['Rabotage',data.works.rabotage.includes(p.element)?'Completato':'Da eseguire']]);if(data.can_edit&&p.element)html+=`<button class="btn btn-primary" id="wm-treat">${data.works.rabotage.includes(p.element)?'Segna rabotage da eseguire':'Segna rabotage completato'}</button>`;}
@@ -137,32 +154,61 @@
     $('wm-delete')?.addEventListener('click',()=>action(async()=>{
       if(!await confirm(`Eliminare ${s?.label||well.label} e i suoi dati dalla mappa? La pianta delle paratie e il PDF restano conservati.`))return;
       const v=copy(data.works),id=s?.id||well.id;if(s)v.levels.find(l=>l.id===levelId).struts=v.levels.find(l=>l.id===levelId).struts.filter(t=>t.id!==id);else v.wells=v.wells.filter(w=>w.id!==id);
-      await save(v,[id]);selection=null;detail();
+      await save(v,[id]);clearSelection();
     }));
     $('wm-treat')?.addEventListener('click',()=>action(async()=>{const v=copy(data.works);v.rabotage=v.rabotage.includes(p.element)?v.rabotage.filter(n=>n!==p.element):[...v.rabotage,p.element];await save(v);}));
   }
   async function confirm(text){$('wm-confirm-text').textContent=text;const d=$('wm-confirm');d.showModal();return new Promise(resolve=>d.addEventListener('close',()=>resolve(d.returnValue==='confirm'),{once:true}));}
   function field(label,name,value='',type='text',extra=''){return `<label>${esc(label)}<input name="${name}" type="${type}" value="${esc(value??'')}" ${extra}></label>`;}
   function options(name,label,values,value){return `<label>${esc(label)}<select name="${name}">${values.map(([v,text])=>`<option value="${esc(v)}" ${v===value?'selected':''}>${esc(text)}</option>`).join('')}</select></label>`;}
-  const supportOptions=()=>panels().slice().sort((a,b)=>a.label.localeCompare(b.label,'it',{numeric:true})).map(p=>[p.key,p.label]);
+  const supportOptions=()=>panels().filter(p=>supportKey(p.key)===p.key).map(p=>[p.key,supportLabel(p.key)]).sort((a,b)=>a[1].localeCompare(b[1],'it',{numeric:true}));
   function editor(title,fields,submit){$('wm-form-title').textContent=title;$('wm-fields').innerHTML=fields;$('wm-form-error').textContent='';formSubmit=submit;$('wm-editor').showModal();}
   $('wm-form').addEventListener('submit',async e=>{
     e.preventDefault();const button=e.submitter;if(button.disabled)return;button.disabled=true;
     try{await formSubmit(new FormData(e.target));$('wm-editor').close();}catch(error){$('wm-form-error').textContent=error.message;}finally{button.disabled=false;}
   });
   function editLevel(existing){
-    const l=existing||{id:uid(),name:`Livello -${data.works.levels.length+1}`,axis_ngf:null,struts:[]};
-    editor(existing?'Modifica livello':'Nuovo livello',field('Nome','name',l.name,'text','required maxlength="80"')+field('Quota asse puntone (NGF)','axis_ngf',l.axis_ngf,'number','step="0.01" min="-10000" max="10000"'),async f=>{
+    const l=existing||{id:uid(),name:`Livello -${data.works.levels.length+1}`,axis_ngf:null,struts:[],planned_count:0,completed_count:0};
+    const quantities=l.struts.length?'<p class="wm-span">Quantità e posa si aggiornano dai singoli puntoni della mappa.</p>':field('Puntoni previsti','planned_count',l.planned_count||0,'number','min="0" max="10000" required')+field('Puntoni già posati','completed_count',l.completed_count||0,'number','min="0" max="10000" required')+'<p class="wm-span">Questi conteggi valgono finché il livello non ha puntoni disegnati. Quando importi o posizioni i puntoni, il conteggio passa alla mappa.</p>';
+    editor(existing?'Modifica livello':'Nuovo livello',field('Nome','name',l.name,'text','required maxlength="80"')+field('Quota asse puntone (NGF)','axis_ngf',l.axis_ngf,'number','step="0.01" min="-10000" max="10000"')+quantities,async f=>{
       const v=copy(data.works),item={...l,name:f.get('name').trim(),axis_ngf:f.get('axis_ngf')===''?null:Number(f.get('axis_ngf'))};
+      if(!l.struts.length){item.planned_count=Number(f.get('planned_count'));item.completed_count=Number(f.get('completed_count'));if(item.completed_count>item.planned_count)throw Error('I puntoni posati non possono superare quelli previsti.');}
       const i=v.levels.findIndex(x=>x.id===l.id);if(i<0)v.levels.push(item);else v.levels[i]=item;
       await save(v);levelId=l.id;render();
     });
   }
+  function openConfiguration(){const box=$('wm-config');box.open=true;box.scrollIntoView({block:'start',behavior:'instant'});}
+  function editProgress(kind){
+    if(!data.can_edit){message('Solo i responsabili possono aggiornare queste quantità.');return;}
+    const c=data.configuration,keys={installation:['Installazione cantiere','installazione_cantiere_pct',data.summary.installazione_cantiere.done],wells:['Pozzi pompaggio','pozzi_pompaggio_pct',data.summary.pozzi_pompaggio.done],rabotage:['Rabotage','rabotage_pct',data.summary.rabotage.done]},item=keys[kind];
+    const fields=kind==='guides'?`<p class="wm-span">Paratie: ${c.wall_length_m==null?'convalida la pianta per calcolare i metri':num(c.wall_length_m)+' m lineari'}. Il totale dei muretti guida usa gli stessi metri.</p><label class="wm-span wm-check"><input type="checkbox" name="guide_auto" ${c.guide_auto?'checked':''}> Usa automaticamente i metri delle paratie</label>`+field('Muretti guida previsti (m)','cordoli_total_m',c.guide_total_m,'number','min="0.01" max="1000000" step="0.001" required')+field('Muretti guida eseguiti (m)','cordoli_done_m',c.guide_done_m,'number','min="0" max="1000000" step="0.001" required'):field('Avanzamento (%)',item[1],item[2],'number','min="0" max="100" required');
+    editor(kind==='guides'?'Muretti guida':item[0],fields,async f=>{
+      const payload=kind==='guides'?{cordoli_total_m:f.has('guide_auto')?null:Number(f.get('cordoli_total_m')),cordoli_done_m:Number(f.get('cordoli_done_m'))}:{[item[1]]:Number(f.get(item[1]))};
+      data=await api('/progress',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});render();message('Avanzamento salvato.');
+    });
+    if(kind==='guides'){const checkbox=$('wm-fields').querySelector('[name=guide_auto]'),input=$('wm-fields').querySelector('[name=cordoli_total_m]');checkbox.onchange=()=>{input.disabled=checkbox.checked;if(checkbox.checked)input.value=c.wall_length_m||0;};checkbox.onchange();}
+  }
+  $('wm-config-guides')?.addEventListener('click',()=>editProgress('guides'));
+  $('wm-config-level')?.addEventListener('click',()=>editLevel());
+  $('wm-config-data').addEventListener('click',e=>{const b=e.target.closest('[data-config-level]');if(b)editLevel(copy(data.works.levels.find(l=>l.id===b.dataset.configLevel)));});
+  $('wm-phases').addEventListener('click',e=>{
+    const kind=e.target.closest('[data-phase]')?.dataset.phase;if(!kind)return;
+    if(['installation','guides'].includes(kind)||kind==='wells'&&!data.works.wells.length||kind==='rabotage'&&!data.reference){editProgress(kind);return;}
+    if(kind==='walls'){window.location.href=`/manager/cantieri/${root.dataset.site}/pianta`;return;}
+    if(kind==='piles'){window.location.href=`/manager/cantieri/${root.dataset.site}/avanzamento-griglie`;return;}
+    if(kind==='struts'){
+      const l=level()?.struts.length?level():data.works.levels.find(l=>l.struts.length);
+      if(!l){openConfiguration();return;}levelId=l.id;$('wm-struts').checked=true;selection={kind:'strut',id:l.struts[0].id};
+    }
+    if(kind==='wells'){$('wm-wells').checked=true;selection={kind:'well',id:data.works.wells[0].id};}
+    if(kind==='rabotage'){$('wm-rabotage').checked=true;selection=null;}
+    render();if(kind==='rabotage')message('Seleziona un pannello sulla mappa per aggiornare il rabotage.');$('wm-map').scrollIntoView({block:'center',behavior:'instant'});
+  });
   function newStrut(){return {id:uid(),label:'',panel_a:'',panel_b:'',a:[0,0],b:[0,0],length_m:null,diameter_mm:null,thickness_mm:null,angle_a:null,angle_b:null,fixation_a:'',fixation_b:'',verine:'',status:'planned',installed_on:null,removed_on:null,notes:'',source_id:null};}
   function editStrut(s,proposal=null){
     const lId=levelId;
     let fields=field('Sigla puntone','label',s.label,'text','required maxlength="80"')+options('status','Stato',Object.entries(labels).filter(([k])=>['planned','installed','removed'].includes(k)),s.status);
-    fields+=options('panel_a','Pannello appoggio A',[['','Scegli…'],...supportOptions()],s.panel_a)+options('panel_b','Pannello appoggio B',[['','Scegli…'],...supportOptions()],s.panel_b);
+    fields+=options('panel_a','Pannello o angolo appoggio A',[['','Scegli…'],...supportOptions()],supportKey(s.panel_a))+options('panel_b','Pannello o angolo appoggio B',[['','Scegli…'],...supportOptions()],supportKey(s.panel_b));
     for(const [k,text] of [['length_m','Lunghezza (m)'],['diameter_mm','Diametro esterno (mm)'],['thickness_mm','Spessore tubo (mm)'],['angle_a','Angolo in pianta A (°)'],['angle_b','Angolo in pianta B (°)']])fields+=field(text,k,s[k],'number',`step="0.01" min="${k.startsWith('angle')?0:.01}" max="${k.startsWith('angle')?180:100000}"`);
     fields+=field('Fissaggio A · riferimento PDF','fixation_a',s.fixation_a,'text','maxlength="100"')+field('Fissaggio B · riferimento PDF','fixation_b',s.fixation_b,'text','maxlength="100"')+field('Vériné · testo o valore con unità del PDF','verine',s.verine,'text','maxlength="150"')+field('Data posa','installed_on',s.installed_on,'date')+field('Data rimozione','removed_on',s.removed_on,'date')+`<label class="wm-span">Note<textarea name="notes" maxlength="2000">${esc(s.notes)}</textarea></label>`;
     if(proposal)fields+='<p class="wm-span">Importando una revisione, stato, date e note del puntone esistente resteranno conservati. Un nuovo puntone parte da “Da eseguire”.</p>';
@@ -170,9 +216,9 @@
       const item={...s};for(const key of ['label','panel_a','panel_b','fixation_a','fixation_b','verine','status','notes'])item[key]=f.get(key).trim();
       for(const key of ['length_m','diameter_mm','thickness_mm','angle_a','angle_b'])item[key]=f.get(key)===''?null:Number(f.get(key));
       for(const key of ['installed_on','removed_on'])item[key]=f.get(key)||null;
-      for(const end of ['a','b'])if(item['panel_'+end]!==s['panel_'+end]&&panel(item['panel_'+end]))item[end]=center(panel(item['panel_'+end]));
+      for(const end of ['a','b'])if(item['panel_'+end]!==supportKey(s['panel_'+end])&&panel(item['panel_'+end]))item[end]=supportPoint(item['panel_'+end]);
       if(!item.panel_a||!item.panel_b)throw Error('Scegli entrambi i pannelli di appoggio.');
-      if(proposal){proposal.value=item;proposal.reviewed=true;readerTable();readerMaps();return;}
+      if(proposal){proposal.value=item;proposal.reviewed=true;$('wm-import-reviewed').checked=false;readerTable();readerMaps();return;}
       const v=copy(data.works),list=v.levels.find(l=>l.id===lId).struts,i=list.findIndex(t=>t.id===item.id);if(i<0)list.push(item);else list[i]=item;
       await save(v);selection={kind:'strut',id:item.id};mode=null;placement();draw();detail();
     });
@@ -189,28 +235,50 @@
     if(mode)$('wm-map').scrollIntoView({block:'center',behavior:'instant'});
   }
   function point(event,svg){const p=new DOMPoint(event.clientX,event.clientY).matrixTransform(svg.getScreenCTM().inverse());return [p.x,p.y];}
-  function closest(p){let best=null;for(const q of panels())for(let i=0;i<q.points.length;i++){
+  function closest(p,svg=null){let best=null;for(const q of panels())for(let i=0;i<q.points.length;i++){
     const a=q.points[i],b=q.points[(i+1)%q.points.length],dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy))),hit=[a[0]+t*dx,a[1]+t*dy],d=dist(p,hit);
     if(!best||d<best.distance)best={panel:q.key,point:hit,distance:d};
-  }return best;}
+  }
+    // Snap a deliberate click near the shared corner vertex, at a zoom-aware distance.
+    // Automatic PDF alignment keeps its measured coordinates until reviewed.
+    if(best&&svg){
+      const matrix=svg.getScreenCTM(),tolerance=Math.min(10/Math.hypot(matrix.a,matrix.b),Math.max(...fullBox().slice(2))*.01);
+      const joint=jointPoints(supportMembers(best.panel)).sort((a,b)=>dist(p,a)-dist(p,b))[0];
+      if(joint&&dist(p,joint)<=tolerance)best={panel:best.panel,point:[...joint],distance:dist(p,joint)};
+    }
+    return best;
+  }
+  function clearSelection(){selection=null;draw();detail();}
   function pick(event){
     if(busy)return;
     if(mode&&event.currentTarget===$('wm-map')){
       const p=point(event,$('wm-map'));
       if(mode.kind==='well'){const next=1+Math.max(0,...data.works.wells.map(w=>Number(w.label.match(/^Pozzo (\d+)$/)?.[1]||0)));const w=mode.item||{id:uid(),label:`Pozzo ${next}`,status:'planned',notes:''};editWell({...w,point:p});return;}
-      const hit=closest(p),box=view||fullBox();if(!hit||hit.distance>Math.max(box[2],box[3])*.035){message('Tocca un pannello di appoggio.');return;}
+      const hit=closest(p,$('wm-map')),box=view||fullBox();if(!hit||hit.distance>Math.max(box[2],box[3])*.035){message('Tocca un pannello o l’angolo di appoggio.');return;}
       mode.points.push(hit);draw();placement();if(mode.points.length===2){const s=mode.item||newStrut();s.a=mode.points[0].point;s.panel_a=mode.points[0].panel;s.b=mode.points[1].point;s.panel_b=mode.points[1].panel;mode.points=[];editStrut(s);}return;
     }
-    const node=event.target.closest('[data-kind]');if(!node)return;selection={kind:node.dataset.kind,id:node.dataset.id};draw();detail();
+    const node=event.target.closest('[data-kind]');
+    if(!node){if(event.currentTarget===$('wm-map'))clearSelection();return;}
+    const next={kind:node.dataset.kind,id:node.dataset.id},same=selection?.kind===next.kind&&(next.kind==='panel'?supportKey(selection.id)===supportKey(next.id):selection.id===next.id);
+    selection=same?null:next;draw();detail();
   }
   $('wm-map').addEventListener('click',pick);$('wm-selectors').addEventListener('click',pick);
   $('wm-map').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(e);}});
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape'||!data?.reference||document.querySelector('dialog[open]')||e.target.closest('input,select,textarea'))return;
+    mode=null;placement();clearSelection();
+  });
+  $('wm-clear-selection').onclick=()=>{mode=null;placement();clearSelection();};
   $('wm-fit').onclick=()=>{view=null;draw();};$('wm-zoom').onclick=()=>{
     const s=strut(),w=data.works.wells.find(w=>w.id===selection?.id),p=panel(selection?.id);view=s?bbox([s.a,s.b],.16):w?bbox([w.point,[w.point[0]+fullBox()[2]*.12,w.point[1]+fullBox()[3]*.12]],.6):p?bbox(p.points,.5):null;draw();
   };
   for(const end of ['a','b'])$('wm-zoom-'+end).onclick=()=>{const s=strut();if(!s)return;const p=s[end],size=Math.max(...fullBox().slice(2))*.22;view=[p[0]-size/2,p[1]-size/2,size,size];draw();};
   $('wm-level').onchange=e=>{levelId=e.target.value;selection=null;mode=null;placement();render();};
-  for(const id of ['wm-struts','wm-wells','wm-rabotage'])$(id).onchange=()=>draw();
+  for(const [id,kind] of [['wm-struts','strut'],['wm-wells','well']])$(id).onchange=()=>{
+    if(!$(id).checked){if(selection?.kind===kind)selection=null;if(mode?.kind===kind){mode=null;placement();}}
+    draw();detail();
+  };
+  $('wm-rabotage').onchange=()=>draw();
   $('wm-add-level')?.addEventListener('click',()=>editLevel());$('wm-edit-level')?.addEventListener('click',()=>editLevel(copy(level())));
   $('wm-add-strut')?.addEventListener('click',()=>{mode={kind:'strut',points:[]};$('wm-struts').checked=true;placement();});
   $('wm-add-well')?.addEventListener('click',()=>{mode={kind:'well',points:[]};$('wm-wells').checked=true;placement();});
@@ -218,6 +286,7 @@
 
   // PDF proposals stay outside persistent work state until explicit review.
   $('wm-read')?.addEventListener('click',()=>{$('wm-reader').showModal();});
+  $('wm-review-jump').onclick=()=>{$('wm-review-heading').focus({preventScroll:true});$('wm-review-heading').scrollIntoView({block:'start',behavior:'instant'});};
   $('wm-sources').addEventListener('click',e=>{const b=e.target.closest('[data-reread]');if(!b)return;if(!level()){message('Crea prima un livello di puntoni.');return;}reader={id:Number(b.dataset.reread)};$('wm-reader').showModal();reread(null);});
   function setReader(result){
     reader={...result,rows:result.struts.map(s=>({raw:s,value:{...newStrut(),label:s.label,length_m:s.length_m,diameter_mm:s.diameter_mm,thickness_mm:s.thickness_mm,angle_a:s.angle_a??null,angle_b:s.angle_b??null,source_id:result.id},selected:true,reviewed:false}))};
@@ -265,13 +334,19 @@
   }
   function readerTable(){
     if(!reader)return;
-    $('wm-proposals').innerHTML=reader.rows.map((r,i)=>`<tr data-index="${i}" data-selected="${i===proposalIndex}"><td><input type="checkbox" data-prop="selected" aria-label="Importa ${esc(r.value.label)}" ${r.selected?'checked':''}></td><td><button class="btn btn-secondary" data-view-row="${i}">${esc(r.value.label)}</button></td>${['length_m','diameter_mm','thickness_mm'].map(k=>`<td><input type="number" step="0.01" min="0.01" data-prop="${k}" value="${r.value[k]??''}" aria-label="${k} ${esc(r.value.label)}"></td>`).join('')}${['a','b'].map(end=>`<td><select data-prop="panel_${end}" aria-label="Appoggio ${end} ${esc(r.value.label)}"><option value="">Da scegliere</option>${supportOptions().map(([id,l])=>`<option value="${esc(id)}" ${r.value['panel_'+end]===id?'selected':''}>${esc(l)}</option>`).join('')}</select></td>`).join('')}<td><button class="btn btn-secondary" data-edit-row="${i}">Dettagli</button> <button class="btn btn-secondary" data-place-row="${i}">Appoggi sulla mappa</button><label><input type="checkbox" data-prop="reviewed" ${r.reviewed?'checked':''}> Verificato</label></td></tr>`).join('')||'<tr><td colspan="8">Nessuna sigla B… leggibile. Usa “Aggiungi puntone” sulla mappa e conserva il PDF come riferimento.</td></tr>';
+    readerSummary();
+    $('wm-proposals').innerHTML=reader.rows.map((r,i)=>`<tr data-index="${i}" data-selected="${i===proposalIndex}"><td><input type="checkbox" data-prop="selected" aria-label="Importa ${esc(r.value.label)}" ${r.selected?'checked':''}></td><td><button class="btn btn-secondary" data-view-row="${i}">${esc(r.value.label)}</button></td>${['length_m','diameter_mm','thickness_mm'].map(k=>`<td><input type="number" step="0.01" min="0.01" data-prop="${k}" value="${r.value[k]??''}" aria-label="${k} ${esc(r.value.label)}"></td>`).join('')}${['a','b'].map(end=>`<td><select data-prop="panel_${end}" aria-label="Appoggio ${end} ${esc(r.value.label)}"><option value="">Da scegliere</option>${supportOptions().map(([id,l])=>`<option value="${esc(id)}" ${supportKey(r.value['panel_'+end])===id?'selected':''}>${esc(l)}</option>`).join('')}</select></td>`).join('')}<td><button class="btn btn-secondary" data-edit-row="${i}">Dettagli</button> <button class="btn btn-secondary" data-place-row="${i}">Appoggi sulla mappa</button><label><input type="checkbox" data-prop="reviewed" ${r.reviewed?'checked':''}> Verificato</label></td></tr>`).join('')||'<tr><td colspan="8">Nessuna sigla B… leggibile. Usa “Aggiungi puntone” sulla mappa e conserva il PDF come riferimento.</td></tr>';
+  }
+  function readerSummary(){
+    const rows=reader?.rows.filter(r=>r.selected)||[];
+    $('wm-import-summary').textContent=`${rows.filter(r=>r.reviewed).length} / ${rows.length} puntoni selezionati verificati · Destinazione: ${level()?.name||'nessun livello'}.`;
+    $('wm-import-error').textContent='';
   }
   $('wm-proposals').addEventListener('change',e=>{
     const i=Number(e.target.closest('[data-index]')?.dataset.index),row=reader.rows[i],key=e.target.dataset.prop;if(!row||!key)return;
-    if(['selected','reviewed'].includes(key))row[key]=e.target.checked;
-    else{row.reviewed=false;$('wm-import-reviewed').checked=false;if(key.startsWith('panel_')){row.value[key]=e.target.value;if(panel(e.target.value))row.value[key.slice(-1)]=center(panel(e.target.value));}else row.value[key]=e.target.value===''?null:Number(e.target.value);}
-    proposalIndex=i;readerMaps();if(!['selected','reviewed'].includes(key))readerTable();
+    if(['selected','reviewed'].includes(key)){row[key]=e.target.checked;$('wm-import-reviewed').checked=false;}
+    else{row.reviewed=false;$('wm-import-reviewed').checked=false;if(key.startsWith('panel_')){row.value[key]=e.target.value;if(panel(e.target.value))row.value[key.slice(-1)]=supportPoint(e.target.value);}else row.value[key]=e.target.value===''?null:Number(e.target.value);}
+    proposalIndex=i;readerMaps();readerSummary();if(!['selected','reviewed'].includes(key))readerTable();
   });
   $('wm-proposals').addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;
@@ -289,7 +364,7 @@
   $('wm-pdf').addEventListener('pointerup',()=>{drag=null;});$('wm-pdf').addEventListener('pointercancel',()=>{drag=null;});
   $('wm-target').addEventListener('click',e=>{
     if(!reader)return;const p=point(e,$('wm-target'));
-    if(reposition){const hit=closest(p);if(!hit||hit.distance>Math.max(...fullBox().slice(2))*.04)return;reposition.push(hit);if(reposition.length===2){const row=reader.rows[proposalIndex];row.value.a=reposition[0].point;row.value.b=reposition[1].point;row.value.panel_a=reposition[0].panel;row.value.panel_b=reposition[1].panel;row.reviewed=false;reposition=false;$('wm-import-reviewed').checked=false;readerTable();}readerMaps();return;}
+    if(reposition){const hit=closest(p,$('wm-target'));if(!hit||hit.distance>Math.max(...fullBox().slice(2))*.04)return;reposition.push(hit);if(reposition.length===2){const row=reader.rows[proposalIndex];row.value.a=reposition[0].point;row.value.b=reposition[1].point;row.value.panel_a=reposition[0].panel;row.value.panel_b=reposition[1].panel;row.reviewed=false;reposition=false;$('wm-import-reviewed').checked=false;readerTable();}readerMaps();return;}
     if($('wm-pdf-mode').value==='align'&&sourceAnchors.length===2&&targetAnchors.length<2){targetAnchors.push(p);readerMaps();align();}
   });
   for(const svg of [$('wm-map'),$('wm-pdf'),$('wm-target')])svg.addEventListener('wheel',e=>{
@@ -299,14 +374,22 @@
   },{passive:false});
   $('wm-import').onclick=async()=>{
     const rows=reader?.rows.filter(r=>r.selected)||[];
-    if(!rows.length||!rows.every(r=>r.reviewed)||!$('wm-import-reviewed').checked){$('wm-read-status').textContent='Controlla ogni riga selezionata e conferma la verifica complessiva.';return;}
-    if(rows.some(r=>!r.value.panel_a||!r.value.panel_b)){ $('wm-read-status').textContent='Completa gli appoggi di tutti i puntoni selezionati.';return;}
+    const error=$('wm-import-error');error.textContent='';
+    if(!rows.length){error.textContent='Seleziona almeno un puntone nella colonna «Importa».';return;}
+    const missing=rows.filter(r=>!r.value.panel_a||!r.value.panel_b);
+    if(missing.length){error.textContent=`Completa gli appoggi A e B di: ${missing.map(r=>r.value.label).join(', ')}.`;return;}
+    const unchecked=rows.filter(r=>!r.reviewed);
+    if(unchecked.length){error.textContent=`Spunta «Verificato» dopo aver controllato: ${unchecked.map(r=>r.value.label).join(', ')}.`;return;}
+    if(!$('wm-import-reviewed').checked){error.textContent='Spunta «Ho controllato allineamento, misure e appoggi» prima di salvare.';return;}
     const b=$('wm-import');b.disabled=true;
     try{
       const result=await api('/conferma-lettura',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body(data.works),level_id:levelId,source_id:reader.id,struts:rows.map(r=>r.value),reviewed:true})});
       data.works=result.works;data.revision=result.revision;$('wm-reader').close();render();message('Puntoni confermati. Le lavorazioni già registrate sono state conservate.');
-    }catch(e){$('wm-read-status').textContent=e.message;}finally{b.disabled=false;}
+    }catch(e){error.textContent=e.message;}finally{b.disabled=false;}
   };
   new ResizeObserver(()=>{if(data?.reference&&$('wm-map').clientWidth)draw();}).observe($('wm-map'));
-  load().catch(e=>message(e.message));
+  load().then(()=>{
+    if(location.hash==='#configuration')openConfiguration();
+    else {const phase=location.hash.match(/^#phase-(installation|guides|walls|struts|wells|rabotage|piles)$/)?.[1];if(phase)$('wm-phases').querySelector(`[data-phase="${phase}"]`)?.click();}
+  }).catch(e=>message(e.message));
 })();

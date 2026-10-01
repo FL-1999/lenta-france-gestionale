@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from models import SitePlan, SiteWorksMap, Site
 from test_operations_live import live_operations
-from test_site_works import layout
+from test_site_works import layout, corner_layout, strut
 from test_site_plans import vector_pdf
 
 pytestmark=pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS')!='1',reason='Browser checks opt-in')
@@ -59,12 +59,17 @@ def test_general_map_persisted_workflow_and_reader(live_operations):
         for selector in ['#wm-struts','#wm-wells']:page.locator(selector).uncheck()
         page.locator('#wm-rabotage').check();expect(page.locator('#wm-map [data-kind=panel]')).to_have_count(2)
         page.reload();expect(page.locator('#wm-phases')).to_contain_text('1 / 2 pannelli')
+        page.set_viewport_size({'width':1407,'height':838})
         page.locator('#wm-read').click()
         with page.expect_response('**/avanzamento/leggi-pdf') as uploaded:
             page.locator('#wm-upload [name=file]').set_input_files({'name':'butons.pdf','mimeType':'application/pdf','buffer':vector_pdf().replace(b'(P7a)',b'(B12)')})
             page.locator('#wm-upload button').click()
         proposal=uploaded.value.json();assert len(proposal['struts'])==1
         expect(page.locator('#wm-proposals tr')).to_have_count(1)
+        expect(page.locator('#wm-review-jump')).to_be_in_viewport()
+        page.locator('#wm-review-jump').click()
+        expect(page.locator('#wm-review-heading')).to_be_in_viewport()
+        expect(page.locator('#wm-review-heading')).to_be_focused()
         page.locator('#wm-pdf-mode').select_option('align')
         raw=proposal['struts'][0]
         assert raw['a'] and raw['b']
@@ -72,7 +77,21 @@ def test_general_map_persisted_workflow_and_reader(live_operations):
         click_point(page,'#wm-target',[15,140]);click_point(page,'#wm-target',[185,140])
         page.locator('#wm-proposals [data-prop=panel_a]').select_option('left')
         page.locator('#wm-proposals [data-prop=panel_b]').select_option('right')
-        page.locator('#wm-proposals [data-prop=reviewed]').check();page.locator('#wm-import-reviewed').check()
+        page.locator('#wm-import').click()
+        expect(page.locator('#wm-import-error')).to_contain_text('B12')
+        expect(page.locator('#wm-import-error')).to_be_in_viewport()
+        page.locator('#wm-proposals [data-prop=reviewed]').check()
+        expect(page.locator('#wm-import-summary')).to_contain_text('1 / 1')
+        page.locator('#wm-import').click()
+        expect(page.locator('#wm-import-error')).to_contain_text('Ho controllato')
+        page.locator('#wm-import-reviewed').check()
+        # Editing a checked proposal requires a fresh overall confirmation.
+        page.locator('#wm-proposals [data-edit-row]').click()
+        page.locator('#wm-fields [name=length_m]').fill('17')
+        page.locator('#wm-form button[type=submit]').click()
+        expect(page.locator('#wm-editor')).not_to_be_visible()
+        expect(page.locator('#wm-import-reviewed')).not_to_be_checked()
+        page.locator('#wm-import-reviewed').check()
         page.locator('#wm-import').click();expect(page.locator('#wm-reader')).not_to_be_visible()
         expect(page.locator('#wm-map [data-kind=strut]')).to_have_count(2)
         expect(page.locator('#wm-level-count')).to_contain_text('1 / 2')
@@ -90,5 +109,77 @@ def test_general_map_persisted_workflow_and_reader(live_operations):
             assert len(state['levels'][0]['struts'])==2 and state['levels'][1]['struts']==[]
             assert state['rabotage']==[1] and state['wells']==[]
             assert json.loads(db.query(SitePlan).one().approved)==layout()
+        assert not errors,errors
+        browser.close()
+
+
+def test_corner_support_selection_toggle_hide_and_reposition(live_operations):
+    origin,engine,ids,password,out=live_operations
+    geometry=corner_layout()
+    with Session(engine) as db:
+        plan=SitePlan(site_id=ids['site'],filename='corners.pdf',pdf_data=vector_pdf(),preview_data=b'png',
+            draft=json.dumps(geometry),approved=json.dumps(geometry),revision=1,approved_revision=1,approved_at=datetime.utcnow())
+        db.add(plan);db.flush()
+        # Existing struts may store either A or B identity of each approved corner.
+        item={**strut(),'panel_a':'bottom_b','panel_b':'top_b','a':[20,180],'b':[100,100]}
+        value=dict(levels=[dict(id='l1',name='Livello 1',struts=[item])],wells=[],rabotage=[])
+        db.add(SiteWorksMap(site_id=ids['site'],revision=1,payload=json.dumps(value),
+            reference=json.dumps(dict(plan_id=plan.id,revision=1,filename=plan.filename,layout=geometry))))
+        db.commit()
+    with sync_playwright() as pw:
+        browser=pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        page=browser.new_page(viewport={'width':1407,'height':838});errors=[]
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(origin+'/') else r.abort())
+        page.goto(origin+'/login');page.locator('#email').fill('smoke-manager@example.com');page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
+        url=origin+f'/manager/cantieri/{ids["site"]}/avanzamento';page.goto(url)
+        selected=page.locator('#wm-map [data-kind=panel] > polygon[stroke="#ff557a"]')
+        def select_strut():
+            page.locator('#wm-selectors [data-id=strut1]').click()
+            expect(selected).to_have_count(4)
+            expect(page.locator('#wm-detail')).to_contain_text('P3a / P3b')
+            expect(page.locator('#wm-detail')).to_contain_text('P11a / P11b')
+        select_strut()
+        # The two tube edges end on the two exterior arms, not their shared seam.
+        tube=page.locator('#wm-map [data-kind=strut] polygon').first.evaluate('(p)=>Array.from(p.points,q=>[q.x,q.y])')
+        assert tube[2]==[100,100] and tube[5]==[20,180]
+        assert tube[1][1]==pytest.approx(100) and tube[1][0]>100
+        assert tube[3][0]==pytest.approx(100) and tube[3][1]<100
+        page.locator('#wm-map').screenshot(path=str(out/'works-corner-selected.png'))
+        page.locator('#wm-selectors [data-id=strut1]').click();expect(selected).to_have_count(0)
+        select_strut();click_point(page,'#wm-map',[160,160]);expect(selected).to_have_count(0)
+        click_point(page,'#wm-map',[60,140]);expect(selected).to_have_count(4)
+        click_point(page,'#wm-map',[60,140]);expect(selected).to_have_count(0)
+        select_strut();page.keyboard.press('Escape');expect(selected).to_have_count(0)
+        select_strut();page.locator('#wm-clear-selection').click();expect(selected).to_have_count(0)
+        select_strut();page.locator('#wm-struts').uncheck()
+        expect(selected).to_have_count(0)
+        expect(page.locator('#wm-map [data-kind=strut]')).to_have_count(0)
+        expect(page.locator('#wm-detail')).not_to_contain_text('B1-A')
+        expect(page.locator('#wm-zoom-a')).to_be_disabled()
+        page.locator('#wm-struts').check();expect(selected).to_have_count(0)
+        # The corner behaves as one selection, including a click on its other arm.
+        click_point(page,'#wm-map',[150,95]);expect(selected).to_have_count(2)
+        click_point(page,'#wm-map',[105,55]);expect(selected).to_have_count(0)
+        select_strut();page.locator('#wm-change').click()
+        expect(page.locator('#wm-fields [name=panel_b] option')).to_have_count(3)
+        expect(page.locator('#wm-fields [name=panel_b]')).to_have_value('top_a')
+        page.locator('#wm-fields [name=length_m]').fill('18')
+        page.locator('#wm-form button[type=submit]').click();expect(page.locator('#wm-editor')).not_to_be_visible()
+        saved=page.request.get(url+'/data').json()['works']['levels'][0]['struts'][0]
+        assert saved['a']==[20,180] and saved['b']==[100,100]
+        page.locator('#wm-move').click()
+        click_point(page,'#wm-map',[20.5,179.5]);click_point(page,'#wm-map',[100.5,99.5])
+        expect(page.locator('#wm-editor')).to_be_visible()
+        page.locator('#wm-form button[type=submit]').click();expect(page.locator('#wm-editor')).not_to_be_visible()
+        page.reload();select_strut()
+        saved=page.request.get(url+'/data').json()['works']['levels'][0]['struts'][0]
+        assert saved['a']==[20,180] and saved['b']==[100,100]
+        assert saved['status']=='installed' and saved['notes']=='Posa verificata'
+        # Hiding struts while positioning one also cancels the pending placement.
+        page.locator('#wm-move').click();page.locator('#wm-struts').uncheck()
+        expect(page.locator('#wm-placement')).to_be_empty()
+        expect(selected).to_have_count(0)
         assert not errors,errors
         browser.close()

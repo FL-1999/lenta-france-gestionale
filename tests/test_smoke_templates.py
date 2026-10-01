@@ -227,7 +227,7 @@ def test_site_project_configuration_renders_multi_coupe_cards() -> None:
     assert 'value="1-3"' in output
     assert "Totale pali" in output
 
-def test_cantiere_form_edit_renders_pali_progress_and_detail_grids() -> None:
+def test_cantiere_form_edit_links_to_unified_progress_without_duplicate_forms() -> None:
     site = Site(
         id=6,
         name="Cantiere Pali",
@@ -273,14 +273,10 @@ def test_cantiere_form_edit_renders_pali_progress_and_detail_grids() -> None:
         },
     )
 
-    assert "Avanzamento lavori" in output
-    assert "Pali —" in output
-    assert "1/3" in output
-    assert "Dettaglio avanzamento" in output
-    assert "Paratie — 1/2 completate — 50%" in output
-    assert "Pali — 1/3 completati — 33%" in output
-    assert 'href="http://testserver/manager/fiches/61"' in output
-    assert 'href="http://testserver/manager/fiches/62"' in output
+    assert "Avanzamento e mappa" in output
+    assert 'href="/manager/cantieri/6/avanzamento"' in output
+    assert 'id="levels_count"' not in output
+    assert 'id="cordoli_total_m"' not in output
 
 def test_cantieri_map_data_is_json_serializable() -> None:
     site = Site(

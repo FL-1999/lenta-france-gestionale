@@ -1,111 +1,16 @@
 {% set lang = request.cookies.get('lang', 'it') %}
-{% include 'manager/_coupe_site_info.html' %}
-
 <section class="site-progress-section" id="site-progress">
-    <h2 class="page-title">
-        {% if lang == 'fr' %}Avancement chantier{% else %}Avanzamento lavori{% endif %}
-    </h2>
-    <p class="page-subtitle text-muted">
-        {% if lang == 'fr' %}
-            Synthèse des macro-phases avec progression actuelle.
-        {% else %}
-            Sintesi delle macro-fasi con avanzamento aggiornato.
-        {% endif %}
-    </p>
-    <p><a class="btn btn-primary" href="/manager/cantieri/{{ site.id }}/avanzamento">{{ 'Ouvrir la carte des travaux' if lang == 'fr' else 'Apri avanzamento e mappa' }}</a></p>
-
-    <div class="site-progress-cards">
-        <!-- TODO: collegare il click della card alla pagina/modale di dettaglio della macro -->
-        <div class="site-progress-card" role="button">
-            <div class="site-progress-card-title">
-                {% if lang == 'fr' %}Installation chantier{% else %}Installazione cantiere{% endif %}
-            </div>
-            <div class="site-progress-card-percent">
-                {{ progress_summary.installazione_cantiere.percent }}%
-            </div>
-            <div class="site-progress-card-bar" aria-hidden="true">
-                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.installazione_cantiere.percent }}%;"></div>
-            </div>
-            <div class="site-progress-card-sub">
-                {{ progress_summary.installazione_cantiere.status }}
-            </div>
-        </div>
-
-        <div class="site-progress-card" role="button">
-            <div class="site-progress-card-title">
-                {% if lang == 'fr' %}Cordons guides{% else %}Cordoli guida{% endif %}
-            </div>
-            <div class="site-progress-card-percent">
-                {{ progress_summary.cordoli.percent }}%
-            </div>
-            <div class="site-progress-card-bar" aria-hidden="true">
-                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.cordoli.percent }}%;"></div>
-            </div>
-            <div class="site-progress-card-sub">
-                {{ progress_summary.cordoli.done }} / {{ progress_summary.cordoli.total }} m
-            </div>
-        </div>
-
-        <div class="site-progress-card" role="button">
-            <div class="site-progress-card-title">
-                {% if lang == 'fr' %}Parois / excavation{% else %}Scavo + paratie{% endif %}
-            </div>
-            <div class="site-progress-card-percent">
-                {{ progress_summary.paratie.percent }}%
-            </div>
-            <div class="site-progress-card-bar" aria-hidden="true">
-                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.paratie.percent }}%;"></div>
-            </div>
-            <div class="site-progress-card-sub">
-                {{ progress_summary.paratie.done }} / {{ progress_summary.paratie.total }}
-                {% if lang == 'fr' %}panneaux{% else %}pannelli{% endif %}
-            </div>
-        </div>
-
-        <div class="site-progress-card" role="button">
-            <div class="site-progress-card-title">
-                {% if lang == 'fr' %}Puits / pompage{% else %}Pozzi / pompaggio{% endif %}
-            </div>
-            <div class="site-progress-card-percent">
-                {{ progress_summary.pozzi_pompaggio.percent }}%
-            </div>
-            <div class="site-progress-card-bar" aria-hidden="true">
-                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.pozzi_pompaggio.percent }}%;"></div>
-            </div>
-            <div class="site-progress-card-sub">
-                {{ progress_summary.pozzi_pompaggio.status }}
-            </div>
-        </div>
-
-        <div class="site-progress-card" role="button">
-            <div class="site-progress-card-title">
-                {% if lang == 'fr' %}Rabotage{% else %}Rabotage{% endif %}
-            </div>
-            <div class="site-progress-card-percent">
-                {{ progress_summary.rabotage.percent }}%
-            </div>
-            <div class="site-progress-card-bar" aria-hidden="true">
-                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.rabotage.percent }}%;"></div>
-            </div>
-            <div class="site-progress-card-sub">
-                {{ progress_summary.rabotage.status }}
-            </div>
-        </div>
-
-        <div class="site-progress-card" role="button">
-            <div class="site-progress-card-title">
-                {% if lang == 'fr' %}Étais{% else %}Posa puntoni{% endif %}
-            </div>
-            <div class="site-progress-card-percent">
-                {{ progress_summary.puntoni.percent }}%
-            </div>
-            <div class="site-progress-card-bar" aria-hidden="true">
-                <div class="site-progress-card-bar-fill" style="width: {{ progress_summary.puntoni.percent }}%;"></div>
-            </div>
-            <div class="site-progress-card-sub">
-                {{ progress_summary.puntoni.done }} / {{ progress_summary.puntoni.total }}
-                {% if lang == 'fr' %}butons{% else %}puntoni{% endif %}
-            </div>
-        </div>
-    </div>
+  <h2>{{ 'Avancement chantier' if lang == 'fr' else 'Avanzamento lavori' }}</h2>
+  <p><a class="btn btn-primary" href="/manager/cantieri/{{ site.id }}/avanzamento">{{ 'Ouvrir avancement et carte' if lang == 'fr' else 'Apri avanzamento e mappa' }}</a></p>
+  <div class="site-progress-cards">
+    {% for key,phase in [('installazione_cantiere','installation'),('cordoli','guides'),('paratie','walls'),('puntoni','struts'),('pozzi_pompaggio','wells'),('rabotage','rabotage')] %}
+    {% set entry=progress_summary[key] %}
+    <a class="site-progress-card" href="/manager/cantieri/{{ site.id }}/avanzamento#phase-{{ phase }}">
+      <div class="site-progress-card-title">{{ entry.label }}</div>
+      <div class="site-progress-card-percent">{{ entry.percent }}%</div>
+      <div class="site-progress-card-bar"><div class="site-progress-card-bar-fill" style="width:{{ entry.percent }}%"></div></div>
+      <div class="site-progress-card-sub">{{ entry.subtitle }}</div>
+    </a>
+    {% endfor %}
+  </div>
 </section>
