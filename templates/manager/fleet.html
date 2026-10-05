@@ -1,0 +1,9 @@
+{% extends 'shared/base.html' %}
+{% block title %}Parco aziendale e trasporti{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/fleet.css?v=1">
+<div id="fleet-workspace" aria-label="Parco aziendale e trasporti"><p>Caricamento…</p></div>
+<script id="fleet-data" type="application/json">{{ fleet_boot|tojson }}</script>
+<script src="/static/js/fleet.js?v=1" defer></script>
+<noscript>Attiva JavaScript per usare il parco e registrare gli esiti del viaggio.</noscript>
+{% endblock %}

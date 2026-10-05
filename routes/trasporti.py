@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
+import re
 from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Body, Depends, Form, HTTPException, Request
@@ -39,7 +40,14 @@ from utils.trips import can_edit_trip, compute_trip_progress, format_trip_dateti
 
 templates = Jinja2Templates(directory="templates")
 register_manager_badges(templates)
-router = APIRouter(tags=["trasporti"])
+def protect_fleet_journey(request: Request, db: Session = Depends(get_db)):
+    from models import FleetJourney
+    match = re.search(r'/trasporti/viaggi/(\d+)/', request.url.path)
+    if request.method == 'POST' and match and db.get(FleetJourney, int(match.group(1))):
+        raise HTTPException(409, 'Usa il nuovo elenco del viaggio per aggiornare carichi, scarichi e stato')
+
+
+router = APIRouter(tags=["trasporti"], dependencies=[Depends(protect_fleet_journey)])
 
 def _validate_trip_manifest(db, raw_stops, final_place, types, quantities, destinations, pickups):
     """Validate before writes; stop numbers must stay stable and include the final place."""
@@ -1122,6 +1130,12 @@ def manager_trasporti_viaggi_edit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    from models import FleetJourney
+    if db.get(FleetJourney, viaggio_id):
+        from routes.fleet import access
+        access(db, viaggio_id, current_user)
+        return RedirectResponse(f'/logistica/viaggi/{viaggio_id}', status_code=303)
+
     _ensure_manager(current_user)
     autisti, mezzi, luoghi = _load_trip_form_dependencies(db)
     viaggio = (
@@ -1345,6 +1359,12 @@ def manager_trasporti_viaggi_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    from models import FleetJourney
+    if db.get(FleetJourney, viaggio_id):
+        from routes.fleet import access
+        access(db, viaggio_id, current_user)
+        return RedirectResponse(f'/logistica/viaggi/{viaggio_id}', status_code=303)
+
     _ensure_logistics_access(current_user)
     autisti = db.query(User).join(UserRole, UserRole.user_id == User.id).join(Role, Role.id == UserRole.role_id).filter(Role.name == RoleEnum.driver, User.is_active.is_(True)).distinct().order_by(User.full_name, User.email).all()
     viaggio = (
@@ -1572,6 +1592,12 @@ def driver_trasporti_viaggi_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user_html),
 ):
+    from models import FleetJourney
+    if db.get(FleetJourney, viaggio_id):
+        from routes.fleet import access
+        access(db, viaggio_id, current_user)
+        return RedirectResponse(f'/logistica/viaggi/{viaggio_id}', status_code=303)
+
     _ensure_driver(current_user)
     viaggio = (
         db.query(TrasportoViaggio)
@@ -1651,6 +1677,9 @@ def _add_trip_load(db: Session, viaggio: TrasportoViaggio, form) -> None:
         TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id
     ).all()}
     for att in equipment:
+        from models import FleetLoad
+        if db.query(FleetLoad).filter_by(reservation=f'equipment:{att.id}').first():
+            raise HTTPException(409, 'Attrezzatura prenotata nel parco aziendale')
         req = selected[att.id]
         existing = assignments.get(att.id)
         already_loaded = existing and existing.caricato and not existing.scaricato
@@ -1738,6 +1767,10 @@ def driver_trasporti_viaggi_scan(
     ).with_for_update().first()
     if not attrezzatura:
         raise HTTPException(status_code=404, detail="Attrezzatura non trovata")
+
+    from models import FleetLoad
+    if db.query(FleetLoad).filter_by(reservation=f'equipment:{attrezzatura.id}').first():
+        raise HTTPException(409, 'Attrezzatura prenotata nel parco aziendale')
 
     assignment = db.query(TrasportoAttrezzaturaViaggio).filter(
         TrasportoAttrezzaturaViaggio.viaggio_id == viaggio.id,

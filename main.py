@@ -9295,6 +9295,8 @@ app.include_router(reportistica.router)
 app.include_router(backup.router)
 from routes import sharepoint
 app.include_router(sharepoint.router)
+from routes import fleet
+app.include_router(fleet.router)
 app.include_router(trasporti.router)
 app.include_router(economics.router)
 app.include_router(manager_attrezzature.router)

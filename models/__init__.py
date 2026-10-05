@@ -14,3 +14,4 @@ from .cloud_archive import CloudAsset, CloudRun, CloudPlanPublication
 from .site_cost import CostContract, CostDelivery, CostDeliveryLine, CostInvoice, CostSharedExpense, CostAllocation
 from .supplier_service import SupplierService, ServiceRecord
 from .project_directory import ProjectPartner, ProjectPartnerSite
+from .fleet import FleetPosition, FleetJourney, FleetLoad, FleetOperation, FleetEvent
