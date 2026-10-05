@@ -242,7 +242,11 @@ def update_trip(trip_id: int, payload: UpdateInput, db: Session = Depends(get_db
     route, moves, assets=validate_plan(db,payload,lock=True,exclude_trip=trip_id)
     old=db.query(FleetLoad).filter_by(trip_id=trip_id).all()
     for o in operations:db.delete(o)
+    # These models have scalar FK columns, not ORM relationships: explicitly
+    # remove children before parents on databases that enforce the constraints.
+    db.flush()
     for l in old:db.delete(l)
+    db.flush()
     for stop in list(trip.tappe):db.delete(stop)
     db.flush()
     trip.data_partenza,trip.orario_partenza=payload.day,payload.hour

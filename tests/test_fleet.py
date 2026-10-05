@@ -57,7 +57,13 @@ def test_fleet_creation_inventory_qr_and_permissions(operations):
 
 
 def test_edit_before_departure_reuses_trip_and_releases_removed_assets(operations):
-    o=operations;payload,*_=setup(o);c=o['client'];trip_id=create(o,payload)
+    from sqlalchemy import text
+    o=operations;payload,*_=setup(o);c=o['client']
+    if o['db'].get_bind().dialect.name=='sqlite':
+        o['db'].commit()
+        o['db'].execute(text('PRAGMA foreign_keys=ON'))
+        assert o['db'].execute(text('PRAGMA foreign_keys')).scalar()==1
+    trip_id=create(o,payload)
     assert c.get(f'/manager/trasporti/organizza?edit_id={trip_id}').status_code==200
     assert c.post('/api/parco/anteprima',json={**payload,'edit_id':trip_id}).status_code==200
     changed={**payload,'revision':0,'hour':'10:00','moves':payload['moves'][:1]}
