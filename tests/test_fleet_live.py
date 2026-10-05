@@ -16,7 +16,10 @@ def test_real_fleet_creation_and_driver_checklist(live_operations):
     with Session(engine) as db:
         driver=User(email='fleet-live@example.com',full_name='Autista Prova',role=RoleEnum.driver,is_active=True,hashed_password=hash_password(password))
         db.add(driver);db.flush()
-        role=db.query(Role).filter_by(name=RoleEnum.driver).one()
+        role=db.query(Role).filter_by(name=RoleEnum.driver).one_or_none()
+        if role is None:
+            role=Role(name=RoleEnum.driver)
+            db.add(role);db.flush()
         db.add(UserRole(user_id=driver.id,role_id=role.id))
         depot=Depot(name='Deposito Prova',is_active=True)
         vehicle=Veicolo(marca='Test',modello='Camion',targa='FLEETLIVE',categoria='camion',visibile_trasporti=True)
