@@ -341,6 +341,9 @@ def manager_attrezzature_delete(
     _ensure_manager(current_user)
     if not has_perm(current_user, "records.delete"):
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    from models import FleetLoad
+    if db.query(FleetLoad).filter_by(asset_key=f'equipment:{attrezzatura_id}').first():
+        raise HTTPException(409, 'Attrezzatura collegata a un viaggio: conserva il bene e il suo storico')
     attrezzatura = db.query(Attrezzatura).filter(Attrezzatura.id == attrezzatura_id).first()
     if attrezzatura:
         db.delete(attrezzatura)

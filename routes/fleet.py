@@ -287,6 +287,8 @@ def outcome(trip_id: int, payload: ActionInput, db: Session = Depends(get_db), u
         load = next(l for l in loads if l.id == op.load_id)
         obj = source(db, load.asset_key, lock=True)
         if payload.action == 'correct':
+            if any(later.load_id==op.load_id and later.kind==op.kind and later.id>op.id for later in ops):
+                raise HTTPException(409,'Questo esito ha già un tentativo successivo: correggi l’ultima operazione')
             if not op.before or op.result not in ('yes','no'):
                 raise HTTPException(409, 'Esito non correggibile')
             # Re-reserving a previously missed pickup can conflict with a newer plan.
@@ -325,7 +327,7 @@ def outcome(trip_id: int, payload: ActionInput, db: Session = Depends(get_db), u
                 load.state = 'loaded' if op.kind == 'load' else 'delivered'
                 if isinstance(obj, Attrezzatura):
                     # Maintenance is a technical state: transport never clears it.
-                    obj.stato = (AttrezzaturaStatoEnum.manutenzione if load.technical_state == 'manutenzione' else
+                    obj.stato = (AttrezzaturaStatoEnum.manutenzione if load.technical_state == 'manutenzione' or obj.stato == AttrezzaturaStatoEnum.manutenzione else
                                  AttrezzaturaStatoEnum.in_trasporto if op.kind == 'load' else
                                  AttrezzaturaStatoEnum.in_uso if here.startswith('site:') else AttrezzaturaStatoEnum.disponibile)
                 if op.kind == 'unload':

@@ -138,3 +138,25 @@ def test_postgres_competing_fleet_reservations(operations):
         futures=[pool.submit(reserve,h) for h in ['08:00','09:00']]
         assert sorted(f.result(timeout=25) for f in futures)==[200,409]
     assert o['db'].query(FleetLoad).count()==3
+
+
+def test_maintenance_survives_transport_and_recovery_has_one_current_attempt(operations):
+    o=operations;payload,driver,pump,gen,bucket=setup(o);c=o['client'];db=o['db']
+    payload['moves']=[payload['moves'][1]]
+    trip_id=create(o,payload);base=f'/api/parco/viaggi/{trip_id}'
+    def send(action,operation_id=None,**kw):
+        j=c.get(base).json()
+        return c.post(base+'/esito',json=dict(action=action,revision=j['revision'],operation_id=operation_id,**kw))
+    assert send('next').status_code==200
+    j=c.get(base).json();load=next(o for o in j['operations'] if o['kind']=='load')
+    assert send('done',load['id']).status_code==200
+    assert db.get(Attrezzatura,gen.id).stato==AttrezzaturaStatoEnum.manutenzione
+    assert send('next').status_code==200
+    j=c.get(base).json();unload=next(o for o in j['operations'] if o['kind']=='unload')
+    assert send('not_done',unload['id'],reason='Area non libera').status_code==200
+    assert send('recover',destination=payload['start']).status_code==200
+    assert send('correct',unload['id']).status_code==409
+    j=c.get(base).json();retry=next(o for o in j['operations'] if o['result']=='pending')
+    assert send('done',retry['id']).status_code==200
+    assert db.get(Attrezzatura,gen.id).stato==AttrezzaturaStatoEnum.manutenzione
+    assert send('next').status_code==200
