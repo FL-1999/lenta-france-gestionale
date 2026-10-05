@@ -8,7 +8,7 @@
     <h1 class="page-title">🚚 {{ t('Dashboard Logistica', 'Tableau de bord Logistique') }}</h1>
   </div>
   <div class="header-actions">
-    {% if has_perm(user, 'manager.access') %}<a class="btn btn-primary" href="{{ url_for('manager_trasporti_viaggi_new') }}">➕ {{ t('Nuovo viaggio', 'Nouveau trajet') }}</a>{% endif %}
+    {% if has_perm(user, 'manager.access') %}<a class="btn btn-primary" href="{{ url_for('fleet_new') }}">➕ {{ t('Nuovo viaggio', 'Nouveau trajet') }}</a>{% endif %}
     {% if has_perm(user, 'manager.access') %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_planner') }}">🗓 {{ t('Planner settimanale', 'Planning hebdomadaire') }}</a>{% endif %}
     {% if has_perm(user, 'manager.access') %}<a class="btn btn-secondary" href="{{ url_for('manager_trasporti_mappa') }}">🗺 {{ t('Mappa logistica', 'Carte logistique') }}</a>{% endif %}
     <a class="btn btn-secondary" href="{{ url_for('manager_trasporti_attrezzature_in_viaggio') }}">🧰 {{ t('Attrezzature in viaggio', 'Équipements en route') }}</a>

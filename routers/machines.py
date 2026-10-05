@@ -1,4 +1,5 @@
 import logging
+from uuid import uuid4
 import time
 from datetime import datetime, timedelta
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -1033,7 +1034,7 @@ def manager_machine_new_get(
 @router.post("/manager/macchinari/nuovo", name="create_machine")
 def manager_machine_new_post(
     request: Request,
-    code: str = Form(...),
+    code: str = Form(''),
     name: str = Form(...),
     type: str | None = Form(None),
     brand: str | None = Form(None),
@@ -1053,7 +1054,7 @@ def manager_machine_new_post(
         raise HTTPException(status_code=400, detail="Stato macchinario non valido")
 
     machine = Machine(
-        code=code,
+        code=(code or '').strip() or 'MAC-'+uuid4().hex[:12].upper(),
         name=name,
         machine_type=machine_type_enum,
         machine_type_id=machine_type_record.id if machine_type_record else None,

@@ -29,11 +29,7 @@
       {% endif %}
       {% if show_trasporti and active_role_value != 'driver' %}{{ item(trasporti_path, t('Trasporti','Transports'), 'truck', is_trasporti_active) }}{% endif %}
       {% if show_depositi %}{{ item(depositi_path, t('Depositi','Dépôts'), 'box', is_depositi_active) }}{% endif %}
-      {% if is_manager %}{{ item(url_for('manager_attrezzature_list'), t('Attrezzature','Équipements'), 'settings', current_path.startswith('/manager/attrezzature')) }}{% endif %}
-      {% if is_manager %}
-        {{ item(url_for('manager_machines_list'), t('Macchinari','Machines'), 'settings', current_path.startswith('/manager/macchinari')) }}
-        {{ item(url_for('manager_veicoli_list'), t('Veicoli','Véhicules'), 'truck', current_path.startswith('/manager/veicoli')) }}
-      {% endif %}
+      {% if is_manager %}{{ item('/manager/parco', t('Parco aziendale','Parc matériel'), 'settings', current_path.startswith('/manager/parco') or current_path.startswith('/manager/macchinari') or current_path.startswith('/manager/attrezzature') or current_path.startswith('/manager/veicoli')) }}{% endif %}
     {% endif %}
       {% if show_personale %}
         <p class="workspace-nav-label">{{ t('Persone e squadre','Personnel et équipes') }}</p>
