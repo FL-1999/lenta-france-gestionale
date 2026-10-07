@@ -70,8 +70,8 @@ def perform(db, user, kind, raw, operation_id):
             'Capocantiere': (supervisor.full_name or supervisor.email) if supervisor else None,
             'Dati registrati (lunghezze in metri, volumi in m³)': fields(fiche, FICHE_FIELDS),
             'Stratigrafia': [fields(layer, 'da_profondita a_profondita materiale') for layer in fiche.stratigrafie],
-            'Effetti': 'Crea la fiche, aggiorna gli avanzamenti e le notifiche previste dal gestionale.'}
-        return summary, dict(id=fiche.id, type='fiche', url=f'/manager/fiches/{fiche.id}')
+            'Effetti': 'Inserisce la fiche da verificare e avvisa il proprietario. Gli avanzamenti ufficiali cambiano solo dopo la conferma nel gestionale.'}
+        return summary, dict(id=fiche.id, type='fiche', review_status='pending', url=f'/manager/fiches/{fiche.id}')
     if kind == 'report.create':
         from routers.reports import ReportCreate, create_report_record
         site = active_site(db, payload.site_id)

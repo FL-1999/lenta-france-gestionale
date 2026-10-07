@@ -186,7 +186,8 @@ def compute_site_production(site, fiches: list) -> dict[str, Any]:
     """
     from models.entities import FicheTypeEnum
 
-    prod_fiches = [f for f in fiches if f.fiche_type == FicheTypeEnum.produzione]
+    from services.fiche_review import confirmed
+    prod_fiches = [f for f in fiches if f.fiche_type == FicheTypeEnum.produzione and confirmed(f)]
 
     tipo_paratia = {"paratia", "paroi", "parois", "panneau"}
     tipo_palo    = {"palo", "pieu", "pieux"}

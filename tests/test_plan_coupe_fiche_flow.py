@@ -60,7 +60,7 @@ def test_confirm_coupe_create_fiche_and_historical_snapshot(operations):
     duplicate=c.post('/manager/fiches/nuova',data=data,follow_redirects=False)
     assert duplicate.status_code==400 and db.query(Fiche).count()==1
     live=c.get(url+'/data').json()['elements'][0]
-    assert live['status']=='cast' and live['concrete_m3']==27.5 and live['create_url'] is None
+    assert live['status']=='pending' and live['concrete_m3']==27.5 and live['create_url'] is None
 
 
 def test_duplicate_names_have_distinct_ids_and_reapproval_keeps_identity(operations):

@@ -79,6 +79,7 @@ def cast(site_id:int,group_id:int,request:Request,body:CastInput,db:Session=Depe
     try:
         g=locked_group(db,site_id,group_id,body.revision)
         before=describe(g)
+        db.info['fiche_actor_id'] = user.id
         record_joint(db,g,body.total_m3,body.cast_date,body.manual)
         log_audit_event(db,user,'SITE_POUR_RECORDED','site_pour',g.id,{'before':before,'after':describe(g)})
         db.commit();return describe(g)
@@ -94,6 +95,7 @@ def remove(site_id:int,group_id:int,request:Request,revision:int,confirm:bool=Fa
     try:
         g=locked_group(db,site_id,group_id,revision)
         snapshot=describe(g)
+        db.info['fiche_actor_id'] = user.id
         fiches={m.fiche for m in g.members if m.fiche is not None}
         if g.kind=='angle' and fiches and not delete_fiche:
             raise HTTPException(409,'L’angolo contiene una fiche unica: conferma esplicitamente anche la sua eliminazione.')

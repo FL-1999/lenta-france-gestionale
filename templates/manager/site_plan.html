@@ -45,7 +45,7 @@
     </div>
     <div class="sp-workspace">
       <section class="card sp-board" data-original><div class="sp-board-title"><strong>Originale</strong><span data-page></span></div><svg data-original-svg aria-label="PDF originale con pannelli selezionabili"><image data-preview></image><g data-original-shapes></g></svg></section>
-      <section class="card sp-board"><div class="sp-board-title"><strong>Pianta pulita</strong><span data-counter></span></div><svg data-clean-svg aria-label="Pianta pulita con pannelli, sigle e larghezze"><g data-clean-shapes></g></svg><div class="sp-legend"><span class="sp-dot planned"></span>Da eseguire <span class="sp-dot fiche"></span>Fiche presente <span class="sp-dot cast"></span>Getto registrato <span>S · Sonico / I · Inclinometro</span></div></section>
+      <section class="card sp-board"><div class="sp-board-title"><strong>Pianta pulita</strong><span data-counter></span></div><svg data-clean-svg aria-label="Pianta pulita con pannelli, sigle e larghezze"><g data-clean-shapes></g></svg><div class="sp-legend"><span class="sp-dot planned"></span>Da eseguire <span class="sp-dot fiche"></span>Fiche presente <span class="sp-dot pending"></span> {{ "À vérifier" if lang == "fr" else "Da verificare" }} <span class="sp-dot cast"></span>Getto registrato <span>S · Sonico / I · Inclinometro</span></div></section>
       <aside class="card sp-detail">
         <h2 data-label>Seleziona un pannello</h2><p class="text-muted" data-warnings></p>
         <form id="sp-panel-editor" data-editor hidden>

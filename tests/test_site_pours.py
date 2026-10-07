@@ -39,6 +39,12 @@ def test_angle_single_fiche_two_panels_no_duplicate_volume_and_delete(operations
     response=fiche(o,1,42);assert response.status_code==303,response.text
     db.expire_all();f=db.query(Fiche).one();assert f.panel_name=='P7 A/B' and f.larghezza_pannello==8
     assert len(f.pour_panels)==2
+    assert compute_site_production(o['site'],[f])['paratie']['count']==0
+    from services.fiche_review import review_token
+    o['manager'].role=RoleEnum.admin;db.commit()
+    assert c.post(f'/manager/fiches/{f.id}/conferma',data={'csrf':review_token(f,o['manager'])},follow_redirects=False).status_code==303
+    db.refresh(f)
+    o['manager'].role=RoleEnum.manager;db.commit()
     stats=compute_site_production(o['site'],[f]);assert stats['paratie']['count']==2
     assert stats['totale']['volume_cls_reale']==42 and stats['totale']['volume_cls_teorico']==40
     es=c.get(base+'/pianta/data').json()['elements'];assert es[0]['fiche_id']==es[1]['fiche_id']==f.id
