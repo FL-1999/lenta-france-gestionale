@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conferma assistente · Lenta</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;background:#f3f5f8;color:#172b42;margin:0;padding:24px}main{max-width:860px;margin:auto;background:white;padding:32px;border-radius:16px}h1{line-height:1.2}section{border-top:1px solid #ddd;padding:12px 0}dl{margin:10px 0}dl>div{display:grid;grid-template-columns:minmax(120px,1fr) 2fr;gap:12px;padding:6px 0;border-bottom:1px solid #edf0f3}dt{color:#526477}dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}li{padding:6px 0}button,a{font:inherit}button{padding:12px 20px;border-radius:8px;cursor:pointer;margin:8px 12px 0 0;border:1px solid #8292a4}button[value=approve]{background:#134675;color:white}.muted{color:#526477}a{color:#134675}@media(max-width:560px){body{padding:12px}main{padding:20px}dl>div{grid-template-columns:1fr;gap:0}}</style>
+</head><body><main>
+<p class="muted">Lenta · Assistente personale</p>
+{% if proposal.state == 'pending' %}
+<h1>Controlla prima di registrare</h1>
+<p>Questa proposta non ha ancora modificato i dati operativi. Confermando verrà eseguita con il tuo profilo amministratore.</p>
+{% elif proposal.state == 'applied' %}<h1>Operazione registrata</h1>
+<p>Il salvataggio è stato completato. Ripetere la conferma non crea un duplicato.</p>
+{% elif proposal.state == 'rejected' %}<h1>Proposta rifiutata</h1><p>Nessun dato operativo è stato registrato.</p>
+{% else %}<h1>Proposta scaduta</h1><p>Chiedi all’assistente di preparare una nuova anteprima.</p>{% endif %}
+{% set labels = {'date':'Data scavo','panel_name':'Nome pannello','site_id':'Riferimento cantiere','coupe_id':'Riferimento coupe','machine_id':'Riferimento macchinario','capocantiere_id':'Riferimento capocantiere','personale_id':'Riferimento persona','operator':'Operatore / squadra','hours':'Ore','hours_worked':'Ore lavorate','role_label':'Mansione','description':'Descrizione','notes':'Note','altezza_pannello':'Spessore pannello','diametro_palo':'Diametro palo (m)','da_profondita':'Da profondità (m)','a_profondita':'A profondità (m)'} %}
+{% macro detail(value) %}
+{% if value is mapping %}<dl>{% for key, item in value.items() %}<div><dt>{{ labels.get(key, key | replace('_', ' ') | capitalize) }}</dt><dd>{{ detail(item) }}</dd></div>{% endfor %}</dl>
+{% elif value is iterable and value is not string %}<ol>{% for item in value %}<li>{{ detail(item) }}</li>{% else %}<li>Nessuno</li>{% endfor %}</ol>
+{% elif value is sameas true %}Sì{% elif value is sameas false %}No
+{% elif value is none %}Non indicato{% else %}{{ value }}{% endif %}
+{% endmacro %}
+{% for label, value in proposal.summary.items() %}
+<section><strong>{{ label }}</strong>
+{{ detail(value) }}</section>
+{% endfor %}
+{% if proposal.state == 'pending' %}
+<p class="muted">Scadenza (UTC): {{ proposal.expires_at }}. Se i dati cambiano, sarà necessaria una nuova proposta.</p>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+<button type="submit" name="decision" value="approve">Confermo e registro</button>
+<button type="submit" name="decision" value="reject">Rifiuta proposta</button></form>
+{% elif proposal.result %}<p><a href="{{ proposal.result.url }}">Apri il documento nel gestionale</a></p>{% endif %}
+</main></body></html>

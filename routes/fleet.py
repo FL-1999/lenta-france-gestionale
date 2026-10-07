@@ -144,6 +144,10 @@ def preview(payload: PlanInput, db: Session = Depends(get_db), user: User = Depe
 
 @router.post('/api/parco/viaggi')
 def create(payload: CreateInput, db: Session = Depends(get_db), user: User = Depends(get_current_active_user_html)):
+    return create_trip_record(payload, db, user)
+
+
+def create_trip_record(payload: CreateInput, db: Session, user: User, *, commit: bool = True):
     manager(user)
     previous = db.query(FleetJourney).filter_by(token=payload.token).first()
     if previous:
@@ -185,8 +189,13 @@ def create(payload: CreateInput, db: Session = Depends(get_db), user: User = Dep
             db.add_all([FleetOperation(load_id=load.id, stop=load.pickup, kind='load'),
                         FleetOperation(load_id=load.id, stop=load.delivery, kind='unload')])
         db.add(FleetEvent(trip_id=trip.id, actor_id=user.id, text='Viaggio creato. Ubicazioni invariate.'))
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
     except IntegrityError:
+        if not commit:
+            raise
         db.rollback()
         previous = db.query(FleetJourney).filter_by(token=payload.token, created_by=user.id).first()
         if previous:

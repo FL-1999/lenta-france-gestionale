@@ -15,3 +15,4 @@ from .site_cost import CostContract, CostDelivery, CostDeliveryLine, CostInvoice
 from .supplier_service import SupplierService, ServiceRecord
 from .project_directory import ProjectPartner, ProjectPartnerSite
 from .fleet import FleetPosition, FleetJourney, FleetLoad, FleetOperation, FleetEvent
+from .assistant_integration import AssistantProposal, AssistantRateBucket
