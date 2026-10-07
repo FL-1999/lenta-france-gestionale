@@ -4,6 +4,7 @@ SQLAlchemy
 pydantic
 email-validator
 python-jose[cryptography]
+oauthlib==3.3.1
 passlib
 jinja2
 python-multipart

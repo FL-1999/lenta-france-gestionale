@@ -33,10 +33,12 @@ class IntegrationBoundary:
             return await self.app(scope, receive, send)
         async def private_send(message):
             if message['type'] == 'http.response.start':
+                form_action = "'self' https://chatgpt.com" if scope['path'] == '/integrations/assistant/oauth/authorize' else "'self'"
                 headers = [(k, v) for k, v in message.get('headers', []) if k.lower() != b'cache-control']
                 headers.extend([(b'cache-control', b'no-store'), (b'x-frame-options', b'DENY'),
-                    (b'referrer-policy', b'no-referrer'), (b'x-content-type-options', b'nosniff'),
-                    (b'content-security-policy', b"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")])
+                    # Keep same-origin form Origin headers; never send referrers externally.
+                    (b'referrer-policy', b'same-origin'), (b'x-content-type-options', b'nosniff'),
+                    (b'content-security-policy', ("default-src 'none'; style-src 'unsafe-inline'; form-action " + form_action + "; frame-ancestors 'none'; base-uri 'none'").encode())])
                 message = {**message, 'headers': headers}
             await send(message)
         try:
