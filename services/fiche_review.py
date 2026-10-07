@@ -98,6 +98,14 @@ def track_fiche_edits(db, flush_context, instances):
             fiche = db.get(Fiche, row.fiche_id)
             if fiche and fiche not in db.new:
                 affected.setdefault(fiche, {})['stratigrafia'] = 'changed'
+    # Confirmation and every fiche writer acquire site locks before fiche rows.
+    # Keeping this order avoids deadlocks when an evening review overlaps edits.
+    sites = {f.site_id for f in affected}
+    sites.update(db.info.get('fiche_review_sites', set()))
+    sites.update(f.site_id for f in list(db.new) + list(db.deleted) if isinstance(f, Fiche))
+    sites.discard(None)
+    if sites:
+        db.query(Site).filter(Site.id.in_(sites)).order_by(Site.id).with_for_update().all()
     for fiche, changes in affected.items():
         if fiche in db.deleted:
             continue
@@ -111,7 +119,8 @@ def track_fiche_edits(db, flush_context, instances):
         notify_review(db, fiche)
     for row in list(db.new) + list(db.deleted):
         if isinstance(row, Fiche):
-            db.info.setdefault('fiche_review_sites', set()).add(row.site_id)
+            if row.site_id is not None:
+                db.info.setdefault('fiche_review_sites', set()).add(row.site_id)
 
 
 @event.listens_for(Session, 'after_flush_postexec')
