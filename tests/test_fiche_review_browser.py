@@ -16,8 +16,10 @@ def test_login_layout_and_fiche_review(live_operations):
     with Session(engine) as db:
         user=db.query(User).filter_by(email='smoke-manager@example.com').one()
         user.role=RoleEnum.admin
-        role=db.query(Role).filter_by(name='admin').one()
-        db.add(UserRole(user_id=user.id,role_id=role.id))
+        role=db.query(Role).filter_by(name=RoleEnum.admin).first()
+        if role is None:
+            role=Role(name=RoleEnum.admin);db.add(role);db.flush()
+        user.user_roles=[UserRole(role=role)]
         site=db.get(Site,ids['site']);site.numero_totale_paratie=4
         f=Fiche(site_id=site.id,created_by_id=user.id,date=date.today(),numero_pannello=2,
             panel_name='2 A',fiche_type=FicheTypeEnum.produzione,description='Scavo',
