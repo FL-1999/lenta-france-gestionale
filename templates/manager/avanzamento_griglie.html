@@ -30,10 +30,10 @@
     {% if items %}
       <div class="advanced-progress-grid" role="list" aria-label="Griglia avanzamento {{ title|lower }}">
         {% for item in items %}
-          {% set fiche_url = url_for('manager_fiches_detail', fiche_id=item.fiche_id) if item.is_completed else '' %}
+          {% set fiche_url = url_for('manager_fiches_detail', fiche_id=item.fiche_id) if item.fiche_id else '' %}
           <button
             type="button"
-            class="advanced-progress-cell {{ 'advanced-progress-cell--done' if item.is_completed else ('advanced-progress-cell--ready' if item.cage_pronta else 'advanced-progress-cell--missing') }}"
+            class="advanced-progress-cell {{ 'advanced-progress-cell--done' if item.is_completed else ('advanced-progress-cell--ready' if item.is_pending or item.cage_pronta else 'advanced-progress-cell--missing') }}"
             role="listitem"
             data-progress-cell
             data-preview='{{ item.preview|tojson }}'

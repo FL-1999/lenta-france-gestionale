@@ -1803,6 +1803,10 @@ def _fiche_coupe_snapshot(coupe):
         "quota_testa_getto_prevista", "larghezza", "spessore", "diametro", "terreno_teorico", "terreno_riferimento")})
 
 
+from services.fiche_review import can_review, review_token, confirmed
+import services.fiche_review
+
+
 def _create_validated_fiche(
     db: Session,
     *,
@@ -1989,7 +1993,9 @@ def _create_validated_fiche(
     _validate_capocantiere(db, parsed_capocantiere_id)
 
     diametro_value_m = diametro_value_cm / 100 if diametro_value_cm is not None else None
+    db.info["fiche_actor_id"] = current_user.id
     fiche = Fiche(
+        review_status="pending",
         date=data_scavo,
         numero_pannello=parsed_numero_pannello,
         panel_name=plan_panel["label"],
@@ -2307,6 +2313,9 @@ def _update_validated_fiche(
             courbe_beton_hauteur_finale=courbe_beton_hauteur_finale,
         )
 
+    db.info["fiche_actor_id"] = current_user.id
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(fiche, "description")
     db.query(FicheStratigrafia).filter(FicheStratigrafia.fiche_id == fiche.id).delete()
     db.flush()
     for da_val, a_val, mat in layers:
@@ -2528,7 +2537,7 @@ def _build_production_dashboard(db) -> dict:
     fiches = (
         db.query(Fiche)
         .options(joinedload(Fiche.coupe))
-        .filter(Fiche.site_id.in_(site_ids))
+        .filter(Fiche.site_id.in_(site_ids), Fiche.review_status == "confirmed")
         .all()
         if site_ids
         else []
@@ -2584,6 +2593,7 @@ def _build_production_dashboard(db) -> dict:
             )
             .filter(
                 Fiche.fiche_type == FicheTypeEnum.produzione,
+                Fiche.review_status == "confirmed",
                 Fiche.date >= start,
                 Fiche.date <= today,
             )
@@ -2683,6 +2693,7 @@ def _build_production_report(db, start: date, end: date, site_id: int | None = N
     """
     query = db.query(Fiche).filter(
         Fiche.fiche_type == FicheTypeEnum.produzione,
+        Fiche.review_status == "confirmed",
         Fiche.date >= start,
         Fiche.date <= end,
     )
@@ -4630,10 +4641,11 @@ def _build_avanzamento_grid_items(
                 "display_name": display_name,
                 "full_name": full_name,
                 "custom_label": (custom_labels or {}).get(element_number, ""),
-                "is_completed": True,
-                "status_label": "completata",
+                "is_completed": confirmed(fiche),
+                "is_pending": not confirmed(fiche),
+                "status_label": "completata" if confirmed(fiche) else "da verificare",
                 "tooltip": (
-                    f"{full_name}\nstato: completata\ndata fiche: "
+                    f"{full_name}\nstato: {'completata' if confirmed(fiche) else 'da verificare'}\ndata fiche: "
                     f"{fiche.date.strftime('%d/%m/%Y') if fiche.date else '—'}"
                 ),
                 "fiche_id": fiche.id,
@@ -4667,7 +4679,7 @@ def _update_progress_summary_for_fiche_grids(
         {
             int(fiche.numero_pannello)
             for fiche in fiches
-            if _fiche_schema_kind(fiche) == "palo"
+            if confirmed(fiche) and _fiche_schema_kind(fiche) == "palo"
             and fiche.numero_pannello
             and 1 <= int(fiche.numero_pannello) <= pali_total
         }
@@ -7608,11 +7620,11 @@ def manager_coupe_elimina(
 
         coupe_name = coupe.name
         # Scollega le fiches che usano questa coupe (non le elimina)
-        detached = (
-            db.query(Fiche)
-            .filter(Fiche.coupe_id == coupe_id)
-            .update({Fiche.coupe_id: None}, synchronize_session=False)
-        )
+        db.info["fiche_actor_id"] = current_user.id
+        linked_fiches = db.query(Fiche).filter(Fiche.coupe_id == coupe_id).all()
+        detached = len(linked_fiches)
+        for linked_fiche in linked_fiches:
+            linked_fiche.coupe_id = None
         db.delete(coupe)  # cascade: assignments
         log_audit_event(
             db,
@@ -8360,6 +8372,7 @@ def _build_fiche_site_progress_card(site: Site, fiches_count: int) -> dict:
 )
 def manager_fiches(
     request: Request,
+    review_status: str | None = None,
     from_date: str | None = None,
     to_date: str | None = None,
     site_id: str | None = None,
@@ -8404,6 +8417,7 @@ def manager_fiches(
 
         fiche_counts = dict(
             db.query(Fiche.site_id, func.count(Fiche.id))
+            .filter(Fiche.review_status == "confirmed")
             .group_by(Fiche.site_id)
             .all()
         )
@@ -8435,6 +8449,9 @@ def manager_fiches(
         if parsed_fiche_type:
             query = query.filter(Fiche.fiche_type == parsed_fiche_type)
 
+        if review_status == "pending":
+            query = query.filter(Fiche.review_status == "pending")
+        pending_count = db.query(Fiche).filter_by(review_status="pending").count()
         fiches_list = query.order_by(Fiche.date.desc(), Fiche.id.desc()).all()
         paratie_fiches_list = [
             fiche for fiche in fiches_list if _fiche_schema_kind(fiche) == "paratia"
@@ -8455,6 +8472,8 @@ def manager_fiches(
             paratie_fiches=paratie_fiches_list,
             pali_fiches=pali_fiches_list,
             total_fiches=len(fiches_list),
+            review_filter=review_status,
+            pending_count=pending_count,
             active_site_progress=active_site_progress,
             completed_site_progress=completed_site_progress,
             selected_site=selected_site,
@@ -8826,6 +8845,8 @@ def manager_fiche_dettaglio(
             request,
             current_user,
             fiche=fiche,
+            can_confirm_fiche=can_review(current_user),
+            fiche_review_token=review_token(fiche, current_user),
             volume_teorico=_calculate_fiche_volume_teorico(fiche),
             stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
             theoretical_soil_layers=_parse_theoretical_soil_layers(
@@ -9316,3 +9337,6 @@ from routes import assistant_integration
 app.include_router(assistant_integration.api)
 app.include_router(assistant_integration.approvals)
 app.add_middleware(assistant_integration.IntegrationBoundary)
+
+from routes.fiche_review import router as fiche_review_router
+app.include_router(fiche_review_router)

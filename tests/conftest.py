@@ -10,7 +10,7 @@ os.environ["APP_ENV"] = "test"
 os.environ.pop("ADMIN_EMAIL", None)
 os.environ.pop("ADMIN_PASSWORD", None)
 for _key in list(os.environ):
-    if _key.startswith(("SHAREPOINT_", "ASSISTANT_")) or _key == "CLOUD_ARCHIVE_OWNER_EMAIL":
+    if _key.startswith(("SHAREPOINT_", "ASSISTANT_", "FICHE_REVIEW_")) or _key == "CLOUD_ARCHIVE_OWNER_EMAIL":
         os.environ.pop(_key, None)
 
 

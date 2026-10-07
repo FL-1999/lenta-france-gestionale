@@ -887,6 +887,13 @@ class SiteSpecialEquipmentConfig(Base, TimestampMixin):
 
 class Fiche(Base, TimestampMixin):
     __tablename__ = "fiches"
+    # Existing rows retain their official status during the additive migration.
+    review_status = Column(String(20), nullable=False, default="confirmed", server_default="confirmed")
+    review_revision = Column(Integer, nullable=False, default=1, server_default="1")
+    reviewed_by_id = Column(Integer, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    __mapper_args__ = {"version_id_col": review_revision}
+
     __table_args__ = (
         UniqueConstraint(
             "site_id",

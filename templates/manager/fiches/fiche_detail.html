@@ -61,6 +61,10 @@
     </div>
 </div>
 
+<div role="status" class="fiche-review-banner" style="padding:16px;margin:16px 0;border:1px solid #d6a343;border-radius:12px;">
+<strong>{{ ('À vérifier' if lang == 'fr' else 'Da verificare') if fiche.review_status == 'pending' else ('Confirmée' if lang == 'fr' else 'Confermata') }}</strong>
+{% if fiche.review_status == 'pending' %}<p>{{ "Les données sont enregistrées. L’avancement officiel sera mis à jour après confirmation." if lang == 'fr' else 'I dati sono registrati. Gli avanzamenti ufficiali verranno aggiornati dopo la conferma.' }}</p>{% endif %}
+</div>
 <nav class="project-flow" aria-label="Cantiere"><a class="btn btn-secondary" href="/manager/cantieri/{{ fiche.site_id }}/pianta">Pianta</a> <a class="btn btn-secondary" href="/manager/cantieri/{{ fiche.site_id }}/configurazione-progetto">Coupe</a> <a class="btn btn-secondary" href="/manager/fiches?site_id={{ fiche.site_id }}">Fiches del cantiere</a></nav>
 <section class="card fiche-section" data-fiche-level-summary>
   <div class="card-body">
@@ -290,7 +294,7 @@
             {% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
 
             <div class="technical-split-view technical-sheet-viewport" data-sheet-viewport>
-                <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d'exécution imprimable">
+                <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d'exécution imprimable">{% if fiche.review_status == 'pending' %}<div style="text-align:center;padding:8px;font-weight:bold;color:#854d0e;border:2px solid #ca8a04">{{ 'À VÉRIFIER — NON CONFIRMÉE' if lang == 'fr' else 'DA VERIFICARE — NON CONFERMATA' }}</div>{% endif %}
                     {% if fiche.pour_panels %}
                     {% set group=fiche.pour_panels[0].pour %}
                     <div style="padding:5px 9px;border:1px solid #222;color:#111;background:#fff;font-size:10px;">
@@ -949,4 +953,13 @@
 {# The same complete technical sheet fits its actual available width on all screens. #}
 <script src="/static/js/fiche_sheet.js?v=20260917r1" defer></script>
 
+{% if fiche.review_status == 'pending' and can_confirm_fiche %}
+<section class="form-card" style="margin-top:24px;padding:20px;">
+<h2>{{ 'Vérification de la fiche' if lang == 'fr' else 'Verifica della fiche' }}</h2>
+<p>{{ 'Vérifiez les paramètres avant de confirmer. Les données entreront dans l’avancement officiel.' if lang == 'fr' else 'Controlla i parametri prima di confermare. I dati entreranno negli avanzamenti ufficiali.' }}</p>
+<form method="post" action="/manager/fiches/{{ fiche.id }}/conferma">
+<input type="hidden" name="csrf" value="{{ fiche_review_token }}">
+<button class="btn btn-primary" type="submit">{{ 'Confirmer la fiche' if lang == 'fr' else 'Conferma fiche' }}</button>
+</form></section>
+{% endif %}
 {% endblock %}

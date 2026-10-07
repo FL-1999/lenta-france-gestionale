@@ -53,26 +53,8 @@ def _load_courbe_points(raw: str | None):
 
 
 def _sync_site_fiche_progress(db: Session, site: Site) -> None:
-    paratie_scavate = (
-        db.query(func.count(Fiche.id))
-        .filter(Fiche.site_id == site.id, func.lower(Fiche.tipologia_scavo) == "paratia")
-        .scalar()
-        or 0
-    )
-    site.paratie_done_panels = int(paratie_scavate)
-    if site.totale_paratie_da_scavare is not None:
-        site.paratie_total_panels = site.totale_paratie_da_scavare
-    paratie_total = int(
-        site.totale_paratie_da_scavare
-        if site.totale_paratie_da_scavare is not None
-        else (site.paratie_total_panels or 0)
-    )
-    site.progress = (
-        int(round((int(paratie_scavate) / paratie_total) * 100))
-        if paratie_total > 0
-        else 0
-    )
-
+    from main import _sync_site_fiche_progress as sync
+    return sync(db, site)
 
 def _normalize_fiche_tipologia(tipologia_scavo: str | None) -> str:
     tipologia = (tipologia_scavo or "").strip().lower()
@@ -241,7 +223,9 @@ def create_fiche(
         if not machine:
             raise HTTPException(status_code=404, detail="Macchinario non trovato")
 
+    db.info["fiche_actor_id"] = current_user.id
     fiche = Fiche(
+        review_status="pending",
         date=fiche_in.date,
         numero_pannello=fiche_in.numero_pannello,
         site_id=fiche_in.site_id,

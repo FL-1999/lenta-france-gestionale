@@ -1,42 +1,28 @@
 {% extends "shared/base.html" %}
 {% set lang = request.cookies.get('lang', 'it') %}
-
-{% block title %}{% if lang == 'fr' %}Connexion – Lenta France{% else %}Login – Lenta France{% endif %}{% endblock %}
-
+{% block title %}{{ 'Connexion' if lang == 'fr' else 'Accedi' }} – Lenta France{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">🔐 {% if lang == 'fr' %}Connexion unique{% else %}Login{% endif %}</h1>
-    <p class="page-subtitle">
-        {% if lang == 'fr' %}
-            Connectez-vous avec vos identifiants. Après l'authentification, le système sélectionne automatiquement la meilleure destination selon votre rôle actif.
-        {% else %}
-            Accedi con email e password. Dopo l’autenticazione il sistema seleziona automaticamente la destinazione corretta in base al ruolo attivo e ai ruoli disponibili.
-        {% endif %}
-    </p>
-</div>
-
-<section class="form-card">
-    <form id="login-form" method="post" action="/login">
-        <div class="form-row">
-            <label for="email">📧 Email</label>
-            <input type="email" id="email" name="email" required autocomplete="username"
-                   placeholder="{% if lang == 'fr' %}nom@exemple.com{% else %}nome@esempio.com{% endif %}" />
-        </div>
-
-        <div class="form-row">
-            <label for="password">🔑 Password</label>
-            <input type="password" id="password" name="password" required autocomplete="current-password"
-                   placeholder="••••••••" />
-        </div>
-
-        {% if login_error %}
-        <div id="login-error" class="error-text">{{ login_error }}</div>
-        {% endif %}
-
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">➡️ {% if lang == 'fr' %}Entrer{% else %}Entra{% endif %}</button>
-            <a href="/" class="btn btn-secondary">⬅️ {% if lang == 'fr' %}Retour à l'accueil{% else %}Torna alla home{% endif %}</a>
-        </div>
-    </form>
-</section>
+<style>
+.lenta-login {box-sizing:border-box;width:100%;max-width:440px;margin:clamp(24px,7vh,72px) auto;padding:28px;border:1px solid var(--border-color,#cbd5e1);border-radius:18px;background:var(--card-bg,rgba(128,145,163,.08));}
+.lenta-login * {box-sizing:border-box;}
+.lenta-login h1 {margin:0 0 8px;font-size:1.8rem;line-height:1.2;}
+.lenta-login p {margin:0 0 28px;line-height:1.6;}
+.lenta-login form {display:grid;gap:22px;width:100%;}
+.lenta-login .login-field {display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0;}
+.lenta-login .login-field label {display:block;margin:0;font-weight:600;}
+.lenta-login .login-field input {display:block;width:100%;max-width:none;min-width:0;min-height:48px;margin:0;padding:12px 14px;font-size:16px;border-radius:9px;}
+.lenta-login .login-actions {display:grid;gap:12px;margin-top:4px;}
+.lenta-login .login-actions .btn {display:flex;align-items:center;justify-content:center;min-height:48px;width:100%;margin:0;}
+.lenta-login input:focus-visible {outline:2px solid #3b82f6;outline-offset:3px;}
+@media(max-width:480px) {.lenta-login {padding:22px 18px;margin:20px auto;}}
+</style>
+<section class="lenta-login" aria-labelledby="login-title">
+<h1 id="login-title">{{ 'Connexion' if lang == 'fr' else 'Accedi' }}</h1>
+<p>{{ 'Accédez à votre espace Lenta France.' if lang == 'fr' else 'Entra nel tuo spazio Lenta France.' }}</p>
+<form id="login-form" method="post" action="/login">
+<div class="login-field"><label for="email">Email</label><input type="email" id="email" name="email" required autocomplete="username" placeholder="nome@esempio.com" /></div>
+<div class="login-field"><label for="password">{{ 'Mot de passe' if lang == 'fr' else 'Password' }}</label><input type="password" id="password" name="password" required autocomplete="current-password" /></div>
+{% if login_error %}<div id="login-error" class="error-text" role="alert">{{ login_error }}</div>{% endif %}
+<div class="login-actions"><button type="submit" class="btn btn-primary">{{ 'Se connecter' if lang == 'fr' else 'Entra' }}</button><a href="/" class="btn btn-secondary">{{ "Retour à l’accueil" if lang == 'fr' else 'Torna alla home' }}</a></div>
+</form></section>
 {% endblock %}

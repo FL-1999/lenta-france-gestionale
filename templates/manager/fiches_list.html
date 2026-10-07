@@ -46,6 +46,7 @@
         </p>
     </div>
     <div class="page-actions">
+<a class="btn btn-secondary" href="/manager/fiches?review_status=pending">{{ 'À vérifier' if lang == 'fr' else 'Da verificare' }} ({{ pending_count }})</a>
         {% if selected_site %}
             <a href="{{ url_for('manager_fiches_list') }}" class="btn btn-secondary">
                 ← {% if lang == 'fr' %}Tous les chantiers{% else %}Tutti i cantieri{% endif %}
@@ -95,7 +96,7 @@
     </article>
 {% endmacro %}
 
-{% if not selected_site %}
+{% if not selected_site and review_filter != "pending" %}
     <section class="card fiche-sites-section">
         <div class="card-header">
             <div class="workspace-context-heading"><span class="workspace-context-number">01</span><div><h2>{{ t('Cantieri in corso', 'Chantiers en cours') }}</h2><p>{{ t('Schede e avanzamento del lavoro sul campo.', 'Fiches et avancement des travaux sur le terrain.') }}</p></div></div>
@@ -145,8 +146,8 @@
             <tbody>
                 {% for f in section_fiches %}
                     <tr>
-                        <td>{{ f.date }}</td>
-                        <td>{{ f.panel_label }}</td>
+                        <td>{{ f.date }}{% if not selected_site %}<br>{{ f.site.name }}{% endif %}</td>
+                        <td>{{ f.panel_label }}<br><small>{{ ('À vérifier' if lang == 'fr' else 'Da verificare') if f.review_status == 'pending' else ('Confirmée' if lang == 'fr' else 'Confermata') }}</small></td>
                         <td>{{ f.machine.name if f.machine else '-' }}</td>
                         <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
                         <td>{{ f.hours if f.hours is not none else '-' }}</td>
@@ -169,7 +170,7 @@
     <section class="card table-card fiche-section fiche-section--paratie">
         <div class="card-header">
             <div class="card-title">
-                PARATIE – {{ selected_site.name }}
+                PARATIE – {{ selected_site.name if selected_site else ("À vérifier" if lang == "fr" else "Da verificare") }}
             </div>
             <div class="card-actions text-muted">
                 {{ paratie_fiches|length }} fiches
@@ -186,7 +187,7 @@
     <section class="card table-card fiche-section fiche-section--pali">
         <div class="card-header">
             <div class="card-title">
-                PALI – {{ selected_site.name }}
+                PALI – {{ selected_site.name if selected_site else ("À vérifier" if lang == "fr" else "Da verificare") }}
             </div>
             <div class="card-actions text-muted">
                 {{ pali_fiches|length }} fiches

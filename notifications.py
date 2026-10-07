@@ -192,24 +192,8 @@ def notify_machine_note_created(db: Session, note: MachineNote, author: User) ->
 
 
 def notify_new_fiche(db: Session, fiche: Fiche, author: User) -> list[Notification]:
-    author_name = author.full_name or author.email
-    site = db.query(Site).filter(Site.id == fiche.site_id).first()
-    site_label = site.name if site and site.name else f"Cantiere #{fiche.site_id}"
-    message = f"Nuova fiche creata da {author_name} per cantiere {site_label}"
-    target_url = (
-        f"/manager/fiches/{fiche.id}"
-        if fiche.id
-        else f"/manager/fiches?site_id={fiche.site_id}"
-    )
-    return create_notifications_for_users(
-        db,
-        _get_manager_users(db),
-        "fiche_created",
-        message,
-        target_url=target_url,
-        exclude_user_id=author.id,
-    )
-
+    from services.fiche_review import notify_review
+    return notify_review(db, fiche)
 
 def notify_new_report(db: Session, report: Report, author: User) -> None:
     author_name = author.full_name or author.email

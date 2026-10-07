@@ -175,6 +175,8 @@ def completed_numbers(fiches, total):
     numbers=set()
     for f in fiches:
         if f.tipologia_scavo != 'paratia': continue
+        from services.fiche_review import confirmed
+        if not confirmed(f): continue
         numbers.add(f.numero_pannello)
         numbers.update(m.number for m in getattr(f,'pour_panels',[]))
     return {n for n in numbers if n and 1 <= n <= total}

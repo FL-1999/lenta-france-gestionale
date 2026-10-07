@@ -27,7 +27,39 @@ potranno essere aggiunte con contratti e controlli specifici. Il futuro assisten
 può raccogliere tutti i dati in conversazione, ma non dispone di un comando
 generico per modificare database, eseguire SQL o navigare con il profilo admin.
 
-## Conferma effettiva del proprietario
+## Fiches da verificare (aggiornamento)
+
+Le nuove fiches, inserite dal cantiere, dal manager o dall'assistente, sono salvate
+con stato `pending` (Da verificare). Quelle già esistenti al rilascio mantengono
+lo stato `confirmed`. Le fiches pending non contribuiscono agli avanzamenti
+ufficiali e sono evidenziate sulla pianta. La campanella del proprietario contiene
+il cantiere, il pannello e il collegamento diretto alla fiche. L'elenco
+`/manager/fiches?review_status=pending` raccoglie tutte le verifiche pendenti.
+
+Per ChatGPT: raccogliere i dati, preparare `/proposals`, mostrare il riepilogo e
+chiedere «Vuoi ricontrollare o salvare?». Alla scelta di salvare chiamare
+`POST /api/integrations/v1/proposals/{id}/submit-fiche`. Ripetere la stessa chiamata
+non duplica la fiche. Comunicare **inserita, da verificare**, mai confermata.
+Questo endpoint accetta solo `fiche.create`; rapporti e trasporti mantengono
+la conferma browser descritta sotto. Il collegamento ChatGPT/MCP è un componente
+separato: questo rilascio abilita il contratto del gestionale, non installa un'app
+nell'account ChatGPT.
+
+Il proprietario apre la fiche, corregge i parametri se necessario e preme
+**Conferma fiche** in fondo alla pagina. Solo allora aggiornamenti e quantità
+entrano nei conteggi ufficiali. Il token di conferma è legato all'utente e alla
+revisione: una pagina aperta prima di una modifica non può confermare nuovi dati.
+L'API dell'assistente non può confermare la produzione. Le modifiche successive,
+inclusi getti congiunti, riaprono la verifica e conservano uno storico in
+`fiche_review_events`. I PDF delle fiches pending sono marcati da verificare.
+
+`FICHE_REVIEW_OWNER_ID`, se presente, identifica il solo amministratore revisore;
+altrimenti viene usato `ASSISTANT_OWNER_ID`. Se entrambi mancano possono confermare
+gli amministratori attivi. Su Lenta produzione l'ID configurato rimane quello del
+proprietario. Il controllo delle fiches continua anche se l'API assistente è
+disabilitata o la sua chiave scade.
+
+## Conferma delle operazioni dell'assistente
 
 1. L'assistente legge i dati necessari e domanda quelli mancanti.
 2. Invia `POST /api/integrations/v1/proposals` con tipo, dati e `request_id` univoco.
@@ -42,8 +74,8 @@ generico per modificare database, eseguire SQL o navigare con il profilo admin.
    operazione, esito e audit in una sola transazione.
 6. L'assistente legge `GET /proposals/{id}` e comunica l'esito solo quando è `applied`.
 
-Il solo «sì» in chat non è una prova verificabile dal gestionale: in questa versione
-il consenso avviene nella pagina riservata. Non esiste un endpoint API di esecuzione
+Per rapporti, trasporti e conferma definitiva della produzione, il solo «sì» in chat non è una prova verificabile dal gestionale: in questa versione
+il consenso avviene nella pagina riservata. Non esiste un endpoint API di conferma definitiva
 né un campo `confirmed=true` che consenta di aggirare il passaggio. La credenziale
 dell'assistente non dà accesso alla sessione browser. Se in futuro si vuole
 confermare direttamente nella chat, servirà un canale di consenso autenticato
