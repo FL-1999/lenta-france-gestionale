@@ -1846,6 +1846,7 @@ def _create_validated_fiche(
     courbe_beton_hauteur_initiale: str | float | None = None,
     courbe_beton_hauteur_finale: str | float | None = None,
     restrict_to_capo_sites: bool = False,
+    commit: bool = True,
 ) -> Fiche:
     metri_cubi_value = _parse_decimal_comma_float(
         metri_cubi_gettati, "Metri cubi gettati"
@@ -2066,7 +2067,10 @@ def _create_validated_fiche(
         fiche.id,
         len(fiche_notifications),
     )
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     db.refresh(fiche)
     return fiche
 
@@ -9306,3 +9310,9 @@ app.include_router(site_workspace.router)
 
 from routes import user_deletion
 app.include_router(user_deletion.router)
+
+# Separate integration surface; disabled until explicitly configured.
+from routes import assistant_integration
+app.include_router(assistant_integration.api)
+app.include_router(assistant_integration.approvals)
+app.add_middleware(assistant_integration.IntegrationBoundary)

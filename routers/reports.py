@@ -327,6 +327,10 @@ def create_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_site_operator),
 ):
+    return create_report_record(report_in, db, current_user)
+
+
+def create_report_record(report_in: ReportCreate, db: Session, current_user: User, *, commit: bool = True):
     """
     Crea un nuovo rapportino e lo salva nel database.
 
@@ -386,7 +390,10 @@ def create_report(
             raise HTTPException(409, "Bozza modificata: ricarica prima di inviare")
     _sync_attendance_from_report(db, db_report)
     notify_new_report(db, db_report, current_user)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     db.refresh(db_report)
     db.refresh(db_report, attribute_names=["workers", "created_by"])
 
