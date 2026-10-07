@@ -38,7 +38,7 @@ def params(o, scopes=SCOPES, **overrides):
     return dict(client_id=registration(o), redirect_uri=CALLBACK, response_type='code',
         state='opaque-chatgpt-state', resource=resource(), scope=' '.join(scopes),
         code_challenge=base64.urlsafe_b64encode(hashlib.sha256(VERIFIER.encode()).digest()).decode().rstrip('='),
-        code_challenge_method='S256', **overrides)
+        code_challenge_method='S256', ui_locales='it-IT', **overrides)
 
 
 def consent_form(o, p):
@@ -148,6 +148,20 @@ def test_pkce_resource_redirect_expiry_and_single_use(connected):
     row = o['db'].query(AssistantOAuthCode).filter_by(consumed=False).one()
     row.expires_at = datetime.utcnow() - timedelta(seconds=1); o['db'].commit()
     assert exchange(o, p, code).status_code == 400
+
+
+def test_locale_is_ignored_without_relaxing_oauth_validation(connected):
+    from models import AssistantOAuthFlow
+    o = connected; c = o['client']; p = params(o)
+    form = consent_form(o, {**p, 'ui_locales': 'it-IT fr-FR'})
+    flow = o['db'].get(AssistantOAuthFlow, form['flow_id'])
+    assert 'ui_locales' not in flow.params
+    assert flow.params['resource'] == resource()
+    assert c.get(ROOT + '/authorize', params=list(p.items()) + [('ui_locales', 'fr-FR')]).status_code == 400
+    assert c.get(ROOT + '/authorize', params={**p, 'ui_locales': 'x' * 2049}).status_code == 400
+    for key in ('resource', 'state', 'code_challenge'):
+        missing = {k: v for k, v in p.items() if k != key}
+        assert c.get(ROOT + '/authorize', params=missing).status_code == 400
 
 
 def test_refresh_rotation_scope_and_revocation(connected):

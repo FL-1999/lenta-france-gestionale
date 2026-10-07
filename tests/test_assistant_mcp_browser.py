@@ -87,7 +87,7 @@ def test_browser_oauth_login_consent_and_revoke(live_oauth):
     client = httpx.post(origin + ROOT + '/register', json={'redirect_uris': [CALLBACK], 'token_endpoint_auth_method': 'none'}).json()['client_id']
     verifier = 'v' * 64
     params = dict(client_id=client, redirect_uri=CALLBACK, response_type='code', state='browser-state',
-        resource=public + MCP, scope='lenta.read lenta.prepare lenta.fiches.submit', code_challenge_method='S256',
+        resource=public + MCP, scope='lenta.read lenta.prepare lenta.fiches.submit', code_challenge_method='S256', ui_locales='it-IT',
         code_challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip('='))
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None,

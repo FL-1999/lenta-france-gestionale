@@ -80,13 +80,15 @@ def authorize_uri(params):
 def validated_params(pairs, db):
     params = dict(pairs)
     allowed = {'client_id', 'redirect_uri', 'response_type', 'scope', 'state', 'resource',
-               'code_challenge', 'code_challenge_method'}
+               'code_challenge', 'code_challenge_method', 'ui_locales'}
     if (len(params) != len(pairs) or not set(params).issubset(allowed)
             or any(len(v) > 2048 for v in params.values())
             or params.get('resource') != resource() or not params.get('state')
             or params.get('code_challenge_method') != 'S256'
             or not re.fullmatch(r'[A-Za-z0-9_-]{43}', params.get('code_challenge', ''))):
         raise HTTPException(400, 'Richiesta OAuth non valida: occorrono resource, state e PKCE S256.')
+    # ChatGPT sends its display language. It does not affect consent or permissions.
+    params.pop('ui_locales', None)
     try:
         oauth_server(db).validate_authorization_request(authorize_uri(params))
     except OAuth2Error as exc:
