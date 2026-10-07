@@ -1,8 +1,9 @@
 # Integrazione per l'assistente personale Lenta
 
 Questa implementazione prepara il gestionale per un assistente sviluppato in un
-progetto separato. È disattivata per impostazione predefinita. Non contiene un
-modello AI, non legge email o file esterni e non richiede nuove dipendenze.
+progetto separato oppure per ChatGPT tramite MCP e OAuth. È disattivata per
+impostazione predefinita. Non contiene un modello AI e non legge email o file
+esterni. OAuthLib gestisce lo scambio OAuth con PKCE.
 
 ## Accesso e operazioni disponibili
 
@@ -41,9 +42,8 @@ chiedere «Vuoi ricontrollare o salvare?». Alla scelta di salvare chiamare
 `POST /api/integrations/v1/proposals/{id}/submit-fiche`. Ripetere la stessa chiamata
 non duplica la fiche. Comunicare **inserita, da verificare**, mai confermata.
 Questo endpoint accetta solo `fiche.create`; rapporti e trasporti mantengono
-la conferma browser descritta sotto. Il collegamento ChatGPT/MCP è un componente
-separato: questo rilascio abilita il contratto del gestionale, non installa un'app
-nell'account ChatGPT.
+la conferma browser descritta sotto. Il server MCP è incluso nel gestionale;
+l'installazione del plugin personale e il consenso avvengono nell'account ChatGPT.
 
 Il proprietario apre la fiche, corregge i parametri se necessario e preme
 **Conferma fiche** in fondo alla pagina. Solo allora aggiornamenti e quantità
@@ -115,8 +115,8 @@ In Render configurare queste variabili nel servizio che esegue `main:app`.
 L'origine viene dalla configurazione, mai dall'header `Host` inviato dal client.
 Con configurazione incompleta o scaduta il canale rifiuta tutte le richieste (`503`).
 
-Al deploy vengono create soltanto le nuove tabelle `assistant_proposals` e
-`assistant_rate_buckets`, attraverso il normale avvio e la metadata SQLAlchemy
+Al deploy vengono create le tabelle `assistant_proposals`, `assistant_rate_buckets`
+e le cinque tabelle `assistant_oauth_*`, attraverso il normale avvio e la metadata SQLAlchemy
 già presenti. Le nuove tabelle non richiedono cancellazioni o conversioni di dati
 esistenti. Conservare il consueto backup prima del deploy; verificare prima in un
 ambiente di prova. La pubblicazione sul branch `main` collegato a Render attiva il
@@ -129,7 +129,42 @@ disattivazione del proprietario o la perdita dei permessi admin blocca l'accesso
 Il rollback funzionale consiste nel disattivare il canale; non eliminare le nuove
 tabelle né lo storico degli audit per fare rollback.
 
-## Contratto per il progetto assistente
+## Collegamento personale in ChatGPT
+
+Creare un server MCP personalizzato nell'area plugin di ChatGPT con nome
+**Lenta personale**, autenticazione **OAuth** e URL:
+
+`https://lenta-france-gestionale.onrender.com/integrations/assistant/mcp`
+
+La discovery pubblica contiene solo metadati e descrizioni degli strumenti.
+ChatGPT registra un client pubblico automaticamente tramite DCR: non servono
+client secret, API key OpenAI o la chiave REST del gestionale. Il proprietario
+accede a Lenta e autorizza esplicitamente i permessi mostrati. Un altro utente,
+anche amministratore, non può collegarsi. Il login riprende automaticamente la
+pagina di consenso. Email e file restano nei rispettivi plugin, separati da Lenta.
+
+Il protocollo è Streamable HTTP, versione `2025-06-18`, con risposte JSON.
+I venti strumenti comprendono sedici letture, tre anteprime di creazione e il
+salvataggio idempotente della fiche in verifica. Nessuno strumento conferma
+la produzione né approva rapporti o trasporti; per questi ultimi si restituisce
+il collegamento di approvazione del gestionale.
+
+OAuth usa authorization code monouso (2 minuti), PKCE S256 obbligatorio, callback
+HTTPS ChatGPT registrati, `state`, identificazione dell'issuer e token vincolati
+alla risorsa MCP. I permessi sono `lenta.read`, `lenta.prepare` e
+`lenta.fiches.submit`. Access token da 15 minuti e refresh token vengono salvati
+solo come hash; il rinnovo ruota la coppia e il riutilizzo di un codice consumato
+o di un refresh token ruotato revoca il collegamento. La durata massima è 90 giorni,
+sempre limitata dalla scadenza `ASSISTANT_TOKEN_EXPIRES_AT` già configurata.
+
+Per revocare tutti i collegamenti ChatGPT aprire, come proprietario:
+`https://lenta-france-gestionale.onrender.com/integrations/assistant/connections`.
+La revoca non disattiva la chiave REST. Disattivazione dell'integrazione, rotazione
+del suo hash o perdita dei permessi del proprietario bloccano entrambi i canali.
+Le tabelle OAuth conservano lo storico; non è prevista la cancellazione automatica
+dei grant e dei token scaduti. Nessun segreto va inserito nei prompt.
+
+## Contratto REST per il progetto assistente
 
 Richieste HTTPS con `Authorization: Bearer <LENTA_ASSISTANT_TOKEN>`. Tenere la
 credenziale nel backend/secret store, mai nel codice frontend o nel prompt.
@@ -215,6 +250,7 @@ chiamante quando invocati dall'integrazione.
 
 ```console
 python -m pytest tests/test_assistant_integration.py -q
+python -m pytest tests/test_assistant_mcp.py -q
 python -m pytest -q --disable-warnings
 ```
 
@@ -222,5 +258,6 @@ I test isolano il database e le variabili di integrazione. Coprono accessi,
 revoche, CSRF, idempotenza, scadenza, conflitti, limiti, annullamento atomico e
 creazione dei tre tipi di documento. Il workflow PostgreSQL della repository
 include anche questi test; la sola esecuzione locale su SQLite non prova la
-concorrenza reale di PostgreSQL.
-
+concorrenza reale di PostgreSQL. I test MCP coprono PKCE, limiti dei permessi,
+scadenza, replay, rinnovo e revoca. Con `RUN_BROWSER_TESTS=1` il flusso login,
+consenso e revoca viene provato in un browser isolato su HTTPS locale.

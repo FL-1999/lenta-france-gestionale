@@ -2411,9 +2411,10 @@ def login_page(request: Request):
     """
     current_user = _get_user_from_cookie(request)
     if current_user:
+        from services.assistant_oauth import resume_path
         requested_role = get_current_role_from_request(request)
         return RedirectResponse(
-            url=get_default_route(current_user, requested_role),
+            url=resume_path(request) or get_default_route(current_user, requested_role),
             status_code=303,
         )
 
@@ -2464,10 +2465,12 @@ def login_api(
         requested_role=active_role,
     )
 
+    from services.assistant_oauth import resume_path, RESUME_COOKIE
     response = RedirectResponse(
-        url=token_data.redirect_url or "/",
+        url=resume_path(request) or token_data.redirect_url or "/",
         status_code=303,
     )
+    response.delete_cookie(RESUME_COOKIE, path="/")
     _apply_access_token_cookie(response, token_data.access_token, active_role, refresh_email=user.email)
     return response
 
@@ -9340,3 +9343,7 @@ app.add_middleware(assistant_integration.IntegrationBoundary)
 
 from routes.fiche_review import router as fiche_review_router
 app.include_router(fiche_review_router)
+
+from routes import assistant_oauth, assistant_mcp
+app.include_router(assistant_oauth.router)
+app.include_router(assistant_mcp.router)

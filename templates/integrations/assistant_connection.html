@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Collegamento ChatGPT · Lenta</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;background:#f3f5f8;color:#172b42;margin:0;padding:24px}main{max-width:640px;margin:32px auto;background:#fff;padding:32px;border-radius:16px}h1{line-height:1.2}li{margin:12px 0}button,a{font:inherit}button{padding:12px 20px;border-radius:8px;cursor:pointer;margin:8px 8px 0 0;border:1px solid #8292a4}button[value=allow]{background:#134675;color:white}a{color:#134675}.muted{color:#526477}.account{padding:12px;background:#edf3f8;border-radius:8px;overflow-wrap:anywhere}@media(max-width:560px){body{padding:12px}main{padding:20px;margin:12px auto}button{width:100%;margin-right:0}}</style>
+</head><body><main>
+<p class="muted">Lenta · Assistente personale</p>
+{% if flow %}
+<h1>Collega ChatGPT a Lenta</h1>
+<p class="account">Account: <strong>{{ user.full_name or user.email }}</strong></p>
+<p>Stai autorizzando ChatGPT a usare questi dati e queste operazioni del gestionale:</p>
+<ul>
+{% if 'lenta.read' in scopes %}<li>Leggere cantieri, personale, presenze e ore, avanzamenti, fiches, rapporti e trasporti.</li>{% endif %}
+{% if 'lenta.prepare' in scopes %}<li>Preparare il riepilogo di nuove fiches, rapporti giornalieri e trasporti.</li>{% endif %}
+{% if 'lenta.fiches.submit' in scopes %}<li>Inserire fiches <strong>Da verificare</strong>, quando scegli di salvarle in chat.</li>{% endif %}
+</ul>
+<p>La conferma della produzione resta riservata a te nel gestionale. Rapporti e trasporti richiedono la conferma della relativa proposta su Lenta.</p>
+<p class="muted">Il collegamento dura al massimo 90 giorni e non supera la scadenza dell’integrazione. Puoi revocarlo da <a href="/integrations/assistant/connections">Collegamenti assistente</a>.</p>
+<form method="post" action="/integrations/assistant/oauth/authorize">
+<input type="hidden" name="flow_id" value="{{ flow.id }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+<button name="decision" value="allow" type="submit">Autorizza ChatGPT</button>
+<button name="decision" value="deny" type="submit">Non autorizzare</button>
+</form>
+{% else %}
+<h1>Collegamenti assistente</h1>
+{% if grants %}<p>Collegamenti non revocati: <strong>{{ grants|length }}</strong>.</p>
+<ul>{% for grant in grants %}<li>ChatGPT · scadenza {{ grant.expires_at.strftime('%d/%m/%Y') }}</li>{% endfor %}</ul>
+<form method="post" action="/integrations/assistant/connections/revoke"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Revoca tutti i collegamenti ChatGPT</button></form>
+{% else %}<p>Nessun collegamento ChatGPT attivo.</p>{% endif %}
+<p><a href="/manager/dashboard">Torna al gestionale</a></p>
+{% endif %}
+</main></body></html>
