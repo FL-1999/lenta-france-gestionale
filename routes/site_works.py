@@ -139,6 +139,13 @@ class ProgressUpdate(Strict):
 @router.patch('/progress')
 def update_progress(request:Request,site_id:int,body:ProgressUpdate,db:Session=Depends(get_db),user:User=Depends(get_current_active_user_html)):
     site=access(db,user,site_id,True);same_origin(request)
+    apply_progress_update(db,site,body,user)
+    db.commit();db.expire_all()
+    return data(site_id,db,user)
+
+
+def apply_progress_update(db,site,body,user):
+    """Shared browser/assistant validations; the caller owns the transaction."""
     _,works,reference=snapshot(db,site)
     if 'pozzi_pompaggio_pct' in body.model_fields_set and works['wells']:
         raise HTTPException(400,'Aggiorna lo stato dei pozzi sulla mappa.')
@@ -150,8 +157,6 @@ def update_progress(request:Request,site_id:int,body:ProgressUpdate,db:Session=D
     for key,value in changes.items():
         setattr(site,key,value)
     log_audit_event(db,user,'SITE_PROGRESS_UPDATED','site',site.id,changes)
-    db.commit();db.expire_all()
-    return data(site_id,db,user)
 
 
 @router.put('/data')

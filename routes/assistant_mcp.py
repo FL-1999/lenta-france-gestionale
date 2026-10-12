@@ -75,7 +75,11 @@ async def mcp(request: Request, db: Session = Depends(get_db)):
         tool = catalogue().get(name) if isinstance(name, str) else None
         if not tool:
             return rpc_error(ident, -32602, 'Strumento sconosciuto')
-        user = authenticate(request, db, tool.scope)
+        try:
+            user = authenticate(request, db, tool.scope)
+        except HTTPException as exc:
+            # Preserve the OAuth scope challenge; the site's HTML 403 handler drops it.
+            return JSONResponse({'detail': exc.detail}, status_code=exc.status_code, headers=exc.headers)
         rate_limit(db, user.id, not tool.read_only)
         try:
             values = tool.schema.model_validate(params.get('arguments', {}))

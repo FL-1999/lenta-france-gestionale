@@ -88,7 +88,7 @@ def test_discovery_handshake_catalog_and_closed_data(connected):
         assert r.status_code == 200, r.text
         assert r.headers['cache-control'] == 'no-store'
     tools = c.post(MCP, json={'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}).json()['result']['tools']
-    assert len(tools) == 20
+    assert len(tools) == 23
     assert all(t['securitySchemes'][0]['type'] == 'oauth2' for t in tools)
     assert not any('confirm' in t['name'] or 'delete' in t['name'] for t in tools)
     assert call(o, None, 'lenta_sites').status_code == 401
