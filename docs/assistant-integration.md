@@ -15,18 +15,50 @@ credenziali API. Non richiede la password personale dell'amministratore.
 
 | Dati | Lettura | Scrittura in questa versione |
 | --- | --- | --- |
-| Cantieri e avanzamenti | Elenco, dettaglio, produzione, fasi, contesto pannello/coupe | Nessuna |
+| Cantieri e avanzamenti | Elenco, dettaglio, produzione, fasi, contesto pannello/coupe | Aggiornamenti limitati dei dati e degli avanzamenti manuali, dopo anteprima e conferma in chat |
 | Personale e ore | Anagrafica operativa, presenze, totali per persona e cantiere | Presenze generate con un nuovo rapporto |
 | Fiches | Elenco, dettaglio, stratigrafia | Creazione con le validazioni del modulo esistente |
 | Rapporti giornalieri | Elenco e dettaglio con operai | Creazione con ore esplicite per ciascuna persona |
 | Trasporti | Programmati/in corso/storici, dettagli e carichi | Creazione viaggio programmato nel flusso parco/logistica |
 | Cataloghi | Beni, luoghi, autisti, mezzi, macchinari, capicantiere | Nessuna |
 
-La v1 non espone cancellazioni, modifiche di record esistenti, gestione utenti,
+La v1 non espone cancellazioni, modifiche generiche di record, gestione utenti,
 creazione cantieri o registrazione di carichi/scarichi effettivi. Tali operazioni
 potranno essere aggiunte con contratti e controlli specifici. Il futuro assistente
 può raccogliere tutti i dati in conversazione, ma non dispone di un comando
 generico per modificare database, eseguire SQL o navigare con il profilo admin.
+
+## Aggiornare cantieri dalla chat
+
+Leggere prima il dettaglio e gli avanzamenti del cantiere. Preparare una proposta con
+`lenta_prepare_site_progress_update` oppure `lenta_prepare_site_details_update`,
+mostrare i valori prima/dopo e chiedere conferma al proprietario. Solo dopo una
+conferma esplicita chiamare `lenta_apply_site_update`. L'aggiornamento è immediato
+e visibile anche nel gestionale. Ripetere l'applicazione non ripete gli incrementi.
+La conferma conversazionale è gestita dal client ChatGPT; il server verifica il
+proprietario, il permesso dedicato, la proposta, la scadenza e i valori correnti.
+
+Per i muretti guida indicare **o** `cordoli_increment_m` (metri da aggiungere)
+**o** `cordoli_done_m` (totale eseguito). `cordoli_total_m: null` ripristina il
+totale automatico da pianta; omettere il campo conserva la configurazione corrente.
+Non si possono superare i metri previsti o aggiornare metri eseguiti senza un totale.
+Sono disponibili anche installazione, pozzi e rabotage in percentuale; per pozzi
+e rabotage restano i vincoli della pianta, che impediscono la sostituzione di un
+avanzamento derivato dalla mappa con una percentuale manuale. La produzione delle
+fiches e la loro conferma definitiva non possono essere alterate da questi strumenti.
+
+I dati modificabili sono nome, codice, indirizzo/città/paese, coordinate, date,
+capocantiere attivo e intestazione del progetto. I campi omessi restano invariati;
+`null` svuota solo i campi facoltativi. Cambiare indirizzo richiede coordinate
+verificate oppure un consenso esplicito a salvarlo senza posizione sulla mappa
+(`confirm_unverified_address`); non inventare coordinate. Nessuna creazione,
+archiviazione o cancellazione di cantieri è disponibile.
+
+Se i dati interessati o la pianta cambiano dopo l'anteprima, preparare una nuova
+proposta e chiedere nuovamente conferma. Sono registrati autore, differenze ed esito.
+Il nuovo permesso OAuth è `lenta.sites.update`: i collegamenti già attivi non lo
+ricevono tramite rinnovo automatico. Aggiornare gli strumenti del plugin e
+ricollegare Lenta autorizzando il nuovo permesso, senza cambiare le variabili Render.
 
 ## Fiches da verificare (aggiornamento)
 
@@ -144,15 +176,16 @@ anche amministratore, non può collegarsi. Il login riprende automaticamente la
 pagina di consenso. Email e file restano nei rispettivi plugin, separati da Lenta.
 
 Il protocollo è Streamable HTTP, versione `2025-06-18`, con risposte JSON.
-I venti strumenti comprendono sedici letture, tre anteprime di creazione e il
-salvataggio idempotente della fiche in verifica. Nessuno strumento conferma
+I ventitré strumenti comprendono sedici letture, tre anteprime di creazione,
+due anteprime di aggiornamento, il salvataggio della fiche in verifica e
+l'applicazione idempotente delle modifiche ai cantieri. Nessuno strumento conferma
 la produzione né approva rapporti o trasporti; per questi ultimi si restituisce
 il collegamento di approvazione del gestionale.
 
 OAuth usa authorization code monouso (2 minuti), PKCE S256 obbligatorio, callback
 HTTPS ChatGPT registrati, `state`, identificazione dell'issuer e token vincolati
-alla risorsa MCP. I permessi sono `lenta.read`, `lenta.prepare` e
-`lenta.fiches.submit`. Access token da 15 minuti e refresh token vengono salvati
+alla risorsa MCP. I permessi sono `lenta.read`, `lenta.prepare`,
+`lenta.fiches.submit` e `lenta.sites.update`. Access token da 15 minuti e refresh token vengono salvati
 solo come hash; il rinnovo ruota la coppia e il riutilizzo di un codice consumato
 o di un refresh token ruotato revoca il collegamento. La durata massima è 90 giorni,
 sempre limitata dalla scadenza `ASSISTANT_TOKEN_EXPIRES_AT` già configurata.
@@ -179,6 +212,7 @@ credenziale nel backend/secret store, mai nel codice frontend o nel prompt.
 - `GET /catalog/{collection}` con `assets`, `places`, `drivers`, `vehicles`,
   `machines`, `site_managers`.
 - `POST /proposals`, `GET /proposals/{id}`.
+- `POST /proposals/{id}/apply-site-update`: applica solo i due tipi di aggiornamento cantiere.
 
 Tutti i percorsi abbreviati hanno il prefisso `/api/integrations/v1`.
 Gli elenchi supportano `offset` e `limit` (predefinito 50, massimo 200), con
@@ -203,7 +237,8 @@ Esempio di preparazione di un rapporto (ID solo illustrativi):
 }
 ```
 
-Tipi disponibili: `fiche.create`, `report.create`, `trip.create`. Gli schemi di
+Tipi disponibili: `fiche.create`, `report.create`, `trip.create`,
+`site.progress.update`, `site.details.update`. Gli schemi di
 `capabilities.schemas` definiscono campi, unità e vincoli: per le fiches il diametro
 in ingresso è `diametro_palo_cm`, in centimetri; lunghezze persistite in metri.
 Il rapporto richiede ore persona esplicite. Se una presenza esiste già per quella
@@ -251,6 +286,7 @@ chiamante quando invocati dall'integrazione.
 ```console
 python -m pytest tests/test_assistant_integration.py -q
 python -m pytest tests/test_assistant_mcp.py -q
+python -m pytest tests/test_assistant_sites.py -q
 python -m pytest -q --disable-warnings
 ```
 

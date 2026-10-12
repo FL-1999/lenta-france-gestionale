@@ -97,7 +97,7 @@ def test_read_contracts_pagination_and_private_headers(assistant):
     assert c.get(API+'/attendance?from_date=2026-12-01&to_date=2026-01-01', headers=o['headers']).status_code == 422
     assert c.get(API+'/hours?from_date=2020-01-01&to_date=2026-01-01', headers=o['headers']).status_code == 422
     schema = c.get(API+'/openapi.json', headers=o['headers']).json()
-    assert len(schema['components']['schemas']['ProposalInput']['oneOf']) == 3
+    assert len(schema['components']['schemas']['ProposalInput']['oneOf']) == 5
     assert 'hours_worked' in schema['components']['schemas']['WorkerInput']['required']
     assert schema['security'] == [{'AssistantBearer': []}]
 

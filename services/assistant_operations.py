@@ -46,6 +46,9 @@ def active_site(db, ident):
 def perform(db, user, kind, raw, operation_id):
     """Never commits. Returns stable review data plus a result reference."""
     payload = INPUTS[kind].model_validate(raw)
+    if kind.startswith('site.'):
+        from services.assistant_sites import perform_site_update
+        return perform_site_update(db, user, kind, payload)
     if kind == 'fiche.create':
         from main import _create_validated_fiche
         from models import Machine
@@ -122,7 +125,7 @@ def preview(db, user, kind, payload, ident):
 
 def prepare(db, user, body: ProposalInput):
     try:
-        payload = INPUTS[body.kind].model_validate(body.payload).model_dump(mode='json')
+        payload = INPUTS[body.kind].model_validate(body.payload).model_dump(mode='json', exclude_unset=body.kind.startswith('site.'))
     except ValidationError as exc:
         raise HTTPException(422, exc.errors(include_context=False, include_input=False))
     config = settings()

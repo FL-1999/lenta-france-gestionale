@@ -1,7 +1,7 @@
 """Explicit, bounded integration input contracts, independent of browser forms."""
 from datetime import date, time
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictInput(BaseModel):
@@ -83,10 +83,72 @@ class TripInput(StrictInput):
     moves: list[MoveInput] = Field(min_length=1, max_length=150)
 
 
+class SiteProgressChanges(StrictInput):
+    cordoli_done_m: float | None = Field(default=None, ge=0, le=1000000, description='Metri eseguiti complessivi, non incremento.')
+    cordoli_increment_m: float | None = Field(default=None, gt=0, le=1000000, description='Metri aggiuntivi; alternativo al totale eseguito.')
+    cordoli_total_m: float | None = Field(default=None, gt=0, le=1000000, description='Totale previsto; null ripristina il totale automatico dalla pianta.')
+    installazione_cantiere_pct: int | None = Field(default=None, ge=0, le=100)
+    pozzi_pompaggio_pct: int | None = Field(default=None, ge=0, le=100)
+    rabotage_pct: int | None = Field(default=None, ge=0, le=100)
+
+    @model_validator(mode='after')
+    def valid_patch(self):
+        changes = self.model_dump(exclude_unset=True)
+        if not changes or any(v is None and k != 'cordoli_total_m' for k, v in changes.items()):
+            raise ValueError('Indicare almeno un valore; solo il totale previsto può essere null.')
+        if 'cordoli_done_m' in changes and 'cordoli_increment_m' in changes:
+            raise ValueError('Scegliere metri complessivi oppure metri aggiuntivi, non entrambi.')
+        return self
+
+
+class SiteDetailsChanges(StrictInput):
+    model_config = ConfigDict(extra='forbid', allow_inf_nan=False, str_strip_whitespace=True)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    code: str | None = Field(default=None, min_length=1, max_length=50)
+    address: str | None = Field(default=None, max_length=255)
+    city: str | None = Field(default=None, max_length=100)
+    country: str | None = Field(default=None, max_length=100)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    start_date: date | None = None
+    end_date: date | None = None
+    caposquadra_id: int | None = Field(default=None, gt=0)
+    projet_client: str | None = Field(default=None, max_length=255)
+    projet_maitre_oeuvre: str | None = Field(default=None, max_length=255)
+    projet_entreprise: str | None = Field(default=None, max_length=255)
+    projet_affaire: str | None = Field(default=None, max_length=100)
+    projet_indice: str | None = Field(default=None, max_length=50)
+    projet_mission: str | None = Field(default=None, max_length=255)
+    projet_redaction: str | None = Field(default=None, max_length=50)
+    projet_controle: str | None = Field(default=None, max_length=50)
+
+    @model_validator(mode='after')
+    def valid_patch(self):
+        if not self.model_fields_set:
+            raise ValueError('Indicare almeno un dato da aggiornare.')
+        if any(k in self.model_fields_set and getattr(self, k) is None for k in ('name', 'code')):
+            raise ValueError('Nome e codice non possono essere cancellati.')
+        if ('lat' in self.model_fields_set) != ('lng' in self.model_fields_set) or ((self.lat is None) != (self.lng is None)):
+            raise ValueError('Latitudine e longitudine devono essere fornite insieme.')
+        return self
+
+
+class SiteProgressInput(StrictInput):
+    site_id: int = Field(gt=0)
+    changes: SiteProgressChanges
+
+
+class SiteDetailsInput(StrictInput):
+    site_id: int = Field(gt=0)
+    changes: SiteDetailsChanges
+    confirm_unverified_address: bool = Field(default=False, description='Solo su richiesta esplicita di salvare un nuovo indirizzo senza coordinate verificate.')
+
+
 class ProposalInput(StrictInput):
     request_id: str = Field(min_length=16, max_length=64, pattern=r'^[A-Za-z0-9_-]+$', description='Identificativo univoco del tentativo; riutilizzare lo stesso valore solo per ritentare la medesima proposta.')
-    kind: Literal['fiche.create', 'report.create', 'trip.create']
+    kind: Literal['fiche.create', 'report.create', 'trip.create', 'site.progress.update', 'site.details.update']
     payload: dict
 
 
-INPUTS = {'fiche.create': FicheInput, 'report.create': ReportInput, 'trip.create': TripInput}
+INPUTS = {'fiche.create': FicheInput, 'report.create': ReportInput, 'trip.create': TripInput,
+          'site.progress.update': SiteProgressInput, 'site.details.update': SiteDetailsInput}

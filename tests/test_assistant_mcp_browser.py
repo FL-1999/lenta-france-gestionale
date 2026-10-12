@@ -5,6 +5,7 @@ import os
 import ssl
 import threading
 import ipaddress
+from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from cryptography import x509
@@ -87,7 +88,7 @@ def test_browser_oauth_login_consent_and_revoke(live_oauth):
     client = httpx.post(origin + ROOT + '/register', json={'redirect_uris': [CALLBACK], 'token_endpoint_auth_method': 'none'}).json()['client_id']
     verifier = 'v' * 64
     params = dict(client_id=client, redirect_uri=CALLBACK, response_type='code', state='browser-state',
-        resource=public + MCP, scope='lenta.read lenta.prepare lenta.fiches.submit', code_challenge_method='S256', ui_locales='it-IT',
+        resource=public + MCP, scope='lenta.read lenta.prepare lenta.fiches.submit lenta.sites.update', code_challenge_method='S256', ui_locales='it-IT',
         code_challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip('='))
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None,
@@ -121,6 +122,21 @@ def test_browser_oauth_login_consent_and_revoke(live_oauth):
         headers = {'Authorization': 'Bearer ' + tokens.json()['access_token']}
         body = {'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': 'lenta_sites', 'arguments': {}}}
         assert httpx.post(origin + MCP, json=body, headers=headers).json()['result']['isError'] is False
+        def tool(name, arguments):
+            response = httpx.post(origin + MCP, headers=headers, json={'jsonrpc': '2.0', 'id': 2,
+                'method': 'tools/call', 'params': {'name': name, 'arguments': arguments}})
+            assert response.status_code == 200, response.text
+            result = response.json()['result']
+            assert not result['isError'], result
+            return result['structuredContent']
+        proposal = tool('lenta_prepare_site_progress_update', {'request_id': uuid4().hex,
+            'payload': {'site_id': ids['site'], 'changes': {'cordoli_total_m': 100, 'cordoli_done_m': 25}}})
+        tool('lenta_apply_site_update', {'proposal_id': proposal['id']})
+        page.goto(public + f"/manager/cantieri/{ids['site']}/avanzamento/data")
+        import json
+        progress = json.loads(page.locator('body').inner_text())
+        assert progress['summary']['cordoli']['done'] == 25
+        assert progress['summary']['cordoli']['percent'] == 25
         page.goto(public + '/integrations/assistant/connections')
         page.get_by_role('button', name='Revoca tutti i collegamenti ChatGPT').click()
         expect(page.get_by_text('Nessun collegamento ChatGPT attivo.')).to_be_visible()

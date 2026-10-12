@@ -19,7 +19,7 @@ from services.assistant_security import settings, check_owner
 logging.getLogger('oauthlib').setLevel(logging.WARNING)
 ROOT = '/integrations/assistant/oauth'
 MCP = '/integrations/assistant/mcp'
-SCOPES = ('lenta.read', 'lenta.prepare', 'lenta.fiches.submit')
+SCOPES = ('lenta.read', 'lenta.prepare', 'lenta.fiches.submit', 'lenta.sites.update')
 RESUME_COOKIE = 'lenta_oauth_resume'
 
 
@@ -73,7 +73,7 @@ def access_owner(db, token, scope):
             'WWW-Authenticate': f'Bearer resource_metadata="{settings().origin}/.well-known/oauth-protected-resource{MCP}", error="invalid_token"'})
     if scope and scope not in grant.scope.split():
         raise HTTPException(403, 'Permesso non autorizzato', headers={
-            'WWW-Authenticate': f'Bearer error="insufficient_scope", scope="{scope}"'})
+            'WWW-Authenticate': f'Bearer resource_metadata="{settings().origin}/.well-known/oauth-protected-resource{MCP}", error="insufficient_scope", scope="{scope}"'})
     return user
 
 
