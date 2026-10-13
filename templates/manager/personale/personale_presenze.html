@@ -6,7 +6,8 @@
 {% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="/static/css/personnel.css?v=2">
+<link rel="stylesheet" href="/static/css/personnel.css?v=20261013mobile1">
+<div class="personnel-attendance">
 {% include 'personnel/nav.html' %}
 <div class="page-header">
     <div class="page-header-main">
@@ -45,24 +46,24 @@
                     <input type="hidden" name="view" value="week" />
                     <label for="week_start" class="form-label">{% if lang == 'fr' %}Semaine{% else %}Settimana{% endif %}</label>
                     <input type="date" id="week_start" name="week_start" value="{{ week_start.isoformat() }}" class="form-input" />
-                    {% if personale_filter %}
-                        <input type="hidden" name="personale_id" value="{{ personale_filter }}" />
-                    {% endif %}
+                    <label class="attendance-worker-filter">{{ t('Persona','Personne') }}
+                        <select name="personale_id"><option value="0">{{ t('Tutto il personale','Tout le personnel') }}</option>{% for worker in personale_list %}<option value="{{ worker.id }}" {% if personale_filter == worker.id %}selected{% endif %}>{{ worker.cognome }} {{ worker.nome }}</option>{% endfor %}</select>
+                    </label>
                     <label class="attendance-extra-day"><input type="checkbox" name="show_saturday" value="true" {% if show_saturday %}checked{% endif %}> {{ t('Sabato', 'Samedi') }}</label>
                     <label class="attendance-extra-day"><input type="checkbox" name="show_sunday" value="true" {% if show_sunday %}checked{% endif %}> {{ t('Domenica', 'Dimanche') }}</label>
                     <button type="submit" class="btn btn-primary">🔎 {% if lang == 'fr' %}Voir{% else %}Vai{% endif %}</button>
                 </form>
                 <div class="week-nav">
                     <a class="btn btn-secondary btn-sm"
-                       href="{{ url_for('manager_personale_presenze') }}?view=week&show_saturday={{ 'true' if show_saturday else 'false' }}&show_sunday={{ 'true' if show_sunday else 'false' }}&week_start={{ prev_week.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}">
-                        ◀️ {% if lang == 'fr' %}Semaine précédente{% else %}Settimana precedente{% endif %}
+                       aria-label="{{ t('Settimana precedente','Semaine précédente') }}" href="{{ url_for('manager_personale_presenze') }}?view=week&show_saturday={{ 'true' if show_saturday else 'false' }}&show_sunday={{ 'true' if show_sunday else 'false' }}&week_start={{ prev_week.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}">
+                        ◀️ <span class="attendance-nav-desktop">{{ t('Settimana precedente','Semaine précédente') }}</span><span class="attendance-nav-mobile">{{ t('Precedente','Précédente') }}</span>
                     </a>
                     <span class="week-range">
                         {{ week_start.strftime('%d/%m/%Y') }} - {{ week_visible_end.strftime('%d/%m/%Y') }}
                     </span>
                     <a class="btn btn-secondary btn-sm"
-                       href="{{ url_for('manager_personale_presenze') }}?view=week&show_saturday={{ 'true' if show_saturday else 'false' }}&show_sunday={{ 'true' if show_sunday else 'false' }}&week_start={{ next_week.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}">
-                        {% if lang == 'fr' %}Semaine suivante{% else %}Settimana successiva{% endif %} ▶️
+                       aria-label="{{ t('Settimana successiva','Semaine suivante') }}" href="{{ url_for('manager_personale_presenze') }}?view=week&show_saturday={{ 'true' if show_saturday else 'false' }}&show_sunday={{ 'true' if show_sunday else 'false' }}&week_start={{ next_week.isoformat() }}{% if personale_filter %}&personale_id={{ personale_filter }}{% endif %}">
+                        <span class="attendance-nav-desktop">{{ t('Settimana successiva','Semaine suivante') }}</span><span class="attendance-nav-mobile">{{ t('Successiva','Suivante') }}</span> ▶️
                     </a>
                 </div>
             </div>
@@ -81,7 +82,7 @@
             {% if error_message %}
                 <div class="alert alert-danger">{{ error_message }}</div>
             {% endif %}
-            <table class="data-table attendance-table">
+            <table class="data-table attendance-table" role="table" aria-label="{{ t('Presenze settimanali','Présences hebdomadaires') }}">
                 <thead>
                     <tr>
                         <th>{% if lang == 'fr' %}Personnel{% else %}Personale{% endif %}</th>
@@ -121,7 +122,7 @@
                             </td>
                             {% for day in week_days %}
                                 {% set day_att = attendance_map.get(p.id, {}).get(day) %}
-                                <td class="attendance-cell">
+                                <td class="attendance-cell" data-day-label="{{ weekday_names[day.weekday()] }} {{ day.strftime('%d/%m') }}">
                                     <details class="attendance-editor">
                                       <summary class="attendance-edit-trigger attendance-edit-button" aria-label="{{ p.cognome }} {{ p.nome }} · {{ day.strftime('%d/%m') }}">
                                         {% if day_att %}
@@ -138,7 +139,7 @@
                                         {% elif absence_signals.get(p.id, {}).get(day) %}
                                             <span class="badge badge-muted">{{ t('Assenza segnalata', 'Absence signalée') }}</span>
                                         {% else %}
-                                            <span class="attendance-empty">—</span>
+                                            <span class="attendance-empty">—</span><span class="attendance-nav-mobile">{{ t('+ Aggiungi','+ Ajouter') }}</span>
                                         {% endif %}
                                       </summary>
                                       {% if day_att and day_att.request_id %}
@@ -521,4 +522,5 @@
         </div>
     {% endif %}
 {% endif %}
+</div>
 {% endblock %}

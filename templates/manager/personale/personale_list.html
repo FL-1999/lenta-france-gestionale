@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="/static/css/personnel.css?v=1">
+<link rel="stylesheet" href="/static/css/personnel.css?v=20261013mobile1">
 <div class="pw-personnel-list">
 <div class="page-header">
     <div class="page-header-main">
@@ -48,7 +48,7 @@
 
 <div class="card table-card">
     <div class="card-body pw-scroll">
-        <table class="data-table">
+        <table class="data-table" role="table" aria-label="{{ t('Elenco personale','Liste du personnel') }}">
             <thead>
                 <tr>
                     <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
@@ -63,12 +63,12 @@
             <tbody>
                 {% for p in personale %}
                     <tr>
-                        <td><strong>{{ p.cognome }} {{ p.nome }}</strong><br><small>{{ t('Account collegato', 'Compte lié') if p.user_id else t('Account da collegare', 'Compte à relier') }}</small></td>
-                        <td>{{ p.ruolo or '—' }}</td>
-                        <td>{{ p.telefono or '—' }}</td>
-                        <td>{{ p.email or '—' }}</td>
-                        <td>{{ p.data_assunzione or '—' }}</td>
-                        <td class="text-right">
+                        <td class="personnel-name"><strong>{{ p.cognome }} {{ p.nome }}</strong><br><small>{{ t('Account collegato', 'Compte lié') if p.user_id else t('Account da collegare', 'Compte à relier') }}</small></td>
+                        <td data-label="{{ t('Mansione','Métier') }}">{{ p.ruolo or '—' }}</td>
+                        <td data-label="{{ t('Telefono','Téléphone') }}">{{ p.telefono or '—' }}</td>
+                        <td class="personnel-email" data-label="Email">{{ p.email or '—' }}</td>
+                        <td data-label="{{ t('Assunto il','Embauché le') }}">{{ p.data_assunzione or '—' }}</td>
+                        <td class="text-right personnel-state" data-label="{{ t('Stato','Statut') }}">
                             {% if p.incluso_presenze == false %}<small>{{ t('Escluso dall’elenco presenze', 'Exclu de la liste des présences') }}</small><br>{% endif %}
                             {% if p.attivo %}
                                 <span class="badge badge-success">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
