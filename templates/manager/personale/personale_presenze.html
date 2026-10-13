@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="/static/css/personnel.css?v=1">
+<link rel="stylesheet" href="/static/css/personnel.css?v=2">
 {% include 'personnel/nav.html' %}
 <div class="page-header">
     <div class="page-header-main">
@@ -26,6 +26,7 @@
     </div>
 </div>
 
+{% include 'personnel/attendance_controls.html' %}
 <div class="card">
     <div class="card-body">
         <div class="presenze-view-switch">

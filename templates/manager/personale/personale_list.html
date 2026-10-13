@@ -52,7 +52,7 @@
             <thead>
                 <tr>
                     <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
-                    <th>{% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}</th>
+                    <th>{% if lang == 'fr' %}Métier{% else %}Mansione{% endif %}</th>
                     <th>{% if lang == 'fr' %}Téléphone{% else %}Telefono{% endif %}</th>
                     <th>Email</th>
                     <th>{% if lang == 'fr' %}Embauché le{% else %}Assunto il{% endif %}</th>
@@ -69,6 +69,7 @@
                         <td>{{ p.email or '—' }}</td>
                         <td>{{ p.data_assunzione or '—' }}</td>
                         <td class="text-right">
+                            {% if p.incluso_presenze == false %}<small>{{ t('Escluso dall’elenco presenze', 'Exclu de la liste des présences') }}</small><br>{% endif %}
                             {% if p.attivo %}
                                 <span class="badge badge-success">{% if lang == 'fr' %}Actif{% else %}Attivo{% endif %}</span>
                             {% else %}

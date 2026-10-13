@@ -39,6 +39,11 @@
 .pw-case strong,.pw-case small{display:block;margin:4px 0}.pw-case small{color:var(--ws-muted)}
 .pw-scroll{overflow-x:auto}.pw-scroll table{width:100%;border-collapse:collapse;table-layout:auto}.pw-scroll th,.pw-scroll td{padding:12px;border-bottom:1px solid var(--ws-line);text-align:left}.pw-scroll th{font-size:12px;color:var(--ws-muted)}
 .pw-search{max-width:400px;margin-bottom:16px}
+.pw-admin-controls{margin-top:24px;margin-bottom:24px}.pw-existing-account{margin-top:22px}
+.pw-admin-controls summary{cursor:pointer;font-weight:600;line-height:1.5}
+.pw-attendance-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:8px 20px;margin:16px 0}
+.pw-admin-controls .pw-check{align-items:flex-start}.pw-admin-controls .pw-check input{flex:0 0 18px;margin-top:3px}
+.pw-admin-controls .pw-panel>p strong{overflow-wrap:anywhere}
 .workspace-ui .pw-personnel-list .data-table td{padding-top:12px;padding-bottom:12px;word-break:normal}
 .workspace-ui .attendance-table td{padding:8px}.workspace-ui .attendance-table .attendance-cell{gap:4px}
 .workspace-ui .attendance-table .attendance-edit-button{border:0;width:100%;min-height:44px;padding:8px;background:var(--ws-input)}

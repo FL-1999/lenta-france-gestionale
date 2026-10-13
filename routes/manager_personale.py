@@ -20,6 +20,8 @@ from personale_presenze_repository import (
 )
 from template_context import register_manager_badges, render_template
 from permissions import has_perm
+from services import personnel_accounts
+from routes.personnel import token as personnel_token
 
 
 templates = Jinja2Templates(directory="templates")
@@ -229,7 +231,8 @@ def manager_personale_create(
     session.add(personale)
     session.commit()
 
-    url = request.url_for("manager_personale_list")
+    url = (request.url_for("manager_personale_edit", personale_id=personale.id)
+           if has_perm(current_user, 'users.manage') else request.url_for("manager_personale_list"))
     return RedirectResponse(url=url, status_code=303)
 
 
@@ -259,10 +262,26 @@ def manager_personale_edit(
         {
             "lang": lang,
             "personale": personale,
+            **_admin_account_context(session, current_user, personale),
         },
         session,
         current_user,
     )
+
+
+def _admin_account_context(session, user, personale):
+    if not has_perm(user, 'users.manage'):
+        return {}
+    account = session.get(User, personale.user_id) if personale.user_id else None
+    linked = select(Personale.user_id).where(Personale.user_id.is_not(None))
+    choices = session.exec(select(User).where(User.is_active.is_(True), User.id.not_in(linked)).order_by(User.email)).all()
+    return {
+        'personnel_csrf': personnel_token(user),
+        'linked_account': account,
+        'account_choices': choices,
+        'account_editable': personnel_accounts.editable_account(account),
+        'account_snapshot': personnel_accounts.account_snapshot(account) if account else '',
+    }
 
 
 @router.post(
@@ -304,7 +323,8 @@ def manager_personale_update(
     session.add(personale)
     session.commit()
 
-    url = request.url_for("manager_personale_list")
+    url = (request.url_for("manager_personale_edit", personale_id=personale.id)
+           if has_perm(current_user, 'users.manage') else request.url_for("manager_personale_list"))
     return RedirectResponse(url=url, status_code=303)
 
 
@@ -354,12 +374,15 @@ def manager_personale_presenze(
     week_start: Optional[date] = Query(None),
     show_saturday: bool = False,
     show_sunday: bool = False,
+    show_excluded: bool = False,
     autofill: str | None = None,
     autofill_personale: Optional[int] = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user_html),
 ):
     _ensure_manager(current_user)
+    if show_excluded and not has_perm(current_user, 'users.manage'):
+        raise HTTPException(403, 'Operazione riservata all’admin')
     lang = request.cookies.get("lang", "it")
     view = (view or "week").lower()
     if view not in {"week", "month"}:
@@ -388,7 +411,8 @@ def manager_personale_presenze(
         .where(Personale.attivo.is_(True))
         .order_by(Personale.cognome, Personale.nome)
     )
-    personale_list = session.exec(personale_query).all()
+    all_personale = session.exec(personale_query).all()
+    personale_list = [p for p in all_personale if show_excluded or p.incluso_presenze is not False]
     personale = personale_list
     if personale_id and view != "month":
         personale = [worker for worker in personale_list if worker.id == personale_id]
@@ -624,6 +648,9 @@ def manager_personale_presenze(
             "view": view,
             "personale": personale,
             "personale_list": personale_list,
+            "attendance_people": all_personale if has_perm(current_user, 'users.manage') else [],
+            "personnel_csrf": personnel_token(current_user) if has_perm(current_user, 'users.manage') else None,
+            "show_excluded": show_excluded,
             "selected_personale": selected_personale,
             "week_start": week_start,
             "week_end": week_end,

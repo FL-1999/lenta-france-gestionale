@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, EmailStr
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from auth import SECRET_KEY, get_current_active_user_html
@@ -20,6 +20,7 @@ from models import (Personale, PersonalePresenza, User, Site, Depot, RoleEnum, P
 from permissions import has_perm, user_has_role
 from template_context import register_manager_badges, render_template
 from services import personnel as svc
+from services import personnel_accounts as accounts
 
 router = APIRouter(tags=['personnel-workspace'])
 templates = Jinja2Templates(directory='templates')
@@ -312,6 +313,65 @@ def link(ident: int, data: LinkAccount, request: Request, db: Session = Depends(
     row.user_id = target.id
     svc.event(db, user, 'account_linked', person_id=row.id, user_id=target.id)
     db.commit(); return {'ok': True}
+
+
+class CreateAccount(BaseModel):
+    email: EmailStr = Field(max_length=255)
+    password: str = Field(min_length=12, max_length=128)
+    role: Literal['personale', 'caposquadra']
+    language: Literal['it', 'fr'] = 'it'
+
+
+class ChangeAccess(BaseModel):
+    user_id: int
+    expected: str = Field(min_length=64, max_length=64)
+    role: Literal['personale', 'caposquadra']
+
+
+class AttendanceVisibility(BaseModel):
+    person_id: int
+    included: bool
+    expected: bool
+
+
+class AttendanceVisibilityBatch(BaseModel):
+    people: list[AttendanceVisibility] = Field(min_length=1, max_length=500)
+
+
+@router.post('/manager/personale/{ident}/crea-accesso')
+def create_personal_account(ident: int, data: CreateAccount, request: Request,
+    db: Session = Depends(get_db), user: User = Depends(get_current_active_user_html)):
+    accounts.require_admin(user); validate(request, user)
+    return accounts.create_account(db, user, ident, data)
+
+
+@router.post('/manager/personale/{ident}/tipo-accesso')
+def change_personal_access(ident: int, data: ChangeAccess, request: Request,
+    db: Session = Depends(get_db), user: User = Depends(get_current_active_user_html)):
+    accounts.require_admin(user); validate(request, user)
+    return accounts.change_access(db, user, ident, data)
+
+
+@router.post('/manager/personale/presenze/elenco')
+def attendance_visibility(data: AttendanceVisibilityBatch, request: Request,
+    db: Session = Depends(get_db), user: User = Depends(get_current_active_user_html)):
+    accounts.require_admin(user); validate(request, user)
+    if len({p.person_id for p in data.people}) != len(data.people):
+        raise HTTPException(422, 'Persona ripetuta / Personne répétée')
+    try:
+        for item in sorted(data.people, key=lambda p: p.person_id):
+            row = svc.person(db, item.person_id, True)
+            before = row.incluso_presenze is not False
+            if before != item.expected:
+                raise HTTPException(409, 'Elenco modificato: ricarica la pagina / Liste modifiée : rechargez la page')
+            if before != item.included:
+                row.incluso_presenze = item.included
+                svc.event(db, user, 'attendance_visibility_changed', person_id=row.id, before=before, after=item.included)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {'ok': True}
 
 
 @router.get('/capo/squadra')
