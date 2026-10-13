@@ -1,0 +1,15 @@
+{% if has_perm(user, 'users.manage') %}
+<section class="personnel-workspace pw-admin-controls" data-csrf="{{ personnel_csrf }}">
+  <details class="pw-panel"><summary>{{ t('Gestisci persone nel registro · Solo admin', 'Gérer les personnes du registre · Admin uniquement') }}</summary>
+    <p class="pw-note">{{ t('Seleziona chi mostrare nelle presenze. Le ore e i documenti già registrati vengono conservati.', 'Sélectionnez les personnes à afficher. Les heures et documents déjà enregistrés sont conservés.') }}</p>
+    <form data-admin-action="attendance">
+      <div class="pw-attendance-options">{% for p in attendance_people %}<label class="pw-check"><input type="checkbox" data-attendance-person="{{ p.id }}" data-expected="{{ 'true' if p.incluso_presenze != false else 'false' }}" {% if p.incluso_presenze != false %}checked{% endif %}><span>{{ p.cognome }} {{ p.nome }}</span></label>{% endfor %}</div>
+      <div class="pw-actions"><button type="submit" class="pw-primary">{{ t('Salva elenco presenze', 'Enregistrer la liste') }}</button></div>
+    </form>
+    <p><a href="{{ request.url.include_query_params(show_excluded='false' if show_excluded else 'true') }}">{{ t('Torna all’elenco ordinario', 'Revenir à la liste habituelle') if show_excluded else t('Consulta anche le persone escluse e il loro storico', 'Consulter aussi les personnes exclues et leur historique') }}</a></p>
+    <div class="pw-admin-feedback pw-alert" role="alert" hidden></div>
+  </details>
+  {% if show_excluded %}<p class="pw-note">{{ t('Stai consultando anche le persone escluse dall’elenco ordinario.', 'Vous consultez aussi les personnes exclues de la liste habituelle.') }}</p>{% endif %}
+</section>
+<script src="/static/js/personnel-admin.js?v=1" defer></script>
+{% endif %}

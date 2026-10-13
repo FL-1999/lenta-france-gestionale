@@ -19,7 +19,7 @@
 
 <div class="card">
     <div class="card-body">
-        <form method="post" action="{{ url_for('manager_personale_update', personale_id=personale.id) }}" class="form">
+        <form id="personnel-details-form" method="post" action="{{ url_for('manager_personale_update', personale_id=personale.id) }}" class="form">
             <div class="form-grid">
                 <label>
                     {% if lang == 'fr' %}Prénom{% else %}Nome{% endif %}
@@ -30,7 +30,7 @@
                     <input type="text" name="cognome" value="{{ personale.cognome }}" required />
                 </label>
                 <label>
-                    {% if lang == 'fr' %}Rôle{% else %}Ruolo{% endif %}
+                    {% if lang == 'fr' %}Métier dans l’entreprise{% else %}Mansione in azienda{% endif %}
                     <input type="text" name="ruolo" value="{{ personale.ruolo or '' }}" />
                 </label>
                 <label>
@@ -62,4 +62,5 @@
         </form>
     </div>
 </div>
+{% include 'personnel/account_controls.html' %}
 {% endblock %}

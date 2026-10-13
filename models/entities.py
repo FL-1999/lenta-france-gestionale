@@ -20,6 +20,7 @@ from sqlalchemy import (
     UniqueConstraint,
     LargeBinary,
     event,
+    true,
 )
 from sqlalchemy.orm import relationship
 from sqlmodel import SQLModel, Field
@@ -1218,6 +1219,9 @@ class Personale(SQLModel, table=True):
     email: Optional[str] = None
     data_assunzione: Optional[date] = None
     attivo: bool = Field(default=True)
+    incluso_presenze: bool = Field(
+        default=True, sa_column=Column(Boolean, nullable=False, server_default=true())
+    )
     note: Optional[str] = None
 
     created_at: datetime = Field(default_factory=datetime.utcnow)

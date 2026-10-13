@@ -1,0 +1,60 @@
+{% if has_perm(user, 'users.manage') %}
+<link rel="stylesheet" href="/static/css/personnel.css?v=2">
+<section class="personnel-workspace pw-admin-controls" data-csrf="{{ personnel_csrf }}" data-person-id="{{ personale.id }}" aria-label="{{ t('Accesso e presenze', 'Accès et présences') }}">
+  <div class="pw-grid">
+    <section class="pw-panel">
+      <div class="pw-kicker">{{ t('Solo admin', 'Admin uniquement') }}</div>
+      <h2>{{ t('Accesso al gestionale', 'Accès au logiciel') }}</h2>
+      {% if not personale.attivo %}
+        <p>{{ t('Riattiva e salva la scheda prima di gestire l’accesso.', 'Réactivez et enregistrez la fiche avant de gérer l’accès.') }}</p>
+      {% elif linked_account %}
+        <p><strong>{{ linked_account.email }}</strong><br>{{ t('Account già collegato a questa persona.', 'Compte déjà lié à cette personne.') }}</p>
+        {% if account_editable %}
+        <form data-admin-action="role" data-user-id="{{ linked_account.id }}" data-expected="{{ account_snapshot }}">
+          <label>{{ t('Tipo di accesso', 'Type d’accès') }}
+            <select name="role">
+              <option value="personale" {% if linked_account.role.value == 'personale' %}selected{% endif %}>{{ t('Solo spazio personale', 'Espace personnel uniquement') }}</option>
+              <option value="caposquadra" {% if linked_account.role.value == 'caposquadra' %}selected{% endif %}>{{ t('Caposquadra', 'Chef d’équipe') }}</option>
+            </select>
+          </label>
+          <p class="pw-note">{{ t('Il caposquadra può compilare rapportini e fiches nei cantieri assegnati e ha anche Il mio spazio.', 'Le chef d’équipe peut remplir les rapports et fiches de ses chantiers et dispose aussi de Mon espace.') }}</p>
+          <button type="submit" class="pw-primary">{{ t('Salva tipo di accesso', 'Enregistrer le type d’accès') }}</button>
+        </form>
+        {% else %}
+          <p>{{ t('Questo account ha permessi specifici o è disattivato.', 'Ce compte dispose de permissions spécifiques ou est désactivé.') }}</p>
+          <a class="pw-button" href="/manager/utenti/{{ linked_account.id }}/modifica">{{ t('Gestisci account', 'Gérer le compte') }}</a>
+        {% endif %}
+      {% else %}
+        <p>{{ t('Crea l’accesso: sarà collegato direttamente a questa scheda.', 'Créez le compte : il sera directement lié à cette fiche.') }}</p>
+        <form data-admin-action="create">
+          <div class="pw-fields">
+            <label class="pw-full">{{ t('Tipo di accesso', 'Type d’accès') }}<select name="role"><option value="personale">{{ t('Solo spazio personale', 'Espace personnel uniquement') }}</option><option value="caposquadra">{{ t('Caposquadra', 'Chef d’équipe') }}</option></select></label>
+            <label class="pw-full">{{ t('Email di accesso', 'Email de connexion') }}<input type="email" name="email" value="{{ personale.email or '' }}" maxlength="255" autocomplete="off" required></label>
+            <label>{{ t('Password iniziale', 'Mot de passe initial') }}<input type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+            <label>{{ t('Ripeti password', 'Confirmer le mot de passe') }}<input type="password" name="password_confirm" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+            <label class="pw-full">{{ t('Lingua', 'Langue') }}<select name="language"><option value="it" {% if lang == 'it' %}selected{% endif %}>Italiano</option><option value="fr" {% if lang == 'fr' %}selected{% endif %}>Français</option></select></label>
+          </div>
+          <p class="pw-note">{{ t('Password di almeno 12 caratteri. La mansione aziendale rimane quella indicata sopra.', 'Mot de passe d’au moins 12 caractères. Le métier reste celui indiqué ci-dessus.') }}</p>
+          <button type="submit" class="pw-primary">{{ t('Crea accesso e collega', 'Créer et lier le compte') }}</button>
+        </form>
+        {% if account_choices %}
+        <details class="pw-existing-account"><summary>{{ t('Ha già un account? Collegalo qui', 'Un compte existe déjà ? Le relier ici') }}</summary>
+          <form data-admin-action="link"><div class="pw-fields"><label class="pw-full">{{ t('Account esistente', 'Compte existant') }}<select name="user_id" required><option value="">—</option>{% for account in account_choices %}<option value="{{ account.id }}">{{ account.full_name or account.email }} · {{ account.email }}</option>{% endfor %}</select></label></div><p class="pw-note">{{ t('Collega solo l’account appartenente a questa persona. I suoi permessi rimangono invariati.', 'Reliez uniquement le compte de cette personne. Ses permissions restent inchangées.') }}</p><button type="submit">{{ t('Collega account esistente', 'Relier le compte existant') }}</button></form>
+        </details>
+        {% endif %}
+      {% endif %}
+    </section>
+    <section class="pw-panel">
+      <div class="pw-kicker">{{ t('Solo admin', 'Admin uniquement') }}</div>
+      <h2>{{ t('Registro presenze', 'Registre des présences') }}</h2>
+      <form data-admin-action="attendance">
+        <label class="pw-check"><input type="checkbox" data-attendance-person="{{ personale.id }}" data-expected="{{ 'true' if personale.incluso_presenze != false else 'false' }}" {% if personale.incluso_presenze != false %}checked{% endif %} {% if not personale.attivo %}disabled{% endif %}>{{ t('Includi nel registro presenze', 'Inclure dans le registre des présences') }}</label>
+        <p class="pw-note">{{ t('Vale per questa persona, qualunque sia il suo ruolo. Togliendo la spunta, scompare dall’elenco ordinario: ore, rapportini e storico restano conservati. Puoi reinserirla in qualsiasi momento.', 'Ce choix concerne cette personne, quel que soit son rôle. En décochant, elle disparaît de la liste habituelle ; heures, rapports et historique sont conservés. Vous pouvez la réintégrer à tout moment.') }}</p>
+        <button type="submit" {% if not personale.attivo %}disabled{% endif %}>{{ t('Salva opzione presenze', 'Enregistrer l’option présences') }}</button>
+      </form>
+    </section>
+  </div>
+  <div class="pw-admin-feedback pw-alert" role="alert" hidden></div>
+</section>
+<script src="/static/js/personnel-admin.js?v=1" defer></script>
+{% endif %}
