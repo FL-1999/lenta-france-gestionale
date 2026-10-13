@@ -3055,6 +3055,9 @@ def manager_magazzino_update(
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
     costo_unitario: str | None = Form(""),
+    unita_misura: str | None = Form(None),
+    unita_precedente: str | None = Form(None),
+    conferma_correzione_unita: bool = Form(False),
     attivo: bool = Form(False),
     packaging_enabled: bool = Form(False),
     sacchi_per_bancale: str = Form(""),
@@ -3077,7 +3080,18 @@ def manager_magazzino_update(
             status_code=303,
         )
 
+    previous_unit = item.unita_misura
+    selected_unit = unita_misura.strip() if unita_misura is not None else previous_unit
     try:
+        if unita_precedente is not None and unita_precedente != previous_unit:
+            raise ValueError("L’unité a été modifiée depuis l’ouverture de la fiche. Rechargez la page avant d’enregistrer."
+                             if lang == "fr" else "L’unità è stata modificata dopo l’apertura della scheda. Ricarica la pagina prima di salvare.")
+        if selected_unit != previous_unit:
+            if selected_unit not in ARTICLE_UNITS:
+                raise ValueError("Sélectionnez une unité de mesure valide." if lang == "fr" else "Seleziona un’unità di misura valida.")
+            if unita_precedente is None or not conferma_correzione_unita:
+                raise ValueError("Confirmez la correction de l’unité sans conversion des quantités."
+                                 if lang == "fr" else "Conferma la correzione dell’unità senza conversione delle quantità.")
         quantita_precedente = item.quantita_disponibile or 0.0
         nuova_quantita = _parse_float(quantita_disponibile) if quantita_disponibile not in (None, "") else quantita_precedente
         if nuova_quantita is None or nuova_quantita < 0:
@@ -3090,9 +3104,13 @@ def manager_magazzino_update(
 
         bags, weight, rolls, length = item.sacchi_per_bancale, item.kg_per_sacco, item.rotoli_per_bancale, item.metri_per_rotolo
         if packaging_form:
-            bags, weight, rolls, length = validate_article_packaging(packaging_enabled, item.unita_misura, packaging_kind, sacchi_per_bancale, kg_per_sacco, rotoli_per_bancale, metri_per_rotolo)
+            bags, weight, rolls, length = validate_article_packaging(packaging_enabled, selected_unit, packaging_kind, sacchi_per_bancale, kg_per_sacco, rotoli_per_bancale, metri_per_rotolo)
+        elif selected_unit != previous_unit and (bags or rolls):
+            # Older clients must not leave packaging incompatible with the corrected unit.
+            bags, weight, rolls, length = validate_article_packaging(True, selected_unit,
+                "rotoli" if rolls else "sacchi", bags, weight, rolls, length)
         if quantita_disponibile not in (None, ""):
-            nuova_quantita = convert_quantity(nuova_quantita, stock_unit, item.unita_misura, bags, weight, rolls, length)
+            nuova_quantita = convert_quantity(nuova_quantita, stock_unit, selected_unit, bags, weight, rolls, length)
         previous_packaging = [item.sacchi_per_bancale, item.kg_per_sacco, item.rotoli_per_bancale, item.metri_per_rotolo]
         item.sacchi_per_bancale, item.kg_per_sacco = bags, weight
         item.rotoli_per_bancale, item.metri_per_rotolo = rolls, length
@@ -3103,6 +3121,7 @@ def manager_magazzino_update(
         item.codice = codice.strip()
         item.descrizione = (descrizione or "").strip() or None
         item.categoria_id = _parse_categoria_id(categoria_id)
+        item.unita_misura = selected_unit
         item.quantita_disponibile = nuova_quantita
         item.soglia_minima = _parse_float(soglia_minima)
         item.costo_unitario = _parse_float(costo_unitario)
@@ -3160,6 +3179,9 @@ def manager_magazzino_update(
                 "quantita": item.quantita_disponibile,
                 "categoria_id": item.categoria_id,
                 "attivo": item.attivo,
+                "unita_precedente": previous_unit,
+                "unita_nuova": selected_unit,
+                "correzione_unita_senza_conversione": selected_unit != previous_unit,
                 "packaging_before": previous_packaging, "packaging_after": [bags, weight, rolls, length],
             },
         )
@@ -3186,7 +3208,8 @@ def manager_magazzino_update(
                 "error_message": str(exc),
                 "form_data": dict(nome=nome, codice=codice, descrizione=descrizione, categoria_id=categoria_id,
                     quantita_disponibile=quantita_disponibile, soglia_minima=soglia_minima, costo_unitario=costo_unitario,
-                    attivo=attivo, unita_misura=item.unita_misura, packaging_enabled=packaging_enabled,
+                    attivo=attivo, unita_misura=selected_unit, unita_precedente=unita_precedente,
+                    packaging_enabled=packaging_enabled,
                     sacchi_per_bancale=sacchi_per_bancale, kg_per_sacco=kg_per_sacco, stock_unit=stock_unit,
                      packaging_kind=packaging_kind, rotoli_per_bancale=rotoli_per_bancale, metri_per_rotolo=metri_per_rotolo),
             },

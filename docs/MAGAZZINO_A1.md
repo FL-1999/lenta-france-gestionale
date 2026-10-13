@@ -11,6 +11,14 @@ La pagina **Magazzino** mostra le macro categorie effettivamente presenti nel ca
 
 Il logo tipografico è condiviso da menu e accesso al gestionale, per tutti i ruoli. Il file del logo originale e i riferimenti nelle fiches, nei documenti e nelle etichette restano invariati.
 
+## Correggere un’unità di misura errata
+
+Da **Scheda articolo → Modifica articolo**, cambia **Unità di misura**, spunta la conferma della correzione e salva. Si usano gli stessi permessi della modifica articolo, sia su PC sia su telefono.
+
+È una correzione dell’etichetta: ad esempio 10 pz inseriti per errore diventano 10 m. La sola modifica dell’unità non converte giacenza, movimenti, richieste, quantità ordinate/ricevute, soglia o costo, e non genera un movimento di rettifica. Le viste collegate leggono l’unità corretta dall’articolo; i documenti già generati e i dati originali del catalogo fornitore non sono riscritti. Non usare questa correzione per convertire una contabilità già corretta da sacchi a kg: per carichi in confezioni usa le equivalenze.
+
+Confezioni e quantità inserite nel modulo vengono validate rispetto alla nuova unità. Il salvataggio registra vecchia e nuova unità nell’audit e rifiuta una scheda aperta prima di un’altra correzione. Non servono nuove colonne o migrazioni.
+
 ## Aggiornamento
 
 All'avvio vengono aggiunte tre colonne nullable alla tabella articoli tramite il meccanismo di aggiornamento già utilizzato dal gestionale. Le schede esistenti iniziano senza posizione. Non occorre compilare né importare ubicazioni prima di usare la nuova schermata.

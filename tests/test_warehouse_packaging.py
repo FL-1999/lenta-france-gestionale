@@ -174,3 +174,100 @@ def test_roll_column_upgrade_preserves_bag_configuration(operations):
     for _ in range(2):ensure_model_columns(engine,(Base.metadata,))
     db.expire_all();db.refresh(item)
     assert equivalents(item)=={'bancale':2,'sacco':200,'kg':5000}
+
+
+def correct_unit(c, item, **changes):
+    data = dict(nome=item.nome, codice=item.codice, attivo='true',
+                categoria_id=str(item.categoria_id or ''),
+                unita_misura='m', unita_precedente=item.unita_misura,
+                conferma_correzione_unita='true', quantita_disponibile=str(item.quantita_disponibile),
+                soglia_minima=str(item.soglia_minima or ''), costo_unitario=str(item.costo_unitario or ''))
+    return c.post(f'/manager/magazzino/{item.id}/modifica', data={**data, **changes}, follow_redirects=False)
+
+
+def test_correct_wrong_unit_preserves_stock_history_requests_orders_and_cost(operations):
+    from models import AuditLog, MagazzinoRichiesta, MagazzinoRichiestaRiga
+    db, c, supplier, _, category = setup(operations)
+    assert create(c, costo_unitario='2.5', soglia_minima='3').status_code == 303
+    item = db.query(MagazzinoItem).filter_by(nome='Gancio nuovo').one()
+    assert order(operations, supplier, item, category).status_code == 303
+    po = db.query(PurchaseOrder).one()
+    assert receive(c, po, 'BEFORE-CORRECTION', 2).status_code == 303
+    request = MagazzinoRichiesta(richiesto_da_user_id=operations['capo'].id)
+    request.righe = [MagazzinoRichiestaRiga(item_id=item.id, quantita_richiesta=4, quantita_evasa=1)]
+    db.add(request); db.commit(); db.refresh(item)
+    before = [(m.id, m.quantita, m.note) for m in db.query(MagazzinoMovimento).order_by(MagazzinoMovimento.id)]
+    result = correct_unit(c, item)
+    assert result.status_code == 303, result.text
+    db.refresh(item); db.refresh(po); db.refresh(request)
+    assert (item.unita_misura, item.quantita_disponibile, item.soglia_minima, item.costo_unitario) == ('m', 10, 3, 2.5)
+    assert [(m.id, m.quantita, m.note) for m in db.query(MagazzinoMovimento).order_by(MagazzinoMovimento.id)] == before
+    assert (request.righe[0].quantita_richiesta, request.righe[0].quantita_evasa) == (4, 1)
+    assert po.lines[0].qty_ordered == 10
+    audit = db.query(AuditLog).filter_by(action='ITEM_EDIT', target_id=item.id).one()
+    assert audit.extra_data['unita_precedente'] == 'pz'
+    assert audit.extra_data['unita_nuova'] == 'm'
+    assert audit.extra_data['correzione_unita_senza_conversione'] is True
+    # Outstanding deliveries still use the same numeric base; no spurious stock adjustment.
+    assert receive(c, po, 'AFTER-CORRECTION', 8).status_code == 303
+    db.refresh(item); db.refresh(po)
+    assert item.quantita_disponibile == 18 and po.status == 'CHIUSO'
+
+
+@pytest.mark.parametrize('changes', [
+    {'conferma_correzione_unita': 'false'}, {'unita_misura': 'invalid'},
+    {'unita_precedente': ''}, {'unita_precedente': 'kg'},
+    {'soglia_minima': '-1'}, {'stock_unit': 'kg'},
+])
+def test_unit_correction_validation_is_atomic_and_preserves_selection(operations, changes):
+    from models import AuditLog
+    db, c, *_ = setup(operations)
+    assert create(c).status_code == 303
+    item = db.query(MagazzinoItem).filter_by(nome='Gancio nuovo').one()
+    response = correct_unit(c, item, nome='Changed', **changes)
+    assert response.status_code == 400
+    assert response.context['form_data']['unita_misura'] == changes.get('unita_misura', 'm')
+    assert 'value="Changed"' in response.text
+    db.refresh(item)
+    assert (item.nome, item.unita_misura, item.quantita_disponibile) == ('Gancio nuovo', 'pz', 8)
+    assert db.query(MagazzinoMovimento).filter_by(item_id=item.id).count() == 1
+    assert db.query(AuditLog).filter_by(action='ITEM_EDIT', target_id=item.id).count() == 0
+
+
+def test_correct_unit_validates_packaging_and_uses_new_base_for_explicit_stock(operations):
+    db, c, *_ = setup(operations)
+    assert create(c).status_code == 303
+    item = db.query(MagazzinoItem).filter_by(nome='Gancio nuovo').one()
+    # Enable rolls while correcting the mistakenly selected pz base, in one save.
+    result = correct_unit(c, item, packaging_form='true', packaging_enabled='true',
+                          packaging_kind='rotoli', rotoli_per_bancale='10', metri_per_rotolo='20',
+                          stock_unit='rotolo', quantita_disponibile='2')
+    assert result.status_code == 303, result.text
+    db.refresh(item)
+    assert item.unita_misura == 'm' and item.quantita_disponibile == 40
+    assert equivalents(item) == {'bancale': .2, 'rotolo': 2, 'm': 40}
+    # A client omitting the packaging controls cannot retain an incompatible configuration.
+    assert correct_unit(c, item, unita_misura='kg').status_code == 400
+    db.refresh(item); assert item.unita_misura == 'm'
+    assert correct_unit(c, item, unita_misura='kg', packaging_form='true', packaging_enabled='false').status_code == 303
+    db.refresh(item); assert item.unita_misura == 'kg' and item.rotoli_per_bancale is None
+    assert item.quantita_disponibile == 40
+
+
+def test_unit_edit_permissions_legacy_units_and_stale_page(operations):
+    db, c, _, item, _ = setup(operations)
+    item.unita_misura = 'ancienne-unite'; db.commit()
+    url = f'/manager/magazzino/{item.id}/modifica'
+    assert 'value="ancienne-unite" selected' in c.get(url).text
+    # Old forms and imported units remain editable without a forced correction.
+    assert c.post(url, data={'nome': item.nome, 'codice': item.codice, 'attivo': 'true'}, follow_redirects=False).status_code == 303
+    db.refresh(item); assert item.unita_misura == 'ancienne-unite'
+    for actor in ['capo', 'outsider']:
+        operations['actor'][0] = operations[actor]
+        assert correct_unit(c, item).status_code == 403
+        assert c.get(url).status_code == 403
+    operations['actor'][0] = operations['manager']
+    assert correct_unit(c, item).status_code == 303
+    db.refresh(item); assert item.unita_misura == 'm'
+    assert correct_unit(c, item, unita_precedente='ancienne-unite', unita_misura='kg').status_code == 400
+    db.refresh(item); assert item.unita_misura == 'm'

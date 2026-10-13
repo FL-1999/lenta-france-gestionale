@@ -1,4 +1,7 @@
-"""One stock balance, expressed in the article's immutable base unit."""
+"""One stock balance, expressed in the article's base unit.
+
+Correcting a mistyped base unit relabels existing quantities; it is not a conversion.
+"""
 from decimal import Decimal, InvalidOperation
 import math
 
