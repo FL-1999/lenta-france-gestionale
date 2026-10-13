@@ -30,6 +30,8 @@
             <form id="rapportino-form" class="form-sticky-space" method="post" action="/capo/rapportini/nuovo">
                 <p id="draft-status" role="status" aria-live="polite">{{ t("Caricamento bozza…", "Chargement du brouillon…") }}</p>
                 <button type="button" id="copy-previous-report" class="btn btn-secondary">{{ t("Copia il mio ultimo rapportino del cantiere", "Copier mon dernier rapport du chantier") }}</button>
+                <button type="button" id="load-planned-team" class="btn btn-secondary">{{ t('Carica la squadra prevista', 'Charger l’équipe prévue') }}</button>
+                <div id="planned-team" aria-live="polite"></div>
                 <nav class="form-step-nav" aria-label="Sezioni rapportino">
                     <a href="#rapportino-base">Dati base</a>
                     <a href="#rapportino-attivita">Attività</a>
@@ -551,4 +553,5 @@ workersContainer.addEventListener("change", validateIncompleteDays);
 refreshWorkerRows();
 </script>
 <script src="/static/js/report-draft.js?v=1" defer></script>
+<script src="/static/js/personnel-roster.js?v=1" defer></script>
 {% endblock %}

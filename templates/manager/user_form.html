@@ -69,7 +69,7 @@
                         {% for r in role_choices %}
                         <label class="checkbox-option">
                             <input type="checkbox" name="roles" value="{{ r.value }}" {% if r.value in selected_roles %}checked{% endif %}>
-                            <span>{{ r.value }}</span>
+                            <span>{{ t('Spazio personale', 'Espace personnel') if r.value == 'personale' else r.value }}</span>
                         </label>
                         {% endfor %}
                     </div>

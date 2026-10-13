@@ -6,6 +6,8 @@
 {% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="/static/css/personnel.css?v=1">
+{% include 'personnel/nav.html' %}
 <div class="page-header">
     <div class="page-header-main">
         <h1 class="page-title">📅 {% if lang == 'fr' %}Présences hebdomadaires{% else %}Presenze settimanali personale{% endif %}</h1>
@@ -71,7 +73,7 @@
     <p class="attendance-help">{{ t('Settimana lavorativa: lunedì–venerdì. Aggiungi sabato e domenica solo quando servono. La copia da lunedì compila solo martedì–venerdì.', 'Semaine de travail : lundi–vendredi. Ajoutez samedi et dimanche si nécessaire. La copie du lundi remplit uniquement mardi–vendredi.') }}
     {% if hidden_weekend_records %}<strong>{{ t('Sono presenti registrazioni nel weekend: attiva i giorni extra per consultarle.', 'Des présences sont enregistrées le week-end : activez les jours supplémentaires pour les consulter.') }}</strong>{% endif %}</p>
     <div class="card table-card">
-        <div class="card-body">
+        <div class="card-body pw-scroll">
             {% if success_message %}
                 <div class="alert alert-success">{{ success_message }}</div>
             {% endif %}
@@ -119,7 +121,8 @@
                             {% for day in week_days %}
                                 {% set day_att = attendance_map.get(p.id, {}).get(day) %}
                                 <td class="attendance-cell">
-                                    <div class="attendance-cell-main">
+                                    <details class="attendance-editor">
+                                      <summary class="attendance-edit-trigger attendance-edit-button" aria-label="{{ p.cognome }} {{ p.nome }} · {{ day.strftime('%d/%m') }}">
                                         {% if day_att %}
                                             {% set status = day_att.status %}
                                             {% set badge_class = status_classes.get(status, 'badge-muted') %}
@@ -131,12 +134,19 @@
                                             {% if day_att.hours %}
                                                 <div class="attendance-hours">{{ day_att.hours }}h</div>
                                             {% endif %}
+                                        {% elif absence_signals.get(p.id, {}).get(day) %}
+                                            <span class="badge badge-muted">{{ t('Assenza segnalata', 'Absence signalée') }}</span>
                                         {% else %}
                                             <span class="attendance-empty">—</span>
                                         {% endif %}
-                                    </div>
-                                    <details class="attendance-editor">
-                                        <summary class="btn btn-secondary btn-sm attendance-edit-trigger">✏️ {% if lang == 'fr' %}Modifier{% else %}Modifica{% endif %}</summary>
+                                      </summary>
+                                      {% if day_att and day_att.request_id %}
+                                        <a class="btn btn-secondary" href="/manager/personale/richieste?request_id={{ day_att.request_id }}">{{ t('Apri comunicazione', 'Ouvrir la communication') }}</a>
+                                      {% elif day_att and day_att.report_id %}
+                                        <a class="btn btn-secondary" href="/operazioni/rapportini/{{ day_att.report_id }}">{{ t('Apri rapportino', 'Ouvrir le rapport') }}</a>
+                                      {% elif absence_signals.get(p.id, {}).get(day) %}
+                                        <a class="btn btn-secondary" href="/manager/personale/richieste?request_id={{ absence_signals[p.id][day] }}">{{ t('Verifica assenza', 'Vérifier l’absence') }}</a>
+                                      {% else %}
                                         <form method="post" action="{{ url_for('manager_personale_presenze_update') }}" class="attendance-form">
                                             <input type="hidden" name="personale_id" value="{{ p.id }}" />
                                             <input type="hidden" name="attendance_date" value="{{ day.isoformat() }}" />
@@ -175,6 +185,7 @@
                                                 💾 {% if lang == 'fr' %}Enregistrer{% else %}Salva{% endif %}
                                             </button>
                                         </form>
+                                      {% endif %}
                                     </details>
                                 </td>
                             {% endfor %}
@@ -398,7 +409,7 @@
                             <th>{% if lang == 'fr' %}Jours vacances{% else %}Giorni ferie{% endif %}</th>
                             <th>{% if lang == 'fr' %}Jours permission{% else %}Giorni permesso{% endif %}</th>
                             <th>{% if lang == 'fr' %}Jours maladie{% else %}Giorni malattia{% endif %}</th>
-                            <th>{% if lang == 'fr' %}Jours repos{% else %}Giorni riposo{% endif %}</th>
+                            <th>Congé sans solde</th><th>{{ t("Altre assenze", "Autres absences") }}</th><th>{% if lang == 'fr' %}Jours repos{% else %}Giorni riposo{% endif %}</th>
                             <th>{% if lang == 'fr' %}Heures travail{% else %}Ore lavoro{% endif %}</th>
                         </tr>
                     </thead>
@@ -410,7 +421,7 @@
                                 <td>{{ item.days_ferie }}</td>
                                 <td>{{ item.days_permesso }}</td>
                                 <td>{{ item.days_malattia }}</td>
-                                <td>{{ item.days_riposo }}</td>
+                                <td>{{ item.days_unpaid }}</td><td>{{ item.days_other }}</td><td>{{ item.days_riposo }}</td>
                                 <td>{{ "%.2f"|format(item.hours_work) }}</td>
                             </tr>
                         {% endfor %}

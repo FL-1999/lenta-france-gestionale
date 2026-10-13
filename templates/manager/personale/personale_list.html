@@ -6,6 +6,8 @@
 {% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="/static/css/personnel.css?v=1">
+<div class="pw-personnel-list">
 <div class="page-header">
     <div class="page-header-main">
         <h1 class="page-title">
@@ -28,6 +30,8 @@
     {% endif %}
 </div>
 
+{% include 'personnel/nav.html' %}
+<form method="get" class="pw-search"><label>{{ t('Cerca nome, cognome o email', 'Rechercher nom, prénom ou email') }}<input class="form-control" name="search" value="{{ search }}" maxlength="150"></label><button class="btn btn-secondary" type="submit">{{ t('Cerca', 'Rechercher') }}</button></form>
 <div class="page-actions-sticky">
     <a href="{{ url_for('manager_personale_list') }}" class="btn btn-secondary is-active">
         {% if lang == 'fr' %}Liste{% else %}Elenco{% endif %}
@@ -43,7 +47,7 @@
 </div>
 
 <div class="card table-card">
-    <div class="card-body">
+    <div class="card-body pw-scroll">
         <table class="data-table">
             <thead>
                 <tr>
@@ -59,7 +63,7 @@
             <tbody>
                 {% for p in personale %}
                     <tr>
-                        <td>{{ p.cognome }} {{ p.nome }}</td>
+                        <td><strong>{{ p.cognome }} {{ p.nome }}</strong><br><small>{{ t('Account collegato', 'Compte lié') if p.user_id else t('Account da collegare', 'Compte à relier') }}</small></td>
                         <td>{{ p.ruolo or '—' }}</td>
                         <td>{{ p.telefono or '—' }}</td>
                         <td>{{ p.email or '—' }}</td>
@@ -81,6 +85,7 @@
                                         </a>
                                     {% endif %}
                                     {% if has_perm(user, 'records.delete') %}
+                                    <details><summary class="btn btn-secondary btn-sm">{{ t('Altro', 'Autres') }}</summary>
                                     <form method="post"
                                           action="{{ url_for('manager_personale_delete', personale_id=p.id) }}">
                                         <button type="submit"
@@ -89,6 +94,7 @@
                                             🗑️ {% if lang == 'fr' %}Supprimer{% else %}Elimina{% endif %}
                                         </button>
                                     </form>
+                                    </details>
                                     {% endif %}
                                 </div>
                             {% else %}
@@ -127,4 +133,5 @@
     </div>
   </div>
 {% endif %}
+</div>
 {% endblock %}

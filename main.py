@@ -328,6 +328,13 @@ def initialize_application() -> None:
     """
     from sqlalchemy import MetaData
 
+    # PostgreSQL enum additions must commit before the new role can be used.
+    if engine.dialect.name == 'postgresql':
+        from sqlalchemy import inspect, text
+        if any(e['name'] == 'roleenum' for e in inspect(engine).get_enums()):
+            with engine.connect().execution_options(isolation_level='AUTOCOMMIT') as connection:
+                connection.execute(text("ALTER TYPE roleenum ADD VALUE IF NOT EXISTS 'personale'"))
+
     combined = MetaData()
     for md in (Base.metadata, SQLModel.metadata):
         for table in md.tables.values():
@@ -527,6 +534,9 @@ async def add_static_cache_headers(request: Request, call_next):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         else:
             response.headers["Cache-Control"] = "public, max-age=86400"
+    if request.url.path.startswith(('/mio-spazio', '/manager/personale', '/capo/squadra')):
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
 # Static (CSS, immagini, JS)
@@ -9347,3 +9357,6 @@ app.include_router(fiche_review_router)
 from routes import assistant_oauth, assistant_mcp
 app.include_router(assistant_oauth.router)
 app.include_router(assistant_mcp.router)
+
+from routes import personnel
+app.include_router(personnel.router)
