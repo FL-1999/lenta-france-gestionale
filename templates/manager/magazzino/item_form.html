@@ -20,8 +20,15 @@
   {{ field('nome','Nome articolo','Nom de l’article',required=true) }}
   <label class="vehicle-field">{{ t('Codice interno','Code interne') }}{% if is_edit %}<input name="codice" value="{{ item.codice }}" readonly>{% else %}<input type="hidden" name="codice" value=""><input value="{{ t('Automatico al salvataggio','Automatique à l’enregistrement') }}" readonly aria-label="{{ t('Codice interno automatico','Code interne automatique') }}">{% endif %}</label>
   <label class="vehicle-field">{{ t('Macro / categoria','Macro / catégorie') }}<select name="categoria_id"><option value="">{{ t('Da classificare','À classer') }}</option>{% set selected = values.categoria_id|default(default_categoria_id)|string %}{% for categoria in categorie %}{% if categoria.id is not none %}<option value="{{ categoria.id }}" {% if selected == categoria.id|string %}selected{% endif %}>{{ categoria.macro.name ~ ' / ' if categoria.macro else '' }}{{ categoria.nome }}</option>{% endif %}{% endfor %}</select></label>
-  <label class="vehicle-field">{{ t('Unità di misura','Unité de mesure') }}{% if is_edit %}<input name="unita_misura" value="{{ item.unita_misura }}" readonly>{% else %}<select name="unita_misura">{% for unit in ['pz','unita','kg','m','m2','m3','l','sacco','bancale','rotolo'] %}<option value="{{ unit }}" {% if values.unita_misura == unit %}selected{% endif %}>{{ t('Unità','Unité') if unit == 'unita' else unit }}</option>{% endfor %}</select>{% endif %}</label>
+  <label class="vehicle-field">{{ t('Unità di misura','Unité de mesure') }}<select name="unita_misura" required>{% set units = ['pz','unita','kg','m','m2','m3','l','sacco','bancale','rotolo'] %}{% if is_edit and item.unita_misura not in units %}<option value="{{ item.unita_misura }}" {% if values.unita_misura == item.unita_misura %}selected{% endif %}>{{ item.unita_misura }}</option>{% endif %}{% for unit in units %}<option value="{{ unit }}" {% if values.unita_misura == unit %}selected{% endif %}>{{ t('Unità','Unité') if unit == 'unita' else unit }}</option>{% endfor %}</select></label>
 </div>
+{% if is_edit %}
+<input type="hidden" name="unita_precedente" value="{{ values.unita_precedente if values.unita_precedente is defined and values.unita_precedente is not none else item.unita_misura }}">
+<div data-unit-correction {% if values.unita_misura == item.unita_misura %}hidden{% endif %}>
+  <p class="text-muted">{{ t('Correzione dell’unità inserita per errore: giacenza, movimenti, richieste e ordini collegati useranno la nuova unità. I numeri già registrati, la soglia e il costo non vengono convertiti. I documenti già generati restano invariati.','Correction d’une unité saisie par erreur : le stock, les mouvements, les demandes et les commandes liés utiliseront la nouvelle unité. Les valeurs enregistrées, le seuil et le coût ne sont pas convertis. Les documents déjà générés restent inchangés.') }}</p>
+  <label class="warehouse-checkbox"><input type="checkbox" name="conferma_correzione_unita" value="true"><span>{{ t('Confermo: sto correggendo l’unità, senza convertire le quantità.','Je confirme : je corrige l’unité, sans convertir les quantités.') }}</span></label>
+</div>
+{% endif %}
 <label class="vehicle-field">{{ t('Descrizione','Description') }}<textarea name="descrizione" rows="3">{{ values.descrizione or '' }}</textarea></label>
 </div></section>
 {% include 'manager/magazzino/_packaging_form.html' %}
@@ -41,5 +48,5 @@
 <div class="form-actions warehouse-save"><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) if is_edit else url_for('manager_magazzino_home') }}">{{ t('Annulla','Annuler') }}</a><button class="btn btn-primary" type="submit">{{ t('Salva','Enregistrer') }}</button></div>
 </form>
 {% if not is_edit %}<template id="article-supplier-template">{{ supplier_row() }}</template><script src="/static/js/warehouse-item-suppliers.js?v=20260917r7" defer></script>{% endif %}
-<script src="/static/js/warehouse-packaging.js?v=20260917r17" defer></script>
+<script src="/static/js/warehouse-packaging.js?v=20261013r1" defer></script>
 {% endblock %}

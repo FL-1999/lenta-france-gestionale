@@ -112,3 +112,55 @@ def test_roll_packaging_selection_and_partial_meter_withdrawal(live_operations):
         assert not errors,errors
         print('ROLL_SCREENSHOTS='+str(artifacts))
         browser.close()
+
+
+def test_correct_article_unit_on_desktop_and_phone(live_operations):
+    origin, engine, ids, password, artifacts = live_operations
+    with Session(engine) as db:
+        item = MagazzinoItem(nome='Tubo con unità errata', unita_misura='pz',
+                            quantita_disponibile=10, soglia_minima=2, costo_unitario=3, attivo=True)
+        db.add(item); db.commit(); item_id = item.id
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        page = browser.new_page(viewport={'width':1440, 'height':1000}, reduced_motion='reduce')
+        errors = []; page.on('pageerror', lambda error: errors.append(str(error)))
+        page.route('**/*', lambda r: r.continue_() if r.request.url.startswith(origin+'/') else r.abort())
+        page.goto(origin+'/login')
+        page.locator('#email').fill('smoke-manager@example.com'); page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click(); page.wait_for_url('**/manager/dashboard')
+        url = origin+f'/manager/magazzino/{item_id}/modifica'
+        page.goto(url)
+        expect(page.locator('[data-unit-correction]')).to_be_hidden()
+        page.locator('[name=unita_misura]').select_option('m')
+        expect(page.locator('[data-unit-correction]')).to_be_visible()
+        expect(page.locator('[name=stock_unit]')).to_have_value('m')
+        expect(page.locator('[name=quantita_disponibile]')).to_have_value('10.0')
+        # Saving needs deliberate acknowledgement, even with existing stock.
+        page.get_by_role('button', name='Salva', exact=True).click()
+        assert page.url == url
+        with Session(engine) as db: assert db.get(MagazzinoItem,item_id).unita_misura == 'pz'
+        confirmation = page.locator('[name=conferma_correzione_unita]')
+        confirmation.check()
+        page.locator('[name=unita_misura]').select_option('kg')
+        expect(confirmation).not_to_be_checked()
+        page.locator('[name=unita_misura]').select_option('pz')
+        expect(page.locator('[data-unit-correction]')).to_be_hidden()
+        page.locator('[name=unita_misura]').select_option('m')
+        for width in [1440, 390, 320]:
+            page.set_viewport_size({'width':width,'height':1000})
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+            expect(confirmation).to_be_visible()
+            page.screenshot(path=str(artifacts/f'unit-correction-{width}.png'), full_page=True)
+        confirmation.check()
+        with page.expect_navigation(wait_until='domcontentloaded'):
+            page.get_by_role('button', name='Salva', exact=True).click()
+        with Session(engine) as db:
+            item = db.get(MagazzinoItem,item_id)
+            assert (item.unita_misura,item.quantita_disponibile,item.soglia_minima,item.costo_unitario) == ('m',10,2,3)
+            assert db.query(MagazzinoMovimento).filter_by(item_id=item_id).count() == 0
+        page.goto(url)
+        expect(page.locator('[name=unita_misura]')).to_have_value('m')
+        expect(page.locator('[data-unit-correction]')).to_be_hidden()
+        assert not errors, errors
+        print('UNIT_CORRECTION_SCREENSHOTS='+str(artifacts))
+        browser.close()

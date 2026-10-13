@@ -11,6 +11,9 @@
   const labels = fr ? {bancale:'palettes', sacco:'sacs', kg:'kg', rotolo:'rouleaux', m:'mètres'} : {bancale:'bancali', sacco:'sacchi', kg:'kg', rotolo:'rotoli', m:'metri'};
   const fmt = n => new Intl.NumberFormat(fr ? 'fr-FR' : 'it-IT', {maximumFractionDigits:4, useGrouping:true}).format(n);
   let lastBase = base.value;
+  const correction = form.querySelector('[data-unit-correction]');
+  const previousUnit = form.elements.unita_precedente;
+  const confirmation = form.elements.conferma_correzione_unita;
   function refresh(event) {
     if ((event?.target === base || event?.target === enabled) && ['m','rotolo'].includes(base.value)) kind.value = 'rotoli';
     if (event?.target === base && ['kg','sacco'].includes(base.value)) kind.value = 'sacchi';
@@ -21,6 +24,13 @@
     if ([enabled,kind].includes(event?.target) && enabled.checked && !units.includes(base.value) && base.tagName === 'SELECT') base.value = roll ? 'm' : 'sacco';
     const validBase = units.includes(base.value);
     if (event?.target === base && !validBase) enabled.checked = false;
+    if (correction) {
+      const changed = base.value !== previousUnit.value;
+      correction.hidden = !changed;
+      confirmation.required = changed;
+      confirmation.disabled = !changed;
+      if (lastBase !== base.value || !changed) confirmation.checked = false;
+    }
     const active = enabled.checked;
     form.querySelector('[data-packaging-fields]').hidden = !active;
     for (const group of form.querySelectorAll('[data-packaging-kind]')) {
