@@ -26,6 +26,12 @@ Certificati facoltativi PDF, JPEG e PNG, massimo 5 MB, conservati cifrati nel da
 
 La postilla sulla consegna dell'originale descrive la procedura aziendale richiesta. L'ufficio può annotarne la ricezione. Le notifiche esistenti segnalano nuove comunicazioni, esiti e assegnazioni senza dettagli medici.
 
+## Consultazione da telefono
+
+Sotto 768 px l’elenco Personale mostra una scheda per persona con contatti, mansione, stato e azioni leggibili, senza scorrimento laterale. Il registro settimanale raggruppa i giorni sotto il nome: toccando un giorno il modulo di modifica si allarga all’intera scheda. I comandi per copiare lunedì, consultare rapportini e comunicazioni e salvare le presenze conservano i permessi e le regole precedenti. Il filtro **Persona** consente di restringere la consultazione e resta applicato dopo il salvataggio; non modifica l’inclusione nel registro, riservata all’admin.
+
+Su PC rimane la tabella. Le prove di leggibilità coprono 320/390 px, italiano/francese, tema scuro, filtro e salvataggio di una presenza reale nel database isolato (`tests/test_mobile_readability_browser.py`). Le sezioni dei moduli fiche si dispongono in colonna sul telefono; le schede tecniche di stampa mantengono la loro impaginazione.
+
 ## Schema e verifica
 
 Nuove tabelle additive `personnel_*`, nessuna riscrittura di presenze storiche o assegnazione automatica di account in produzione. Lo startup aggiunge in modo idempotente il valore PostgreSQL `roleenum.personale` prima di usare il nuovo ruolo. SQLite utilizza i modelli aggiornati.

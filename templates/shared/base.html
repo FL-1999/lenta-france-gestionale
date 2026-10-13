@@ -14,7 +14,7 @@
   <script src="/static/js/ui-catalogue.js?v=20260930"></script>
   <script src="/static/js/theme_switcher.js?v=20260917r17"></script>
   <link rel="stylesheet" href="/static/css/style.css?v=20260917r18">
-  <link rel="stylesheet" href="/static/css/workspace.css?v=20260918r1">
+  <link rel="stylesheet" href="/static/css/workspace.css?v=20261013mobile1">
 </head>
 <body class="workspace-ui {{ 'purchasing-workspace' if purchase_nav else '' }} {{ 'warehouse-workspace' if request.url.path.startswith('/manager/magazzino') else '' }} {{ 'workspace-auth' if user else 'workspace-guest' }}">
     {% set lang = request.cookies.get('lang', 'it') %}
