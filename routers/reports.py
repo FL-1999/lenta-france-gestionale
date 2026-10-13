@@ -185,6 +185,13 @@ def _validate_and_build_report_workers(
     report_id: int | None = None,
 ) -> list[ReportWorker]:
     personale_ids = [w.personale_id for w in workers_in]
+    from services.personnel import protect_attendance
+    # Lock personnel in a stable order, shared with absence decisions.
+    for person_id in sorted(set(personale_ids)):
+        protect_attendance(db, person_id, report_date, report_id=report_id)
+        existing = db.query(PersonalePresenza).filter_by(personale_id=person_id, attendance_date=report_date).first()
+        if existing and existing.status != 'WORK':
+            raise HTTPException(409, 'Presenza non lavorativa già registrata: chiedi una verifica all’ufficio / Absence déjà enregistrée : contactez le bureau')
     if len(personale_ids) != len(set(personale_ids)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

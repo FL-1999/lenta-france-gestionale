@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from auth import get_current_active_user_html
 from database import get_session
@@ -35,6 +35,8 @@ ATTENDANCE_STATUSES = [
     ("PERMESSO", "Permesso"),
     ("MALATTIA", "Malattia"),
     ("RIPOSO", "Riposo"),
+    ("CONGE_SANS_SOLDE", "Congé sans solde"),
+    ("ASSENZA", "Altra assenza / Autre absence"),
 ]
 ATTENDANCE_STATUS_CLASSES = {
     "WORK": "badge-work",
@@ -122,6 +124,7 @@ def manager_personale_list(
     request: Request,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
+    search: str = Query('', max_length=150),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user_html),
 ):
@@ -129,12 +132,17 @@ def manager_personale_list(
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     lang = request.cookies.get("lang", "it")
     page, per_page = _normalize_pagination(page, per_page)
-    total_count = session.exec(select(func.count(Personale.id))).one()
+    filters = []
+    if search.strip():
+        term = '%' + search.strip().lower() + '%'
+        filters.append(or_(func.lower(Personale.nome).like(term), func.lower(Personale.cognome).like(term), func.lower(Personale.email).like(term)))
+    total_count = session.exec(select(func.count(Personale.id)).where(*filters)).one()
     if not isinstance(total_count, int):
         total_count = int(total_count[0])
     query_started = time.monotonic()
     personale = session.exec(
         select(Personale)
+        .where(*filters)
         .order_by(Personale.cognome, Personale.nome)
         .offset((page - 1) * per_page)
         .limit(per_page)
@@ -155,6 +163,7 @@ def manager_personale_list(
         {
             "lang": lang,
             "personale": personale,
+            "search": search,
             "page": page,
             "per_page": per_page,
             "total_pages": max(1, (total_count + per_page - 1) // per_page),
@@ -316,6 +325,12 @@ def manager_personale_delete(
 
     personale = session.get(Personale, personale_id)
     if personale:
+        from models import PersonnelAssignment, PersonnelRequest, ReportWorker
+        if (personale.user_id or session.query(PersonnelAssignment).filter_by(person_id=personale.id).first()
+            or session.query(PersonnelRequest).filter_by(person_id=personale.id).first()
+            or session.query(PersonalePresenza).filter_by(personale_id=personale.id).first()
+            or session.query(ReportWorker).filter_by(personale_id=personale.id).first()):
+            raise HTTPException(409, 'La persona ha uno storico: disattivala per conservarlo / Désactivez cette personne pour conserver son historique')
         session.delete(personale)
         session.commit()
 
@@ -388,6 +403,15 @@ def manager_personale_presenze(
     site_map = {site.id: site for site in sites if site.id is not None}
 
     attendance_map: dict[int, dict[date, dict[str, object]]] = {}
+    from models import PersonnelAttendanceLink, PersonnelRequest
+    request_links = {link.attendance_id: link.request_id for link in session.query(PersonnelAttendanceLink).all()}
+    absence_signals = {}
+    for signal in session.query(PersonnelRequest).filter(PersonnelRequest.kind == 'absence',
+        PersonnelRequest.status.in_(['reported', 'acknowledged']), PersonnelRequest.start_date <= week_end,
+        or_(PersonnelRequest.end_date.is_(None), PersonnelRequest.end_date >= week_start)).all():
+        for day in week_days:
+            if signal.start_date <= day and (signal.end_date is None or signal.end_date >= day):
+                absence_signals.setdefault(signal.person_id, {})[day] = signal.id
     for presenza in presenze:
         site = site_map.get(presenza.site_id)
         attendance_map.setdefault(presenza.personale_id, {})[presenza.attendance_date] = {
@@ -397,6 +421,8 @@ def manager_personale_presenze(
             "site_name": site.name if site else None,
             "hours": presenza.hours,
             "note": presenza.note,
+            "report_id": presenza.report_id,
+            "request_id": request_links.get(presenza.id),
         }
 
     parsed_month = _parse_month(month)
@@ -522,6 +548,8 @@ def manager_personale_presenze(
                 "days_permesso": 0,
                 "days_malattia": 0,
                 "days_riposo": 0,
+                "days_unpaid": 0,
+                "days_other": 0,
                 "hours_work": 0.0,
             }
         month_presenze = session.exec(
@@ -543,6 +571,8 @@ def manager_personale_presenze(
                     "days_permesso": 0,
                     "days_malattia": 0,
                     "days_riposo": 0,
+                "days_unpaid": 0,
+                "days_other": 0,
                     "hours_work": 0.0,
                 },
             )
@@ -556,6 +586,10 @@ def manager_personale_presenze(
                 summary_row["days_permesso"] += 1
             elif presenza.status == "MALATTIA":
                 summary_row["days_malattia"] += 1
+            elif presenza.status == "CONGE_SANS_SOLDE":
+                summary_row["days_unpaid"] += 1
+            elif presenza.status == "ASSENZA":
+                summary_row["days_other"] += 1
             elif presenza.status == "RIPOSO":
                 summary_row["days_riposo"] += 1
         summary_list = sorted(
@@ -601,6 +635,7 @@ def manager_personale_presenze(
             "prev_week": week_start - timedelta(days=7),
             "next_week": week_start + timedelta(days=7),
             "attendance_map": attendance_map,
+            "absence_signals": absence_signals,
             "attendance_by_date": attendance_by_date,
             "month_context": month_context,
             "selected_month": selected_month,

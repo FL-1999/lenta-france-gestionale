@@ -1,6 +1,7 @@
 {% extends "shared/base.html" %}
 {% block title %}{{ t('Pianificazione settimanale', 'Planning hebdomadaire') }}{% endblock %}
 {% block content %}
+{% if team_rows %}<section class="card"><div class="card-body"><h2>{{ t('Squadre previste', 'Équipes prévues') }}</h2>{% for row in team_rows %}<p><strong>{{ row.day.strftime('%d/%m') }} · {{ row.site }}</strong> · {{ row.person }}{% if row.unavailable %} · {{ t('Indisponibile', 'Indisponible') }}{% endif %}</p>{% endfor %}{% if user.role.value != 'caposquadra' %}<a href="/manager/personale/squadre">{{ t('Gestisci squadre', 'Gérer les équipes') }}</a>{% endif %}</div></section>{% endif %}
 <div class="page-header"><div><h1>{{ t('Pianificazione settimanale', 'Planning hebdomadaire') }}</h1><p>{{ start.strftime('%d/%m/%Y') }} — {{ end.strftime('%d/%m/%Y') }}</p></div><a class="btn btn-secondary" href="/operazioni">{{ t('Oggi', "Aujourd'hui") }}</a></div>
 <div class="form-actions"><a class="btn btn-secondary" href="?week={{ previous }}">← {{ t('Precedente', 'Précédente') }}</a><a class="btn btn-secondary" href="?week={{ following }}">{{ t('Successiva', 'Suivante') }} →</a></div>
 <p>{{ t('Le assegnazioni sono per giornata intera. Sono una previsione: non modificano presenze, ore lavorate o posizione delle attrezzature.', "Les affectations couvrent la journée entière. Ce sont des prévisions : elles ne modifient ni les présences, ni les heures travaillées, ni la position des équipements.") }}</p>

@@ -41,12 +41,14 @@
         'driver': 'Driver',
         'caposquadra': 'Caposquadra',
         'magazzino': 'Magazzino',
-        'ferraiolo': 'Ferraiolo'
+        'ferraiolo': 'Ferraiolo',
+        'personale': t('Spazio personale', 'Espace personnel')
     } %}
     {% set active_role_label = role_labels.get(active_role_value, active_role_value|replace('_', ' ')|title) %}
     {% set user_display_name = user.full_name if user and user.full_name else (user.email if user else '') %}
     {% set user_initials = (user_display_name[:2] if user_display_name else 'U')|upper %}
     {% set home_path = "/" %}
+    {% if active_role_value == 'personale' %}{% set home_path = '/mio-spazio' %}{% endif %}
     {% if is_manager %}
         {% set home_path = "/manager/dashboard" %}
     {% elif is_capo %}
@@ -138,6 +140,7 @@
                         <span aria-hidden="true">▾</span>
                     </button>
                     <div class="nav-dropdown__menu nav-dropdown__menu--profile" data-nav-dropdown-menu>
+                        <a class="nav-dropdown__item" href="/mio-spazio">{{ t('Il mio spazio', 'Mon espace') }}</a>
                         {% if is_manager or is_capo %}<a class="nav-dropdown__item" href="/operazioni">{{ 'Aujourd’hui' if lang == 'fr' else 'Oggi' }}</a><a class="nav-dropdown__item" href="/operazioni/pianificazione">{{ 'Planning' if lang == 'fr' else 'Pianificazione' }}</a>{% endif %}
                         <div class="nav-dropdown__section nav-dropdown__section--compact">
                             <span class="nav-dropdown__label">{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</span>

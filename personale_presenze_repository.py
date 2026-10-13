@@ -31,6 +31,20 @@ def upsert_personale_presenza(
     hours: float | None = None,
     note: str | None = None,
 ) -> PersonalePresenza:
+    import math
+    from fastapi import HTTPException
+    from models import Site
+    from services.personnel import protect_attendance, CLASSIFICATIONS
+    protect_attendance(session, personale_id, attendance_date)
+    if status not in {'WORK', 'RIPOSO', *CLASSIFICATIONS}:
+        raise HTTPException(422, 'Stato non valido / Statut invalide')
+    if hours is not None and (not math.isfinite(hours) or not 0 <= hours <= 24):
+        raise HTTPException(422, 'Ore non valide / Heures invalides')
+    if site_id and (not session.get(Site, site_id) or not session.get(Site, site_id).is_active):
+        raise HTTPException(422, 'Cantiere non attivo / Chantier inactif')
+    if status != 'WORK':
+        hours = None
+        site_id = None
     existing = session.exec(
         select(PersonalePresenza).where(
             PersonalePresenza.personale_id == personale_id,
@@ -82,6 +96,9 @@ def copy_week_attendance_from_monday(
     for offset in range(1, 5):
         day = week_start + timedelta(days=offset)
         existing = presenze_by_day.get(day)
+        if not existing or overwrite:
+            from services.personnel import protect_attendance
+            protect_attendance(session, personale_id, day)
         if existing:
             if overwrite:
                 existing.status = monday.status

@@ -280,8 +280,19 @@ def planning_page(request: Request, week: date | None = None, user: User = Depen
                 q = q.filter(Machine.is_active.is_(True))
             resources.extend({"value": f"{kind}:{r.id}", "label": resource_label(kind, r), "kind": kind} for r in q.all())
     trips = db.query(TrasportoViaggio).filter(TrasportoViaggio.data_partenza.between(start, end)).order_by(TrasportoViaggio.data_partenza).all() if user.role != RoleEnum.caposquadra else []
+    from services.personnel import effective_roster, unavailable
+    team_rows = []
+    daily_overrides = {(plan.day, plan.resource_id) for plan, _ in rows if plan.resource_type == 'person'}
+    for site in sites:
+        for offset in range(5):
+            day = start + timedelta(days=offset)
+            team, members = effective_roster(db, site.id, day)
+            for person in members:
+                if (day, person.id) not in daily_overrides:
+                    team_rows.append({'day': day, 'site': site.name, 'person': resource_label('person', person),
+                        'unavailable': bool(unavailable(db, person.id, day))})
     return show(request, user, "operations/planning.html", start=start, end=end, rows=rows,
-                previous=start-timedelta(days=7), following=start+timedelta(days=7), sites=sites, resources=resources, trips=trips)
+                previous=start-timedelta(days=7), following=start+timedelta(days=7), sites=sites, resources=resources, trips=trips, team_rows=team_rows)
 
 
 @router.post("/pianificazione")
@@ -299,6 +310,10 @@ def add_plan(day: date = Form(...), site_id: int = Form(...), resource: str = Fo
         raise HTTPException(422, "Risorsa non disponibile")
     if len(note) > 1000:
         raise HTTPException(422, "Nota troppo lunga")
+    if kind == 'person':
+        from services.personnel import unavailable
+        if unavailable(db, resource_id, day):
+            raise HTTPException(409, 'Persona indisponibile: verifica ferie e assenze / Personne indisponible : vérifier les absences')
     plan = ResourcePlan(day=day, site_id=site_id, resource_type=kind, resource_id=resource_id,
                         resource_label=resource_label(kind, row), created_by_id=user.id, note=note.strip() or None)
     db.add(plan)

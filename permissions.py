@@ -92,6 +92,7 @@ ROLE_PERMISSIONS: dict[RoleEnum, FrozenSet[str]] = {
     RoleEnum.magazzino: MAGAZZINO_PERMISSIONS,
     RoleEnum.driver: DRIVER_PERMISSIONS,
     RoleEnum.ferraiolo: FERRAIOLO_PERMISSIONS,
+    RoleEnum.personale: frozenset(),
 }
 
 

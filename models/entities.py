@@ -39,6 +39,7 @@ class RoleEnum(PyEnum):
     magazzino = "magazzino"
     driver = "driver"
     ferraiolo = "ferraiolo"
+    personale = "personale"
 
 
 class TrasportoStatoEnum(PyEnum):

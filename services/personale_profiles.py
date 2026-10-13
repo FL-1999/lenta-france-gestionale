@@ -66,11 +66,15 @@ def ensure_user_personale_profile(
         personale = db.query(Personale).filter(Personale.user_id == user.id).first()
 
     if personale is None and email:
-        personale = (
+        matches = (
             db.query(Personale)
             .filter(func.lower(Personale.email) == email.lower())
-            .first()
+            .all()
         )
+        from fastapi import HTTPException
+        if len(matches) > 1 or matches and matches[0].user_id not in (None, user.id):
+            raise HTTPException(409, 'Collegamento personale ambiguo: verifica l’anagrafica / Liaison personnel ambiguë')
+        personale = matches[0] if matches else None
 
     if personale:
         personale.user_id = user.id

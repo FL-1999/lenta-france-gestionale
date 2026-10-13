@@ -5,7 +5,10 @@
 <aside class="workspace-sidebar" id="workspace-sidebar" aria-label="{{ t('Menu principale', 'Menu principal') }}" tabindex="-1">
   <div class="workspace-sidebar-brand"><a href="{{ home_path }}">{% include 'shared/workspace_brand.html' %}</a><button class="workspace-sidebar-close" type="button" data-workspace-close aria-label="{{ t('Chiudi menu', 'Fermer le menu') }}">{{ icon('close') }}</button></div>
   <nav class="workspace-navigation" aria-label="{{ t('Navigazione principale', 'Navigation principale') }}">
+    {% if active_role_value != 'personale' %}
     {{ item(home_path, t('Dashboard', 'Tableau de bord') if is_manager or is_capo else (t('I miei viaggi','Mes trajets') if active_role_value == 'driver' else (t('Gabbie armatura',"Cages d’armature") if active_role_value == 'ferraiolo' else t('Dashboard magazzino','Tableau de bord entrepôt'))), 'home', is_home_active) }}
+    {% endif %}
+    {{ item('/mio-spazio', t('Il mio spazio', 'Mon espace'), 'users', current_path.startswith('/mio-spazio')) }}
     {% if is_manager or is_capo %}
       {{ item('/operazioni', t('Oggi','Aujourd’hui'), 'today', current_path == '/operazioni') }}
       {{ item('/operazioni/pianificazione', t('Pianificazione','Planning'), 'calendar', current_path.startswith('/operazioni/pianificazione')) }}
@@ -35,6 +38,8 @@
         <p class="workspace-nav-label">{{ t('Persone e squadre','Personnel et équipes') }}</p>
         {{ item(url_for('manager_personale_list'), t('Personale','Personnel'), 'users', current_path.startswith('/manager/personale') and 'presenze' not in current_path) }}
         {{ item(url_for('manager_personale_presenze'), t('Presenze','Présences'), 'calendar', 'presenze' in current_path) }}
+        {{ item('/manager/personale/squadre', t('Squadre','Équipes'), 'users', current_path == '/manager/personale/squadre') }}
+        {{ item('/manager/personale/richieste', t('Ferie e assenze','Congés et absences'), 'file', current_path == '/manager/personale/richieste') }}
       {% endif %}
     {% if is_manager %}
       <p class="workspace-nav-label">{{ t('Controllo operativo','Suivi opérationnel') }}</p>
