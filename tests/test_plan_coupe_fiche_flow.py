@@ -25,26 +25,27 @@ def configure(o, number=1):
 
 def test_confirm_coupe_create_fiche_and_historical_snapshot(operations):
     o=operations;c,url,pid,plan=setup(o)
-    body=payload(plan);body['panels'][0].update(element=None,width_m=5.2)
+    o['site'].numero_totale_paratie=21;o['db'].commit()
+    body=payload(plan);body['panels'][0].update(element=21,label='P5',width_m=5.2)
     body['scale_ppm']=140/5.2
     assert c.put(url+f'/{pid}/convalida',json=body).status_code==200
-    assert configure(o).status_code==303
+    assert configure(o,21).status_code==303
     db=o['db'];db.expire_all()
     coupe=db.query(SiteCoupe).one()
     assert coupe.profondita_teorica==12 and coupe.quota_reference_label=='NGM'
-    assert db.query(SiteCoupeAssignment).one().numero_elemento==1
-    link=c.get(url+'/data').json()['elements'][0]['create_url']
+    assert db.query(SiteCoupeAssignment).one().numero_elemento==21
+    link=next(p for p in c.get(url+'/data').json()['elements'] if p['number']==21)['create_url']
     form=c.get(link)
-    assert form.status_code==200 and 'P7a' in form.text
+    assert form.status_code==200 and 'P5' in form.text
     assert 'value="5.2"' in form.text
-    data={'cantiere_id':o['site'].id,'numero_pannello':1,'data_scavo':'2026-09-17',
+    data={'cantiere_id':o['site'].id,'numero_pannello':21,'data_scavo':'2026-09-17',
           'data_getto':'2026-09-17','metri_cubi_gettati':'27.5','operatore':'Squadra prova',
           'tipologia_scavo':'paratia','profondita_totale':'12',
           'strato_da':['0'],'strato_a':['12'],'strato_materiale':['sabbia']}
     response=c.post('/manager/fiches/nuova',data=data,follow_redirects=False)
     assert response.status_code==303,response.text
     db.expire_all();fiche=db.query(Fiche).one()
-    assert fiche.panel_name=='P7a' and fiche.coupe_id==coupe.id
+    assert fiche.numero_pannello==21 and fiche.panel_name=='P5' and fiche.coupe_id==coupe.id
     assert fiche.larghezza_pannello==5.2 and fiche.altezza_pannello==.42
     assert fiche.quota_ngf_fondo==-1.5 and fiche.quota_partenza==10.5
     assert _calculate_fiche_volume_teorico(fiche)==pytest.approx(26.208)
@@ -59,8 +60,19 @@ def test_confirm_coupe_create_fiche_and_historical_snapshot(operations):
     assert c.get(link,follow_redirects=False).status_code==303
     duplicate=c.post('/manager/fiches/nuova',data=data,follow_redirects=False)
     assert duplicate.status_code==400 and db.query(Fiche).count()==1
-    live=c.get(url+'/data').json()['elements'][0]
+    assert 'Paratia P5 già registrata' in duplicate.text
+    live=next(p for p in c.get(url+'/data').json()['elements'] if p['number']==21)
     assert live['status']=='pending' and live['concrete_m3']==27.5 and live['create_url'] is None
+
+    # A historical fiche must remain identifiable/editable if no plan is available.
+    from models import SitePlan
+    db.query(SitePlan).update({'approved':None});db.query(SiteProgressGridName).delete();db.commit()
+    edit_url=f'/manager/fiches/{fiche.id}/modifica'
+    assert 'P5' in c.get(edit_url).text
+    data.update(larghezza_pannello='5.2',altezza_pannello='.42')
+    assert c.post(edit_url,data=data,follow_redirects=False).status_code==303
+    db.expire_all()
+    assert fiche.panel_name=='P5' and fiche.numero_pannello==21
 
 
 def test_duplicate_names_have_distinct_ids_and_reapproval_keeps_identity(operations):

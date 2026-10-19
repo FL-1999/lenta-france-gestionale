@@ -1297,6 +1297,7 @@ def _render_fiche_create_form(
                 assigned = next((c for c in coupes if c.site_id == selected_site_id and any(a.tipologia_scavo == kind and a.numero_elemento == number for a in c.assignments)), None)
                 values.update(numero_pannello=number, coupe_id=assigned.id if assigned else None, larghezza_pannello=details['width_m'], scavo_da_tn=assigned.scavo_da_tn if assigned else True)
             form_data = _build_fiche_form_data(**values)
+        stored = None
         if request.path_params.get("fiche_id") and extra_context and extra_context.get("is_edit"):
             from types import SimpleNamespace
             stored = db.get(Fiche, request.path_params["fiche_id"])
@@ -1313,6 +1314,12 @@ def _render_fiche_create_form(
             panel_catalog[str(available_site.id)] = [
                 {"number": p['element'], **panel_details(db, available_site.id, p['element'])}
                 for p in approved_panels(db, available_site.id) if p.get('element')]
+        # A historical fiche remains editable even if a newer plan omits its panel.
+        if stored and stored.tipologia_scavo == 'paratia' and stored.site_id in site_ids:
+            entries = panel_catalog[str(stored.site_id)]
+            if not any(p['number'] == stored.numero_pannello for p in entries):
+                entries.append({'number': stored.numero_pannello, 'label': stored.panel_label,
+                                'width_m': stored.larghezza_pannello})
         capocantieri = (
             db.query(User)
             .filter(User.is_active.is_(True), User.role.in_([RoleEnum.admin, RoleEnum.manager]))
@@ -2262,6 +2269,11 @@ def _update_validated_fiche(
     from services.soil_levels import rebase_soil, theoretical_origin, fiche_theory_source
     previous_soil, previous_origin = fiche_theory_source(fiche)
     previous_site_id = fiche.site_id
+    panel_name = panel_details(db, site.id, parsed_numero_pannello, normalized_tipologia)["label"]
+    if (panel_name == str(parsed_numero_pannello) and fiche.panel_name
+            and (fiche.site_id, fiche.tipologia_scavo, fiche.numero_pannello)
+            == (site.id, normalized_tipologia, parsed_numero_pannello)):
+        panel_name = fiche.panel_name
     diametro_value_m = diametro_value_cm / 100 if diametro_value_cm is not None else None
     coupe_changed = fiche.coupe_id != (coupe.id if coupe else None)
     fiche.date = data_scavo
@@ -2269,7 +2281,7 @@ def _update_validated_fiche(
     fiche.site_id = cantiere_id
     if fiche.coupe_id != (coupe.id if coupe else None) or not fiche.coupe_snapshot:
         fiche.coupe_snapshot = _fiche_coupe_snapshot(coupe)
-    fiche.panel_name = panel_details(db, site.id, parsed_numero_pannello, normalized_tipologia)["label"]
+    fiche.panel_name = panel_name
     if coupe and (fiche.coupe_id != coupe.id or not fiche.quota_reference_label):
         fiche.quota_reference_label = coupe.quota_reference_label or "NGF"
     fiche.coupe_id = coupe.id if coupe else None
@@ -4385,7 +4397,7 @@ def _ensure_unique_numero_pannello(
         from services.site_pours import panel_fiches
         existing = panel_fiches(db, site_id).get(numero_pannello)
         if existing and existing.id != exclude_fiche_id:
-            raise HTTPException(400, f"Paratia {numero_pannello} già registrata, singola o di angolo.")
+            raise HTTPException(400, f"Paratia {panel_details(db, site_id, numero_pannello)['label']} già registrata, singola o di angolo.")
     query = db.query(Fiche.id).filter(
         Fiche.site_id == site_id,
         func.lower(Fiche.tipologia_scavo) == normalized_tipologia,
@@ -4398,7 +4410,7 @@ def _ensure_unique_numero_pannello(
         label = "Paratia" if normalized_tipologia == "paratia" else "Palo"
         raise HTTPException(
             status_code=400,
-            detail=f"{label} {numero_pannello} già registrato per questo cantiere",
+            detail=f"{label} {panel_details(db, site_id, numero_pannello, normalized_tipologia)['label']} già registrato per questo cantiere",
         )
 
 
@@ -9160,7 +9172,7 @@ def manager_fiche_pdf(
         pdf_bytes = _html_to_pdf(html)
 
         tipo = fiche.tipologia_scavo or "fiche"
-        num = fiche.numero_pannello or 0
+        num = re.sub(r'[^A-Za-z0-9_.-]+', '_', fiche.panel_label).strip('._') or 'pannello'
         date_str = fiche.date.strftime("%Y%m%d") if fiche.date else "nodate"
         site_code = (fiche.site.code or "site") if fiche.site else "site"
         filename = f"{site_code}_{tipo}_{num}_{date_str}.pdf"
