@@ -25,7 +25,7 @@ def panel_details(db, site_id, number, kind='paratia'):
         pair = [p for p in approved_panels(db, site_id) if p.get('corner_group') == panel['corner_group']]
         if corner_name(pair):
             return {'label': corner_name(pair), 'width_m': sum(p['width_m'] for p in pair)}
-    return {'label': label.nome_personalizzato if label else str(number),
+    return {'label': label.nome_personalizzato if label else (panel.get('label') if panel else None) or str(number),
             'width_m': panel.get('width_m') if panel else None}
 
 

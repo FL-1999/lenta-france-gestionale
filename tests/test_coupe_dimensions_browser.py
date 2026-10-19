@@ -50,7 +50,7 @@ def test_separate_editors_and_width_changes_with_selected_panel(live_operations)
         width=page.locator('#larghezza_pannello');thickness=page.locator('#altezza_pannello')
         expect(width).to_have_value('6.4');assert width.evaluate('(e)=>e.readOnly')
         expect(thickness).to_have_value('0.5');assert thickness.evaluate('(e)=>e.readOnly')
-        page.get_by_role('combobox',name='Pannello della pianta').select_option('2')
+        page.get_by_role('combobox',name='Pannello / palo').select_option('2')
         expect(width).to_have_value('3.5');expect(thickness).to_have_value('0.5')
         assert not errors,errors
         browser.close()

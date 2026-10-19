@@ -49,6 +49,10 @@
             {% set selected_machine = form_data.get('macchinario_id', '') %}
             {% set selected_coupe = form_data.get('coupe_id', '') %}
             {% set selected_tipologia = form_data.get('tipologia_scavo', '') %}
+            {% set panels = (fiche_panel_catalog|default({})).get(selected_site|string, []) if selected_tipologia == 'paratia' else [] %}
+            {% set selected_panel = panels|selectattr('number', 'equalto', form_data.get('numero_pannello', 0)|int)|first|default({}) %}
+            {% set plan_help = 'Le nom du panneau sur le plan fait référence pour cette fiche.' if lang == 'fr' else 'Fa fede il nome del pannello sulla piantina.' %}
+            {% set unmapped_help = 'Élément configuré dans le chantier, absent du plan actuel.' if lang == 'fr' else 'Elemento configurato nel cantiere, non presente nella piantina attuale.' %}
             {% set diametro_value_cm = "" %}
             {% if form_data is defined %}
               {% if form_data.get('diametro_palo_cm') %}
@@ -66,7 +70,7 @@
                             <strong data-summary-site>—</strong>
                         </div>
                         <div class="fiche-summary-item">
-                            <span class="fiche-summary-label">{% if lang == 'fr' %}Numéro{% else %}Numero{% endif %}</span>
+                            <span class="fiche-summary-label">{% if lang == 'fr' %}Panneau / pieu{% else %}Pannello / palo{% endif %}</span>
                             <strong data-summary-number>—</strong>
                         </div>
                         <div class="fiche-summary-item">
@@ -97,16 +101,25 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="numero_pannello">
-                            {% if lang == 'fr' %}Numéro paroi / pieu*{% else %}Numero paratia / palo*{% endif %}
+                        <label class="form-label" data-panel-label for="{{ 'fiche_panel' if panels else 'numero_pannello' }}">
+                            {% if lang == 'fr' %}Panneau / pieu*{% else %}Pannello / palo*{% endif %}
                         </label>
                         <input id="numero_pannello"
                                name="numero_pannello"
-                               type="number"
+                               type="{{ 'hidden' if panels else 'number' }}"
                                min="1"
-                               required
+                               {% if panels %}disabled{% else %}required{% endif %}
                                class="form-control input-field"
                                value="{{ form_data.get('numero_pannello', '') }}" />
+                        <select id="fiche_panel" name="numero_pannello" class="form-select"
+                                data-unmapped-label="{{ 'Non représenté sur le plan' if lang == 'fr' else 'Non in piantina' }}"
+                                aria-describedby="fiche-panel-help" {% if panels %}required{% else %}hidden disabled{% endif %}>
+                            <option value="">{% if lang == 'fr' %}Sélectionnez le panneau{% else %}Seleziona il pannello{% endif %}</option>
+                            {% for panel in panels %}
+                            <option value="{{ panel.number }}" {% if panel.number|string == form_data.get('numero_pannello', '')|string %}selected{% endif %}>{{ panel.label }}{% if panel.width_m %} · {{ panel.width_m }} m{% endif %}{% if panel.unmapped %} · {{ 'Non représenté sur le plan' if lang == 'fr' else 'Non in piantina' }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <small id="fiche-panel-help" class="form-text text-muted" data-plan-help="{{ plan_help }}" data-unmapped-help="{{ unmapped_help }}" {% if not panels %}hidden{% endif %}>{{ unmapped_help if selected_panel.unmapped else plan_help }}</small>
                     </div>
 
 
@@ -767,6 +780,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const submitButton = form.querySelector("[data-fiche-submit]");
     const summarySite = form.querySelector("[data-summary-site]");
     const summaryNumber = form.querySelector("[data-summary-number]");
+    const panelCatalog = JSON.parse(document.getElementById('fiche-panel-catalog')?.textContent || '{}');
     const summaryCoupe = form.querySelector("[data-summary-coupe]");
     const coupeValidationStatus = form.querySelector("[data-coupe-validation-status]");
     const quotaTestaInput = document.getElementById("quota_ngf_testa");
@@ -828,7 +842,11 @@ document.addEventListener("DOMContentLoaded", function () {
             const selectedSiteOption = siteSelect?.selectedOptions?.[0];
             summarySite.textContent = selectedSiteOption?.dataset.siteName || selectedSiteOption?.textContent?.trim() || "—";
         }
-        if (summaryNumber) summaryNumber.textContent = numberInput?.value || "—";
+        if (summaryNumber) {
+            const panels = typeSelect?.value === 'paratia' ? (panelCatalog[siteSelect?.value] || []) : [];
+            const panel = panels.find(item => String(item.number) === numberInput?.value);
+            summaryNumber.textContent = panel?.label || (panels.length ? "—" : numberInput?.value) || "—";
+        }
         if (summaryCoupe) {
             const selectedCoupeOption = coupeSelect?.selectedOptions?.[0];
             summaryCoupe.textContent = selectedCoupeOption?.dataset.label || selectedCoupeOption?.textContent?.trim() || "—";
@@ -1458,7 +1476,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <script type="application/json" id="fiche-panel-catalog" data-datum="{{ form_data.get('quota_reference_label', '') if is_edit else '' }}" data-coupe="{{ selected_coupe }}">{{ (fiche_panel_catalog|default({}))|tojson }}</script>
-<script src="/static/js/fiche-panel-context.js?v=20260930" defer></script>
+<script src="/static/js/fiche-panel-context.js?v=20261019c" defer></script>
 <link rel="stylesheet" href="/static/css/soil-coordinates.css?v=20260930">
 <script src="/static/js/soil-coordinates.js?v=20260930b"></script>
 <script src="/static/js/fiche-soil-coordinates.js?v=20260930b"></script>
