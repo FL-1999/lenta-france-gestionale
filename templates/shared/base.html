@@ -15,6 +15,7 @@
   <script src="/static/js/theme_switcher.js?v=20260917r17"></script>
   <link rel="stylesheet" href="/static/css/style.css?v=20260917r18">
   <link rel="stylesheet" href="/static/css/workspace.css?v=20261013mobile1">
+  <link rel="stylesheet" href="/static/css/mobile-directory.css?v=20261019a">
 </head>
 <body class="workspace-ui {{ 'purchasing-workspace' if purchase_nav else '' }} {{ 'warehouse-workspace' if request.url.path.startswith('/manager/magazzino') else '' }} {{ 'workspace-auth' if user else 'workspace-guest' }}">
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -205,6 +206,7 @@
   <script src="/static/js/workspace.js?v=20260916w1" defer></script>
   {% if purchase_nav %}<script src="/static/js/purchasing_navigation.js?v=20260925a" defer></script>{% endif %}
   <script src="/static/js/workspace_icons.js?v=20260917r17" defer></script>
+  <script src="/static/js/mobile-directory.js?v=20261019a" defer></script>
   <script src="/static/js/notifications.js?v=20260922" defer></script>
   <script src="/static/js/sw_register.js?v=20260917r17" defer></script>
   {% block scripts %}{% endblock %}

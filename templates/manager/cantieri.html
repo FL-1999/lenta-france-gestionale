@@ -28,7 +28,7 @@
       {% endif %}
     </p>
   </div>
-  <div class="page-actions">
+  <div class="page-actions" data-mobile-toolbar>
     {% if has_perm(user, 'economics.read') %}
       <a href="{{ url_for('manager_economics_dashboard') }}" class="btn btn-secondary">
         💶 {% if lang == 'fr' %}Économie{% else %}Economica{% endif %}
@@ -85,7 +85,7 @@
     </div>
   </div>
   <div class="card-body list-table">
-    <table class="data-table">
+    <table data-mobile-directory data-mobile-title="0" data-mobile-meta="1,2" data-mobile-status="4,6" data-mobile-primary=".site-detail-link" data-mobile-actions="7,8" data-mobile-hide-header data-mobile-legacy=".list-cards" class="data-table">
       <thead>
         <tr>
           <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>
@@ -122,9 +122,9 @@
           </td>
           <td class="text-center">
             {% if project_configured %}
-              <span class="project-status project-status--ok" title="Almeno una coupe configurata">✅</span>
+              <span data-mobile-text="{{ 'Projet configuré' if lang == 'fr' else 'Progetto configurato' }}" class="project-status project-status--ok" title="Almeno una coupe configurata">✅</span>
             {% else %}
-              <span class="project-status project-status--warning" title="Nessuna coupe configurata">⚠️</span>
+              <span data-mobile-text="{{ 'Projet à configurer' if lang == 'fr' else 'Progetto da configurare' }}" class="project-status project-status--warning" title="Nessuna coupe configurata">⚠️</span>
             {% endif %}
           </td>
           <td class="text-center">
