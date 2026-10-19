@@ -1314,12 +1314,25 @@ def _render_fiche_create_form(
             panel_catalog[str(available_site.id)] = [
                 {"number": p['element'], **panel_details(db, available_site.id, p['element'])}
                 for p in approved_panels(db, available_site.id) if p.get('element')]
+            entries = panel_catalog[str(available_site.id)]
+            if entries:
+                # A plan can cover only part of the configured site. Keep every
+                # element offered by the site's existing fiche creation links.
+                from routes.site_plans import elements as site_plan_elements
+                mapped = {p['number'] for p in entries}
+                entries.extend({'number': p['number'], 'label': p['label'],
+                                'width_m': None, 'unmapped': True}
+                               for p in site_plan_elements(db, available_site, current_user)
+                               if p['number'] not in mapped)
         # A historical fiche remains editable even if a newer plan omits its panel.
         if stored and stored.tipologia_scavo == 'paratia' and stored.site_id in site_ids:
             entries = panel_catalog[str(stored.site_id)]
-            if not any(p['number'] == stored.numero_pannello for p in entries):
+            existing_entry = next((p for p in entries if p['number'] == stored.numero_pannello), None)
+            if existing_entry is None:
                 entries.append({'number': stored.numero_pannello, 'label': stored.panel_label,
-                                'width_m': stored.larghezza_pannello})
+                                'width_m': stored.larghezza_pannello, 'unmapped': True})
+            elif existing_entry.get('unmapped') and existing_entry['label'] == str(stored.numero_pannello):
+                existing_entry['label'] = stored.panel_label
         capocantieri = (
             db.query(User)
             .filter(User.is_active.is_(True), User.role.in_([RoleEnum.admin, RoleEnum.manager]))

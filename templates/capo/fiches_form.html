@@ -50,6 +50,9 @@
             {% set selected_coupe = form_data.get('coupe_id', '') %}
             {% set selected_tipologia = form_data.get('tipologia_scavo', '') %}
             {% set panels = (fiche_panel_catalog|default({})).get(selected_site|string, []) if selected_tipologia == 'paratia' else [] %}
+            {% set selected_panel = panels|selectattr('number', 'equalto', form_data.get('numero_pannello', 0)|int)|first|default({}) %}
+            {% set plan_help = 'Le nom du panneau sur le plan fait référence pour cette fiche.' if lang == 'fr' else 'Fa fede il nome del pannello sulla piantina.' %}
+            {% set unmapped_help = 'Élément configuré dans le chantier, absent du plan actuel.' if lang == 'fr' else 'Elemento configurato nel cantiere, non presente nella piantina attuale.' %}
             {% set diametro_value_cm = "" %}
             {% if form_data is defined %}
               {% if form_data.get('diametro_palo_cm') %}
@@ -109,13 +112,14 @@
                                class="form-control input-field"
                                value="{{ form_data.get('numero_pannello', '') }}" />
                         <select id="fiche_panel" name="numero_pannello" class="form-select"
+                                data-unmapped-label="{{ 'Non représenté sur le plan' if lang == 'fr' else 'Non in piantina' }}"
                                 aria-describedby="fiche-panel-help" {% if panels %}required{% else %}hidden disabled{% endif %}>
-                            <option value="">{% if lang == 'fr' %}Sélectionnez le panneau du plan{% else %}Seleziona il pannello della piantina{% endif %}</option>
+                            <option value="">{% if lang == 'fr' %}Sélectionnez le panneau{% else %}Seleziona il pannello{% endif %}</option>
                             {% for panel in panels %}
-                            <option value="{{ panel.number }}" {% if panel.number|string == form_data.get('numero_pannello', '')|string %}selected{% endif %}>{{ panel.label }}{% if panel.width_m %} · {{ panel.width_m }} m{% endif %}</option>
+                            <option value="{{ panel.number }}" {% if panel.number|string == form_data.get('numero_pannello', '')|string %}selected{% endif %}>{{ panel.label }}{% if panel.width_m %} · {{ panel.width_m }} m{% endif %}{% if panel.unmapped %} · {{ 'Non représenté sur le plan' if lang == 'fr' else 'Non in piantina' }}{% endif %}</option>
                             {% endfor %}
                         </select>
-                        <small id="fiche-panel-help" class="form-text text-muted" {% if not panels %}hidden{% endif %}>{% if lang == 'fr' %}Le nom du panneau sur le plan fait référence pour cette fiche.{% else %}Fa fede il nome del pannello sulla piantina.{% endif %}</small>
+                        <small id="fiche-panel-help" class="form-text text-muted" data-plan-help="{{ plan_help }}" data-unmapped-help="{{ unmapped_help }}" {% if not panels %}hidden{% endif %}>{{ unmapped_help if selected_panel.unmapped else plan_help }}</small>
                     </div>
 
 
@@ -1472,7 +1476,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <script type="application/json" id="fiche-panel-catalog" data-datum="{{ form_data.get('quota_reference_label', '') if is_edit else '' }}" data-coupe="{{ selected_coupe }}">{{ (fiche_panel_catalog|default({}))|tojson }}</script>
-<script src="/static/js/fiche-panel-context.js?v=20261019b" defer></script>
+<script src="/static/js/fiche-panel-context.js?v=20261019c" defer></script>
 <link rel="stylesheet" href="/static/css/soil-coordinates.css?v=20260930">
 <script src="/static/js/soil-coordinates.js?v=20260930b"></script>
 <script src="/static/js/fiche-soil-coordinates.js?v=20260930b"></script>

@@ -84,6 +84,10 @@ def test_visual_coupe_selection_fiche_creation_and_real_pdf_routes(live_operatio
         expect(page.locator('#numero_pannello')).to_have_value('')
         page.locator('#cantiere_id').select_option(str(ids['site']))
         expect(page.locator('#fiche_panel')).to_have_value('')
+        page.locator('#fiche_panel').select_option('5')
+        expect(page.locator('[data-summary-number]')).to_have_text('5')
+        expect(page.locator('#fiche-panel-help')).to_contain_text('non presente nella piantina')
+        assert not page.locator('#larghezza_pannello').evaluate('(e)=>e.readOnly')
         page.locator('#fiche_panel').select_option('21')
         expect(page.locator('[data-summary-number]')).to_have_text('P5')
         assert page.locator('[data-fiche-form]').evaluate("e=>new FormData(e).getAll('numero_pannello')")==['21']

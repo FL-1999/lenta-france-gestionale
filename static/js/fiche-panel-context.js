@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function update(){
     const panels=type?.value==='paratia'?(catalog[site.value]||[]):[];
     picker.replaceChildren(new Option(placeholder,''));
-    panels.forEach(p=>picker.add(new Option(p.label+(p.width_m?` · ${p.width_m} m`:''),p.number)));
+    panels.forEach(p=>picker.add(new Option(p.label+(p.width_m?` · ${p.width_m} m`:'')+(p.unmapped?` · ${picker.dataset.unmappedLabel}`:''),p.number)));
     const fromPlan=panels.length>0;
     // Exactly one successful control: the picker submits its own stable value,
     // including without JS. The hidden mirror is only for existing coupe logic.
@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     number.type=fromPlan?'hidden':'number';number.disabled=fromPlan;number.required=!fromPlan;
     label.htmlFor=fromPlan?picker.id:number.id;help.hidden=!fromPlan;
     const selected=panels.find(p=>String(p.number)===number.value);
+    help.textContent=selected?.unmapped?help.dataset.unmappedHelp:help.dataset.planHelp;
     if(fromPlan&&!selected)number.value='';
     picker.value=number.value;
     const width=document.getElementById('larghezza_pannello');

@@ -66,9 +66,15 @@ def test_confirm_coupe_create_fiche_and_historical_snapshot(operations):
 
     # A historical fiche must remain identifiable/editable if no plan is available.
     from models import SitePlan
+    saved_plan=db.query(SitePlan).one();next_layout=json.loads(saved_plan.approved)
     db.query(SitePlan).update({'approved':None});db.query(SiteProgressGridName).delete();db.commit()
     edit_url=f'/manager/fiches/{fiche.id}/modifica'
     assert 'P5' in c.get(edit_url).text
+    # The same applies when a later plan only represents another panel.
+    next_layout['panels'][0].update(element=22,label='P8')
+    saved_plan.approved=json.dumps(next_layout);db.commit()
+    choices=c.get(edit_url).context['fiche_panel_catalog'][str(o['site'].id)]
+    assert next(p for p in choices if p['number']==21)['label']=='P5'
     data.update(larghezza_pannello='5.2',altezza_pannello='.42')
     assert c.post(edit_url,data=data,follow_redirects=False).status_code==303
     db.expire_all()
@@ -88,6 +94,30 @@ def test_duplicate_names_have_distinct_ids_and_reapproval_keeps_identity(operati
     assert operations['db'].query(SiteProgressGridName).count()==2
     body['revision']+=1;body['panels'][0]['element']=None
     assert c.put(url+f'/{pid}/convalida',json=body).status_code==400
+
+
+@pytest.mark.parametrize('role', ['manager', 'capo'])
+def test_partial_plan_retains_unmapped_site_fiche_links(operations, role):
+    o=operations;c,url,pid,plan=setup(o)
+    body=payload(plan);body['panels'][0]['label']='P5'
+    assert c.put(url+f'/{pid}/convalida',json=body).status_code==200
+    o['site'].numero_totale_paratie=5;o['db'].commit()
+    o['actor'][0]=o[role]
+    element=next(p for p in c.get(url+'/data').json()['elements'] if p['number']==5)
+    response=c.get(element['create_url'])
+    assert response.status_code==200
+    choices=response.context['fiche_panel_catalog'][str(o['site'].id)]
+    assert next(p for p in choices if p['number']==1)['label']=='P5'
+    assert next(p for p in choices if p['number']==5)['unmapped'] is True
+    result=c.post(element['create_url'].split('?')[0],data={
+        'cantiere_id':o['site'].id,'numero_pannello':5,'data_scavo':'2026-10-19',
+        'operatore':'Squadra prova','tipologia_scavo':'paratia',
+        'profondita_totale':'5','larghezza_pannello':'3','altezza_pannello':'.42',
+        'strato_da':['0'],'strato_a':['5'],'strato_materiale':['sabbia']},follow_redirects=False)
+    assert result.status_code==303,result.text
+    o['db'].expire_all()
+    fiche=o['db'].query(Fiche).one()
+    assert fiche.numero_pannello==5 and fiche.panel_name=='5'
 
 
 def test_coupe_rejects_overlapping_assignments_atomically(operations):
