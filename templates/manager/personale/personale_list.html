@@ -48,7 +48,7 @@
 
 <div class="card table-card">
     <div class="card-body pw-scroll">
-        <table class="data-table" role="table" aria-label="{{ t('Elenco personale','Liste du personnel') }}">
+        <table data-mobile-directory data-mobile-title="0" data-mobile-title-selector="strong" data-mobile-meta="1" data-mobile-status="5" data-mobile-primary=".actions-col a, .personnel-actions a, td:last-child a" data-mobile-actions="6" class="data-table" role="table" aria-label="{{ t('Elenco personale','Liste du personnel') }}">
             <thead>
                 <tr>
                     <th>{% if lang == 'fr' %}Nom{% else %}Nome{% endif %}</th>

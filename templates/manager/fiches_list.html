@@ -131,7 +131,7 @@
     {% set pali_fiches = pali_fiches|default([], true) %}
 
     {% macro fiches_table(section_fiches, empty_message) %}
-        <table class="data-table">
+        <table data-mobile-directory data-mobile-title="1" data-mobile-meta="0,2" data-mobile-status="5" data-mobile-primary=".fiche-row-actions a:last-child" data-mobile-actions="6" class="data-table">
             <thead>
                 <tr>
                     <th>{% if lang == 'fr' %}Date{% else %}Data{% endif %}</th>

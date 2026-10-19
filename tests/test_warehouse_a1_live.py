@@ -59,8 +59,8 @@ def test_bulk_classification_visible_selection_and_destination(live_operations):
         page.goto(origin+'/manager/magazzino?categoria_id=0')
         expect(page.locator('.warehouse-row')).to_have_count(1)
         expect(page.locator('.warehouse-row')).to_contain_text('Pompa')
-        # The original single-item path must work for an article with no category too.
-        page.get_by_role('link',name='Apri scheda',exact=False).click()
+        # On phones, the article name opens the same detail page.
+        page.get_by_role('link',name='Pompa',exact=True).click()
         page.get_by_role('link',name='Assegna categoria',exact=True).click()
         page.locator('[name=category_id]').select_option(str(category_id))
         page.get_by_role('button',name='Salva classificazione',exact=True).click()

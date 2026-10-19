@@ -152,32 +152,32 @@
                     <span><strong>{{ section.stats.esauriti_count }}</strong> {% if lang == 'fr' %}épuisés{% else %}esauriti{% endif %}</span>
                 </div>
             </div>
-            <div class="magazzino-items-grid">
+            <div class="magazzino-items-grid" data-mobile-cards>
                 {% for item in category_items %}
                     {% set esaurito = (item.quantita_disponibile is not none) and (item.quantita_disponibile <= 0) %}
                     {% set sotto_soglia = (not esaurito) and (item.soglia_minima is not none) and (item.quantita_disponibile is not none) and (item.quantita_disponibile <= item.soglia_minima) %}
-                    <div class="card magazzino-item-card">
+                    <div class="card magazzino-item-card" data-mobile-card>
                         <div class="card-body">
                             <div class="magazzino-item-header">
                                 <div style="display: flex; align-items: center; gap: var(--space-2);">
                                     <span aria-hidden="true">{% if item.preferito %}★{% else %}☆{% endif %}</span>
-                                    <h3>{{ item.nome }}</h3>
+                                    <h3 data-mobile-name>{{ item.nome }}</h3>
                                 </div>
                                 {% if esaurito %}
-                                    <span class="badge badge-danger">{% if lang == 'fr' %}Épuisé{% else %}Esaurito{% endif %}</span>
+                                    <span data-mobile-status class="badge badge-danger">{% if lang == 'fr' %}Épuisé{% else %}Esaurito{% endif %}</span>
                                 {% elif sotto_soglia %}
-                                    <span class="badge badge-warning">{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
+                                    <span data-mobile-status class="badge badge-warning">{% if lang == 'fr' %}Sous seuil{% else %}Sotto soglia{% endif %}</span>
                                 {% else %}
-                                    <span class="badge badge-success">OK</span>
+                                    <span data-mobile-status class="badge badge-success">OK</span>
                                 {% endif %}
                             </div>
-                            <p class="magazzino-item-meta">
+                            <p data-mobile-meta data-mobile-field="{{ 'Code' if lang == 'fr' else 'Codice' }}" class="magazzino-item-meta">
                                 <strong>{% if lang == 'fr' %}Code{% else %}Codice{% endif %}:</strong>
                                 {{ item.codice or '—' }}
                             </p>
-                            <p class="magazzino-item-desc">{{ item.descrizione or '—' }}</p>
+                            <p data-mobile-field="{{ 'Description' if lang == 'fr' else 'Descrizione' }}" class="magazzino-item-desc">{{ item.descrizione or '—' }}</p>
                             <div class="magazzino-item-stats">
-                                <div class="magazzino-item-quantity">
+                                <div data-mobile-text="{{ item.quantita_disponibile if item.quantita_disponibile is not none else '—' }} {{ item.unita_misura or '' }}" data-mobile-meta data-mobile-field="{{ 'Disponibilité' if lang == 'fr' else 'Disponibilità' }}" class="magazzino-item-quantity">
                                     <span class="label">{% if lang == 'fr' %}Quantité disponible{% else %}Quantità disponibile{% endif %}</span>
                                     <span class="kpi-value">
                                         {% if item.quantita_disponibile is not none %}
@@ -187,7 +187,7 @@
                                         {% endif %}
                                     </span>
                                 </div>
-                                <div>
+                                <div data-mobile-field="{{ 'Seuil minimum' if lang == 'fr' else 'Soglia minima' }}">
                                     <span class="label">{% if lang == 'fr' %}Seuil minimum{% else %}Soglia minima{% endif %}</span>
                                     <span class="value">{{ item.soglia_minima if item.soglia_minima is not none else '—' }}</span>
                                 </div>

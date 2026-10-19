@@ -84,7 +84,7 @@
     <div class="card-header"><div class="card-title">📚 {{ t('Documenti archiviati', 'Documents archivés') }}</div></div>
     <div class="card-body{% if documents %} list-table{% endif %}">
         {% if documents %}
-        <table class="data-table">
+        <table data-mobile-directory data-mobile-title="0" data-mobile-meta="1,2,4" data-mobile-primary="td:first-child a" data-mobile-actions="5" data-mobile-legacy=".list-cards" class="data-table">
             <thead>
                 <tr>
                     <th>{{ t('Nome', 'Nom') }}</th>

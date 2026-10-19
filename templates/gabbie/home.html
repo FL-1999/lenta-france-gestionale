@@ -15,20 +15,20 @@
 </div></section>
 {% endif %}
 
-<div class="list-cards" style="display:grid;">
+<div data-mobile-cards class="list-cards" style="display:grid;">
     {% for r in rows %}
-    <article class="card list-card">
+    <article data-mobile-card class="card list-card">
         <div class="card-body">
-            <div class="list-card-header">
+            <div data-mobile-name class="list-card-header">
                 <a href="{{ url_for('gabbie_site', site_id=r.site.id) }}"><strong>{{ r.site.name }}</strong>{% if r.site.code %} ({{ r.site.code }}){% endif %}</a>
             </div>
             <div class="list-card-meta">
-                <div><span class="label">{{ t('Totale pannelli', 'Total panneaux') }}</span><span class="value">{{ r.summary.totale }}</span></div>
-                <div><span class="label">⬜ {{ t('Da fare', 'À faire') }}</span><span class="value">{{ r.summary.da_fare }}</span></div>
-                <div><span class="label">🟨 {{ t('Gabbie pronte', 'Cages prêtes') }}</span><span class="value">{{ r.summary.pronte }}</span></div>
-                <div><span class="label">🟩 {{ t('Gettati', 'Coulés') }}</span><span class="value">{{ r.summary.gettati }}</span></div>
+                <div><span class="label">{{ t('Totale pannelli', 'Total panneaux') }}</span><span data-mobile-field="{{ t('Totale pannelli', 'Total panneaux') }}" class="value">{{ r.summary.totale }}</span></div>
+                <div><span class="label">⬜ {{ t('Da fare', 'À faire') }}</span><span data-mobile-field="{{ t('Da fare', 'À faire') }}" data-mobile-meta data-mobile-text="{{ t('Da fare', 'À faire') }}: {{ r.summary.da_fare }}" class="value">{{ r.summary.da_fare }}</span></div>
+                <div><span class="label">🟨 {{ t('Gabbie pronte', 'Cages prêtes') }}</span><span data-mobile-field="{{ t('Gabbie pronte', 'Cages prêtes') }}" data-mobile-meta data-mobile-text="{{ t('Gabbie pronte', 'Cages prêtes') }}: {{ r.summary.pronte }}" class="value">{{ r.summary.pronte }}</span></div>
+                <div><span class="label">🟩 {{ t('Gettati', 'Coulés') }}</span><span data-mobile-field="{{ t('Gettati', 'Coulés') }}" class="value">{{ r.summary.gettati }}</span></div>
             </div>
-            <div class="list-card-actions">
+            <div data-mobile-actions class="list-card-actions">
                 <a href="{{ url_for('gabbie_site', site_id=r.site.id) }}" class="btn btn-primary btn-sm">{{ t('Apri', 'Ouvrir') }}</a>
             </div>
         </div>
