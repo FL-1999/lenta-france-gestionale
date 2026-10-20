@@ -69,6 +69,9 @@
 #notebook .nb-person .nb-check{margin:0}
 #notebook .nb-person select{margin:0}
 #notebook .nb-original{padding:12px 0;border-bottom:1px solid var(--ws-line)}
+#notebook .nb-split-part{padding:16px 0;border-bottom:1px solid var(--ws-line)}
+#notebook .nb-split-part .nb-check{margin-bottom:10px}
+#notebook .nb-related{margin-top:22px;padding-top:12px;border-top:1px solid var(--ws-line)}
 @media(max-width:767px){
  #notebook h1{font-size:24px}#notebook .nb-heading{gap:10px;align-items:flex-start}#notebook .nb-heading>.nb-button{padding:9px 12px}
  #notebook .nb-layout{display:block}#notebook .nb-directory{border:0;padding:13px}

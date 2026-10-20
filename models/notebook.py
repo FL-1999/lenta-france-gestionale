@@ -67,3 +67,17 @@ class NotebookAIQuota(Base):
     __tablename__ = 'notebook_ai_quota'
     key = Column(String(80), primary_key=True)
     count = Column(Integer, nullable=False, default=0)
+
+
+class NotebookExtract(Base):
+    """Owner-only navigation between a complete note and confirmed extracts."""
+    __tablename__ = 'notebook_extracts'
+    __table_args__ = (
+        UniqueConstraint('draft_id', 'part_index', name='uq_notebook_extract_part'),
+        UniqueConstraint('child_note_id', name='uq_notebook_extract_child'),
+    )
+    id = Column(Integer, primary_key=True)
+    source_note_id = Column(Integer, ForeignKey('notebook_notes.id'), nullable=False, index=True)
+    child_note_id = Column(Integer, ForeignKey('notebook_notes.id'), nullable=False)
+    draft_id = Column(String(32), ForeignKey('notebook_drafts.id'), nullable=False)
+    part_index = Column(Integer, nullable=False)

@@ -8,7 +8,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const types = {free:t('Appunto libero','Note libre'),meeting:t('Riunione','Réunion'),list:t('Lista','Liste')};
   const state = {scope:root.dataset.site ? 'all' : 'mine', site:root.dataset.site, collection:'', query:'', offset:0,
-    sites:[], collections:[], notes:[], current:null, dirty:false, busy:false, draft:null, more:false, ai_enabled:false};
+    sites:[], assignable_sites:[], collections:[], notes:[], current:null, dirty:false, busy:false, draft:null, more:false, ai_enabled:false};
   const dialog = q('#nb-dialog');
   let listGeneration = 0, detailGeneration = 0, newKey = null, aiKey = null, revisionOffset = 0;
   const date = value => new Date(value.endsWith('Z') ? value : value+'Z').toLocaleString(fr?'fr-FR':'it-IT',{dateStyle:'short',timeStyle:'short'});
@@ -63,7 +63,32 @@
   }
   function draftHtml() {
     const draft=state.draft;
+    if(draft?.mode==='split')return splitHtml(draft);
     return draft?`<section class="nb-draft" aria-label="${t('Proposta da ricontrollare','Proposition à vérifier')}"><h2>${t('Proposta da ricontrollare','Proposition à vérifier')}</h2><p class="nb-help">${t('Non ancora applicata. Controlla nomi, numeri e decisioni.','Pas encore appliquée. Vérifiez les noms, chiffres et décisions.')}</p><h3>${esc(draft.result.title)}</h3>${readContent(draft.result)}${draft.result.warnings?.length?`<h3>${t('Da verificare','À vérifier')}</h3><ul>${draft.result.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:''}<div class="nb-actions">${button(t('Accetta bozza privata','Accepter le brouillon privé'),'data-draft-decision="accetta"',true)}${button(t('Scarta proposta','Ignorer la proposition'),'data-draft-decision="scarta"')}</div></section>`:'';
+  }
+  function splitHtml(draft) {
+    const choices=state.assignable_sites;
+    return `<section class="nb-draft" aria-label="${t('Suddivisione da ricontrollare','Répartition à vérifier')}">
+      <h2>${t('Scegli quali appunti creare','Choisissez les notes à créer')}</h2>
+      <p>${t('Il verbale completo resta qui. Seleziona gli estratti utili e controlla il cantiere: ogni nuovo appunto sarà privato e indipendente.','Le compte rendu complet reste ici. Sélectionnez les extraits utiles et vérifiez le chantier : chaque nouvelle note sera privée et indépendante.')}</p>
+      ${draft.result.warnings?.length?`<h3>${t('Da verificare','À vérifier')}</h3><ul>${draft.result.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:''}
+      ${draft.result.parts.map((part,index)=>`<section class="nb-split-part" data-part="${index}">
+        <label class="nb-check"><input type="checkbox" data-split-select><span>${t('Crea questo appunto','Créer cette note')}: <strong>${esc(part.title)}</strong></span></label>
+        <label>${t('Cantiere (facoltativo)','Chantier (facultatif)')}
+          <select data-split-site>${option('',t('Nessun cantiere · generale','Aucun chantier · général'),part.site_id||'')}
+          ${part.site_id&&!choices.some(s=>s.id===part.site_id)?`<option value="${part.site_id}" selected disabled>${t('Cantiere non più assegnato: scegli','Chantier non affecté : choisissez')}</option>`:''}
+          ${choices.map(s=>option(s.id,s.name+(s.code?' · '+s.code:''),part.site_id)).join('')}</select></label>
+        ${part.site_reference?`<p class="nb-help">${t('Riferimento nel testo','Référence dans le texte')}: ${esc(part.site_reference)}</p>`:''}
+        ${readContent(part)}</section>`).join('')}
+      <p class="nb-help">${t('Collegare un cantiere non condivide l’appunto. Potrai modificare ogni estratto prima di condividerlo; le modifiche successive non si sincronizzano con il verbale.','Associer un chantier ne partage pas la note. Vous pourrez modifier chaque extrait avant de le partager ; les modifications ultérieures ne se synchronisent pas avec le compte rendu.')}</p>
+      <div class="nb-actions">${button(t('Crea gli appunti selezionati','Créer les notes sélectionnées'),'data-split-confirm disabled',true)}
+      ${button(t('Non dividere l’appunto','Ne pas diviser la note'),'data-draft-decision="scarta"')}</div>
+      <p class="nb-help" data-split-count aria-live="polite">${t('Nessun appunto selezionato','Aucune note sélectionnée')}</p></section>`;
+  }
+  function relatedHtml(n) {
+    if(!n.owner)return '';
+    return `${n.source_note?`<p class="nb-context"><a href="/appunti?note=${n.source_note.id}">${t('Verbale completo','Compte rendu complet')}: ${esc(n.source_note.title)}</a></p>`:''}
+      ${n.extracts?.length?`<section class="nb-related"><h3>${t('Appunti ricavati da questo verbale','Notes issues de ce compte rendu')}</h3><p class="nb-help">${t('Ogni appunto ha contenuto e accessi indipendenti.','Chaque note a un contenu et des accès indépendants.')}</p><ul class="nb-readlist">${n.extracts.map(e=>`<li><a href="/appunti?note=${e.id}">${esc(e.title)}</a>${e.archived?' · '+t('Archiviato','Archivée'):''}</li>`).join('')}</ul></section>`:''}`;
   }
   function renderEditor() {
     const n=state.current, editor=q('#nb-editor');
@@ -74,7 +99,7 @@
       `<div class="nb-topline"><span>${types[n.kind]}${n.archived?' · '+t('Archiviato','Archivée'):''}</span><span class="nb-visibility">${visibility(n)}</span></div>`+
       (canEdit?`<form id="nb-edit-form"><label>${t('Titolo','Titre')}<input name="title" class="nb-title-input" value="${esc(n.title)}" required maxlength="200"></label>
       <div class="nb-fields"><label>${t('Tipo','Type')}<select name="kind">${Object.entries(types).map(([v,label])=>option(v,label,n.kind)).join('')}</select></label>
-      <label>${t('Cantiere collegato','Chantier associé')}<select name="site_id" ${!n.owner?'disabled':''}>${option('',t('Nessun cantiere','Aucun chantier'),n.site_id||'')}${state.sites.map(s=>option(s.id,s.name,n.site_id)).join('')}</select></label>
+      <label>${t('Cantiere collegato (facoltativo)','Chantier associé (facultatif)')}<select name="site_id" ${!n.owner?'disabled':''}>${option('',t('Nessun cantiere','Aucun chantier'),n.site_id||'')}${state.sites.map(s=>option(s.id,s.name,n.site_id)).join('')}</select></label>
       ${n.owner?`<label class="nb-full">${t('Raccolta personale (facoltativa)','Collection personnelle (facultative)')}<input name="collection" list="nb-collections" value="${esc(n.collection)}" maxlength="100"><datalist id="nb-collections">${state.collections.map(s=>option(s,s,'')).join('')}</datalist></label>`:''}</div>
       <label>${t('Appunti','Notes')}<textarea name="body" class="nb-body" maxlength="30000" placeholder="${t('Scrivi qui, anche di fretta…','Écrivez ici, même rapidement…')}">${esc(n.body)}</textarea></label>
       <div data-meeting-fields ${n.kind==='meeting'?'':'hidden'}><div class="nb-fields"><label>${t('Data e ora','Date et heure')}<input name="when" maxlength="100" value="${esc(d.when)}"></label><label>${t('Partecipanti · uno per riga','Participants · un par ligne')}<textarea name="attendees">${esc((d.attendees||[]).join('\n'))}</textarea></label></div><label>${t('Punti discussi · uno per riga','Points abordés · un par ligne')}<textarea name="agenda">${esc((d.agenda||[]).join('\n'))}</textarea></label><label>${t('Decisioni · una per riga','Décisions · une par ligne')}<textarea name="decisions">${esc((d.decisions||[]).join('\n'))}</textarea></label></div>
@@ -83,11 +108,11 @@
       <div class="nb-actions"><button type="submit" class="nb-button nb-primary">${t('Salva appunto','Enregistrer la note')}</button><span id="nb-save-label" class="nb-help">${t('Nessuna modifica da salvare','Aucune modification à enregistrer')}</span></div></form>`:
       `<h2>${esc(n.title)}</h2><p class="nb-help">${esc(n.author)} · ${esc(date(n.updated_at))}</p>${n.site?`<p class="nb-context">${n.site_id?`<a href="/appunti?cantiere=${n.site_id}">${esc(n.site)}</a>`:esc(n.site)}</p>`:''}${readContent(n)}`)+
       (n.owner?`<div class="nb-actions">${button(n.shared?t('Gestisci accessi','Gérer les accès'):t('Condividi','Partager'),'data-sharing')}
-        ${!n.archived?button(t('Riordina con AI','Réorganiser avec l’IA'),'data-ai')+button(t('Prepara verbale','Préparer un compte rendu'),'data-ai-meeting'):''}
+        ${!n.archived?button(t('Riordina con AI','Réorganiser avec l’IA'),'data-ai')+button(t('Prepara verbale','Préparer un compte rendu'),'data-ai-meeting')+button(t('Dividi per cantiere','Répartir par chantier'),'data-ai-split'):''}
         ${button(n.archived?t('Ripristina','Restaurer'):t('Archivia','Archiver'),'data-archive')}</div>
         <p class="nb-help">${t('Originali e proposte AI restano visibili solo a te.','Les versions précédentes et propositions IA restent visibles uniquement par vous.')}</p>
         <details id="nb-originals"><summary>${t('Versioni precedenti e originali','Versions précédentes et originaux')}</summary><div id="nb-history"></div></details>`:'')+
-      draftHtml();
+      relatedHtml(n)+draftHtml();
     const back=editor.querySelector('[data-back]');back.classList.add('nb-back');
     state.dirty=false;
   }
@@ -128,8 +153,8 @@
     if(!state.ai_enabled){showDialog(t('Riordino AI da attivare','Réorganisation IA à activer'),`<p>${t('La funzione richiede l’attivazione del servizio AI da parte dell’amministratore. Puoi già scrivere, organizzare e condividere gli appunti.','Cette fonction nécessite l’activation du service IA par l’administrateur. Vous pouvez déjà écrire, organiser et partager vos notes.')}</p>`);return;}
     // Each opened dialog is a new intent; retries within that dialog reuse its key.
     aiKey=crypto.randomUUID();
-    showDialog(mode==='meeting'?t('Prepara una bozza di verbale','Préparer un compte rendu'):t('Riordina questo appunto','Réorganiser cette note'),
-      `<p>${t('Il testo e le sezioni di questo appunto saranno inviati a OpenAI per preparare una proposta. L’originale resta conservato e nessun collega riceverà il risultato automaticamente.','Le texte et les sections de cette note seront envoyés à OpenAI pour préparer une proposition. L’original est conservé et aucun collègue ne reçoit automatiquement le résultat.')}</p><div class="nb-actions">${button(t('Prepara proposta privata','Préparer une proposition privée'),`data-prepare="${mode}"`,true)}</div>`);
+    showDialog(mode==='split'?t('Proponi una suddivisione','Proposer une répartition'):mode==='meeting'?t('Prepara una bozza di verbale','Préparer un compte rendu'):t('Riordina questo appunto','Réorganiser cette note'),
+      `<p>${mode==='split'?t('Il testo dell’appunto e i nomi e codici dei cantieri a te assegnati saranno inviati a OpenAI per suggerire una suddivisione. L’appunto completo resta intatto. Nessun nuovo appunto sarà creato finché non sceglierai quali salvare.','Le texte de la note et les noms et codes de vos chantiers affectés seront envoyés à OpenAI pour proposer une répartition. La note complète reste intacte. Aucune nouvelle note ne sera créée avant votre sélection.'):t('Il testo e le sezioni di questo appunto saranno inviati a OpenAI per preparare una proposta. L’originale resta conservato e nessun collega riceverà il risultato automaticamente.','Le texte et les sections de cette note seront envoyés à OpenAI pour préparer une proposition. L’original est conservé et aucun collègue ne reçoit automatiquement le résultat.')}</p><div class="nb-actions">${button(t('Prepara proposta privata','Préparer une proposition privée'),`data-prepare="${mode}"`,true)}</div>`);
   }
   async function save() {
     if(!q('#nb-edit-form')?.reportValidity())return false;
@@ -156,6 +181,11 @@
       if(e.target.name==='kind'){q('[data-meeting-fields]').hidden=e.target.value!=='meeting';q('[data-action-section]').hidden=e.target.value==='free';}
     }
     if(e.target.matches('[data-recipient]'))e.target.closest('.nb-person').querySelector('select').disabled=!e.target.checked;
+    if(e.target.matches('[data-split-select]')){
+      const count=root.querySelectorAll('[data-split-select]:checked').length;
+      q('[data-split-confirm]').disabled=!count;
+      q('[data-split-count]').textContent=count+' '+t('appunti selezionati','notes sélectionnées');
+    }
     if(e.target.matches('#nb-site-filter,#nb-collection-filter'))run(async()=>{
       if(!leave()){renderList();return;}state.site=q('#nb-site-filter').value;state.collection=q('#nb-collection-filter').value;state.offset=0;await loadList();state.current=null;state.draft=null;renderEditor();setNoteUrl(null);
     });
@@ -176,12 +206,22 @@
         newKey=null;state.scope='mine';state.collection='';state.query='';q('#nb-search').value='';state.offset=0;
         await loadList();await openNote(n.id);q('[name=title]').focus();q('[name=title]').select();
       }else if(b.hasAttribute('data-sharing')){if(await guardSaved())await sharing();}
-      else if(b.hasAttribute('data-ai')||b.hasAttribute('data-ai-meeting')){if(await guardSaved())prepare(b.hasAttribute('data-ai-meeting')?'meeting':'tidy');}
+      else if(b.hasAttribute('data-ai')||b.hasAttribute('data-ai-meeting')||b.hasAttribute('data-ai-split')){if(await guardSaved())prepare(b.hasAttribute('data-ai-split')?'split':b.hasAttribute('data-ai-meeting')?'meeting':'tidy');}
       else if(b.dataset.prepare){
         b.disabled=true;b.dataset.working='1';
         q('#nb-dialog-error').textContent=t('Sto preparando la proposta…','Préparation de la proposition…');
         state.draft=await api('/'+state.current.id+'/riordina','POST',{version:state.current.version,mode:b.dataset.prepare,request_key:aiKey,consent:true});
         dialog.close();renderEditor();q('.nb-draft').scrollIntoView({behavior:'smooth',block:'start'});status(t('Proposta pronta: ricontrollala prima di accettare.','Proposition prête : vérifiez-la avant de l’accepter.'));
+      }else if(b.hasAttribute('data-split-confirm')){
+        if(state.dirty)throw new Error(t('Salva le modifiche e prepara una nuova proposta.','Enregistrez les modifications puis préparez une nouvelle proposition.'));
+        const selections=[...root.querySelectorAll('[data-split-select]:checked')].map(el=>{
+          const part=el.closest('[data-part]'),site=part.querySelector('[data-split-site]').value;
+          return {index:Number(part.dataset.part),site_id:site?Number(site):null};
+        });
+        state.current=await api(`/${state.current.id}/bozze/${state.draft.id}/crea-appunti`,'POST',{version:state.current.version,selections,confirm:true});
+        state.draft=null;aiKey=null;renderEditor();await loadList();
+        status(t('Appunti creati, tutti privati. Il verbale completo è conservato.','Notes créées, toutes privées. Le compte rendu complet est conservé.'));
+        q('.nb-related')?.scrollIntoView({behavior:'smooth',block:'start'});
       }else if(b.dataset.draftDecision){
         if(state.dirty){throw new Error(t('Salva le modifiche e prepara una nuova proposta.','Enregistrez les modifications puis préparez une nouvelle proposition.'));}
         const decision=b.dataset.draftDecision;

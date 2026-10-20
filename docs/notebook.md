@@ -9,6 +9,8 @@ trova il collegamento anche nell'assegnazione attuale al cantiere.
 
 Ogni nuovo appunto è privato. Si possono scrivere appunti liberi, riunioni con
 partecipanti/punti/decisioni/attività e liste, organizzati in raccolte personali.
+Il cantiere è facoltativo: acquisti generali, riunioni interne e promemoria possono
+rimanere senza cantiere anche dopo il riordino AI.
 La selezione di un cantiere o di un partecipante non concede accesso. Nessun
 ruolo applicativo, neppure admin, permette di leggere gli appunti altrui.
 
@@ -58,11 +60,34 @@ Decisioni e attività sono sezioni del documento, non scritture su fiches,
 rapportini, presenze, avanzamenti o attività del gestionale. Il modello può
 sbagliare: nomi, misure e decisioni richiedono il controllo del proprietario.
 
+## Riunioni con più cantieri
+
+**Dividi per cantiere** prepara una proposta separata dal riordino. Il consenso
+indica che, oltre al solo appunto selezionato, vengono inviati a OpenAI nomi,
+codici e ID dei cantieri attualmente assegnabili dall'utente. Non vengono inviati
+altri appunti, personale, documenti o dati operativi dei cantieri.
+
+La proposta contiene al massimo 12 estratti per cantiere o senza cantiere per
+punti generali, trasversali e riferimenti incerti. Un ID suggerito deve appartenere
+al catalogo autorizzato e avere una citazione presente nell'appunto; questi controlli
+non garantiscono l'attribuzione semantica, che il proprietario deve verificare.
+Ogni estratto mostra il contenuto e un selettore di cantiere facoltativo.
+Nessuna casella è preselezionata. **Crea gli appunti selezionati** crea solo
+gli estratti selezionati; **Non dividere l'appunto** scarta la proposta.
+
+Il verbale completo conserva testo, sezioni e classificazione. Gli estratti sono
+sempre privati, ereditano solo la raccolta personale e hanno contenuto e accessi
+indipendenti: modifiche successive non si sincronizzano. I collegamenti fra
+verbale ed estratti sono visibili solo al proprietario, mai ai destinatari della
+condivisione. Condividere un estratto non dà accesso al verbale o agli altri estratti.
+La creazione è atomica e usa la versione del verbale; un retry della medesima
+selezione restituisce il risultato esistente senza creare duplicati.
+
 ## Persistenza e sicurezza
 
 Tabelle additive registrate nell'avvio ordinario di SQLAlchemy:
 `notebook_notes`, `notebook_grants`, `notebook_revisions`, `notebook_drafts`,
-`notebook_ai_quota`. Nessuna modifica distruttiva ai dati operativi.
+`notebook_ai_quota`, `notebook_extracts`. Nessuna modifica distruttiva ai dati operativi.
 Le richieste di scrittura usano CSRF firmato, controllo origine e versione
 ottimistica del documento. Creazione e preparazione AI hanno chiavi idempotenti.
 Ogni lista/lettura applica il filtro proprietario/destinatario prima dei filtri

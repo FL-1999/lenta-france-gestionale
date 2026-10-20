@@ -5,7 +5,7 @@ import copy
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import or_, select, update
-from models import (NotebookNote, NotebookGrant, NotebookRevision, NotebookDraft,
+from models import (NotebookNote, NotebookGrant, NotebookRevision, NotebookDraft, NotebookExtract,
                     User, Site, Personale, PersonnelTeam, PersonnelAssignment, ResourcePlan)
 from permissions import has_perm
 from notifications import create_notification
@@ -120,6 +120,10 @@ def sites(db, user):
         Site.id.in_(linked))).order_by(Site.name).all()
 
 
+def assignable_sites(db, user):
+    return db.query(Site).filter(Site.id.in_(assigned_site_ids(db, user))).order_by(Site.name).all()
+
+
 def require_site(db, user, site_id):
     if site_id is not None and not db.query(Site.id).filter(
         Site.id == site_id, Site.id.in_(assigned_site_ids(db, user))).first():
@@ -169,6 +173,15 @@ def data(db, row, user, *, full=False):
             draft = db.query(NotebookDraft).filter_by(note_id=row.id, state='ready',
                 base_version=row.version).order_by(NotebookDraft.created_at.desc()).first()
             result['draft'] = dict(id=draft.id, result=draft.result, mode=draft.mode) if draft else None
+            # Never expose titles or even IDs of the complete meeting through a shared extract.
+            source = db.query(NotebookNote).join(NotebookExtract,
+                NotebookExtract.source_note_id == NotebookNote.id).filter(
+                NotebookExtract.child_note_id == row.id, NotebookNote.owner_id == user.id).first()
+            extracts = db.query(NotebookNote).join(NotebookExtract,
+                NotebookExtract.child_note_id == NotebookNote.id).filter(
+                NotebookExtract.source_note_id == row.id, NotebookNote.owner_id == user.id).order_by(NotebookExtract.id).all()
+            result['source_note'] = dict(id=source.id, title=source.title) if source else None
+            result['extracts'] = [dict(id=n.id, title=n.title, archived=n.archived) for n in extracts]
     return result
 
 
