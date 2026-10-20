@@ -15,7 +15,7 @@ def test_notebook_mobile_desktop_and_private_review(live_operations):
     origin, engine, ids, password, artifacts = live_operations
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
-        owner = browser.new_context(viewport={'width': 390, 'height': 844})
+        owner = browser.new_context(viewport={'width': 390, 'height': 844}, color_scheme='dark')
         reader = browser.new_context(viewport={'width': 1440, 'height': 1000})
         phone, desktop = owner.new_page(), reader.new_page()
         errors, failures = [], []

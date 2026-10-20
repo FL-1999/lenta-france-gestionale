@@ -59,14 +59,23 @@ def test_navigation_b_preserves_context_filters_and_role_boundaries(live_operati
         expect(page.locator('[data-purchase-return]')).to_have_attribute('href',listing.replace(origin,''))
         # Back preserves local filters; section tabs reset to their general lists.
         page.locator('.purchase-tabs [data-purchase-section=items]').click()
+        page.wait_for_url(origin+'/manager/magazzino',wait_until='load')
         page.get_by_label('Cerca articolo o codice',exact=True).fill('Gancio')
-        page.get_by_role('button',name='Cerca',exact=True).click();page.wait_for_load_state('load');article_list=page.url
+        with page.expect_navigation(wait_until='load'):
+            page.get_by_role('button',name='Cerca',exact=True).click()
+        article_list=page.url
         page.locator('.warehouse-open').click()
-        page.get_by_role('link',name='Modifica articolo',exact=False).click()
-        page.locator('[name=descrizione]').fill('Modifica di prova')
-        page.get_by_role('button',name='Salva',exact=True).click();page.wait_for_url(f'**/items/{item_id}/scheda')
+        # Navigation memory is installed by a deferred script. Wait for that page
+        # to finish loading before the automated click leaves it for the edit form.
+        page.wait_for_url(f'**/items/{item_id}/scheda',wait_until='load')
         expect(page.locator('[data-purchase-return]')).to_have_attribute('href',article_list.replace(origin,''))
         page.get_by_role('link',name='Modifica articolo',exact=False).click()
+        page.wait_for_url(f'**/magazzino/{item_id}/modifica',wait_until='load')
+        page.locator('[name=descrizione]').fill('Modifica di prova')
+        page.get_by_role('button',name='Salva',exact=True).click();page.wait_for_url(f'**/items/{item_id}/scheda',wait_until='load')
+        expect(page.locator('[data-purchase-return]')).to_have_attribute('href',article_list.replace(origin,''))
+        page.get_by_role('link',name='Modifica articolo',exact=False).click()
+        page.wait_for_url(f'**/magazzino/{item_id}/modifica',wait_until='load')
         page.get_by_role('link',name='Annulla',exact=True).click();page.wait_for_url(f'**/items/{item_id}/scheda')
         expect(page.locator('[data-purchase-return]')).to_have_attribute('href',article_list.replace(origin,''))
         page.locator('[data-purchase-return]').click()
