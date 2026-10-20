@@ -139,7 +139,7 @@ def personal_data(month: date | None = None, request_id: int | None = None, db: 
     assignments = db.query(PersonnelAssignment).filter_by(person_id=profile.id).order_by(PersonnelAssignment.start_date.desc()).limit(100).all()
     def assignment_data(row):
         team = db.get(PersonnelTeam, row.team_id); lead = svc.team_lead(db, team)
-        return dict(id=row.id, start=row.start_date, end=row.end_date, team=team.name, destination=svc.team_label(db, team),
+        return dict(id=row.id, start=row.start_date, end=row.end_date, team=team.name, destination=svc.team_label(db, team), site_id=team.site_id,
             lead=lead.full_name or lead.email, current=team.active and row.start_date <= day and (row.end_date is None or row.end_date >= day))
     prepared_assignments = [assignment_data(a) for a in assignments]
     from models import ResourcePlan
@@ -150,7 +150,7 @@ def personal_data(month: date | None = None, request_id: int | None = None, db: 
     for plan in daily:
         site = db.get(Site, plan.site_id); lead = db.get(User, site.caposquadra_id) if site.caposquadra_id else None
         prepared_assignments.insert(0, dict(id=f'plan-{plan.id}', start=plan.day, end=plan.day,
-            team='Assegnazione giornaliera / Affectation journalière', destination=site.name,
+            team='Assegnazione giornaliera / Affectation journalière', destination=site.name, site_id=site.id,
             lead=(lead.full_name or lead.email) if lead else '—', current=plan.day == day))
     requests = db.query(PersonnelRequest).filter_by(person_id=profile.id).order_by(PersonnelRequest.id.desc()).limit(100).all()
     if request_id and not any(r.id == request_id for r in requests):

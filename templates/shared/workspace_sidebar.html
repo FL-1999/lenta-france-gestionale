@@ -9,6 +9,7 @@
     {{ item(home_path, t('Dashboard', 'Tableau de bord') if is_manager or is_capo else (t('I miei viaggi','Mes trajets') if active_role_value == 'driver' else (t('Gabbie armatura',"Cages d’armature") if active_role_value == 'ferraiolo' else t('Dashboard magazzino','Tableau de bord entrepôt'))), 'home', is_home_active) }}
     {% endif %}
     {{ item('/mio-spazio', t('Il mio spazio', 'Mon espace'), 'users', current_path.startswith('/mio-spazio')) }}
+    {{ item('/appunti', t('Appunti e riunioni', 'Notes et réunions'), 'file', current_path.startswith('/appunti')) }}
     {% if is_manager or is_capo %}
       {{ item('/operazioni', t('Oggi','Aujourd’hui'), 'today', current_path == '/operazioni') }}
       {{ item('/operazioni/pianificazione', t('Pianificazione','Planning'), 'calendar', current_path.startswith('/operazioni/pianificazione')) }}

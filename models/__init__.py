@@ -19,3 +19,4 @@ from .assistant_integration import AssistantProposal, AssistantRateBucket
 from .fiche_review import FicheReviewEvent
 from .assistant_oauth import AssistantOAuthClient, AssistantOAuthFlow, AssistantOAuthCode, AssistantOAuthGrant, AssistantOAuthToken
 from .personnel import PersonnelTeam, PersonnelAssignment, PersonnelRequest, PersonnelAttachment, PersonnelAttendanceLink, PersonnelEvent
+from .notebook import NotebookNote, NotebookGrant, NotebookRevision, NotebookDraft, NotebookAIQuota

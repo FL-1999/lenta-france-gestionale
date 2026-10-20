@@ -13,7 +13,9 @@ LABELS = {'sites':'Cantieri assegnati', 'reports':'Rapportini', 'fiches':'Fiches
           'report_drafts':'Bozze rapportini', 'site_tasks':'Attività',
           'purchase_orders':'Ordini', 'resource_plans':'Pianificazione',
           'site_documents':'Documenti', 'site_plans':'Piante',
-          'magazzino_movimenti':'Movimenti magazzino'}
+          'magazzino_movimenti':'Movimenti magazzino',
+          'notebook_notes':'Appunti personali', 'notebook_grants':'Condivisioni appunti',
+          'notebook_revisions':'Versioni appunti', 'notebook_drafts':'Bozze appunti'}
 
 
 def references(db, user_id):

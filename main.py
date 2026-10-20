@@ -534,7 +534,7 @@ async def add_static_cache_headers(request: Request, call_next):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         else:
             response.headers["Cache-Control"] = "public, max-age=86400"
-    if request.url.path.startswith(('/mio-spazio', '/manager/personale', '/capo/squadra')):
+    if request.url.path.startswith(('/mio-spazio', '/manager/personale', '/capo/squadra', '/appunti')):
         response.headers['Cache-Control'] = 'private, no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
@@ -614,6 +614,10 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             status_code=status_code,
             headers=exception_headers,
         )
+    elif request.url.path.startswith('/appunti') and 'application/json' in request.headers.get('accept', ''):
+        response = JSONResponse(status_code=status_code,
+            content={"detail": translate_message(exc.detail, get_lang_from_request(request))},
+            headers=exception_headers)
     elif status_code == status.HTTP_403_FORBIDDEN:
         response = templates.TemplateResponse(
             request,
@@ -9385,3 +9389,5 @@ app.include_router(assistant_mcp.router)
 
 from routes import personnel
 app.include_router(personnel.router)
+from routes import notebook
+app.include_router(notebook.router)

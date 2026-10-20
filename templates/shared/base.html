@@ -142,6 +142,7 @@
                     </button>
                     <div class="nav-dropdown__menu nav-dropdown__menu--profile" data-nav-dropdown-menu>
                         <a class="nav-dropdown__item" href="/mio-spazio">{{ t('Il mio spazio', 'Mon espace') }}</a>
+                        <a class="nav-dropdown__item" href="/appunti">{{ t('Appunti e riunioni', 'Notes et réunions') }}</a>
                         {% if is_manager or is_capo %}<a class="nav-dropdown__item" href="/operazioni">{{ 'Aujourd’hui' if lang == 'fr' else 'Oggi' }}</a><a class="nav-dropdown__item" href="/operazioni/pianificazione">{{ 'Planning' if lang == 'fr' else 'Pianificazione' }}</a>{% endif %}
                         <div class="nav-dropdown__section nav-dropdown__section--compact">
                             <span class="nav-dropdown__label">{% if lang == 'fr' %}Utilisateur{% else %}Utente{% endif %}</span>
