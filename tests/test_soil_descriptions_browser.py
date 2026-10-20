@@ -40,18 +40,21 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
         row = page.locator(".strato-row").first
         row.locator("[data-strato-da]").fill("0"); row.locator("[data-strato-a]").fill("1")
         row.locator("[name=strato_materiale]").select_option("sabbia")
-        row.locator("[name=strato_granulometria]").select_option("molto_fine")
+        expect(row.locator(".soil-description select")).to_have_count(1)
+        expect(row.locator("[name=strato_descrizione_altro]")).to_be_hidden()
+        expect(row.locator("[name=strato_descrizione] option")).to_have_count(9)
+        row.locator("[name=strato_descrizione]").select_option("molto_fine")
         page.locator("#add-strato-btn").click()
         row = page.locator(".strato-row").last
-        expect(row.locator("[name=strato_granulometria]")).to_have_value("")
+        expect(row.locator("[name=strato_descrizione]")).to_have_value("")
         row.locator("[data-strato-da]").fill("1"); row.locator("[data-strato-a]").fill("10.7")
         row.locator("[name=strato_materiale]").select_option("altro")
         expect(row.locator("[name=strato_materiale_altro]")).to_be_visible()
         row.locator("[name=strato_materiale_altro]").fill("Temporaneo")
         row.locator("[name=strato_materiale]").select_option("ciottoli grossi")
-        row.locator("[name=strato_granulometria]").select_option("grossolano")
-        row.locator("[name=strato_pezzatura]").select_option("50_100")
-        row.locator("[name=strato_fini]").select_option("assenti")
+        row.locator("[name=strato_descrizione]").select_option("altro")
+        expect(row.locator("[name=strato_descrizione_altro]")).to_be_visible()
+        row.locator("[name=strato_descrizione_altro]").fill("grossolano · 50-100 mm · senza frazione fine")
         for width in (320, 390, 1440):
             page.set_viewport_size({"width": width, "height": 844})
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
@@ -66,9 +69,21 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
                 "ciottoli grossi · grossolano · 50-100 mm · senza frazione fine")
         page.goto(origin+f"/manager/fiches/{fid}/modifica")
         row = page.locator(".strato-row").last
-        expect(row.locator("[name=strato_granulometria]")).to_have_value("grossolano")
-        expect(row.locator("[name=strato_pezzatura]")).to_have_value("50_100")
-        expect(row.locator("[name=strato_fini]")).to_have_value("assenti")
+        expect(row.locator("[name=strato_descrizione]")).to_have_value("altro")
+        expect(row.locator("[name=strato_descrizione_altro]")).to_have_value("grossolano · 50-100 mm · senza frazione fine")
+        # A clone of a custom-description row starts empty and never inherits required free text.
+        first = page.locator(".strato-row").first
+        first.locator("[name=strato_descrizione]").select_option("altro")
+        first.locator("[name=strato_descrizione_altro]").fill("temporaire")
+        page.locator("#add-strato-btn").click()
+        extra = page.locator(".strato-row").last
+        expect(extra.locator("[name=strato_descrizione]")).to_have_value("")
+        expect(extra.locator("[name=strato_descrizione_altro]")).to_be_hidden()
+        extra.locator("[name=strato_descrizione]").select_option("altro")
+        expect(extra.locator("[name=strato_descrizione_altro]")).to_be_visible()
+        extra.locator("[name=strato_descrizione_altro]").fill("à retirer")
+        extra.locator(".remove-strato").click()
+        first.locator("[name=strato_descrizione]").select_option("molto_fine")
         page.locator("[data-fiche-form] button[type=submit]").click()
         page.wait_for_url(f"**/manager/fiches/{fid}")
         def check_aligned_drawing(target):
@@ -167,14 +182,13 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
         crew.locator("#larghezza_pannello").fill("6.3"); crew.locator("#profondita_totale").fill("10.7")
         crew.locator("[data-strato-da]").fill("0"); crew.locator("[data-strato-a]").fill("10.7")
         crew.locator("[name=strato_materiale]").select_option(label="Gros cailloux")
-        crew.locator("[name=strato_granulometria]").select_option(label="Grossier")
-        crew.locator("[name=strato_pezzatura]").select_option(label=">100 mm")
-        crew.locator("[name=strato_fini]").select_option(label="Sans fines")
+        crew.locator("[name=strato_descrizione]").select_option(label="Sans fines")
+        expect(crew.locator("[name=strato_descrizione_altro]")).to_be_hidden()
         crew.locator("[data-fiche-form] button[type=submit]").click()
         crew.wait_for_url("**/capo/dashboard")
         with Session(engine) as db:
             created = db.query(Fiche).filter_by(numero_pannello=2).one()
-            assert created.stratigrafie[0].materiale == "ciottoli grossi · grossolano · >100 mm · senza frazione fine"
+            assert created.stratigrafie[0].materiale == "ciottoli grossi · senza frazione fine"
             assert created.review_status == "pending"
         crew_context.close()
         assert not errors, errors

@@ -1,16 +1,20 @@
 # Descrizione dei terreni e fiche A4
 
-Ogni strato incontrato può avere tre caratteristiche facoltative e indipendenti:
-granulosità (molto fine, fine, grossolano), pezzatura (0-50, 50-100, >100 mm)
-e assenza di frazione fine (Sans fines). “Ciottoli grossi / Gros cailloux” è disponibile
+Ogni strato incontrato ha un unico elenco facoltativo: nessuna descrizione,
+molto fine, fine, grossolano, 0-50 mm, 50-100 mm, >100 mm, senza frazione fine
+(Sans fines), oppure Altro con testo libero. Il materiale resta separato.
+“Ciottoli grossi / Gros cailloux” è disponibile
 fra i materiali incontrati e nel modello teorico della coupe.
 
-Le caratteristiche sono salvate nella descrizione esistente dello strato, entro
-il limite di 100 caratteri, e vengono ricostruite alla riapertura della scheda.
-Non è necessaria una migrazione. Gli input facoltativi dell’assistente
-`strato_granulometria`, `strato_pezzatura` e `strato_fini` usano gli stessi controlli
-server delle schede manager/caposquadra. Nessun cambiamento ai permessi o alla
-conferma delle fiches.
+La descrizione è salvata nel materiale esistente dello strato, entro il limite
+complessivo di 100 caratteri. Le precedenti combinazioni di caratteristiche
+vengono mostrate come Altro con il testo completo, senza migrazioni o perdita di dati.
+Gli input `strato_descrizione` e `strato_descrizione_altro` usano gli stessi
+controlli server nelle schede manager/caposquadra e nell’assistente.
+Gli input precedenti `strato_granulometria`, `strato_pezzatura` e `strato_fini`
+restano compatibili; il nuovo elenco, se inviato, ha precedenza, anche per
+cancellare esplicitamente una descrizione. Nessun cambiamento ai permessi o
+alla conferma delle fiches.
 
 La descrizione stampata espone profondità e quote calcolate come
 `quota_partenza - profondità`; il confronto usa una scala comune e distingue

@@ -4,6 +4,31 @@ GRAIN = {"molto_fine": "molto fine", "fine": "fine", "grossolano": "grossolano"}
 SIZE = {"0_50": "0-50 mm", "50_100": "50-100 mm", "oltre_100": ">100 mm"}
 FINES = {"assenti": "senza frazione fine"}
 SEPARATOR = " · "
+DESCRIPTIONS = {**GRAIN, **SIZE, **FINES}
+
+
+def split_unified_description(material):
+    """Read a single choice, keeping older combinations as editable free text."""
+    base, _, description = str(material or "").partition(SEPARATOR)
+    if not description:
+        return base, "", ""
+    choice = next((key for key, label in DESCRIPTIONS.items() if label == description), None)
+    return (base, choice, "") if choice else (base, "altro", description)
+
+
+def describe_unified_material(material, choice="", other="", *, material_is_base=False):
+    if choice not in ("", "altro") and choice not in DESCRIPTIONS:
+        raise ValueError("Descrizione del terreno non valida.")
+    description = str(other or "").strip() if choice == "altro" else DESCRIPTIONS.get(choice, "")
+    if choice == "altro" and not description:
+        raise ValueError("Scrivi la descrizione del terreno quando scegli Altro.")
+    base = str(material or "") if material_is_base else split_unified_description(material)[0]
+    if description and not base.strip():
+        raise ValueError("Seleziona il materiale prima della descrizione del terreno.")
+    result = SEPARATOR.join(filter(None, (base, description)))
+    if len(result) > 100:
+        raise ValueError("La descrizione completa del terreno può contenere al massimo 100 caratteri.")
+    return result
 
 
 def split_description(material):

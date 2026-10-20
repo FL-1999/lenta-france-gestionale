@@ -4,7 +4,8 @@
     {% if lang == 'fr' %}Nouvelle fiche – Lenta France{% else %}Nuova fiche – Lenta France{% endif %}
 {% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/fiche-soil-description.css?v=20261020a">
+<link rel="stylesheet" href="/static/css/fiche-soil-description.css?v=20261020c">
+<script src="/static/js/fiche-soil-description.js?v=20261020c" defer></script>
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set form_data = form_data or {} %}
 {% set invalid_fields = form_data.get('invalid_fields', []) %}
@@ -669,7 +670,7 @@ document.addEventListener("DOMContentLoaded", function () {
             input.value = "";
             input.classList.remove("is-invalid");
             input.setCustomValidity("");
-            if (input.name === "strato_materiale_altro") {
+            if (input.name === "strato_materiale_altro" || input.name === "strato_descrizione_altro") {
                 input.disabled = false;
                 input.required = false;
                 input.style.display = "none";
