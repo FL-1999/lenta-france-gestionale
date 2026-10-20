@@ -76,6 +76,8 @@
     width: auto !important; height: 16mm !important; max-width: 100% !important; object-fit: contain;
   }
   #technical-sheet-export .technical-sheet__header-details-row { flex-direction: column-reverse !important; }
+  #technical-sheet-export .technical-sheet__header-table,
+  #technical-sheet-export .technical-sheet__header-title { flex: 0 0 auto !important; }
   #technical-sheet-export .technical-sheet__header-title {
     border: 0 !important; border-bottom: .25mm solid #111 !important; padding: 1.2mm !important;
   }
@@ -96,7 +98,9 @@
   #technical-sheet-export .technical-drawing-column {
     box-sizing: border-box !important; height: 100% !important; max-height: none !important;
   }
-  #technical-sheet-export .technical-data-column { padding-top: 1mm !important; overflow: visible !important; }
+  #technical-sheet-export .technical-data-column {
+    display: block !important; padding-top: 1mm !important; overflow: visible !important;
+  }
   #technical-sheet-export .technical-data-block { padding: 1mm 1.5mm !important; margin: 0 0 1mm !important; }
   #technical-sheet-export .technical-data-block h3 {
     font-size: 7.2pt !important; line-height: 1.2 !important; text-transform: none !important;
