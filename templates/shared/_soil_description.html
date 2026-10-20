@@ -1,0 +1,30 @@
+<fieldset class="soil-description">
+  <legend>{{ 'Description (facultative)' if lang == 'fr' else 'Descrizione (facoltativa)' }}</legend>
+  <div class="soil-description-fields">
+    <label>
+      <span>{{ 'Granularité' if lang == 'fr' else 'Granulosità' }}</span>
+      <select name="strato_granulometria" class="form-select">
+        <option value="">{{ 'Non précisée' if lang == 'fr' else 'Non specificata' }}</option>
+        {% for value, it, fr in [('molto_fine', 'Molto fine', 'Très fin'), ('fine', 'Fine', 'Fin'), ('grossolano', 'Grossolano', 'Grossier')] %}
+        <option value="{{ value }}" {% if strato.granulometria == value %}selected{% endif %}>{{ fr if lang == 'fr' else it }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>{{ 'Dimension des éléments' if lang == 'fr' else 'Pezzatura' }}</span>
+      <select name="strato_pezzatura" class="form-select">
+        <option value="">{{ 'Non précisée' if lang == 'fr' else 'Non specificata' }}</option>
+        {% for value, label in [('0_50', '0 - 50 mm'), ('50_100', '50 - 100 mm'), ('oltre_100', '>100 mm')] %}
+        <option value="{{ value }}" {% if strato.pezzatura == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="soil-description-fines">
+      <span>{{ 'Fraction fine' if lang == 'fr' else 'Frazione fine' }}</span>
+      <select name="strato_fini" class="form-select">
+        <option value="">{{ 'Non précisée' if lang == 'fr' else 'Non specificata' }}</option>
+        <option value="assenti" {% if strato.fini == 'assenti' %}selected{% endif %}>{{ 'Sans fines' if lang == 'fr' else 'Senza frazione fine' }}</option>
+      </select>
+    </label>
+  </div>
+</fieldset>

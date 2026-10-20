@@ -112,6 +112,8 @@ from notifications import (
     notify_site_status_change,
 )
 from services.personale_profiles import ensure_user_personale_profile
+from services.soil_diagram import comparison_svg as soil_comparison_svg
+from services.soil_materials import describe_material, split_description
 from services.cloud_archive import install_capture_hooks, background_sync, enqueue as archive_document
 install_capture_hooks()
 from audit_utils import log_audit_event
@@ -1062,6 +1064,9 @@ def _get_complete_stratigrafia_layers(
 def _normalize_stratigrafia_materials(
     strato_materiale: list[str] | None,
     strato_materiale_altro: list[str] | None = None,
+    strato_granulometria: list[str] | None = None,
+    strato_pezzatura: list[str] | None = None,
+    strato_fini: list[str] | None = None,
 ) -> list[str]:
     materials = list(strato_materiale or [])
     other_descriptions = list(strato_materiale_altro or [])
@@ -1075,6 +1080,16 @@ def _normalize_stratigrafia_materials(
                 detail="Décrire le sol rencontré est obligatoire pour le terrain Autre.",
             )
         materials[index] = f"Autre: {description}"
+    values = (strato_granulometria, strato_pezzatura, strato_fini)
+    if any(items is not None and len(items) not in (0, len(materials)) for items in values):
+        raise HTTPException(status_code=400, detail="Le descrizioni devono corrispondere agli strati di terreno.")
+    for index, material in enumerate(materials):
+        _, old_grain, old_size, old_fines = split_description(material)
+        descriptions = [items[index] if items else previous for items, previous in zip(values, (old_grain, old_size, old_fines))]
+        try:
+            materials[index] = describe_material(material, *descriptions)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     return materials
 
 
@@ -1144,6 +1159,9 @@ def _build_fiche_form_data(
     strato_a: list[float] | None = None,
     strato_materiale: list[str] | None = None,
     strato_materiale_altro: list[str] | None = None,
+    strato_granulometria: list[str] | None = None,
+    strato_pezzatura: list[str] | None = None,
+    strato_fini: list[str] | None = None,
     invalid_fields: list[str] | None = None,
 ) -> dict:
     def _fmt(value):
@@ -1161,6 +1179,7 @@ def _build_fiche_form_data(
     for i in range(max_len):
         material_value = _fmt(strato_materiale[i]) if i < len(strato_materiale) else ""
         other_value = _fmt(strato_materiale_altro[i]) if i < len(strato_materiale_altro) else ""
+        material_value, saved_grain, saved_size, saved_fines = split_description(material_value)
         if material_value.lower().startswith("autre:"):
             other_value = material_value.split(":", 1)[1].strip()
             material_value = "altro"
@@ -1170,6 +1189,9 @@ def _build_fiche_form_data(
                 "a": _fmt(strato_a[i]) if i < len(strato_a) else "",
                 "materiale": material_value,
                 "materiale_altro": other_value,
+                "granulometria": strato_granulometria[i] if strato_granulometria and i < len(strato_granulometria) else saved_grain,
+                "pezzatura": strato_pezzatura[i] if strato_pezzatura and i < len(strato_pezzatura) else saved_size,
+                "fini": strato_fini[i] if strato_fini and i < len(strato_fini) else saved_fines,
             }
         )
 
@@ -1434,6 +1456,9 @@ def _build_fiche_error_form_data(
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
     strato_materiale_altro: list[str] | None = None,
+    strato_granulometria: list[str] | None = None,
+    strato_pezzatura: list[str] | None = None,
+    strato_fini: list[str] | None = None,
     invalid_fields: list[str] | None = None,
 ) -> dict:
     return _build_fiche_form_data(
@@ -1476,6 +1501,9 @@ def _build_fiche_error_form_data(
         strato_a=strato_a,
         strato_materiale=strato_materiale,
         strato_materiale_altro=strato_materiale_altro,
+        strato_granulometria=strato_granulometria,
+        strato_pezzatura=strato_pezzatura,
+        strato_fini=strato_fini,
     )
 
 
@@ -1875,6 +1903,9 @@ def _create_validated_fiche(
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
     strato_materiale_altro: list[str] | None = None,
+    strato_granulometria: list[str] | None = None,
+    strato_pezzatura: list[str] | None = None,
+    strato_fini: list[str] | None = None,
     courbe_beton_active: str | bool | None = False,
     courbe_realisee_volume: list[str | float | None] | None = None,
     courbe_realisee_hauteur: list[str | float | None] | None = None,
@@ -1901,7 +1932,7 @@ def _create_validated_fiche(
     quota_ngf_fondo_value = _parse_decimal_comma_float(quota_ngf_fondo, "quota NGF fondo")
     parsed_strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
     parsed_strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
-    normalized_strato_materiale = _normalize_stratigrafia_materials(strato_materiale, strato_materiale_altro)
+    normalized_strato_materiale = _normalize_stratigrafia_materials(strato_materiale, strato_materiale_altro, strato_granulometria, strato_pezzatura, strato_fini)
     parsed_machine_id = _parse_optional_machine_id(macchinario_id)
     parsed_capocantiere_id = _parse_optional_user_id(capocantiere_id, "Capocantiere")
     parsed_numero_pannello = _parse_required_positive_int(
@@ -2150,6 +2181,9 @@ def _update_validated_fiche(
     strato_a: list[str | float | None] | None = None,
     strato_materiale: list[str] | None = None,
     strato_materiale_altro: list[str] | None = None,
+    strato_granulometria: list[str] | None = None,
+    strato_pezzatura: list[str] | None = None,
+    strato_fini: list[str] | None = None,
     courbe_beton_active: str | bool | None = None,
     courbe_realisee_volume: list[str | float | None] | None = None,
     courbe_realisee_hauteur: list[str | float | None] | None = None,
@@ -2174,7 +2208,7 @@ def _update_validated_fiche(
     quota_ngf_fondo_value = _parse_decimal_comma_float(quota_ngf_fondo, "quota NGF fondo")
     parsed_strato_da = _parse_decimal_comma_float_list(strato_da, "Da (m)")
     parsed_strato_a = _parse_decimal_comma_float_list(strato_a, "A (m)")
-    normalized_strato_materiale = _normalize_stratigrafia_materials(strato_materiale, strato_materiale_altro)
+    normalized_strato_materiale = _normalize_stratigrafia_materials(strato_materiale, strato_materiale_altro, strato_granulometria, strato_pezzatura, strato_fini)
     parsed_machine_id = _parse_optional_machine_id(macchinario_id)
     parsed_capocantiere_id = _parse_optional_user_id(capocantiere_id, "Capocantiere")
     parsed_numero_pannello = _parse_required_positive_int(
@@ -3453,6 +3487,9 @@ async def manager_fiche_create(
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
     strato_materiale_altro: List[str] = Form(default_factory=list),
+    strato_granulometria: List[str] = Form(default_factory=list),
+    strato_pezzatura: List[str] = Form(default_factory=list),
+    strato_fini: List[str] = Form(default_factory=list),
     courbe_beton_active: str | None = Form(None),
     courbe_realisee_volume: List[str] = Form(default_factory=list),
     courbe_realisee_hauteur: List[str] = Form(default_factory=list),
@@ -3501,6 +3538,9 @@ async def manager_fiche_create(
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
                 strato_materiale_altro=strato_materiale_altro,
+                strato_granulometria=strato_granulometria,
+                strato_pezzatura=strato_pezzatura,
+                strato_fini=strato_fini,
                 courbe_beton_active=courbe_beton_active,
                 courbe_realisee_volume=courbe_realisee_volume,
                 courbe_realisee_hauteur=courbe_realisee_hauteur,
@@ -3544,6 +3584,9 @@ async def manager_fiche_create(
             strato_a=strato_a,
             strato_materiale=strato_materiale,
             strato_materiale_altro=strato_materiale_altro,
+            strato_granulometria=strato_granulometria,
+            strato_pezzatura=strato_pezzatura,
+            strato_fini=strato_fini,
             courbe_beton_active=courbe_beton_active,
             courbe_realisee_volume=courbe_realisee_volume,
             courbe_realisee_hauteur=courbe_realisee_hauteur,
@@ -8168,6 +8211,9 @@ async def capo_fiche_nuova_post(
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
     strato_materiale_altro: List[str] = Form(default_factory=list),
+    strato_granulometria: List[str] = Form(default_factory=list),
+    strato_pezzatura: List[str] = Form(default_factory=list),
+    strato_fini: List[str] = Form(default_factory=list),
 ):
     if current_user.role != RoleEnum.caposquadra:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
@@ -8204,6 +8250,9 @@ async def capo_fiche_nuova_post(
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
                 strato_materiale_altro=strato_materiale_altro,
+                strato_granulometria=strato_granulometria,
+                strato_pezzatura=strato_pezzatura,
+                strato_fini=strato_fini,
                 restrict_to_capo_sites=True,
             )
         finally:
@@ -8236,6 +8285,9 @@ async def capo_fiche_nuova_post(
             strato_a=strato_a,
             strato_materiale=strato_materiale,
             strato_materiale_altro=strato_materiale_altro,
+            strato_granulometria=strato_granulometria,
+            strato_pezzatura=strato_pezzatura,
+            strato_fini=strato_fini,
             invalid_fields=_invalid_fields_for_fiche_error(exc.detail),
         )
         return _render_fiche_create_form(
@@ -8261,6 +8313,12 @@ FICHE_TECHNICAL_FR_TRANSLATIONS: tuple[tuple[str, str], ...] = (
     ("Palo", "Pieu"),
     ("Incontrato", "Rencontré"),
     ("Teorico", "Théorique"),
+    ("Ciottoli grossi", "Gros cailloux"),
+    ("Senza frazione fine", "Sans fines"),
+    ("Molto fine", "Très fin"),
+    ("Grossolano", "Grossier"),
+    ("Fine", "Fin"),
+    ("Roccia", "Roche"),
     ("Riporto", "Remblais"),
     ("Sabbia", "Sable"),
     ("Argilla", "Argile"),
@@ -8276,7 +8334,7 @@ def _translate_fiche_technical_text(value: object | None) -> str:
 
     text = "" if value is None else str(value)
     for source, target in FICHE_TECHNICAL_FR_TRANSLATIONS:
-        text = re.sub(re.escape(source), target, text, flags=re.IGNORECASE)
+        text = re.sub(r"\b" + re.escape(source) + r"\b", target, text, flags=re.IGNORECASE)
     return re.sub(r"(?<!\()\bTN\b(?!\))", "Terrain naturel (TN)", text)
 
 
@@ -8293,7 +8351,7 @@ def _materiale_stratigrafia_texture_class(materiale: str | None) -> str:
     label = (materiale or "").lower()
     if "riporto" in label or "remblai" in label:
         return "soil-layer--riporto"
-    if "ghia" in label or "gravier" in label or "gravel" in label:
+    if any(term in label for term in ("ghia", "gravier", "gravel", "ciottoli", "cailloux")):
         return "soil-layer--ghiaia"
     if "argill" in label or "argile" in label or "clay" in label:
         return "soil-layer--argilla"
@@ -8623,6 +8681,9 @@ async def manager_fiche_update(
     strato_a: List[str] = Form(default_factory=list),
     strato_materiale: List[str] = Form(default_factory=list),
     strato_materiale_altro: List[str] = Form(default_factory=list),
+    strato_granulometria: List[str] = Form(default_factory=list),
+    strato_pezzatura: List[str] = Form(default_factory=list),
+    strato_fini: List[str] = Form(default_factory=list),
     courbe_beton_active: str | None = Form(None),
     courbe_realisee_volume: List[str] = Form(default_factory=list),
     courbe_realisee_hauteur: List[str] = Form(default_factory=list),
@@ -8677,6 +8738,9 @@ async def manager_fiche_update(
                 strato_a=strato_a,
                 strato_materiale=strato_materiale,
                 strato_materiale_altro=strato_materiale_altro,
+                strato_granulometria=strato_granulometria,
+                strato_pezzatura=strato_pezzatura,
+                strato_fini=strato_fini,
                 courbe_beton_active=courbe_beton_active,
                 courbe_realisee_volume=courbe_realisee_volume,
                 courbe_realisee_hauteur=courbe_realisee_hauteur,
@@ -8720,6 +8784,9 @@ async def manager_fiche_update(
             strato_a=strato_a,
             strato_materiale=strato_materiale,
             strato_materiale_altro=strato_materiale_altro,
+            strato_granulometria=strato_granulometria,
+            strato_pezzatura=strato_pezzatura,
+            strato_fini=strato_fini,
             courbe_beton_active=courbe_beton_active,
             courbe_realisee_volume=courbe_realisee_volume,
             courbe_realisee_hauteur=courbe_realisee_hauteur,
@@ -8895,6 +8962,7 @@ def manager_fiche_dettaglio(
                 fiche.terreno_teorico if fiche.terreno_teorico is not None else (fiche.report_coupe.terreno_teorico if fiche.report_coupe else None),
                 fiche.profondita_totale,
             ),
+            soil_comparison_svg=soil_comparison_svg,
             technical_fr=_translate_fiche_technical_text,
             fiche_element_label_fr=_fiche_element_label_fr,
             courbe_beton_payload=_build_courbe_beton_payload(fiche),
@@ -8990,7 +9058,9 @@ def _load_style_css() -> str:
     import os
     css_path = os.path.join(_pdf_project_dir(), "static", "css", "style.css")
     with open(css_path, encoding="utf-8") as f:
-        return f.read()
+        css = f.read()
+    with open(os.path.join(_pdf_project_dir(), "static", "css", "fiche-report.css"), encoding="utf-8") as f:
+        return css + "\n" + f.read()
 
 
 def _inline_style_css(html: str, css_text: str) -> str:
@@ -9149,6 +9219,7 @@ def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) ->
             fiche.terreno_teorico if fiche.terreno_teorico is not None else (fiche.report_coupe.terreno_teorico if fiche.report_coupe else None),
             fiche.profondita_totale,
         ),
+        soil_comparison_svg=soil_comparison_svg,
         technical_fr=_translate_fiche_technical_text,
         fiche_element_label_fr=_fiche_element_label_fr,
         courbe_beton_payload=_build_courbe_beton_payload(fiche),

@@ -5,6 +5,7 @@
 
 {% endblock %}
 {% block content %}
+<link rel="stylesheet" href="/static/css/fiche-soil-description.css?v=20261020a">
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set form_data = form_data or {} %}
 {% set invalid_fields = form_data.get('invalid_fields', []) %}
@@ -391,6 +392,9 @@
                                         <option value="ghiaia" {% if strato.materiale == 'ghiaia' %}selected{% endif %}>
                                             {% if lang == 'fr' %}Gravier{% else %}Ghiaia{% endif %}
                                         </option>
+                                        <option value="ciottoli grossi" {% if strato.materiale == 'ciottoli grossi' %}selected{% endif %}>
+                                            {% if lang == 'fr' %}Gros cailloux{% else %}Ciottoli grossi{% endif %}
+                                        </option>
                                         <option value="roccia" {% if strato.materiale == 'roccia' %}selected{% endif %}>
                                             {% if lang == 'fr' %}Roche{% else %}Roccia{% endif %}
                                         </option>
@@ -398,9 +402,10 @@
                                             {% if lang == 'fr' %}Autre{% else %}Altro{% endif %}
                                         </option>
                                     </select>
-                                    <input class="form-control strato-altro-input" name="strato_materiale_altro" value="{{ strato.materiale_altro if strato.materiale_altro is defined else '' }}" placeholder="Décrire le sol rencontré" style="display:none; margin-top:.5rem;" disabled>
+                                    <input class="form-control strato-altro-input" name="strato_materiale_altro" value="{{ strato.materiale_altro if strato.materiale_altro is defined else '' }}" placeholder="Décrire le sol rencontré" style="display:none; margin-top:.5rem;">
                                 </div>
-                                <div class="form-group" style="align-self: flex-end;">
+                                {% include "shared/_soil_description.html" %}
+                                <div class="form-group soil-remove" style="align-self: flex-end;">
                                     <button type="button" class="btn btn-secondary btn-sm remove-strato" style="display:none;">
                                         {% if lang == 'fr' %}Supprimer{% else %}Rimuovi{% endif %}
                                     </button>
@@ -1144,7 +1149,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const input = row.querySelector('input[name="strato_materiale_altro"]');
         if (!select || !input) return;
         const isOther = select.value === "altro";
-        input.disabled = !isOther;
+        input.disabled = false;
         input.required = isOther;
         input.style.display = isOther ? "block" : "none";
         if (!isOther) input.value = "";
@@ -1190,12 +1195,12 @@ document.addEventListener("DOMContentLoaded", function () {
             input.classList.remove("is-invalid");
             input.setCustomValidity("");
             if (input.name === "strato_materiale_altro") {
-                input.disabled = true;
+                input.disabled = false;
                 input.required = false;
                 input.style.display = "none";
             }
         });
-        clone.querySelectorAll("select").forEach((sel) => { sel.value = ""; });
+        clone.querySelectorAll("select").forEach((sel) => { sel.value = ""; delete sel.dataset.otherSoilBound; });
 
         container.appendChild(clone);
         bindRemoveButtons();
@@ -1479,5 +1484,5 @@ document.addEventListener("DOMContentLoaded", function () {
 <script src="/static/js/fiche-panel-context.js?v=20261019c" defer></script>
 <link rel="stylesheet" href="/static/css/soil-coordinates.css?v=20260930">
 <script src="/static/js/soil-coordinates.js?v=20260930b"></script>
-<script src="/static/js/fiche-soil-coordinates.js?v=20260930b"></script>
+<script src="/static/js/fiche-soil-coordinates.js?v=20261020a"></script>
 {% endblock %}

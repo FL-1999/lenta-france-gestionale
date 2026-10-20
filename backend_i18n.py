@@ -17,6 +17,10 @@ import re
 
 # sorgente -> (italiano, francese)
 _MESSAGES: dict[str, tuple[str, str]] = {
+    "Caratteristica del terreno non valida.": ("Caratteristica del terreno non valida.", "Caractéristique du sol non valide."),
+    "Seleziona il materiale prima delle caratteristiche del terreno.": ("Seleziona il materiale prima delle caratteristiche del terreno.", "Sélectionnez le matériau avant les caractéristiques du sol."),
+    "La descrizione completa del terreno può contenere al massimo 100 caratteri.": ("La descrizione completa del terreno può contenere al massimo 100 caratteri.", "La description complète du sol peut contenir au maximum 100 caractères."),
+    "Le descrizioni devono corrispondere agli strati di terreno.": ("Le descrizioni devono corrispondere agli strati di terreno.", "Les descriptions doivent correspondre aux couches de sol."),
     "Correggi i campi segnalati. I dati inseriti sono stati conservati.": ("Correggi i campi segnalati. I dati inseriti sono stati conservati.", "Corrigez les champs signalés. Vos saisies ont été conservées."),
     "La profondità totale deve essere maggiore di zero.": (
         "La profondità totale deve essere maggiore di zero.",

@@ -56,6 +56,9 @@ class FicheInput(StrictInput):
     strato_a: list[float] = Field(default_factory=list, max_length=100)
     strato_materiale: list[str] = Field(default_factory=list, max_length=100)
     strato_materiale_altro: list[str] = Field(default_factory=list, max_length=100)
+    strato_granulometria: list[Literal['', 'molto_fine', 'fine', 'grossolano']] = Field(default_factory=list, max_length=100)
+    strato_pezzatura: list[Literal['', '0_50', '50_100', 'oltre_100']] = Field(default_factory=list, max_length=100)
+    strato_fini: list[Literal['', 'assenti']] = Field(default_factory=list, max_length=100)
     courbe_beton_active: bool = False
     courbe_realisee_volume: list[float] = Field(default_factory=list, max_length=200)
     courbe_realisee_hauteur: list[float] = Field(default_factory=list, max_length=200)

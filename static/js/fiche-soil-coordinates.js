@@ -8,7 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const controller = SoilCoordinates.bind(root, {
     rows: document.getElementById('strati-container'), row: '.strato-row', start: '[data-strato-da]', end: '[data-strato-a]', origin, datum,
     material: row => {const select = row.querySelector('[name="strato_materiale"]');
-      return select.value === 'altro' ? row.querySelector('[name="strato_materiale_altro"]').value : select.selectedOptions[0]?.textContent.trim();},
+      const base = select.value === 'altro' ? row.querySelector('[name="strato_materiale_altro"]').value : select.selectedOptions[0]?.textContent.trim();
+      const descriptions = ['strato_granulometria', 'strato_pezzatura', 'strato_fini'].map(name => row.querySelector(`[name="${name}"]`)).filter(field => field?.value).map(field => field.selectedOptions[0].textContent.trim());
+      return [base, ...descriptions].filter(Boolean).join(' · ');},
   });
   function refresh() {start.readOnly = mode?.value !== '0'; controller.refresh();}
   start.addEventListener('input', refresh); mode?.addEventListener('change', refresh);
