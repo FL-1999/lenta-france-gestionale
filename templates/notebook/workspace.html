@@ -2,6 +2,7 @@
 {% block title %}{{ t('Appunti e riunioni', 'Notes et réunions') }} – Lenta{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="/static/css/notebook.css?v=20261020b">
+<link rel="stylesheet" href="/static/css/notebook-mobile.css?v=20261020a">
 <div id="notebook" data-csrf="{{ notebook_csrf }}" data-site="{{ notebook_site.id if notebook_site else '' }}">
   <header class="nb-heading">
     <div><a href="/mio-spazio">{{ t('Il mio spazio', 'Mon espace') }}</a>
@@ -38,4 +39,5 @@
   <noscript><p>{{ t('Attiva JavaScript per usare appunti e riunioni.', 'Activez JavaScript pour utiliser les notes et réunions.') }}</p></noscript>
 </div>
 <script src="/static/js/notebook.js?v=20261020b" defer></script>
+<script src="/static/js/notebook-mobile.js?v=20261020a" defer></script>
 {% endblock %}

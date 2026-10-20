@@ -5,11 +5,120 @@ from uuid import uuid4
 import pytest
 from playwright.sync_api import expect, sync_playwright
 from sqlalchemy.orm import Session
-from models import NotebookNote, NotebookDraft, NotebookGrant, NotebookExtract, User
+from models import NotebookNote, NotebookDraft, NotebookGrant, NotebookExtract, RoleEnum, User
+from auth import hash_password
 from services.notebook_ai import Proposal, SplitProposal, Part
 from test_operations_live import live_operations
 
 pytestmark = pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS') != '1', reason='Live browser checks opt-in')
+
+
+@pytest.mark.parametrize('role', ['manager', 'admin'])
+def test_management_phone_types_keep_content_and_desktop_layout(live_operations, role):
+    origin, engine, ids, password, artifacts = live_operations
+    email = f'smoke-{role}@example.com'
+    if role == 'admin':
+        with Session(engine) as db:
+            db.add(User(email=email, full_name='Admin Collaudo', role=RoleEnum.admin,
+                        hashed_password=hash_password(password), is_active=True))
+            db.commit()
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        context = browser.new_context(viewport={'width': 390, 'height': 844}, color_scheme='dark')
+        page = context.new_page()
+        errors = []
+        page.on('pageerror', lambda error: errors.append(str(error)))
+        page.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin+'/') else route.abort())
+        page.goto(origin+'/login')
+        page.locator('#email').fill(email)
+        page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click()
+        page.wait_for_url('**/manager/dashboard')
+        page.goto(origin+'/appunti')
+        expect(page.locator('#notebook')).to_have_class('nb-management-phone')
+        expect(page.locator('#notebook')).not_to_have_attribute('aria-busy', 'true')
+        note_ids = []
+        task_text = 'Controllare le misure della scaffalatura e lo spazio di passaggio prima di richiedere il preventivo'
+        for kind in ('free', 'meeting', 'list'):
+            page.get_by_role('button', name='+ Nuovo', exact=True).click()
+            form = page.locator('#nb-edit-form')
+            expect(form).to_be_visible()
+            expect(page.locator('#notebook')).not_to_have_attribute('aria-busy', 'true')
+            note_ids.append(int(page.url.split('note=')[1]))
+            form.locator('[name=title]').fill('Esempio '+kind)
+            form.locator('[name=kind]').select_option(kind)
+            expect(page.locator('#notebook')).to_have_attribute('data-note-kind', kind)
+            form.locator('[name=body]').fill('Appunti originali\ncon una seconda riga conservata.')
+            if kind == 'meeting':
+                expect(page.locator('[data-meeting-fields]')).to_be_visible()
+                form.locator('[name=attendees]').fill('Federico\nResponsabile')
+                form.locator('[name=agenda]').fill('Pannello P5\nAcquisti deposito')
+                form.locator('[name=decisions]').fill('Nessun ordine confermato')
+            else:
+                expect(page.locator('[data-meeting-fields]')).to_be_hidden()
+            if kind != 'free':
+                page.get_by_role('button', name='+ Aggiungi voce', exact=True).click()
+                field = page.locator('textarea[data-action-text]')
+                expect(field).to_be_visible()
+                # Wrapping is visual: the existing single-line task text also survives
+                # a paste with line breaks and switching to the desktop input.
+                field.fill(task_text.replace(' e lo spazio', '\ne lo spazio'))
+                expect(field).to_have_value(task_text)
+                page.locator('[data-action-done]').check()
+                page.locator('[data-action-assignee]').fill('Responsabile deposito')
+                page.locator('[data-action-due]').fill('21/10/2026')
+                for width in (320, 390):
+                    page.set_viewport_size({'width': width, 'height': 844})
+                    expect(field).to_be_visible()
+                    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+                    assert field.bounding_box()['height'] >= 70
+                    assert field.evaluate('e => e.scrollHeight <= e.clientHeight + 2')
+                    assert field.evaluate('e => getComputedStyle(e).fontSize') == '16px'
+                    assert field.evaluate('e => getComputedStyle(e).fontWeight') == '400'
+                page.screenshot(path=str(artifacts/f'notebook-{role}-{kind}-phone.png'))
+            else:
+                expect(page.locator('[data-action-section]')).to_be_hidden()
+                assert form.locator('[name=body]').bounding_box()['height'] >= 240
+            page.get_by_role('button', name='Salva appunto', exact=True).click()
+            expect(page.locator('#nb-status')).to_have_text('Appunto salvato.')
+            expect(page.locator('#notebook')).not_to_have_attribute('aria-busy', 'true')
+            expect(form.locator('[name=body]')).to_have_value('Appunti originali\ncon una seconda riga conservata.')
+            if kind != 'free':
+                expect(page.locator('[data-action-text]')).to_have_value(task_text)
+                expect(page.locator('[data-action-done]')).to_be_checked()
+
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        expect(page.locator('input[data-action-text]')).to_be_visible()
+        expect(page.locator('[data-action-text]')).to_have_value(task_text)
+        expect(page.locator('#notebook.nb-management-phone')).to_have_count(0)
+        desktop_layout = """() => ['#notebook','.nb-layout','#nb-edit-form','.nb-action-main','[data-action-text]']
+            .map(s => {const e=document.querySelector(s),r=e.getBoundingClientRect(),c=getComputedStyle(e);
+                return [s,r.x,r.y,r.width,r.height,c.display,c.fontSize,c.padding,c.gridTemplateColumns];})"""
+        before = page.evaluate(desktop_layout)
+        # Loading the new stylesheet must have no visual effect on PC.
+        page.evaluate("""() => {document.querySelector('link[href*="notebook-mobile.css"]').sheet.disabled=true;}""")
+        assert page.evaluate(desktop_layout) == before
+        page.evaluate("""() => {document.querySelector('link[href*="notebook-mobile.css"]').sheet.disabled=false;}""")
+        page.set_viewport_size({'width': 390, 'height': 844})
+        expect(page.locator('textarea[data-action-text]')).to_be_visible()
+        expect(page.locator('[data-action-text]')).to_have_value(task_text)
+        # French labels remain legible and use the same role-scoped layout.
+        context.add_cookies([{'name': 'lang', 'value': 'fr', 'url': origin}])
+        page.reload()
+        expect(page.locator('#notebook h1')).to_have_text('Notes et réunions')
+        expect(page.locator('textarea[data-action-text]')).to_have_value(task_text)
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+        with Session(engine) as db:
+            for ident, kind in zip(note_ids, ('free', 'meeting', 'list')):
+                note = db.get(NotebookNote, ident)
+                assert note.kind == kind and note.site_id is None
+                assert note.body == 'Appunti originali\ncon una seconda riga conservata.'
+                if kind != 'free':
+                    assert note.details['actions'][0]['text'] == task_text
+                    assert note.details['actions'][0]['done'] is True
+            assert db.query(NotebookGrant).count() == 0
+        assert not errors, errors
+        browser.close()
 
 
 def test_notebook_mobile_desktop_and_private_review(live_operations):
