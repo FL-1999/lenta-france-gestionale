@@ -1,0 +1,58 @@
+/* The management notebook uses the phone's normal page scroll.
+   Desktop and other active roles retain notebook.css unchanged. */
+@media screen and (max-width:767px) {
+  .workspace-ui .notebook-management .container.main-content {
+    padding:18px 12px calc(90px + env(safe-area-inset-bottom));
+  }
+  #notebook.nb-management-phone .nb-heading { gap:12px; margin-bottom:18px; }
+  #notebook.nb-management-phone .nb-heading h1 { font-size:24px; line-height:1.25; }
+  #notebook.nb-management-phone .nb-heading p { font-size:13px; line-height:1.6; }
+  #notebook.nb-management-phone .nb-shell { border-radius:15px; }
+  #notebook.nb-management-phone .nb-tabs { padding:8px; gap:3px; }
+  #notebook.nb-management-phone .nb-tabs button { padding:9px 8px; }
+  #notebook.nb-management-phone .nb-editor { padding:18px 12px; }
+  #notebook.nb-management-phone .nb-title-input { font-size:20px!important; font-weight:500; }
+  #notebook.nb-management-phone .nb-fields { gap:14px; margin:14px 0; }
+  #notebook.nb-management-phone #nb-edit-form > label,
+  #notebook.nb-management-phone [data-meeting-fields] > label { margin-bottom:14px; }
+  #notebook.nb-management-phone input:not([type=checkbox]),
+  #notebook.nb-management-phone textarea,
+  #notebook.nb-management-phone select {
+    font-size:16px; font-weight:400; line-height:1.5; padding:10px 11px;
+  }
+  #notebook.nb-management-phone textarea { scroll-margin-block:85px; }
+  #notebook.nb-management-phone .nb-body { min-height:240px; }
+  #notebook.nb-management-phone:is([data-note-kind=meeting],[data-note-kind=list]) .nb-body {
+    min-height:110px;
+  }
+  #notebook.nb-management-phone .nb-action-row { padding:16px 0; }
+  #notebook.nb-management-phone .nb-action-main {
+    grid-template-columns:24px minmax(0,1fr) 44px; gap:8px; align-items:start;
+  }
+  #notebook.nb-management-phone .nb-action-main input[type=checkbox] {
+    width:22px; height:22px; margin:11px 0 0;
+  }
+  #notebook.nb-management-phone .nb-action-main [data-remove-action] {
+    width:44px; min-height:44px; padding:10px 0; margin:0;
+  }
+  #notebook.nb-management-phone .nb-action-main textarea {
+    margin:0; min-height:70px; max-height:300px; resize:none;
+    white-space:pre-wrap; overflow-wrap:break-word; overflow-y:auto;
+  }
+  #notebook.nb-management-phone .nb-action-meta { gap:0; margin:12px 0 0 32px; }
+  #notebook.nb-management-phone .nb-action-meta label { margin-bottom:12px; }
+  #notebook.nb-management-phone .nb-action-meta label:last-child { margin-bottom:0; }
+  #notebook.nb-management-phone .nb-actions { align-items:stretch; }
+  #notebook.nb-management-phone .nb-actions > .nb-button { flex:1 1 125px; }
+  #notebook.nb-management-phone #nb-save-label { flex-basis:100%; margin:0; }
+  #notebook.nb-management-phone .nb-draft { padding:15px; scroll-margin-top:80px; }
+  #notebook.nb-management-phone .nb-draft .nb-actions > .nb-button { flex-basis:100%; }
+  #notebook.nb-management-phone .nb-check { gap:10px; min-height:44px; }
+  #notebook.nb-management-phone .nb-check input { flex-basis:22px; width:22px; height:22px; }
+  #notebook.nb-management-phone .nb-split-part .nb-check strong { display:block; }
+  #notebook.nb-management-phone .nb-readtext,
+  #notebook.nb-management-phone .nb-readlist { font-size:15px; line-height:1.65; }
+  #notebook.nb-management-phone dialog {
+    padding:17px; max-height:calc(100dvh - 24px - env(safe-area-inset-bottom));
+  }
+}

@@ -27,6 +27,20 @@ esistenti; il modulo lo indica prima di salvare. L'archiviazione conserva i perm
 per togliere l'accesso usare **Rendi privato**. L'eliminazione del cantiere conserva
 appunto, nome/codice del cantiere, originali e permessi nel quaderno personale.
 
+## Interfaccia da telefono
+
+Per il ruolo attivo admin o manager, fino a 767 px, gli appunti usano campi
+a larghezza piena, testo da 16 px e pulsanti tattili. L'appunto libero mantiene
+uno spazio di scrittura ampio; riunioni e liste hanno un'introduzione più
+compatta seguita dalle rispettive sezioni. I testi delle attività vanno a capo
+visivamente, mantenendo la stessa descrizione salvata e i campi responsabile,
+scadenza e completamento. Lo scorrimento resta quello naturale della pagina,
+senza una cornice iPhone o un'altezza fissa nel gestionale.
+
+L'adattamento è limitato al ruolo attivo e alla larghezza dello schermo.
+Passando al PC vengono ripristinati i controlli precedenti senza perdere le
+modifiche in corso. Non cambia alcun permesso di lettura, condivisione o uso AI.
+
 ## Riordino e verbale con AI
 
 La funzione è un'elaborazione esplicita del solo appunto selezionato, disponibile
@@ -107,3 +121,5 @@ Collaudi: `tests/test_notebook.py` (anche su PostgreSQL in CI) e
 `tests/test_notebook_live.py` con `RUN_BROWSER_TESTS=1`. Tutti usano database
 isolati; nessun test chiama OpenAI. Il collaudo browser copre 320/390 px,
 desktop, condivisione/revoca, originali, accettazione della proposta e francese.
+Per admin e manager verifica inoltre le tre tipologie, il salvataggio dei testi
+e delle caselle, il cambio mobile/desktop e l'assenza di modifiche visive su PC.
