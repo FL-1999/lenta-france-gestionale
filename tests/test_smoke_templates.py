@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from services.soil_diagram import comparison_svg
+
 import json
 from datetime import date, timedelta
 from types import SimpleNamespace
@@ -865,6 +867,7 @@ def test_manager_fiche_technical_sheet_is_french_and_hides_operator() -> None:
                 {"da": 0.0, "a": 1.2, "materiale": "Argilla", "height_percent": 9.6, "texture_class": "soil-layer--argilla"},
                 {"da": 1.2, "a": 12.5, "materiale": "Ghiaia", "height_percent": 90.4, "texture_class": "soil-layer--ghiaia"},
             ],
+            "soil_comparison_svg": comparison_svg,
             "technical_fr": _translate_fiche_technical_text,
             "fiche_element_label_fr": _fiche_element_label_fr,
         },
@@ -944,6 +947,7 @@ def test_manager_fiche_technical_sheet_shows_courbe_beton_only_when_active() -> 
         "volume_teorico": 28.0,
         "stratigrafia_visual_layers": [],
         "theoretical_soil_layers": [],
+        "soil_comparison_svg": comparison_svg,
         "technical_fr": _translate_fiche_technical_text,
         "fiche_element_label_fr": _fiche_element_label_fr,
     }

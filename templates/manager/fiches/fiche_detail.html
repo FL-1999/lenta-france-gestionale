@@ -4,6 +4,7 @@
     {% if lang == 'fr' %}Détail fiche – Manager{% else %}Dettaglio fiche – Manager{% endif %}
 {% endblock %}
 {% block content %}
+<link rel="stylesheet" href="/static/css/fiche-report.css?v=20261020a">
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set report_responsable = fiche.responsable_pdf or ((fiche.capocantiere.full_name or fiche.capocantiere.email) if fiche.capocantiere else none) or '—' %}
 {% set report_coupe = fiche.report_coupe %}
@@ -15,6 +16,10 @@
 {% set strat_layers = fiche.layers or [] %}
 {% set visual_layers = stratigrafia_visual_layers or [] %}
 {% set theoretical_layers = theoretical_soil_layers or [] %}
+{% set report_notes = fiche.notes or fiche.quota_ngf_note or fiche.description or '—' %}
+{% set soil_annex = (visual_layers|length + theoretical_layers|length) > 6 %}
+{% set notes_annex = report_notes|length > 300 %}
+{% set has_annex = soil_annex or notes_annex %}
 {% set tipologia_scavo = fiche.tipologia_scavo|lower if fiche.tipologia_scavo else "" %}
 {% set is_palo = tipologia_scavo == "palo" %}
 {% set is_paratia = tipologia_scavo == "paratia" %}
@@ -294,7 +299,7 @@
             {% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
 
             <div class="technical-split-view technical-sheet-viewport" data-sheet-viewport>
-                <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d'exécution imprimable">{% if fiche.review_status == 'pending' %}<div style="text-align:center;padding:8px;font-weight:bold;color:#854d0e;border:2px solid #ca8a04">{{ 'À VÉRIFIER — NON CONFIRMÉE' if lang == 'fr' else 'DA VERIFICARE — NON CONFERMATA' }}</div>{% endif %}
+                <article class="technical-sheet" id="technical-sheet-export" aria-label="Rapport d'exécution imprimable"><div class="technical-sheet-page">{% if fiche.review_status == 'pending' %}<div style="text-align:center;padding:8px;font-weight:bold;color:#854d0e;border:2px solid #ca8a04">{{ 'À VÉRIFIER — NON CONFIRMÉE' if lang == 'fr' else 'DA VERIFICARE — NON CONFERMATA' }}</div>{% endif %}
                     {% if fiche.pour_panels %}
                     {% set group=fiche.pour_panels[0].pour %}
                     <div style="padding:5px 9px;border:1px solid #222;color:#111;background:#fff;font-size:10px;">
@@ -315,10 +320,10 @@
                                 <table class="technical-sheet__header-table">
                                     <tr><td>CHANTIER</td><td><strong>{{ fiche.site.name|upper if fiche.site else '—' }}</strong></td><td>{{ 'PIEU' if is_palo else 'PANNEAU' }}</td><td><strong>{{ fiche.panel_label or '—' }}</strong></td></tr>
                                     <tr><td>RESPONSABLE</td><td><strong>{{ report_responsable }}</strong></td><td>COUPE</td><td><strong>{{ report_coupe.nome if report_coupe else '—' }}</strong></td></tr>
-                                    <tr><td colspan="3"></td><td><strong>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</strong></td></tr>
+                                    <tr><td>DATE DE FORAGE</td><td colspan="3"><strong>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</strong></td></tr>
                                 </table>
                                 <div class="technical-sheet__header-title">
-                                    <h2>RAPPORT D'EXECUTION DE {{ 'PIEU' if is_palo else 'PANNEAU' }}</h2>
+                                    <h2>RAPPORT D’EXÉCUTION DE {{ 'PIEU' if is_palo else 'PANNEAU' }}</h2>
                                 </div>
                             </div>
                         </div>
@@ -389,41 +394,29 @@
                             {# E. Observations #}
                             <section class="technical-data-block technical-data-block--notes">
                                 <h3>E. Observation</h3>
-                                <p>{{ technical_fr(fiche.notes or fiche.quota_ngf_note or fiche.description or '—') }}</p>
+                                <p>{{ 'Observations détaillées : voir annexe A4.' if notes_annex else technical_fr(report_notes) }}</p>
                                 {% if report_coupe and report_coupe.armatura %}<p><strong>Armature:</strong> {{ report_coupe.armatura }}</p>{% endif %}
                             </section>
 
-                            {# F. Nature des sols #}
-                            <section class="technical-data-block">
-                                <h3>F. Nature des sols rencontrés</h3>
-                                {% if visual_layers %}
-                                    <ol class="technical-soil-list">
-                                        {% for layer in visual_layers %}
-                                            <li><span class="soil-color-dot {{ layer.texture_class }}"></span><span>{{ "%.2f"|format(layer.da) }}–{{ "%.2f"|format(layer.a) }} m</span> {{ technical_fr(layer.materiale) }}</li>
-                                        {% endfor %}
-                                    </ol>
-                                {% elif stratigrafie %}
-                                    <ol class="technical-soil-list">
-                                        {% for layer in stratigrafie|sort(attribute='da_profondita') %}
-                                            <li><span>{{ "%.2f"|format(layer.da_profondita) }}–{{ "%.2f"|format(layer.a_profondita) }} m</span> {{ technical_fr(layer.materiale) }}</li>
-                                        {% endfor %}
-                                    </ol>
-                                {% elif strat_layers %}
-                                    <ol class="technical-soil-list">
-                                        {% for layer in strat_layers|sort(attribute='layer_index') %}
-                                            <li><span>{{ "%.2f"|format(layer.thickness_m) }} m</span> {{ technical_fr(layer.material) }}</li>
-                                        {% endfor %}
-                                    </ol>
-                                {% else %}
-                                    <p>—</p>
-                                {% endif %}
-                            </section>
-
-                            {# G. Modèle géologique #}
-                            <section class="technical-data-block">
-                                <h3>G. Modèle géologique</h3>
+                            {% for letter, heading, rows in [('F', 'Sols rencontrés', visual_layers), ('G', 'Modèle géologique théorique', theoretical_layers)] %}
+                            <section class="technical-data-block technical-soil-block">
+                                <h3>{{ letter }}. {{ heading }}</h3>
+                                {% if soil_annex and rows %}<p>{{ rows|length }} couches. Description et cotes {{ datum }} : voir annexe A4.</p>
+                                {% elif rows %}
+                                <ol class="technical-soil-list">
+                                    {% for layer in rows %}
+                                    <li>
+                                        <strong>{{ technical_fr(layer.materiale) }}</strong>
+                                        <span class="soil-depth">Prof. {{ '%.2f'|format(layer.da) }} - {{ '%.2f'|format(layer.a) }} m</span>
+                                        <span class="soil-elevation">{% if schema_quota_partenza is not none %}{{ datum }} : {{ '%.2f'|format(schema_quota_partenza-layer.da) }} → {{ '%.2f'|format(schema_quota_partenza-layer.a) }} m{% else %}{{ datum }} : non renseigné{% endif %}</span>
+                                    </li>
+                                    {% endfor %}
+                                </ol>
+                                {% elif letter == 'G' %}
                                 <p>{{ technical_fr(fiche.terreno_teorico if fiche.terreno_teorico is not none else (report_coupe.terreno_teorico if report_coupe and report_coupe.terreno_teorico else '—')) }}</p>
+                                {% else %}<p>Non renseigné</p>{% endif %}
                             </section>
+                            {% endfor %}
                         </aside>
 
                         {# ── Dessin technique ── #}
@@ -431,8 +424,8 @@
                             <div class="technical-drawing-layout">
                                 <div class="technical-section-canvas technical-section-canvas--{{ 'pile' if is_palo else 'panel' }}">
                                     <div class="technical-top-levels" aria-hidden="true">
-                                        <span>TN = {{ ("%.2f"|format(schema_quota_tn)).replace(".", ",") if schema_quota_tn is not none else "—" }} {{ datum }}</span>
-                                        <span>DÉPART FORAGE (0 m) = {{ (("%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto)).replace(".", ",") if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—") }} {{ datum }}</span>
+                                        <span>Terrain naturel (TN) : {{ ("%.2f"|format(schema_quota_tn)).replace(".", ",") if schema_quota_tn is not none else "—" }} {{ datum }}</span>
+                                        <span>Départ du forage (profondeur 0 m) : {{ (("%.2f"|format(schema_quota_partenza if schema_quota_partenza is not none else schema_quota_getto)).replace(".", ",") if (schema_quota_partenza is not none or schema_quota_getto is not none) else "—") }} {{ datum }}</span>
                                     </div>
                                     {% if is_paratia %}
                                         <div class="technical-guide-wall technical-guide-wall--back" aria-hidden="true"></div>
@@ -493,37 +486,8 @@
                                     {% endif %}
                                 </div>
 
-                                <section class="technical-ground-column" aria-label="{% if lang == 'fr' %}Comparaison stratigraphique réel / théorique{% else %}Confronto stratigrafico reale / teorico{% endif %}">
-                                    <div class="technical-ground-header">
-                                        <span>Rencontré</span>
-                                        <span>Théorique</span>
-                                    </div>
-                                    <div class="technical-ground-bars">
-                                        <div class="technical-ground-bar">
-                                            {% if visual_layers %}
-                                                {% for layer in visual_layers %}
-                                                    <div class="technical-ground-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;">
-                                                        <span>{{ technical_fr(layer.materiale) }}</span>
-                                                    </div>
-                                                {% endfor %}
-                                            {% else %}
-                                                <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
-                                            {% endif %}
-                                        </div>
-                                        <div class="technical-ground-bar technical-ground-bar--theoretical">
-                                            {% if theoretical_layers %}
-                                                {% for layer in theoretical_layers %}
-                                                    <div class="technical-ground-layer {{ layer.texture_class }}" style="height: {{ layer.height_percent }}%;">
-                                                        <span>{{ technical_fr(layer.materiale) }}</span>
-                                                    </div>
-                                                {% endfor %}
-                                            {% elif fiche.terreno_teorico or (fiche.terreno_teorico is none and report_coupe and report_coupe.terreno_teorico) %}
-                                                <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>{{ technical_fr(fiche.terreno_teorico if fiche.terreno_teorico is not none else report_coupe.terreno_teorico) }}</span></div>
-                                            {% else %}
-                                                <div class="technical-ground-layer soil-layer--generico" style="height: 100%;"><span>—</span></div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
+                                <section class="technical-ground-column technical-ground-column--levels" aria-label="Comparaison des sols et cotes">
+                                    {{ soil_comparison_svg(visual_layers, theoretical_layers, schema_quota_partenza, datum, schema_depth)|safe }}
                                 </section>
                             </div>
                         </section>
@@ -582,6 +546,27 @@
                         </div>
                     </div>
 
+                    </div>
+                    {% if has_annex %}
+                    <section class="technical-sheet-annex">
+                      <h2>Annexe - terrains et observations</h2>
+                      <p>{{ fiche.site.name if fiche.site else '—' }} · {{ 'Pieu' if is_palo else 'Panneau' }} {{ fiche.panel_label or '—' }} · {{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</p>
+                      <p>Profondeur 0 m = {{ '%.2f'|format(schema_quota_partenza) if schema_quota_partenza is not none else 'non renseigné' }} {{ datum }}.</p>
+                      {% if soil_annex %}
+                      {% for heading, rows in [('Sols rencontrés', visual_layers), ('Modèle géologique théorique', theoretical_layers)] %}
+                      {% if rows %}
+                      <h3>{{ heading }}</h3>
+                      <table class="soil-annex-table"><thead><tr><th>Profondeur (m)</th><th>De {{ datum }} (m)</th><th>À {{ datum }} (m)</th><th>Nature du sol</th></tr></thead><tbody>
+                      {% for layer in rows %}<tr>
+                        <td>{{ '%.2f'|format(layer.da) }} - {{ '%.2f'|format(layer.a) }}</td>
+                        <td>{{ '%.2f'|format(schema_quota_partenza-layer.da) if schema_quota_partenza is not none else '—' }}</td>
+                        <td>{{ '%.2f'|format(schema_quota_partenza-layer.a) if schema_quota_partenza is not none else '—' }}</td>
+                        <td>{{ technical_fr(layer.materiale) }}</td>
+                      </tr>{% endfor %}</tbody></table>
+                      {% endif %}{% endfor %}{% endif %}
+                      {% if notes_annex %}<h3>Observations</h3><p class="soil-annex-notes">{{ technical_fr(report_notes) }}</p>{% endif %}
+                    </section>
+                    {% endif %}
                 </article>
 
             </div>
@@ -799,107 +784,14 @@
         xhr.open("GET", "/static/css/style.css", false);
         xhr.send();
         var rawCss = xhr.status === 200 ? xhr.responseText : "";
-        var baseCss = rawCss.replace(/@media\s+print\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g, "");
-        var printCss = [
-            "@page { margin: 6mm; size: A4 portrait; }",
-            "html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }",
-            "body { width: 198mm !important; }",
-            "#technical-sheet-export {",
-            "  border: none !important; box-shadow: none !important; margin: 0 !important; padding: 1.5mm !important;",
-            "  width: 198mm !important; max-height: 285mm !important; overflow: hidden !important;",
-            "  background: #fff !important; background-image: none !important;",
-            "  print-color-adjust: exact; -webkit-print-color-adjust: exact;",
-            "}",
-            "#technical-sheet-export * { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }",
-            ".technical-sheet__eyebrow { display: none !important; }",
-            ".technical-data-block--courbe, .technical-data-block--courbe-detail { display: none !important; }",
-            ".technical-sheet__titlebar, .technical-sheet__titlebar--historic { margin: 0 !important; padding: 0 !important; display: block !important; }",
-            ".technical-sheet__header-top { border: 0.75px solid #111 !important; border-bottom: 0 !important; display: block !important; width: 100% !important; }",
-            ".technical-sheet__header-logo { padding: 1.5mm 3mm !important; border-bottom: 0.75px solid #111 !important; text-align: center !important; }",
-            ".technical-sheet__logo-img { width: 55% !important; max-width: 100mm !important; display: block !important; margin: 0 auto !important; }",
-            ".technical-sheet__header-details-row { display: flex !important; }",
-            ".technical-sheet__header-details-row .technical-sheet__header-table { width: auto !important; }",
-            ".technical-sheet__header-title { padding: 1mm 3mm !important; border-left: 0.75px solid #111 !important; flex: 1 !important; font-size: 7pt !important; }",
-            ".technical-sheet__titlebar h2, .technical-sheet__titlebar--historic h2 { font-size: 8pt !important; margin: 0 !important; letter-spacing: 0.5px !important; }",
-            ".technical-sheet__header-table td { font-size: 6pt !important; padding: 0.3mm 2mm !important; border: 0.75px solid #111 !important; }",
-            ".technical-sheet-grid {",
-            "  display: grid !important; gap: 1mm !important; grid-template-columns: 40mm 1fr !important;",
-            "  grid-template-rows: 212mm !important; align-items: start !important; padding: 0 !important;",
-            "}",
-            ".technical-data-column, .technical-drawing-column,",
-            ".technical-drawing-column--historic {",
-            "  border: 0.5px solid #333 !important; min-height: 0 !important; height: 210mm !important; max-height: 210mm !important; overflow: hidden !important;",
-            "}",
-            ".technical-drawing-layout {",
-            "  display: grid !important; gap: 0 !important; grid-template-columns: minmax(0,70%) minmax(0,30%) !important;",
-            "  grid-template-rows: 210mm !important; height: 210mm !important; min-height: 0 !important; overflow: hidden !important;",
-            "}",
-            ".technical-drawing-column--historic .technical-section-canvas {",
-            "  height: 246mm !important; min-height: 0 !important; overflow: hidden !important;",
-            "  transform: scale(0.72) !important; transform-origin: top center !important;",
-            "}",
-            "/* Ground column aligned to panel */",
-            ".technical-ground-column,",
-            ".technical-drawing-column--historic .technical-ground-column {",
-            "  min-height: 0 !important; overflow: hidden !important; border: 0.5px solid #547047 !important;",
-            "  margin-top: 18mm !important; height: 150mm !important; max-height: none !important;",
-            "  box-sizing: border-box !important; align-self: start !important;",
-            "  display: flex !important; flex-direction: column !important; padding: 0 !important;",
-            "}",
-            ".technical-ground-bars,",
-            ".technical-drawing-column--historic .technical-ground-bars {",
-            "  flex: 1 !important; display: grid !important; grid-template-columns: 1fr 1fr !important;",
-            "  gap: 0 !important; min-height: 0 !important;",
-            "}",
-            ".technical-ground-bar,",
-            ".technical-drawing-column--historic .technical-ground-bar {",
-            "  height: auto !important; min-height: 0 !important; display: flex !important; flex-direction: column !important;",
-            "}",
-            ".technical-ground-layer { flex: none !important; }",
-            ".technical-ground-header { font-size: 5pt !important; padding: 0.5mm 0 !important; height: auto !important; }",
-            ".technical-ground-layer span { font-size: 4.5pt !important; }",
-            ".technical-data-block { padding: 1mm 1.5mm !important; }",
-            ".technical-data-block h3 { font-size: 6.5pt !important; margin: -1mm -1.5mm 0.8mm !important; padding: 0.5mm 1.5mm !important; }",
-            ".technical-data-block dl { gap: 0.5mm !important; }",
-            ".technical-data-block dt { font-size: 6pt !important; }",
-            ".technical-data-block dd { font-size: 6.5pt !important; }",
-            ".technical-data-block p { font-size: 6pt !important; line-height: 1.2 !important; margin: 0 !important; }",
-            ".technical-soil-list { font-size: 5.5pt !important; margin: 0 !important; padding-left: 2mm !important; }",
-            ".technical-soil-list li { margin-bottom: 0.3mm !important; }",
-            ".technical-check-list { font-size: 6pt !important; }",
-            ".technical-data-block--notes p { font-size: 5.5pt !important; }",
-            ".technical-top-levels { font-size: 7pt !important; gap: 1.5mm !important; top: 2px !important; }",
-            ".technical-depth-arrow span { font-size: 7pt !important; }",
-            ".technical-dimension span { font-size: 7pt !important; }",
-            ".technical-drawing-column--historic .technical-depth-arrow { left: calc(50% - 180px) !important; border-left: 0 !important; }",
-            ".technical-drawing-column--historic .technical-depth-arrow span { left: 0 !important; top: 50% !important; transform: rotate(90deg) translate(-50%,-50%) !important; transform-origin: left center !important; background: rgba(255,255,255,0.92) !important; }",
-            ".technical-data-column { padding-top: 8px !important; }",
-            ".technical-drawing-column--historic .technical-dimension--thickness { left: calc(50% + 70px) !important; }",
-            ".technical-guide-wall-label { font-size: 6pt !important; }",
-            ".soil-color-dot { width: 6px !important; height: 6px !important; margin-right: 2px !important; }",
-            ".technical-base-summary { font-size: 5.5pt !important; padding: 0.5mm 0 !important; border-top: 1px solid #333 !important; position: absolute !important; bottom: 2px !important; left: 0 !important; width: 100% !important; text-align: center !important; }",
-            ".technical-base-summary p { margin: 0.2mm 0 !important; font-size: 5.5pt !important; }",
-            ".technical-ngf-scale { font-size: 6pt !important; top: 35px !important; }",
-            ".ngf-label { font-size: 5pt !important; }",
-            "#technical-sheet-export { position: relative !important; min-height: 277mm !important; }",
-            ".technical-data-block--courbe-detail { display: flex !important; align-items: center !important; gap: 2mm !important; position: absolute !important; top: 217mm !important; left: 66mm !important; width: 130mm !important; height: auto !important; overflow: visible !important; background: transparent !important; color: #000 !important; border: 0 !important; padding: 0 !important; margin: 0 !important; z-index: 40 !important; }",
-            ".courbe-pdf-labels { flex: 0 0 26mm !important; }",
-            ".technical-data-block--courbe-detail h3 { font-size: 5.5pt !important; color:#000 !important; margin: 0 0 0.8mm !important; text-align: left !important; }",
-            ".courbe-detail-intro, .courbe-detail-metrics { display: none !important; }",
-            ".courbe-pdf-metrics { display: block !important; margin: 0.8mm 0 0 !important; }",
-            ".courbe-pdf-metrics > div { display: flex !important; justify-content: space-between !important; gap: 1.5mm !important; }",
-            ".courbe-pdf-metrics dt { font-size: 4pt !important; color:#555 !important; margin:0 !important; font-weight:400 !important; }",
-            ".courbe-pdf-metrics dd { font-size: 4pt !important; color:#000 !important; font-weight:700 !important; margin:0 !important; }",
-            ".technical-data-block--courbe-detail .courbe-beton-pdf-chart { flex: 1 1 auto !important; border:0 !important; background:transparent !important; width:auto !important; }",
-            ".technical-data-block--courbe-detail .courbe-beton-pdf-chart svg { width:100% !important; height:32mm !important; display:block !important; }",
-            ".courbe-legend--pdf { font-size: 4.5pt !important; color:#000 !important; display:flex !important; flex-direction: column !important; gap: 0.6mm !important; text-align:left !important; margin:0 !important; }",
-            ".courbe-legend--pdf .courbe-legend__item { font-size: 5pt !important; padding:0 !important; }",
-            ".technical-visa-block { margin-top: 2mm !important; border: 0.75px solid #111 !important; }",
-            ".technical-visa-title { font-size: 6pt !important; padding: 0.5mm 0 !important; }",
-            ".technical-visa-label { font-size: 5.5pt !important; padding: 0.5mm 0 !important; }",
-            ".technical-visa-space { min-height: 15mm !important; }"
-        ].join("\n");
+        var extra = new XMLHttpRequest();
+        extra.open("GET", "/static/css/fiche-report.css?v=20261020a", false);
+        extra.send();
+        if (xhr.status !== 200 || extra.status !== 200) return;
+        var baseCss = rawCss + "\n" + extra.responseText;
+        var printCss = "html,body{background:#fff!important;margin:0;padding:0}";
         var printWin = window.open("", "_blank", "width=800,height=1100");
+        if (!printWin) return;
         printWin.document.write(
             "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Print</title>" +
             "<style>" + baseCss + "</style>" +
@@ -908,7 +800,8 @@
         );
         printWin.document.close();
         printWin.focus();
-        setTimeout(function () { printWin.print(); printWin.close(); }, 400);
+        Promise.all(Array.from(printWin.document.images).map(img => img.complete ? Promise.resolve() : new Promise(resolve => { img.onload = resolve; img.onerror = resolve; })))
+            .then(() => printWin.document.fonts.ready).then(() => { printWin.print(); printWin.close(); });
     });
     const cb = document.querySelector("input[name=courbe_beton_active]");
     const panel = document.querySelector("[data-courbe-beton-panel]");

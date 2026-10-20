@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from models import Fiche, FicheStratigrafia, FicheTypeEnum, PersonalePresenza, User
 from models.veicoli import Veicolo
-from main import _wrap_sheet_document
+from main import _load_style_css, _wrap_sheet_document
 from test_operations_live import live_operations
 
 pytestmark = pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS') != '1', reason='Live browser checks opt-in')
@@ -59,7 +59,10 @@ def test_feedback_pages_with_real_records(live_operations):
         page.goto(origin+f'/manager/fiches/{fiche_id}')
         expect(page.locator('#technical-sheet-export')).to_be_visible()
         expect(page.locator('.stratigrafia-technical-panel')).to_have_count(0)
-        expect(page.locator('.technical-ground-bars')).to_be_visible()
+        comparison = page.locator('.soil-comparison-svg')
+        expect(comparison).to_be_visible()
+        for elevation in ['25,00', '24,00', '15,00', '16,00', '8,00']:
+            expect(comparison).to_contain_text(elevation)
         for theme in ['light','dark']:
             page.evaluate('(theme)=>document.documentElement.dataset.theme=theme',theme)
             for width in [1440,1024,390]:
@@ -71,7 +74,7 @@ def test_feedback_pages_with_real_records(live_operations):
                 }''')
                 bounds=page.locator('#technical-sheet-export').evaluate('''sheet=>{
                   const b=sheet.getBoundingClientRect();
-                  const bars=sheet.querySelector('.technical-ground-bars').getBoundingClientRect();
+                  const bars=sheet.querySelector('.soil-comparison-svg').getBoundingClientRect();
                   return {fits:bars.right<=b.right+1,ink:getComputedStyle(sheet.querySelector('h3')).color,overflow:document.documentElement.scrollWidth>innerWidth+1};
                 }''')
                 assert bounds == {'fits':True,'ink':'rgb(17, 17, 17)','overflow':False}, bounds
@@ -80,7 +83,7 @@ def test_feedback_pages_with_real_records(live_operations):
         # populated technical article, independently of the screen transform.
         article = page.locator('#technical-sheet-export').evaluate('(sheet)=>sheet.outerHTML')
         paper = browser.new_page()
-        html = _wrap_sheet_document(article,Path('static/css/style.css').read_text(encoding='utf-8'))
+        html = _wrap_sheet_document(article,_load_style_css())
         paper.set_content(html.replace('<head>',f'<head><base href="{origin}">'),wait_until='networkidle')
         paper.emulate_media(media='print')
         assert paper.locator('#technical-sheet-export').evaluate('''sheet=>{
