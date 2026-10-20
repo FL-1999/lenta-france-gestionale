@@ -126,7 +126,8 @@
     const n=state.current;
     if(n.shared){showDialog(t('Prima rendi privato l’appunto','Rendez d’abord la note privée'),`<p>${t('Il riordino si prepara su un appunto privato. Da “Gestisci accessi” puoi togliere la condivisione e riattivarla dopo la verifica.','La réorganisation se prépare sur une note privée. Retirez le partage dans « Gérer les accès », puis réactivez-le après vérification.')}</p>`);return;}
     if(!state.ai_enabled){showDialog(t('Riordino AI da attivare','Réorganisation IA à activer'),`<p>${t('La funzione richiede l’attivazione del servizio AI da parte dell’amministratore. Puoi già scrivere, organizzare e condividere gli appunti.','Cette fonction nécessite l’activation du service IA par l’administrateur. Vous pouvez déjà écrire, organiser et partager vos notes.')}</p>`);return;}
-    aiKey=aiKey||crypto.randomUUID();
+    // Each opened dialog is a new intent; retries within that dialog reuse its key.
+    aiKey=crypto.randomUUID();
     showDialog(mode==='meeting'?t('Prepara una bozza di verbale','Préparer un compte rendu'):t('Riordina questo appunto','Réorganiser cette note'),
       `<p>${t('Il testo e le sezioni di questo appunto saranno inviati a OpenAI per preparare una proposta. L’originale resta conservato e nessun collega riceverà il risultato automaticamente.','Le texte et les sections de cette note seront envoyés à OpenAI pour préparer une proposition. L’original est conservé et aucun collègue ne reçoit automatiquement le résultat.')}</p><div class="nb-actions">${button(t('Prepara proposta privata','Préparer une proposition privée'),`data-prepare="${mode}"`,true)}</div>`);
   }

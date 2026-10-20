@@ -1,5 +1,6 @@
 """Actual browser/mobile sharing flow using disposable accounts and database."""
 import os
+import json
 from uuid import uuid4
 import pytest
 from playwright.sync_api import expect, sync_playwright
@@ -93,6 +94,36 @@ def test_notebook_mobile_desktop_and_private_review(live_operations):
         desktop.reload()
         expect(desktop.locator('#nb-error')).to_contain_text('Appunto non trovato')
         expect(desktop.locator('#nb-editor')).not_to_contain_text('verificare 6.3')
+
+        # Different explicit AI actions must not replay the same idempotency key.
+        intents = []
+        def enabled_listing(route):
+            response = route.fetch()
+            data = response.json()
+            data['ai_enabled'] = True
+            route.fulfill(response=response, json=data)
+        def simulated_proposal(route):
+            intent = route.request.post_data_json
+            intents.append(intent)
+            route.fulfill(status=200, content_type='application/json', body=json.dumps({
+                'id': uuid4().hex, 'mode': intent['mode'],
+                'result': Proposal(title='Proposta simulata', body='P5: 6.3 m.').model_dump()}))
+        phone.route('**/appunti/data?*', enabled_listing)
+        phone.route('**/appunti/*/riordina', simulated_proposal)
+        phone.reload()
+        ready(phone)
+        for label in ('Riordina con AI', 'Prepara verbale'):
+            phone.get_by_role('button', name=label, exact=True).click()
+            expect(dialog).to_be_visible()
+            ready(phone)
+            dialog.get_by_role('button', name='Prepara proposta privata', exact=True).click()
+            expect(dialog).not_to_be_visible()
+            expect(phone.locator('.nb-draft')).to_be_visible()
+            ready(phone)
+        assert [i['mode'] for i in intents] == ['tidy', 'meeting']
+        assert len({i['request_key'] for i in intents}) == 2
+        phone.unroute('**/appunti/data?*', enabled_listing)
+        phone.unroute('**/appunti/*/riordina', simulated_proposal)
 
         # Inject only a provider result into the isolated DB; acceptance uses the actual API.
         with Session(engine) as db:

@@ -118,7 +118,7 @@ def prepare(db, user, row, payload):
         raise HTTPException(422, 'Appunto troppo lungo per il riordino: suddividilo / Divisez cette note avant de la réorganiser')
     existing = db.query(NotebookDraft).filter_by(note_id=row.id, request_key=payload.request_key).first()
     if existing:
-        if existing.state == 'ready' and existing.base_version == row.version:
+        if existing.state == 'ready' and existing.base_version == row.version and existing.mode == payload.mode:
             return existing
         raise HTTPException(409, 'Richiesta già elaborata o in corso: ricarica / Demande déjà traitée ou en cours')
     quota(db, user)

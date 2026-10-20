@@ -192,6 +192,7 @@ def test_ai_private_proposal_accept_preserves_original_and_never_creates_busines
     payload = dict(version=n['version'], request_key=key, mode='meeting', consent=True)
     draft = call(o, 'POST', f"/{n['id']}/riordina", payload).json()
     assert call(o, 'POST', f"/{n['id']}/riordina", payload).json()['id'] == draft['id']
+    assert call(o, 'POST', f"/{n['id']}/riordina", {**payload, 'mode': 'tidy'}).status_code == 409
     assert len(calls) == 1 and set(calls[0]) == {'title', 'kind', 'body', 'details'}
     original = call(o, 'GET', f"/{n['id']}").json()
     assert original['body'] == n['body'] and original['draft']['id'] == draft['id']
