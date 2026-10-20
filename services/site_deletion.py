@@ -9,6 +9,11 @@ from models import (Site, Report, ReportWorker, ReportDraft, ReportReview, Repor
 def delete_site_records(db, site):
     """Caller owns the transaction and audit; never commit or suppress errors here."""
     sid=site.id
+    # Personal notes survive site removal; neither their content nor grants are changed.
+    from models import NotebookNote
+    db.execute(update(NotebookNote).where(NotebookNote.site_id == sid).values(
+        site_id=None, site_snapshot={'name': site.name, 'code': site.code},
+        version=NotebookNote.version + 1))
     # Keep the latest project name/status in the business directory's history.
     from models import ProjectPartnerSite
     from services.project_directory import site_snapshot

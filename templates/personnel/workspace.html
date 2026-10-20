@@ -3,11 +3,11 @@
 {% block content %}
 <link rel="stylesheet" href="/static/css/personnel.css?v=20261013mobile1">
 <div id="personnel-workspace" class="personnel-workspace" data-mode="{{ personnel_mode }}" data-csrf="{{ csrf }}" data-today="{{ today }}">
-  <header class="pw-heading"><div><h1>{{ t('Il mio spazio', 'Mon espace') if personnel_mode == 'personal' else (t('Ferie e assenze', 'Congés et absences') if personnel_mode == 'office' else t('Squadre e assegnazioni', 'Équipes et affectations')) }}</h1><p>{{ user.full_name or user.email }}</p></div></header>
+  <header class="pw-heading"><div><h1>{{ t('Il mio spazio', 'Mon espace') if personnel_mode == 'personal' else (t('Ferie e assenze', 'Congés et absences') if personnel_mode == 'office' else t('Squadre e assegnazioni', 'Équipes et affectations')) }}</h1><p>{{ user.full_name or user.email }}</p></div>{% if personnel_mode == 'personal' %}<a class="btn btn-secondary" href="/appunti">{{ t('Appunti e riunioni', 'Notes et réunions') }}</a>{% endif %}</header>
   {% if personnel_mode != 'personal' %}{% include 'personnel/nav.html' %}{% endif %}
   <div id="pw-error" class="pw-alert" role="alert" hidden></div>
   <div id="pw-status" role="status" class="pw-status" hidden></div>
   <div id="pw-content" aria-live="polite">{{ t('Caricamento…', 'Chargement…') }}</div>
 </div>
-<script src="/static/js/personnel.js?v=2" defer></script>
+<script src="/static/js/personnel.js?v=20261020notes" defer></script>
 {% endblock %}

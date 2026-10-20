@@ -1,0 +1,41 @@
+{% extends 'shared/base.html' %}
+{% block title %}{{ t('Appunti e riunioni', 'Notes et réunions') }} – Lenta{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/notebook.css?v=20261020a">
+<div id="notebook" data-csrf="{{ notebook_csrf }}" data-site="{{ notebook_site.id if notebook_site else '' }}">
+  <header class="nb-heading">
+    <div><a href="/mio-spazio">{{ t('Il mio spazio', 'Mon espace') }}</a>
+      <h1>{{ t('Appunti e riunioni', 'Notes et réunions') }}</h1>
+      <p>{{ notebook_site.name if notebook_site else t('Il tuo quaderno di lavoro.', 'Votre carnet de travail.') }}</p>
+    </div>
+    <button type="button" class="nb-button nb-primary" data-new>{{ t('+ Nuovo', '+ Nouveau') }}</button>
+  </header>
+  {% if notebook_site %}<p class="nb-context"><a href="/appunti">{{ t('Tutto il mio archivio', 'Toutes mes notes') }}</a></p>{% endif %}
+  <div class="nb-message" id="nb-error" role="alert" hidden></div>
+  <div class="nb-status" id="nb-status" role="status" hidden></div>
+  <div class="nb-shell">
+    <nav class="nb-tabs" aria-label="{{ t('Archivio appunti', 'Carnet de notes') }}">
+      {% if notebook_site %}<button type="button" data-scope="all" aria-pressed="true">{{ t('Visibili a me', 'Visibles pour moi') }}</button>{% endif %}
+      <button type="button" data-scope="mine" aria-pressed="{{ 'false' if notebook_site else 'true' }}">{{ t('I miei', 'Mes notes') }}</button>
+      <button type="button" data-scope="received" aria-pressed="false">{{ t('Condivisi con me', 'Partagées avec moi') }}</button>
+      <button type="button" data-scope="archived" aria-pressed="false">{{ t('Archivio', 'Archives') }}</button>
+    </nav>
+    <div class="nb-layout">
+      <section class="nb-directory" aria-label="{{ t('Elenco appunti', 'Liste des notes') }}">
+        <form id="nb-filter-form" class="nb-filters">
+          <label for="nb-search">{{ t('Cerca per titolo', 'Rechercher par titre') }}</label>
+          <div class="nb-searchline"><input id="nb-search" type="search" maxlength="200" placeholder="{{ t('Cerca un appunto…', 'Rechercher une note…') }}"><button class="nb-button" type="submit">{{ t('Cerca', 'Chercher') }}</button></div>
+          <div class="nb-filter-pair"><label>{{ t('Cantiere', 'Chantier') }}<select id="nb-site-filter" {% if notebook_site %}disabled{% endif %}><option value="">{{ t('Tutti', 'Tous') }}</option></select></label><label>{{ t('Raccolta', 'Collection') }}<select id="nb-collection-filter"><option value="">{{ t('Tutte', 'Toutes') }}</option></select></label></div>
+        </form>
+        <div id="nb-list">{{ t('Caricamento…', 'Chargement…') }}</div>
+        <div class="nb-pages"><button class="nb-button" type="button" id="nb-prev" hidden>{{ t('Precedenti', 'Précédentes') }}</button><button class="nb-button" type="button" id="nb-next" hidden>{{ t('Successivi', 'Suivantes') }}</button></div>
+      </section>
+      <article id="nb-editor" class="nb-editor" aria-label="{{ t('Appunto selezionato', 'Note sélectionnée') }}"><p class="nb-muted">{{ t('Scegli un appunto oppure creane uno nuovo.', 'Choisissez une note ou créez-en une.') }}</p></article>
+    </div>
+    <footer class="nb-footer">{{ t('I nuovi appunti sono privati. Collegare un cantiere non concede accesso ad altre persone.', 'Les nouvelles notes sont privées. Associer un chantier ne donne aucun accès aux autres personnes.') }}</footer>
+  </div>
+  <dialog id="nb-dialog" aria-labelledby="nb-dialog-title"></dialog>
+  <noscript><p>{{ t('Attiva JavaScript per usare appunti e riunioni.', 'Activez JavaScript pour utiliser les notes et réunions.') }}</p></noscript>
+</div>
+<script src="/static/js/notebook.js?v=20261020a" defer></script>
+{% endblock %}
