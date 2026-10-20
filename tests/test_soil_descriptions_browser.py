@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 import pypdfium2 as pdfium
@@ -6,6 +7,7 @@ import pytest
 from playwright.sync_api import sync_playwright, expect
 from sqlalchemy.orm import Session
 from models import Fiche, Site, SiteCoupe, SiteCoupeAssignment
+from main import _load_style_css, _wrap_sheet_document
 from test_operations_live import live_operations
 
 pytestmark = pytest.mark.skipif(os.getenv("RUN_BROWSER_TESTS") != "1", reason="Browser checks opt-in")
@@ -69,6 +71,25 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
         expect(row.locator("[name=strato_fini]")).to_have_value("assenti")
         page.locator("[data-fiche-form] button[type=submit]").click()
         page.wait_for_url(f"**/manager/fiches/{fid}")
+        def check_aligned_drawing(target):
+            bounds = target.locator(".technical-panel-diagram").evaluate("""svg => {
+                const box = selector => svg.querySelector(selector).getBoundingClientRect();
+                const face = box('.panel-front-face');
+                const frames = [...svg.querySelectorAll('.soil-column-frame')].map(e=>e.getBoundingClientRect());
+                const back = box('.panel-guide-back');
+                const headings = [...svg.querySelectorAll('.panel-top-label')].map(e=>e.getBoundingClientRect());
+                return {tops:frames.map(b=>Math.abs(b.top-face.top)),
+                        bottoms:frames.map(b=>Math.abs(b.bottom-face.bottom)),
+                        guideClear: back.right < Math.min(...frames.map(b=>b.left)),
+                        textClear: Math.max(...headings.map(b=>b.bottom)) < back.top,
+                        backdrop: [...svg.querySelectorAll('.soil-comparison-svg > rect')].some(e=>Number(e.getAttribute('width')) >= 264)};
+            }""")
+            assert all(delta < 1 for delta in bounds["tops"] + bounds["bottoms"]), bounds
+            assert bounds["guideClear"] and bounds["textClear"] and not bounds["backdrop"], bounds
+        for width in (390, 1440):
+            page.set_viewport_size({"width": width, "height": 1000})
+            check_aligned_drawing(page)
+        page.locator(".technical-coupe-card").screenshot(path=str(Path(artifacts)/"fiche-aligned-preview.png"))
         # Native printing and PDF exports must keep the full footer and all soil rows.
         page.context.add_init_script("window.print = () => {}; window.close = () => {};")
         with page.expect_popup() as pending:
@@ -77,6 +98,7 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
         printed.wait_for_load_state()
         printed.emulate_media(media="print")
         assert printed.locator("#technical-sheet-export").is_visible()
+        check_aligned_drawing(printed)
         bounds = printed.evaluate("""() => {
             const box = s => document.querySelector(s).getBoundingClientRect();
             return {sheet:box('#technical-sheet-export').bottom, footer:box('.technical-visa-block').bottom,
@@ -93,10 +115,28 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
         assert doc[0].get_width() == pytest.approx(595.28, abs=1)
         assert doc[0].get_height() == pytest.approx(841.89, abs=1)
         text = doc[0].get_textpage().get_text_range()
-        for label in ("Gros cailloux", "Grossier", "Sans fines", "13.50", "12.50", "4.50", "2.80", "13,50", "12,50", "4,50", "2,80"):
+        required_labels = ("Gros cailloux", "Grossier", "Sans fines", "13.50", "12.50", "4.50", "2.80",
+                           "13,50", "12,50", "4,50", "2,80", "Murette Guide", "Longueur forée",
+                           "Largeur", "Epaisseur", "BASE PAROI MECANIQUE", "BASE PAROI HYDRAULIQUE",
+                           "ENTREPRISE", "CLIENT")
+        for label in required_labels:
             assert label in text
         doc[0].render(scale=1.7).to_pil().save(Path(artifacts)/"fiche-terreni-a4.png")
         doc.close()
+        # Render's fallback also consumes the same complete vector drawing.
+        # Its native Pango libraries are available on Linux, not in the Windows venv.
+        if sys.platform != "win32":
+            from weasyprint import HTML
+            article = page.locator("#technical-sheet-export").evaluate("el=>el.outerHTML")
+            fallback = HTML(string=_wrap_sheet_document(article, _load_style_css()), base_url=origin).write_pdf()
+            (Path(artifacts)/"fiche-terreni-weasyprint.pdf").write_bytes(fallback)
+            doc = pdfium.PdfDocument(fallback)
+            assert len(doc) == 1
+            fallback_text = doc[0].get_textpage().get_text_range()
+            for label in required_labels:
+                assert label in fallback_text
+            doc[0].render(scale=1.7).to_pil().save(Path(artifacts)/"fiche-terreni-weasyprint.png")
+            doc.close()
         # Dense reports retain all information on legible A4 continuation pages.
         with Session(engine) as db:
             fiche = db.get(Fiche, fid)

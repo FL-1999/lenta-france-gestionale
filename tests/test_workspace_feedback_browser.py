@@ -88,7 +88,7 @@ def test_feedback_pages_with_real_records(live_operations):
         paper.emulate_media(media='print')
         assert paper.locator('#technical-sheet-export').evaluate('''sheet=>{
           const r=sheet.getBoundingClientRect();
-          const parts=['.technical-ground-column','.technical-sheet__header-top','.technical-visa-block'];
+          const parts=['.soil-comparison-svg','.technical-sheet__header-top','.technical-visa-block'];
           return r.width<=198*96/25.4+1 && parts.every(s=>sheet.querySelector(s).getBoundingClientRect().right<=r.right);
         }''')
         pdf = paper.pdf(path=str(output/'fiche-print.pdf'),format='A4',print_background=True,prefer_css_page_size=True)

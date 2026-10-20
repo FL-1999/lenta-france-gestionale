@@ -112,7 +112,7 @@ from notifications import (
     notify_site_status_change,
 )
 from services.personale_profiles import ensure_user_personale_profile
-from services.soil_diagram import comparison_svg as soil_comparison_svg
+from services.soil_diagram import comparison_svg as soil_comparison_svg, panel_report_svg
 from services.soil_materials import describe_material, split_description
 from services.cloud_archive import install_capture_hooks, background_sync, enqueue as archive_document
 install_capture_hooks()
@@ -8963,6 +8963,7 @@ def manager_fiche_dettaglio(
                 fiche.profondita_totale,
             ),
             soil_comparison_svg=soil_comparison_svg,
+            panel_report_svg=panel_report_svg,
             technical_fr=_translate_fiche_technical_text,
             fiche_element_label_fr=_fiche_element_label_fr,
             courbe_beton_payload=_build_courbe_beton_payload(fiche),
@@ -9220,6 +9221,7 @@ def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) ->
             fiche.profondita_totale,
         ),
         soil_comparison_svg=soil_comparison_svg,
+        panel_report_svg=panel_report_svg,
         technical_fr=_translate_fiche_technical_text,
         fiche_element_label_fr=_fiche_element_label_fr,
         courbe_beton_payload=_build_courbe_beton_payload(fiche),

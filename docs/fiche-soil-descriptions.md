@@ -27,3 +27,10 @@ per farlo entrare nella pagina.
 I collaudi coprono salvataggio/modifica, campi Altro nelle righe successive,
 validazione, traduzioni, manager e caposquadra, telefono, stampa e PDF A4,
 anche con allegato e con un riferimento altimetrico diverso da NGF.
+
+La paratia, i muretti guida, le quote dimensionali e le colonne dei terreni sono
+contenuti in un unico disegno SVG trasparente. La faccia della paratia e le colonne
+condividono inizio e fondo, anche dopo il ridimensionamento A4. Le etichette superiori
+hanno uno spazio dedicato. I controlli verificano allineamento e assenza di
+sovrapposizioni in anteprima e stampa, e conservazione dei testi anche nel motore
+PDF di riserva WeasyPrint disponibile su Linux.

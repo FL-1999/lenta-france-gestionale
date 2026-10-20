@@ -4,7 +4,7 @@
     {% if lang == 'fr' %}Détail fiche – Manager{% else %}Dettaglio fiche – Manager{% endif %}
 {% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/fiche-report.css?v=20261020a">
+<link rel="stylesheet" href="/static/css/fiche-report.css?v=20261020b">
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set report_responsable = fiche.responsable_pdf or ((fiche.capocantiere.full_name or fiche.capocantiere.email) if fiche.capocantiere else none) or '—' %}
 {% set report_coupe = fiche.report_coupe %}
@@ -420,8 +420,11 @@
                         </aside>
 
                         {# ── Dessin technique ── #}
-                        <section class="technical-drawing-column technical-drawing-column--historic" aria-label="Section paroi/pieu avec cotes">
+                        <section class="technical-drawing-column technical-drawing-column--historic{% if is_paratia %} technical-drawing-column--aligned{% endif %}" aria-label="Section paroi/pieu avec cotes">
                             <div class="technical-drawing-layout">
+                                {% if is_paratia %}
+                                {{ panel_report_svg(visual_layers, theoretical_layers, schema_quota_partenza, datum, schema_depth, schema_quota_tn, schema_width_label, schema_thickness_label, schema_quota_base_meccanica, schema_quota_fondo)|safe }}
+                                {% else %}
                                 <div class="technical-section-canvas technical-section-canvas--{{ 'pile' if is_palo else 'panel' }}">
                                     <div class="technical-top-levels" aria-hidden="true">
                                         <span>Terrain naturel (TN) : {{ ("%.2f"|format(schema_quota_tn)).replace(".", ",") if schema_quota_tn is not none else "—" }} {{ datum }}</span>
@@ -489,6 +492,7 @@
                                 <section class="technical-ground-column technical-ground-column--levels" aria-label="Comparaison des sols et cotes">
                                     {{ soil_comparison_svg(visual_layers, theoretical_layers, schema_quota_partenza, datum, schema_depth)|safe }}
                                 </section>
+                                {% endif %}
                             </div>
                         </section>
                     </div>
@@ -785,7 +789,7 @@
         xhr.send();
         var rawCss = xhr.status === 200 ? xhr.responseText : "";
         var extra = new XMLHttpRequest();
-        extra.open("GET", "/static/css/fiche-report.css?v=20261020a", false);
+        extra.open("GET", "/static/css/fiche-report.css?v=20261020b", false);
         extra.send();
         if (xhr.status !== 200 || extra.status !== 200) return;
         var baseCss = rawCss + "\n" + extra.responseText;
