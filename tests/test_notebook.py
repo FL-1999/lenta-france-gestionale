@@ -5,7 +5,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from fastapi import HTTPException
-from models import (NotebookNote, NotebookGrant, NotebookRevision, NotebookDraft, NotebookAIQuota,
+from models import (NotebookNote, NotebookGrant, NotebookRevision, NotebookDraft, NotebookAIQuota, NotebookExtract,
                     Notification, AuditLog, RoleEnum, ResourcePlan, Report, SiteTask)
 from routes.notebook import token
 from services import notebook as svc, notebook_ai as ai
@@ -307,3 +307,142 @@ def test_storage_failure_does_not_log_private_sql_parameters(operations, monkeyp
     r = call(operations, 'POST', body=dict(title='Test', request_key=uuid4().hex))
     assert r.status_code == 503
     assert 'secret-original-text' not in r.text + caplog.text
+
+
+def split_proposal(o, monkeypatch):
+    configure(o, monkeypatch)
+    result = ai.SplitProposal(parts=[
+        ai.Part(title='Punti del primo cantiere', body='Controllare P5: 6.3 m.', site_id=o['site'].id,
+                site_reference=o['site'].name),
+        ai.Part(title='Punto da non estrarre', body='Questo punto resta nel verbale completo.'),
+        ai.Part(title='Acquisti generali', kind='list', body='Richiedere un preventivo per il deposito.'),
+    ], warnings=['Responsabile da definire']).model_dump()
+    calls = []
+    def generate(content, mode, key, sites=None):
+        calls.append(dict(content=content, mode=mode, sites=sites))
+        return result
+    monkeypatch.setattr(ai, 'generate', generate)
+    return result, calls
+
+
+def split_prepare(o, n):
+    return call(o, 'POST', f"/{n['id']}/riordina", dict(version=n['version'],
+        request_key=uuid4().hex, mode='split', consent=True))
+
+
+def extract(o, n, draft, selections, **extra):
+    return call(o, 'POST', f"/{n['id']}/bozze/{draft['id']}/crea-appunti",
+        {**dict(version=n['version'], selections=selections, confirm=True), **extra})
+
+
+def test_split_selected_private_extracts_preserve_complete_note_and_retry_without_duplicates(operations, monkeypatch):
+    o = operations
+    result, calls = split_proposal(o, monkeypatch)
+    n = create(o, collection='Riunioni interne')  # The complete meeting has no site.
+    draft = split_prepare(o, n).json()
+    assert draft['mode'] == 'split' and len(draft['result']['parts']) == 3
+    assert o['db'].query(NotebookNote).count() == 1  # Preparation creates no documents.
+    assert calls[0]['mode'] == 'split' and calls[0]['content']['body'] == n['body']
+    assert [s['id'] for s in calls[0]['sites']] == [o['site'].id]
+    assert set(calls[0]['sites'][0]) == {'id', 'name', 'code'}
+    selection = [{'index': 0, 'site_id': o['site'].id}, {'index': 2, 'site_id': None}]
+    response = extract(o, n, draft, selection)
+    assert response.status_code == 200, response.text
+    complete = response.json()
+    assert complete['body'] == n['body'] and complete['site_id'] is None
+    assert not complete['shared'] and complete['draft'] is None and len(complete['extracts']) == 2
+    assert extract(o, n, draft, list(reversed(selection))).status_code == 200
+    assert extract(o, n, draft, [{'index': 0, 'site_id': None}]).status_code == 409
+    assert o['db'].query(NotebookNote).count() == 3
+    assert o['db'].query(NotebookExtract).count() == 2
+    children = [call(o, 'GET', f"/{e['id']}").json() for e in complete['extracts']]
+    assert children[0]['site_id'] == o['site'].id and children[1]['site_id'] is None
+    assert children[1]['kind'] == 'list'
+    for child in children:
+        assert not child['shared'] and child['collection'] == 'Riunioni interne'
+        assert child['source_note'] == {'id': n['id'], 'title': n['title']}
+    assert o['db'].query(NotebookGrant).count() == o['db'].query(Report).count() == o['db'].query(SiteTask).count() == 0
+    child = sharing(o, children[0], [{'user_id': o['outsider'].id, 'permission': 'read'}]).json()
+    o['actor'][0] = o['outsider']
+    shared = call(o, 'GET', f"/{child['id']}").json()
+    assert shared['body'] == result['parts'][0]['body']
+    assert 'source_note' not in shared and 'extracts' not in shared and 'draft' not in shared
+    assert call(o, 'GET', f"/{n['id']}").status_code == 404
+    assert call(o, 'GET', f"/{children[1]['id']}").status_code == 404
+
+
+def test_split_validation_permissions_and_stale_source_are_atomic(operations, monkeypatch):
+    o = operations
+    split_proposal(o, monkeypatch)
+    n = create(o)
+    draft = split_prepare(o, n).json()
+    path = f"/{n['id']}/bozze/{draft['id']}/crea-appunti"
+    payload = dict(version=n['version'], confirm=True, selections=[{'index': 0, 'site_id': o['site'].id}])
+    assert o['client'].post('/appunti'+path, json=payload).status_code == 403
+    assert extract(o, n, draft, [], confirm=True).status_code == 422
+    assert extract(o, n, draft, [{'index': 0}, {'index': 0}]).status_code == 422
+    assert extract(o, n, draft, [{'index': 11}]).status_code == 422
+    assert extract(o, n, draft, [{'index': 0}], confirm=False).status_code == 422
+    assert extract(o, n, draft, [{'index': 0}, {'index': 2, 'site_id': o['other'].id}]).status_code == 403
+    assert call(o, 'POST', f"/{n['id']}/bozze/{draft['id']}/accetta", {'version': n['version']}).status_code == 422
+    assert call(o, 'GET', f"/{n['id']}").json()['version'] == n['version']
+    o['actor'][0] = o['manager']
+    assert extract(o, n, draft, [{'index': 0}]).status_code == 404
+    o['actor'][0] = o['capo']
+    updated = edit(o, n, body='Nuova decisione, proposta precedente non più valida.').json()
+    assert extract(o, updated, draft, [{'index': 0}]).status_code == 409
+    assert o['db'].query(NotebookNote).count() == 1 and o['db'].query(NotebookExtract).count() == 0
+    fresh_draft = split_prepare(o, updated).json()
+    shared = sharing(o, updated, [{'user_id': o['outsider'].id, 'permission': 'edit'}]).json()
+    assert extract(o, shared, fresh_draft, [{'index': 0}]).status_code == 409
+    assert o['db'].query(NotebookNote).count() == 1
+
+
+def test_split_rechecks_site_assignment_and_can_remain_unlinked_or_be_discarded(operations, monkeypatch):
+    o = operations
+    split_proposal(o, monkeypatch)
+    n = create(o)
+    draft = split_prepare(o, n).json()
+    o['site'].caposquadra_id = o['manager'].id
+    o['db'].commit()
+    assert extract(o, n, draft, [{'index': 0, 'site_id': o['site'].id}]).status_code == 403
+    response = extract(o, n, draft, [{'index': 0, 'site_id': None}])
+    assert response.status_code == 200, response.text
+    child = call(o, 'GET', f"/{response.json()['extracts'][0]['id']}").json()
+    assert child['site_id'] is None and not child['shared']
+    n = create(o)
+    draft = split_prepare(o, n).json()
+    discarded = call(o, 'POST', f"/{n['id']}/bozze/{draft['id']}/scarta", {'version': n['version']}).json()
+    assert discarded['body'] == n['body'] and discarded['draft'] is None and discarded['extracts'] == []
+
+
+def test_split_provider_checks_schema_site_catalog_and_evidence_without_using_other_notes(monkeypatch):
+    sent = []
+    result = ai.SplitProposal(parts=[
+        ai.Part(title='Cantiere riconosciuto', site_id=4, site_reference='Nissa Campus', body='Verificare P5.'),
+        ai.Part(title='ID inventato', site_id=999, site_reference='Nissa Campus', body='Non associare.'),
+        ai.Part(title='Riferimento inventato', site_id=4, site_reference='Testo non presente', body='Non associare.'),
+        ai.Part(title='Acquisti', body='Richiedere preventivo.'),
+    ]).model_dump()
+    class Client:
+        def __init__(self, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def post(self, url, **kwargs):
+            sent.append(kwargs['json'])
+            return httpx.Response(200, request=httpx.Request('POST', url), json={
+                'status': 'completed', 'output': [{'type': 'message', 'content': [
+                    {'type': 'output_text', 'text': json.dumps(result)}]}]})
+    monkeypatch.setattr(ai.httpx, 'Client', Client)
+    content = svc.Content(title='Riunione interna', body='Nissa Campus: verificare P5. Richiedere preventivo.').model_dump()
+    sites = [{'id': 4, 'name': 'Nissa Campus', 'code': '26-340'}]
+    proposed = ai.generate(content, 'split', 'fake-test-secret', sites=sites)
+    assert [p['site_id'] for p in proposed['parts']] == [4, None, None, None]
+    assert len(proposed['warnings']) == 2
+    assert json.loads(sent[0]['input']) == {'mode': 'split', 'note': content, 'available_sites': sites}
+    assert sent[0]['store'] is False and 'tools' not in sent[0]
+    assert sent[0]['text']['format']['schema']['additionalProperties'] is False
+    result['parts'] = []
+    with pytest.raises(HTTPException) as exc:
+        ai.generate(content, 'split', 'fake-test-secret', sites=sites)
+    assert exc.value.status_code == 503 and 'fake-test-secret' not in exc.value.detail

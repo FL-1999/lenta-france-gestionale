@@ -86,6 +86,7 @@ def listing(scope: str = Query('mine', pattern='^(mine|received|archived|all)$')
         NotebookNote.collection != '').distinct().order_by(NotebookNote.collection)]
     return {'notes': [svc.data(db, row, user) for row in rows[:50]], 'more': len(rows) > 50,
         'collections': collections, 'sites': [{'id': s.id, 'name': s.name} for s in svc.sites(db, user)],
+        'assignable_sites': [{'id': s.id, 'name': s.name, 'code': s.code or ''} for s in svc.assignable_sites(db, user)],
         'ai_enabled': ai.configuration(user)[0]}
 
 
@@ -162,6 +163,16 @@ def prepare(ident: int, body: ai.Prepare, request: Request, db: Session = Depend
     row = svc.find(db, ident, user, owner=True)
     draft = ai.prepare(db, user, row, body)
     return {'id': draft.id, 'result': draft.result, 'mode': draft.mode}
+
+
+@router.post('/{ident:int}/bozze/{draft_id}/crea-appunti')
+def extract(ident: int, draft_id: str, body: ai.SplitAccept, request: Request,
+            db: Session = Depends(get_db), user: User = Depends(get_current_active_user_html)):
+    validate(request, user)
+    row = svc.find(db, ident, user, owner=True)
+    ai.extract(db, user, row, draft_id, body)
+    db.commit()
+    return svc.data(db, row, user, full=True)
 
 
 @router.post('/{ident:int}/bozze/{draft_id}/{decision}')

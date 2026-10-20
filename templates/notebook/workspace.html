@@ -1,12 +1,12 @@
 {% extends 'shared/base.html' %}
 {% block title %}{{ t('Appunti e riunioni', 'Notes et réunions') }} – Lenta{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/notebook.css?v=20261020a">
+<link rel="stylesheet" href="/static/css/notebook.css?v=20261020b">
 <div id="notebook" data-csrf="{{ notebook_csrf }}" data-site="{{ notebook_site.id if notebook_site else '' }}">
   <header class="nb-heading">
     <div><a href="/mio-spazio">{{ t('Il mio spazio', 'Mon espace') }}</a>
       <h1>{{ t('Appunti e riunioni', 'Notes et réunions') }}</h1>
-      <p>{{ notebook_site.name if notebook_site else t('Il tuo quaderno di lavoro.', 'Votre carnet de travail.') }}</p>
+      <p>{{ notebook_site.name if notebook_site else t('Appunti personali, acquisti e riunioni. Il cantiere è facoltativo.', 'Notes personnelles, achats et réunions. Le chantier est facultatif.') }}</p>
     </div>
     <button type="button" class="nb-button nb-primary" data-new>{{ t('+ Nuovo', '+ Nouveau') }}</button>
   </header>
@@ -37,5 +37,5 @@
   <dialog id="nb-dialog" aria-labelledby="nb-dialog-title"></dialog>
   <noscript><p>{{ t('Attiva JavaScript per usare appunti e riunioni.', 'Activez JavaScript pour utiliser les notes et réunions.') }}</p></noscript>
 </div>
-<script src="/static/js/notebook.js?v=20261020a" defer></script>
+<script src="/static/js/notebook.js?v=20261020b" defer></script>
 {% endblock %}

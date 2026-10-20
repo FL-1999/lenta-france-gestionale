@@ -5,8 +5,8 @@ from uuid import uuid4
 import pytest
 from playwright.sync_api import expect, sync_playwright
 from sqlalchemy.orm import Session
-from models import NotebookNote, NotebookDraft, NotebookGrant
-from services.notebook_ai import Proposal
+from models import NotebookNote, NotebookDraft, NotebookGrant, NotebookExtract, User
+from services.notebook_ai import Proposal, SplitProposal, Part
 from test_operations_live import live_operations
 
 pytestmark = pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS') != '1', reason='Live browser checks opt-in')
@@ -166,4 +166,70 @@ def test_notebook_mobile_desktop_and_private_review(live_operations):
         no_overflow(phone)
         phone.screenshot(path=str(artifacts/'notebook-phone-fr.png'), full_page=True)
         assert not errors and not failures, (errors, failures)
+        browser.close()
+
+
+def test_phone_split_selects_destinations_preserves_source_and_private_links(live_operations):
+    origin, engine, ids, password, artifacts = live_operations
+    # A structured provider result is seeded locally; the browser uses real persistence/CSRF.
+    with Session(engine) as db:
+        owner = db.query(User).filter_by(email='smoke-manager@example.com').one()
+        note = NotebookNote(owner_id=owner.id, request_key=uuid4().hex, title='Riunione interna multisito',
+            kind='meeting', body='Collaudo: controllare P5. Altro cantiere: pianificare sopralluogo. Acquisti per deposito.',
+            details={}, collection='Riunioni interne')
+        db.add(note); db.flush()
+        ident = note.id
+        db.add(NotebookDraft(id=uuid4().hex, owner_id=owner.id, note_id=ident, request_key=uuid4().hex,
+            base_version=1, mode='split', state='ready', result=SplitProposal(parts=[
+                Part(title='Controllo P5', site_id=ids['site'], site_reference='Collaudo', body='Verificare P5: 6.30 m.'),
+                Part(title='Sopralluogo', site_id=ids['other'], site_reference='Altro cantiere', body='Data da decidere.'),
+                Part(title='Acquisti deposito', kind='list', body='Richiedere preventivo.')
+            ]).model_dump()))
+        db.commit()
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(channel=os.getenv('PLAYWRIGHT_BROWSER_CHANNEL') or None)
+        context = browser.new_context(viewport={'width': 390, 'height': 844}, color_scheme='dark')
+        page = context.new_page()
+        errors = []
+        page.on('pageerror', lambda error: errors.append(str(error)))
+        page.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin+'/') else route.abort())
+        page.goto(origin+'/login')
+        page.locator('#email').fill('smoke-manager@example.com')
+        page.locator('#password').fill(password)
+        page.locator('#login-form button[type=submit]').click()
+        page.wait_for_url('**/manager/dashboard')
+        page.goto(origin+f'/appunti?note={ident}')
+        draft = page.locator('.nb-draft')
+        expect(draft).to_be_visible()
+        expect(page.locator('#notebook')).not_to_have_attribute('aria-busy', 'true')
+        expect(page.locator('[name=site_id]')).to_have_value('')
+        expect(page.locator('[data-split-confirm]')).to_be_disabled()
+        parts = page.locator('.nb-split-part')
+        expect(parts).to_have_count(3)
+        parts.nth(0).locator('[data-split-select]').check()
+        parts.nth(0).locator('[data-split-site]').select_option(str(ids['other']))
+        parts.nth(2).locator('[data-split-select]').check()
+        expect(page.locator('[data-split-count]')).to_have_text('2 appunti selezionati')
+        for width in (320, 390):
+            page.set_viewport_size({'width': width, 'height': 844})
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+        draft.screenshot(path=str(artifacts/'notebook-phone-split.png'))
+        page.locator('[data-split-confirm]').click()
+        expect(page.locator('#nb-status')).to_contain_text('Appunti creati, tutti privati.')
+        expect(page.locator('#notebook')).not_to_have_attribute('aria-busy', 'true')
+        expect(page.locator('[name=body]')).to_have_value('Collaudo: controllare P5. Altro cantiere: pianificare sopralluogo. Acquisti per deposito.')
+        expect(page.locator('.nb-related a')).to_have_count(2)
+        with Session(engine) as db:
+            assert db.query(NotebookNote).count() == 3 and db.query(NotebookGrant).count() == 0
+            assert db.query(NotebookExtract).count() == 2
+            child = db.query(NotebookNote).filter_by(title='Controllo P5').one()
+            assert child.site_id == ids['other']
+            assert db.query(NotebookNote).filter_by(title='Acquisti deposito').one().site_id is None
+        page.locator('.nb-related a').filter(has_text='Acquisti deposito').click()
+        expect(page.locator('[name=title]')).to_have_value('Acquisti deposito')
+        expect(page.locator('[name=site_id]')).to_have_value('')
+        expect(page.locator('#nb-editor .nb-context a')).to_contain_text('Verbale completo')
+        page.locator('#nb-editor .nb-context a').click()
+        expect(page.locator('[name=title]')).to_have_value('Riunione interna multisito')
+        assert not errors, errors
         browser.close()
