@@ -251,7 +251,7 @@ def extract(db, user, row, ident, payload):
         child = notes.create(db, user, notes.Create(
             **part.model_dump(exclude={'site_id', 'site_reference'}),
             site_id=selection['site_id'], collection=row.collection,
-            request_key=f'split-{draft.id}-{selection["index"]}'))
+            request_key=uuid.uuid4().hex))
         db.add(NotebookExtract(source_note_id=row.id, child_note_id=child.id,
             draft_id=draft.id, part_index=selection['index']))
     draft.result = {**draft.result, 'selection': selected}

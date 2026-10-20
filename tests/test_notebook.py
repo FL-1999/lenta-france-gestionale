@@ -446,3 +446,19 @@ def test_split_provider_checks_schema_site_catalog_and_evidence_without_using_ot
     with pytest.raises(HTTPException) as exc:
         ai.generate(content, 'split', 'fake-test-secret', sites=sites)
     assert exc.value.status_code == 503 and 'fake-test-secret' not in exc.value.detail
+
+
+def test_split_never_reuses_a_preexisting_shared_note_with_a_client_chosen_key(operations, monkeypatch):
+    o = operations
+    split_proposal(o, monkeypatch)
+    n = create(o)
+    draft = split_prepare(o, n).json()
+    previous = call(o, 'POST', body=dict(title='Appunto già condiviso',
+        request_key=f"split-{draft['id']}-0", body='Contenuto indipendente')).json()
+    sharing(o, previous, [{'user_id': o['outsider'].id, 'permission': 'read'}])
+    response = extract(o, n, draft, [{'index': 0}])
+    assert response.status_code == 200, response.text
+    child_id = response.json()['extracts'][0]['id']
+    assert child_id != previous['id']
+    child = call(o, 'GET', f'/{child_id}').json()
+    assert child['shared'] is False
