@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from services.soil_diagram import comparison_svg
+from services.soil_diagram import comparison_svg, panel_report_svg
 
 import json
 from datetime import date, timedelta
@@ -868,6 +868,7 @@ def test_manager_fiche_technical_sheet_is_french_and_hides_operator() -> None:
                 {"da": 1.2, "a": 12.5, "materiale": "Ghiaia", "height_percent": 90.4, "texture_class": "soil-layer--ghiaia"},
             ],
             "soil_comparison_svg": comparison_svg,
+            "panel_report_svg": panel_report_svg,
             "technical_fr": _translate_fiche_technical_text,
             "fiche_element_label_fr": _fiche_element_label_fr,
         },
@@ -948,6 +949,7 @@ def test_manager_fiche_technical_sheet_shows_courbe_beton_only_when_active() -> 
         "stratigrafia_visual_layers": [],
         "theoretical_soil_layers": [],
         "soil_comparison_svg": comparison_svg,
+        "panel_report_svg": panel_report_svg,
         "technical_fr": _translate_fiche_technical_text,
         "fiche_element_label_fr": _fiche_element_label_fr,
     }
