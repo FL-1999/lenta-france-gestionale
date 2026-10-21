@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from services.soil_diagram import comparison_svg, panel_report_svg
+from services.soil_diagram import comparison_svg, panel_report_svg, soils_need_annex
+from services.fiche_curve import compact_courbe_svg
 
 import json
 from datetime import date, timedelta
@@ -869,6 +870,8 @@ def test_manager_fiche_technical_sheet_is_french_and_hides_operator() -> None:
             ],
             "soil_comparison_svg": comparison_svg,
             "panel_report_svg": panel_report_svg,
+            "soils_need_annex": soils_need_annex,
+            "compact_courbe_svg": compact_courbe_svg,
             "technical_fr": _translate_fiche_technical_text,
             "fiche_element_label_fr": _fiche_element_label_fr,
         },
@@ -950,6 +953,8 @@ def test_manager_fiche_technical_sheet_shows_courbe_beton_only_when_active() -> 
         "theoretical_soil_layers": [],
         "soil_comparison_svg": comparison_svg,
         "panel_report_svg": panel_report_svg,
+            "soils_need_annex": soils_need_annex,
+            "compact_courbe_svg": compact_courbe_svg,
         "technical_fr": _translate_fiche_technical_text,
         "fiche_element_label_fr": _fiche_element_label_fr,
     }
@@ -959,7 +964,7 @@ def test_manager_fiche_technical_sheet_shows_courbe_beton_only_when_active() -> 
         {**context, "fiche": SimpleNamespace(**base_fiche, courbe_beton_active=False)},
     )
     inactive_pdf = inactive_output[inactive_output.index('id="technical-sheet-export"'):inactive_output.index('</article>', inactive_output.index('id="technical-sheet-export"'))]
-    assert "courbe-beton-pdf-chart" not in inactive_pdf
+    assert "b-curve-svg" not in inactive_pdf
 
     active_output = render_template(
         "manager/fiches/fiche_detail.html",
@@ -974,13 +979,14 @@ def test_manager_fiche_technical_sheet_shows_courbe_beton_only_when_active() -> 
         },
     )
     active_pdf = active_output[active_output.index('id="technical-sheet-export"'):active_output.index('</article>', active_output.index('id="technical-sheet-export"'))]
-    assert "courbe-beton-pdf-chart" in active_pdf
+    assert "b-curve-svg" in active_pdf
     assert "Réalisée" in active_pdf
     assert "Théorique" in active_pdf
     assert "Tube" in active_pdf
     assert "COURBE DE BÉTONNAGE" in active_output
     assert "Volume en m³" in active_output
-    assert "Hauteur en m" in active_output
+    assert "m NGF" in active_pdf
+    assert "Hauteur en m" not in active_pdf
 
 def test_deposito_form_renders_with_map_section() -> None:
     depot = Depot(

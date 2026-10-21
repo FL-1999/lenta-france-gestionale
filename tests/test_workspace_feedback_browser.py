@@ -59,7 +59,7 @@ def test_feedback_pages_with_real_records(live_operations):
         page.goto(origin+f'/manager/fiches/{fiche_id}')
         expect(page.locator('#technical-sheet-export')).to_be_visible()
         expect(page.locator('.stratigrafia-technical-panel')).to_have_count(0)
-        comparison = page.locator('.soil-comparison-svg')
+        comparison = page.locator('.soil-comparison-narrow')
         expect(comparison).to_be_visible()
         for elevation in ['25,00', '24,00', '15,00', '16,00', '8,00']:
             expect(comparison).to_contain_text(elevation)
@@ -74,10 +74,10 @@ def test_feedback_pages_with_real_records(live_operations):
                 }''')
                 bounds=page.locator('#technical-sheet-export').evaluate('''sheet=>{
                   const b=sheet.getBoundingClientRect();
-                  const bars=sheet.querySelector('.soil-comparison-svg').getBoundingClientRect();
+                  const bars=sheet.querySelector('.soil-comparison-narrow').getBoundingClientRect();
                   return {fits:bars.right<=b.right+1,ink:getComputedStyle(sheet.querySelector('h3')).color,overflow:document.documentElement.scrollWidth>innerWidth+1};
                 }''')
-                assert bounds == {'fits':True,'ink':'rgb(17, 17, 17)','overflow':False}, bounds
+                assert bounds == {'fits':True,'ink':'rgb(23, 49, 75)','overflow':False}, bounds
                 page.locator('.technical-coupe-card').screenshot(path=str(output/f'fiche-{theme}-{width}.png'))
         # Exercise the same paper CSS/wrapper as the PDF exporter with the
         # populated technical article, independently of the screen transform.
@@ -88,7 +88,7 @@ def test_feedback_pages_with_real_records(live_operations):
         paper.emulate_media(media='print')
         assert paper.locator('#technical-sheet-export').evaluate('''sheet=>{
           const r=sheet.getBoundingClientRect();
-          const parts=['.soil-comparison-svg','.technical-sheet__header-top','.technical-visa-block'];
+          const parts=['.soil-comparison-narrow','.b-header','.b-signatures'];
           return r.width<=198*96/25.4+1 && parts.every(s=>sheet.querySelector(s).getBoundingClientRect().right<=r.right);
         }''')
         pdf = paper.pdf(path=str(output/'fiche-print.pdf'),format='A4',print_background=True,prefer_css_page_size=True)

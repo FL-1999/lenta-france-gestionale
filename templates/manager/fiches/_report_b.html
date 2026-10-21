@@ -1,0 +1,78 @@
+{# Approved B1 / B2: identical wall size, optional compact curve at lower left. #}
+{% set soil_annex = soils_need_annex(visual_layers, theoretical_layers, schema_depth, report_lang) %}
+{% set notes_annex = (report_notes|wordwrap(26)).split('\n')|length > (5 if has_courbe_beton else 20) %}
+{% set armature = report_coupe.armatura if report_coupe else '' %}
+{% set details_annex = report_responsable|length > 26 or (fiche.site.name|length if fiche.site else 0) > 36 or (armature|length if armature else 0) > 50 %}
+{% set extra = namespace(rows=[]) %}
+{% macro number(value, unit='') -%}{{ ('%.2f'|format(value)).replace('.', ',') ~ (' ' ~ unit if unit else '') if value is not none else '—' }}{%- endmacro %}
+{% macro short(label, value, limit=22) -%}
+  {% if value|string|length > limit %}{% set extra.rows = extra.rows + [(label, value)] %}{{ rt('Voir annexe') }}{% else %}{{ value }}{% endif %}
+{%- endmacro %}
+{% macro row(label, value) %}<div class="b-row"><dt>{{ rt(label) }}</dt><dd>{{ short(label, value) }}</dd></div>{% endmacro %}
+<div class="fiche-b-page" data-report-model="{{ 'B2' if has_courbe_beton else 'B1' }}">
+  <header class="b-header">
+    <img src="{{ pdf_logo_src or '/static/img/logo.png' }}" alt="Lenta France Fondations Spéciales">
+    <div class="technical-sheet__header-title b-title"><h2>{{ rt('RAPPORT D’EXÉCUTION DE') }} {{ rt('PANNEAU') }}</h2></div>
+    <div class="b-status">{% if fiche.review_status == 'pending' %}{{ rt('À VÉRIFIER — NON CONFIRMÉE') }}{% endif %}</div>
+    <dl class="b-meta">
+      <div><dt>{{ rt('CHANTIER') }}</dt><dd>{{ (fiche.site.name[:33] ~ '…') if fiche.site and fiche.site.name|length > 36 else (fiche.site.name if fiche.site else '—') }}</dd></div>
+      <div><dt>{{ rt('PANNEAU') }}</dt><dd>{{ short('PANNEAU', fiche.panel_label, 14) }}</dd></div>
+      <div><dt>{{ rt('COUPE') }}</dt><dd>{{ short('COUPE', report_coupe.nome if report_coupe else '—', 14) }}</dd></div>
+      <div><dt>{{ rt('DATE DE FORAGE') }}</dt><dd>{{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</dd></div>
+    </dl>
+  </header>
+  <aside class="b-data">
+    <section class="b-block b-execution"><h3>{{ rt('Données générales') }}</h3><dl>
+      {{ row('Responsable', report_responsable if report_responsable|length <= 26 else rt('voir annexe A4.')) }}
+      {{ row('Machine', fiche.machine.name if fiche.machine else '—') }}
+      {{ row('Armature', armature if armature and armature|length <= 50 else (rt('voir annexe A4.') if armature else '—')) }}
+    </dl></section>
+    <section class="b-block b-beton"><h3>{{ rt('Bétonnage') }}</h3><dl>
+      {{ row('Type béton', fiche.type_beton or fiche.materiale or '—') }}
+      {{ row('Type coulage', report_technical(fiche.type_coulage or 'Gravitaire')) }}
+      {{ row('Largeur', number(larghezza_m, 'm')) }}
+      {{ row('Épaisseur', number(spessore_m, 'm')) }}
+      {{ row('Volume théorique', number(volume_teorico, 'm³')) }}
+      {{ row('Volume réel', number(volume_gettato, 'm³')) }}
+      {{ row('Différence / surconsommation', number(volume_diff, 'm³') ~ (' / ' ~ ('%+.1f'|format(volume_diff_percent)) ~ '%' if volume_diff_percent is not none else '')) }}
+    </dl></section>
+    <section class="b-block b-mud"><h3>{{ rt('Contrôle boue') }}</h3><dl>
+      {{ row('Densité', '—') }}{{ row('Sable %', '—') }}{{ row('Viscosité', '—') }}
+    </dl>
+    {% if fiche.sonic_previsto or fiche.inclinometre_previsto %}<p class="b-controls">{{ rt('Contrôles spéciaux') }}:<br>
+      {% if fiche.sonic_previsto %}{{ rt('Sonique') }}: {{ '✓' if fiche.sonic_realizzato is sameas true else '—' }} {% endif %}
+      {% if fiche.inclinometre_previsto %}{{ rt('Inclinomètre') }}: {{ '✓' if fiche.inclinometre_realizzato is sameas true else '—' }}{% endif %}
+    </p>{% endif %}</section>
+    <section class="b-block b-notes {{ 'b-notes--curve' if has_courbe_beton else '' }}"><h3>{{ rt('Observations') }}</h3>
+      <p>{{ rt('Observations détaillées : voir annexe A4.') if notes_annex else report_notes }}</p>
+      {% if soil_annex or details_annex or extra.rows %}<p class="b-annex-reference">{{ rt('Description et cotes') }}: {{ rt('voir annexe A4.') }}</p>{% endif %}
+      {% if fiche.pour_panels %}{% set group = fiche.pour_panels[0].pour %}
+      <p class="b-annex-reference">{{ rt('ANGLE' if group.kind == 'angle' else 'BÉTONNAGE COMMUN') }}: {{ rt('voir annexe A4.') }}</p>{% endif %}
+    </section>
+    {% if has_courbe_beton %}<section class="b-curve"><h3>{{ rt('COURBE DE BÉTONNAGE') }}</h3>
+      {{ compact_courbe_svg(courbe_beton_payload, schema_quota_partenza, datum, language=report_lang)|safe }}
+    </section>{% endif %}
+  </aside>
+  <div class="b-drawing">{{ panel_report_svg(visual_layers, theoretical_layers, schema_quota_partenza, datum, schema_depth, schema_quota_tn, schema_width_label, schema_thickness_label, schema_quota_base_meccanica, schema_quota_fondo, language=report_lang, compact=True, concrete_top=schema_quota_getto)|safe }}</div>
+  <footer class="b-signatures"><div>{{ rt('VISA') }}</div><section>
+    <span>{{ rt('ENTREPRISE') }}</span><span>{{ rt('CLIENT') }}</span><span>{{ rt("MAÎTRE D'ŒUVRE") }}</span>
+  </section></footer>
+</div>
+{% if soil_annex or notes_annex or details_annex or extra.rows or fiche.pour_panels %}
+<section class="technical-sheet-annex b-annex">
+  <h2>{{ rt('Annexe - terrains et observations') }}</h2>
+  <p>{{ fiche.site.name if fiche.site else '—' }} · {{ rt('Panneau') }} {{ fiche.panel_label }} · {{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</p>
+  {% if details_annex %}<p>{{ rt('Responsable') }}: {{ report_responsable }}<br>{{ rt('Armature') }}: {{ armature or '—' }}</p>{% endif %}
+  {% for label, value in extra.rows %}<p>{{ rt(label) }}: {{ value }}</p>{% endfor %}
+  {% if fiche.pour_panels %}{% set group=fiche.pour_panels[0].pour %}
+    <p><strong>{{ rt('ANGLE' if group.kind == 'angle' else 'BÉTONNAGE COMMUN') }} · {{ group.label }}</strong></p>
+    {% if group.kind == 'angle' %}<p>{{ rt('Fiche unique') }} · {{ fiche.pour_panels|map(attribute='label')|join(' + ') }}. {{ rt('Schéma : développement des bras, largeur nette totale.') }}</p>
+    {% else %}<p>{{ rt('Total commun') }}: {{ group.total_m3 if group.total_m3 is not none else '—' }} m³ · {{ rt('Part de cette fiche') }}: {{ number(volume_gettato, 'm³') }} ({{ rt('répartie, non mesurée séparément') }}).</p>{% endif %}
+  {% endif %}
+  {% if soil_annex %}{% for heading, rows in [(rt('Sols rencontrés'), visual_layers), (rt('Modèle géologique théorique'), theoretical_layers)] %}
+    {% if rows %}<h3>{{ heading }}</h3><table class="soil-annex-table"><thead><tr><th>#</th><th>{{ rt('De') }} {{ datum }} (m)</th><th>{{ rt('À') }} {{ datum }} (m)</th><th>{{ rt('Nature du sol') }}</th></tr></thead><tbody>
+    {% for layer in rows %}<tr><td>{{ loop.index }}</td><td>{{ number(schema_quota_partenza-layer.da) if schema_quota_partenza is not none else '—' }}</td><td>{{ number(schema_quota_partenza-layer.a) if schema_quota_partenza is not none else '—' }}</td><td>{{ report_technical(layer.materiale) }}</td></tr>{% endfor %}
+    </tbody></table>{% endif %}
+  {% endfor %}{% endif %}
+  {% if notes_annex %}<h3>{{ rt('Observations') }}</h3><p class="soil-annex-notes">{{ report_notes }}</p>{% endif %}
+</section>{% endif %}

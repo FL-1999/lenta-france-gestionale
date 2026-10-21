@@ -8,7 +8,7 @@ import pytest
 from playwright.sync_api import expect, sync_playwright
 from sqlalchemy.orm import Session
 from models import Fiche, FicheStratigrafia, FicheTypeEnum, Site, User
-from main import _load_style_css, _wrap_sheet_document
+from main import _load_style_css, _wrap_sheet_document, _pdf_logo_file_src
 from test_operations_live import live_operations
 
 pytestmark = pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS') != '1', reason='Browser checks opt-in')
@@ -62,8 +62,8 @@ def test_languages_preview_print_pdf_dossier_and_phone(live_operations):
             expect(printed.locator('.technical-sheet__header-title')).to_have_text(heading)
             printed.emulate_media(media='print')
             printed.evaluate('document.fonts.ready')
-            bounds = printed.evaluate('''() => ({last:document.querySelector('.technical-soil-block:last-child').getBoundingClientRect().bottom,
-                footer:document.querySelector('.technical-visa-block').getBoundingClientRect().top})''')
+            bounds = printed.evaluate('''() => ({last:document.querySelector('.b-notes').getBoundingClientRect().bottom,
+                footer:document.querySelector('.b-signatures').getBoundingClientRect().top})''')
             printed.screenshot(path=str(out/f'print-{lang}.png'), full_page=True)
             assert bounds['last'] <= bounds['footer'], bounds
             printed.close()
@@ -74,13 +74,15 @@ def test_languages_preview_print_pdf_dossier_and_phone(live_operations):
                 assert page.locator('#fiche-report-lang').bounding_box()['height'] >= 44
                 if width == 390:
                     page.screenshot(path=str(out/f'fiche-language-{lang}-iphone.png'))
+            article = page.locator('#technical-sheet-export').evaluate('el=>el.outerHTML').replace('/static/img/logo.png', _pdf_logo_file_src())
+            (out/f'fiche-{lang}.html').write_text(_wrap_sheet_document(article, _load_style_css(), lang), encoding='utf-8')
             response = page.request.get(url+f'/pdf?report_lang={lang}', timeout=60000)
             assert response.status == 200
             (out/f'fiche-{lang}.pdf').write_bytes(response.body())
             doc = pdfium.PdfDocument(response.body()); assert len(doc) == 1
             text = doc[0].get_textpage().get_text_range()
-            assert heading.upper() in text.upper() and soil in text
-            for value in ('P5', '13,50', '12,50', '2,80', '10.70', 'C30/37', 'Nota originale:'):
+            assert heading.upper() in text.upper() and soil in ' '.join(text.split())
+            for value in ('P5', '13,50', '12,50', '2,80', 'C30/37', 'Nota originale:'):
                 assert value in text, (lang, value)
             assert doc[0].get_width() == pytest.approx(595.28, abs=1)
             assert doc[0].get_height() == pytest.approx(841.89, abs=1)
@@ -91,7 +93,7 @@ def test_languages_preview_print_pdf_dossier_and_phone(live_operations):
                 fallback = HTML(string=_wrap_sheet_document(article, _load_style_css(), lang), base_url=origin).write_pdf()
                 (out/f'fiche-{lang}-weasyprint.pdf').write_bytes(fallback)
                 doc = pdfium.PdfDocument(fallback); assert len(doc) == 1
-                assert soil in doc[0].get_textpage().get_text_range()
+                assert soil in ' '.join(doc[0].get_textpage().get_text_range().split())
                 doc.close()
             response = page.request.get(origin+f'/manager/cantieri/{ids["site"]}/fiches-pdf/tutte?report_lang={lang}', timeout=60000)
             assert response.status == 200
@@ -99,6 +101,37 @@ def test_languages_preview_print_pdf_dossier_and_phone(live_operations):
             doc = pdfium.PdfDocument(response.body()); assert len(doc) == 2
             assert ('SCHEDE DI SCAVO' if lang == 'it' else 'FICHES DE FORAGES') in doc[0].get_textpage().get_text_range()
             doc[0].render(scale=1).to_pil().save(out/f'dossier-{lang}.png'); doc.close()
+        # B2 adds a compact curve without reducing the wall or adding a page.
+        with Session(engine) as db:
+            fiche = db.get(Fiche, fid)
+            fiche.courbe_beton_active = True
+            fiche.courbe_beton_volume_total = 28.31
+            fiche.courbe_beton_hauteur_initiale = 10.7
+            fiche.courbe_beton_realisee = '[{"volume":0,"hauteur":10.7},{"volume":38,"hauteur":0}]'
+            db.commit()
+        page.goto(url)
+        expect(page.locator('[data-report-model]')).to_have_attribute('data-report-model', 'B2')
+        page.emulate_media(media='print')
+        bounds = page.evaluate("""() => {
+          const r = s => document.querySelector(s).getBoundingClientRect();
+          return {notes:r('.b-notes').bottom, curve:r('.b-curve').top, bottom:r('.b-curve').bottom,
+            signatures:r('.b-signatures').top, wall:r('.b-drawing').height}; }""")
+        assert bounds['notes'] < bounds['curve'] and bounds['bottom'] < bounds['signatures'], bounds
+        assert bounds['wall'] == pytest.approx(225.4*96/25.4, abs=1)
+        page.emulate_media(media='screen')
+        article = page.locator('#technical-sheet-export').evaluate('el=>el.outerHTML').replace('/static/img/logo.png', _pdf_logo_file_src())
+        (out/'fiche-b2-fr.html').write_text(_wrap_sheet_document(article, _load_style_css(), 'fr'), encoding='utf-8')
+        response = page.request.get(url+'/pdf', timeout=60000)
+        assert response.status == 200
+        (out/'fiche-b2-fr.pdf').write_bytes(response.body())
+        doc = pdfium.PdfDocument(response.body()); assert len(doc) == 1
+        text = doc[0].get_textpage().get_text_range()
+        assert 'COURBE DE BÉTONNAGE' in text and '13.50' in text and '2.80' in text
+        doc[0].render(scale=1.5).to_pil().save(out/'fiche-b2-fr.png'); doc.close()
+        if sys.platform != 'win32':
+            fallback = HTML(string=(out/'fiche-b2-fr.html').read_text(encoding='utf-8'), base_url=origin).write_pdf()
+            doc = pdfium.PdfDocument(fallback); assert len(doc) == 1
+            assert 'COURBE DE BÉTONNAGE' in doc[0].get_textpage().get_text_range(); doc.close()
         # Annexes, pile labels and concrete curve also follow the language.
         with Session(engine) as db:
             fiche = db.get(Fiche, fid)

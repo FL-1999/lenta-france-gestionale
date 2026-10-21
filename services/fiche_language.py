@@ -7,6 +7,8 @@ import re
 
 
 REPORT_IT = {
+    "Départ du forage": "Partenza scavo",
+    "Voir annexe": "Vedi allegato",
     "Rapport d'exécution": "Rapporto di esecuzione",
     "RAPPORT D’EXÉCUTION DE": "RAPPORTO DI ESECUZIONE",
     "Rapport d'exécution imprimable": "Rapporto di esecuzione stampabile",

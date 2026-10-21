@@ -112,7 +112,9 @@ from notifications import (
     notify_site_status_change,
 )
 from services.personale_profiles import ensure_user_personale_profile
-from services.soil_diagram import comparison_svg as soil_comparison_svg, panel_report_svg
+from services.soil_diagram import comparison_svg as soil_comparison_svg, panel_report_svg, soils_need_annex
+from services.fiche_curve import compact_courbe_svg
+from services import fiche_translation
 from services.fiche_language import report_language, report_translator, technical_translator
 from services.soil_materials import (
     GRAIN, SIZE, FINES, describe_material, split_description,
@@ -8994,6 +8996,8 @@ def manager_fiche_dettaglio(
             return RedirectResponse(
                 url=request.url_for("manager_fiches_list"), status_code=303
             )
+        translation = fiche_translation.cached(db, fiche, report_lang)
+        translated_notes = translation.translated if translation else None
     finally:
         db.close()
 
@@ -9005,6 +9009,9 @@ def manager_fiche_dettaglio(
             current_user,
             fiche=fiche,
             report_lang=report_lang,
+            translated_notes=translated_notes,
+            translation_enabled=has_perm(current_user, 'admin.access') and fiche_translation.configuration(current_user)[0],
+            translation_source_hash=fiche_translation.digest(fiche_translation.source(fiche)),
             can_confirm_fiche=can_review(current_user),
             fiche_review_token=review_token(fiche, current_user),
             volume_teorico=_calculate_fiche_volume_teorico(fiche),
@@ -9015,6 +9022,8 @@ def manager_fiche_dettaglio(
             ),
             soil_comparison_svg=soil_comparison_svg,
             panel_report_svg=panel_report_svg,
+            soils_need_annex=soils_need_annex,
+            compact_courbe_svg=compact_courbe_svg,
             technical_fr=_translate_fiche_technical_text,
             fiche_element_label_fr=_fiche_element_label_fr,
             courbe_beton_payload=_build_courbe_beton_payload(fiche),
@@ -9026,6 +9035,47 @@ def manager_fiche_dettaglio(
 # -------------------------------------------------
 # PDF EXPORT — FICHE
 # -------------------------------------------------
+
+@app.post('/manager/fiches/{fiche_id}/translate-notes')
+def manager_fiche_translate_notes(request: Request, fiche_id: int,
+        report_lang: Literal['fr', 'it'] = Form('fr'), csrf: str = Form(''), source_hash: str = Form(''),
+        current_user: User = Depends(get_current_active_user_html)):
+    import hmac
+    from urllib.parse import urlsplit
+    from models import FicheTranslation
+    from sqlalchemy.exc import IntegrityError
+    enabled, key = fiche_translation.configuration(current_user)
+    if not has_perm(current_user, 'admin.access') or not enabled or request.headers.get('authorization'):
+        raise HTTPException(403, 'Traduzione riservata all’amministratore abilitato / Traduction réservée à l’administrateur autorisé')
+    origin = request.headers.get('origin')
+    if request.headers.get('sec-fetch-site') == 'cross-site' or origin and urlsplit(origin).netloc != request.url.netloc:
+        raise HTTPException(403, 'Origine non autorizzata')
+    with SessionLocal() as db:
+        fiche = db.get(Fiche, fiche_id)
+        if not fiche:
+            raise HTTPException(404, 'Fiche non trovata')
+        if not hmac.compare_digest(csrf, review_token(fiche, current_user)):
+            raise HTTPException(409, 'Ricarica la fiche / Rechargez la fiche')
+        original = fiche_translation.source(fiche)
+        if source_hash != fiche_translation.digest(original):
+            raise HTTPException(409, 'Le annotazioni sono cambiate / Les observations ont changé')
+        if fiche_translation.cached(db, fiche, report_lang):
+            return {'ready': True}
+        fiche_translation.quota(db, current_user)
+        db.commit()
+        translated = fiche_translation.generate(original, report_lang, key)
+        db.refresh(fiche)
+        if fiche_translation.digest(fiche_translation.source(fiche)) != source_hash:
+            raise HTTPException(409, 'Le annotazioni sono cambiate: riprova / Les observations ont changé : réessayez')
+        db.add(FicheTranslation(fiche_id=fiche.id, language=report_lang, source_hash=source_hash,
+            original=original, translated=translated, actor_id=current_user.id))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            if not fiche_translation.cached(db, fiche, report_lang):
+                raise HTTPException(503, 'Traduzione non salvata: riprova / Traduction non enregistrée : réessayez') from None
+        return {'ready': True}
 
 def _pdf_project_dir() -> str:
     import os
@@ -9261,11 +9311,15 @@ def _load_fiche_for_pdf(db, fiche_id: int):
 
 def _render_fiche_article(request: Request, current_user: User, fiche: Fiche, report_lang: str = "fr") -> str:
     """Renderizza SOLO l'articolo del rapport d'exécution di una fiche."""
+    from sqlalchemy.orm import object_session
+    db = object_session(fiche)
+    translation = fiche_translation.cached(db, fiche, report_lang) if db is not None else None
     ctx = build_template_context(
         request,
         current_user,
         fiche=fiche,
         report_lang=report_language(report_lang),
+        translated_notes=translation.translated if translation else None,
         volume_teorico=_calculate_fiche_volume_teorico(fiche),
         stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
         theoretical_soil_layers=_parse_theoretical_soil_layers(
@@ -9274,6 +9328,8 @@ def _render_fiche_article(request: Request, current_user: User, fiche: Fiche, re
         ),
         soil_comparison_svg=soil_comparison_svg,
         panel_report_svg=panel_report_svg,
+        soils_need_annex=soils_need_annex,
+        compact_courbe_svg=compact_courbe_svg,
         technical_fr=_translate_fiche_technical_text,
         fiche_element_label_fr=_fiche_element_label_fr,
         courbe_beton_payload=_build_courbe_beton_payload(fiche),
