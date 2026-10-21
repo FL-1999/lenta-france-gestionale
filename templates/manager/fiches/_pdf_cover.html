@@ -1,3 +1,6 @@
+{% set report_lang = fiche_report_language(report_lang|default(request.query_params.get('report_lang', 'fr'))) %}
+{% set rt = fiche_report_translator(report_lang) %}
+{% set report_technical = fiche_report_technical_translator(report_lang) %}
 {# ══════════════════════════════════════════════════════
    PAGE DE GARDE — copertina PDF unico consegna cliente
    Variabili attese:
@@ -9,7 +12,7 @@
      descriptif_terrains → str (modello geologico teorico)
      fiches_count    → int
    ══════════════════════════════════════════════════════ #}
-<div class="pdf-cover">
+<div class="pdf-cover" lang="{{ report_lang }}">
     <div class="pdf-cover__logo">
         <img src="{{ logo_src }}" alt="Lenta France Fondations Spéciales">
     </div>
@@ -21,54 +24,54 @@
 
     {% if client or maitre_oeuvre or entreprise %}
     <div class="pdf-cover__parties">
-        {% if client %}<div><span>Client :</span> <strong>{{ client }}</strong></div>{% endif %}
-        {% if maitre_oeuvre %}<div><span>Maître d'œuvre :</span> <strong>{{ maitre_oeuvre }}</strong></div>{% endif %}
-        {% if entreprise %}<div><span>Entreprise :</span> <strong>{{ entreprise }}</strong></div>{% endif %}
+        {% if client %}<div><span>{{ rt('Client') }} :</span> <strong>{{ client }}</strong></div>{% endif %}
+        {% if maitre_oeuvre %}<div><span>{{ rt("Maître d'œuvre") }} :</span> <strong>{{ maitre_oeuvre }}</strong></div>{% endif %}
+        {% if entreprise %}<div><span>{{ rt('Entreprise') }} :</span> <strong>{{ entreprise }}</strong></div>{% endif %}
     </div>
     {% endif %}
 
     <div class="pdf-cover__title-block">
-        <h1 class="pdf-cover__type">{{ 'PAROIS ET PIEUX' if all_types else ('PIEUX' if is_palo else 'PAROI MOULEE') }}</h1>
+        <h1 class="pdf-cover__type">{{ rt('PAROIS ET PIEUX' if all_types else ('PIEUX' if is_palo else 'PAROI MOULEE')) }}</h1>
         <h2 class="pdf-cover__mission">{{ mission }}</h2>
-        <h3 class="pdf-cover__subtitle">FICHES DE FORAGES DES {{ 'PANNEAUX ET PIEUX' if all_types else ('PIEUX' if is_palo else 'PANNEAUX') }}</h3>
+        <h3 class="pdf-cover__subtitle">{{ rt('FICHES DE FORAGES DES') }} {{ rt('PANNEAUX ET PIEUX' if all_types else ('PIEUX' if is_palo else 'PANNEAUX')) }}</h3>
     </div>
 
     <div class="pdf-cover__affaire-row">
-        <span class="pdf-cover__affaire">AFFAIRE : &nbsp;<strong>{{ affaire or '—' }}</strong></span>
-        <span class="pdf-cover__indice">INDICE : &nbsp;<strong>{{ indice }}</strong></span>
+        <span class="pdf-cover__affaire">{{ rt('AFFAIRE') }} : &nbsp;<strong>{{ affaire or '—' }}</strong></span>
+        <span class="pdf-cover__indice">{{ rt('INDICE') }} : &nbsp;<strong>{{ indice }}</strong></span>
     </div>
 
     <div class="pdf-cover__descriptif">
-        <p class="pdf-cover__descriptif-title">Descriptif des terrains :</p>
-        <p class="pdf-cover__descriptif-intro">Les rapports d'étude géotechnique du projet ont établi le modèle géologique suivant :</p>
+        <p class="pdf-cover__descriptif-title">{{ rt('Descriptif des terrains') }} :</p>
+        <p class="pdf-cover__descriptif-intro">{{ rt("Les rapports d'étude géotechnique du projet ont établi le modèle géologique suivant :") }}</p>
         <div class="pdf-cover__descriptif-box">
             {% if descriptif_terrains %}
                 {% for ligne in descriptif_terrains.split('\n') %}
-                    {% if ligne.strip() %}<div class="pdf-cover__sol">{{ ligne.strip() }}</div>{% endif %}
+                    {% if ligne.strip() %}<div class="pdf-cover__sol">{{ report_technical(ligne.strip()) }}</div>{% endif %}
                 {% endfor %}
             {% else %}
                 <div class="pdf-cover__sol">—</div>
             {% endif %}
         </div>
         <p class="pdf-cover__descriptif-note">
-            L'exécution de {{ 'la fondation profonde' if is_palo else 'la paroi moulée' }} ne nous permet pas d'avoir une description aussi précise.
+            {{ rt("L'exécution de la fondation profonde ne nous permet pas d'avoir une description aussi précise." if is_palo else "L'exécution de la paroi moulée ne nous permet pas d'avoir une description aussi précise.") }}
         </p>
         <p class="pdf-cover__descriptif-note">
-            Notre descriptif sera plus général car les outils utilisés pour la foration déorganisent le terrain en place (benne preneuse, bucket,…)
+            {{ rt("Notre descriptif sera plus général car les outils utilisés pour la foration déorganisent le terrain en place (benne preneuse, bucket,…)") }}
         </p>
     </div>
 
     <table class="pdf-cover__revision">
         <thead>
             <tr>
-                <th>indice</th><th>date</th><th>Sujet révision</th><th>Rédaction</th><th>Contrôle</th>
+                <th>{{ rt('indice') }}</th><th>{{ rt('date') }}</th><th>{{ rt('Sujet révision') }}</th><th>{{ rt('Rédaction') }}</th><th>{{ rt('Contrôle') }}</th>
             </tr>
         </thead>
         <tbody>
             <tr>
                 <td>{{ indice }}</td>
                 <td>{{ revision_date or '' }}</td>
-                <td>Première diffusion</td>
+                <td>{{ rt('Première diffusion') }}</td>
                 <td>{{ redaction or '' }}</td>
                 <td>{{ controle or '' }}</td>
             </tr>

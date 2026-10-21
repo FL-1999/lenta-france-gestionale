@@ -102,6 +102,7 @@
     display: block !important; padding-top: 1mm !important; overflow: visible !important;
   }
   #technical-sheet-export .technical-data-block { padding: 1mm 1.5mm !important; margin: 0 0 1mm !important; }
+  #technical-sheet-export[lang="it"] .technical-data-column .technical-data-block { margin-bottom:.4mm !important; padding:.7mm 1.5mm !important; }
   #technical-sheet-export .technical-data-block h3 {
     font-size: 7.2pt !important; line-height: 1.2 !important; text-transform: none !important;
     margin: 0 0 1mm !important; padding: 0 !important;
@@ -133,4 +134,24 @@
   #technical-sheet-export .technical-visa-cells { flex: 1; min-height: 0; }
   #technical-sheet-export .technical-visa-label { font-size: 7pt !important; padding: .7mm !important; }
   #technical-sheet-export .technical-visa-space { min-height: 0 !important; flex: 1; }
+  #technical-sheet-export .technical-sheet-annex--curve .technical-data-block--courbe-detail {
+    position:static !important; display:block !important; width:100% !important;
+    height:auto !important; margin:6mm 0 !important; padding:2mm !important;
+    box-sizing:border-box !important;
+  }
+  #technical-sheet-export .technical-sheet-annex--curve h3 { font-size:13pt !important; text-align:center !important; }
+  #technical-sheet-export .technical-sheet-annex--curve .courbe-pdf-metrics { display:none !important; }
+  #technical-sheet-export .technical-sheet-annex--curve .courbe-detail-metrics {
+    display:block !important; color:#111 !important; margin:4mm 0 !important;
+  }
+  #technical-sheet-export .technical-sheet-annex--curve .courbe-detail-metrics > div {
+    display:flex !important; justify-content:space-between; border-bottom:1px solid #ddd;
+  }
+  #technical-sheet-export .technical-sheet-annex--curve .courbe-detail-metrics dt,
+  #technical-sheet-export .technical-sheet-annex--curve .courbe-detail-metrics dd { color:#111 !important; font-size:9pt !important; }
+  #technical-sheet-export .technical-sheet-annex--curve .courbe-legend--pdf {
+    flex-direction:row !important; justify-content:center !important; gap:5mm !important; margin:4mm 0 !important;
+  }
+  #technical-sheet-export .technical-sheet-annex--curve .courbe-legend__item { font-size:9pt !important; }
+  #technical-sheet-export .technical-sheet-annex--curve .courbe-beton-pdf-chart svg { height:auto !important; width:100% !important; }
 }

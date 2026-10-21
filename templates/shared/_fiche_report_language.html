@@ -1,0 +1,13 @@
+<form method="get" action="{{ request.url.path }}#{{ report_anchor|default('fiche-report-options') }}" class="fiche-report-language" id="fiche-report-options" data-report-language-form>
+  {% for key, value in request.query_params.multi_items() if key != 'report_lang' %}
+  <input type="hidden" name="{{ key }}" value="{{ value }}">
+  {% endfor %}
+  <label for="fiche-report-lang">{{ 'Langue de la fiche / PDF' if lang == 'fr' else 'Lingua fiche / PDF' }}</label>
+  <select id="fiche-report-lang" name="report_lang">
+    <option value="fr" {% if report_lang == 'fr' %}selected{% endif %}>Français</option>
+    <option value="it" {% if report_lang == 'it' %}selected{% endif %}>Italiano</option>
+  </select>
+  <noscript><button class="btn btn-secondary" type="submit">{{ 'Appliquer' if lang == 'fr' else 'Applica' }}</button></noscript>
+</form>
+<link rel="stylesheet" href="/static/css/fiche-report-language.css?v=20261021a">
+<script src="/static/js/fiche-report-language.js?v=20261021a" defer></script>

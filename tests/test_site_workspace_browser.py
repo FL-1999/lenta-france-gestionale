@@ -50,7 +50,7 @@ def test_site_workspace_angle_pdf_and_status(live_operations):
         with Session(engine) as db:
             f=db.query(Fiche).one();fid=f.id;assert f.panel_name=='P7 A/B'
         page.goto(origin+f'/manager/fiches/{fid}')
-        expect(page.locator('#technical-sheet-export')).to_contain_text('Fiche unica')
+        expect(page.locator('#technical-sheet-export')).to_contain_text('Fiche unique')
         for path,name,count in [(f'/manager/fiches/{fid}/pdf','angle.pdf',1),(base+'/fiches-pdf/paratie','angle-dossier.pdf',2)]:
             r=page.request.get(origin+path,timeout=60000);assert r.status==200,r.text()[:300]
             binary=r.body();(out/name).write_bytes(binary)
