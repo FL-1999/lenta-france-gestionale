@@ -1,14 +1,22 @@
 {# Approved B1 / B2: identical wall size, optional compact curve at lower left. #}
 {% set soil_annex = soils_need_annex(visual_layers, theoretical_layers, schema_depth, report_lang) %}
-{% set notes_annex = (report_notes|wordwrap(26)).split('\n')|length > (5 if has_courbe_beton else 20) %}
+{% set notes_annex = (report_notes|wordwrap(26)).split('\n')|length > (5 if has_courbe_beton else (12 if fiche.pour_panels else 20)) %}
 {% set armature = report_coupe.armatura if report_coupe else '' %}
 {% set details_annex = report_responsable|length > 26 or (fiche.site.name|length if fiche.site else 0) > 36 or (armature|length if armature else 0) > 50 %}
 {% set extra = namespace(rows=[]) %}
+{% set group = fiche.pour_panels[0].pour if fiche.pour_panels else none %}
+{% set group_labels = fiche.pour_panels|map(attribute='label')|join(' + ') if group else '' %}
+{% set group_annex = group and (has_courbe_beton or group.label|length > 35 or group_labels|length > 50) %}
 {% macro number(value, unit='') -%}{{ ('%.2f'|format(value)).replace('.', ',') ~ (' ' ~ unit if unit else '') if value is not none else '—' }}{%- endmacro %}
 {% macro short(label, value, limit=22) -%}
   {% if value|string|length > limit %}{% set extra.rows = extra.rows + [(label, value)] %}{{ rt('Voir annexe') }}{% else %}{{ value }}{% endif %}
 {%- endmacro %}
 {% macro row(label, value) %}<div class="b-row"><dt>{{ rt(label) }}</dt><dd>{{ short(label, value) }}</dd></div>{% endmacro %}
+{% macro group_details() %}
+  <p><strong>{{ rt('ANGLE' if group.kind == 'angle' else 'BÉTONNAGE COMMUN') }} · {{ group.label }}</strong></p>
+  {% if group.kind == 'angle' %}<p>{{ rt('Fiche unique') }} · {{ group_labels }}. {{ rt('Schéma : développement des bras, largeur nette totale.') }}</p>
+  {% else %}<p>{{ rt('Total commun') }}: {{ group.total_m3 if group.total_m3 is not none else '—' }} m³ · {{ rt('Part de cette fiche') }}: {{ number(volume_gettato, 'm³') }} ({{ rt('répartie, non mesurée séparément') }}).</p>{% endif %}
+{% endmacro %}
 <div class="fiche-b-page" data-report-model="{{ 'B2' if has_courbe_beton else 'B1' }}">
   <header class="b-header">
     <img src="{{ pdf_logo_src or '/static/img/logo.png' }}" alt="Lenta France Fondations Spéciales">
@@ -46,8 +54,8 @@
     <section class="b-block b-notes {{ 'b-notes--curve' if has_courbe_beton else '' }}"><h3>{{ rt('Observations') }}</h3>
       <p>{{ rt('Observations détaillées : voir annexe A4.') if notes_annex else report_notes }}</p>
       {% if soil_annex or details_annex or extra.rows %}<p class="b-annex-reference">{{ rt('Description et cotes') }}: {{ rt('voir annexe A4.') }}</p>{% endif %}
-      {% if fiche.pour_panels %}{% set group = fiche.pour_panels[0].pour %}
-      <p class="b-annex-reference">{{ rt('ANGLE' if group.kind == 'angle' else 'BÉTONNAGE COMMUN') }}: {{ rt('voir annexe A4.') }}</p>{% endif %}
+      {% if group_annex %}<p class="b-annex-reference">{{ rt('ANGLE' if group.kind == 'angle' else 'BÉTONNAGE COMMUN') }}: {{ rt('voir annexe A4.') }}</p>
+      {% elif group %}{{ group_details() }}{% endif %}
     </section>
     {% if has_courbe_beton %}<section class="b-curve"><h3>{{ rt('COURBE DE BÉTONNAGE') }}</h3>
       {{ compact_courbe_svg(courbe_beton_payload, schema_quota_partenza, datum, language=report_lang)|safe }}
@@ -58,17 +66,13 @@
     <span>{{ rt('ENTREPRISE') }}</span><span>{{ rt('CLIENT') }}</span><span>{{ rt("MAÎTRE D'ŒUVRE") }}</span>
   </section></footer>
 </div>
-{% if soil_annex or notes_annex or details_annex or extra.rows or fiche.pour_panels %}
+{% if soil_annex or notes_annex or details_annex or extra.rows or group_annex %}
 <section class="technical-sheet-annex b-annex">
   <h2>{{ rt('Annexe - terrains et observations') }}</h2>
   <p>{{ fiche.site.name if fiche.site else '—' }} · {{ rt('Panneau') }} {{ fiche.panel_label }} · {{ fiche.date.strftime('%d/%m/%Y') if fiche.date else '—' }}</p>
   {% if details_annex %}<p>{{ rt('Responsable') }}: {{ report_responsable }}<br>{{ rt('Armature') }}: {{ armature or '—' }}</p>{% endif %}
   {% for label, value in extra.rows %}<p>{{ rt(label) }}: {{ value }}</p>{% endfor %}
-  {% if fiche.pour_panels %}{% set group=fiche.pour_panels[0].pour %}
-    <p><strong>{{ rt('ANGLE' if group.kind == 'angle' else 'BÉTONNAGE COMMUN') }} · {{ group.label }}</strong></p>
-    {% if group.kind == 'angle' %}<p>{{ rt('Fiche unique') }} · {{ fiche.pour_panels|map(attribute='label')|join(' + ') }}. {{ rt('Schéma : développement des bras, largeur nette totale.') }}</p>
-    {% else %}<p>{{ rt('Total commun') }}: {{ group.total_m3 if group.total_m3 is not none else '—' }} m³ · {{ rt('Part de cette fiche') }}: {{ number(volume_gettato, 'm³') }} ({{ rt('répartie, non mesurée séparément') }}).</p>{% endif %}
-  {% endif %}
+  {% if group_annex %}{{ group_details() }}{% endif %}
   {% if soil_annex %}{% for heading, rows in [(rt('Sols rencontrés'), visual_layers), (rt('Modèle géologique théorique'), theoretical_layers)] %}
     {% if rows %}<h3>{{ heading }}</h3><table class="soil-annex-table"><thead><tr><th>#</th><th>{{ rt('De') }} {{ datum }} (m)</th><th>{{ rt('À') }} {{ datum }} (m)</th><th>{{ rt('Nature du sol') }}</th></tr></thead><tbody>
     {% for layer in rows %}<tr><td>{{ loop.index }}</td><td>{{ number(schema_quota_partenza-layer.da) if schema_quota_partenza is not none else '—' }}</td><td>{{ number(schema_quota_partenza-layer.a) if schema_quota_partenza is not none else '—' }}</td><td>{{ report_technical(layer.materiale) }}</td></tr>{% endfor %}
