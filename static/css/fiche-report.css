@@ -102,7 +102,7 @@
     display: block !important; padding-top: 1mm !important; overflow: visible !important;
   }
   #technical-sheet-export .technical-data-block { padding: 1mm 1.5mm !important; margin: 0 0 1mm !important; }
-  #technical-sheet-export[lang="it"] .technical-data-column .technical-data-block { margin-bottom:.4mm !important; }
+  #technical-sheet-export[lang="it"] .technical-data-column .technical-data-block { margin-bottom:.4mm !important; padding:.7mm 1.5mm !important; }
   #technical-sheet-export .technical-data-block h3 {
     font-size: 7.2pt !important; line-height: 1.2 !important; text-transform: none !important;
     margin: 0 0 1mm !important; padding: 0 !important;
