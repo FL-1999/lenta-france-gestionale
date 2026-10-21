@@ -88,18 +88,17 @@ def panel_report_svg(encountered, theoretical, origin, datum, depth, tn,
         '<g font-family="Arial" fill="#111">',
     ]
     if compact:
-        # Align the elevation key with the outer edges of the guide walls.
-        # Labels and values share columns instead of floating over the drawing.
+        # Keep labels and values close in a compact key centred over the guide walls.
         elevations = [("Terrain naturel (TN)", tn), ("Départ du forage", origin)]
         if concrete_top is not None:
             elevations.append(("Cote tête béton", concrete_top))
         key_height = len(elevations) * 17 + 4
         parts.append(f'<g class="panel-elevation-key" font-size="13">'
-                     f'<rect x="115" y="30" width="370" height="{key_height}" fill="#f1f5f8"/>')
+                     f'<rect x="175" y="30" width="250" height="{key_height}" fill="#f1f5f8"/>')
         for index, (label, value) in enumerate(elevations):
             y = 43 + index * 17
-            parts.append(f'<text class="panel-top-label" x="125" y="{y}" fill="#334155">{tr(label)}</text>'
-                         f'<text class="panel-top-value" x="475" y="{y}" text-anchor="end" font-weight="bold">{number(value)} {ref}</text>')
+            parts.append(f'<text class="panel-top-label" x="185" y="{y}" fill="#334155">{tr(label)}</text>'
+                         f'<text class="panel-top-value" x="415" y="{y}" text-anchor="end" font-weight="bold">{number(value)} {ref}</text>')
         parts.append('</g>')
     else:
         parts.extend([
