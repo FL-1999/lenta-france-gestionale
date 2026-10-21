@@ -86,8 +86,27 @@ def panel_report_svg(encountered, theoretical, origin, datum, depth, tn,
         'width="800" height="980" class="technical-panel-diagram" role="img" '
         f'aria-label="{tr("Paroi, murettes guides et sols à la même échelle")}">',
         '<g font-family="Arial" fill="#111">',
-        f'<text class="panel-top-label" x="400" y="25" text-anchor="middle" font-size="18" font-weight="bold">{tr("Terrain naturel (TN)")} : {number(tn)} {ref}</text>',
-        f'<text class="panel-top-label" x="400" y="53" text-anchor="middle" font-size="18" font-weight="bold">{tr("Départ du forage (profondeur 0 m)")} : {number(origin)} {ref}</text>',
+    ]
+    if compact:
+        # Align the elevation key with the outer edges of the guide walls.
+        # Labels and values share columns instead of floating over the drawing.
+        elevations = [("Terrain naturel (TN)", tn), ("Départ du forage", origin)]
+        if concrete_top is not None:
+            elevations.append(("Cote tête béton", concrete_top))
+        key_height = len(elevations) * 17 + 4
+        parts.append(f'<g class="panel-elevation-key" font-size="13">'
+                     f'<rect x="115" y="30" width="370" height="{key_height}" fill="#f1f5f8"/>')
+        for index, (label, value) in enumerate(elevations):
+            y = 43 + index * 17
+            parts.append(f'<text class="panel-top-label" x="125" y="{y}" fill="#334155">{tr(label)}</text>'
+                         f'<text class="panel-top-value" x="475" y="{y}" text-anchor="end" font-weight="bold">{number(value)} {ref}</text>')
+        parts.append('</g>')
+    else:
+        parts.extend([
+            f'<text class="panel-top-label" x="400" y="25" text-anchor="middle" font-size="18" font-weight="bold">{tr("Terrain naturel (TN)")} : {number(tn)} {ref}</text>',
+            f'<text class="panel-top-label" x="400" y="53" text-anchor="middle" font-size="18" font-weight="bold">{tr("Départ du forage (profondeur 0 m)")} : {number(origin)} {ref}</text>',
+        ])
+    parts.extend([
         # The complete geometry moves down 40 units; no face is cropped.
         '<g transform="translate(0 40)">',
         '<g class="panel-guide-back" stroke="#555" stroke-width="1.5">',
@@ -114,7 +133,7 @@ def panel_report_svg(encountered, theoretical, origin, datum, depth, tn,
         f'<text x="285" y="518" text-anchor="middle" font-size="16" font-weight="bold">{tr("Largeur")} = {escape(str(width_label))}</text>',
         f'<text x="285" y="678" text-anchor="middle" font-size="15" font-weight="bold">{tr("Epaisseur")} = {escape(str(thickness_label))}</text>',
         '</g></g>',
-    ]
+    ])
     for y, label, value in ((940, "BASE PAROI MECANIQUE", mechanical_base),
                              (963, "BASE PAROI HYDRAULIQUE", hydraulic_base)):
         if value is not None:
@@ -126,14 +145,10 @@ def panel_report_svg(encountered, theoretical, origin, datum, depth, tn,
     if compact:
         # Crop empty canvas only. The wall/guide geometry and uniform scale stay identical.
         svg = svg.replace('viewBox="0 0 800 980"', 'viewBox="75 0 606 980"').replace('width="800"', 'width="606"')
-        svg = svg.replace('x="400"', 'x="370"').replace('y="25"', 'y="40"').replace('y="53"', 'y="60"')
-        svg = svg.replace(tr('Départ du forage (profondeur 0 m)'), tr('Départ du forage'))
         svg = svg.replace(f'{tr("Longueur forée")} = {number(depth)} m',
                           f'{number(origin)} → {number(hydraulic_base)} m {ref}')
         old = comparison_svg(encountered, theoretical, origin, datum, depth, aligned=True, language=language)
         svg = svg.replace(old, narrow_soils_svg(encountered, theoretical, origin, datum, depth, language=language))
-        if concrete_top is not None:
-            svg = svg.replace('</svg>', f'<text x="370" y="80" text-anchor="middle" font-family="Arial" font-size="14">{tr("Cote tête béton")} : {number(concrete_top)} {ref}</text></svg>')
     return svg
 
 
