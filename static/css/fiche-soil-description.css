@@ -2,21 +2,17 @@
 .soil-description {
   min-width: 0;
   margin: 0;
-  padding: 12px;
-  border: 1px solid var(--border-color, #64748b);
-  border-radius: 10px;
+  display: grid;
+  gap: 10px;
 }
-.soil-description legend { padding: 0 5px; font-size: .85rem; font-weight: 600; }
-.soil-description-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .soil-description label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.soil-description label span { font-size: .8rem; }
-.soil-description-fines { grid-column: 1 / -1; }
-.soil-description select { width: 100%; min-width: 0; font-weight: 400; }
+.soil-description label span { font-size: .85rem; font-weight: 600; }
+.soil-description .soil-description-other[hidden] { display: none; }
+.soil-description select, .soil-description input { width: 100%; min-width: 0; font-weight: 400; }
 .soil-remove { grid-column: 1 / -1; justify-self: end; margin-bottom: 10px; }
 @media (max-width: 767px) {
   [data-fiche-soil] > .card-body { padding: 12px; }
   #strati-container .strato-row { gap: 12px; }
   .soil-description { width: 100%; box-sizing: border-box; }
-  .soil-description-fields { grid-template-columns: minmax(0, 1fr); }
-  .soil-description select { font-size: 16px; min-height: 44px; }
+  .soil-description select, .soil-description input { font-size: 16px; min-height: 44px; }
 }
