@@ -10,7 +10,7 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timedelta
 from math import ceil, pi
-from typing import List
+from typing import List, Literal
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException, status, UploadFile, File
 from fastapi.encoders import jsonable_encoder
@@ -113,6 +113,7 @@ from notifications import (
 )
 from services.personale_profiles import ensure_user_personale_profile
 from services.soil_diagram import comparison_svg as soil_comparison_svg, panel_report_svg
+from services.fiche_language import report_language, report_translator, technical_translator
 from services.soil_materials import (
     GRAIN, SIZE, FINES, describe_material, split_description,
     describe_unified_material, split_unified_description,
@@ -553,6 +554,9 @@ app.mount(
 
 # Templates HTML (Jinja2)
 templates = Jinja2Templates(directory="templates")
+templates.env.globals.update(fiche_report_language=report_language,
+                             fiche_report_translator=report_translator,
+                             fiche_report_technical_translator=technical_translator)
 register_manager_badges(templates)
 register_static_helpers(templates)
 register_permission_helpers(templates)
@@ -8964,6 +8968,7 @@ def manager_fiche_update_pdf_data(
 def manager_fiche_dettaglio(
     request: Request,
     fiche_id: int,
+    report_lang: Literal["fr", "it"] = "fr",
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "manager.access"):
@@ -8999,6 +9004,7 @@ def manager_fiche_dettaglio(
             request,
             current_user,
             fiche=fiche,
+            report_lang=report_lang,
             can_confirm_fiche=can_review(current_user),
             fiche_review_token=review_token(fiche, current_user),
             volume_teorico=_calculate_fiche_volume_teorico(fiche),
@@ -9135,7 +9141,7 @@ def _extract_technical_sheet(html: str) -> str:
     return html[start:end + len("</article>")]
 
 
-def _courbe_svg(payload: dict) -> str:
+def _courbe_svg(payload: dict, *, language="fr") -> str:
     """Genera la courbe de bétonnage come SVG (nessun JS, robusto in PDF)."""
     if not payload:
         return ""
@@ -9172,8 +9178,8 @@ def _courbe_svg(payload: dict) -> str:
         parts.append(f"<text x='{pl-6}' y='{gy+4:.1f}' text-anchor='end' font-family='Arial' font-size='11' fill='#475569'>{(max_y/1.08)/5*i:.1f}</text>")
         parts.append(f"<text x='{gx:.1f}' y='{H-pb+17}' text-anchor='middle' font-family='Arial' font-size='11' fill='#475569'>{(max_x/1.08)/5*i:.0f}</text>")
     parts.append(f"<rect x='{pl}' y='{pt}' width='{W-pl-pr}' height='{H-pt-pb}' fill='none' stroke='#000' stroke-width='1'/>")
-    parts.append(f"<text x='{W/2:.0f}' y='{H-8}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a'>Volume en m³</text>")
-    parts.append(f"<text x='15' y='{H/2:.0f}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a' transform='rotate(-90 15 {H/2:.0f})'>Hauteur en m</text>")
+    parts.append(f"<text x='{W/2:.0f}' y='{H-8}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a'>{report_translator(language)('Volume en m³')}</text>")
+    parts.append(f"<text x='15' y='{H/2:.0f}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a' transform='rotate(-90 15 {H/2:.0f})'>{report_translator(language)('Hauteur en m')}</text>")
 
     def polyline(points, color, width=2.2):
         """Linea tratteggiata con pallini vuoti ai punti (stile foglio Excel)."""
@@ -9198,10 +9204,10 @@ def _courbe_svg(payload: dict) -> str:
     return "".join(parts)
 
 
-def _wrap_sheet_document(article_html: str, css_text: str) -> str:
+def _wrap_sheet_document(article_html: str, css_text: str, report_lang: str = "fr") -> str:
     """Costruisce un documento HTML minimale con solo il rapport + CSS inline."""
     return (
-        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<!DOCTYPE html><html lang='{report_language(report_lang)}'><head><meta charset='utf-8'>"
         f"<style>{css_text}</style>"
         "<style>html,body{background:#fff !important;background-image:none !important;margin:0;padding:0;}</style>"
         f"</head><body>{article_html}</body></html>"
@@ -9253,12 +9259,13 @@ def _load_fiche_for_pdf(db, fiche_id: int):
     )
 
 
-def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) -> str:
+def _render_fiche_article(request: Request, current_user: User, fiche: Fiche, report_lang: str = "fr") -> str:
     """Renderizza SOLO l'articolo del rapport d'exécution di una fiche."""
     ctx = build_template_context(
         request,
         current_user,
         fiche=fiche,
+        report_lang=report_language(report_lang),
         volume_teorico=_calculate_fiche_volume_teorico(fiche),
         stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
         theoretical_soil_layers=_parse_theoretical_soil_layers(
@@ -9278,9 +9285,9 @@ def _render_fiche_article(request: Request, current_user: User, fiche: Fiche) ->
     return _extract_technical_sheet(full_html)
 
 
-def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, css_text: str) -> str:
+def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, css_text: str, report_lang: str = "fr") -> str:
     """Documento HTML completo con una sola fiche (per il PDF singolo)."""
-    return _wrap_sheet_document(_render_fiche_article(request, current_user, fiche), css_text)
+    return _wrap_sheet_document(_render_fiche_article(request, current_user, fiche, report_lang), css_text, report_lang)
 
 
 @app.get(
@@ -9290,6 +9297,7 @@ def _render_fiche_pdf_html(request: Request, current_user: User, fiche: Fiche, c
 def manager_fiche_pdf(
     request: Request,
     fiche_id: int,
+    report_lang: Literal["fr", "it"] = "fr",
     current_user: User = Depends(get_current_active_user_html),
 ):
     if not has_perm(current_user, "manager.access"):
@@ -9302,7 +9310,7 @@ def manager_fiche_pdf(
             raise HTTPException(status_code=404, detail="Fiche non trovata")
 
         css_text = _load_style_css()
-        html = _render_fiche_pdf_html(request, current_user, fiche, css_text)
+        html = _render_fiche_pdf_html(request, current_user, fiche, css_text, report_lang)
 
         pdf_bytes = _html_to_pdf(html)
 
@@ -9310,7 +9318,7 @@ def manager_fiche_pdf(
         num = re.sub(r'[^A-Za-z0-9_.-]+', '_', fiche.panel_label).strip('._') or 'pannello'
         date_str = fiche.date.strftime("%Y%m%d") if fiche.date else "nodate"
         site_code = (fiche.site.code or "site") if fiche.site else "site"
-        filename = f"{site_code}_{tipo}_{num}_{date_str}.pdf"
+        filename = f"{site_code}_{tipo}_{num}_{date_str}_{report_lang.upper()}.pdf"
         archive_document(db, "fiche_pdf", fiche.id, filename, pdf_bytes, "application/pdf", fiche.site_id)
         db.commit()
     finally:
@@ -9335,6 +9343,7 @@ def manager_site_fiches_pdf(
     request: Request,
     site_id: int,
     tipo: str,
+    report_lang: Literal["fr", "it"] = "fr",
     current_user: User = Depends(get_current_active_user_html),
 ):
     """PDF unico di consegna cliente: copertina + tutte le fiches paratie o pali del cantiere."""
@@ -9384,11 +9393,12 @@ def manager_site_fiches_pdf(
             request,
             current_user,
             site=site,
+            report_lang=report_lang,
             is_palo=is_palo,
             all_types=tipo == "tutte",
             affaire=site.projet_affaire or site.code,
             indice=site.projet_indice or "0",
-            mission=site.projet_mission or "SUIVI DE MISSION G3",
+            mission=site.projet_mission or report_translator(report_lang)("SUIVI DE MISSION G3"),
             client=site.projet_client or "",
             maitre_oeuvre=site.projet_maitre_oeuvre or "",
             entreprise=site.projet_entreprise or "",
@@ -9406,11 +9416,11 @@ def manager_site_fiches_pdf(
             # Ogni fiche è renderizzata identica al PDF singolo.
             parts = [cover_inner]
             for fiche in fiches:
-                article = _render_fiche_article(request, current_user, fiche)
+                article = _render_fiche_article(request, current_user, fiche, report_lang)
                 parts.append(
                     f'<div style="page-break-before: always;">{article}</div>'
                 )
-            big_html = _wrap_sheet_document("".join(parts), css_text)
+            big_html = _wrap_sheet_document("".join(parts), css_text, report_lang)
 
             pdf_bytes = _html_to_pdf(big_html)
         except Exception as exc:  # noqa: BLE001 — surface PDF errors to the operator
@@ -9423,7 +9433,7 @@ def manager_site_fiches_pdf(
             )
 
         site_code = site.code or "chantier"
-        filename = f"{site_code}_{tipo}_fiches.pdf"
+        filename = f"{site_code}_{tipo}_fiches_{report_lang.upper()}.pdf"
         archive_document(db, "dossier_pdf", f"{site.id}-{tipo}", filename, pdf_bytes, "application/pdf", site.id)
         db.commit()
     finally:

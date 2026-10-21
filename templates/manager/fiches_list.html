@@ -10,6 +10,9 @@
     {% endif %}
 {% endblock %}
 {% block content %}
+{% set report_lang = fiche_report_language(report_lang|default(request.query_params.get('report_lang', 'fr'))) %}
+{% set rt = fiche_report_translator(report_lang) %}
+{% set report_technical = fiche_report_technical_translator(report_lang) %}
 {% from "shared/workspace_icons.html" import icon %}
 {% set lang = request.cookies.get('lang', 'it') %}
 
@@ -61,8 +64,9 @@
     </div>
 </div>
 
+{% if selected_site or review_filter == 'pending' %}{% include 'shared/_fiche_report_language.html' %}{% endif %}
 {% if selected_site %}
-<nav class="fiche-project-nav" aria-label="Progetto cantiere"><a href="/manager/cantieri/{{ selected_site.id }}/pianta">01 · Pianta</a><a href="/manager/cantieri/{{ selected_site.id }}/configurazione-progetto">02 · Coupe</a><strong aria-current="page">03 · Fiches</strong><a class="btn btn-secondary" href="/manager/cantieri/{{ selected_site.id }}/fiches-pdf/tutte">PDF completo cantiere</a></nav>
+<nav class="fiche-project-nav" aria-label="Progetto cantiere"><a href="/manager/cantieri/{{ selected_site.id }}/pianta">01 · Pianta</a><a href="/manager/cantieri/{{ selected_site.id }}/configurazione-progetto">02 · Coupe</a><strong aria-current="page">03 · Fiches</strong><a class="btn btn-secondary" href="/manager/cantieri/{{ selected_site.id }}/fiches-pdf/tutte?report_lang={{ report_lang }}">PDF completo cantiere</a></nav>
 {% endif %}
 {% macro site_progress_card(card) %}
     <article class="fiche-site-card workspace-fiche-site">
@@ -152,8 +156,8 @@
                         <td>{{ f.operator or (f.created_by.full_name if f.created_by else '-') }}</td>
                         <td>{{ f.hours if f.hours is not none else '-' }}</td>
                         <td>{{ 'Getto registrato' if f.data_getto and f.metri_cubi_gettati is not none else 'Scavo registrato' }}</td>
-                        <td class="text-end"><div class="fiche-row-actions"><a class="btn btn-sm btn-secondary" href="/manager/fiches/{{ f.id }}/pdf">PDF</a>
-                            <a href="{{ url_for('manager_fiches_detail', fiche_id=f.id) }}" class="btn btn-sm btn-secondary">
+                        <td class="text-end"><div class="fiche-row-actions"><a class="btn btn-sm btn-secondary" href="/manager/fiches/{{ f.id }}/pdf?report_lang={{ report_lang }}">PDF</a>
+                            <a href="{{ url_for('manager_fiches_detail', fiche_id=f.id) }}?report_lang={{ report_lang }}" class="btn btn-sm btn-secondary">
                                 {% if lang == 'fr' %}Ouvrir{% else %}Apri{% endif %}
                             </a></div>
                         </td>

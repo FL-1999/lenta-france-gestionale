@@ -51,7 +51,7 @@ def test_angle_single_fiche_two_panels_no_duplicate_volume_and_delete(operations
     assert fiche(o,2,10).status_code==400
     assert c.get(base).status_code==200
     detail=c.get(f'/manager/fiches/{f.id}');assert detail.status_code==200,detail.text
-    assert 'Fiche unica' in detail.text and 'P7 A/B' in detail.text
+    assert 'Fiche unique' in detail.text and 'P7 A/B' in detail.text
     g=c.get(base+'/getti').json()[0]
     assert c.delete(base+f'/getti/{g["id"]}?revision={g["revision"]}&confirm=true').status_code==409
     assert db.query(Fiche).count()==1
