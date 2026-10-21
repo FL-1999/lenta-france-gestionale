@@ -4,7 +4,7 @@
     {% if lang == 'fr' %}Détail fiche – Manager{% else %}Dettaglio fiche – Manager{% endif %}
 {% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/fiche-report.css?v=20261021a">
+<link rel="stylesheet" href="/static/css/fiche-report.css?v=20261021b">
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set report_lang = fiche_report_language(report_lang|default(request.query_params.get('report_lang', 'fr'))) %}
 {% set rt = fiche_report_translator(report_lang) %}
@@ -19,7 +19,8 @@
 {% set strat_layers = fiche.layers or [] %}
 {% set visual_layers = stratigrafia_visual_layers or [] %}
 {% set theoretical_layers = theoretical_soil_layers or [] %}
-{% set report_notes = fiche.notes or fiche.quota_ngf_note or fiche.description or '—' %}
+{% set original_notes = fiche.notes or fiche.quota_ngf_note or fiche.description or '' %}
+{% set report_notes = translated_notes|default(none) or original_notes or '—' %}
 {% set soil_annex = (visual_layers|length + theoretical_layers|length) > 6 %}
 {% set notes_annex = report_notes|length > 300 %}
 {% set has_annex = soil_annex or notes_annex %}
@@ -281,6 +282,19 @@
    4. RAPPORT D'EXÉCUTION TECHNIQUE
    ══════════════════════════════════════════════════════ #}
 <section class="card technical-coupe-card technical-coupe-card--sheet fiche-section">
+    {% if original_notes and not pdf_mode|default(false) %}
+    <div data-translation-box style="padding:16px">
+      {% if translated_notes|default(none) %}
+        <p>{{ 'Les observations traduites sont utilisées dans cet aperçu et dans le PDF.' if lang == 'fr' else 'Le annotazioni tradotte sono usate in questa anteprima e nel PDF.' }}</p>
+        <details><summary>{{ 'Texte original' if lang == 'fr' else 'Testo originale' }}</summary><p style="white-space:pre-wrap">{{ original_notes }}</p></details>
+      {% else %}<p>{{ 'Le PDF utilise actuellement les observations originales.' if lang == 'fr' else 'Il PDF usa attualmente le annotazioni originali.' }}</p>
+        {% if translation_enabled|default(false) %}
+        <button type="button" class="btn btn-secondary" data-fiche-translation data-url="/manager/fiches/{{ fiche.id }}/translate-notes" data-token="{{ fiche_review_token }}" data-hash="{{ translation_source_hash }}" data-language="{{ report_lang }}">{{ 'Traduire les observations pour le PDF' if lang == 'fr' else 'Traduci annotazioni per il PDF' }} ({{ report_lang|upper }})</button>
+        <p>{{ 'Crée une copie avec l’IA. Vérifiez-la dans l’aperçu ; le texte original reste conservé.' if lang == 'fr' else 'Crea una copia con l’AI. Controllala nell’anteprima; il testo originale rimane conservato.' }}</p>
+        {% endif %}
+      {% endif %}<p role="status" aria-live="polite"></p>
+    </div><script src="/static/js/fiche-translation.js?v=20261021b" defer></script>
+    {% endif %}
     <div class="card-header technical-coupe-card__header">
         <div class="card-title">
             📈 {{ rt("Rapport d'exécution") }} — {{ rt('Pieu' if is_palo else 'Paroi moulée') }}
@@ -303,7 +317,7 @@
             {% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
 
             <div class="technical-split-view technical-sheet-viewport" data-sheet-viewport>
-                <article class="technical-sheet" id="technical-sheet-export" lang="{{ report_lang }}" aria-label="{{ rt("Rapport d'exécution imprimable") }}"><div class="technical-sheet-page">{% if fiche.review_status == 'pending' %}<div style="text-align:center;padding:8px;font-weight:bold;color:#854d0e;border:2px solid #ca8a04">{{ rt('À VÉRIFIER — NON CONFIRMÉE') }}</div>{% endif %}
+                <article class="technical-sheet" id="technical-sheet-export" lang="{{ report_lang }}" aria-label="{{ rt("Rapport d'exécution imprimable") }}">{% if is_paratia %}{% include "manager/fiches/_report_b.html" %}{% else %}<div class="technical-sheet-page">{% if fiche.review_status == 'pending' %}<div style="text-align:center;padding:8px;font-weight:bold;color:#854d0e;border:2px solid #ca8a04">{{ rt('À VÉRIFIER — NON CONFIRMÉE') }}</div>{% endif %}
                     {% if fiche.pour_panels %}
                     {% set group=fiche.pour_panels[0].pour %}
                     <div style="padding:5px 9px;border:1px solid #222;color:#111;background:#fff;font-size:10px;">
@@ -578,7 +592,7 @@
                       {% if notes_annex %}<h3>{{ rt('Observations') }}</h3><p class="soil-annex-notes">{{ report_notes }}</p>{% endif %}
                     </section>
                     {% endif %}
-                </article>
+                {% endif %}</article>
 
             </div>
         {% else %}
@@ -796,7 +810,7 @@
         xhr.send();
         var rawCss = xhr.status === 200 ? xhr.responseText : "";
         var extra = new XMLHttpRequest();
-        extra.open("GET", "/static/css/fiche-report.css?v=20261021a", false);
+        extra.open("GET", "/static/css/fiche-report.css?v=20261021b", false);
         extra.send();
         if (xhr.status !== 200 || extra.status !== 200) return;
         var baseCss = rawCss + "\n" + extra.responseText;

@@ -116,8 +116,8 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
         check_aligned_drawing(printed)
         bounds = printed.evaluate("""() => {
             const box = s => document.querySelector(s).getBoundingClientRect();
-            return {sheet:box('#technical-sheet-export').bottom, footer:box('.technical-visa-block').bottom,
-                    data:box('.technical-data-column').bottom, last:box('.technical-soil-block:last-child').bottom};
+            return {sheet:box('#technical-sheet-export').bottom, footer:box('.b-signatures').bottom,
+                    data:box('.b-signatures').bottom, last:box('.b-notes').bottom};
         }""")
         assert bounds["footer"] <= bounds["sheet"] + 1
         assert bounds["last"] <= bounds["data"] + 1
@@ -130,12 +130,12 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
         assert doc[0].get_width() == pytest.approx(595.28, abs=1)
         assert doc[0].get_height() == pytest.approx(841.89, abs=1)
         text = doc[0].get_textpage().get_text_range()
-        required_labels = ("Gros cailloux", "Grossier", "Sans fines", "13.50", "12.50", "4.50", "2.80",
-                           "13,50", "12,50", "4,50", "2,80", "Murette Guide", "Longueur forée",
+        required_labels = ("Gros cailloux", "Grossier", "Sans fines",
+                           "13,50", "12,50", "4,50", "2,80", "Murette Guide", "NGF",
                            "Largeur", "Epaisseur", "BASE PAROI MECANIQUE", "BASE PAROI HYDRAULIQUE",
                            "ENTREPRISE", "CLIENT")
         for label in required_labels:
-            assert label in text
+            assert label in " ".join(text.split())
         doc[0].render(scale=1.7).to_pil().save(Path(artifacts)/"fiche-terreni-a4.png")
         doc.close()
         # Render's fallback also consumes the same complete vector drawing.
@@ -149,7 +149,7 @@ def test_descriptions_phone_edit_and_a4_elevations(live_operations):
             assert len(doc) == 1
             fallback_text = doc[0].get_textpage().get_text_range()
             for label in required_labels:
-                assert label in fallback_text
+                assert label in " ".join(fallback_text.split())
             doc[0].render(scale=1.7).to_pil().save(Path(artifacts)/"fiche-terreni-weasyprint.png")
             doc.close()
         # Dense reports retain all information on legible A4 continuation pages.

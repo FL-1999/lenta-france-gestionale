@@ -1,6 +1,7 @@
 """Shared elevation scale for the encountered and theoretical soil columns."""
 from html import escape
-from services.fiche_language import report_translator
+import textwrap
+from services.fiche_language import report_translator, technical_text
 
 COLORS = {
     "soil-layer--riporto": "#c8cdd4", "soil-layer--ghiaia": "#d8c0a0",
@@ -67,7 +68,7 @@ def comparison_svg(encountered, theoretical, origin, datum="NGF", depth=None,
 
 
 def panel_report_svg(encountered, theoretical, origin, datum, depth, tn,
-                     width_label, thickness_label, mechanical_base, hydraulic_base, *, language="fr"):
+                     width_label, thickness_label, mechanical_base, hydraulic_base, *, language="fr", compact=False, concrete_top=None):
     """One vector coordinate system for the wall, guide walls and soil levels.
 
     The front excavation face and both log frames share y=147..900. Keeping
@@ -121,4 +122,78 @@ def panel_report_svg(encountered, theoretical, origin, datum, depth, tn,
     parts.append('</g>')
     parts.append(comparison_svg(encountered, theoretical, origin, datum, depth, aligned=True, language=language))
     parts.append('</svg>')
-    return "".join(parts)
+    svg = "".join(parts)
+    if compact:
+        # Crop empty canvas only. The wall/guide geometry and uniform scale stay identical.
+        svg = svg.replace('viewBox="0 0 800 980"', 'viewBox="75 0 606 980"').replace('width="800"', 'width="606"')
+        svg = svg.replace('x="400"', 'x="370"').replace('y="25"', 'y="40"').replace('y="53"', 'y="60"')
+        svg = svg.replace(tr('Départ du forage (profondeur 0 m)'), tr('Départ du forage'))
+        svg = svg.replace(f'{tr("Longueur forée")} = {number(depth)} m',
+                          f'{number(origin)} → {number(hydraulic_base)} m {ref}')
+        old = comparison_svg(encountered, theoretical, origin, datum, depth, aligned=True, language=language)
+        svg = svg.replace(old, narrow_soils_svg(encountered, theoretical, origin, datum, depth, language=language))
+        if concrete_top is not None:
+            svg = svg.replace('</svg>', f'<text x="370" y="80" text-anchor="middle" font-family="Arial" font-size="14">{tr("Cote tête béton")} : {number(concrete_top)} {ref}</text></svg>')
+    return svg
+
+
+def soil_label_lines(layer, language):
+    return textwrap.wrap(technical_text(layer.get('materiale', ''), language), width=11,
+                         break_long_words=True, break_on_hyphens=False) or ['—']
+
+
+def soils_need_annex(encountered, theoretical, depth, language='fr'):
+    extent = float(depth or 1)
+    for rows in (encountered or [], theoretical or []):
+        if len(rows) > 6:
+            return True
+        for layer in rows:
+            start, end = float(layer['da']), float(layer['a'])
+            if start < 0 or end > extent or (end-start)/extent*753 < len(soil_label_lines(layer, language))*16+24:
+                return True
+    return False
+
+
+def narrow_soils_svg(encountered, theoretical, origin, datum, depth, *, language='fr'):
+    """17 mm logs at the wall's exact scale; no opaque container can cover a guide wall."""
+    tr = report_translator(language)
+    extent = float(depth or 1)
+    top, height, width = 147, 753, 74
+    parts = ['<g class="soil-comparison-narrow" font-family="Arial" fill="#111">']
+    for col, rows in enumerate((encountered or [], theoretical or [])):
+        x = 518 + col*87
+        center = x+width/2
+        parts += [f'<text x="{center}" y="115" text-anchor="middle" font-size="11.8" font-weight="bold">{tr("Rencontré" if col == 0 else "Théorique")}</text>',
+                  f'<text x="{center}" y="131" text-anchor="middle" font-size="11">m {escape(str(datum))}</text>',
+                  f'<rect class="soil-column-frame" x="{x}" y="147" width="{width}" height="753" fill="#fafafa" stroke="#64748b"/>']
+        levels = set()
+        for index, layer in enumerate(rows):
+            start, end = max(0, float(layer['da'])), min(extent, float(layer['a']))
+            if start >= end:
+                continue
+            y, h = top+start/extent*height, (end-start)/extent*height
+            color = COLORS.get(layer.get('texture_class'), '#e2e8f0')
+            parts.append(f'<rect x="{x}" y="{y:.2f}" width="{width}" height="{h:.2f}" fill="{color}" fill-opacity="{1 if col == 0 else .65}" stroke="#64748b" stroke-width=".6"/>')
+            lines = soil_label_lines(layer, language)
+            if h < len(lines)*16+24:
+                lines = [f'[{index+1}]'] if h >= 32 else []
+            for n, line in enumerate(lines):
+                ly = y+h/2+(n-(len(lines)-1)/2)*16+4
+                parts.append(f'<text class="soil-material-label" x="{center}" y="{ly:.2f}" text-anchor="middle" font-size="11.8">{escape(line)} </text>')
+            levels.update((start, end))
+        if not rows:
+            for n, line in enumerate(textwrap.wrap(tr('Non renseigné'), 11)):
+                parts.append(f'<text x="{center}" y="{200+n*16}" text-anchor="middle" font-size="11.8">{escape(line)} </text>')
+        # Every omitted boundary is retained in the automatically generated annex.
+        last_y = -100
+        for value in sorted(levels):
+            y = top+value/extent*height
+            if value != extent and top+height-y < 18:
+                continue
+            if y-last_y < 18 and value != extent:
+                continue
+            last_y = y
+            label = f'{float(origin)-value:.2f}'.replace('.', ',') if origin is not None else '—'
+            parts.append(f'<rect x="{x+6}" y="{y-7:.2f}" width="{width-12}" height="14" fill="#fff" fill-opacity=".94"/>')
+            parts.append(f'<text class="soil-ngf-label" x="{center}" y="{y+4:.2f}" text-anchor="middle" font-size="11.8" font-weight="bold">{label}</text>')
+    return ''.join(parts)+'</g>'
