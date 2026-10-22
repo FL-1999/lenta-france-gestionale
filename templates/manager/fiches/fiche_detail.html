@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/static/css/fiche-preview.css?v=20261022a" media="screen">
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set report_lang = fiche_report_language(report_lang|default(request.query_params.get('report_lang', 'fr'))) %}
+{% set consumption_alert = consumption_alert|default({}) %}
 {% set rt = fiche_report_translator(report_lang) %}
 {% set report_technical = fiche_report_technical_translator(report_lang) %}
 {% set report_responsable = fiche.responsable_pdf or ((fiche.capocantiere.full_name or fiche.capocantiere.email) if fiche.capocantiere else none) or '—' %}
@@ -141,8 +142,8 @@
                 <div class="kpi-sub">{% if lang == 'fr' %}Calculé selon la géométrie{% else %}Calcolato dalla geometria{% endif %}</div>
             </div>
 
-            <div class="kpi-card">
-                <div class="kpi-top">↔️ {% if lang == 'fr' %}Écart volume{% else %}Scarto volume{% endif %}</div>
+            <div class="kpi-card{% if consumption_alert.active %} kpi-card--consumption-alert{% endif %}" id="fiche-consumption">
+                <div class="kpi-top">{% if consumption_alert.active %}⚠{% else %}↔️{% endif %} {% if lang == 'fr' %}Écart volume{% else %}Scarto volume{% endif %}</div>
                 <div class="kpi-value kpi-value--geometry">
                     {% if volume_diff is not none %}
                         <span class="kpi-number">{{ "%+.2f"|format(volume_diff) }}</span>
@@ -160,6 +161,13 @@
                     {% endif %}
                 </div>
                 <div class="kpi-sub">{% if lang == 'fr' %}Coulé − théorique{% else %}Gettato − teorico{% endif %}</div>
+                {% if consumption_alert.active %}
+                <p class="consumption-alert-label">
+                {% if consumption_alert.kind == 'shortage' %}{{ ('%.2f'|format(-consumption_alert.difference)).replace('.', ',') }} m³ {{ 'manquants' if lang == 'fr' else 'in meno' }}
+                {% else %}{{ 'Seuil de +20% dépassé' if lang == 'fr' else 'Superata la soglia del +20%' }}{% endif %}
+                · {{ 'À valider' if lang == 'fr' else 'Da validare' }}</p>
+                <a class="consumption-check-link" href="#consumption-review-panel">{{ 'Vérifier la consommation' if lang == 'fr' else 'Verifica consumo' }} →</a>
+                {% elif consumption_alert.validated %}<p class="kpi-sub">✓ {{ 'Consommation validée' if lang == 'fr' else 'Consumo validato' }}</p>{% endif %}
             </div>
 
             {% if is_paratia %}
@@ -287,6 +295,8 @@
         </div>
     </div>
 </section>
+
+{% include 'manager/fiches/_consumption_review.html' %}
 
 {# ══════════════════════════════════════════════════════
    4. RAPPORT D'EXÉCUTION TECHNIQUE

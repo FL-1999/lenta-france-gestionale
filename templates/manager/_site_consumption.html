@@ -1,0 +1,14 @@
+{% if consumption_summary %}{% set c=consumption_summary %}
+<section class="card" id="site-consumption"><div class="card-body">
+ <h2>{{ t('Consumi calcestruzzo', 'Consommation de béton') }}</h2>
+ <p>{{ t('Totali delle fiches con volume gettato e geometria disponibili, incluse quelle da confermare. Gli scarti delle singole fiches restano da verificare anche se il totale si compensa.', 'Totaux des fiches avec volume coulé et géométrie disponibles, y compris celles à confirmer. Les écarts de chaque fiche restent à vérifier même si le total se compense.') }}</p>
+ <div class="consumption-stats">
+  <div class="consumption-stat">{{ t('Volume teorico','Volume théorique') }}<strong>{{ ('%.2f'|format(c.theoretical)).replace('.', ',') if c.included else '—' }} m³</strong><span>{{ c.included }} fiches</span></div>
+  <div class="consumption-stat">{{ t('Volume gettato','Volume coulé') }}<strong>{{ ('%.2f'|format(c.actual)).replace('.', ',') if c.included else '—' }} m³</strong><span>{{ c.missing }} {{ t('con dati incompleti','avec données incomplètes') }}</span></div>
+  <div class="consumption-stat">{{ t('Scarto complessivo','Écart global') }}<strong>{{ ('%+.1f'|format(c.percentage)).replace('.', ',') ~ '%' if c.percentage is not none else '—' }}</strong><span>{{ ('%+.2f'|format(c.difference)).replace('.', ',') if c.included else '—' }} m³</span></div>
+  <div class="consumption-stat{% if c.pending %} consumption-stat--alert{% endif %}">{{ t('Allarmi da validare','Alertes à valider') }}<strong>{{ c.pending|length }}</strong><span>{{ t('Anomalie validate','Anomalies validées') }}: {{ c.validated }}</span></div>
+ </div>
+ <ul class="consumption-pending">{% for row in c.pending %}<li><div><strong>{{ row.panel }}</strong>{{ ('%+.2f'|format(row.difference)).replace('.', ',') }} m³ · {{ ('%+.1f'|format(row.percentage)).replace('.', ',') }}% · {{ t('Sotto il teorico','Sous le théorique') if row.kind == 'shortage' else t('Oltre +20%','Au-delà de +20%') }}</div><a class="btn btn-secondary" href="/manager/fiches/{{ row.fiche_id }}#fiche-consumption">{{ t('Verifica fiche','Vérifier la fiche') }}</a></li>{% endfor %}</ul>
+ {% if not c.pending %}<p>{{ t('Nessun allarme di consumo da validare.', 'Aucune alerte de consommation à valider.') }}</p>{% endif %}
+</div></section>
+{% endif %}

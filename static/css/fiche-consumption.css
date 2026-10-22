@@ -1,0 +1,28 @@
+@media screen {
+  .workspace-ui #fiche-consumption.kpi-card--consumption-alert,
+  .workspace-ui #consumption-review-panel { border:2px solid var(--ws-danger)!important; background:var(--ws-danger-bg)!important; background-image:none!important; }
+  .workspace-ui .kpi-card--consumption-alert :is(.kpi-number,.kpi-top,.kpi-sub,.fiche-consumption-ratio strong,.fiche-consumption-ratio span),
+  .consumption-alert-label { color:var(--ws-danger); }
+  .consumption-alert-label { margin:8px 0 0; font-weight:700; font-size:.8rem; line-height:1.45; }
+  #fiche-consumption, #site-consumption, #consumption-review-panel { scroll-margin-top:85px; }
+  .consumption-check-link { display:inline-block; padding:8px 0; color:var(--ws-danger); font-weight:600; }
+  .consumption-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:16px; }
+  .consumption-actions form { margin:0; }
+  .consumption-review p { max-width:85ch; line-height:1.6; }
+  .workspace-ui .notification-item--alert { background:var(--ws-danger-bg); border-left:3px solid var(--ws-danger); }
+  .workspace-ui .notification-item--alert :is(a,.notifications-panel__meta) { color:var(--ws-danger); }
+  .consumption-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:18px 0; }
+  .consumption-stat { padding:16px; background:var(--ws-input); border:1px solid var(--ws-line); border-radius:12px; }
+  .consumption-stat strong { display:block; font-size:1.4rem; margin:7px 0; }
+  .consumption-stat span { color:var(--ws-muted); }
+  .consumption-stat--alert { border-color:var(--ws-danger); color:var(--ws-danger); background:var(--ws-danger-bg); }
+  .consumption-pending { padding:0; margin:0; list-style:none; }
+  .consumption-pending li { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:12px 0; border-top:1px solid var(--ws-line); }
+  .consumption-pending strong { margin-right:8px; }
+  @media(max-width:700px) {
+    .consumption-stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .consumption-stat { padding:12px; }
+    .consumption-stat strong { font-size:1.15rem; }
+    .consumption-actions > *, .consumption-actions form .btn { width:100%; }
+  }
+}

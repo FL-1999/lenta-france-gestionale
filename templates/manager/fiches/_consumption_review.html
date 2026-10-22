@@ -1,0 +1,26 @@
+{% if consumption_alert.active %}
+<section class="card fiche-section consumption-review" id="consumption-review-panel" data-consumption-review aria-labelledby="consumption-heading">
+ <div class="card-body">
+  <h2 id="consumption-heading">{{ 'Consommation de béton à vérifier' if lang == 'fr' else 'Consumo calcestruzzo da verificare' }}</h2>
+  <p>{% if consumption_alert.kind == 'shortage' %}
+   {{ 'Le volume coulé est inférieur au théorique de' if lang == 'fr' else 'Il volume gettato è inferiore al teorico di' }} <strong>{{ ('%.2f'|format(-consumption_alert.difference)).replace('.', ',') }} m³</strong>.
+  {% else %}{{ 'La surconsommation dépasse le seuil de +20% :' if lang == 'fr' else 'Il sovraconsumo supera la soglia del +20%:' }} <strong>{{ ('%+.1f'|format(consumption_alert.percentage)).replace('.', ',') }}%</strong>.
+  {% endif %}</p>
+  <p>{{ 'Vérifiez les valeurs. Vous pouvez corriger la fiche ou valider cette consommation sans modifier les données. La notification reste active jusqu’à la validation ou au retour dans les limites.' if lang == 'fr' else 'Controlla i valori. Puoi correggere la fiche oppure validare questo consumo senza modificare i dati. La notifica resta attiva fino alla validazione o al rientro nelle soglie.' }}</p>
+  <div class="consumption-actions">
+   {% if can_validate_consumption %}<form method="post" action="/manager/fiches/{{ fiche.id }}/valida-consumo">
+    <input type="hidden" name="csrf" value="{{ consumption_token }}">
+    <button type="submit" class="btn btn-primary">{{ 'Valider la consommation' if lang == 'fr' else 'Valida consumo' }}</button>
+   </form>{% endif %}
+   <a class="btn btn-secondary" href="{{ url_for('manager_fiches_edit_form', fiche_id=fiche.id) }}">{{ 'Corriger les données' if lang == 'fr' else 'Correggi i dati' }}</a>
+   <a class="btn btn-secondary" href="/manager/cantieri/{{ fiche.site_id }}#site-consumption">{{ 'Consommation du chantier' if lang == 'fr' else 'Consumi del cantiere' }}</a>
+  </div>
+ </div>
+</section>
+{% elif consumption_alert.validated %}
+<section class="card fiche-section" data-consumption-reviewed><div class="card-body">
+ <strong>✓ {{ 'Consommation validée' if lang == 'fr' else 'Consumo validato' }}</strong>
+ <span> · {{ consumption_alert.validated_by }} · {{ consumption_alert.validated_at.strftime('%d/%m/%Y %H:%M') }} UTC</span>
+ <p>{{ 'L’écart est conservé. Une modification des volumes ou de la géométrie déclenche une nouvelle vérification si les seuils restent dépassés.' if lang == 'fr' else 'Lo scarto rimane registrato. Una modifica dei volumi o della geometria richiederà una nuova verifica se i valori restano fuori soglia.' }}</p>
+</div></section>
+{% endif %}

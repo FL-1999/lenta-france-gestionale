@@ -370,6 +370,10 @@ class AuditLog(Base):
 class Notification(Base):
     __tablename__ = "notifications"
 
+    @property
+    def requires_action(self):
+        return self.notification_type == 'fiche_consumption' and not self.is_read
+
     id = Column(Integer, primary_key=True, index=True)
     notification_type = Column(String(50), nullable=False)
     message = Column(Text, nullable=False)

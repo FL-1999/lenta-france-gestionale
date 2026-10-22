@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_active_user_api
 from database import get_db
 from models import Notification, User
+from services.fiche_consumption import NOTIFICATION_TYPE, can_validate
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
@@ -22,6 +23,7 @@ class NotificationOut(BaseModel):
     message: str
     target_url: str | None = None
     is_read: bool
+    requires_action: bool = False
     created_at: datetime
 
 
@@ -35,6 +37,7 @@ class NotificationListItem(BaseModel):
     message: str
     link_url: str | None = None
     read: bool
+    requires_action: bool = False
     created_at: datetime
 
 
@@ -44,6 +47,7 @@ class NotificationRecentItem(BaseModel):
     created_at: str
     url: str | None = None
     is_read: bool
+    requires_action: bool = False
 
 
 class NotificationListPayload(BaseModel):
@@ -97,6 +101,7 @@ def _cleanup_stale_notifications(db: Session, current_user: User) -> None:
         row[0]
         for row in db.query(Notification.id)
         .filter(Notification.recipient_user_id == current_user.id)
+        .filter(_dismissible())
         .filter(~Notification.id.in_(direct_keep_ids) if direct_keep_ids else True)
         .with_entities(Notification.id)
         .all()
@@ -114,6 +119,7 @@ def _cleanup_stale_notifications(db: Session, current_user: User) -> None:
         row[0]
         for row in db.query(Notification.id)
         .filter(Notification.recipient_role == current_user.role)
+        .filter(_dismissible())
         .filter(~Notification.id.in_(role_keep_ids) if role_keep_ids else True)
         .with_entities(Notification.id)
         .all()
@@ -128,12 +134,20 @@ def _cleanup_stale_notifications(db: Session, current_user: User) -> None:
 
 
 def _notifications_base_query(db: Session, current_user: User):
-    return db.query(Notification).filter(
+    query = db.query(Notification).filter(
         or_(
             Notification.recipient_user_id == current_user.id,
             Notification.recipient_role == current_user.role,
         )
     )
+    if not can_validate(current_user):
+        query = query.filter(Notification.notification_type != NOTIFICATION_TYPE)
+    return query
+
+
+def _dismissible():
+    # Reading the bell or clearing ordinary notifications is not a validation.
+    return or_(Notification.notification_type != NOTIFICATION_TYPE, Notification.is_read.is_(True))
 
 
 def _notifications_unread_query(db: Session, current_user: User):
@@ -158,6 +172,7 @@ def _serialize_notification(notification: Notification) -> NotificationListItem:
         message=notification.message,
         link_url=notification.target_url,
         read=notification.is_read,
+        requires_action=notification.requires_action,
         created_at=notification.created_at,
     )
 
@@ -175,6 +190,7 @@ def _serialize_recent_notification(
         created_at=_format_recent_created_at(notification.created_at),
         url=notification.target_url,
         is_read=notification.is_read,
+        requires_action=notification.requires_action,
     )
 
 
@@ -221,7 +237,7 @@ def list_recent_notifications(
     unread_query = _notifications_unread_query(db, current_user)
     unread_count = unread_query.count()
     notifications = (
-        unread_query.order_by(Notification.created_at.desc()).limit(limit).all()
+        unread_query.order_by((Notification.notification_type == NOTIFICATION_TYPE).desc(), Notification.created_at.desc()).limit(limit).all()
     )
     return NotificationRecentPayload(
         unread_count=unread_count,
@@ -239,7 +255,7 @@ def mark_notifications_read(
     base_query = _notifications_base_query(db, current_user)
     if payload.mark_all:
         (
-            base_query.filter(Notification.is_read.is_(False)).update(
+            base_query.filter(Notification.is_read.is_(False), _dismissible()).update(
                 {"is_read": True}, synchronize_session=False
             )
         )
@@ -250,7 +266,7 @@ def mark_notifications_read(
         ).first()
         if not notification:
             raise HTTPException(status_code=404, detail="Notifica non trovata")
-        if not notification.is_read:
+        if not notification.is_read and not notification.requires_action:
             notification.is_read = True
             db.add(notification)
             db.commit()
@@ -269,7 +285,7 @@ def clear_notifications(
     _cleanup_stale_notifications(db, current_user)
     base_query = _notifications_base_query(db, current_user)
     notification_ids = [
-        row[0] for row in base_query.with_entities(Notification.id).all()
+        row[0] for row in base_query.filter(_dismissible()).with_entities(Notification.id).all()
     ]
     if notification_ids:
         db.execute(delete(Notification).where(Notification.id.in_(notification_ids)))
@@ -342,7 +358,7 @@ def mark_notification_read(
     )
     if not notification:
         raise HTTPException(status_code=404, detail="Notifica non trovata")
-    if not notification.is_read:
+    if not notification.is_read and not notification.requires_action:
         notification.is_read = True
         db.add(notification)
         db.commit()

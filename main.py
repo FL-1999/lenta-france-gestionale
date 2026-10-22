@@ -383,6 +383,9 @@ def run_post_startup_tasks() -> None:
 
     create_initial_admin()
 
+    from services.fiche_consumption import backfill as backfill_consumption_alerts
+    backfill_consumption_alerts(SessionLocal)
+
     # Pre-installa Chromium in background: su Render free il container è
     # effimero e perde il browser ad ogni riavvio; così è pronto per il PDF
     # senza bloccare l'avvio dell'app.
@@ -1896,6 +1899,7 @@ def _fiche_coupe_snapshot(coupe):
 
 from services.fiche_review import can_review, review_token, confirmed
 import services.fiche_review
+from services import fiche_consumption
 
 
 def _create_validated_fiche(
@@ -2447,19 +2451,7 @@ def _update_validated_fiche(
 
 
 def _calculate_fiche_volume_teorico(fiche: Fiche) -> float | None:
-    if fiche.profondita_totale is None:
-        return None
-    tipologia = (fiche.tipologia_scavo or "").strip().lower()
-    if tipologia == "paratia":
-        if fiche.larghezza_pannello is None or fiche.altezza_pannello is None:
-            return None
-        return fiche.larghezza_pannello * fiche.altezza_pannello * fiche.profondita_totale
-    if tipologia == "palo":
-        if fiche.diametro_palo is None:
-            return None
-        radius = fiche.diametro_palo / 2
-        return pi * (radius ** 2) * fiche.profondita_totale
-    return None
+    return fiche_consumption.theoretical_volume(fiche)
 
 
 def _build_fiche_form_data_from_model(fiche: Fiche) -> dict:
@@ -6519,6 +6511,7 @@ def manager_site_detail(
             .all()
         )
         panel_schema = _build_site_panel_schema(site, site_fiches)
+        consumption_summary = fiche_consumption.site_summary(db, site_fiches) if fiche_consumption.can_validate(current_user) else None
         pali_schema = _build_site_pali_schema(site, site_fiches)
         numero_totale_paratie = _site_paratie_total(site)
         numero_totale_pali = _site_pali_total(site)
@@ -6579,6 +6572,7 @@ def manager_site_detail(
             strut_levels=strut_levels_view,
             strut_levels_count=strut_levels_count,
             panel_schema=panel_schema,
+            consumption_summary=consumption_summary,
             pali_schema=pali_schema,
             numero_totale_paratie=numero_totale_paratie,
             numero_totale_pali=numero_totale_pali,
@@ -8998,6 +8992,7 @@ def manager_fiche_dettaglio(
             )
         translation = fiche_translation.cached(db, fiche, report_lang)
         translated_notes = translation.translated if translation else None
+        consumption_alert = fiche_consumption.view(db, fiche)
     finally:
         db.close()
 
@@ -9014,6 +9009,9 @@ def manager_fiche_dettaglio(
             translation_source_hash=fiche_translation.digest(fiche_translation.source(fiche)),
             can_confirm_fiche=can_review(current_user),
             fiche_review_token=review_token(fiche, current_user),
+            consumption_alert=consumption_alert,
+            can_validate_consumption=fiche_consumption.can_validate(current_user),
+            consumption_token=fiche_consumption.validation_token(fiche, current_user),
             volume_teorico=_calculate_fiche_volume_teorico(fiche),
             stratigrafia_visual_layers=_build_stratigrafia_visual_layers(fiche),
             theoretical_soil_layers=_parse_theoretical_soil_layers(

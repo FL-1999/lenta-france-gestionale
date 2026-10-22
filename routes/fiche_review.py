@@ -9,6 +9,17 @@ from services.fiche_review import confirm_fiche
 router = APIRouter()
 
 
+@router.post('/manager/fiches/{fiche_id}/valida-consumo')
+def validate_consumption(fiche_id: int, request: Request, csrf: str = Form(..., max_length=64),
+                        db: Session = Depends(get_db), user: User = Depends(get_current_active_user_html)):
+    from services.fiche_consumption import validate
+    fiche = db.get(Fiche, fiche_id)
+    if not fiche:
+        raise HTTPException(404, 'Fiche non trovata')
+    validate(db, fiche, user, csrf, request)
+    return RedirectResponse(f'/manager/fiches/{fiche_id}#fiche-consumption', status_code=303)
+
+
 @router.post('/manager/fiches/{fiche_id}/conferma')
 def confirm(fiche_id: int, request: Request, csrf: str = Form(..., max_length=64),
             db: Session = Depends(get_db), user: User = Depends(get_current_active_user_html)):

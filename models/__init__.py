@@ -17,6 +17,7 @@ from .project_directory import ProjectPartner, ProjectPartnerSite
 from .fleet import FleetPosition, FleetJourney, FleetLoad, FleetOperation, FleetEvent
 from .assistant_integration import AssistantProposal, AssistantRateBucket
 from .fiche_review import FicheReviewEvent
+from .fiche_consumption import FicheConsumptionAlert
 from .fiche_translation import FicheTranslation
 from .assistant_oauth import AssistantOAuthClient, AssistantOAuthFlow, AssistantOAuthCode, AssistantOAuthGrant, AssistantOAuthToken
 from .personnel import PersonnelTeam, PersonnelAssignment, PersonnelRequest, PersonnelAttachment, PersonnelAttendanceLink, PersonnelEvent
