@@ -544,7 +544,7 @@ def test_manager_site_detail_renders_panel_schema() -> None:
     )
 
     assert 'Pianta del cantiere' in output
-    assert 'Pannelli con fiche' in output and '1 / 2' in output
+    assert 'Pannelli eseguiti' in output and '1 / 2' in output
     assert 'href="/manager/fiches/44"' in output
     assert 'href="/manager/fiches/45"' in output
     assert '<details class="card" id="sw-fiches">' in output

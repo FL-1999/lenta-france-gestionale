@@ -45,7 +45,9 @@ def test_angle_single_fiche_two_panels_no_duplicate_volume_and_delete(operations
     assert c.post(f'/manager/fiches/{f.id}/conferma',data={'csrf':review_token(f,o['manager'])},follow_redirects=False).status_code==303
     db.refresh(f)
     o['manager'].role=RoleEnum.manager;db.commit()
-    stats=compute_site_production(o['site'],[f]);assert stats['paratie']['count']==2
+    stats=compute_site_production(o['site'],[f]);assert stats['paratie']['count']==1
+    assert stats['paratie']['target']==1 and stats['paratie']['avanzamento_pct']==100
+    assert stats['paratie']['superficie']==80
     assert stats['totale']['volume_cls_reale']==42 and stats['totale']['volume_cls_teorico']==40
     es=c.get(base+'/pianta/data').json()['elements'];assert es[0]['fiche_id']==es[1]['fiche_id']==f.id
     assert fiche(o,2,10).status_code==400

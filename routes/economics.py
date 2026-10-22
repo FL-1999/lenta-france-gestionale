@@ -179,6 +179,7 @@ def _sum_progress_percent(progress_summary: dict[str, dict[str, Any]]) -> float:
 
 
 def _build_progress_summary(site: Site) -> dict[str, dict[str, Any]]:
+    from services.panel_progress import panel_progress
     def _pct(done: float, total: float) -> float:
         if total <= 0:
             return 0.0
@@ -191,7 +192,7 @@ def _build_progress_summary(site: Site) -> dict[str, dict[str, Any]]:
     return {
         "installazione_cantiere": {"percent": float(site.installazione_cantiere_pct or 0)},
         "cordoli": {"percent": _pct(float(site.cordoli_done_m or 0), float(site.cordoli_total_m or 0))},
-        "paratie": {"percent": _pct(float(site.paratie_done_panels or 0), float(site.paratie_total_panels or 0))},
+        "paratie": {"percent": panel_progress(site)['percent']},
         "pozzi_pompaggio": {"percent": float(site.pozzi_pompaggio_pct or 0)},
         "rabotage": {"percent": float(site.rabotage_pct or 0)},
         "puntoni": {"percent": _pct(float(strut_done), float(strut_total))},
