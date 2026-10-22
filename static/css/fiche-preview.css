@@ -1,0 +1,41 @@
+/* Screen framing only. This stylesheet is never included in exported PDFs. */
+@media screen {
+  .fiche-consumption-ratio {
+    display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px;
+    margin:8px 0 5px; line-height:1.35;
+  }
+  .fiche-consumption-ratio strong { font-size:1.25rem; color:var(--ws-info); font-variant-numeric:tabular-nums; }
+  .fiche-consumption-ratio span { font-size:.78rem; color:var(--ws-muted); }
+  .technical-coupe-card--sheet { overflow:hidden; }
+  .technical-coupe-card--sheet .technical-coupe-card__header {
+    flex-wrap:wrap; gap:14px; padding:20px 24px;
+  }
+  .fiche-preview-heading { flex:1 1 280px; }
+  .fiche-preview-heading .card-title { display:flex; align-items:center; gap:10px; font-size:1.1rem; }
+  .fiche-preview-heading p { margin:6px 0 0; color:var(--ws-muted); font-size:.85rem; line-height:1.4; }
+  .fiche-preview-format {
+    padding:3px 7px; border:1px solid var(--ws-line); border-radius:5px;
+    color:var(--ws-muted); font-size:.7rem; font-weight:600; letter-spacing:.04em;
+  }
+  .technical-coupe-card--sheet > .card-body {
+    padding:28px; background:#12283b;
+    background:linear-gradient(145deg,#1c354a,#112638);
+  }
+  .workspace-ui .technical-sheet-viewport { overflow:visible; filter:drop-shadow(0 10px 16px #06142166); }
+  .workspace-ui .technical-sheet-viewport #technical-sheet-export {
+    background:#fff; background-image:none; border:0; padding:0;
+  }
+  /* B1/B2 are already A4 pages. Fit their actual width rather than a second 1080px frame. */
+  .workspace-ui .technical-sheet-viewport.fiche-preview-b { max-width:1000px; }
+  .workspace-ui .fiche-preview-b #technical-sheet-export {
+    display:flow-root; width:192mm; min-height:0; margin:0;
+  }
+  .workspace-ui .fiche-preview-b #technical-sheet-export > .fiche-b-page { margin:0 auto; }
+  .workspace-ui .fiche-preview-b #technical-sheet-export > .technical-sheet-annex { margin-top:16px; }
+  @media (max-width:640px) {
+    .technical-coupe-card--sheet .technical-coupe-card__header { padding:16px 12px; gap:12px; }
+    .technical-coupe-card--sheet > .card-body { padding:14px 8px; }
+    .fiche-preview-heading { flex-basis:100%; }
+    .fiche-preview-heading .card-title { font-size:1rem; }
+  }
+}

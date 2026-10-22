@@ -5,11 +5,12 @@
   const viewport = document.querySelector('[data-sheet-viewport]');
   const sheet = document.getElementById('technical-sheet-export');
   if (!viewport || !sheet) return;
-  const designWidth = 1080;
+  const reportPage = sheet.querySelector('.fiche-b-page');
+  const designWidth = reportPage ? reportPage.getBoundingClientRect().width : 1080;
   function fit() {
     if (window.matchMedia('print').matches) return;
     sheet.style.width = `${designWidth}px`;
-    const scale = Math.min(1, viewport.clientWidth / designWidth);
+    const scale = reportPage ? viewport.clientWidth / designWidth : Math.min(1, viewport.clientWidth / designWidth);
     sheet.style.transform = `scale(${scale})`;
     viewport.style.height = `${Math.ceil(sheet.offsetHeight * scale)}px`;
   }

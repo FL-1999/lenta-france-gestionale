@@ -5,6 +5,7 @@
 {% endblock %}
 {% block content %}
 <link rel="stylesheet" href="/static/css/fiche-report.css?v=20261021b">
+<link rel="stylesheet" href="/static/css/fiche-preview.css?v=20261022a" media="screen">
 {% set lang = request.cookies.get('lang', 'it') %}
 {% set report_lang = fiche_report_language(report_lang|default(request.query_params.get('report_lang', 'fr'))) %}
 {% set rt = fiche_report_translator(report_lang) %}
@@ -29,6 +30,7 @@
 {% set is_paratia = tipologia_scavo == "paratia" %}
 {% set volume_gettato = fiche.metri_cubi_gettati %}
 {% set volume_diff = volume_gettato - volume_teorico if volume_gettato is not none and volume_teorico is not none else none %}
+{% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
 {% set has_ngf_quote = fiche.quota_ngf_testa is not none or fiche.quota_ngf_fondo is not none or fiche.quota_ngf_note or fiche.quota_partenza is not none or fiche.quota_testa_getto is not none %}
 {% set has_courbe_beton = fiche.courbe_beton_active %}
 
@@ -147,6 +149,14 @@
                         <span class="unit-badge unit-badge--kpi">m³</span>
                     {% else %}
                         <span class="kpi-number">—</span>
+                    {% endif %}
+                </div>
+                <div class="fiche-consumption-ratio" data-volume-percentage>
+                    {% if volume_diff_percent is not none %}
+                        <strong>{{ ("%+.1f"|format(volume_diff_percent)).replace('.', ',') }}%</strong>
+                        <span>{% if volume_diff_percent > 0 %}{{ 'de surconsommation' if lang == 'fr' else 'di sovraconsumo' }}{% else %}{{ 'par rapport au théorique' if lang == 'fr' else 'rispetto al teorico' }}{% endif %}</span>
+                    {% else %}
+                        <span>{{ 'Pourcentage non disponible' if lang == 'fr' else 'Percentuale non disponibile' }}</span>
                     {% endif %}
                 </div>
                 <div class="kpi-sub">{% if lang == 'fr' %}Coulé − théorique{% else %}Gettato − teorico{% endif %}</div>
@@ -296,8 +306,9 @@
     </div><script src="/static/js/fiche-translation.js?v=20261021b" defer></script>
     {% endif %}
     <div class="card-header technical-coupe-card__header">
-        <div class="card-title">
-            📈 {{ rt("Rapport d'exécution") }} — {{ rt('Pieu' if is_palo else 'Paroi moulée') }}
+        <div class="fiche-preview-heading">
+            <div class="card-title">{{ 'Aperçu de la fiche' if lang == 'fr' else 'Anteprima della fiche' }} <span class="fiche-preview-format">A4</span></div>
+            <p>{{ 'Le document complet, tel qu’il sera dans le PDF.' if lang == 'fr' else 'Il documento completo, come apparirà nel PDF.' }}</p>
         </div>
         {% include 'shared/_fiche_report_language.html' %}
         <a href="{{ url_for('manager_fiche_pdf', fiche_id=fiche.id) }}?report_lang={{ report_lang }}" class="btn btn-primary btn-sm" download>
@@ -314,9 +325,7 @@
             {% set schema_quota_base_idraulica = schema_quota_fondo %}
             {% set schema_width_label = (("%.2f"|format(larghezza_m)).replace(".", ",") ~ " m") if larghezza_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
             {% set schema_thickness_label = (("%.2f"|format(spessore_m)).replace(".", ",") ~ " m") if spessore_m is not none else (("Ø %.0f cm"|format(diametro_cm)) if diametro_cm is not none else "—") %}
-            {% set volume_diff_percent = ((volume_diff / volume_teorico) * 100) if volume_diff is not none and volume_teorico not in (none, 0) else none %}
-
-            <div class="technical-split-view technical-sheet-viewport" data-sheet-viewport>
+            <div class="technical-split-view technical-sheet-viewport{% if is_paratia %} fiche-preview-b{% endif %}" data-sheet-viewport>
                 <article class="technical-sheet" id="technical-sheet-export" lang="{{ report_lang }}" aria-label="{{ rt("Rapport d'exécution imprimable") }}">{% if is_paratia %}{% include "manager/fiches/_report_b.html" %}{% else %}<div class="technical-sheet-page">{% if fiche.review_status == 'pending' %}<div style="text-align:center;padding:8px;font-weight:bold;color:#854d0e;border:2px solid #ca8a04">{{ rt('À VÉRIFIER — NON CONFIRMÉE') }}</div>{% endif %}
                     {% if fiche.pour_panels %}
                     {% set group=fiche.pour_panels[0].pour %}
@@ -869,7 +878,7 @@
 </style>
 
 {# The same complete technical sheet fits its actual available width on all screens. #}
-<script src="/static/js/fiche_sheet.js?v=20260917r1" defer></script>
+<script src="/static/js/fiche_sheet.js?v=20261022a" defer></script>
 
 {% if fiche.review_status == 'pending' and can_confirm_fiche %}
 <section class="form-card" style="margin-top:24px;padding:20px;">

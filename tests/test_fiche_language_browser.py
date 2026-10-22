@@ -46,6 +46,12 @@ def test_languages_preview_print_pdf_dossier_and_phone(live_operations):
         url = origin+f'/manager/fiches/{fid}'
         page.goto(url)
         expect(page.locator('#fiche-report-lang')).to_have_value('fr')
+        expect(page.locator('[data-volume-percentage]')).to_contain_text('+34,2%')
+        expect(page.locator('[data-volume-percentage]')).to_contain_text('de surconsommation')
+        page.locator('.dashboard-kpi-grid').screenshot(path=str(out/'fiche-consumption.png'))
+        if page.locator('html').get_attribute('data-theme') != 'dark':
+            page.locator('#theme-toggle').click()
+        page.locator('.dashboard-kpi-grid').screenshot(path=str(out/'fiche-consumption-dark.png'))
         for lang, heading, soil in [('it', 'RAPPORTO DI ESECUZIONE PANNELLO', 'ciottoli grossi'),
                                      ('fr', 'RAPPORT D’EXÉCUTION DE PANNEAU', 'Gros cailloux')]:
             page.locator('#fiche-report-lang').select_option(lang)
@@ -69,11 +75,25 @@ def test_languages_preview_print_pdf_dossier_and_phone(live_operations):
             printed.close()
             for width in (320, 390, 1440):
                 page.set_viewport_size({'width': width, 'height': 844 if width < 1000 else 1000})
+                # Wait for the responsive preview to fit the *document*, with no redundant frame.
+                page.wait_for_function('''() => {
+                    const r = s => document.querySelector(s).getBoundingClientRect();
+                    return Math.abs(r('.fiche-b-page').width - r('[data-sheet-viewport]').width) < 2;
+                }''')
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
+                bounds = page.evaluate('''() => {
+                    const r = s => document.querySelector(s).getBoundingClientRect();
+                    return {page:r('.fiche-b-page').bottom, frame:r('[data-sheet-viewport]').bottom,
+                        background:getComputedStyle(document.querySelector('#technical-sheet-export')).backgroundImage};
+                }''')
+                assert abs(bounds['page'] - bounds['frame']) < 2, bounds
+                assert bounds['background'] == 'none'
                 page.locator('#fiche-report-options').scroll_into_view_if_needed()
                 assert page.locator('#fiche-report-lang').bounding_box()['height'] >= 44
                 if width == 390:
                     page.screenshot(path=str(out/f'fiche-language-{lang}-iphone.png'))
+                if width == 1440:
+                    page.locator('.technical-coupe-card--sheet').screenshot(path=str(out/f'fiche-preview-{lang}-desktop.png'))
             article = page.locator('#technical-sheet-export').evaluate('el=>el.outerHTML').replace('/static/img/logo.png', _pdf_logo_file_src())
             (out/f'fiche-{lang}.html').write_text(_wrap_sheet_document(article, _load_style_css(), lang), encoding='utf-8')
             response = page.request.get(url+f'/pdf?report_lang={lang}', timeout=60000)
@@ -156,6 +176,22 @@ def test_languages_preview_print_pdf_dossier_and_phone(live_operations):
             assert doc[i].get_height() == pytest.approx(841.89, abs=1)
             doc[i].render(scale=1).to_pil().save(out/f'fiche-palo-it-{i+1}.png')
         doc.close()
+        # A missing measurement must never look like zero overconsumption.
+        context.add_cookies([{'name': 'lang', 'value': 'it', 'url': origin}])
+        for actual, percentage in [(0, '-100,0%'), (28.3122, '+0,0%'), (14.1561, '-50,0%'), (None, 'Percentuale non disponibile')]:
+            with Session(engine) as db:
+                fiche = db.get(Fiche, fid)
+                fiche.tipologia_scavo = 'paratia'
+                fiche.metri_cubi_gettati = actual
+                db.commit()
+            page.goto(url)
+            expect(page.locator('[data-volume-percentage]')).to_contain_text(percentage)
+        with Session(engine) as db:
+            fiche = db.get(Fiche, fid)
+            fiche.larghezza_pannello = 0; fiche.metri_cubi_gettati = 38
+            db.commit()
+        page.goto(url)
+        expect(page.locator('[data-volume-percentage]')).to_contain_text('Percentuale non disponibile')
         page.goto(origin+f'/manager/fiches?site_id={ids["site"]}&report_lang=it')
         expect(page.locator('#fiche-report-lang')).to_have_value('it')
         page.locator('#fiche-report-lang').select_option('fr')
