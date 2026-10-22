@@ -51,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const unreadCount = getUnreadCount(payload);
       setBadge(unreadCount);
       setMarkAllState(unreadCount > 0);
+      if (isPanelOpen()) loadNotificationsList({ markOnOpen: false });
     } catch (_error) {}
   };
 
@@ -74,6 +75,8 @@ document.addEventListener("DOMContentLoaded", () => {
       item.className = "notification-item";
       item.dataset.notificationId = notification.id;
       item.dataset.read = String(isRead);
+      item.dataset.requiresAction = String(Boolean(notification.requires_action));
+      if (notification.requires_action) item.classList.add('notification-item--alert');
       if (!isRead) item.classList.add("is-unread");
 
       const text = document.createElement(linkUrl ? "a" : "div");
@@ -85,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       text.addEventListener("click", async (event) => {
         if (!linkUrl) event.preventDefault();
-        if (item.dataset.read === "true") return;
+        if (item.dataset.read === "true" || notification.requires_action) return;
         try {
           const response = await fetch(markReadEndpoint, {
             method: "POST",
@@ -106,7 +109,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const meta = document.createElement("div");
       meta.className = "notifications-panel__meta";
-      meta.textContent = notification.created_at || "";
+      meta.textContent = notification.requires_action
+        ? (document.documentElement.lang === 'fr' ? 'À valider dans la fiche' : 'Da validare nella fiche')
+        : notification.created_at || "";
 
       item.appendChild(text);
       if (meta.textContent) item.appendChild(meta);
@@ -129,6 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setBadge(unreadCountAfterMarkAll);
       setMarkAllState(unreadCountAfterMarkAll > 0);
       list.querySelectorAll(".notification-item.is-unread").forEach((item) => {
+        if (item.dataset.requiresAction === 'true') return;
         item.classList.remove("is-unread");
         item.classList.add("is-read");
         item.dataset.read = "true";
@@ -198,9 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!response.ok) return;
         const payload = await response.json();
         setBadge(getUnreadCount(payload));
-        setMarkAllState(false);
-        setClearAllState(false);
-        list.innerHTML = '<div class="notification-empty">Nessuna notifica</div>';
+        await loadNotificationsList({ markOnOpen: false });
       } catch (_error) {}
     });
   }

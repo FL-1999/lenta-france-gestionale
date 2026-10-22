@@ -201,6 +201,7 @@ class TestNotificationsAuth:
                     ),
                     "url": "/manager/dashboard",
                     "is_read": False,
+                    "requires_action": False,
                 }
             ],
         }

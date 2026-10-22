@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="/static/css/style.css?v=20260917r18">
   <link rel="stylesheet" href="/static/css/workspace.css?v=20261013mobile1">
   <link rel="stylesheet" href="/static/css/mobile-directory.css?v=20261019a">
+  <link rel="stylesheet" href="/static/css/fiche-consumption.css?v=20261022a" media="screen">
 </head>
 <body class="workspace-ui {{ 'purchasing-workspace' if purchase_nav else '' }} {{ 'warehouse-workspace' if request.url.path.startswith('/manager/magazzino') else '' }} {{ 'workspace-auth' if user else 'workspace-guest' }}">
     {% set lang = request.cookies.get('lang', 'it') %}
@@ -111,7 +112,7 @@
       </div>
       <div class="workspace-topbar-actions">
         {% if user %}
-                <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/recent" data-mark-read-endpoint="/api/notifications/mark-read" data-clear-all-endpoint="/api/notifications/clear-all" data-poll-interval="30000">
+                <div class="nav-notifications nav-right__item" data-notifications data-count-endpoint="/api/notifications/unread-count" data-list-endpoint="/api/notifications/recent" data-mark-read-endpoint="/api/notifications/mark-read" data-clear-all-endpoint="/api/notifications/clear-all" data-poll-interval="10000">
                     <button type="button" class="nav-link nav-link--icon notification-button" aria-label="{{ 'Notifications' if lang == 'fr' else 'Notifiche' }}" id="notificationsToggle" data-notifications-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notificationsPanel">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
                         <span id="notificationCount" class="notification-count">0</span>
@@ -208,7 +209,7 @@
   {% if purchase_nav %}<script src="/static/js/purchasing_navigation.js?v=20260925a" defer></script>{% endif %}
   <script src="/static/js/workspace_icons.js?v=20260917r17" defer></script>
   <script src="/static/js/mobile-directory.js?v=20261019a" defer></script>
-  <script src="/static/js/notifications.js?v=20260922" defer></script>
+  <script src="/static/js/notifications.js?v=20261022a" defer></script>
   <script src="/static/js/sw_register.js?v=20260917r17" defer></script>
   {% block scripts %}{% endblock %}
   <noscript><style>@media(max-width:1023px){.workspace-sidebar{position:static!important;visibility:visible!important;transform:none!important;width:100%!important}.workspace-scrim,.workspace-menu-toggle{display:none!important}}</style></noscript>
