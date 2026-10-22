@@ -130,6 +130,7 @@ from utils.db_check import check_and_suggest_db_upgrade
 from utils.trips import compute_trip_progress
 from utils.reports import report_man_hours, report_total_hours
 from utils.production_stats import compute_site_production
+from services.panel_progress import panel_progress
 
 
 configure_logging()
@@ -4787,10 +4788,9 @@ def _update_progress_summary_for_fiche_grids(
     fiches: list[Fiche],
     lang: str,
 ) -> None:
-    paratie_total = _site_paratie_total(site)
+    panels = panel_progress(site, fiches)
+    paratie_total, paratie_done = panels['total'], panels['done']
     pali_total = _site_pali_total(site)
-    from services.site_pours import completed_numbers
-    paratie_done = len(completed_numbers(fiches, paratie_total))
     pali_done = len(
         {
             int(fiche.numero_pannello)
@@ -4837,7 +4837,7 @@ def _sync_site_fiche_progress(db: Session, site: Site) -> None:
     if getattr(site, "numero_totale_paratie", None) is None:
         site.numero_totale_paratie = site.totale_paratie_da_scavare
     paratie_total = _site_paratie_total(site)
-    site.progress = _progress_percent(paratie_scavate, paratie_total)
+    site.progress = panel_progress(site, site_fiches, db)['percent']
 
 
 def _apply_extra_site_progress(
@@ -4863,8 +4863,8 @@ def _build_site_progress(
     from services.site_works import guide_configuration, resolved_works, level_counts
     cordoli_total = float(guide_configuration(site)['guide_total_m'])
     cordoli_done = float(site.cordoli_done_m or 0)
-    paratie_total = _site_paratie_total(site)
-    paratie_done = int(site.paratie_done_panels or 0)
+    panels = panel_progress(site)
+    paratie_total, paratie_done = panels['total'], panels['done']
     pali_total = _site_pali_total(site)
     pali_done = 0
     installazione_cantiere_pct = _clamp_progress_percent(site.installazione_cantiere_pct)
@@ -6527,9 +6527,7 @@ def manager_site_detail(
         pali_grid_labels = _load_progress_grid_label_map(
             db, site.id, "palo", numero_totale_pali
         )
-        paratie_progress_map = _progress_map_summary(
-            len(paratie_fiches_map), numero_totale_paratie
-        )
+        paratie_progress_map = panel_progress(site, site_fiches, db)
         pali_progress_map = _progress_map_summary(
             len(pali_fiches_map), numero_totale_pali
         )
@@ -6653,9 +6651,7 @@ def manager_site_progress_grids(
         pali_grid_labels = _load_progress_grid_label_map(
             db, site.id, "palo", numero_totale_pali
         )
-        paratie_progress_map = _progress_map_summary(
-            len(paratie_fiches_map), numero_totale_paratie
-        )
+        paratie_progress_map = panel_progress(site, site_fiches, db)
         pali_progress_map = _progress_map_summary(
             len(pali_fiches_map), numero_totale_pali
         )
@@ -7448,9 +7444,7 @@ def manager_cantiere_modifica_get(
         pali_fiches_map = _build_site_fiches_map(
             db, site.id, "palo", numero_totale_pali
         )
-        paratie_progress_map = _progress_map_summary(
-            len(paratie_fiches_map), numero_totale_paratie
-        )
+        paratie_progress_map = panel_progress(site, site_fiches, db)
         pali_progress_map = _progress_map_summary(
             len(pali_fiches_map), numero_totale_pali
         )
@@ -7796,9 +7790,7 @@ def capo_site_detail(
         pali_fiches_map = _build_site_fiches_map(
             db, site.id, "palo", numero_totale_pali
         )
-        paratie_progress_map = _progress_map_summary(
-            len(paratie_fiches_map), numero_totale_paratie
-        )
+        paratie_progress_map = panel_progress(site, site_fiches, db)
         pali_progress_map = _progress_map_summary(
             len(pali_fiches_map), numero_totale_pali
         )

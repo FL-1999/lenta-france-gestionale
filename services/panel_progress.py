@@ -1,0 +1,60 @@
+"""Progress counts physical panels; approved A/B corners are one unit.
+
+Stable element numbers remain unchanged for plans, coupes, cages and fiches.
+Joint pours do not merge their distinct panels for progress purposes.
+"""
+from sqlalchemy import inspect
+from sqlalchemy.orm import object_session
+
+from services.site_pours import completed_numbers
+
+
+def count_panels(total, fiches, corners=()):
+    total = max(0, int(total or 0))
+    numbers = set(range(1, total + 1))
+    units, grouped = [], set()
+    for pair in corners:
+        pair = frozenset(pair)
+        # Only complete, non-overlapping configured pairs can become one panel.
+        if len(pair) == 2 and pair <= numbers and not pair & grouped:
+            units.append(pair)
+            grouped.update(pair)
+    units.extend(frozenset([n]) for n in sorted(numbers - grouped))
+    done_numbers = completed_numbers(fiches, total)
+    recorded = set()
+    for fiche in fiches:
+        if fiche.tipologia_scavo != 'paratia':
+            continue
+        recorded.add(fiche.numero_pannello)
+        recorded.update(m.number for m in getattr(fiche, 'pour_panels', []))
+    done = sum(unit <= done_numbers for unit in units)
+    pending = sum(bool(unit & recorded) and not unit <= done_numbers for unit in units)
+    return dict(done=done, total=len(units), percent=round(done / len(units) * 100) if units else 0,
+                pending=pending, remaining=len(units)-done, angles=len(grouped)//2)
+
+
+def panel_progress(site, fiches=None, db=None):
+    total = next((getattr(site, key, None) for key in
+                  ('numero_totale_paratie', 'totale_paratie_da_scavare', 'paratie_total_panels')
+                  if getattr(site, key, None) is not None), 0)
+    if db is None and inspect(site, raiseerr=False) is not None:
+        db = object_session(site)
+    if fiches is None:
+        fiches = list(site.fiches) if db is not None else []
+    corners = []
+    if db is not None:
+        from models import SitePour
+        from services.site_plan_project import approved_panels
+        from services.plan_corners import groups, corner_name
+        # Include corners already approved on the plan, before coupe/fiche setup.
+        for pair in groups(approved_panels(db, site.id)).values():
+            if corner_name(pair):
+                corners.append([p.get('element') for p in pair])
+        corners.extend([m.number for m in group.members] for group in
+                       db.query(SitePour).filter_by(site_id=site.id, kind='angle'))
+    else:
+        for fiche in fiches:
+            for member in getattr(fiche, 'pour_panels', []):
+                if member.pour.kind == 'angle':
+                    corners.append([m.number for m in member.pour.members])
+    return count_panels(total, fiches, corners)
