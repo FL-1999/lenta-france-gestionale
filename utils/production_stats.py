@@ -109,6 +109,7 @@ def _aggregate_group(fiche_list: list) -> dict[str, Any]:
             "delta_cls":            None,
             "delta_cls_pct":        None,
             "superficie":           None,
+            "superficie_coverage":  0,
             "ml":                   None,
             "cls_reale_coverage":   0,
         }
@@ -155,6 +156,7 @@ def _aggregate_group(fiche_list: list) -> dict[str, Any]:
         "delta_cls":            delta,
         "delta_cls_pct":        delta_pct,
         "superficie":           _sum(pools["superficie"]),
+        "superficie_coverage":  len(pools["superficie"]),
         "ml":                   _sum(pools["ml"]),
         "cls_reale_coverage":   len(pools["volume_cls_reale"]),
     }
@@ -196,9 +198,15 @@ def compute_site_production(site, fiches: list) -> dict[str, Any]:
     pali    = [f for f in prod_fiches if (f.tipologia_scavo or "").lower() in tipo_palo]
 
     paratie_stats = _aggregate_group(paratie)
-    from services.panel_progress import panel_progress
+    from services.panel_progress import panel_progress, planned_surface
     panels = panel_progress(site, paratie)
     paratie_stats['count'] = panels['done']
+    surface = planned_surface(site)
+    surface['executed'] = paratie_stats['superficie'] if paratie else 0
+    surface['executed_missing'] = len(paratie) - paratie_stats['superficie_coverage']
+    surface['percent'] = (round(surface['executed'] / surface['total'] * 100, 1)
+                          if surface['total'] and surface['executed'] is not None
+                          and not surface['executed_missing'] else None)
     pali_stats    = _aggregate_group(pali)
 
     target_paratie = panels['total']
@@ -229,6 +237,7 @@ def compute_site_production(site, fiches: list) -> dict[str, Any]:
         "paratie": {
             **paratie_stats,
             "target":         target_paratie,
+            "surface_progress": surface,
             "avanzamento_pct": _pct(paratie_stats["count"], target_paratie),
         },
         "pali": {

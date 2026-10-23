@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from playwright.sync_api import sync_playwright, expect
 from sqlalchemy.orm import Session
-from models import Fiche, FicheTypeEnum, Site, SitePour, SitePourPanel, User
+from models import Fiche, FicheTypeEnum, Site, SitePour, SitePourPanel, User, SitePlan, SiteCoupe, SiteCoupeAssignment
 from test_operations_live import live_operations
 
 pytestmark = pytest.mark.skipif(os.getenv('RUN_BROWSER_TESTS') != '1', reason='Browser checks opt-in')
@@ -16,6 +16,15 @@ def test_physical_progress_desktop_and_phone(live_operations):
     with Session(engine) as db:
         site=db.get(Site,ids['site']);site.numero_totale_paratie=3
         manager=db.query(User).filter_by(email='smoke-manager@example.com').one()
+        coupe=SiteCoupe(site_id=site.id,nome='Coupe projet',profondita_teorica=20,larghezza=5)
+        db.add(coupe);db.flush()
+        panels=[]
+        for n,width in [(1,2),(2,3),(3,5)]:
+            panels.append(dict(key=str(n),element=n,label=f'P{n}',width_m=width,
+                               points=[[0,n*20],[width*10,n*20],[width*10,n*20+5],[0,n*20+5]]))
+            db.add(SiteCoupeAssignment(site_id=site.id,coupe_id=coupe.id,tipologia_scavo='paratia',numero_elemento=n))
+        layout=json.dumps(dict(width=100,height=100,panels=panels))
+        db.add(SitePlan(site_id=site.id,filename='test.pdf',pdf_data=b'test',preview_data=b'test',draft=layout,approved=layout,approved_at=date.today()))
         f=Fiche(site_id=site.id,created_by_id=manager.id,date=date(2026,10,22),
             numero_pannello=1,panel_name='P7 A/B',fiche_type=FicheTypeEnum.produzione,
             description='Collaudo angolo',tipologia_scavo='paratia',profondita_totale=10,
@@ -37,6 +46,8 @@ def test_physical_progress_desktop_and_phone(live_operations):
         card=page.locator('#site-panel-progress')
         expect(card).to_contain_text('1 / 2')
         expect(card).to_contain_text('50,00')
+        expect(card.locator('.sw-surface-total')).to_contain_text('200,00')
+        expect(card.locator('.sw-surface-done')).to_contain_text('25,0%')
         expect(card).to_contain_text('27,00')
         expect(card.get_by_role('progressbar')).to_have_attribute('aria-valuenow','50')
         if page.locator('html').get_attribute('data-theme')!='dark': page.locator('#theme-toggle').click()

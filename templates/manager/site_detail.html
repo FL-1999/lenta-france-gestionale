@@ -7,7 +7,7 @@
 
 {% set lang=request.cookies.get('lang','it') %}
 {% set closed=site.status and site.status.value == 'chiuso' %}
-<link rel="stylesheet" href="/static/css/site-workspace.css?v=20261022b">
+<link rel="stylesheet" href="/static/css/site-workspace.css?v=20261023">
 <div id="site-workspace" data-site="{{ site.id }}" data-edit="{{ 'true' if has_perm(user,'sites.update') else 'false' }}">
 <a href="/manager/cantieri?stato={{ 'terminati' if closed else 'in-corso' }}">Cantieri / {{ 'Terminati' if closed else 'In esecuzione' }}</a>
 <header class="page-header"><div><p class="page-eyebrow">CANTIERE</p><h1>{{ site.name }}</h1><p>{{ site.code or '—' }} · {{ site.city or '—' }}</p></div><span class="fiche-progress-pill">{{ 'Terminato' if closed else 'In esecuzione' }}</span></header>
