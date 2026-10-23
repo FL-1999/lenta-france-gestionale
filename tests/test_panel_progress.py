@@ -2,8 +2,8 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from models import Fiche, RoleEnum, SitePlan
-from services.panel_progress import count_panels, panel_progress
+from models import Fiche, RoleEnum, SitePlan, SiteCoupe, SiteCoupeAssignment
+from services.panel_progress import count_panels, panel_progress, planned_surface
 from services.fiche_review import review_token
 from utils.production_stats import compute_site_production
 from test_operations import operations
@@ -54,6 +54,8 @@ def test_confirmed_corner_or_joint_progress_and_quantities(operations,kind,label
     stats=compute_site_production(o['site'],fiches)
     assert stats['paratie']['count']==stats['paratie']['target']==target
     assert stats['paratie']['superficie']==80
+    assert stats['paratie']['surface_progress']==dict(total=80,missing=0,elements=2,
+                                                    executed=80,executed_missing=0,percent=100)
     assert stats['totale']['volume_cls_reale']==(42 if kind=='angle' else 60)
     assert o['site'].numero_totale_paratie==2 and len(json.loads(db.query(SitePlan).one().approved)['panels'])==2
     page=c.get(base); assert page.status_code==200
@@ -63,3 +65,60 @@ def test_confirmed_corner_or_joint_progress_and_quantities(operations,kind,label
     fiches[0].notes='Ricontrollare'; db.commit()
     assert panel_progress(o['site'],fiches)['pending']==1
     assert panel_progress(o['site'],fiches)['done']==target-1
+
+
+def test_project_surface_uses_each_arm_width_and_its_assigned_depth(operations):
+    o=operations; setup(o); db=o['db']; plan=db.query(SitePlan).one()
+    layout=json.loads(plan.approved)
+    for p in layout['panels']: p['corner_group']='corner-7'
+    plan.approved=json.dumps(layout)
+    c=SiteCoupe(site_id=o['site'].id,nome='Coupe 2',profondita_teorica=12,larghezza=99)
+    db.add(c);db.flush()
+    db.query(SiteCoupeAssignment).filter_by(numero_elemento=2).one().coupe=c
+    db.commit()
+    assert panel_progress(o['site'])['total']==1
+    assert planned_surface(o['site'])==dict(total=86,missing=0,elements=2)  # 5*10 + 3*12
+    # Other sites and unapproved drafts cannot affect this project's total.
+    plan.draft=json.dumps({'panels':[dict(element=1,width_m=500)]})
+    db.add(SiteCoupeAssignment(site_id=o['other'].id,coupe_id=c.id,tipologia_scavo='paratia',numero_elemento=1))
+    db.commit()
+    assert planned_surface(o['site'])['total']==86
+
+
+def test_surface_comparison_keeps_project_target_separate_from_actual_fiche(operations):
+    o=operations; setup(o,('P1','P2')); db=o['db']
+    assert fiche(o,1,30).status_code==303
+    f=db.query(Fiche).one();f.profondita_totale=12;db.commit()
+    f.review_status='confirmed';db.commit()
+    s=compute_site_production(o['site'],[f])['paratie']['surface_progress']
+    assert s['total']==80 and s['executed']==60 and s['percent']==75
+    f.profondita_totale=20;db.commit()
+    f.review_status='confirmed';db.commit()
+    s=compute_site_production(o['site'],[f])['paratie']['surface_progress']
+    assert s['total']==80 and s['executed']==100 and s['percent']==125
+    f.review_status='pending';db.commit()
+    s=compute_site_production(o['site'],[f])['paratie']['surface_progress']
+    assert s['executed']==0 and s['percent']==0
+    f.larghezza_pannello=None;db.commit()
+    f.review_status='confirmed';db.commit()
+    s=compute_site_production(o['site'],[f])['paratie']['surface_progress']
+    assert s['executed'] is None and s['executed_missing']==1 and s['percent'] is None
+
+
+def test_project_surface_does_not_publish_partial_total(operations):
+    o=operations; setup(o); db=o['db']
+    o['site'].numero_totale_paratie=3;db.commit()
+    s=compute_site_production(o['site'],[])['paratie']['surface_progress']
+    assert s['total'] is None and s['missing']==1 and s['percent'] is None
+    assert 'Totale superficie da completare' in o['client'].get(f'/manager/cantieri/{o["site"].id}').text
+    assert planned_surface(o['other'])==dict(total=None,missing=0,elements=0)
+
+
+@pytest.mark.parametrize('width', [4,0,-2,float('inf')])
+def test_project_surface_without_plan_uses_only_valid_assigned_coupe_width(operations,width):
+    o=operations;setup(o);db=o['db']
+    db.query(SitePlan).delete()
+    c=db.query(SiteCoupe).one();c.larghezza=width;db.commit()
+    result=planned_surface(o['site'])
+    assert result['total']==(80 if width==4 else None)
+    assert result['missing']==(0 if width==4 else 2)
