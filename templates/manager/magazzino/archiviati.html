@@ -79,7 +79,7 @@
                     <tbody>
                         {% for item in items %}
                             <tr>
-                                <td>{{ item.nome }}</td>
+                                <td>{{ item.nome }}{% include 'manager/magazzino/_manufacturer_code.html' %}</td>
                                 <td>{{ item.codice or '—' }}</td>
                                 <td>{{ item.categoria.nome if item.categoria else '—' }}</td>
                                 <td>{{ item.categoria.macro.name if item.categoria and item.categoria.macro else '—' }}</td>

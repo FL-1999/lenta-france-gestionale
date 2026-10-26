@@ -29,6 +29,8 @@
   <label class="warehouse-checkbox"><input type="checkbox" name="conferma_correzione_unita" value="true"><span>{{ t('Confermo: sto correggendo l’unità, senza convertire le quantità.','Je confirme : je corrige l’unité, sans convertir les quantités.') }}</span></label>
 </div>
 {% endif %}
+<input type="hidden" name="codice_produttore_form" value="true">
+<label class="vehicle-field">{{ t('Codice produttore (facoltativo)','Code fabricant (facultatif)') }}<input name="codice_produttore" value="{{ values.codice_produttore or '' }}" maxlength="120" aria-describedby="manufacturer-code-help" autocomplete="off"></label><p id="manufacturer-code-help" class="text-muted">{{ t('Il riferimento del produttore per questo articolo, comune a tutti i fornitori. Puoi lasciarlo vuoto.','La référence du fabricant pour cet article, commune à tous les fournisseurs. Vous pouvez laisser ce champ vide.') }}</p>
 <label class="vehicle-field">{{ t('Descrizione','Description') }}<textarea name="descrizione" rows="3">{{ values.descrizione or '' }}</textarea></label>
 </div></section>
 {% include 'manager/magazzino/_packaging_form.html' %}

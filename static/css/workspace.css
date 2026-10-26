@@ -442,6 +442,8 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
 .warehouse-row-name { min-width:0; overflow-wrap:anywhere; }
 .warehouse-row p { margin:0; color:var(--ws-muted); font-size:13px; }
 .warehouse-code { font-variant-numeric:tabular-nums; }
+.warehouse-manufacturer-code { margin:8px 0 0; color:var(--ws-muted); overflow-wrap:anywhere; }
+.warehouse-manufacturer-code strong { color:var(--ws-ink); font-weight:600; }
 .warehouse-row-stock { text-align:right; display:grid; gap:4px; font-variant-numeric:tabular-nums; }
 .warehouse-row-stock strong { font-size:20px; font-weight:650; white-space:nowrap; }
 .warehouse-row-stock small { color:var(--ws-muted); font-size:12px; font-weight:400; }

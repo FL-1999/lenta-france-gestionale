@@ -604,7 +604,7 @@ def _render_order_form(
                 selected_code = next((a for a in codes if str(a.id) == requested_code), None)
                 if selected_code or len(codes) == 1:
                     vendor_code = (selected_code or codes[0]).codice
-            form_data['lines'] = [{'description': selected_item.nome, 'qty_ordered': '',
+            form_data['lines'] = [{'description': selected_item.order_description, 'qty_ordered': '',
                                   'magazzino_item_id': str(selected_item.id), 'codice': vendor_code}]
     return render_template(
         templates,
