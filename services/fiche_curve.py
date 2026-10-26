@@ -1,6 +1,40 @@
 """PDF-only elevation chart: the operational editor retains its depth inputs."""
 from html import escape
+from math import isfinite, pi
 from services.fiche_language import report_translator
+
+
+def curve_defaults(fiche):
+    """Theoretical data only. Never infer measured pouring points or actual volume."""
+    def number(name):
+        value = getattr(fiche, name, None)
+        try:
+            return float(value) if value is not None and isfinite(float(value)) else None
+        except (TypeError, ValueError):
+            return None
+    depth = number('profondita_totale')
+    if depth is None:
+        origin, bottom = number('quota_partenza'), number('quota_ngf_fondo')
+        depth = origin - bottom if origin is not None and bottom is not None else None
+    depth = depth if depth is not None and depth > 0 else None
+    width, thickness, diameter = number('larghezza_pannello'), number('altezza_pannello'), number('diametro_palo')
+    kind = (getattr(fiche, 'tipologia_scavo', '') or '').lower()
+    section = None
+    if kind == 'paratia' and width is not None and thickness is not None and width > 0 and thickness > 0:
+        section = width * thickness
+    elif kind == 'palo' and diameter is not None and diameter > 0:
+        section = pi * (diameter / 2) ** 2
+    return {'volume': round(section * depth, 2) if section is not None and depth is not None else None,
+            'start': depth, 'end': 0.0}
+
+
+def curve_values(fiche):
+    values = curve_defaults(fiche)
+    for key, field in (('volume', 'courbe_beton_volume_total'), ('start', 'courbe_beton_hauteur_initiale')):
+        value = getattr(fiche, field, None)
+        if value is not None:
+            values[key] = value
+    return values
 
 
 def compact_courbe_svg(payload, origin, datum='NGF', *, language='fr'):
