@@ -4,6 +4,13 @@ from math import isfinite, pi
 from services.fiche_language import report_translator
 
 
+def curve_depth_increases(points):
+    """Flag suspicious readings without changing or discarding measurements."""
+    ordered = sorted(points, key=lambda p: p['volume'])
+    return any(b['volume'] > a['volume'] and b['hauteur'] > a['hauteur'] + 1e-6
+               for a, b in zip(ordered, ordered[1:]))
+
+
 def curve_defaults(fiche):
     """Theoretical data only. Never infer measured pouring points or actual volume."""
     def number(name):

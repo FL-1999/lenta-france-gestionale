@@ -61,6 +61,60 @@ document.addEventListener("DOMContentLoaded", function () {
         const start = parseValue(root.querySelector("[data-courbe-theoretical-start]"));
         return volume !== null && start !== null ? [{ volume: 0, hauteur: start }, { volume, hauteur: 0 }] : [];
     }
+    const number = value => value.toLocaleString(document.documentElement.lang === 'fr' ? 'fr-FR' : 'it-IT', {maximumFractionDigits:2});
+    const measuredTable = root.querySelector('[data-courbe-table=realisee]');
+    const notice = document.createElement('div');
+    notice.className = 'courbe-direction-warning';
+    notice.hidden = true;
+    notice.innerHTML = `<p role="alert" data-courbe-direction-message></p><button type="button" class="btn btn-secondary btn-sm" data-courbe-review-volumes>${tr('Rivedi abbinamento volumi', 'Revoir les volumes associés')}</button><div data-courbe-volume-proposal hidden></div>`;
+    measuredTable.appendChild(notice);
+    const proposal = notice.querySelector('[data-courbe-volume-proposal]');
+    const correctionStatus = document.createElement('p');
+    correctionStatus.setAttribute('role','status');
+    correctionStatus.dataset.courbeCorrectionStatus = '';
+    measuredTable.appendChild(correctionStatus);
+    function updateDirectionNotice(points) {
+        const inverted = points.some((point,index) => index && point.volume > points[index-1].volume && point.hauteur > points[index-1].hauteur + 1e-6);
+        notice.hidden = !inverted;
+        notice.querySelector('[data-courbe-direction-message]').textContent = tr(
+            'Controlla gli abbinamenti: il volume cumulato aumenta mentre anche la profondità residua aumenta. Durante il riempimento la profondità residua normalmente diminuisce.',
+            'Vérifiez les associations : le volume cumulé augmente et la profondeur restante augmente aussi. Pendant le remplissage, la profondeur restante diminue normalement.');
+        // Only propose reversal for an entirely reversed sequence, never for isolated anomalies.
+        const entirelyReversed = points.length > 1 && points.every((point,index) => !index || (point.volume > points[index-1].volume && point.hauteur > points[index-1].hauteur));
+        const incomplete = Array.from(measuredTable.querySelectorAll('.courbe-row')).some(row => {
+            const v = parseValue(row.querySelector('[data-courbe-volume]')), h = parseValue(row.querySelector('[data-courbe-hauteur]'));
+            return (v === null) !== (h === null);
+        });
+        notice.querySelector('[data-courbe-review-volumes]').hidden = !entirelyReversed || incomplete;
+        if (!inverted || !entirelyReversed || incomplete) proposal.hidden = true;
+    }
+    notice.querySelector('[data-courbe-review-volumes]').addEventListener('click', () => {
+        const rows = Array.from(measuredTable.querySelectorAll('.courbe-row'))
+            .map(row => ({row, volume:parseValue(row.querySelector('[data-courbe-volume]')), depth:parseValue(row.querySelector('[data-courbe-hauteur]'))}))
+            .filter(p => p.volume !== null && p.depth !== null).sort((a,b) => a.depth-b.depth);
+        const volumes = rows.map(p => p.volume).reverse();
+        proposal.replaceChildren();
+        const explanation = document.createElement('p');
+        explanation.textContent = tr('Proposta di inversione dei volumi tra le righe. Verifica ogni abbinamento con i rilievi di cantiere prima di applicarla.', 'Proposition d’inversion des volumes entre les lignes. Vérifiez chaque association avec les relevés du chantier avant de l’appliquer.');
+        proposal.appendChild(explanation);
+        const comparison = document.createElement('div');
+        comparison.className = 'courbe-volume-comparison';
+        [tr('Profondità (m)','Profondeur (m)'),tr('Volume attuale (m³)','Volume actuel (m³)'),tr('Proposta (m³)','Proposition (m³)')].forEach(label => {
+            const cell = document.createElement('strong');cell.textContent = label;comparison.appendChild(cell);
+        });
+        rows.forEach((point,index) => [point.depth,point.volume,volumes[index]].forEach(value => {
+            const cell = document.createElement('span');cell.textContent=number(value);comparison.appendChild(cell);
+        }));
+        proposal.appendChild(comparison);
+        const apply = document.createElement('button');apply.type='button';apply.className='btn btn-primary btn-sm';
+        apply.dataset.courbeApplyVolumes='';apply.textContent=tr('Usa questi abbinamenti nell’anteprima','Utiliser ces associations dans l’aperçu');
+        apply.addEventListener('click', () => {
+            rows.forEach((point,index) => {point.row.querySelector('[data-courbe-volume]').value=String(volumes[index]);});
+            sortRows(measuredTable);proposal.hidden=true;drawChart();
+            correctionStatus.textContent=tr('Abbinamenti modificati nell’anteprima. Controlla la curva e salva i dati per aggiornare la fiche e il PDF.', 'Associations modifiées dans l’aperçu. Vérifiez la courbe puis enregistrez les données pour mettre à jour la fiche et le PDF.');
+        });
+        proposal.appendChild(apply);proposal.hidden=false;
+    });
     function drawSeries(points, { color, dashed = false, markers = false }) {
         if (!ctx || points.length === 0) return;
         ctx.save();
@@ -101,6 +155,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const theoretical = theoreticalSeries();
         const tube = readSeries("tube");
         const all = realised.concat(theoretical, tube);
+        updateDirectionNotice(realised);
+        const example = root.querySelector('[data-courbe-example]');
+        const initialDepth = parseValue(startInput);
+        if (example) example.textContent = initialDepth === null ? '' : tr(
+            `Inizio getto: 0 m³ / ${number(initialDepth)} m residui. Fine getto al riferimento 0: volume totale gettato / 0 m residui.`,
+            `Début du coulage : 0 m³ / ${number(initialDepth)} m restants. Fin du coulage au repère 0 : volume total coulé / 0 m restant.`);
         const status = root.querySelector('[data-courbe-status]');
         if (status) status.textContent = !theoretical.length
             ? tr('Completa le dimensioni della fiche o inserisci volume teorico e altezza iniziale per vedere la curva.', 'Complétez les dimensions de la fiche ou saisissez le volume théorique et la hauteur initiale pour afficher la courbe.')
@@ -128,14 +188,14 @@ document.addEventListener("DOMContentLoaded", function () {
             ctx.beginPath(); ctx.moveTo(plot.left, y); ctx.lineTo(canvas.width - plot.right, y); ctx.stroke();
             ctx.fillText((bounds.minY + ((bounds.maxY - bounds.minY) / 5) * i).toFixed(1), plot.left - 8, y + 4);
             ctx.textAlign = "center";
-            ctx.fillText((bounds.maxX / 5 * i).toFixed(0), x, canvas.height - plot.bottom + 20);
+            ctx.fillText((bounds.maxX / 5 * i).toFixed(1), x, canvas.height - plot.bottom + 20);
             ctx.textAlign = "right";
         }
         ctx.strokeStyle = "#000000"; ctx.lineWidth = 1;
         ctx.strokeRect(plot.left, plot.top, canvas.width - plot.left - plot.right, canvas.height - plot.top - plot.bottom);
         ctx.fillStyle = "#0f172a"; ctx.font = "bold 13px Arial, sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("Volume en m³", (canvas.width + plot.left - plot.right) / 2, canvas.height - 12);
-        ctx.save(); ctx.translate(18, canvas.height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("Hauteur en m", 0, 0); ctx.restore();
+        ctx.fillText(tr('Volume cumulato (m³)', 'Volume cumulé (m³)'), (canvas.width + plot.left - plot.right) / 2, canvas.height - 12);
+        ctx.save(); ctx.translate(18, canvas.height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(tr('Profondità residua (m)', 'Profondeur restante (m)'), 0, 0); ctx.restore();
         drawSeries(realised, { color: "#2563eb", markers: true });
         drawSeries(theoretical, { color: "#dc2626", dashed: true });
         drawSeries(tube, { color: "#16a34a", dashed: true, markers: true });
@@ -151,7 +211,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function sortRows(table) {
         const rowsContainer = table.querySelector("[data-courbe-rows]");
         Array.from(rowsContainer.querySelectorAll(".courbe-row"))
-            .sort((a, b) => (parseValue(a.querySelector("[data-courbe-volume]")) ?? Infinity) - (parseValue(b.querySelector("[data-courbe-volume]")) ?? Infinity))
+            .sort((a, b) => (parseValue(b.querySelector("[data-courbe-volume]")) ?? -Infinity) - (parseValue(a.querySelector("[data-courbe-volume]")) ?? -Infinity))
             .forEach(row => rowsContainer.appendChild(row));
     }
     function addRow(tableName) {
@@ -168,19 +228,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     root.addEventListener("click", event => {
         const add = event.target.closest("[data-add-courbe-row]");
-        if (add) addRow(add.dataset.addCourbeRow);
+        if (add) { proposal.hidden=true; addRow(add.dataset.addCourbeRow); }
         const remove = event.target.closest("[data-remove-courbe-row]");
-        if (remove) { remove.closest(".courbe-row")?.remove(); drawChart(); }
+        if (remove) { proposal.hidden=true; remove.closest(".courbe-row")?.remove(); drawChart(); }
     });
     root.addEventListener("input", event => {
+        proposal.hidden=true;correctionStatus.textContent='';
         drawChart();
     });
-    root.addEventListener("blur", event => {
-        if (!event.target.matches("[data-courbe-volume], [data-courbe-hauteur]")) return;
-        const table = event.target.closest("[data-courbe-table]");
-        if (table) sortRows(table);
-        drawChart();
-    }, true);
+    root.querySelectorAll('[data-courbe-table]').forEach(table => {
+        const order = document.createElement('button');order.type='button';order.className='btn btn-secondary btn-sm';
+        order.dataset.courbeOrder='';order.textContent=tr('Ordina volumi ↓','Trier les volumes ↓');
+        order.addEventListener('click', () => {sortRows(table);proposal.hidden=true;});
+        table.querySelector('[data-add-courbe-row]').after(order);
+        sortRows(table);
+    });
     checkbox?.addEventListener("change", () => { panel.hidden = !checkbox.checked; fillDefaults(); drawChart(); });
     ensureStableRowIds();
     fillDefaults();
