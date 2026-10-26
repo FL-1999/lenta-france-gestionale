@@ -113,7 +113,7 @@ from notifications import (
 )
 from services.personale_profiles import ensure_user_personale_profile
 from services.soil_diagram import comparison_svg as soil_comparison_svg, panel_report_svg, soils_need_annex
-from services.fiche_curve import compact_courbe_svg
+from services.fiche_curve import compact_courbe_svg, curve_defaults, curve_values
 from services import fiche_translation
 from services.fiche_language import report_language, report_translator, technical_translator
 from services.soil_materials import (
@@ -952,6 +952,11 @@ def _apply_courbe_beton_fields(
     )
     volume_total = _parse_decimal_comma_float(courbe_beton_volume_total, "volume total théorique")
     hauteur_initiale = _parse_decimal_comma_float(courbe_beton_hauteur_initiale, "hauteur initiale")
+    defaults = curve_defaults(fiche)
+    if volume_total is None:
+        volume_total = defaults['volume']
+    if hauteur_initiale is None:
+        hauteur_initiale = defaults['start']
     if volume_total is not None and volume_total < 0:
         raise HTTPException(status_code=400, detail="Le volume total théorique ne peut pas être négatif.")
     fiche.courbe_beton_volume_total = volume_total
@@ -963,12 +968,13 @@ def _build_courbe_beton_payload(fiche: Fiche) -> dict:
     realised = _deserialize_courbe_points(getattr(fiche, "courbe_beton_realisee", None))
     tube = _deserialize_courbe_points(getattr(fiche, "courbe_beton_tube", None))
     theoretical = []
-    if fiche.courbe_beton_volume_total is not None and fiche.courbe_beton_hauteur_initiale is not None:
+    values = curve_values(fiche)
+    if values['volume'] is not None and values['start'] is not None:
         theoretical = [
-            {"volume": 0, "hauteur": float(fiche.courbe_beton_hauteur_initiale)},
-            {"volume": float(fiche.courbe_beton_volume_total), "hauteur": 0.0},
+            {"volume": 0, "hauteur": float(values['start'])},
+            {"volume": float(values['volume']), "hauteur": 0.0},
         ]
-    return {"realisee": realised, "theorique": theoretical, "tube": tube}
+    return {"realisee": realised, "theorique": theoretical, "tube": tube, "values": values}
 
 
 def _invalid_fields_for_fiche_error(error_message: str | None) -> list[str]:
@@ -8668,7 +8674,7 @@ def manager_fiche_edit_form(
             "show_ngf_fields": True,
             "show_project_coupe_fields": True,
             "show_capocantiere_field": True,
-            "show_courbe_beton_fields": False,
+            "show_courbe_beton_fields": current_user.role in {RoleEnum.admin, RoleEnum.manager},
         },
     )
 
@@ -8856,7 +8862,7 @@ async def manager_fiche_update(
                 "show_ngf_fields": True,
                 "show_project_coupe_fields": True,
                 "show_capocantiere_field": True,
-                "show_courbe_beton_fields": False,
+                "show_courbe_beton_fields": current_user.role in {RoleEnum.admin, RoleEnum.manager},
             },
         )
 

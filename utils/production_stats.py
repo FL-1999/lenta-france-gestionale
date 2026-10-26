@@ -74,12 +74,8 @@ def compute_fiche_volumes(fiche) -> dict[str, Any]:
         result["ml"] = profondita
 
     # ── Volume cls reale ──────────────────────────────────────────────────────
-    # Priority: courbe_beton_volume_total (more precise) > metri_cubi_gettati
-    cls_reale: Optional[float] = None
-    if fiche.courbe_beton_volume_total:
-        cls_reale = fiche.courbe_beton_volume_total
-    elif fiche.metri_cubi_gettati:
-        cls_reale = fiche.metri_cubi_gettati
+    # Curve volume is THEORETICAL: it must never replace the recorded concrete.
+    cls_reale: Optional[float] = fiche.metri_cubi_gettati
     result["volume_cls_reale"] = cls_reale
 
     # ── Delta teorico/reale ───────────────────────────────────────────────────
