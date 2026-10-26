@@ -1059,6 +1059,7 @@ class MagazzinoItem(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(255), nullable=False)
     codice = Column(String(120), nullable=False, default="")
+    codice_produttore = Column(String(120), nullable=True)
     descrizione = Column(Text, nullable=True)
     unita_misura = Column(String(50), nullable=False, default="pz")
     sacchi_per_bancale = Column(Integer, nullable=True)
@@ -1078,6 +1079,11 @@ class MagazzinoItem(Base, TimestampMixin):
 
     categoria = relationship("MagazzinoCategoria")
     righe_richiesta = relationship("MagazzinoRichiestaRiga", back_populates="item")
+
+    @property
+    def order_description(self) -> str:
+        """Description proposed for new orders; stored product text stays intact."""
+        return f"{self.nome} · {self.codice_produttore}" if self.codice_produttore else self.nome
 
     @property
     def packaging_equivalents(self):

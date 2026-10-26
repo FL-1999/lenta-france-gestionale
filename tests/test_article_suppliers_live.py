@@ -33,6 +33,7 @@ def test_article_suppliers_order_and_warehouse_layouts(live_operations):
         page.locator('#login-form button[type=submit]').click();page.wait_for_url('**/manager/dashboard')
         page.goto(origin+'/manager/magazzino/nuovo')
         page.locator('input[name=nome]').fill('Gancio D13')
+        page.get_by_label('Codice produttore (facoltativo)',exact=True).fill('000-D13/PRO')
         page.locator('select[name=categoria_id]').select_option(str(category_id))
         page.locator('input[name=quantita_disponibile]').fill('4')
         for index,sid in enumerate(vendor_ids):
@@ -45,6 +46,7 @@ def test_article_suppliers_order_and_warehouse_layouts(live_operations):
         page.locator('#theme-toggle').click()
         page.screenshot(path=str(artifacts/'article-create-night.png'),full_page=True)
         page.get_by_role('button',name='Salva',exact=True).click();page.wait_for_url('**/scheda')
+        expect(page.locator('.warehouse-manufacturer-code')).to_have_text('Codice produttore: 000-D13/PRO')
         with Session(engine) as db:
             item=db.query(MagazzinoItem).filter_by(nome='Gancio D13').one();item_id=item.id;internal_code=item.codice
             assert db.query(SupplierArticle).filter_by(magazzino_item_id=item.id).count()==4
@@ -52,19 +54,21 @@ def test_article_suppliers_order_and_warehouse_layouts(live_operations):
         expect(page.locator('#supplier-id-select')).to_have_value(str(vendor_ids[2]))
         expect(page.locator('[name=magazzino_item_id]')).to_have_value(str(item_id))
         expect(page.locator('[data-codice]')).to_have_value('VEND-2')
+        expect(page.locator('[data-desc]')).to_have_value('Gancio D13 · 000-D13/PRO')
         page.locator('[name=qty_ordered]').fill('3')
         page.get_by_role('button',name='Crea ordine',exact=True).click();page.wait_for_url('**/manager/ordini/*')
         with Session(engine) as db: assert db.query(PurchaseOrder).count()==1
         page.goto(origin+f'/manager/ordini/nuovo?supplier_id={vendor_ids[0]}')
-        page.locator('[data-item-search]').fill(internal_code)
+        page.locator('[data-item-search]').fill('000-D13/PRO')
         page.locator('[name=magazzino_item_id]').select_option(str(item_id))
         expect(page.locator('[data-codice]')).to_have_value('VEND-0')
+        expect(page.locator('[data-desc]')).to_have_value('Gancio D13 · 000-D13/PRO')
         page.locator('[data-item-search]').fill('Altro')
         page.locator('[name=magazzino_item_id]').select_option(str(other_id))
         expect(page.locator('[data-codice]')).to_have_value('')
         page.locator('[data-codice]').fill('VEND-0')
         expect(page.locator('[name=magazzino_item_id]')).to_have_value(str(item_id))
-        expect(page.locator('[data-desc]')).to_have_value('Gancio D13')
+        expect(page.locator('[data-desc]')).to_have_value('Gancio D13 · 000-D13/PRO')
         page.locator('#supplier-id-select').select_option(str(vendor_ids[1]))
         expect(page.locator('[data-codice]')).to_have_value('VEND-1')
         page.locator('[name=qty_ordered]').fill('2')
@@ -91,6 +95,21 @@ def test_article_suppliers_order_and_warehouse_layouts(live_operations):
         for path,name in [('/categorie','categories'),('/movimenti','movements'),('/richieste','requests'),(f'/items/{item_id}/scheda','article-card')]:
             page.goto(origin+'/manager/magazzino'+path)
             page.screenshot(path=str(artifacts/f'warehouse-{name}-day.png'),full_page=True)
+        # Long references remain readable on small phones and can be cleared.
+        page.set_viewport_size({'width':320,'height':740})
+        page.goto(origin+f'/manager/magazzino/{item_id}/modifica')
+        code_input=page.get_by_label('Codice produttore (facoltativo)',exact=True)
+        expect(code_input).to_have_value('000-D13/PRO')
+        code_input.fill('0'+'X'*119)
+        page.get_by_role('button',name='Salva',exact=True).click();page.wait_for_url('**/scheda')
+        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+        page.goto(origin+f'/manager/magazzino/{item_id}/modifica')
+        page.get_by_label('Codice produttore (facoltativo)',exact=True).fill('')
+        page.get_by_role('button',name='Salva',exact=True).click();page.wait_for_url('**/scheda')
+        expect(page.locator('.warehouse-manufacturer-code')).to_have_count(0)
+        with Session(engine) as db:
+            assert db.get(MagazzinoItem,item_id).codice_produttore is None
+            assert all(line.description=='Gancio D13 · 000-D13/PRO' for order in db.query(PurchaseOrder) for line in order.lines)
         assert not errors,errors
         assert not failures,failures
         print('ARTICLE_SUPPLIER_SCREENSHOTS='+str(artifacts))

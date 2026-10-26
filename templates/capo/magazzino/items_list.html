@@ -161,7 +161,7 @@
                             <div class="magazzino-item-header">
                                 <div style="display: flex; align-items: center; gap: var(--space-2);">
                                     <span aria-hidden="true">{% if item.preferito %}★{% else %}☆{% endif %}</span>
-                                    <h3 data-mobile-name>{{ item.nome }}</h3>
+                                    <h3 data-mobile-name>{{ item.nome }}</h3>{% include 'manager/magazzino/_manufacturer_code.html' %}
                                 </div>
                                 {% if esaurito %}
                                     <span data-mobile-status class="badge badge-danger">{% if lang == 'fr' %}Épuisé{% else %}Esaurito{% endif %}</span>

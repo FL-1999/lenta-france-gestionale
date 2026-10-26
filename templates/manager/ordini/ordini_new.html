@@ -226,7 +226,10 @@ body.addEventListener('input', e => {
     row.querySelector('[data-item-search]').value = '';
     Array.from(select.options).forEach(option => option.hidden = false);
   }
-  if (changed || !row.querySelector('[data-desc]').value) row.querySelector('[data-desc]').value = match.descrizione || row.querySelector('[name=magazzino_item_id]').selectedOptions[0]?.dataset.name || '';
+  if (changed || !row.querySelector('[data-desc]').value) {
+    const selected = select.selectedOptions[0];
+    row.querySelector('[data-desc]').value = selected?.dataset.manufacturerCode ? selected.dataset.name : match.descrizione || selected?.dataset.name || '';
+  }
   updateRow(row);
 });
 body.addEventListener('change', e => {

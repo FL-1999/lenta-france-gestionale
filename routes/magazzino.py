@@ -602,6 +602,7 @@ def capo_magazzino_list(
         query = query.filter(
             or_(
                 MagazzinoItem.codice.ilike(like_pattern),
+                MagazzinoItem.codice_produttore.ilike(like_pattern),
                 MagazzinoItem.id.in_(db.query(SupplierArticle.magazzino_item_id).filter(SupplierArticle.codice.ilike(like_pattern))),
                 MagazzinoItem.nome.ilike(like_pattern),
             )
@@ -975,6 +976,7 @@ def manager_magazzino_archiviati(
             or_(
                 MagazzinoItem.nome.ilike(like_pattern),
                 MagazzinoItem.codice.ilike(like_pattern),
+                MagazzinoItem.codice_produttore.ilike(like_pattern),
                 MagazzinoItem.id.in_(db.query(SupplierArticle.magazzino_item_id).filter(SupplierArticle.codice.ilike(like_pattern))),
                 MagazzinoCategoria.nome.ilike(like_pattern),
                 MagazzinoMacro.name.ilike(like_pattern),
@@ -1122,6 +1124,7 @@ def _render_magazzino_items_list(
         query = query.filter(
             or_(
                 MagazzinoItem.codice.ilike(like_pattern),
+                MagazzinoItem.codice_produttore.ilike(like_pattern),
                 MagazzinoItem.id.in_(db.query(SupplierArticle.magazzino_item_id).filter(SupplierArticle.codice.ilike(like_pattern))),
                 MagazzinoItem.nome.ilike(like_pattern),
                 MagazzinoCategoria.nome.ilike(like_pattern),
@@ -1526,6 +1529,7 @@ def manager_magazzino_movimenti(
         query = query.join(MagazzinoItem).filter(
             or_(
                 MagazzinoItem.codice.ilike(search),
+                MagazzinoItem.codice_produttore.ilike(search),
                 MagazzinoItem.nome.ilike(search),
             )
         )
@@ -1629,6 +1633,7 @@ def manager_magazzino_movimenti(
         ).filter(
             or_(
                 MagazzinoItem.codice.ilike(search),
+                MagazzinoItem.codice_produttore.ilike(search),
                 MagazzinoItem.nome.ilike(search),
             )
         )
@@ -2855,6 +2860,7 @@ def manager_magazzino_create(
     nome: str = Form(...),
     codice: str = Form(""),
     descrizione: str = Form(""),
+    codice_produttore: str = Form(""),
     categoria_id: str | None = Form(None),
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
@@ -2876,7 +2882,7 @@ def manager_magazzino_create(
     ensure_magazzino_catalog_manager(current_user)
     ensure_magazzino_access(current_user)
 
-    form_data = dict(nome=nome, descrizione=descrizione, categoria_id=categoria_id,
+    form_data = dict(nome=nome, descrizione=descrizione, codice_produttore=codice_produttore, categoria_id=categoria_id,
                      quantita_disponibile=quantita_disponibile, soglia_minima=soglia_minima,
                      costo_unitario=costo_unitario, attivo=attivo, unita_misura=unita_misura, packaging_enabled=packaging_enabled,
                      sacchi_per_bancale=sacchi_per_bancale, kg_per_sacco=kg_per_sacco, stock_unit=stock_unit,
@@ -2894,6 +2900,9 @@ def manager_magazzino_create(
         return invalid("Quantità iniziale non valida")
     if not nome.strip() or unita_misura not in ARTICLE_UNITS:
         return invalid('Nome o unità di misura non valida')
+    if len(codice_produttore.strip()) > 120:
+        return invalid('Le code fabricant ne doit pas dépasser 120 caractères.' if get_lang_from_request(request) == 'fr'
+                       else 'Il codice produttore non può superare 120 caratteri.')
     try:
         bags, weight, rolls, length = validate_article_packaging(packaging_enabled, unita_misura, packaging_kind, sacchi_per_bancale, kg_per_sacco, rotoli_per_bancale, metri_per_rotolo)
         initial_stock = convert_quantity(initial_stock, stock_unit, unita_misura, bags, weight, rolls, length)
@@ -2935,6 +2944,7 @@ def manager_magazzino_create(
         kg_per_sacco=weight,
         rotoli_per_bancale=rolls, metri_per_rotolo=length,
         codice=codice.strip(),
+        codice_produttore=codice_produttore.strip() or None,
         descrizione=(descrizione or "").strip() or None,
         categoria_id=_parse_categoria_id(categoria_id),
         quantita_disponibile=initial_stock,
@@ -2960,6 +2970,7 @@ def manager_magazzino_create(
             "nome": item.nome,
             "codice": item.codice,
             "quantita_iniziale": item.quantita_disponibile,
+            "codice_produttore": item.codice_produttore,
             "categoria_id": item.categoria_id,
             "sacchi_per_bancale": bags, "kg_per_sacco": weight,
             "rotoli_per_bancale": rolls, "metri_per_rotolo": length,
@@ -3051,6 +3062,8 @@ def manager_magazzino_update(
     nome: str = Form(...),
     codice: str = Form(...),
     descrizione: str = Form(""),
+    codice_produttore: str | None = Form(None),
+    codice_produttore_form: bool = Form(False),
     categoria_id: str | None = Form(None),
     quantita_disponibile: str | None = Form(""),
     soglia_minima: str | None = Form(""),
@@ -3081,8 +3094,14 @@ def manager_magazzino_update(
         )
 
     previous_unit = item.unita_misura
+    previous_manufacturer_code = item.codice_produttore
+    # The marker lets an empty field clear the code while older forms preserve it.
+    manufacturer_code = ((codice_produttore or '').strip() or None) if codice_produttore_form or codice_produttore is not None else previous_manufacturer_code
     selected_unit = unita_misura.strip() if unita_misura is not None else previous_unit
     try:
+        if manufacturer_code and len(manufacturer_code) > 120:
+            raise ValueError('Le code fabricant ne doit pas dépasser 120 caractères.' if lang == 'fr'
+                             else 'Il codice produttore non può superare 120 caratteri.')
         if unita_precedente is not None and unita_precedente != previous_unit:
             raise ValueError("L’unité a été modifiée depuis l’ouverture de la fiche. Rechargez la page avant d’enregistrer."
                              if lang == "fr" else "L’unità è stata modificata dopo l’apertura della scheda. Ricarica la pagina prima di salvare.")
@@ -3120,6 +3139,7 @@ def manager_magazzino_update(
         item.nome = nome.strip()
         item.codice = codice.strip()
         item.descrizione = (descrizione or "").strip() or None
+        item.codice_produttore = manufacturer_code
         item.categoria_id = _parse_categoria_id(categoria_id)
         item.unita_misura = selected_unit
         item.quantita_disponibile = nuova_quantita
@@ -3180,6 +3200,8 @@ def manager_magazzino_update(
                 "categoria_id": item.categoria_id,
                 "attivo": item.attivo,
                 "unita_precedente": previous_unit,
+                "codice_produttore_precedente": previous_manufacturer_code,
+                "codice_produttore": item.codice_produttore,
                 "unita_nuova": selected_unit,
                 "correzione_unita_senza_conversione": selected_unit != previous_unit,
                 "packaging_before": previous_packaging, "packaging_after": [bags, weight, rolls, length],
@@ -3206,7 +3228,7 @@ def manager_magazzino_update(
                 "form_action": "manager_magazzino_update",
                 "title": "Modifica articolo",
                 "error_message": str(exc),
-                "form_data": dict(nome=nome, codice=codice, descrizione=descrizione, categoria_id=categoria_id,
+                "form_data": dict(nome=nome, codice=codice, descrizione=descrizione, codice_produttore=manufacturer_code, categoria_id=categoria_id,
                     quantita_disponibile=quantita_disponibile, soglia_minima=soglia_minima, costo_unitario=costo_unitario,
                     attivo=attivo, unita_misura=selected_unit, unita_precedente=unita_precedente,
                     packaging_enabled=packaging_enabled,
@@ -3347,6 +3369,7 @@ def manager_magazzino_duplicate_create(
     nuovo_item = MagazzinoItem(
         nome=item.nome,
         codice=codice_value,
+        codice_produttore=item.codice_produttore,
         descrizione=item.descrizione,
         unita_misura=item.unita_misura,
         sacchi_per_bancale=item.sacchi_per_bancale, kg_per_sacco=item.kg_per_sacco,
