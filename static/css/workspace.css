@@ -420,8 +420,11 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
 .warehouse-list-title h2 { margin:0; font-size:18px; }
 .warehouse-list-title > span { color:var(--ws-muted); font-size:13px; }
 .warehouse-rows { display:grid; gap:10px; }
-.warehouse-completion-entry { border-left:3px solid var(--ws-warning)!important; }
-.warehouse-completion-entry small { color:var(--ws-muted); font-size:12px; grid-column:2; }
+.warehouse-completion-entry { grid-template-columns:1fr; border-left:3px solid var(--ws-warning)!important; }
+.warehouse-completion-entry small { color:var(--ws-muted); font-size:12px; }
+@media screen and (max-width:767px){
+  .warehouse-completion-entry small { grid-column:2; }
+}
 .warehouse-completion-filters,.warehouse-completion-badges,.warehouse-completion-actions,.warehouse-completion-pagination { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
 .warehouse-completion-filters { margin-bottom:22px; }
 .warehouse-completion-filters .btn { white-space:normal; }

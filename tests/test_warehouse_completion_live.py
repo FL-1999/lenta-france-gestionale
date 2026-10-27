@@ -74,6 +74,8 @@ def test_completion_navigation_create_fill_and_phone(live_operations):
                                  f'/manager/magazzino/items/{item_id}/scheda']:
                         page.goto(origin+path)
                         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1'),(width,lang,path)
+                        if path == '/manager/magazzino':
+                            page.screenshot(path=str(artifacts/f'warehouse-entry-{lang}-{width}-{theme}.png'),full_page=True)
                         if path.endswith('/da-completare'):
                             page.screenshot(path=str(artifacts/f'completion-{lang}-{width}-{theme}.png'),full_page=True)
                     if theme=='night': page.locator('#theme-toggle').click()
