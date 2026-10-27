@@ -12,6 +12,8 @@ from utils.places import get_selectable_places
 from models import RoleEnum
 from template_context import register_manager_badges, render_template
 from audit_utils import log_audit_event
+from services.warehouse_completion import pending_for_item, remember_supplier, resolve_supplier
+from models import WarehouseSupplierPending
 
 router=APIRouter(tags=['catalogo acquisti'])
 templates=Jinja2Templates(directory='templates')
@@ -113,6 +115,7 @@ def _render_item_card(request,db,current_user,item,*,error_message=None,supplier
         'locations':get_selectable_places(db, include_inactive=False),
         'personale':db.query(User).filter(User.is_active.is_(True),User.role.notin_([RoleEnum.admin,RoleEnum.manager])).order_by(User.full_name,User.email).all(),
         'supplier_articles':db.query(SupplierArticle).options(joinedload(SupplierArticle.supplier)).filter_by(magazzino_item_id=item.id).all(),
+        'pending_suppliers':pending_for_item(db, item.id),
         'suppliers':db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name).all(),
         'movements':db.query(MagazzinoMovimento).filter_by(item_id=item.id).order_by(MagazzinoMovimento.id.desc()).limit(50).all(),
     },db,current_user,status_code=status_code)
@@ -139,7 +142,8 @@ def save_location(item_id:int,request:Request,zona:str=Form(''),scaffale:str=For
 
 
 @router.post('/manager/magazzino/items/{item_id}/fornitori',name='warehouse_item_supplier_link')
-def link_supplier(item_id:int,request:Request,supplier_id:int=Form(...),code:str=Form(...),
+def link_supplier(item_id:int,request:Request,supplier_id:int=Form(...),code:str=Form(''),
+                  return_completion:bool=Form(False), completion_filter:str=Form('all'),
                   db:Session=Depends(get_db),current_user:User=Depends(get_current_active_user_html)):
     manager(current_user)
     supplier=db.query(Supplier).filter_by(id=supplier_id).with_for_update().first()
@@ -152,7 +156,19 @@ def link_supplier(item_id:int,request:Request,supplier_id:int=Form(...),code:str
     if not supplier or not supplier.is_active or not item.attivo:
         return invalid('Fornitore o articolo non disponibile')
     code=code.strip()
-    if not code or len(code)>100: return invalid('Codice fornitore non valido')
+    if len(code)>100: return invalid('Codice fornitore non valido')
+    def redirect():
+        if return_completion:
+            kind = completion_filter if completion_filter in ('all','classification','supplier','code') else 'all'
+            return RedirectResponse(str(request.url_for('warehouse_completion'))+f'?kind={kind}&saved=supplier',303)
+        return RedirectResponse(str(request.url_for('warehouse_item_card',item_id=item_id))+'?saved=supplier#fornitori',303)
+    if not code:
+        pending = remember_supplier(db, item_id, supplier_id)
+        if pending:
+            log_audit_event(db,current_user,'WAREHOUSE_SUPPLIER_PENDING','warehouse_supplier_pending',pending.id,
+                            {'item_id':item_id,'supplier_id':supplier_id})
+        db.commit()
+        return redirect()
     matches=db.query(SupplierArticle).filter(SupplierArticle.supplier_id==supplier_id,func.lower(SupplierArticle.codice)==code.lower()).all()
     if len(matches)>1: return invalid('Esistono più codici storici equivalenti: correggi il catalogo prima di collegarli',409)
     article=matches[0] if matches else None
@@ -161,8 +177,22 @@ def link_supplier(item_id:int,request:Request,supplier_id:int=Form(...),code:str
     if not article:
         article=SupplierArticle(supplier_id=supplier_id,codice=code,descrizione=item.nome,unita=item.unita_misura)
     article.magazzino_item_id=item_id;db.add(article);db.flush()
+    resolve_supplier(db, item_id, supplier_id)
     log_audit_event(db,current_user,'SUPPLIER_ARTICLE_LINK','supplier_article',article.id,{'item_id':item_id,'supplier_id':supplier_id,'code':code})
     db.commit()
+    return redirect()
+
+
+@router.post('/manager/magazzino/items/{item_id}/fornitori-in-attesa/{pending_id}/rimuovi', name='warehouse_pending_supplier_remove')
+def remove_pending_supplier(item_id:int,pending_id:int,request:Request,
+        db:Session=Depends(get_db),current_user:User=Depends(get_current_active_user_html)):
+    manager(current_user)
+    pending = db.query(WarehouseSupplierPending).filter_by(id=pending_id,magazzino_item_id=item_id).first()
+    if not pending: raise HTTPException(404,'Collegamento non trovato')
+    db.query(Supplier).filter_by(id=pending.supplier_id).with_for_update().first()
+    log_audit_event(db,current_user,'WAREHOUSE_SUPPLIER_PENDING_REMOVED','warehouse_supplier_pending',pending.id,
+                    {'item_id':item_id,'supplier_id':pending.supplier_id})
+    db.delete(pending);db.commit()
     return RedirectResponse(str(request.url_for('warehouse_item_card',item_id=item_id))+'#fornitori',303)
 
 
@@ -187,6 +217,10 @@ def link_purchase_line(order_id:int,line_id:int,request:Request,item_id:int=Form
             raise HTTPException(409,'Codice fornitore già associato a un altro articolo o ambiguo')
         article=matches[0] if matches else SupplierArticle(supplier_id=order.supplier_id,codice=line.codice,descrizione=line.description)
         article.magazzino_item_id=item.id;db.add(article)
+        resolve_supplier(db, item.id, order.supplier_id)
+    elif order.supplier_id:
+        db.query(Supplier).filter_by(id=order.supplier_id).with_for_update().first()
+        remember_supplier(db, item.id, order.supplier_id)
     line.magazzino_item_id=item.id
     log_audit_event(db,current_user,'PURCHASE_LINE_LINK','purchase_order_line',line.id,{'item_id':item.id})
     db.commit()

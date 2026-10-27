@@ -53,7 +53,7 @@ def test_supplier_validation_is_atomic_and_preserves_form(operations,kind):
     db,c,s,item,cat=setup(operations)
     other=Supplier(name='Secondo',is_active=True);db.add(other);db.commit()
     ids=[str(other.id),str(s.id)];codes=['VALID','SECOND']
-    if kind=='incomplete':codes[1]=''
+    if kind=='incomplete':ids[1]=''  # A code needs its supplier; the reverse is optional.
     if kind=='mismatch':codes.pop()
     if kind=='duplicate':ids[1]=str(other.id);codes[1]='valid'
     if kind=='conflict':db.add(SupplierArticle(supplier_id=s.id,codice='second',magazzino_item_id=item.id));db.commit()

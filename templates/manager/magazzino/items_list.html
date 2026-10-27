@@ -10,7 +10,7 @@
     <div class="page-actions" data-mobile-toolbar>{% if can_edit %}
       <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_macro_new') }}">{{ icon('plus') }} {{ t('Nuova macro','Nouvelle macro') }}</a>
       <a class="btn btn-secondary" href="{{ url_for('manager_magazzino_categorie_new').include_query_params(macro_id=selected_macro.id) if selected_macro and selected_macro.id else url_for('manager_magazzino_categorie_new') }}">{{ icon('plus') }} {{ t('Nuova categoria','Nouvelle catégorie') }}</a>
-      <a class="btn btn-primary" href="/manager/magazzino/nuovo">{{ icon('plus') }} {{ t('Nuovo articolo','Nouvel article') }}</a>
+      <a class="btn btn-primary" href="{{ url_for('manager_magazzino_new').include_query_params(categoria_id=selected_category.id) if selected_category else url_for('manager_magazzino_new') }}">{{ icon('plus') }} {{ t('Nuovo articolo','Nouvel article') }}</a>
     {% endif %}</div>
   </header>
   {% if success_message %}<p class="alert alert-success" role="status">{{ success_message }}{% if bulk_destination %} <a href="{{ url_for('manager_magazzino_home').include_query_params(categoria_id=bulk_destination.id) }}">{{ t('Apri categoria','Ouvrir la catégorie') }}: {{ bulk_destination.nome }}</a>{% endif %}</p>{% endif %}
@@ -28,7 +28,7 @@
       {% for cat in child_categories %}<a class="warehouse-family" href="{{ url_for('manager_magazzino_home').include_query_params(categoria_id=cat.id) }}">{{ icon('box') }}<strong>{{ cat.nome }}</strong><span>{{ family_counts.get(cat.id,0) }} {{ t('articoli','articles') }}</span></a>{% else %}<p>{{ t('Nessuna categoria in questa macro','Aucune catégorie dans cette macro') }}</p>{% endfor %}
     {% else %}
       {% for macro in macro_cards %}<a class="warehouse-family warehouse-macro" href="{{ url_for('manager_magazzino_home').include_query_params(macro_id=macro.id) }}">{{ icon('grid') }}<strong>{{ macro.name or t('Senza macro','Sans macro') }}</strong><span>{{ macro.categories }} {{ t('categorie','catégories') }} · {{ macro.count }} {{ t('articoli','articles') }}</span></a>{% endfor %}
-      {% if family_counts.get(none,0) %}<a class="warehouse-family" href="{{ url_for('manager_magazzino_home').include_query_params(categoria_id=0) }}">{{ icon('box') }}<strong>{{ t('Da classificare','À classer') }}</strong><span>{{ family_counts.get(none,0) }} {{ t('articoli','articles') }}</span></a>{% endif %}
+      {% if can_edit %}<a class="warehouse-family warehouse-completion-entry" href="{{ url_for('warehouse_completion') }}">{{ icon('report') }}<strong>{{ t('Da completare','À compléter') }}</strong><span>{{ completion_counts.all }} {{ t('articoli','articles') }}</span><small>{{ t('Classificazione, fornitori e codici','Classification, fournisseurs et codes') }}</small></a>{% elif family_counts.get(none,0) %}<a class="warehouse-family" href="{{ url_for('manager_magazzino_home').include_query_params(categoria_id=0) }}">{{ icon('box') }}<strong>{{ t('Da classificare','À classer') }}</strong><span>{{ family_counts.get(none,0) }} {{ t('articoli','articles') }}</span></a>{% endif %}
       {% if not macro_cards and not family_counts.get(none,0) %}<p>{{ t('Nessuna macro ancora creata','Aucune macro créée') }}</p>{% endif %}
     {% endif %}
   </nav>

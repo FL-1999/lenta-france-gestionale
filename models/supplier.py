@@ -73,6 +73,16 @@ class SupplierContact(Base, TimestampMixin):
     is_active = Column(Boolean, nullable=False, default=True)
 
 
+class WarehouseSupplierPending(Base, TimestampMixin):
+    """Known supplier awaiting its SKU; never put invented codes in the catalog."""
+    __tablename__ = "warehouse_supplier_pending"
+    __table_args__ = (UniqueConstraint("supplier_id", "magazzino_item_id", name="uq_warehouse_pending_supplier_item"),)
+    id = Column(Integer, primary_key=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id", ondelete="CASCADE"), nullable=False, index=True)
+    magazzino_item_id = Column(Integer, ForeignKey("magazzino_items.id", ondelete="CASCADE"), nullable=False, index=True)
+    supplier = relationship("Supplier")
+
+
 class WarehouseArticleNumber(Base):
     """Reserved numbers: never recycle a code when an article is deleted."""
     __tablename__ = "warehouse_article_numbers"
