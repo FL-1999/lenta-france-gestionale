@@ -9,6 +9,40 @@ from test_fiche_consumption import make_fiche
 from utils.production_stats import compute_fiche_volumes
 
 
+def test_inverted_depths_are_flagged_without_rewriting_measurements():
+    import json
+    from services.fiche_curve import curve_depth_increases, compact_courbe_svg
+    from xml.etree import ElementTree as ET
+    raw=[{'volume':v,'hauteur':d} for v,d in [(0,0),(2.5,2),(10,5),(17.5,7),(25,9),(32.5,11)]]
+    f=SimpleNamespace(tipologia_scavo='paratia',profondita_totale=11,larghezza_pannello=6.3,
+                      altezza_pannello=.42,courbe_beton_realisee=json.dumps(raw))
+    original=f.courbe_beton_realisee
+    payload=_build_courbe_beton_payload(f)
+    assert payload['depth_increases'] and payload['realisee']==raw
+    assert f.courbe_beton_realisee==original
+    corrected=[{'volume':v,'hauteur':d} for v,d in [(32.5,0),(25,2),(17.5,5),(10,7),(2.5,9),(0,11)]]
+    assert not curve_depth_increases(corrected)
+    f.courbe_beton_realisee=json.dumps(corrected)
+    payload=_build_courbe_beton_payload(f)
+    svg=ET.fromstring(compact_courbe_svg(payload,13.8))
+    lines=svg.findall('{http://www.w3.org/2000/svg}polyline')
+    assert len(lines)==2
+    for line in lines:
+        coords=[tuple(map(float,p.split(','))) for p in line.attrib['points'].split()]
+        assert coords[0][0]<coords[-1][0] and coords[0][1]>coords[-1][1]
+    texts=[e.text for e in svg.findall('{http://www.w3.org/2000/svg}text')]
+    assert '13.80' in texts and '2.80' in texts
+
+
+def test_large_curve_tick_labels_match_the_plotted_scale():
+    from main import _courbe_svg
+    from xml.etree import ElementTree as ET
+    svg=ET.fromstring(_courbe_svg({'realisee':[{'volume':0,'hauteur':10},{'volume':20,'hauteur':0}]}))
+    texts=[e.text for e in svg.findall('{http://www.w3.org/2000/svg}text')]
+    assert '10.8' in texts and '21.6' in texts
+    assert 'Profondeur restante (m)' in texts
+
+
 def test_defaults_use_geometry_and_do_not_invent_measured_points():
     f=SimpleNamespace(tipologia_scavo='paratia',profondita_totale=10.7,
                       larghezza_pannello=6.3,altezza_pannello=.42)

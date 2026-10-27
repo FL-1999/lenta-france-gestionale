@@ -45,6 +45,7 @@ REPORT_IT = {
     "COURBE DE BÉTONNAGE": "CURVA DI GETTO", "Réalisée": "Reale", "Tube": "Tubo",
     "Volume total": "Volume totale", "Hauteur init.": "Altezza iniz.", "Pts relevés": "Punti rilevati",
     "Pts tube": "Punti tubo", "Volume en m³": "Volume in m³", "Hauteur en m": "Altezza in m",
+    "Profondeur restante (m)": "Profondità residua (m)",
     "Synthèse des valeurs théoriques et des relevés réalisés.": "Riepilogo dei valori teorici e delle misure rilevate.",
     "Données théoriques courbe de bétonnage": "Dati teorici della curva di getto",
     "Volume total théorique": "Volume totale teorico", "Hauteur initiale": "Altezza iniziale",

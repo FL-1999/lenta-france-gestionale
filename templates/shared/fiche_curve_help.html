@@ -1,2 +1,12 @@
-<p class="text-muted">{{ t('Volume teorico e altezza iniziale sono ripresi dalle dimensioni della fiche. Le altezze sono profondità dal punto di partenza del foro: il fondo è il valore iniziale, 0 m è il valore finale. Nel PDF sono mostrate le quote NGF.','Le volume théorique et la hauteur initiale sont repris des dimensions de la fiche. Les hauteurs sont des profondeurs depuis le départ du forage : le fond est la valeur initiale, 0 m est la valeur finale. Le PDF affiche les cotes NGF.') }}</p>
+<p class="text-muted">{{ t('Volume teorico e profondità iniziale sono ripresi dalla fiche. La profondità residua indica i metri che mancano per arrivare al riferimento 0 del foro: diminuisce mentre il volume cumulato gettato aumenta. Nel PDF rimangono le quote NGF.','Le volume théorique et la profondeur initiale sont repris de la fiche. La profondeur restante indique les mètres à remplir jusqu’au repère 0 du forage : elle diminue quand le volume cumulé coulé augmente. Le PDF conserve les cotes NGF.') }}</p>
+<p data-courbe-example></p>
+<p class="text-muted">{{ t('Ordina i volumi dal maggiore al minore per leggere dal livello alto verso il fondo. Il pulsante Ordina mantiene ogni volume abbinato alla propria profondità.','Triez les volumes du plus grand au plus petit pour lire du niveau haut vers le fond. Le bouton Trier conserve chaque volume associé à sa profondeur.') }}</p>
 <button type="button" class="btn btn-secondary btn-sm" data-courbe-reset>{{ t('Riprendi i valori dalla fiche','Reprendre les valeurs de la fiche') }}</button>
+<style>
+  .courbe-direction-warning { border:1px solid #d6a23b; border-radius:10px; padding:12px; margin:12px 0; background:rgba(214,162,59,.12); }
+  .courbe-direction-warning[hidden], [data-courbe-volume-proposal][hidden] { display:none; }
+  .courbe-volume-comparison { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; font-size:.85rem; }
+  .courbe-volume-comparison > * { min-width:0; overflow-wrap:normal; word-break:normal; }
+  [data-courbe-order] { margin:6px; }
+  [data-courbe-volume-proposal] .btn { white-space:normal; }
+</style>

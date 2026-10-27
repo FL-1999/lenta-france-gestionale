@@ -113,7 +113,7 @@ from notifications import (
 )
 from services.personale_profiles import ensure_user_personale_profile
 from services.soil_diagram import comparison_svg as soil_comparison_svg, panel_report_svg, soils_need_annex
-from services.fiche_curve import compact_courbe_svg, curve_defaults, curve_values
+from services.fiche_curve import compact_courbe_svg, curve_defaults, curve_values, curve_depth_increases
 from services import fiche_translation
 from services.fiche_language import report_language, report_translator, technical_translator
 from services.soil_materials import (
@@ -974,7 +974,8 @@ def _build_courbe_beton_payload(fiche: Fiche) -> dict:
             {"volume": 0, "hauteur": float(values['start'])},
             {"volume": float(values['volume']), "hauteur": 0.0},
         ]
-    return {"realisee": realised, "theorique": theoretical, "tube": tube, "values": values}
+    return {"realisee": realised, "theorique": theoretical, "tube": tube, "values": values,
+            "depth_increases": curve_depth_increases(realised)}
 
 
 def _invalid_fields_for_fiche_error(error_message: str | None) -> list[str]:
@@ -9221,11 +9222,11 @@ def _courbe_svg(payload: dict, *, language="fr") -> str:
         gy = pt + (H - pt - pb) / 5 * i
         parts.append(f"<line x1='{gx:.1f}' y1='{pt}' x2='{gx:.1f}' y2='{H-pb}' stroke='#d9d9d9' stroke-width='1'/>")
         parts.append(f"<line x1='{pl}' y1='{gy:.1f}' x2='{W-pr}' y2='{gy:.1f}' stroke='#d9d9d9' stroke-width='1'/>")
-        parts.append(f"<text x='{pl-6}' y='{gy+4:.1f}' text-anchor='end' font-family='Arial' font-size='11' fill='#475569'>{(max_y/1.08)/5*i:.1f}</text>")
-        parts.append(f"<text x='{gx:.1f}' y='{H-pb+17}' text-anchor='middle' font-family='Arial' font-size='11' fill='#475569'>{(max_x/1.08)/5*i:.0f}</text>")
+        parts.append(f"<text x='{pl-6}' y='{gy+4:.1f}' text-anchor='end' font-family='Arial' font-size='11' fill='#475569'>{max_y/5*i:.1f}</text>")
+        parts.append(f"<text x='{gx:.1f}' y='{H-pb+17}' text-anchor='middle' font-family='Arial' font-size='11' fill='#475569'>{max_x/5*i:.1f}</text>")
     parts.append(f"<rect x='{pl}' y='{pt}' width='{W-pl-pr}' height='{H-pt-pb}' fill='none' stroke='#000' stroke-width='1'/>")
     parts.append(f"<text x='{W/2:.0f}' y='{H-8}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a'>{report_translator(language)('Volume en m³')}</text>")
-    parts.append(f"<text x='15' y='{H/2:.0f}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a' transform='rotate(-90 15 {H/2:.0f})'>{report_translator(language)('Hauteur en m')}</text>")
+    parts.append(f"<text x='15' y='{H/2:.0f}' text-anchor='middle' font-family='Arial' font-size='12' font-weight='bold' fill='#0f172a' transform='rotate(-90 15 {H/2:.0f})'>{report_translator(language)('Profondeur restante (m)')}</text>")
 
     def polyline(points, color, width=2.2):
         """Linea tratteggiata con pallini vuoti ai punti (stile foglio Excel)."""
