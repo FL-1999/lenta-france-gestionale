@@ -3,10 +3,11 @@
   const template = document.getElementById('article-supplier-template');
   if (!rows || !template) return;
   function validateRow(row) {
+    if (!row) return;
     const supplier = row.querySelector('select');
     const code = row.querySelector('input');
     supplier.required = !!code.value.trim();
-    code.required = !!supplier.value;
+    code.required = false;
   }
   rows.querySelectorAll('[data-supplier-row]').forEach(validateRow);
   document.getElementById('add-article-supplier').addEventListener('click', () => {

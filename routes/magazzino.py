@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from auth import get_current_active_user_html
 from utils.warehouse_packaging import ARTICLE_UNITS, validate_article_packaging, convert_quantity, movement_quantity
 from database import get_db
+from services import warehouse_completion
 from models import (
     MagazzinoCategoria,
     MagazzinoItem,
@@ -23,6 +24,7 @@ from models import (
     MagazzinoMovimento,
     SupplierArticle,
     Supplier,
+    WarehouseSupplierPending,
     MagazzinoMovimentoTipoEnum,
     MagazzinoRichiesta,
     MagazzinoRichiestaRiga,
@@ -1208,8 +1210,7 @@ def _render_magazzino_items_list(
         raise HTTPException(404,'Macro non disponibile')
     child_categories = [c for c in active_categories if (c.macro_id or 0)==macro_id] if macro_id is not None else []
     show_articles = categoria_id is not None or bool(q_value or stock_status) or request.query_params.get('view')=='all'
-    supplier_counts = dict(db.query(SupplierArticle.magazzino_item_id,func.count(func.distinct(SupplierArticle.supplier_id)))
-        .group_by(SupplierArticle.magazzino_item_id).all())
+    supplier_counts = warehouse_completion.supplier_counts(db)
     bulk_destination = None
     if request.query_params.get('ok') == 'classification':
         success_message = ('Articles sélectionnés classés.' if get_lang_from_request(request) == 'fr'
@@ -1238,6 +1239,7 @@ def _render_magazzino_items_list(
             "family_counts": family_counts,
             "total_count": sum(category_counts.values()),
             "supplier_counts": supplier_counts,
+            "completion_counts": warehouse_completion.summary(db) if has_perm(current_user, 'manager.access') else None,
             "filters": filters,
             "locations": locations,
             "personale": personale,
@@ -1257,6 +1259,46 @@ def _render_magazzino_items_list(
         current_user,
         status_code=status_code,
     )
+
+
+@router.get('/manager/magazzino/da-completare', name='warehouse_completion')
+def warehouse_completion_list(request: Request, kind: str = 'all', q: str = '', page: int = 1,
+        db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user_html)):
+    ensure_magazzino_catalog_manager(current_user)
+    ensure_magazzino_access(current_user)
+    flags = warehouse_completion.conditions()
+    if kind not in flags:
+        raise HTTPException(400, 'Filtro non valido')
+    query = db.query(MagazzinoItem).filter(MagazzinoItem.attivo.is_(True), flags[kind])
+    q = q.strip()
+    if q:
+        query = query.filter(or_(MagazzinoItem.nome.ilike(f'%{q}%'), MagazzinoItem.codice.ilike(f'%{q}%'),
+                                MagazzinoItem.codice_produttore.ilike(f'%{q}%')))
+    count = query.count()
+    pages = max(1, ceil(count / DEFAULT_PER_PAGE))
+    page = min(max(1, page), pages)
+    items = query.options(joinedload(MagazzinoItem.categoria).joinedload(MagazzinoCategoria.macro)).order_by(
+        MagazzinoItem.nome, MagazzinoItem.id).offset((page-1)*DEFAULT_PER_PAGE).limit(DEFAULT_PER_PAGE).all()
+    ids = [item.id for item in items]
+    articles = db.query(SupplierArticle).options(joinedload(SupplierArticle.supplier)).filter(
+        SupplierArticle.magazzino_item_id.in_(ids)).order_by(SupplierArticle.id).all() if ids else []
+    pending = db.query(WarehouseSupplierPending).options(joinedload(WarehouseSupplierPending.supplier)).filter(
+        WarehouseSupplierPending.magazzino_item_id.in_(ids), warehouse_completion.unresolved_pending()
+    ).order_by(WarehouseSupplierPending.id).all() if ids else []
+    details = {}
+    for item in items:
+        links = [a for a in articles if a.magazzino_item_id == item.id]
+        waiting = [p for p in pending if p.magazzino_item_id == item.id]
+        category = item.categoria
+        details[item.id] = dict(classification=not category or not category.attiva or not category.macro_id,
+            macro_missing=bool(category and category.attiva and not category.macro_id),
+            supplier=not links and not waiting, pending=waiting,
+            blank_codes=[a for a in links if not (a.codice or '').strip()])
+    return render_template(templates, request, 'manager/magazzino/completion.html', {
+        'items': items, 'details': details, 'completion_counts': warehouse_completion.summary(db),
+        'suppliers': db.query(Supplier).filter(Supplier.is_active.is_(True)).order_by(Supplier.name).all(),
+        'kind': kind, 'q': q, 'items_count': count, 'page': page, 'pages': pages,
+    }, db, current_user)
 
 
 @router.post('/manager/magazzino/classificazione-multipla', name='warehouse_bulk_classification')
@@ -2919,8 +2961,8 @@ def manager_magazzino_create(
     for index,row in enumerate(supplier_rows,1):
         sid=row['supplier_id'].strip();code=row['code'].strip()
         if not sid and not code: continue
-        if not sid.isdigit() or not code or len(code)>100:
-            return invalid(f'Fornitore {index}: seleziona il fornitore e inserisci il suo codice articolo (massimo 100 caratteri)')
+        if not sid.isdigit() or len(code)>100:
+            return invalid(f'Fornitore {index}: seleziona il fornitore; il codice è facoltativo (massimo 100 caratteri)')
         key=(int(sid),code.lower())
         if key in seen: return invalid(f'Fornitore {index}: questo codice è già presente nelle righe precedenti')
         seen.add(key);rows.append((int(sid),code))
@@ -2931,6 +2973,8 @@ def manager_magazzino_create(
     for sid,code in rows:
         supplier=supplier_map.get(sid)
         if not supplier or not supplier.is_active: return invalid('Uno dei fornitori non è più disponibile')
+        if not code:
+            continue
         matches=db.query(SupplierArticle).filter(SupplierArticle.supplier_id==sid,
                     func.lower(SupplierArticle.codice)==code.lower()).all()
         if len(matches)>1 or (matches and matches[0].magazzino_item_id is not None):
@@ -2959,6 +3003,12 @@ def manager_magazzino_create(
         db.add(link);db.flush()
         _log_audit(db,current_user,'SUPPLIER_ARTICLE_LINK','supplier_article',link.id,
                    {'item_id':item.id,'supplier_id':link.supplier_id,'code':link.codice})
+    for sid, code in rows:
+        if not code:
+            pending = warehouse_completion.remember_supplier(db, item.id, sid)
+            if pending:
+                _log_audit(db, current_user, 'WAREHOUSE_SUPPLIER_PENDING', 'warehouse_supplier_pending', pending.id,
+                           {'item_id': item.id, 'supplier_id': sid})
 
     _log_audit(
         db,
@@ -3975,6 +4025,7 @@ def manager_magazzino_item_delete_permanent(
         supplier_ids = [row.id for row in db.query(SupplierArticle).filter_by(magazzino_item_id=item_id).all()]
         db.query(SupplierArticle).filter_by(magazzino_item_id=item_id).update(
             {SupplierArticle.magazzino_item_id: None}, synchronize_session='fetch')
+        db.query(WarehouseSupplierPending).filter_by(magazzino_item_id=item_id).delete(synchronize_session='fetch')
         _log_audit(db, current_user, 'MAGAZZINO_ITEM_DELETE', 'MagazzinoItem', item_id,
                    {'codice': item.codice, 'nome': item.nome, 'supplier_articles_detached': supplier_ids})
         db.delete(item)

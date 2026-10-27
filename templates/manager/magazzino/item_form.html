@@ -6,7 +6,7 @@
 {% macro supplier_row(row={}) %}
 <div class="article-supplier-row" data-supplier-row>
   <label class="vehicle-field">{{ t('Fornitore','Fournisseur') }}<select name="supplier_ids"><option value="">{{ t('Seleziona fornitore','Sélectionner un fournisseur') }}</option>{% for s in suppliers %}<option value="{{ s.id }}" {% if row.supplier_id|default('') == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></label>
-  <label class="vehicle-field">{{ t('Codice articolo del fornitore','Code article du fournisseur') }}<input name="supplier_codes" maxlength="100" value="{{ row.code or '' }}" placeholder="{{ t('Es. 2CLC3','Ex. 2CLC3') }}"></label>
+  <label class="vehicle-field">{{ t('Codice articolo del fornitore (facoltativo)','Code article du fournisseur (facultatif)') }}<input name="supplier_codes" maxlength="100" value="{{ row.code or '' }}" placeholder="{{ t('Puoi aggiungerlo più avanti','Vous pouvez l’ajouter plus tard') }}"></label>
   <button class="btn btn-secondary" type="button" data-remove-supplier>{{ icon('close') }} {{ t('Rimuovi','Retirer') }}</button>
 </div>
 {% endmacro %}
@@ -42,13 +42,13 @@
 </div><p class="packaging-preview" data-stock-preview role="status"></p><p class="text-muted">{{ t('Unità usata per soglia minima e costo unitario:','Unité du seuil minimum et du coût unitaire :') }} <strong data-base-unit>{{ values.unita_misura or 'pz' }}</strong>.</p><label class="warehouse-checkbox"><input name="attivo" type="checkbox" {% if values.attivo|default(true) %}checked{% endif %}> {{ t('Articolo attivo','Article actif') }}</label></div></section>
 {% if not is_edit %}
 <section class="card" id="initial-suppliers"><div class="card-body"><div class="warehouse-section-heading"><h2>{{ icon('users') }} {{ t('Fornitori e codici','Fournisseurs et codes') }}</h2><span class="text-muted">{{ t('Facoltativo','Facultatif') }}</span></div>
-<p class="text-muted">{{ t('Uno stesso articolo interno può avere più fornitori, ciascuno con il proprio codice. Puoi aggiungerli anche dopo dalla scheda articolo.','Un même article interne peut avoir plusieurs fournisseurs, chacun avec son code. Vous pouvez aussi les ajouter plus tard depuis la fiche article.') }}</p>
+<p class="text-muted">{{ t('Puoi salvare anche senza fornitore o senza il suo codice. L’articolo rimane nella macro / categoria scelta; i dati mancanti compariranno in “Da completare”. Uno stesso articolo può avere più fornitori.','Vous pouvez enregistrer sans fournisseur ou sans son code. L’article reste dans la macro / catégorie choisie ; les données manquantes apparaîtront dans « À compléter ». Un article peut avoir plusieurs fournisseurs.') }}</p>
 <div id="article-suppliers">{% for row in supplier_rows|default([]) %}{{ supplier_row(row) }}{% endfor %}</div>
 <div class="form-actions"><button class="btn btn-secondary" type="button" id="add-article-supplier">{{ icon('plus') }} {{ t('Aggiungi fornitore','Ajouter un fournisseur') }}</button></div>
 </div></section>
 {% else %}<section class="card"><div class="card-body warehouse-section-heading"><h2>{{ icon('users') }} {{ t('Fornitori e codici','Fournisseurs et codes') }}</h2><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) }}#fornitori">{{ t('Gestisci dalla scheda articolo','Gérer depuis la fiche article') }} {{ icon('arrow') }}</a></div></section>{% endif %}
 <div class="form-actions warehouse-save"><a class="btn btn-secondary" href="{{ url_for('warehouse_item_card',item_id=item.id) if is_edit else url_for('manager_magazzino_home') }}">{{ t('Annulla','Annuler') }}</a><button class="btn btn-primary" type="submit">{{ t('Salva','Enregistrer') }}</button></div>
 </form>
-{% if not is_edit %}<template id="article-supplier-template">{{ supplier_row() }}</template><script src="/static/js/warehouse-item-suppliers.js?v=20260917r7" defer></script>{% endif %}
+{% if not is_edit %}<template id="article-supplier-template">{{ supplier_row() }}</template><script src="/static/js/warehouse-item-suppliers.js?v=20261027completion1" defer></script>{% endif %}
 <script src="/static/js/warehouse-packaging.js?v=20261013r1" defer></script>
 {% endblock %}

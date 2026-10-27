@@ -420,6 +420,29 @@ body.workspace-ui { margin:0; background:radial-gradient(ellipse at 95% 0,var(--
 .warehouse-list-title h2 { margin:0; font-size:18px; }
 .warehouse-list-title > span { color:var(--ws-muted); font-size:13px; }
 .warehouse-rows { display:grid; gap:10px; }
+.warehouse-completion-entry { border-left:3px solid var(--ws-warning)!important; }
+.warehouse-completion-entry small { color:var(--ws-muted); font-size:12px; grid-column:2; }
+.warehouse-completion-filters,.warehouse-completion-badges,.warehouse-completion-actions,.warehouse-completion-pagination { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.warehouse-completion-filters { margin-bottom:22px; }
+.warehouse-completion-filters .btn { white-space:normal; }
+.warehouse-completion-filters strong { margin-left:6px; font-variant-numeric:tabular-nums; }
+.warehouse-completion-badges { gap:6px; margin-top:8px; }
+.warehouse-completion-badges span { font-size:12px; color:var(--ws-warning); background:var(--ws-warning-bg); border-radius:6px; padding:4px 8px; }
+.warehouse-completion-actions { grid-column:1 / -1; align-items:flex-start; }
+.warehouse-completion-editor { flex:1 1 240px; min-width:0; border-top:1px solid var(--ws-line); padding-top:10px; }
+.warehouse-completion-editor summary { cursor:pointer; color:var(--ws-ink); font-weight:600; padding:9px 0; overflow-wrap:break-word; }
+.warehouse-completion-editor form,.warehouse-pending-supplier form { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin:12px 0; }
+.warehouse-completion-editor label,.warehouse-pending-supplier label { flex:1 1 180px; min-width:0; }
+.warehouse-completion-editor input,.warehouse-completion-editor select,.warehouse-pending-supplier input { width:100%; min-width:0; }
+.warehouse-completion-pagination { justify-content:center; margin-top:22px; }
+.warehouse-pending-supplier { border:1px solid var(--ws-line); border-left:3px solid var(--ws-warning); border-radius:10px; padding:16px; margin:12px 0; overflow-wrap:break-word; }
+@media(max-width:600px){
+  .warehouse-completion-filters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .warehouse-completion-filters .btn { min-height:48px; justify-content:space-between; padding:10px; }
+  #main-content .warehouse-completion-actions { grid-column:1 / -1; }
+  .warehouse-completion-editor { flex-basis:100%; }
+  .warehouse-completion-editor input,.warehouse-completion-editor select,.warehouse-pending-supplier input { font-size:16px; min-height:44px; }
+}
 .warehouse-bulk-toolbar { padding:18px; margin-bottom:16px; border:1px solid var(--ws-line); border-left:3px solid var(--ws-section-line); border-radius:14px; background:var(--ws-paper); }
 .warehouse-bulk-selection { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; color:var(--ws-muted); }
 .warehouse-bulk-selection label { display:flex; align-items:center; gap:9px; margin:0; color:var(--ws-ink); }

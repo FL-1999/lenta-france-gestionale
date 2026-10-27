@@ -1,0 +1,41 @@
+{% extends "shared/base.html" %}
+{% from 'shared/workspace_icons.html' import icon %}
+{% block title %}{{ t('Articoli da completare','Articles à compléter') }}{% endblock %}
+{% block content %}
+<div class="warehouse-a1 warehouse-completion">
+  <header class="page-header"><div class="page-header-main"><h1 class="page-title">{{ t('Da completare','À compléter') }}</h1><p class="page-subtitle">{{ t('Gli articoli restano nella loro macro e categoria. Qui trovi soltanto i dati mancanti.','Les articles restent dans leur macro et catégorie. Retrouvez ici les données manquantes.') }}</p></div><div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('manager_magazzino_home') }}">{{ icon('grid') }} {{ t('Macro categorie','Macro catégories') }}</a><a class="btn btn-primary" href="{{ url_for('manager_magazzino_new') }}">{{ icon('plus') }} {{ t('Nuovo articolo','Nouvel article') }}</a></div></header>
+  {% if request.query_params.get('saved') == 'supplier' %}<p class="alert alert-success" role="status">{{ t('Dati fornitore salvati. Il promemoria è aggiornato.','Données fournisseur enregistrées. Le rappel est à jour.') }}</p>{% endif %}
+  <nav class="warehouse-completion-filters" aria-label="{{ t('Dati mancanti','Données manquantes') }}">
+    {% for key,it,fr in [('all','Tutti da completare','Tous à compléter'),('classification','Da classificare','À classer'),('supplier','Fornitore da aggiungere','Fournisseur à ajouter'),('code','Codice fornitore da aggiungere','Code fournisseur à ajouter')] %}
+    <a class="btn {{ 'btn-primary' if kind == key else 'btn-secondary' }}" href="{{ url_for('warehouse_completion').include_query_params(kind=key) }}" {% if kind == key %}aria-current="page"{% endif %}>{{ t(it,fr) }} <strong>{{ completion_counts[key] }}</strong></a>
+    {% endfor %}
+  </nav>
+  <section class="card warehouse-catalog"><div class="card-body">
+    <form class="warehouse-search" method="get" action="{{ url_for('warehouse_completion') }}"><input type="hidden" name="kind" value="{{ kind }}"><label class="vehicle-field warehouse-query">{{ t('Cerca articolo','Rechercher un article') }}<input name="q" value="{{ q }}" placeholder="{{ t('Nome, codice interno o produttore','Nom, code interne ou fabricant') }}"></label><button class="btn btn-secondary" type="submit">{{ t('Cerca','Rechercher') }}</button>{% if q %}<a class="btn btn-secondary" href="{{ url_for('warehouse_completion').include_query_params(kind=kind) }}">{{ t('Azzera','Réinitialiser') }}</a>{% endif %}</form>
+    <div class="warehouse-list-title"><h2>{{ t('Articoli','Articles') }} · {{ items_count }}</h2>{% if kind == 'classification' %}<a class="btn btn-secondary" href="{{ url_for('manager_magazzino_home').include_query_params(categoria_id=0) }}">{{ t('Classifica più articoli senza categoria','Classer plusieurs articles sans catégorie') }}</a>{% endif %}</div>
+    <div class="warehouse-rows">
+    {% for item in items %}{% set detail = details[item.id] %}
+      <article class="warehouse-row warehouse-completion-row">
+        <div class="warehouse-row-icon">{{ icon('box') }}</div>
+        <div class="warehouse-row-name"><h3><a href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ item.nome }}</a></h3>{% include 'manager/magazzino/_manufacturer_code.html' %}<p>{{ item.codice }} · {% if item.categoria and item.categoria.attiva %}{{ item.categoria.macro.name ~ ' / ' if item.categoria.macro else '' }}{{ item.categoria.nome }}{% else %}{{ t('Categoria da assegnare','Catégorie à attribuer') }}{% endif %}</p>
+          <div class="warehouse-completion-badges">{% if detail.classification %}<span>{{ t('Macro da assegnare','Macro à attribuer') if detail.macro_missing else t('Da classificare','À classer') }}</span>{% endif %}{% if detail.supplier %}<span>{{ t('Fornitore da aggiungere','Fournisseur à ajouter') }}</span>{% endif %}{% if detail.pending or detail.blank_codes %}<span>{{ t('Codice fornitore da aggiungere','Code fournisseur à ajouter') }}</span>{% endif %}</div>
+        </div>
+        <div class="warehouse-row-stock"><strong>{{ '%g'|format(item.quantita_disponibile or 0) }} <small>{{ item.unita_misura }}</small></strong></div>
+        <a class="btn btn-secondary warehouse-open" href="{{ url_for('warehouse_item_card',item_id=item.id) }}">{{ t('Apri scheda','Ouvrir la fiche') }} {{ icon('arrow') }}</a>
+        <div class="warehouse-completion-actions">
+          {% if detail.classification %}<a class="btn btn-secondary" href="{{ url_for('manager_magazzino_categorie_edit',categoria_id=item.categoria_id) if detail.macro_missing else url_for('warehouse_item_classification',item_id=item.id) }}">{{ t('Assegna macro alla categoria','Attribuer une macro à la catégorie') if detail.macro_missing else t('Assegna categoria','Attribuer une catégorie') }}</a>{% endif %}
+          {% for pending in detail.pending %}
+          <details class="warehouse-completion-editor"><summary>{{ t('Aggiungi codice','Ajouter le code') }} · {{ pending.supplier.name }}</summary>
+            {% if pending.supplier.is_active %}<form method="post" action="{{ url_for('warehouse_item_supplier_link',item_id=item.id) }}"><input type="hidden" name="supplier_id" value="{{ pending.supplier_id }}"><input type="hidden" name="return_completion" value="true"><input type="hidden" name="completion_filter" value="{{ kind }}"><label class="vehicle-field">{{ t('Codice fornitore','Code fournisseur') }}<input name="code" maxlength="100" required autocomplete="off"></label><button type="submit" class="btn btn-primary">{{ t('Salva codice','Enregistrer le code') }}</button></form>{% else %}<p>{{ t('Fornitore inattivo. Puoi riattivarlo dalla sua scheda o correggere il collegamento nella scheda articolo.','Fournisseur inactif. Vous pouvez le réactiver depuis sa fiche ou corriger le lien dans la fiche article.') }}</p><a class="btn btn-secondary" href="{{ url_for('manager_fornitori_edit',supplier_id=pending.supplier_id) }}">{{ t('Apri fornitore','Ouvrir le fournisseur') }}</a>{% endif %}
+          </details>
+          {% endfor %}
+          {% for article in detail.blank_codes %}<a class="btn btn-secondary" href="{{ url_for('supplier_article_code_edit',supplier_id=article.supplier_id,article_id=article.id) }}">{{ t('Aggiungi codice','Ajouter le code') }} · {{ article.supplier.name }}</a>{% endfor %}
+          {% if detail.supplier %}<details class="warehouse-completion-editor"><summary>{{ t('Aggiungi fornitore','Ajouter un fournisseur') }}</summary><form method="post" action="{{ url_for('warehouse_item_supplier_link',item_id=item.id) }}"><input type="hidden" name="return_completion" value="true"><input type="hidden" name="completion_filter" value="{{ kind }}"><label class="vehicle-field">{{ t('Fornitore','Fournisseur') }}<select name="supplier_id" required><option value="">{{ t('Seleziona fornitore','Sélectionner un fournisseur') }}</option>{% for supplier in suppliers %}<option value="{{ supplier.id }}">{{ supplier.name }}</option>{% endfor %}</select></label><label class="vehicle-field">{{ t('Codice fornitore (facoltativo)','Code fournisseur (facultatif)') }}<input name="code" maxlength="100" autocomplete="off"></label><button class="btn btn-primary" type="submit">{{ t('Salva fornitore','Enregistrer le fournisseur') }}</button></form></details>{% endif %}
+        </div>
+      </article>
+    {% else %}<p class="warehouse-empty">{{ t('Nessun articolo da completare con questi filtri.','Aucun article à compléter avec ces filtres.') }}</p>{% endfor %}
+    </div>
+    {% if pages > 1 %}<nav class="warehouse-completion-pagination" aria-label="{{ t('Pagine','Pages') }}">{% if page > 1 %}<a class="btn btn-secondary" href="{{ url_for('warehouse_completion').include_query_params(kind=kind,q=q,page=page-1) }}">{{ t('Precedente','Précédent') }}</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a class="btn btn-secondary" href="{{ url_for('warehouse_completion').include_query_params(kind=kind,q=q,page=page+1) }}">{{ t('Successiva','Suivant') }}</a>{% endif %}</nav>{% endif %}
+  </div></section>
+</div>
+{% endblock %}

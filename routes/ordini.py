@@ -1386,6 +1386,7 @@ def manager_ordini_supplier_articles(
 def _apply_line_codes_and_catalog(db, order, line_codes, supplier) -> None:
     """Imposta il codice su ogni riga d'ordine e aggiorna il catalogo del
     fornitore (crea i codici nuovi, aggiorna quelli esistenti)."""
+    from services.warehouse_completion import remember_supplier, resolve_supplier
     order_lines = list(order.lines)
     for line, code in zip(order_lines, line_codes):
         if code:
@@ -1395,6 +1396,8 @@ def _apply_line_codes_and_catalog(db, order, line_codes, supplier) -> None:
     now = datetime.utcnow()
     for line, code in zip(order_lines, line_codes):
         if not code:
+            if line.magazzino_item_id:
+                remember_supplier(db, line.magazzino_item_id, supplier.id)
             continue
         matches = db.query(SupplierArticle).filter(
             SupplierArticle.supplier_id == supplier.id, func.lower(SupplierArticle.codice) == code.lower()
@@ -1416,6 +1419,8 @@ def _apply_line_codes_and_catalog(db, order, line_codes, supplier) -> None:
                 supplier_id=supplier.id, codice=code, magazzino_item_id=line.magazzino_item_id,
                 descrizione=line.description, last_used_at=now, usi=1,
             ))
+        if line.magazzino_item_id:
+            resolve_supplier(db, line.magazzino_item_id, supplier.id)
 
 
 @router.post(

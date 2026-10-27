@@ -1,0 +1,9 @@
+{% for pending in pending_suppliers %}
+<div class="warehouse-pending-supplier">
+  <p><strong>{{ pending.supplier.name }}</strong> · {{ t('Codice da aggiungere','Code à ajouter') }}</p>
+  {% if can_edit_catalog %}
+    {% if pending.supplier.is_active and item.attivo %}<form method="post" action="{{ url_for('warehouse_item_supplier_link',item_id=item.id) }}"><input type="hidden" name="supplier_id" value="{{ pending.supplier_id }}"><label class="vehicle-field">{{ t('Codice fornitore','Code fournisseur') }}<input name="code" maxlength="100" required autocomplete="off"></label><button class="btn btn-primary" type="submit">{{ t('Salva codice','Enregistrer le code') }}</button></form>{% else %}<p class="text-muted">{{ t('Fornitore o articolo non attivo','Fournisseur ou article inactif') }}</p>{% endif %}
+    <form method="post" action="{{ url_for('warehouse_pending_supplier_remove',item_id=item.id,pending_id=pending.id) }}"><button class="btn btn-secondary" type="submit">{{ t('Rimuovi collegamento senza codice','Retirer le lien sans code') }}</button></form>
+  {% endif %}
+</div>
+{% endfor %}
