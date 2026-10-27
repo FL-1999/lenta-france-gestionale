@@ -1,21 +1,25 @@
 {# Approved B1 / B2: identical wall size, optional compact curve at lower left. #}
 {% set soil_annex = soils_need_annex(visual_layers, theoretical_layers, schema_depth, report_lang) %}
-{% set notes_annex = (report_notes|wordwrap(26)).split('\n')|length > (5 if has_courbe_beton else (12 if fiche.pour_panels else 20)) %}
 {% set armature = report_coupe.armatura if report_coupe else '' %}
 {% set details_annex = report_responsable|length > 26 or (fiche.site.name|length if fiche.site else 0) > 36 or (armature|length if armature else 0) > 50 %}
 {% set extra = namespace(rows=[]) %}
 {% set group = fiche.pour_panels[0].pour if fiche.pour_panels else none %}
 {% set group_labels = fiche.pour_panels|map(attribute='label')|join(' + ') if group else '' %}
-{% set group_annex = group and (has_courbe_beton or group.label|length > 35 or group_labels|length > 50) %}
+{# A short A/B corner belongs on the main sheet even when the curve is enabled. #}
+{% set group_annex = group and ((has_courbe_beton and (group.kind != 'angle' or group.label|length > 14 or group_labels|length > 30 or details_annex or soil_annex or fiche.sonic_previsto or fiche.inclinometre_previsto)) or group.label|length > 35 or group_labels|length > 50) %}
+{% set inline_curve_group = has_courbe_beton and group and not group_annex %}
+{% set notes_annex = (report_notes|wordwrap(26)).split('\n')|length > (2 if inline_curve_group else (5 if has_courbe_beton else (12 if group else 20))) %}
 {% macro number(value, unit='') -%}{{ ('%.2f'|format(value)).replace('.', ',') ~ (' ' ~ unit if unit else '') if value is not none else '—' }}{%- endmacro %}
 {% macro short(label, value, limit=22) -%}
   {% if value|string|length > limit %}{% set extra.rows = extra.rows + [(label, value)] %}{{ rt('Voir annexe') }}{% else %}{{ value }}{% endif %}
 {%- endmacro %}
 {% macro row(label, value) %}<div class="b-row"><dt>{{ rt(label) }}</dt><dd>{{ short(label, value) }}</dd></div>{% endmacro %}
-{% macro group_details() %}
+{% macro group_details(compact=false) %}
+  {% if compact %}<div class="b-group-details">{% endif %}
   <p><strong>{{ rt('ANGLE' if group.kind == 'angle' else 'BÉTONNAGE COMMUN') }} · {{ group.label }}</strong></p>
   {% if group.kind == 'angle' %}<p>{{ rt('Fiche unique') }} · {{ group_labels }}. {{ rt('Schéma : développement des bras, largeur nette totale.') }}</p>
   {% else %}<p>{{ rt('Total commun') }}: {{ group.total_m3 if group.total_m3 is not none else '—' }} m³ · {{ rt('Part de cette fiche') }}: {{ number(volume_gettato, 'm³') }} ({{ rt('répartie, non mesurée séparément') }}).</p>{% endif %}
+  {% if compact %}</div>{% endif %}
 {% endmacro %}
 <div class="fiche-b-page" data-report-model="{{ 'B2' if has_courbe_beton else 'B1' }}">
   <header class="b-header">
@@ -51,11 +55,12 @@
       {% if fiche.sonic_previsto %}{{ rt('Sonique') }}: {{ '✓' if fiche.sonic_realizzato is sameas true else '—' }} {% endif %}
       {% if fiche.inclinometre_previsto %}{{ rt('Inclinomètre') }}: {{ '✓' if fiche.inclinometre_realizzato is sameas true else '—' }}{% endif %}
     </p>{% endif %}</section>
+    {% if has_courbe_beton and group and extra.rows %}{% set group_annex = true %}{% set inline_curve_group = false %}{% endif %}
     <section class="b-block b-notes {{ 'b-notes--curve' if has_courbe_beton else '' }}"><h3>{{ rt('Observations') }}</h3>
-      <p>{{ rt('Observations détaillées : voir annexe A4.') if notes_annex else report_notes }}</p>
+      {% if notes_annex or report_notes not in ('', '—') or not inline_curve_group %}<p>{{ rt('Observations détaillées : voir annexe A4.') if notes_annex else report_notes }}</p>{% endif %}
       {% if soil_annex or details_annex or extra.rows %}<p class="b-annex-reference">{{ rt('Description et cotes') }}: {{ rt('voir annexe A4.') }}</p>{% endif %}
       {% if group_annex %}<p class="b-annex-reference">{{ rt('ANGLE' if group.kind == 'angle' else 'BÉTONNAGE COMMUN') }}: {{ rt('voir annexe A4.') }}</p>
-      {% elif group %}{{ group_details() }}{% endif %}
+      {% elif group %}{{ group_details(compact=inline_curve_group) }}{% endif %}
     </section>
     {% if has_courbe_beton %}<section class="b-curve"><h3>{{ rt('COURBE DE BÉTONNAGE') }}</h3>
       {{ compact_courbe_svg(courbe_beton_payload, schema_quota_partenza, datum, language=report_lang)|safe }}
