@@ -1,5 +1,6 @@
 {% extends "shared/base.html" %}
 {% from 'shared/workspace_icons.html' import icon %}
+{% from 'manager/magazzino/_prices_ht.html' import ht_badge with context %}
 {% set is_edit = item is not none %}
 {% set values = form_data if form_data is defined else (item if is_edit else {}) %}
 {% macro field(name,it,fr,type='text',required=false) %}<label class="vehicle-field">{{ t(it,fr) }}{{ ' *' if required else '' }}<input name="{{ name }}" type="{{ type }}" value="{{ values[name] if values[name] is defined and values[name] is not none else '' }}" {% if required %}required{% endif %} {% if type == 'number' %}min="0" step="{{ 'any' if name == 'quantita_disponibile' else '0.01' }}"{% endif %}></label>{% endmacro %}
@@ -38,7 +39,14 @@
   {{ field('quantita_disponibile','Quantità disponibile' if is_edit else 'Giacenza iniziale','Quantité disponible' if is_edit else 'Stock initial','number') }}
   <label class="vehicle-field">{{ t('Unità della quantità inserita','Unité de la quantité saisie') }}<select name="stock_unit" data-selected="{{ values.stock_unit or '' }}"><option value="">{{ t('Unità dell’articolo','Unité de l’article') }}</option>{% for unit in ['bancale','sacco','kg','rotolo','m'] %}<option value="{{ unit }}" {% if values.stock_unit == unit %}selected{% endif %}>{{ t('Unità','Unité') if unit == 'unita' else unit }}</option>{% endfor %}</select></label>
   {{ field('soglia_minima' ,'Soglia minima','Seuil minimum','number') }}
-  {{ field('costo_unitario','Costo unitario (€)','Coût unitaire (€)','number') }}
+  <div class="vehicle-field">
+    <label for="item-unit-cost">{{ t('Costo unitario','Coût unitaire') }} · €/<span data-base-unit>{{ values.unita_misura or 'pz' }}</span></label>
+    <span class="wh-cost-entry">
+      <input id="item-unit-cost" name="costo_unitario" type="number" min="0" step="any" inputmode="decimal" aria-describedby="item-cost-tax" value="{{ values.costo_unitario if values.costo_unitario is defined and values.costo_unitario is not none else '' }}">
+      {{ ht_badge() }}
+    </span>
+    <small id="item-cost-tax" class="text-muted">{{ t('IVA esclusa','TVA exclue') }}</small>
+  </div>
 </div><p class="packaging-preview" data-stock-preview role="status"></p><p class="text-muted">{{ t('Unità usata per soglia minima e costo unitario:','Unité du seuil minimum et du coût unitaire :') }} <strong data-base-unit>{{ values.unita_misura or 'pz' }}</strong>.</p><label class="warehouse-checkbox"><input name="attivo" type="checkbox" {% if values.attivo|default(true) %}checked{% endif %}> {{ t('Articolo attivo','Article actif') }}</label></div></section>
 {% if not is_edit %}
 <section class="card" id="initial-suppliers"><div class="card-body"><div class="warehouse-section-heading"><h2>{{ icon('users') }} {{ t('Fornitori e codici','Fournisseurs et codes') }}</h2><span class="text-muted">{{ t('Facoltativo','Facultatif') }}</span></div>

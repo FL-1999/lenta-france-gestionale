@@ -759,3 +759,40 @@ html[data-theme=light] .order-state.is-closed { color:#28594b; background:#e1eee
 
 /* Keep clickable site rows on the shared day/night palette. */
 .workspace-ui .site-row-clickable:is(:hover, :focus-visible) td { background:var(--ws-hover); }
+
+/* Warehouse prices: keep the tax basis visible alongside each amount. */
+.wh-ht {
+  display: inline-block;
+  padding: .18em .5em;
+  border: 1px solid var(--ws-section-line);
+  border-radius: .4rem;
+  background: var(--ws-info-bg);
+  color: var(--ws-info);
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: .025em;
+  text-decoration: none;
+  vertical-align: middle;
+}
+.wh-money { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wh-cost-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .5rem; }
+.wh-cost-entry input { width: 100%; min-width: 0; box-sizing: border-box; }
+.wh-item-costs { display: flex; flex-wrap: wrap; gap: .85rem 2.5rem; margin: 1rem 0; }
+.wh-item-costs dt { color: var(--ws-muted); }
+.wh-item-costs dd { margin: .25rem 0 0; font-size: 1.1rem; font-weight: 700; }
+.wh-prices .wh-price-row form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .25rem .75rem;
+}
+.wh-prices .wh-price-row label { min-width: 0; }
+.wh-prices .wh-cost-entry { margin-top: .4rem; }
+.wh-prices .wh-cost-entry input, .wh-prices .wh-cost-hint { margin-top: 0; }
+.wh-cost-hint { grid-column: 1 / -1; }
+@media (max-width: 480px) {
+  .wh-prices .wh-price-row form { grid-template-columns: minmax(0, 1fr); }
+  .wh-prices .wh-cost-hint { grid-row: 2; }
+  .wh-prices .wh-price-row button { justify-self: start; margin-top: .35rem; }
+}
