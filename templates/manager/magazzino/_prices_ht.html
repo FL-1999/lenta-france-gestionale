@@ -1,0 +1,7 @@
+{% macro ht_badge() -%}
+<abbr class="wh-ht" title="{{ t('Hors taxes · IVA esclusa','Hors taxes · TVA exclue') }}">HT</abbr>
+{%- endmacro %}
+
+{% macro money(value, unit=none) -%}
+<span class="wh-money">{{ format_warehouse_amount(value, lang, unit_price=unit is not none) }} €{% if unit %}/{{ unit }}{% endif %} {{ ht_badge() }}</span>
+{%- endmacro %}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import os
+from decimal import Decimal
 from pathlib import Path
 from threading import Lock
 
@@ -219,6 +220,13 @@ def get_lang_from_request(request: Request) -> str:
     return "it"
 
 
+def format_warehouse_amount(value, lang, *, unit_price=False, group=True):
+    amount = Decimal(str(value))
+    precision = max(2, -amount.as_tuple().exponent) if unit_price and amount.is_finite() else 2
+    number = format(amount, f"{',' if group else ''}.{precision}f")
+    return number.translate(str.maketrans({",": "\u202f" if lang == "fr" else ".", ".": ","}))
+
+
 def build_template_context(
     request: Request,
     user: User | None,
@@ -234,6 +242,7 @@ def build_template_context(
     # Helper traduzione compatto: {{ t('italiano', 'français') }}
     template_context.setdefault("t", lambda it, fr: fr if _lang == "fr" else it)
     template_context.setdefault("format_place_label", format_place_label)
+    template_context.setdefault("format_warehouse_amount", format_warehouse_amount)
     template_context.setdefault("google_maps_api_key", os.getenv("GOOGLE_MAPS_API_KEY"))
 
     active_role = get_active_role(user)
